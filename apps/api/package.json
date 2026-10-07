@@ -1,0 +1,27 @@
+{
+  "name": "@poke/api",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "start": "tsx src/server.ts",
+    "admin:promote": "tsx src/scripts/promote-admin.ts",
+    "typecheck": "tsc -p tsconfig.json",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@fastify/cors": "^11.3.0",
+    "@poke/content": "workspace:*",
+    "@poke/db": "workspace:*",
+    "@poke/game-core": "workspace:*",
+    "@poke/shared": "workspace:*",
+    "better-auth": "^1.7.7",
+    "drizzle-orm": "^0.45.3",
+    "fastify": "^5.12.5",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "tsx": "^4.23.15"
+  }
+}

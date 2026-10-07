@@ -1,0 +1,33 @@
+{
+  "name": "poke-collect",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@10.18.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "pnpm --parallel --filter @poke/api --filter @poke/web --filter @poke/admin dev",
+    "build": "pnpm -r build",
+    "typecheck": "pnpm -r typecheck",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "test": "pnpm -r test",
+    "import:pokeapi": "pnpm --filter @poke/import-pokeapi start",
+    "db:generate": "pnpm --filter @poke/db generate",
+    "db:migrate": "pnpm --filter @poke/db migrate",
+    "admin:promote": "pnpm --filter @poke/api admin:promote"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.0.0",
+    "eslint": "^10.12.0",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9",
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.71.1",
+    "vitest": "^5.0.3"
+  }
+}

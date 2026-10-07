@@ -1,0 +1,346 @@
+import type { Encounter, ItemStack, LootTable, Zone } from '@poke/content';
+import type { GameContext } from './context';
+import { baseShinyProbability } from './context';
+import { MAX_LEVEL, generatePokemon, levelForXp, pokemonPower, xpForLevel } from './pokemon';
+import type { PokemonInstance } from './pokemon';
+import { NO_BONUSES } from './progression';
+import type { PlayerBonuses } from './progression';
+import { createRng } from './rng';
+import type { Rng } from './rng';
+
+// --- Quantités selon la durée ----------------------------------------------------
+
+/** Quantité = taux horaire × (durée en h) ^ exposant : rendements décroissants. */
+function scaledCount(ctx: GameContext, durationMinutes: number, perHour: number, min: number) {
+  const hours = durationMinutes / 60;
+  return Math.max(min, Math.floor(perHour * hours ** ctx.balance.expeditions.durationExponent));
+}
+
+export function encounterCount(ctx: GameContext, durationMinutes: number): number {
+  const { encountersPerHour, minEncounters } = ctx.balance.expeditions;
+  return scaledCount(ctx, durationMinutes, encountersPerHour, minEncounters);
+}
+
+export function lootRollCount(ctx: GameContext, durationMinutes: number): number {
+  const { lootRollsPerHour, minLootRolls } = ctx.balance.expeditions;
+  return scaledCount(ctx, durationMinutes, lootRollsPerHour, minLootRolls);
+}
+
+// --- Capture et pitié ----------------------------------------------------------------
+
+export function pityMultiplier(ctx: GameContext, misses: number): number {
+  const { weightBonusPerMiss, maxMultiplier } = ctx.balance.pity;
+  return Math.min(maxMultiplier, 1 + weightBonusPerMiss * misses);
+}
+
+export interface CaptureFactors {
+  captureRate: number;
+  ballMultiplier: number;
+  boostMultiplier?: number;
+  /** Nombre de membres de l'équipe en affinité avec la zone. */
+  affinityCount?: number;
+  /** Bonus permanent du joueur (collections). */
+  bonusMultiplier?: number;
+}
+
+/**
+ * Inspirée de la formule officielle : a = (3 PVmax − 2 PV) / (3 PVmax) × taux × Ball,
+ * probabilité ≈ a / 255, puis bonus d'affinité et multiplicateur global.
+ */
+export function captureProbability(ctx: GameContext, f: CaptureFactors): number {
+  const { globalMultiplier, assumedHpFraction, affinityBonusPerPokemon } = ctx.balance.capture;
+  const hpFactor = (3 - 2 * assumedHpFraction) / 3;
+  const affinity = 1 + affinityBonusPerPokemon * (f.affinityCount ?? 0);
+  const a =
+    f.captureRate *
+    f.ballMultiplier *
+    (f.boostMultiplier ?? 1) *
+    hpFactor *
+    affinity *
+    (f.bonusMultiplier ?? 1) *
+    globalMultiplier;
+  return Math.min(1, Math.max(0, a / 255));
+}
+
+/** Rencontres actives de la zone (espèces désactivées exclues), poids ajustés par la pitié. */
+export function weightedEncounters(
+  ctx: GameContext,
+  zone: Zone,
+  pity: ReadonlyMap<number, number> = new Map(),
+): { value: Encounter; weight: number }[] {
+  return zone.encounters
+    .filter((e) => ctx.species(e.speciesId)?.enabled)
+    .map((e) => ({ value: e, weight: e.weight * pityMultiplier(ctx, pity.get(e.speciesId) ?? 0) }));
+}
+
+/** Probabilité d'apparition de chaque espèce (pour l'admin et l'affichage). */
+export function encounterProbabilities(
+  ctx: GameContext,
+  zone: Zone,
+  pity?: ReadonlyMap<number, number>,
+): { speciesId: number; probability: number }[] {
+  const entries = weightedEncounters(ctx, zone, pity);
+  const total = entries.reduce((sum, e) => sum + e.weight, 0);
+  const bySpecies = new Map<number, number>();
+  for (const e of entries) {
+    bySpecies.set(e.value.speciesId, (bySpecies.get(e.value.speciesId) ?? 0) + e.weight / total);
+  }
+  return [...bySpecies].map(([speciesId, probability]) => ({ speciesId, probability }));
+}
+
+// --- Butin ---------------------------------------------------------------------------------
+
+export function addStacks(into: Map<string, number>, stacks: readonly ItemStack[]): void {
+  for (const s of stacks) into.set(s.itemId, (into.get(s.itemId) ?? 0) + s.quantity);
+}
+
+/** Un tirage : chaque entrée tombe indépendamment selon sa probabilité. */
+export function rollLoot(rng: Rng, table: LootTable): ItemStack[] {
+  const drops: ItemStack[] = [];
+  for (const entry of table.entries) {
+    if (rng.chance(entry.chance)) {
+      drops.push({ itemId: entry.itemId, quantity: rng.int(entry.min, entry.max) });
+    }
+  }
+  return drops;
+}
+
+// --- Validation de l'équipe -----------------------------------------------------------------
+
+export interface TeamMember extends PokemonInstance {
+  id: string;
+}
+
+export type ExpeditionError =
+  | { code: 'DURATION_NOT_ALLOWED' }
+  | { code: 'TEAM_EMPTY' }
+  | { code: 'TEAM_TOO_LARGE'; max: number }
+  | { code: 'DUPLICATE_MEMBER' }
+  | { code: 'POWER_TOO_LOW'; power: number; minPower: number }
+  | { code: 'MISSING_TYPES'; missing: { type: string; count: number }[] };
+
+export interface TeamCheck {
+  power: number;
+  affinityCount: number;
+  errors: ExpeditionError[];
+}
+
+/** Types de chaque membre de l'équipe. */
+function memberTypes(ctx: GameContext, team: readonly Pick<PokemonInstance, 'speciesId'>[]) {
+  return team.map((m) => ctx.species(m.speciesId)?.types ?? []);
+}
+
+export function teamPower(ctx: GameContext, team: readonly PokemonInstance[]): number {
+  return team.reduce((sum, m) => {
+    const species = ctx.species(m.speciesId);
+    return sum + (species ? pokemonPower(species, m) : 0);
+  }, 0);
+}
+
+export function countAffinity(
+  ctx: GameContext,
+  zone: Zone,
+  team: readonly Pick<PokemonInstance, 'speciesId'>[],
+): number {
+  const affinity = new Set(zone.affinityTypes);
+  return memberTypes(ctx, team).filter((types) => types.some((t) => affinity.has(t))).length;
+}
+
+/** Types requis (« 2 Pokémon Eau ») qui manquent encore à l'équipe. */
+export function missingTypes(
+  ctx: GameContext,
+  team: readonly Pick<PokemonInstance, 'speciesId'>[],
+  required: readonly { type: string; count: number }[],
+): { type: string; count: number }[] {
+  const types = memberTypes(ctx, team);
+  return required
+    .map((r) => ({ type: r.type, count: r.count - types.filter((t) => t.includes(r.type)).length }))
+    .filter((r) => r.count > 0);
+}
+
+export function checkTeam(
+  ctx: GameContext,
+  zone: Zone,
+  durationMinutes: number,
+  team: readonly TeamMember[],
+): TeamCheck {
+  const errors: ExpeditionError[] = [];
+  const { maxTeamSize } = ctx.balance.expeditions;
+  if (!zone.durationsMinutes.includes(durationMinutes))
+    errors.push({ code: 'DURATION_NOT_ALLOWED' });
+  if (team.length === 0) errors.push({ code: 'TEAM_EMPTY' });
+  if (team.length > maxTeamSize) errors.push({ code: 'TEAM_TOO_LARGE', max: maxTeamSize });
+  if (new Set(team.map((m) => m.id)).size !== team.length)
+    errors.push({ code: 'DUPLICATE_MEMBER' });
+
+  const power = teamPower(ctx, team);
+  if (power < zone.minPower) errors.push({ code: 'POWER_TOO_LOW', power, minPower: zone.minPower });
+
+  const missing = missingTypes(ctx, team, zone.requiredTypes);
+  if (missing.length > 0) errors.push({ code: 'MISSING_TYPES', missing });
+
+  return { power, affinityCount: countAffinity(ctx, zone, team), errors };
+}
+
+// --- Résolution ----------------------------------------------------------------------------
+
+export interface ExpeditionInput {
+  zone: Zone;
+  durationMinutes: number;
+  seed: number;
+  team: readonly TeamMember[];
+  /** Balls réservées au départ (une par tentative de capture). */
+  balls: ItemStack | null;
+  /** Baies réservées au départ (une par tentative de capture). */
+  berries: ItemStack | null;
+  /** Échecs de capture accumulés par espèce. */
+  pity: Readonly<Record<number, number>>;
+  /** Par défaut, calculée à partir de l'équipe (le simulateur la fixe directement). */
+  affinityCount?: number;
+  /** Bonus permanents du joueur (paliers, collections) ; aucun par défaut. */
+  bonuses?: PlayerBonuses;
+}
+
+export type EncounterOutcome = 'captured' | 'escaped' | 'noBall';
+
+export interface EncounterResult {
+  speciesId: number;
+  level: number;
+  isShiny: boolean;
+  outcome: EncounterOutcome;
+  captureChance: number;
+  /** Présent si capturé. */
+  pokemon?: PokemonInstance;
+}
+
+/** XP de base que rapporte un Pokémon vaincu (ou rencontré), avant multiplicateur. */
+export function defeatXp(species: { baseExperience: number | null }, level: number): number {
+  return ((species.baseExperience ?? 50) * level) / 7;
+}
+
+export interface TeamMemberResult {
+  id: string;
+  xpGained: number;
+  levelBefore: number;
+  levelAfter: number;
+  xpAfter: number;
+  happinessAfter: number;
+}
+
+export interface ExpeditionResult {
+  encounters: EncounterResult[];
+  loot: ItemStack[];
+  team: TeamMemberResult[];
+  /** XP gagnée par chaque membre (avant plafonnement au niveau maximal). */
+  xpPerMember: number;
+  /** Nouveaux compteurs de pitié des espèces concernées. */
+  pity: Record<number, number>;
+  ballsUsed: number;
+  berriesUsed: number;
+}
+
+/** XP (plafonnée au niveau maximal) et bonheur (borné entre 0 et 255) gagnés par l'équipe. */
+export function applyTeamXp(
+  ctx: GameContext,
+  team: readonly TeamMember[],
+  xp: number,
+  happinessDelta: number,
+): TeamMemberResult[] {
+  return team.map((m) => {
+    const growth = ctx.species(m.speciesId)?.growthRate;
+    const xpCap = growth ? xpForLevel(growth, MAX_LEVEL) : m.xp;
+    const xpAfter = Math.max(m.xp, Math.min(m.xp + xp, xpCap));
+    return {
+      id: m.id,
+      xpGained: xpAfter - m.xp,
+      levelBefore: m.level,
+      levelAfter: growth ? Math.max(m.level, levelForXp(growth, xpAfter)) : m.level,
+      xpAfter,
+      happinessAfter: Math.min(255, Math.max(0, m.happiness + happinessDelta)),
+    };
+  });
+}
+
+/**
+ * Calcule le résultat d'une expédition de façon déterministe (seed + contenu de la version
+ * active au départ). Le serveur l'applique ensuite en base ; le client ne fait qu'afficher.
+ */
+export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): ExpeditionResult {
+  const rng = createRng(input.seed);
+  const { zone } = input;
+  const pity = new Map(Object.entries(input.pity).map(([k, v]) => [Number(k), v]));
+  const touched = new Set<number>();
+  const affinityCount = input.affinityCount ?? countAffinity(ctx, zone, input.team);
+  const ballMultiplier = input.balls
+    ? (ctx.itemEffect(input.balls.itemId, 'ball')?.catchMultiplier ?? 1)
+    : 0;
+  const boostMultiplier = input.berries
+    ? (ctx.itemEffect(input.berries.itemId, 'captureBoost')?.multiplier ?? 1)
+    : 1;
+  let ballsLeft = input.balls?.quantity ?? 0;
+  let berriesLeft = input.berries?.quantity ?? 0;
+  const shinyProbability = baseShinyProbability(ctx);
+  const bonuses = input.bonuses ?? NO_BONUSES;
+
+  const encounters: EncounterResult[] = [];
+  let xpPerMember = 0;
+  const count = encounterCount(ctx, input.durationMinutes);
+  for (let i = 0; i < count; i++) {
+    const table = weightedEncounters(ctx, zone, pity);
+    if (table.length === 0) break;
+    const encounter = rng.weighted(table);
+    const species = ctx.species(encounter.speciesId)!;
+    const level = rng.int(encounter.minLevel, encounter.maxLevel);
+    const wild = generatePokemon(ctx, rng, species.id, level, { shinyProbability });
+    xpPerMember += Math.floor(defeatXp(species, level) * ctx.balance.xp.multiplier * bonuses.xp);
+
+    if (ballsLeft <= 0) {
+      encounters.push({
+        speciesId: species.id,
+        level,
+        isShiny: wild.isShiny,
+        outcome: 'noBall',
+        captureChance: 0,
+      });
+      continue;
+    }
+    const useBerry = berriesLeft > 0;
+    const captureChance = captureProbability(ctx, {
+      captureRate: species.captureRate,
+      ballMultiplier,
+      boostMultiplier: useBerry ? boostMultiplier : 1,
+      affinityCount,
+      bonusMultiplier: bonuses.capture,
+    });
+    ballsLeft--;
+    if (useBerry) berriesLeft--;
+    const captured = rng.chance(captureChance);
+    pity.set(species.id, captured ? 0 : (pity.get(species.id) ?? 0) + 1);
+    touched.add(species.id);
+    encounters.push({
+      speciesId: species.id,
+      level,
+      isShiny: wild.isShiny,
+      outcome: captured ? 'captured' : 'escaped',
+      captureChance,
+      ...(captured && { pokemon: wild }),
+    });
+  }
+
+  const lootTotals = new Map<string, number>();
+  const lootTable = zone.lootTableId ? ctx.lootTable(zone.lootTableId) : undefined;
+  if (lootTable) {
+    const rolls = lootRollCount(ctx, input.durationMinutes);
+    for (let i = 0; i < rolls; i++) addStacks(lootTotals, rollLoot(rng, lootTable));
+  }
+
+  return {
+    encounters,
+    loot: [...lootTotals].map(([itemId, quantity]) => ({ itemId, quantity })),
+    team: applyTeamXp(ctx, input.team, xpPerMember, ctx.balance.xp.happinessPerExpedition),
+    xpPerMember,
+    pity: Object.fromEntries([...touched].map((id) => [id, pity.get(id) ?? 0])),
+    ballsUsed: (input.balls?.quantity ?? 0) - ballsLeft,
+    berriesUsed: (input.berries?.quantity ?? 0) - berriesLeft,
+  };
+}
