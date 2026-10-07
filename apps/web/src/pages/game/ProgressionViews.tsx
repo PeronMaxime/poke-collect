@@ -10,14 +10,14 @@ import {
   sortedCollections,
   sortedMilestones,
 } from '@poke/game-core';
-import type { GameContext, PlayerProgress, RewardKind, RewardState } from '@poke/game-core';
+import type { DexCatches, GameContext, RewardKind, RewardState } from '@poke/game-core';
 import type { ClaimRewardResponse } from '@poke/shared';
-import { PokemonSprite, ProgressBar } from '../../components/ui';
+import { PokemonSprite, ProgressBar, ShinyStar } from '../../components/ui';
 import { api } from '../../lib/api';
 import { PLAYER_STATE_KEYS, useClaimedRewards, useProgression } from '../../lib/game';
 import { bonusText, errorText, itemIcon, itemName, rewardLines } from '../../lib/labels';
 
-type Progress = Pick<PlayerProgress, 'caughtSpeciesIds'>;
+type Progress = DexCatches;
 
 /** Réclamation d'une récompense (palier ou collection), avec le détail de ce qui a été reçu. */
 function useClaim() {
@@ -139,19 +139,19 @@ export function MilestonesView({ ctx, progress }: { ctx: GameContext; progress: 
       <ul className="space-y-2">
         {milestones.map((m) => {
           const state = milestoneState(ctx, m, progress, claimed);
-          const dex = dexProgress(ctx, m.regionId, progress);
-          const dexName = m.regionId
-            ? `Pokédex de ${ctx.region(m.regionId)?.name ?? m.regionId}`
-            : 'Pokédex national';
+          const dex = dexProgress(ctx, m.regionId, progress, m.shiny);
+          const dexName = `${m.regionId ? `Pokédex de ${ctx.region(m.regionId)?.name ?? m.regionId}` : 'Pokédex national'}${m.shiny ? ' shiny' : ''}`;
           return (
             <li key={m.id} className={`card space-y-2 p-3 ${STATE_STYLES[state]}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <div>
-                  <p className="font-semibold">{m.name}</p>
+                  <p className="font-semibold">
+                    {m.name} {m.shiny && <ShinyStar />}
+                  </p>
                   <p className="text-xs text-slate-500">
                     {m.percent} % du {dexName} · {dex.percent.toFixed(1)} % (
                     {Math.ceil((m.percent / 100) * dex.total)} espèces requises, {dex.caught}{' '}
-                    capturées)
+                    capturées{m.shiny ? ' en shiny' : ''})
                   </p>
                 </div>
                 <ClaimButton

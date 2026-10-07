@@ -19,8 +19,8 @@ import { requireStartedProfile } from './expeditions';
 import {
   addItems,
   assertAvailable,
-  caughtSpeciesIds,
   claimedRewards,
+  dexCatches,
   itemQuantity,
   recordPokedex,
   takeItems,
@@ -127,7 +127,7 @@ export async function claimReward(
   if (!reward) throw new GameError(404, 'REWARD_NOT_FOUND');
 
   return db.transaction(async (tx) => {
-    const progress = { caughtSpeciesIds: await caughtSpeciesIds(tx, userId) };
+    const progress = await dexCatches(tx, userId);
     const reached = milestone
       ? isMilestoneReached(ctx, milestone, progress)
       : collectionProgress(collection!, progress).complete;

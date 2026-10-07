@@ -17,6 +17,7 @@ import {
   claimExpedition,
   expeditionSlots,
   requireStartedProfile,
+  shinyChains,
   startExpedition,
 } from '../game/expeditions';
 import { claimedRewards, pokemonActivities, toExpeditionDto, toPokemonDto } from '../game/store';
@@ -85,18 +86,25 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
   app.get('/api/expeditions', async (request): Promise<ExpeditionsResponse> => {
     const ctx = await content.get();
     const userId = request.user!.id;
-    const [rows, claimed] = await Promise.all([
+    const at = now();
+    const [rows, claimed, chains] = await Promise.all([
       db
         .select()
         .from(expeditions)
         .where(and(eq(expeditions.ownerId, userId), isNull(expeditions.claimedAt)))
         .orderBy(asc(expeditions.slotIndex)),
       claimedRewards(db, userId),
+      shinyChains(db, ctx, userId, at),
     ]);
     return {
       slots: expeditionSlots(ctx, claimed),
-      serverTime: now().toISOString(),
+      serverTime: at.toISOString(),
       active: rows.map(toExpeditionDto),
+      chains: [...chains].map(([zoneId, s]) => ({
+        zoneId,
+        chain: s.chain,
+        expiresAt: s.expiresAt?.toISOString() ?? null,
+      })),
     };
   });
 

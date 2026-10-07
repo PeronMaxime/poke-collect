@@ -7,13 +7,27 @@ import {
   encounterCount,
   encounterProbabilities,
   pokemonPower,
+  shinyProbability,
 } from '@poke/game-core';
 import type { ExpeditionError, GameContext } from '@poke/game-core';
 import type { ExpeditionDto, PokemonDto, StartExpeditionInput } from '@poke/shared';
 import { Modal, PokemonSprite, ShinyStar, TypeBadge, useNow } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, isUsable, useInventory, usePokemon } from '../../lib/game';
-import { GAME_ERRORS, formatDuration, itemIcon, itemName, typeLabel } from '../../lib/labels';
+import {
+  PLAYER_STATE_KEYS,
+  isUsable,
+  useInventory,
+  usePokemon,
+  useShinyCharm,
+} from '../../lib/game';
+import {
+  GAME_ERRORS,
+  formatDuration,
+  formatShinyRate,
+  itemIcon,
+  itemName,
+  typeLabel,
+} from '../../lib/labels';
 
 function errorText(e: ExpeditionError): string {
   switch (e.code) {
@@ -35,13 +49,17 @@ function errorText(e: ExpeditionError): string {
 export function LaunchExpeditionDialog({
   ctx,
   zone,
+  chain,
   onClose,
 }: {
   ctx: GameContext;
   zone: Zone;
+  /** Maillon de la chaîne de zone qu'aurait cette expédition. */
+  chain: number;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
+  const charm = useShinyCharm(ctx);
   const pokemon = usePokemon();
   const inventory = useInventory();
   const [duration, setDuration] = useState(zone.durationsMinutes[0]!);
@@ -106,7 +124,13 @@ export function LaunchExpeditionDialog({
         ))}
       </div>
       <p className="mt-1 text-xs text-slate-500">
-        {encounters} rencontre{encounters > 1 ? 's' : ''} prévue{encounters > 1 ? 's' : ''}.
+        {encounters} rencontre{encounters > 1 ? 's' : ''} prévue{encounters > 1 ? 's' : ''}. Taux
+        shiny : {formatShinyRate(shinyProbability(ctx, { chain, charm }))}
+        {(chain > 0 || charm > 1) &&
+          ` (${[chain > 0 && `chaîne ${chain}`, charm > 1 && 'Charme Chroma']
+            .filter(Boolean)
+            .join(', ')})`}
+        .
       </p>
 
       <div className="mt-5 flex items-baseline justify-between">

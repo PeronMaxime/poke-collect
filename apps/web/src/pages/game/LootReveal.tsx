@@ -2,9 +2,9 @@ import { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import type { GameContext } from '@poke/game-core';
 import type { ClaimExpeditionResponse } from '@poke/shared';
-import { Modal, PokemonSprite, ShinyStar } from '../../components/ui';
+import { Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
 import { usePokemon } from '../../lib/game';
-import { itemIcon, itemName, speciesName } from '../../lib/labels';
+import { formatShinyRate, itemIcon, itemName, speciesName } from '../../lib/labels';
 
 const STEP = 0.45; // secondes entre deux rencontres
 
@@ -48,6 +48,8 @@ function RevealContent({
   const result = data.expedition.result!;
   const zone = ctx.zone(data.expedition.zoneId);
   const captured = result.encounters.filter((e) => e.outcome === 'captured').length;
+  const shinies = result.encounters.filter((e) => e.isShiny).length;
+  const firstShiny = result.encounters.findIndex((e) => e.isShiny);
   const newSpecies = new Set(result.newSpeciesIds);
   const delay = (i: number) => (instant ? 0 : 0.3 + i * STEP);
   const after = delay(result.encounters.length);
@@ -60,6 +62,13 @@ function RevealContent({
           <p className="text-sm text-slate-500">
             {result.encounters.length} rencontre{result.encounters.length > 1 ? 's' : ''},{' '}
             {captured} capture{captured > 1 ? 's' : ''}
+            {result.shinyChance !== undefined && (
+              <>
+                {' '}
+                · taux shiny {formatShinyRate(result.shinyChance)}
+                {data.expedition.shinyChain > 0 && ` (chaîne ${data.expedition.shinyChain})`}
+              </>
+            )}
           </p>
         </div>
         {!instant && (
@@ -71,6 +80,17 @@ function RevealContent({
           </button>
         )}
       </div>
+
+      {shinies > 0 && (
+        <motion.p
+          className="mt-3 rounded-xl bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-200 px-3 py-2 text-center font-bold text-amber-900 dark:from-amber-900 dark:via-amber-800 dark:to-amber-900 dark:text-amber-100"
+          initial={instant ? false : { opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: [0.8, 1.08, 1] }}
+          transition={{ delay: delay(firstShiny) + 0.2, duration: 0.5 }}
+        >
+          ✨ {shinies > 1 ? `${shinies} Pokémon shiny !` : 'Un Pokémon shiny !'} ✨
+        </motion.p>
+      )}
 
       <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
         {result.encounters.map((e, i) => {
@@ -102,7 +122,9 @@ function RevealContent({
                     : { y: 0 }
                 }
                 transition={{ delay: delay(i) + 0.15, duration: 0.6 }}
+                className="relative"
               >
+                {e.isShiny && <ShinySparkles delay={delay(i) + 0.15} loop />}
                 <PokemonSprite
                   speciesId={e.speciesId}
                   shiny={e.isShiny}

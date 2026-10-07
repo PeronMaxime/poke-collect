@@ -1,12 +1,13 @@
 import type { Encounter, ItemStack, LootTable, Zone } from '@poke/content';
 import type { GameContext } from './context';
-import { baseShinyProbability } from './context';
 import { MAX_LEVEL, generatePokemon, levelForXp, pokemonPower, xpForLevel } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import { NO_BONUSES } from './progression';
 import type { PlayerBonuses } from './progression';
 import { createRng } from './rng';
 import type { Rng } from './rng';
+import { shinyProbability } from './shiny';
+import type { ShinyFactors } from './shiny';
 
 // --- Quantités selon la durée ----------------------------------------------------
 
@@ -199,6 +200,8 @@ export interface ExpeditionInput {
   affinityCount?: number;
   /** Bonus permanents du joueur (paliers, collections) ; aucun par défaut. */
   bonuses?: PlayerBonuses;
+  /** Chaîne de zone et Charme Chroma ; aucun multiplicateur par défaut. */
+  shiny?: ShinyFactors;
 }
 
 export type EncounterOutcome = 'captured' | 'escaped' | 'noBall';
@@ -237,6 +240,8 @@ export interface ExpeditionResult {
   pity: Record<number, number>;
   ballsUsed: number;
   berriesUsed: number;
+  /** Probabilité shiny de chaque rencontre (multiplicateurs compris). */
+  shinyChance: number;
 }
 
 /** XP (plafonnée au niveau maximal) et bonheur (borné entre 0 et 255) gagnés par l'équipe. */
@@ -279,7 +284,7 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
     : 1;
   let ballsLeft = input.balls?.quantity ?? 0;
   let berriesLeft = input.berries?.quantity ?? 0;
-  const shinyProbability = baseShinyProbability(ctx);
+  const shinyChance = shinyProbability(ctx, input.shiny);
   const bonuses = input.bonuses ?? NO_BONUSES;
 
   const encounters: EncounterResult[] = [];
@@ -291,7 +296,9 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
     const encounter = rng.weighted(table);
     const species = ctx.species(encounter.speciesId)!;
     const level = rng.int(encounter.minLevel, encounter.maxLevel);
-    const wild = generatePokemon(ctx, rng, species.id, level, { shinyProbability });
+    const wild = generatePokemon(ctx, rng, species.id, level, {
+      shinyProbability: shinyChance,
+    });
     xpPerMember += Math.floor(defeatXp(species, level) * ctx.balance.xp.multiplier * bonuses.xp);
 
     if (ballsLeft <= 0) {
@@ -342,5 +349,6 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
     pity: Object.fromEntries([...touched].map((id) => [id, pity.get(id) ?? 0])),
     ballsUsed: (input.balls?.quantity ?? 0) - ballsLeft,
     berriesUsed: (input.berries?.quantity ?? 0) - berriesLeft,
+    shinyChance,
   };
 }

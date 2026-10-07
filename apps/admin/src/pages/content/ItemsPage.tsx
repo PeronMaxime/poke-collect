@@ -55,6 +55,11 @@ const EFFECTS: Record<
     help: 'Tenu par un parent en pension : chance de transmettre sa nature (Pierre Stase).',
     create: () => ({ type: 'breedingNature', chance: 1 }),
   },
+  shinyCharm: {
+    label: 'Charme Chroma',
+    help: 'Possédé dans le sac (non consommé) : multiplie le taux shiny des rencontres et des éclosions. Non cumulable : le meilleur s’applique.',
+    create: () => ({ type: 'shinyCharm', multiplier: 3 }),
+  },
 };
 
 const pokeApiById = new Map(pokeApiItems.map((i) => [i.name, i]));
@@ -266,6 +271,20 @@ function ItemForm({
                     unit="%"
                     disabled={disabled}
                     onChange={(v) => update({ ...effect, chance: v })}
+                  />
+                </Field>
+              )}
+              {effect.type === 'shinyCharm' && (
+                <Field label="Multiplicateur" error={errors.get(`effects.${i}.multiplier`)}>
+                  <NumberInput
+                    className="w-32"
+                    value={effect.multiplier}
+                    min={1}
+                    max={100}
+                    step={0.5}
+                    unit="×"
+                    disabled={disabled}
+                    onChange={(v) => update({ ...effect, multiplier: v })}
                   />
                 </Field>
               )}

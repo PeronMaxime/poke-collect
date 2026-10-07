@@ -78,8 +78,21 @@ export function effectText(effect: ItemEffect): string {
       return `Pension : ${effect.count} IV transmis`;
     case 'breedingNature':
       return `Pension : transmet la nature${effect.chance < 1 ? ` (${Math.round(effect.chance * 100)} %)` : ''}`;
+    case 'shinyCharm':
+      return `Dans le sac : shiny × ${effect.multiplier}`;
   }
 }
+
+/** Probabilité shiny lisible : « 1 / 4 096 ». */
+export function formatShinyRate(probability: number): string {
+  if (probability >= 1) return '100 %';
+  if (probability <= 0) return '0';
+  return `1 / ${Math.round(1 / probability).toLocaleString('fr-FR')}`;
+}
+
+/** Multiplicateur lisible : « × 1,5 ». */
+export const formatMultiplier = (m: number) =>
+  `× ${m.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}`;
 
 /** Condition de déblocage en clair (null pour « toujours ») : à afficher avec un cadenas. */
 export function unlockConditionText(ctx: GameContext, u: UnlockCondition): string | null {

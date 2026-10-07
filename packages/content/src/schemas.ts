@@ -53,8 +53,18 @@ export const balanceSettingsSchema = z.object({
     hiddenAbilityChance: probabilitySchema,
   }),
   shiny: z.object({
-    /** Taux de base = 1 / baseRateDenominator. */
+    /** Taux de base = 1 / baseRateDenominator (rencontres et éclosions). */
     baseRateDenominator: z.int().min(1),
+    /**
+     * Chaîne de zone : bonus par expédition relancée de suite dans la même zone
+     * (0.25 = +25 % par maillon), plafonné par `chainMaxMultiplier`.
+     */
+    chainBonusPerExpedition: z.number().min(0),
+    chainMaxMultiplier: z.number().min(1),
+    /** Délai pour relancer la zone après avoir récupéré l'expédition précédente. */
+    chainWindowMinutes: z.int().min(1),
+    /** Élevage : parents d'origines différentes (régions de capture), comme la méthode Masuda. */
+    masudaMultiplier: z.number().min(1),
   }),
   pity: z.object({
     /** Bonus de poids de rencontre par échec (0.05 = +5 %). */
@@ -205,6 +215,8 @@ export const itemEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('breedingIvs'), count: z.int().min(0).max(6) }),
   /** Tenu par un parent en pension : chance de transmettre sa nature (Pierre Stase : 100 %). */
   z.object({ type: z.literal('breedingNature'), chance: probabilitySchema }),
+  /** Possédé dans le sac (non consommé) : multiplie le taux shiny (Charme Chroma). */
+  z.object({ type: z.literal('shinyCharm'), multiplier: z.number().min(1).max(100) }),
 ]);
 export type ItemEffect = z.infer<typeof itemEffectSchema>;
 export type ItemEffectType = ItemEffect['type'];
@@ -467,6 +479,8 @@ export const dexMilestoneSchema = z.object({
   name: nameSchema,
   /** Région ; null = Pokédex national (espèces de toutes les régions). */
   regionId: slugSchema.nullable(),
+  /** Pokédex shiny : ne compte que les espèces capturées en version shiny. */
+  shiny: z.boolean(),
   /** Part du Pokédex capturée (en %). */
   percent: z.number().positive().max(100),
   rewards: progressRewardSchema,

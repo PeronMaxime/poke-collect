@@ -142,11 +142,14 @@ export const expeditions = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
     seed: bigint('seed', { mode: 'number' }).notNull(),
+    /** Maillon de la chaîne de zone au départ (bonus shiny). */
+    shinyChain: smallint('shiny_chain').notNull().default(0),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
     result: jsonb('result'),
   },
   (t) => [
     index('expeditions_owner_claimed').on(t.ownerId, t.claimedAt),
+    index('expeditions_owner_zone').on(t.ownerId, t.zoneId, t.startedAt),
     // Un emplacement ne porte qu'une expédition non réclamée à la fois.
     uniqueIndex('expeditions_owner_slot_active')
       .on(t.ownerId, t.slotIndex)

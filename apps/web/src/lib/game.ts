@@ -1,7 +1,18 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { createGameContext, isKnockedOut, pokemonEvolutions } from '@poke/game-core';
-import type { ClaimedRewards, EvolutionCheck, GameContext, PlayerProgress } from '@poke/game-core';
+import {
+  charmMultiplier,
+  createGameContext,
+  isKnockedOut,
+  pokemonEvolutions,
+} from '@poke/game-core';
+import type {
+  ClaimedRewards,
+  DexCatches,
+  EvolutionCheck,
+  GameContext,
+  PlayerProgress,
+} from '@poke/game-core';
 import type {
   BattlesResponse,
   CandyDto,
@@ -99,6 +110,35 @@ export function usePlayerProgress(): PlayerProgress {
       eggsHatched: daycare.data?.eggsHatched ?? 0,
     }),
     [pokedex.data, battles.data, daycare.data],
+  );
+}
+
+/** Pokédex normal et shiny (paliers et collections). */
+export function useDexCatches(): Required<DexCatches> {
+  const pokedex = usePokedex();
+  return useMemo(
+    () => ({
+      caughtSpeciesIds: new Set(pokedex.data?.filter((d) => d.caught).map((d) => d.speciesId)),
+      caughtShinySpeciesIds: new Set(
+        pokedex.data?.filter((d) => d.caughtShiny).map((d) => d.speciesId),
+      ),
+    }),
+    [pokedex.data],
+  );
+}
+
+/** Multiplicateur du Charme Chroma possédé (1 = aucun). */
+export function useShinyCharm(ctx: GameContext | undefined): number {
+  const inventory = useInventory();
+  return useMemo(
+    () =>
+      ctx
+        ? charmMultiplier(
+            ctx,
+            (inventory.data ?? []).filter((i) => i.quantity > 0).map((i) => i.itemId),
+          )
+        : 1,
+    [ctx, inventory.data],
   );
 }
 

@@ -16,6 +16,13 @@ export interface ClaimedRewards {
   collectionIds: ReadonlySet<string>;
 }
 
+/** Espèces capturées (Pokédex normal) et capturées en version shiny (Pokédex shiny). */
+export interface DexCatches {
+  caughtSpeciesIds: ReadonlySet<number>;
+  /** Absent : Pokédex shiny vide. */
+  caughtShinySpeciesIds?: ReadonlySet<number>;
+}
+
 export const NO_CLAIMS: ClaimedRewards = { milestoneIds: new Set(), collectionIds: new Set() };
 
 /** Espèces d'un Pokédex : une région, ou toutes les régions (Pokédex national). */
@@ -27,19 +34,25 @@ export function dexSpeciesIds(ctx: GameContext, regionId: string | null): number
 export function dexProgress(
   ctx: GameContext,
   regionId: string | null,
-  progress: Pick<PlayerProgress, 'caughtSpeciesIds'>,
+  progress: DexCatches,
+  shiny = false,
 ): DexProgress {
   const ids = dexSpeciesIds(ctx, regionId);
-  const caught = ids.filter((id) => progress.caughtSpeciesIds.has(id)).length;
+  const owned = shiny
+    ? (progress.caughtShinySpeciesIds ?? new Set<number>())
+    : progress.caughtSpeciesIds;
+  const caught = ids.filter((id) => owned.has(id)).length;
   return { caught, total: ids.length, percent: ids.length ? (caught / ids.length) * 100 : 0 };
 }
 
 export function isMilestoneReached(
   ctx: GameContext,
   milestone: DexMilestone,
-  progress: Pick<PlayerProgress, 'caughtSpeciesIds'>,
+  progress: DexCatches,
 ): boolean {
-  return dexProgress(ctx, milestone.regionId, progress).percent >= milestone.percent;
+  return (
+    dexProgress(ctx, milestone.regionId, progress, milestone.shiny).percent >= milestone.percent
+  );
 }
 
 export function collectionProgress(
@@ -51,7 +64,7 @@ export function collectionProgress(
   return { caught, total: ids.length, complete: caught === ids.length };
 }
 
-/** Paliers triés : par Pokédex (national en dernier), puis par ordre et seuil. */
+/** Paliers triés : Pokédex normal puis shiny, par région (national en dernier), ordre et seuil. */
 export function sortedMilestones(ctx: GameContext): DexMilestone[] {
   const regionOrder = new Map(ctx.regions.map((r, i) => [r.id, i]));
   const rank = (m: DexMilestone) =>
@@ -59,7 +72,11 @@ export function sortedMilestones(ctx: GameContext): DexMilestone[] {
       ? ctx.regions.length + 1
       : (regionOrder.get(m.regionId) ?? ctx.regions.length);
   return [...ctx.content.dexMilestones].sort(
-    (a, b) => rank(a) - rank(b) || a.order - b.order || a.percent - b.percent,
+    (a, b) =>
+      Number(a.shiny) - Number(b.shiny) ||
+      rank(a) - rank(b) ||
+      a.order - b.order ||
+      a.percent - b.percent,
   );
 }
 
@@ -72,7 +89,7 @@ export type RewardState = 'locked' | 'claimable' | 'claimed';
 export function milestoneState(
   ctx: GameContext,
   milestone: DexMilestone,
-  progress: Pick<PlayerProgress, 'caughtSpeciesIds'>,
+  progress: DexCatches,
   claimed: ClaimedRewards,
 ): RewardState {
   if (claimed.milestoneIds.has(milestone.id)) return 'claimed';
@@ -91,7 +108,7 @@ export function collectionState(
 /** Nombre de récompenses prêtes à être réclamées (pastille du menu). */
 export function claimableRewardCount(
   ctx: GameContext,
-  progress: Pick<PlayerProgress, 'caughtSpeciesIds'>,
+  progress: DexCatches,
   claimed: ClaimedRewards,
 ): number {
   return (

@@ -380,6 +380,7 @@ const dexMilestones: DexMilestone[] = [
     order: 0,
     name: 'Apprenti de Kanto',
     regionId: 'kanto',
+    shiny: false,
     percent: 10,
     rewards: reward({ expeditionSlots: 1, items: [{ itemId: 'great-ball', quantity: 5 }] }),
   },
@@ -388,6 +389,7 @@ const dexMilestones: DexMilestone[] = [
     order: 1,
     name: 'Explorateur de Kanto',
     regionId: 'kanto',
+    shiny: false,
     percent: 25,
     rewards: reward({ battleSlots: 1, daycareSlots: 1, currency: 3000 }),
   },
@@ -396,6 +398,7 @@ const dexMilestones: DexMilestone[] = [
     order: 2,
     name: 'Chercheur de Kanto',
     regionId: 'kanto',
+    shiny: false,
     percent: 50,
     rewards: reward({
       expeditionSlots: 1,
@@ -410,6 +413,7 @@ const dexMilestones: DexMilestone[] = [
     order: 3,
     name: 'Expert de Kanto',
     regionId: 'kanto',
+    shiny: false,
     percent: 75,
     rewards: reward({ battleSlots: 1, daycareSlots: 1, currency: 10_000 }),
   },
@@ -418,6 +422,7 @@ const dexMilestones: DexMilestone[] = [
     order: 4,
     name: 'Maître du Pokédex de Kanto',
     regionId: 'kanto',
+    shiny: false,
     percent: 100,
     rewards: reward({
       expeditionSlots: 1,
@@ -425,6 +430,34 @@ const dexMilestones: DexMilestone[] = [
       currency: 50_000,
       items: [{ itemId: 'destiny-knot', quantity: 1 }],
     }),
+  },
+  {
+    id: 'national-100',
+    order: 0,
+    name: 'Pokédex national complet',
+    regionId: null,
+    shiny: false,
+    percent: 100,
+    rewards: reward({ items: [{ itemId: 'shiny-charm', quantity: 1 }] }),
+  },
+  // Pokédex shiny (PLAN.md, section 2.6) : récompenses à part.
+  {
+    id: 'kanto-shiny-5',
+    order: 10,
+    name: 'Premiers éclats de Kanto',
+    regionId: 'kanto',
+    shiny: true,
+    percent: 5,
+    rewards: reward({ currency: 20_000, items: [{ itemId: 'ultra-ball', quantity: 10 }] }),
+  },
+  {
+    id: 'kanto-shiny-25',
+    order: 11,
+    name: 'Chasseur chromatique de Kanto',
+    regionId: 'kanto',
+    shiny: true,
+    percent: 25,
+    rewards: reward({ currency: 100_000, bonuses: [{ type: 'capture', percent: 10 }] }),
   },
 ];
 
@@ -478,7 +511,13 @@ export const seedContent: GameContentData = {
       affinityBonusPerPokemon: 0.1,
       hiddenAbilityChance: 0.05,
     },
-    shiny: { baseRateDenominator: 4096 },
+    shiny: {
+      baseRateDenominator: 4096,
+      chainBonusPerExpedition: 0.25,
+      chainMaxMultiplier: 3,
+      chainWindowMinutes: 120,
+      masudaMultiplier: 4,
+    },
     pity: { weightBonusPerMiss: 0.05, maxMultiplier: 3 },
     xp: { multiplier: 1, happinessPerExpedition: 2 },
     breeding: {
@@ -639,6 +678,16 @@ export const seedContent: GameContentData = {
       category: 'breeding',
       rarity: 'epic',
       effects: [{ type: 'breedingIvs', count: 5 }],
+    },
+    {
+      id: 'shiny-charm',
+      name: 'Charme Chroma',
+      description:
+        'Il suffit de l’avoir dans son sac : les Pokémon shiny apparaissent 3 fois plus souvent.',
+      icon: null,
+      category: 'endgame',
+      rarity: 'legendary',
+      effects: [{ type: 'shinyCharm', multiplier: 3 }],
     },
   ],
   lootTables: [

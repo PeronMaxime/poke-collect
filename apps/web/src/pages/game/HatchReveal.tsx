@@ -4,7 +4,7 @@ import { STAT_NAMES } from '@poke/data';
 import { MAX_IV } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { HatchEggsResponse } from '@poke/shared';
-import { Egg, Modal, PokemonSprite, ShinyStar } from '../../components/ui';
+import { Egg, Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
 import { natureLabel, speciesName } from '../../lib/labels';
 
 const STEP = 0.5; // secondes entre deux éclosions
@@ -92,7 +92,10 @@ function HatchContent({
                     Nouveau !
                   </span>
                 )}
-                <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} size={72} />
+                <span className="relative">
+                  {p.isShiny && <ShinySparkles delay={delay(i)} loop />}
+                  <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} size={72} />
+                </span>
                 <span className="font-medium">
                   {speciesName(ctx, p.speciesId)} {p.isShiny && <ShinyStar />}
                 </span>

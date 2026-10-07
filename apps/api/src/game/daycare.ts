@@ -23,6 +23,7 @@ import {
   insertPokemon,
   pokemonActivities,
   recordPokedex,
+  shinyCharm,
   takeItems,
   toInstance,
 } from './store';
@@ -214,7 +215,7 @@ async function collectInTx(
 
   const snapshot = (row: PokemonRow, heldItemId: string | null): DaycareParent => {
     const { id: _, ...instance } = toInstance(row);
-    return { ...instance, heldItemId };
+    return { ...instance, heldItemId, originRegion: row.originRegion };
   };
   const parentsSnapshot: [DaycareParent, DaycareParent] = [
     snapshot(a, slot.heldItemAId),
@@ -319,6 +320,8 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
     ready.sort((x, y) => x.hatchAt.getTime() - y.hatchAt.getTime() || x.id.localeCompare(y.id));
 
     const hatched: PokemonRow[] = [];
+    // Charme Chroma possédé à l'éclosion (effet lu dans la version publiée).
+    const charm = await shinyCharm(tx, await content.get(), userId);
     for (const egg of ready) {
       const ctx = await content.version(egg.contentVersionId);
       const child = resolveEgg(ctx, {
@@ -326,6 +329,7 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
         speciesId: egg.speciesId,
         parents: egg.parents,
         motherIndex: egg.motherIndex === 1 ? 1 : 0,
+        shinyCharm: charm,
       });
       const region = ctx.regions.find((r) => r.speciesIds.includes(child.speciesId));
       const [row] = await insertPokemon(tx, userId, [child], {

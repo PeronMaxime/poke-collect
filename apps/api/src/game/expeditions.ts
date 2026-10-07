@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+import { and, eq, gte, inArray, isNull, or } from 'drizzle-orm';
 import { expeditions, pityCounters, playerProfiles, pokemon } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
@@ -10,8 +10,9 @@ import {
   playerBonuses,
   playerSlots,
   resolveExpedition,
+  zoneChainStatus,
 } from '@poke/game-core';
-import type { ClaimedRewards, GameContext } from '@poke/game-core';
+import type { ClaimedRewards, GameContext, ZoneChainStatus } from '@poke/game-core';
 import type { StartExpeditionInput, StoredExpeditionResult } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
@@ -23,6 +24,7 @@ import {
   itemQuantity,
   playerProgress,
   recordPokedex,
+  shinyCharm,
   takeItems,
   toInstance,
 } from './store';
@@ -47,8 +49,45 @@ export async function requireStartedProfile(db: Db, userId: string) {
 }
 
 /**
+ * Chaînes de zone du joueur (bonus shiny) : expéditions en cours, ou récupérées depuis moins
+ * que le délai de relance. Une zone absente repart de 0.
+ */
+export async function shinyChains(
+  db: Db,
+  ctx: GameContext,
+  userId: string,
+  now: Date,
+  zoneId?: string,
+): Promise<Map<string, ZoneChainStatus>> {
+  const since = new Date(now.getTime() - ctx.balance.shiny.chainWindowMinutes * 60_000);
+  const rows = await db
+    .select({
+      zoneId: expeditions.zoneId,
+      chain: expeditions.shinyChain,
+      claimedAt: expeditions.claimedAt,
+    })
+    .from(expeditions)
+    .where(
+      and(
+        eq(expeditions.ownerId, userId),
+        zoneId ? eq(expeditions.zoneId, zoneId) : undefined,
+        or(isNull(expeditions.claimedAt), gte(expeditions.claimedAt, since)),
+      ),
+    );
+  const byZone = new Map<string, typeof rows>();
+  for (const r of rows) byZone.set(r.zoneId, [...(byZone.get(r.zoneId) ?? []), r]);
+  const chains = new Map<string, ZoneChainStatus>();
+  for (const [id, runs] of byZone) {
+    const status = zoneChainStatus(ctx, runs, now);
+    if (status.chain > 0) chains.set(id, status);
+  }
+  return chains;
+}
+
+/**
  * Lance une expédition : vérifie la zone, l'équipe et le stock, réserve les Balls et baies,
- * enregistre la version de contenu active et un seed tiré côté serveur.
+ * enregistre la version de contenu active, un seed tiré côté serveur et le maillon de la
+ * chaîne de zone.
  */
 export async function startExpedition(
   db: Db,
@@ -106,6 +145,7 @@ export async function startExpedition(
     };
     const balls = await reserve(input.ballItemId);
     const berries = await reserve(input.berryItemId);
+    const chain = (await shinyChains(tx, ctx, userId, now, zone.id)).get(zone.id)?.chain ?? 0;
 
     const [row] = await tx
       .insert(expeditions)
@@ -123,6 +163,7 @@ export async function startExpedition(
         startedAt: now,
         endsAt: new Date(now.getTime() + input.durationMinutes * 60_000),
         seed: newSeed(),
+        shinyChain: chain,
       })
       .returning();
     return row!;
@@ -182,6 +223,8 @@ export async function claimExpedition(
       berries: found.berryItemId ? { itemId: found.berryItemId, quantity: found.berries } : null,
       pity: Object.fromEntries(pityRows.map((r) => [r.speciesId, r.misses])),
       bonuses: playerBonuses(ctx, await claimedRewards(tx, userId)),
+      // Chaîne figée au départ ; Charme Chroma possédé à la réclamation.
+      shiny: { chain: found.shinyChain, charm: await shinyCharm(tx, ctx, userId) },
     });
 
     const capturedEncounters = result.encounters.filter((e) => e.pokemon);

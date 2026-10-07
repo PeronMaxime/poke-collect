@@ -11,7 +11,7 @@ import {
 } from '@poke/game-core';
 import { EntityPage, VersionBanner } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
-import { Field, NumberInput, Section, TextInput } from '../../components/forms/fields';
+import { Field, NumberInput, Section, TextInput, Toggle } from '../../components/forms/fields';
 import { Sprite, SpeciesSetEditor } from '../../components/forms/pickers';
 import {
   BONUS_LABELS,
@@ -55,8 +55,8 @@ export function ProgressionPage() {
   );
 }
 
-const dexName = (w: WorkingVersion, regionId: string | null) =>
-  regionId ? (w.ctx.region(regionId)?.name ?? regionId) : 'National';
+const dexName = (w: WorkingVersion, regionId: string | null, shiny = false) =>
+  `${regionId ? (w.ctx.region(regionId)?.name ?? regionId) : 'National'}${shiny ? ' ★ shiny' : ''}`;
 
 // --- Paliers --------------------------------------------------------------------------------
 
@@ -64,18 +64,18 @@ function MilestonesView() {
   return (
     <EntityPage<DexMilestone>
       title="Progression : paliers du Pokédex"
-      description="Seuil (% du Pokédex d’une région ou national) et récompenses : objets, argent, emplacements, bonus permanents."
+      description="Seuil (% du Pokédex d’une région ou national, normal ou shiny) et récompenses : objets, argent, emplacements, bonus permanents."
       collection="dex-milestones"
       entityKind="dexMilestone"
       schema={dexMilestoneSchema}
       list={(w) => sortedMilestones(w.ctx)}
       getKey={(m) => m.id}
-      searchText={(m, w) => `${m.id} ${m.name} ${dexName(w, m.regionId)}`}
+      searchText={(m, w) => `${m.id} ${m.name} ${dexName(w, m.regionId, m.shiny)}`}
       renderListItem={(m, w) => (
         <>
           <span className="block truncate font-medium">{m.name}</span>
           <span className="block truncate text-xs text-slate-500">
-            {m.percent} % · {dexName(w, m.regionId)} · {rewardSummary(m.rewards)}
+            {m.percent} % · {dexName(w, m.regionId, m.shiny)} · {rewardSummary(m.rewards)}
           </span>
         </>
       )}
@@ -84,6 +84,7 @@ function MilestonesView() {
         order: w.content.dexMilestones.length,
         name: '',
         regionId: w.ctx.regions[0]?.id ?? null,
+        shiny: false,
         percent: 10,
         rewards: emptyReward(),
       })}
@@ -142,6 +143,14 @@ function MilestoneForm({
             )}
             <option value="">Pokédex national</option>
           </select>
+          <div className="mt-2">
+            <Toggle
+              checked={m.shiny}
+              onChange={(v) => set('shiny', v)}
+              disabled={disabled}
+              label="Pokédex shiny (ne compte que les captures shiny)"
+            />
+          </div>
         </Field>
         <Field
           label="Seuil"
@@ -304,7 +313,7 @@ function SummaryView() {
     ...sortedMilestones(ctx).map((m) => ({
       kind: 'milestone' as const,
       id: m.id,
-      label: `${m.name} (${m.percent} % ${dexName(w, m.regionId)})`,
+      label: `${m.name} (${m.percent} % ${dexName(w, m.regionId, m.shiny)})`,
     })),
     ...sortedCollections(ctx).map((c) => ({
       kind: 'collection' as const,

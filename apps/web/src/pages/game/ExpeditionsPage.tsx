@@ -1,9 +1,9 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Zone } from '@poke/content';
-import { isZoneUnlocked, regionDexProgress } from '@poke/game-core';
+import { chainMultiplier, isZoneUnlocked, regionDexProgress } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { ClaimExpeditionResponse, ExpeditionDto } from '@poke/shared';
+import type { ClaimExpeditionResponse, ExpeditionDto, ShinyChainDto } from '@poke/shared';
 import { PokemonSprite, ProgressBar, TypeBadge, useNow } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
@@ -17,6 +17,7 @@ import {
   GAME_ERRORS,
   formatCountdown,
   formatDuration,
+  formatMultiplier,
   unlockConditionText,
 } from '../../lib/labels';
 import { LaunchExpeditionDialog } from './LaunchExpeditionDialog';
@@ -53,6 +54,7 @@ export function ExpeditionsPage({ ctx }: { ctx: GameContext }) {
   const slots = expeditions.data?.slots ?? 0;
   const freeSlots = slots - active.length;
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
+  const chains = new Map(expeditions.data?.chains.map((c) => [c.zoneId, c]));
 
   return (
     <div className="space-y-8">
@@ -116,6 +118,8 @@ export function ExpeditionsPage({ ctx }: { ctx: GameContext }) {
                   seen={seen}
                   unlocked={isZoneUnlocked(ctx, zone, progress)}
                   canLaunch={freeSlots > 0}
+                  chain={chains.get(zone.id)}
+                  serverNow={serverNow}
                   onLaunch={() => setLaunchZone(zone)}
                 />
               ))}
@@ -125,7 +129,12 @@ export function ExpeditionsPage({ ctx }: { ctx: GameContext }) {
       })}
 
       {launchZone && (
-        <LaunchExpeditionDialog ctx={ctx} zone={launchZone} onClose={() => setLaunchZone(null)} />
+        <LaunchExpeditionDialog
+          ctx={ctx}
+          zone={launchZone}
+          chain={chains.get(launchZone.id)?.chain ?? 0}
+          onClose={() => setLaunchZone(null)}
+        />
       )}
       <LootReveal ctx={ctx} data={reveal} onClose={() => setReveal(null)} />
     </div>
@@ -156,7 +165,14 @@ function ActiveExpedition({
       <div className="flex items-start justify-between gap-2">
         <div>
           <p className="font-semibold">{zone?.name ?? expedition.zoneId}</p>
-          <p className="text-xs text-slate-500">{formatDuration(expedition.durationMinutes)}</p>
+          <p className="text-xs text-slate-500">
+            {formatDuration(expedition.durationMinutes)}
+            {expedition.shinyChain > 0 && (
+              <span className="ml-1 text-amber-600 dark:text-amber-400">
+                · ✦ chaîne {expedition.shinyChain}
+              </span>
+            )}
+          </p>
         </div>
         <div className="flex -space-x-3">
           {teamSpecies.map((p, i) =>
@@ -185,6 +201,8 @@ function ZoneCard({
   seen,
   unlocked,
   canLaunch,
+  chain,
+  serverNow,
   onLaunch,
 }: {
   ctx: GameContext;
@@ -192,8 +210,11 @@ function ZoneCard({
   seen: Set<number>;
   unlocked: boolean;
   canLaunch: boolean;
+  chain: ShinyChainDto | undefined;
+  serverNow: number;
   onLaunch: () => void;
 }) {
+  const expiresIn = chain?.expiresAt ? Date.parse(chain.expiresAt) - serverNow : null;
   const species = [...new Set(zone.encounters.map((e) => e.speciesId))].filter(
     (id) => ctx.species(id)?.enabled,
   );
@@ -210,6 +231,15 @@ function ZoneCard({
         </span>
       </div>
       <p className="mt-1 text-sm text-slate-500">{zone.description}</p>
+      {chain && (expiresIn === null || expiresIn > 0) && (
+        <p
+          className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+          title="Relance la zone avant la fin du délai pour allonger la chaîne."
+        >
+          ✦ Chaîne {chain.chain} : shiny {formatMultiplier(chainMultiplier(ctx, chain.chain))}
+          {expiresIn !== null && ` · à relancer sous ${formatCountdown(expiresIn)}`}
+        </p>
+      )}
       <div className="mt-3 flex flex-wrap items-center gap-1 text-xs text-slate-500">
         {zone.requiredTypes.map((r) => (
           <span key={r.type} className="flex items-center gap-1">

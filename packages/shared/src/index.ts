@@ -253,7 +253,17 @@ export interface ExpeditionDto {
   startedAt: string;
   endsAt: string;
   claimedAt: string | null;
+  /** Maillon de la chaîne de zone au départ (bonus shiny). */
+  shinyChain: number;
   result: StoredExpeditionResult | null;
+}
+
+/** Chaîne de zone en cours : maillon qu'aurait une expédition lancée maintenant. */
+export interface ShinyChainDto {
+  zoneId: string;
+  chain: number;
+  /** Date où la chaîne retombe à 0 faute de relance ; null si une expédition est en cours. */
+  expiresAt: string | null;
 }
 
 export interface ExpeditionsResponse {
@@ -261,6 +271,8 @@ export interface ExpeditionsResponse {
   /** Heure du serveur, pour caler les comptes à rebours du client. */
   serverTime: string;
   active: ExpeditionDto[];
+  /** Chaînes de zone actives (les zones absentes repartent de 0). */
+  chains: ShinyChainDto[];
 }
 
 export interface ClaimExpeditionResponse {

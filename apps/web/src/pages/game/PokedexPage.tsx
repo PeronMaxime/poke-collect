@@ -1,9 +1,10 @@
-import { useMemo, useState } from 'react';
-import { collectionState, milestoneState, regionDexProgress } from '@poke/game-core';
+import { useState } from 'react';
+import { collectionState, dexProgress, milestoneState } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { PlayerProfileDto } from '@poke/shared';
-import { PokemonSprite, ProgressBar, TypeBadge } from '../../components/ui';
-import { useClaimedRewards, usePokedex } from '../../lib/game';
+import { PokemonSprite, ProgressBar, ShinyStar, TypeBadge } from '../../components/ui';
+import { useClaimedRewards, useDexCatches, usePokedex, useShinyCharm } from '../../lib/game';
+import { formatShinyRate } from '../../lib/labels';
 import { CollectionsView, MilestonesView } from './ProgressionViews';
 
 type Filter = 'all' | 'caught' | 'missing';
@@ -17,15 +18,9 @@ type View = (typeof VIEWS)[number]['id'];
 
 /** Pokédex, paliers de récompenses et collections thématiques. */
 export function PokedexPage({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto }) {
-  const pokedex = usePokedex();
   const claimed = useClaimedRewards();
   const [view, setView] = useState<View>('dex');
-  const progress = useMemo(
-    () => ({
-      caughtSpeciesIds: new Set(pokedex.data?.filter((e) => e.caught).map((e) => e.speciesId)),
-    }),
-    [pokedex.data],
-  );
+  const progress = useDexCatches();
   const claimable = {
     dex: 0,
     milestones: ctx.content.dexMilestones.filter(
@@ -61,21 +56,25 @@ export function PokedexPage({ ctx, profile }: { ctx: GameContext; profile: Playe
   );
 }
 
+/** Pokédex normal, ou Pokédex shiny (espèces capturées en version shiny). */
 function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto }) {
   const pokedex = usePokedex();
+  const catches = useDexCatches();
+  const charm = useShinyCharm(ctx);
   const [regionId, setRegionId] = useState(profile.regionUnlocked);
   const [filter, setFilter] = useState<Filter>('all');
+  const [shiny, setShiny] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
   const entries = new Map(pokedex.data?.map((e) => [e.speciesId, e]));
   const region = ctx.region(regionId) ?? ctx.regions[0];
   if (!region) return <p className="text-slate-500">Aucune région configurée.</p>;
 
-  const progress = regionDexProgress(ctx, region.id, {
-    caughtSpeciesIds: new Set(pokedex.data?.filter((e) => e.caught).map((e) => e.speciesId)),
-  });
+  const progress = dexProgress(ctx, region.id, catches, shiny);
   const seenCount = region.speciesIds.filter((id) => entries.get(id)?.seen).length;
+  const isCaught = (id: number) =>
+    (shiny ? entries.get(id)?.caughtShiny : entries.get(id)?.caught) ?? false;
   const ids = region.speciesIds.filter((id) => {
-    const caught = entries.get(id)?.caught ?? false;
+    const caught = isCaught(id);
     return filter === 'all' || (filter === 'caught' ? caught : !caught);
   });
   const detail = selected !== null ? ctx.species(selected) : undefined;
@@ -101,14 +100,36 @@ function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto
             <h2 className="text-lg font-semibold">Pokédex de {region.name}</h2>
           )}
           <p className="text-sm text-slate-500">
-            Vus : {seenCount} · Capturés : {progress.caught} / {progress.total} (
-            {progress.percent.toFixed(1)} %)
+            {shiny ? 'Shiny' : `Vus : ${seenCount} · Capturés`} : {progress.caught} /{' '}
+            {progress.total} ({progress.percent.toFixed(1)} %)
           </p>
         </div>
         <ProgressBar className="mt-3" value={progress.percent / 100} />
+        {shiny && (
+          <p className="mt-2 text-xs text-slate-500">
+            Taux shiny de base : {formatShinyRate(1 / ctx.balance.shiny.baseRateDenominator)}
+            {charm > 1 && ` · Charme Chroma : × ${charm}`}. Relancer une zone de suite allonge la
+            chaîne ; des parents de régions différentes favorisent les œufs shiny.
+          </p>
+        )}
       </div>
 
-      <div className="flex gap-2">
+      <div className="flex flex-wrap gap-2">
+        <button
+          className={shiny ? 'btn-ghost' : 'btn-primary'}
+          onClick={() => setShiny(false)}
+          aria-pressed={!shiny}
+        >
+          Normal
+        </button>
+        <button
+          className={shiny ? 'btn-primary' : 'btn-ghost'}
+          onClick={() => setShiny(true)}
+          aria-pressed={shiny}
+        >
+          <ShinyStar className={shiny ? 'text-white' : ''} /> Shiny
+        </button>
+        <span className="mx-1 w-px bg-slate-200 dark:bg-slate-800" />
         {(
           [
             ['all', 'Tous'],
@@ -130,6 +151,7 @@ function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto
         {ids.map((id) => {
           const entry = entries.get(id);
           const species = ctx.species(id);
+          const caught = isCaught(id);
           return (
             <button
               key={id}
@@ -137,8 +159,10 @@ function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto
               disabled={!entry?.seen}
               onClick={() => setSelected(id)}
               className={`relative flex flex-col items-center rounded-xl border p-1 text-[11px] ${
-                entry?.caught
-                  ? 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
+                caught
+                  ? shiny
+                    ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40'
+                    : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
                   : 'border-dashed border-slate-300 dark:border-slate-700'
               }`}
             >
@@ -146,16 +170,20 @@ function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto
               <PokemonSprite
                 speciesId={id}
                 size={56}
+                shiny={shiny && caught}
                 silhouette={!entry?.seen}
-                className={entry?.seen && !entry.caught ? 'opacity-50 grayscale' : ''}
+                className={entry?.seen && !caught ? 'opacity-50 grayscale' : ''}
               />
               <span className="truncate">{entry?.seen ? species?.nameFr : '???'}</span>
-              {entry?.caught && (
-                <span
-                  className="absolute top-1 right-1 h-2 w-2 rounded-full bg-brand-500"
-                  title="Capturé"
-                />
-              )}
+              {caught &&
+                (shiny ? (
+                  <ShinyStar className="absolute top-0.5 right-1 text-xs" />
+                ) : (
+                  <span
+                    className="absolute top-1 right-1 h-2 w-2 rounded-full bg-brand-500"
+                    title="Capturé"
+                  />
+                ))}
             </button>
           );
         })}
@@ -163,7 +191,12 @@ function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto
 
       {detail && (
         <div className="card fixed inset-x-4 bottom-4 z-20 mx-auto flex max-w-md items-center gap-4 p-4 shadow-xl">
-          <PokemonSprite speciesId={detail.id} kind="artwork" size={96} />
+          <PokemonSprite
+            speciesId={detail.id}
+            kind="artwork"
+            size={96}
+            shiny={shiny && !!detailEntry?.caughtShiny}
+          />
           <div className="flex-1 text-sm">
             <p className="font-semibold">
               N° {String(detail.id).padStart(3, '0')} — {detail.nameFr}
@@ -177,6 +210,7 @@ function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto
               {detailEntry?.caught
                 ? `Capturé le ${new Date(detailEntry.firstCaughtAt!).toLocaleDateString('fr-FR')}`
                 : 'Vu, pas encore capturé'}
+              {detailEntry?.caughtShiny && ' · version shiny obtenue ★'}
             </p>
           </div>
           <button

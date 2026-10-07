@@ -12,8 +12,15 @@ import {
 } from '@poke/db';
 import type { Db } from '@poke/db';
 import type { ItemStack } from '@poke/content';
-import { isKnockedOut } from '@poke/game-core';
-import type { ClaimedRewards, PlayerProgress, PokemonInstance, TeamMember } from '@poke/game-core';
+import { charmMultiplier, isKnockedOut } from '@poke/game-core';
+import type {
+  ClaimedRewards,
+  DexCatches,
+  GameContext,
+  PlayerProgress,
+  PokemonInstance,
+  TeamMember,
+} from '@poke/game-core';
 import type { ExpeditionDto, PokemonActivity, PokemonDto, PokemonOrigin } from '@poke/shared';
 import { GameError } from './errors';
 
@@ -74,6 +81,7 @@ export function toExpeditionDto(row: ExpeditionRow): ExpeditionDto {
     startedAt: row.startedAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
     claimedAt: row.claimedAt?.toISOString() ?? null,
+    shinyChain: row.shinyChain,
     result: (row.result as ExpeditionDto['result']) ?? null,
   };
 }
@@ -230,6 +238,18 @@ export async function takeItems(db: Db, ownerId: string, itemId: string, quantit
   return updated.length > 0;
 }
 
+/** Multiplicateur du Charme Chroma : meilleur objet `shinyCharm` présent dans le sac. */
+export async function shinyCharm(db: Db, ctx: GameContext, ownerId: string): Promise<number> {
+  const rows = await db
+    .select({ itemId: inventory.itemId })
+    .from(inventory)
+    .where(and(eq(inventory.ownerId, ownerId), gt(inventory.quantity, 0)));
+  return charmMultiplier(
+    ctx,
+    rows.map((r) => r.itemId),
+  );
+}
+
 export async function itemQuantity(db: Db, ownerId: string, itemId: string): Promise<number> {
   const [row] = await db
     .select({ quantity: inventory.quantity })
@@ -298,6 +318,18 @@ export async function recordPokedex(
       });
   }
   return [...caughtSet].filter((id) => !alreadyCaught.has(id));
+}
+
+/** Pokédex normal et shiny (paliers du Pokédex). */
+export async function dexCatches(db: Db, ownerId: string): Promise<Required<DexCatches>> {
+  const rows = await db
+    .select({ speciesId: pokedex.speciesId, shiny: pokedex.caughtShiny })
+    .from(pokedex)
+    .where(and(eq(pokedex.ownerId, ownerId), eq(pokedex.caught, true)));
+  return {
+    caughtSpeciesIds: new Set(rows.map((r) => r.speciesId)),
+    caughtShinySpeciesIds: new Set(rows.filter((r) => r.shiny).map((r) => r.speciesId)),
+  };
 }
 
 export async function caughtSpeciesIds(db: Db, ownerId: string): Promise<Set<number>> {

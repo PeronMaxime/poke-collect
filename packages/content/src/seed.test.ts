@@ -113,6 +113,10 @@ describe('cohérence du contenu', () => {
       'Table de butin « Butin des berges »',
       'Article de boutique « ultra-ball »',
       'Palier « Chercheur de Kanto »',
+      'Palier « Premiers éclats de Kanto »',
+    ]);
+    expect(findUsages(seedContent, 'item', 'shiny-charm')).toEqual([
+      'Palier « Pokédex national complet »',
     ]);
     expect(findUsages(seedContent, 'shopCategory', 'elevage')).toEqual([
       'Article de boutique « everstone »',

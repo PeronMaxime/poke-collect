@@ -402,10 +402,10 @@ Les expéditions, combats, œufs et quêtes en cours enregistrent la `content_ve
 - [x] Admin : Évolutions (surcharges), Progression (paliers, collections)
 
 ### Phase 6 : Shinies
-- [ ] Taux shiny + sprites + animation dédiée
-- [ ] Chaînes de zone, Charme Chroma, bonus d'élevage
-- [ ] Pokédex shiny
-- [ ] Admin : réglages shiny
+- [x] Taux shiny + sprites + animation dédiée
+- [x] Chaînes de zone, Charme Chroma, bonus d'élevage
+- [x] Pokédex shiny
+- [x] Admin : réglages shiny
 
 ### Phase 7 : Légendaires et endgame
 - [ ] Système de quêtes générique (étapes + conditions déclaratives en config)

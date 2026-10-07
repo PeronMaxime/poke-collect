@@ -25,6 +25,7 @@ import {
   Modal,
   PokemonSprite,
   ProgressBar,
+  ShinySparkles,
   ShinyStar,
   TypeBadge,
   useNow,
@@ -372,7 +373,10 @@ function PokemonDetail({
   return (
     <div className="grid gap-6 md:grid-cols-[200px_1fr]">
       <div className="flex flex-col items-center text-center">
-        <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} kind="artwork" size={180} />
+        <div className="relative">
+          {p.isShiny && <ShinySparkles loop radius={110} />}
+          <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} kind="artwork" size={180} />
+        </div>
         <h2 className="mt-2 text-xl font-bold">
           {species.nameFr} <span className="text-slate-400">{GENDER_LABELS[p.gender]}</span>{' '}
           {p.isShiny && <ShinyStar />}

@@ -9,3 +9,4 @@ export * from './simulate';
 export * from './shop';
 export * from './evolution';
 export * from './progression';
+export * from './shiny';

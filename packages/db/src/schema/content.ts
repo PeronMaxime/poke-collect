@@ -236,6 +236,7 @@ export const dexMilestones = pgTable(
     order: integer('order').notNull(),
     name: text('name').notNull(),
     regionId: text('region_id'),
+    shiny: boolean('shiny').notNull().default(false),
     percent: doublePrecision('percent').notNull(),
     rewards: jsonb('rewards').$type<ProgressReward>().notNull(),
   },

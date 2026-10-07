@@ -1,7 +1,13 @@
 import { useState } from 'react';
 import { balanceSettingsSchema } from '@poke/content';
 import type { BalanceSettings } from '@poke/content';
-import { createGameContext, encounterCount, hatchMinutes, lootRollCount } from '@poke/game-core';
+import {
+  createGameContext,
+  encounterCount,
+  hatchMinutes,
+  lootRollCount,
+  shinyProbability,
+} from '@poke/game-core';
 import { IssueList, VersionBanner } from '../../components/EntityPage';
 import { WinCurveChart } from '../../components/WinCurveChart';
 import { Field, NumberInput, Section, validate } from '../../components/forms/fields';
@@ -42,6 +48,7 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
   const exp = set('expeditions');
   const cap = set('capture');
   const bat = set('battles');
+  const sh = set('shiny');
   const err = (path: string) => errors.get(path);
 
   // Aperçu des quantités avec les réglages en cours de saisie.
@@ -472,7 +479,7 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
         </div>
       </Section>
 
-      <Section title="Pitié et shiny">
+      <Section title="Pitié">
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Bonus de rencontre par échec" error={err('pity.weightBonusPerMiss')}>
             <NumberInput
@@ -494,16 +501,77 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
               disabled={disabled}
             />
           </Field>
-          <Field label="Taux shiny de base" error={err('shiny.baseRateDenominator')}>
+        </div>
+      </Section>
+
+      <Section title="Shiny">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field
+            label="Taux shiny de base"
+            hint="Rencontres d’expédition et éclosions."
+            error={err('shiny.baseRateDenominator')}
+          >
             <NumberInput
               value={b.shiny.baseRateDenominator}
               min={1}
               unit="1 / X"
-              onChange={set('shiny')('baseRateDenominator')}
+              onChange={sh('baseRateDenominator')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Chaîne : bonus par maillon"
+            hint="Chaque expédition relancée de suite dans la même zone."
+            error={err('shiny.chainBonusPerExpedition')}
+          >
+            <NumberInput
+              value={b.shiny.chainBonusPerExpedition}
+              scale={100}
+              min={0}
+              unit="%"
+              onChange={sh('chainBonusPerExpedition')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field label="Chaîne : plafond" error={err('shiny.chainMaxMultiplier')}>
+            <NumberInput
+              value={b.shiny.chainMaxMultiplier}
+              min={1}
+              step={0.5}
+              unit="×"
+              onChange={sh('chainMaxMultiplier')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Chaîne : délai de relance"
+            hint="Après la récupération de l’expédition précédente ; sinon, retour à 0."
+            error={err('shiny.chainWindowMinutes')}
+          >
+            <NumberInput
+              value={b.shiny.chainWindowMinutes}
+              min={1}
+              unit="min"
+              onChange={sh('chainWindowMinutes')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Bonus Masuda (élevage)"
+            hint="Parents capturés dans des régions différentes."
+            error={err('shiny.masudaMultiplier')}
+          >
+            <NumberInput
+              value={b.shiny.masudaMultiplier}
+              min={1}
+              step={0.5}
+              unit="×"
+              onChange={sh('masudaMultiplier')}
               disabled={disabled}
             />
           </Field>
         </div>
+        {preview && <ShinyRatesPreview ctx={preview} />}
       </Section>
 
       <Section title="XP et bonheur">
@@ -820,6 +888,51 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
           </div>
         </Field>
       </Section>
+    </div>
+  );
+}
+
+/** Taux shiny effectifs selon les multiplicateurs, avec les réglages en cours de saisie. */
+function ShinyRatesPreview({ ctx }: { ctx: ReturnType<typeof createGameContext> }) {
+  const { chainBonusPerExpedition, chainMaxMultiplier } = ctx.balance.shiny;
+  // Plus petit maillon qui atteint le plafond de la chaîne.
+  const fullChain =
+    chainBonusPerExpedition > 0 ? Math.ceil((chainMaxMultiplier - 1) / chainBonusPerExpedition) : 0;
+  const charm = Math.max(
+    1,
+    ...ctx.content.items.map((i) => ctx.itemEffect(i.id, 'shinyCharm')?.multiplier ?? 1),
+  );
+  const rows: [string, number][] = [
+    ['Base', shinyProbability(ctx)],
+    [
+      `Chaîne au plafond (${fullChain} maillon${fullChain > 1 ? 's' : ''})`,
+      shinyProbability(ctx, { chain: fullChain }),
+    ],
+    [`Charme Chroma (× ${charm})`, shinyProbability(ctx, { charm })],
+    ['Expédition : chaîne + Charme', shinyProbability(ctx, { chain: fullChain, charm })],
+    ['Œuf : Masuda', shinyProbability(ctx, { masuda: true })],
+    ['Œuf : Masuda + Charme', shinyProbability(ctx, { masuda: true, charm })],
+  ];
+  const rate = (p: number) =>
+    p >= 1 ? '100 %' : `1 / ${Math.round(1 / p).toLocaleString('fr-FR')}`;
+  return (
+    <div className="mt-4">
+      <p className="text-sm font-medium">Aperçu des taux effectifs</p>
+      <table className="mt-2 w-full max-w-md text-sm">
+        <tbody>
+          {rows.map(([label, p]) => (
+            <tr key={label} className="border-t border-slate-100 dark:border-slate-800">
+              <td className="py-1 text-slate-500">{label}</td>
+              <td className="py-1 text-right font-mono">{rate(p)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      {charm === 1 && (
+        <p className="mt-1 text-xs text-amber-600">
+          Aucun objet n’a l’effet « Charme Chroma » dans le catalogue.
+        </p>
+      )}
     </div>
   );
 }

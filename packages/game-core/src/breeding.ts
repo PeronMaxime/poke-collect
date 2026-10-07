@@ -1,10 +1,10 @@
 import { STAT_NAMES } from '@poke/data';
 import type { StatName, Stats } from '@poke/data';
 import type { GameContext, GameSpecies } from './context';
-import { baseShinyProbability } from './context';
 import { MAX_LEVEL, generatePokemon, levelForXp, xpForLevel } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import { createRng } from './rng';
+import { isMasudaPair, shinyProbability } from './shiny';
 
 // --- Compatibilité ------------------------------------------------------------------
 
@@ -97,6 +97,8 @@ export function checkBreedingPair(
 export interface DaycareParent extends PokemonInstance {
   /** Objet tenu pendant le séjour en pension (Nœud Destin, Pierre Stase…). */
   heldItemId: string | null;
+  /** Région d'origine (bonus Masuda) ; absente des œufs pondus avant la phase 6. */
+  originRegion?: string | null;
 }
 
 export interface InheritanceRules {
@@ -154,6 +156,17 @@ export interface EggInput {
   parents: readonly [DaycareParent, DaycareParent];
   /** Index de la mère (parent qui transmet le talent caché). */
   motherIndex: 0 | 1;
+  /** Multiplicateur du Charme Chroma possédé à l'éclosion (1 = aucun). */
+  shinyCharm?: number;
+}
+
+/** Probabilité shiny d'un œuf : Charme Chroma et bonus Masuda des parents. */
+export function eggShinyProbability(
+  ctx: GameContext,
+  parents: readonly [DaycareParent, DaycareParent],
+  shinyCharm = 1,
+): number {
+  return shinyProbability(ctx, { charm: shinyCharm, masuda: isMasudaPair(parents[0], parents[1]) });
 }
 
 function shuffled<T>(rng: ReturnType<typeof createRng>, list: readonly T[]): T[] {
@@ -179,7 +192,7 @@ export function resolveEgg(ctx: GameContext, input: EggInput): PokemonInstance {
 
   // Base aléatoire (IV, nature, talent standard, sexe, shiny), puis héritage par-dessus.
   const child = generatePokemon(ctx, rng, species.id, breeding.eggLevel, {
-    shinyProbability: baseShinyProbability(ctx),
+    shinyProbability: eggShinyProbability(ctx, input.parents, input.shinyCharm),
   });
 
   const ivs: Stats = { ...child.ivs };

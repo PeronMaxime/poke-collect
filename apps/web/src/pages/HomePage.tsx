@@ -10,10 +10,10 @@ import {
   useBattles,
   useClaimedRewards,
   useDaycare,
+  useDexCatches,
   useEvolutionChecker,
   useExpeditions,
   useGameContext,
-  usePokedex,
   usePokemon,
   useShop,
 } from '../lib/game';
@@ -48,7 +48,6 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const ctx = useGameContext();
   const [tab, setTab] = useState<TabId>(tabFromHash);
   const expeditions = useExpeditions();
-  const pokedex = usePokedex();
   const daycare = useDaycare();
   const battles = useBattles();
   const shop = useShop();
@@ -65,12 +64,10 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const now = useNow(5000);
   const finished = expeditions.data?.active.filter((e) => Date.parse(e.endsAt) <= now).length ?? 0;
   const battlesDone = battles.data?.active.filter((b) => Date.parse(b.endsAt) <= now).length ?? 0;
-  const caughtIds = new Set(pokedex.data?.filter((d) => d.caught).map((d) => d.speciesId));
-  const caught = caughtIds.size;
+  const dexCatches = useDexCatches();
+  const caught = dexCatches.caughtSpeciesIds.size;
   // Paliers et collections à réclamer, Pokémon disponibles prêts à évoluer.
-  const rewardsReady = ctx
-    ? claimableRewardCount(ctx, { caughtSpeciesIds: caughtIds }, claimed)
-    : 0;
+  const rewardsReady = ctx ? claimableRewardCount(ctx, dexCatches, claimed) : 0;
   const evolutionsReady =
     pokemon.data?.filter((p) => isUsable(p, now) && evolutionsOf(p).some((e) => e.method)).length ??
     0;
