@@ -19,8 +19,9 @@ import type {
  * de les obtenir.
  */
 
-const ALL_DURATIONS = [15, 60, 240, 480];
-const TRAINER_SPRITES = 'https://play.pokemonshowdown.com/sprites/trainers';
+const ALL_DURATIONS = [2, 5, 15, 60, 240, 480];
+/** Sprites de dresseurs servis par l'API (`pnpm sprites:download`, source : Pokémon Showdown). */
+const TRAINER_SPRITES = '/api/sprites/trainers';
 
 /** Identifiant PokéAPI d'une forme, à partir de son nom (`vulpix-alola`). */
 export function formIdOf(name: string): number {
@@ -90,6 +91,7 @@ const region = (
   image: null,
   speciesIds,
   starterSpeciesIds: [],
+  enabled: false,
   unlock: { type: 'regionDexPercent', regionId: previous, percent: 50 },
 });
 
@@ -101,6 +103,7 @@ export const expansionRegions: Region[] = [
     image: null,
     speciesIds: dexRange(152, 251),
     starterSpeciesIds: [],
+    enabled: false,
     unlock: { type: 'regionDexPercent', regionId: 'kanto', percent: 50 },
   },
   {
@@ -110,6 +113,7 @@ export const expansionRegions: Region[] = [
     image: null,
     speciesIds: dexRange(252, 386),
     starterSpeciesIds: [],
+    enabled: false,
     unlock: { type: 'regionDexPercent', regionId: 'johto', percent: 50 },
   },
   {
@@ -119,6 +123,7 @@ export const expansionRegions: Region[] = [
     image: null,
     speciesIds: dexRange(387, 493),
     starterSpeciesIds: [],
+    enabled: false,
     unlock: { type: 'regionDexPercent', regionId: 'hoenn', percent: 50 },
   },
   region('unys', 4, 'Unys', dexRange(494, 649), 'sinnoh'),
@@ -137,9 +142,10 @@ export const expansionRegions: Region[] = [
 ];
 
 const zone = (
-  z: Omit<Zone, 'image' | 'requiredTypes' | 'durationsMinutes'> & Partial<Zone>,
+  z: Omit<Zone, 'image' | 'enabled' | 'requiredTypes' | 'durationsMinutes'> & Partial<Zone>,
 ): Zone => ({
   image: null,
+  enabled: true,
   requiredTypes: [],
   durationsMinutes: ALL_DURATIONS,
   ...z,
@@ -149,7 +155,7 @@ export const expansionZones: Zone[] = [
   zone({
     id: 'archipel-lointain',
     regionId: 'kanto',
-    order: 10,
+    order: 28,
     name: 'Archipel Lointain',
     description:
       'Des îles au climat étrange, au large de Kanto : les Pokémon y ont pris d’autres formes.',
@@ -266,7 +272,7 @@ export const expansionZones: Zone[] = [
       enc(299, 15, 12, 15),
       enc(293, 25, 10, 13),
     ],
-    lootTableId: 'butin-grotte',
+    lootTableId: 'butin-fouilles-hoenn',
     unlock: { type: 'regionDexPercent', regionId: 'hoenn', percent: 5 },
   }),
   zone({
@@ -299,7 +305,7 @@ export const expansionZones: Zone[] = [
       enc(443, 4, 24, 28),
       enc(433, 15, 20, 24),
     ],
-    lootTableId: 'butin-grotte',
+    lootTableId: 'butin-fouilles-sinnoh',
     unlock: { type: 'trainerDefeated', trainerId: 'pierrick' },
   }),
   zone({
@@ -562,6 +568,7 @@ const trainer = (
     Partial<Trainer>,
 ): Trainer => ({
   sprite: null,
+  enabled: true,
   durationMinutes: 15,
   rules: noRules(),
   money: 200,
@@ -580,7 +587,7 @@ export const expansionTrainers: Trainer[] = [
     id: 'touriste-maya',
     regionId: 'kanto',
     zoneId: 'archipel-lointain',
-    order: 11,
+    order: 29,
     name: 'Maya',
     trainerClass: 'Touriste',
     sprite: `${TRAINER_SPRITES}/lass-gen4.png`,
@@ -678,7 +685,7 @@ export const expansionTrainers: Trainer[] = [
     order: 0,
     name: 'Kévin',
     trainerClass: 'Gamin',
-    sprite: `${TRAINER_SPRITES}/youngster-gen5.png`,
+    sprite: `${TRAINER_SPRITES}/youngster.png`,
     team: [mon(504, 7), mon(506, 8)],
     durationMinutes: 10,
     money: 300,

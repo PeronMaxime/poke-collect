@@ -12,6 +12,7 @@ import {
   NumberInput,
   Section,
   TextInput,
+  Toggle,
   errorsUnder,
 } from '../../components/forms/fields';
 import {
@@ -39,7 +40,11 @@ export function ZonesPage() {
       searchText={(z) => `${z.id} ${z.name}`}
       renderListItem={(z, w) => (
         <>
-          <span className="block truncate font-medium">{z.name}</span>
+          <span
+            className={`block truncate font-medium ${z.enabled && w.ctx.region(z.regionId)?.enabled !== false ? '' : 'line-through'}`}
+          >
+            {z.name}
+          </span>
           <span className="block truncate text-xs text-slate-500">
             {w.ctx.region(z.regionId)?.name ?? z.regionId} · PE ≥ {z.minPower} ·{' '}
             {z.encounters.length} rencontre(s)
@@ -60,6 +65,7 @@ export function ZonesPage() {
         durationsMinutes: [...w.content.balance.expeditions.durationsMinutes],
         encounters: [],
         lootTableId: null,
+        enabled: true,
         unlock: { type: 'always' },
       })}
       duplicate={(z) => ({ ...structuredClone(z), id: `${z.id}-copie`, name: `${z.name} (copie)` })}
@@ -147,6 +153,12 @@ function ZoneForm({ value: z, onChange, errors, isNew, editable, working }: Enti
           />
         </Field>
       </div>
+      <Toggle
+        checked={z.enabled}
+        onChange={(v) => set('enabled', v)}
+        label="Zone activée (désactivée : cachée aux joueurs, plus aucune expédition ne peut y partir)"
+        disabled={disabled}
+      />
 
       <Section title="Accès">
         <div className="grid gap-4 sm:grid-cols-2">

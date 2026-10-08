@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import { STAT_NAMES } from '@poke/data';
 import { MAX_IV } from '@poke/game-core';
@@ -9,32 +10,47 @@ import { natureLabel, speciesName } from '../../lib/labels';
 
 const STEP = 0.5; // secondes entre deux éclosions
 
-/** Éclosion animée : chaque œuf tremble, se brise, puis révèle son Pokémon. */
+interface RevealOptions {
+  /** Titre selon le nombre de Pokémon ; par défaut « N œufs éclos ! ». */
+  title?: (count: number) => string;
+  /** Ce qui tremble puis disparaît avant chaque Pokémon ; par défaut un œuf. */
+  cover?: ReactNode;
+}
+
+/**
+ * Éclosion animée : chaque œuf tremble, se brise, puis révèle son Pokémon. Sert aussi au Musée
+ * (fossiles restaurés), avec un autre titre et une autre image.
+ */
 export function HatchReveal({
   ctx,
   data,
   onClose,
+  ...options
 }: {
   ctx: GameContext;
   data: HatchEggsResponse | null;
   onClose: () => void;
-}) {
+} & RevealOptions) {
   return (
     <Modal open={!!data} onClose={onClose} wide>
-      {data && <HatchContent ctx={ctx} data={data} onClose={onClose} />}
+      {data && <HatchContent ctx={ctx} data={data} onClose={onClose} {...options} />}
     </Modal>
   );
 }
+
+const eggTitle = (n: number) => `${n} œuf${n > 1 ? 's' : ''} éclo${n > 1 ? 's' : ''} !`;
 
 function HatchContent({
   ctx,
   data,
   onClose,
+  title = eggTitle,
+  cover = <Egg size={64} />,
 }: {
   ctx: GameContext;
   data: HatchEggsResponse;
   onClose: () => void;
-}) {
+} & RevealOptions) {
   const reduced = useReducedMotion();
   const [skipped, setSkipped] = useState(false);
   const instant = reduced || skipped;
@@ -44,10 +60,7 @@ function HatchContent({
   return (
     <div>
       <div className="flex items-start justify-between gap-2">
-        <h2 className="text-xl font-bold">
-          {data.hatched.length} œuf{data.hatched.length > 1 ? 's' : ''} éclo
-          {data.hatched.length > 1 ? 's' : ''} !
-        </h2>
+        <h2 className="text-xl font-bold">{title(data.hatched.length)}</h2>
         {!instant && (
           <button
             className="text-sm text-slate-500 hover:underline"
@@ -78,7 +91,7 @@ function HatchContent({
                   animate={{ rotate: [0, -12, 12, -8, 8, 0], opacity: [1, 1, 1, 1, 1, 0] }}
                   transition={{ delay: delay(i) - 0.6, duration: 0.6 }}
                 >
-                  <Egg size={64} />
+                  {cover}
                 </motion.div>
               )}
               <motion.div

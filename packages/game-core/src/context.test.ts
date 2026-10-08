@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { baseShinyProbability } from './context';
+import { baseShinyProbability, playableContent } from './context';
 import { testContext } from './test-helpers';
 
 describe('createGameContext', () => {
@@ -25,11 +25,29 @@ describe('createGameContext', () => {
     expect(ctx.zones.map((z) => z.id)).toEqual([
       'route-1',
       'foret-de-jade',
+      'route-3',
       'mont-selenite',
+      'pont-pepite',
       'cap-azuria',
+      'routes-5-6',
+      'cave-taupiqueur',
+      'routes-9-10',
+      'tunnel-roche',
+      'routes-7-8',
+      'tour-pokemon',
+      'routes-12-15',
+      'piste-cyclable',
+      'routes-maritimes',
+      'manoir-pokemon',
+      'route-23',
       'route-victoire',
-      'iles-ecume',
+      'reserve-chen',
+      'ronflex-endormi',
+      'parc-safari',
+      'dojo-karate',
+      'sylphe-sarl',
       'centrale',
+      'iles-ecume',
       'mont-braise',
       'grotte-azuree',
       'ile-lointaine',
@@ -55,8 +73,8 @@ describe('createGameContext', () => {
       'lac-salinas',
     ]);
     expect(ctx.quests.map((q) => q.id)).toEqual([
-      'artikodin',
       'electhor',
+      'artikodin',
       'sulfura',
       'mewtwo',
       'mew',
@@ -87,5 +105,33 @@ describe('createGameContext', () => {
     expect(ctx.itemEffect('great-ball', 'ball')?.catchMultiplier).toBe(1.5);
     expect(ctx.itemEffect('razz-berry', 'ball')).toBeUndefined();
     expect(ctx.itemEffect('razz-berry', 'captureBoost')?.multiplier).toBe(1.5);
+  });
+});
+
+describe('playableContent', () => {
+  it('ne garde que Kanto avec le seed (autres régions désactivées)', () => {
+    const { content } = testContext();
+    const playable = playableContent(content);
+    expect(playable.regions.map((r) => r.id)).toEqual(['kanto']);
+    expect(playable.zones.every((z) => z.regionId === 'kanto')).toBe(true);
+    expect(playable.zones.length).toBeGreaterThan(0);
+    expect(playable.trainers.every((t) => t.regionId === 'kanto')).toBe(true);
+    expect(playable.dexMilestones.every((m) => m.regionId === null || m.regionId === 'kanto')).toBe(
+      true,
+    );
+    expect(content.zones.some((z) => z.regionId === 'johto')).toBe(true);
+  });
+
+  it('retire les zones, dresseurs et quêtes désactivés un par un', () => {
+    const { content } = testContext((c) => {
+      c.zones.find((z) => z.id === 'route-1')!.enabled = false;
+      c.trainers[0]!.enabled = false;
+      c.quests[0]!.enabled = false;
+    });
+    const playable = playableContent(content);
+    expect(playable.zones.map((z) => z.id)).not.toContain('route-1');
+    expect(playable.trainers.map((t) => t.id)).not.toContain(content.trainers[0]!.id);
+    expect(playable.quests.map((q) => q.id)).not.toContain(content.quests[0]!.id);
+    expect(playable.zones.map((z) => z.id)).toContain('foret-de-jade');
   });
 });

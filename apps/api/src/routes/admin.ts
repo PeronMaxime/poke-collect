@@ -39,6 +39,7 @@ interface Deps {
   content: ContentCache;
   hooks: ReturnType<typeof sessionHooks>;
   now: () => Date;
+  onContentPublished?: (() => Promise<void>) | undefined;
 }
 
 const idParams = z.object({ id: z.coerce.number().int().positive() });
@@ -101,7 +102,10 @@ function versionDto(v: Awaited<ReturnType<typeof listContentVersions>>[number]):
 }
 
 /** Routes /api/admin/* : toutes réservées au rôle admin, toutes les écritures sont journalisées. */
-export async function adminRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
+export async function adminRoutes(
+  app: FastifyInstance,
+  { db, content, hooks, now, onContentPublished }: Deps,
+) {
   app.addHook('preHandler', hooks.requireAdmin);
 
   app.get('/api/admin/me', async (request) => ({ user: request.user }));
@@ -262,6 +266,9 @@ export async function adminRoutes(app: FastifyInstance, { db, content, hooks, no
         before: { publishedId: archivedId },
         after: { publishedId: published.id },
       });
+      await onContentPublished?.().catch((err: unknown) =>
+        request.log.error(err, 'Instantané du contenu'),
+      );
       return versionDto(published);
     } catch (err) {
       return sendContentError(reply, err);

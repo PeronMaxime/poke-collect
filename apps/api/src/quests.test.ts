@@ -28,6 +28,7 @@ content.quests.push({
   description: '',
   image: null,
   regionId: 'kanto',
+  enabled: true,
   unlock: { type: 'always' },
   steps: [
     {
@@ -57,6 +58,13 @@ content.quests.push({
     bonuses: [],
     pokemon: [{ speciesId: 150, level: 70, perfectIvs: 3 }],
   },
+});
+// Quête désactivée : jamais visible, même si sa condition est remplie.
+content.quests.push({
+  ...structuredClone(content.quests.at(-1)!),
+  id: 'quete-desactivee',
+  enabled: false,
+  unlock: { type: 'always' },
 });
 const foret = content.zones.find((z) => z.id === 'foret-de-jade')!;
 foret.minPower = 0;
@@ -183,6 +191,26 @@ describe('quêtes', () => {
   it('refuse une quête verrouillée ou inconnue', async () => {
     expect((await call('POST', '/api/quests/mewtwo/claim')).status).toBe(409);
     expect((await call('POST', '/api/quests/inconnue/claim')).status).toBe(404);
+  });
+
+  it('cache les régions, zones et quêtes désactivées', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/content' });
+    const playable = res.json<typeof content>();
+    expect(playable.regions.map((r) => r.id)).toEqual(['kanto']);
+    expect(playable.zones.map((z) => z.id)).not.toContain('route-29');
+    expect(playable.quests.map((q) => q.id)).not.toContain('quete-desactivee');
+
+    const johto = await call('POST', '/api/expeditions', {
+      zoneId: 'route-29',
+      durationMinutes: 15,
+      team: [starter.id],
+      ballItemId: null,
+      berryItemId: null,
+    });
+    expect(johto.status).toBe(404);
+    const { body } = await call<QuestsResponse>('GET', '/api/quests');
+    expect(body.quests.map((q) => q.questId)).not.toContain('quete-desactivee');
+    expect((await call('POST', '/api/quests/quete-desactivee/claim')).status).toBe(404);
   });
 
   describe('objets endgame', () => {

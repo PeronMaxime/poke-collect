@@ -78,6 +78,55 @@
       "when": 1791411462102,
       "tag": "0010_phase8_content",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1791454218772,
+      "tag": "0011_sprites_locaux",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1791455658248,
+      "tag": "0012_contenu_activable",
+      "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "7",
+      "when": 1791457404954,
+      "tag": "0013_musee_fossiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1791457411266,
+      "tag": "0014_contenu_fossiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 15,
+      "version": "7",
+      "when": 1791458531807,
+      "tag": "0015_pokedex_formes",
+      "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1791460793671,
+      "tag": "0016_kanto_refait",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1791461864829,
+      "tag": "0017_expeditions_test_durees",
+      "breakpoints": true
     }
   ]
 }

@@ -4,3 +4,4 @@ packages/db/drizzle/
 dist/
 .data/
 PLAN.md
+content/game-content.json

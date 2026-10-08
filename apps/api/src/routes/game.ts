@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { and, asc, desc, eq, gt, isNotNull, isNull } from 'drizzle-orm';
 import { z } from 'zod';
-import { expeditions, inventory, pokedex, pokemon } from '@poke/db';
+import { expeditions, inventory, pokedex, pokedexForms, pokemon } from '@poke/db';
 import type { Db } from '@poke/db';
 import { startExpeditionInputSchema, updatePokemonInputSchema } from '@poke/shared';
 import type {
@@ -10,6 +10,7 @@ import type {
   ExpeditionsResponse,
   InventoryEntryDto,
   PokedexEntryDto,
+  PokedexFormEntryDto,
   PokemonDto,
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
@@ -72,6 +73,18 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     return rows.map(({ ownerId: _, firstCaughtAt, ...r }) => ({
       ...r,
       firstCaughtAt: firstCaughtAt?.toISOString() ?? null,
+    }));
+  });
+
+  app.get('/api/pokedex/forms', async (request): Promise<PokedexFormEntryDto[]> => {
+    const rows = await db
+      .select()
+      .from(pokedexForms)
+      .where(eq(pokedexForms.ownerId, request.user!.id))
+      .orderBy(asc(pokedexForms.formId));
+    return rows.map(({ ownerId: _, firstCaughtAt, ...r }) => ({
+      ...r,
+      firstCaughtAt: firstCaughtAt.toISOString(),
     }));
   });
 

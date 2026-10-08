@@ -1,4 +1,4 @@
-import { abilities, evolutionChains, itemSpriteUrl, natures, types } from '@poke/data';
+import { abilities, evolutionChains, getSpecies, itemSpriteUrl, natures, types } from '@poke/data';
 import type { StatName } from '@poke/data';
 import type {
   EvolutionMethod,
@@ -91,6 +91,8 @@ export function effectText(effect: ItemEffect): string {
       return `Sur un Pokémon : nature ${natureLabel(effect.nature)}`;
     case 'abilityChange':
       return effect.hidden ? 'Sur un Pokémon : talent caché' : 'Sur un Pokémon : autre talent';
+    case 'fossil':
+      return `Musée : ${getSpecies(effect.speciesId)?.nameFr ?? `#${effect.speciesId}`} en ${formatDuration(effect.minutes)}`;
   }
 }
 
@@ -131,6 +133,14 @@ export function unlockConditionText(ctx: GameContext, u: UnlockCondition): strin
     }
     case 'questCompleted':
       return `Termine la quête « ${ctx.quest(u.questId)?.name ?? u.questId} »`;
+    case 'allOf': {
+      // « Obtiens 5 badges, capture 50 espèces différentes et termine la quête … »
+      const parts = u.conditions
+        .flatMap((c) => unlockConditionText(ctx, c) ?? [])
+        .map((p, i) => (i === 0 ? p : p.charAt(0).toLowerCase() + p.slice(1)));
+      if (parts.length <= 1) return parts[0] ?? null;
+      return `${parts.slice(0, -1).join(', ')} et ${parts.at(-1)}`;
+    }
   }
 }
 
@@ -264,6 +274,11 @@ export const GAME_ERRORS: Record<string, string> = {
   NO_EFFECT: 'Cet objet n’aurait aucun effet sur ce Pokémon.',
   CHOICE_REQUIRED: 'Choisis d’abord la statistique ou le talent.',
   NOT_USABLE_ON_POKEMON: 'Cet objet ne s’utilise pas sur un Pokémon.',
+  NOT_A_FOSSIL: 'Cet objet ne peut pas être restauré au Musée.',
+  MUSEUM_FULL: 'Toutes les places du Musée sont occupées.',
+  NO_FOSSIL_READY: 'Aucun fossile n’est encore restauré.',
+  FOSSIL_NOT_FOUND: 'Ce fossile n’est plus au Musée.',
+  FOSSIL_ALREADY_REVIVED: 'Ce fossile est déjà restauré : récupère le Pokémon.',
 };
 
 export function formatMoney(amount: number): string {

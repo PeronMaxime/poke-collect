@@ -16,6 +16,7 @@ Jeu web idle de collection Pokémon. Voir [PLAN.md](PLAN.md) pour la vision, l'a
 
 ```sh
 pnpm install
+pnpm sprites:download       # illustrations des Pokémon (ignorées par Git) ; aussi au déploiement
 cp .env.example .env        # optionnel en dev : des valeurs par défaut existent
 pnpm dev                    # API :3000, jeu :5173, admin :5174
 ```
@@ -41,16 +42,17 @@ pnpm dev
 
 ## Scripts
 
-| Commande                                       | Rôle                                                                                                  |
-| ---------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `pnpm dev`                                     | API + jeu + admin en mode watch                                                                       |
-| `pnpm test`                                    | Tests Vitest de tous les paquets (la base de test est un PGlite en mémoire)                           |
-| `pnpm lint` / `pnpm format` / `pnpm typecheck` | Qualité du code                                                                                       |
-| `pnpm build`                                   | Build des fronts                                                                                      |
-| `pnpm import:pokeapi [--gens 1,2,3,4]`         | Régénère `packages/data/generated` depuis PokéAPI (cache disque dans `scripts/import-pokeapi/.cache`) |
-| `pnpm db:generate`                             | Génère une migration SQL après une modification du schéma Drizzle                                     |
-| `pnpm db:migrate`                              | Applique les migrations (l'API le fait aussi au démarrage)                                            |
-| `pnpm admin:promote <email>`                   | Donne le rôle admin à un compte                                                                       |
+| Commande                                       | Rôle                                                                                                    |
+| ---------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| `pnpm dev`                                     | API + jeu + admin en mode watch                                                                         |
+| `pnpm test`                                    | Tests Vitest de tous les paquets (la base de test est un PGlite en mémoire)                             |
+| `pnpm lint` / `pnpm format` / `pnpm typecheck` | Qualité du code                                                                                         |
+| `pnpm build`                                   | Build des fronts                                                                                        |
+| `pnpm import:pokeapi [--gens 1,2,3,4]`         | Régénère `packages/data/generated` depuis PokéAPI (cache disque dans `scripts/import-pokeapi/.cache`)   |
+| `pnpm sprites:download [--force]`              | Télécharge les images (Pokémon, objets, dresseurs) dans `apps/api/sprites`, servies sous `/api/sprites` |
+| `pnpm db:generate`                             | Génère une migration SQL après une modification du schéma Drizzle                                       |
+| `pnpm db:migrate`                              | Applique les migrations (l'API le fait aussi au démarrage)                                              |
+| `pnpm admin:promote <email>`                   | Donne le rôle admin à un compte                                                                         |
 
 ## Structure
 
@@ -78,6 +80,7 @@ scripts/
 - L'API garde le contenu publié en cache mémoire et l'invalide à chaque publication.
 - La publication exige un contenu cohérent (références entre zones, régions, objets, tables de butin…). Les erreurs et avertissements s'affichent dans le tableau de bord de l'admin.
 - Une expédition enregistre la version active à son départ : elle est résolue avec ce contenu-là, même si une nouvelle version est publiée entre-temps.
+- **Instantané versionné** : `content/game-content.json` contient le contenu publié. Hors production, l'API le réécrit au démarrage (migrations de contenu comprises) et à chaque publication (`CONTENT_SNAPSHOT_WRITE=0` pour désactiver, `CONTENT_SNAPSHOT_PATH` pour le déplacer). Une base neuve, dont celle de production, part de ce fichier ; le seed (`packages/content`) ne sert que s'il est absent. Les migrations de contenu sont ciblées (champs modifiés, ajouts sans écrasement) pour préserver les réglages faits dans l'admin.
 - Le tableau de bord permet d'exporter / importer le contenu en JSON, et de recharger le contenu de test dans un brouillon (utile pour une base créée avant la phase 1, qui n'a ni zones ni objets).
 
 ## Boucle de jeu (phase 1)
@@ -95,7 +98,7 @@ scripts/
 
 ## Combats de dresseurs (phase 3)
 
-1. `POST /api/battles` : le serveur vérifie que le dresseur est débloqué (région + condition : % du Pokédex, dresseur battu, nombre de badges) et disponible (pas déjà battu s'il est unique, pas en recharge s'il est répétable), que l'équipe respecte ses conditions (nombre, niveau max, types imposés / interdits, PE minimale) et que chaque Pokémon est **disponible** : ni occupé (expédition, combat, pension), ni K.O. Cette vérification est commune aux trois activités.
+1. `POST /api/battles` : le serveur vérifie que le dresseur est débloqué (région + condition : % du Pokédex, dresseur battu, nombre de badges, ou plusieurs de ces conditions à la fois) et disponible (pas déjà battu s'il est unique, pas en recharge s'il est répétable), que l'équipe respecte ses conditions (nombre, niveau max, types imposés / interdits, PE minimale) et que chaque Pokémon est **disponible** : ni occupé (expédition, combat, pension), ni K.O. Cette vérification est commune aux trois activités.
 2. `POST /api/battles/:id/claim` : `game-core` calcule la probabilité de victoire (PE du joueur corrigée par l'avantage de types, rapportée à la PE du dresseur, sur une sigmoïde bornée) puis tire le résultat avec le seed. Victoire : Poké Dollars, butin, XP, bonheur, badge à la première victoire. Défaite : une fraction de l'XP, et l'équipe est K.O. (`pokemon.ko_until`) pendant la durée réglée.
 3. La table des types vient de PokéAPI (`type.damage_relations`, dans `packages/data/generated/types.json`).
 

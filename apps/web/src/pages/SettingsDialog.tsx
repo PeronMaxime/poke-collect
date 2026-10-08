@@ -11,6 +11,7 @@ const TYPES: { key: keyof NotificationSettings; label: string }[] = [
   { key: 'expeditions', label: 'Expédition terminée' },
   { key: 'battles', label: 'Combat de dresseur terminé' },
   { key: 'eggs', label: 'Œuf prêt à éclore' },
+  { key: 'fossils', label: 'Fossile restauré au Musée' },
 ];
 
 /** Réglages : installation du jeu (PWA) et notifications push. */

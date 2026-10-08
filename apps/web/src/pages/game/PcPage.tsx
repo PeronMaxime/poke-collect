@@ -75,6 +75,7 @@ const ORIGIN_LABELS: Record<PokemonDto['origin'], string> = {
   capture: 'Capturé',
   egg: 'Éclos',
   quest: 'Récompense de quête',
+  fossil: 'Fossile restauré',
 };
 
 const GENDER_LABELS = { male: '♂', female: '♀', genderless: '' } as const;

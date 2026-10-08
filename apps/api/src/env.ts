@@ -14,6 +14,10 @@ export interface VapidKeys {
 export interface Env {
   databaseUrl: string | undefined;
   pgliteDataDir: string;
+  /** Instantané du contenu publié, versionné dans Git ; contenu initial d'une base neuve. */
+  contentSnapshotPath: string;
+  /** Réécrire l'instantané au démarrage et à chaque publication (développement). */
+  contentSnapshotWrite: boolean;
   authSecret: string;
   authUrl: string;
   trustedOrigins: string[];
@@ -50,6 +54,10 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
   return {
     databaseUrl: source.DATABASE_URL || undefined,
     pgliteDataDir: source.PGLITE_DATA_DIR || `${ROOT}.data/pglite`,
+    contentSnapshotPath: source.CONTENT_SNAPSHOT_PATH || `${ROOT}content/game-content.json`,
+    contentSnapshotWrite: source.CONTENT_SNAPSHOT_WRITE
+      ? source.CONTENT_SNAPSHOT_WRITE === '1'
+      : !isProd && source.NODE_ENV !== 'test',
     authSecret,
     authUrl: source.BETTER_AUTH_URL || 'http://localhost:3000',
     trustedOrigins: (source.TRUSTED_ORIGINS || 'http://localhost:5173,http://localhost:5174')

@@ -346,8 +346,7 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
     }
     const newSpeciesIds = await recordPokedex(tx, userId, {
       seen: hatched.map((p) => p.speciesId),
-      caught: hatched.map((p) => p.speciesId),
-      caughtShiny: hatched.filter((p) => p.isShiny).map((p) => p.speciesId),
+      caught: hatched,
       at: now,
     });
     return { hatched, newSpeciesIds };

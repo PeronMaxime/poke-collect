@@ -5,6 +5,7 @@ import {
   expeditions,
   inventory,
   pokedex,
+  pokedexForms,
   pokemon,
   questProgress,
   rewardClaims,
@@ -300,7 +301,7 @@ export async function itemQuantity(db: Db, ownerId: string, itemId: string): Pro
 }
 
 /**
- * Met à jour le Pokédex : espèces vues, capturées (et shiny).
+ * Met à jour le Pokédex : espèces vues, Pokémon capturés (espèce, forme, shiny).
  * Retourne les espèces capturées pour la première fois.
  */
 export async function recordPokedex(
@@ -309,18 +310,16 @@ export async function recordPokedex(
   {
     seen,
     caught,
-    caughtShiny,
     at,
   }: {
     seen: Iterable<number>;
-    caught: Iterable<number>;
-    caughtShiny: Iterable<number>;
+    caught: readonly Pick<PokemonInstance, 'speciesId' | 'formId' | 'isShiny'>[];
     at: Date;
   },
 ): Promise<number[]> {
-  const caughtSet = new Set(caught);
-  const shinySet = new Set(caughtShiny);
-  const all = new Set([...seen, ...caughtSet, ...shinySet]);
+  const caughtSet = new Set(caught.map((p) => p.speciesId));
+  const shinySet = new Set(caught.filter((p) => p.isShiny).map((p) => p.speciesId));
+  const all = new Set([...seen, ...caughtSet]);
   if (all.size === 0) return [];
 
   const before = await db
@@ -356,6 +355,21 @@ export async function recordPokedex(
           caughtShiny: sql`${pokedex.caughtShiny} or excluded.caught_shiny`,
           firstCaughtAt: sql`coalesce(${pokedex.firstCaughtAt}, excluded.first_caught_at)`,
         },
+      });
+  }
+
+  const formsShiny = new Map<number, boolean>();
+  for (const p of caught) {
+    if (p.formId != null)
+      formsShiny.set(p.formId, (formsShiny.get(p.formId) ?? false) || p.isShiny);
+  }
+  for (const [formId, isShiny] of formsShiny) {
+    await db
+      .insert(pokedexForms)
+      .values({ ownerId, formId, caughtShiny: isShiny, firstCaughtAt: at })
+      .onConflictDoUpdate({
+        target: [pokedexForms.ownerId, pokedexForms.formId],
+        set: { caughtShiny: sql`${pokedexForms.caughtShiny} or excluded.caught_shiny` },
       });
   }
   return [...caughtSet].filter((id) => !alreadyCaught.has(id));

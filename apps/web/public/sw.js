@@ -3,8 +3,9 @@
  * Cache :
  *  - pages et code du jeu : réseau d'abord, cache en secours (hors ligne, on rouvre la dernière
  *    version chargée) ; le jeu reste toujours à jour quand le réseau répond ;
- *  - sprites (dépôt PokeAPI/sprites, immuables) : cache d'abord ;
- *  - l'API (`/api/*`) n'est jamais mise en cache : le serveur décide de tout.
+ *  - sprites (`/api/sprites/*`, et images externes saisies dans l'admin, immuables) :
+ *    cache d'abord ;
+ *  - le reste de l'API (`/api/*`) n'est jamais mis en cache : le serveur décide de tout.
  */
 
 const VERSION = 'v1';
@@ -72,7 +73,9 @@ self.addEventListener('fetch', (event) => {
   const { request } = event;
   if (request.method !== 'GET') return;
   const url = new URL(request.url);
-  if (SPRITE_HOSTS.includes(url.hostname)) {
+  const localSprite =
+    url.origin === self.location.origin && url.pathname.startsWith('/api/sprites/');
+  if (SPRITE_HOSTS.includes(url.hostname) || localSprite) {
     event.respondWith(cacheFirst(request));
     return;
   }

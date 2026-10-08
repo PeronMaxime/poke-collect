@@ -1,6 +1,6 @@
 import { getPublishedVersion, loadContent } from '@poke/db';
 import type { Db } from '@poke/db';
-import { createGameContext } from '@poke/game-core';
+import { createGameContext, playableContent } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 
 /**
@@ -13,12 +13,15 @@ export class ContentCache {
 
   constructor(private readonly db: Db) {}
 
-  /** Contenu publié (celui que voient les joueurs). */
+  /**
+   * Contenu publié tel que le voient les joueurs : sans les régions, zones, dresseurs et quêtes
+   * désactivés (voir `playableContent`), on ne peut donc ni les lancer ni les afficher.
+   */
   get(): Promise<GameContext> {
     if (!this.published) {
-      this.published = getPublishedVersion(this.db).then((v) => {
+      this.published = getPublishedVersion(this.db).then(async (v) => {
         if (!v) throw new Error('Aucune version de contenu publiée');
-        return this.version(v.id);
+        return createGameContext(playableContent((await this.version(v.id)).content));
       });
       // En cas d'échec, on réessaiera au prochain appel.
       this.published.catch(() => {
@@ -28,7 +31,10 @@ export class ContentCache {
     return this.published;
   }
 
-  /** Contenu d'une version donnée (celle active au départ d'une expédition). */
+  /**
+   * Contenu complet d'une version donnée (celle active au départ d'une expédition) : une
+   * expédition ou un combat lancé avant la désactivation de sa zone ou de son dresseur se termine.
+   */
   version(id: number): Promise<GameContext> {
     let ctx = this.versions.get(id);
     if (!ctx) {

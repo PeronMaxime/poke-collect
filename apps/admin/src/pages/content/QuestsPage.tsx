@@ -1,4 +1,4 @@
-import { questSchema } from '@poke/content';
+import { questSchema, unlockParts } from '@poke/content';
 import type { Quest, QuestCondition, QuestPokemon, QuestStep } from '@poke/content';
 import { types } from '@poke/data';
 import type { GameContext } from '@poke/game-core';
@@ -10,6 +10,7 @@ import {
   NumberInput,
   Section,
   TextInput,
+  Toggle,
 } from '../../components/forms/fields';
 import type { FieldErrors } from '../../components/forms/fields';
 import { emptyReward, rewardSummary, RewardEditor } from '../../components/forms/RewardEditor';
@@ -37,7 +38,7 @@ export function QuestsPage() {
       searchText={(q, w) =>
         `${q.id} ${q.name} ${q.rewards.pokemon.map((p) => w.ctx.species(p.speciesId)?.nameFr).join(' ')}`
       }
-      renderListItem={(q) => (
+      renderListItem={(q, w) => (
         <span className="flex items-center gap-2">
           {q.rewards.pokemon[0] ? (
             <Sprite
@@ -49,7 +50,11 @@ export function QuestsPage() {
             <span className="inline-block w-8 text-center">📜</span>
           )}
           <span className="min-w-0">
-            <span className="block truncate font-medium">{q.name}</span>
+            <span
+              className={`block truncate font-medium ${q.enabled && (q.regionId === null || w.ctx.region(q.regionId)?.enabled !== false) ? '' : 'line-through'}`}
+            >
+              {q.name}
+            </span>
             <span className="block text-xs text-slate-500">{q.steps.length} étape(s)</span>
           </span>
         </span>
@@ -61,6 +66,7 @@ export function QuestsPage() {
         description: '',
         image: null,
         regionId: w.ctx.regions[0]?.id ?? null,
+        enabled: true,
         unlock: { type: 'always' },
         steps: [newStep()],
         rewards: { ...emptyReward(), pokemon: [] },
@@ -158,6 +164,12 @@ function QuestForm({
           />
         </Field>
       </div>
+      <Toggle
+        checked={q.enabled}
+        onChange={(v) => set('enabled', v)}
+        label="Quête activée (désactivée : cachée aux joueurs, elle ne progresse plus et sa récompense n’est plus réclamable)"
+        disabled={disabled}
+      />
 
       <Section title="Apparition">
         <p className="text-xs text-slate-500">
@@ -584,10 +596,13 @@ function QuestOverview({ quest, working }: { quest: Quest; working: WorkingVersi
       unlock: t.unlock,
     })),
     ...ctx.quests.map((q) => ({ kind: 'Quête', name: q.name, unlock: q.unlock })),
-  ].filter(
-    (e) =>
-      (e.unlock.type === 'questStepsDone' || e.unlock.type === 'questCompleted') &&
-      e.unlock.questId === quest.id,
+  ].flatMap(({ unlock, ...e }) =>
+    unlockParts(unlock)
+      .filter(
+        (u) =>
+          (u.type === 'questStepsDone' || u.type === 'questCompleted') && u.questId === quest.id,
+      )
+      .map((u) => ({ ...e, unlock: u })),
   );
   return (
     <div className="card space-y-3 text-sm">

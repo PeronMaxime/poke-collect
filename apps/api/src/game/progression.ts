@@ -104,8 +104,7 @@ export async function evolve(
 
     const newSpeciesIds = await recordPokedex(tx, userId, {
       seen: [evolved.speciesId],
-      caught: [evolved.speciesId],
-      caughtShiny: row.isShiny ? [evolved.speciesId] : [],
+      caught: [updated],
       at: now,
     });
     return {

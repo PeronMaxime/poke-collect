@@ -60,6 +60,8 @@ export function isUnlocked(
       const quest = ctx.quest(condition.questId);
       return !!quest && (progress.questSteps?.get(quest.id) ?? 0) >= quest.steps.length;
     }
+    case 'allOf':
+      return condition.conditions.every((c) => isUnlocked(ctx, c, progress));
   }
 }
 

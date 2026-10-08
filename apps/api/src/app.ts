@@ -14,10 +14,12 @@ import { adminRoutes } from './routes/admin';
 import { battleRoutes } from './routes/battles';
 import { breedingRoutes } from './routes/breeding';
 import { gameRoutes } from './routes/game';
+import { museumRoutes } from './routes/museum';
 import { playerRoutes } from './routes/player';
 import { progressionRoutes } from './routes/progression';
 import { pushRoutes } from './routes/push';
 import { shopRoutes } from './routes/shop';
+import { spriteRoutes } from './routes/sprites';
 
 export interface AppOptions {
   db: Db;
@@ -27,6 +29,8 @@ export interface AppOptions {
   now?: () => Date;
   /** Envoi des notifications push (tests : faux expéditeur) ; par défaut, Web Push. */
   pushSender?: PushSender;
+  /** Appelé après chaque publication de contenu (développement : écrire l'instantané). */
+  onContentPublished?: () => Promise<void>;
 }
 
 export async function buildApp({
@@ -35,6 +39,7 @@ export async function buildApp({
   logger = false,
   now = () => new Date(),
   pushSender,
+  onContentPublished,
 }: AppOptions) {
   const app = Fastify({ logger });
   const auth = createAuth(db, env);
@@ -64,10 +69,12 @@ export async function buildApp({
   app.get('/api/config', async () => ({
     oauthProviders: [env.google && 'google', env.discord && 'discord'].filter(Boolean),
   }));
+  await app.register(spriteRoutes);
   await app.register(authRoutes, { auth });
   await app.register(playerRoutes, { db, content, hooks, now });
   await app.register(gameRoutes, { db, content, hooks, now });
   await app.register(breedingRoutes, { db, content, hooks, now });
+  await app.register(museumRoutes, { db, content, hooks, now });
   await app.register(battleRoutes, { db, content, hooks, now });
   await app.register(shopRoutes, { db, content, hooks, now });
   await app.register(progressionRoutes, { db, content, hooks, now });
@@ -78,7 +85,7 @@ export async function buildApp({
     publicKey: env.vapid?.publicKey ?? null,
     send: push,
   });
-  await app.register(adminRoutes, { db, content, hooks, now });
+  await app.register(adminRoutes, { db, content, hooks, now, onContentPublished });
 
   return { app, auth, content, push };
 }

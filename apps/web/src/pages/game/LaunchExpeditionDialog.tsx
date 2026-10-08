@@ -6,6 +6,7 @@ import {
   checkTeam,
   encounterCount,
   encounterProbabilities,
+  lootProbabilities,
   pokemonPower,
   shinyProbability,
 } from '@poke/game-core';
@@ -28,6 +29,12 @@ import {
   itemName,
   typeLabel,
 } from '../../lib/labels';
+
+/** Les objets rares (1 %, menthes…) ne doivent pas s'afficher « 0 % ». */
+function formatChance(p: number): string {
+  const pct = p * 100;
+  return pct < 1 ? '< 1 %' : `${Math.round(pct)} %`;
+}
 
 function errorText(e: ExpeditionError): string {
   switch (e.code) {
@@ -99,6 +106,7 @@ export function LaunchExpeditionDialog({
   const encounters = encounterCount(ctx, duration);
   const ballEffect = selectedBall ? ctx.itemEffect(selectedBall, 'ball') : undefined;
   const boost = berryId ? ctx.itemEffect(berryId, 'captureBoost')?.multiplier : undefined;
+  const loot = lootProbabilities(ctx, zone, duration).sort((a, b) => b.probability - a.probability);
 
   function toggle(p: PokemonDto) {
     setTeam((t) =>
@@ -250,6 +258,23 @@ export function LaunchExpeditionDialog({
           );
         })}
       </ul>
+
+      {loot.length > 0 && (
+        <>
+          <h3 className="mt-5 text-sm font-semibold">Butin possible</h3>
+          <ul className="mt-2 grid grid-cols-2 gap-1 text-xs sm:grid-cols-3">
+            {loot.map(({ itemId, probability, min, max }) => (
+              <li key={itemId} className="flex items-center gap-1">
+                <img src={itemIcon(ctx, itemId)} alt="" className="h-8 w-8 object-contain" />
+                <span className="truncate">
+                  {itemName(ctx, itemId)} · {formatChance(probability)}
+                  <span className="text-slate-500"> (× {min === max ? min : `${min}–${max}`})</span>
+                </span>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       {zone.requiredTypes.length > 0 && (
         <p className="mt-3 flex flex-wrap items-center gap-1 text-xs text-slate-500">
           Types requis :

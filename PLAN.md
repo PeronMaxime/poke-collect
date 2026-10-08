@@ -61,7 +61,7 @@ Chaque Pokémon possédé est une instance unique avec :
 - **Composition** : de 1 à 6 Pokémon par expédition, en nombre limité d'emplacements (que l'on débloque en progressant).
 - **Conditions** : PE minimale, et éventuellement des types requis (exemple : « 2 Pokémon Eau » pour une zone sous-marine).
 - **Bonus** : affinité de type avec la zone, synergie d'équipe, objets tenus.
-- **Durées** : 15 min, 1 h, 4 h, 8 h. Plus c'est long, plus le butin est intéressant, avec des rendements décroissants pour ne pas pénaliser les joueurs qui reviennent souvent.
+- **Durées** : 2 min, 5 min, 15 min, 1 h, 4 h, 8 h. Plus c'est long, plus le butin est intéressant, avec des rendements décroissants pour ne pas pénaliser les joueurs qui reviennent souvent.
 - **Résultats** : rencontres (espèces de la zone pondérées par `capture_rate`), objets, XP, œufs trouvés (rares).
 - **Capture** : automatique selon une probabilité inspirée de la formule officielle (`capture_rate` × qualité de la Ball × bonus). Les échecs comptent pour le **système de pitié**.
 
@@ -433,8 +433,9 @@ Les expéditions, combats, œufs et quêtes en cours enregistrent la `content_ve
 | Paramètre | Valeur de départ |
 |---|---|
 | Emplacements d'expédition au début | 2 (max 6) |
-| Durées d'expédition | 15 min / 1 h / 4 h / 8 h |
-| Rencontres par expédition | ~ durée en heures × 3 (min 1) |
+| Durées d'expédition | 2 min / 5 min / 15 min / 1 h / 4 h / 8 h |
+| Rencontres par expédition | ~ durée en heures × 20 (min 1) |
+| Tirages de butin par expédition | ~ durée en heures × 10 (min 1) |
 | Taux shiny de base | 1/4096 |
 | Temps d'éclosion | `hatch_counter` × 2 min (Magicarpe ≈ 10 min, Draco ≈ 80 min) |
 | Pitié | +5 % de poids de rencontre par échec, plafond ×3 |

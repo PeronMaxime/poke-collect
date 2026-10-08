@@ -14,6 +14,7 @@ import {
   useEvolutionChecker,
   useExpeditions,
   useGameContext,
+  useMuseum,
   usePokemon,
   useQuests,
   useShop,
@@ -23,6 +24,7 @@ import { BattlesPage } from './game/BattlesPage';
 import { DaycarePage } from './game/DaycarePage';
 import { ExpeditionsPage } from './game/ExpeditionsPage';
 import { InventoryPage } from './game/InventoryPage';
+import { MuseumPage } from './game/MuseumPage';
 import { PcPage } from './game/PcPage';
 import { PokedexPage } from './game/PokedexPage';
 import { QuestsPage } from './game/QuestsPage';
@@ -33,6 +35,7 @@ const TABS = [
   { id: 'expeditions', label: 'Expéditions' },
   { id: 'battles', label: 'Dresseurs' },
   { id: 'daycare', label: 'Pension' },
+  { id: 'museum', label: 'Musée' },
   { id: 'quests', label: 'Quêtes' },
   { id: 'shop', label: 'Boutique' },
   { id: 'pc', label: 'PC' },
@@ -54,6 +57,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const [settingsOpen, setSettingsOpen] = useState(false);
   const expeditions = useExpeditions();
   const daycare = useDaycare();
+  const museum = useMuseum();
   const battles = useBattles();
   const shop = useShop();
   const quests = useQuests();
@@ -87,6 +91,9 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
       ? daycare.data.pensions.filter((p) => eggsLaid(ctx, new Date(p.startedAt), new Date(now)) > 0)
           .length
       : 0);
+
+  const fossilsReady =
+    museum.data?.revivals.filter((r) => Date.parse(r.readyAt) <= now).length ?? 0;
 
   async function signOut() {
     await authClient.signOut();
@@ -155,6 +162,11 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
                 {daycareReady}
               </span>
             )}
+            {t.id === 'museum' && fossilsReady > 0 && (
+              <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
+                {fossilsReady}
+              </span>
+            )}
             {t.id === 'quests' && questsReady > 0 && (
               <span
                 className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950"
@@ -202,6 +214,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
           {tab === 'expeditions' && <ExpeditionsPage ctx={ctx} />}
           {tab === 'battles' && <BattlesPage ctx={ctx} />}
           {tab === 'daycare' && <DaycarePage ctx={ctx} />}
+          {tab === 'museum' && <MuseumPage ctx={ctx} />}
           {tab === 'quests' && <QuestsPage ctx={ctx} />}
           {tab === 'shop' && <ShopPage ctx={ctx} />}
           {tab === 'pc' && <PcPage ctx={ctx} />}

@@ -54,6 +54,8 @@ function unlockSummary(ctx: GameContext, u: UnlockCondition): string {
       return `${u.count} étape(s) de la quête ${ctx.quest(u.questId)?.name ?? u.questId}`;
     case 'questCompleted':
       return `quête ${ctx.quest(u.questId)?.name ?? u.questId} terminée`;
+    case 'allOf':
+      return u.conditions.map((c) => unlockSummary(ctx, c)).join(' + ');
   }
 }
 

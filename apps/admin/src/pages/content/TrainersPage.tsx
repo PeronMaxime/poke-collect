@@ -53,7 +53,9 @@ export function TrainersPage() {
             <span className="h-8 w-8 shrink-0" />
           )}
           <span className="min-w-0">
-            <span className="block truncate font-medium">
+            <span
+              className={`block truncate font-medium ${t.enabled && w.ctx.region(t.regionId)?.enabled !== false ? '' : 'line-through'}`}
+            >
               {t.trainerClass} {t.name}
             </span>
             <span className="block truncate text-xs text-slate-500">
@@ -88,6 +90,7 @@ export function TrainersPage() {
         repeatable: true,
         cooldownMinutes: null,
         koMinutes: null,
+        enabled: true,
         unlock: { type: 'always' },
       })}
       duplicate={(t) => ({ ...structuredClone(t), id: `${t.id}-copie`, name: `${t.name} (copie)` })}
@@ -138,7 +141,11 @@ function TrainerForm({
             disabled={disabled}
           />
         </Field>
-        <Field label="Sprite (URL)" error={errors.get('sprite')}>
+        <Field
+          label="Sprite (URL)"
+          error={errors.get('sprite')}
+          hint="URL complète, ou image du dépôt : /api/sprites/trainers/<nom>.png"
+        >
           <div className="flex items-center gap-2">
             {t.sprite && <img src={t.sprite} alt="" className="h-10 w-10 object-contain" />}
             <NullableTextInput
@@ -194,6 +201,12 @@ function TrainerForm({
           />
         </Field>
       </div>
+      <Toggle
+        checked={t.enabled}
+        onChange={(v) => set('enabled', v)}
+        label="Dresseur activé (désactivé : caché aux joueurs, plus aucun combat ne peut être lancé)"
+        disabled={disabled}
+      />
 
       <Section title={`Équipe — PE ${trainerPower(ctx, t)}`}>
         <TeamEditor

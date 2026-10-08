@@ -19,7 +19,9 @@ import type {
   DaycareResponse,
   ExpeditionsResponse,
   InventoryEntryDto,
+  MuseumResponse,
   PokedexEntryDto,
+  PokedexFormEntryDto,
   PokemonDto,
   ProgressionResponse,
   PublicContentDto,
@@ -36,6 +38,7 @@ export const keys = {
   inventory: ['inventory'],
   expeditions: ['expeditions'],
   daycare: ['daycare'],
+  museum: ['museum'],
   candies: ['candies'],
   battles: ['battles'],
   shop: ['shop'],
@@ -51,6 +54,7 @@ export const PLAYER_STATE_KEYS = [
   keys.inventory,
   keys.expeditions,
   keys.daycare,
+  keys.museum,
   keys.candies,
   keys.battles,
   keys.shop,
@@ -78,6 +82,12 @@ export const usePokemon = () =>
 export const usePokedex = () =>
   useQuery({ queryKey: keys.pokedex, queryFn: () => api<PokedexEntryDto[]>('/api/pokedex') });
 
+export const usePokedexForms = () =>
+  useQuery({
+    queryKey: [...keys.pokedex, 'forms'],
+    queryFn: () => api<PokedexFormEntryDto[]>('/api/pokedex/forms'),
+  });
+
 export const useInventory = () =>
   useQuery({
     queryKey: keys.inventory,
@@ -92,6 +102,9 @@ export const useExpeditions = () =>
 
 export const useDaycare = () =>
   useQuery({ queryKey: keys.daycare, queryFn: () => api<DaycareResponse>('/api/daycare') });
+
+export const useMuseum = () =>
+  useQuery({ queryKey: keys.museum, queryFn: () => api<MuseumResponse>('/api/museum') });
 
 export const useBattles = () =>
   useQuery({ queryKey: keys.battles, queryFn: () => api<BattlesResponse>('/api/battles') });

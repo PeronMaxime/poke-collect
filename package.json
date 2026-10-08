@@ -15,6 +15,7 @@
     "format:check": "prettier --check .",
     "test": "pnpm -r test",
     "import:pokeapi": "pnpm --filter @poke/import-pokeapi start",
+    "sprites:download": "pnpm --filter @poke/import-pokeapi sprites",
     "db:generate": "pnpm --filter @poke/db generate",
     "db:migrate": "pnpm --filter @poke/db migrate",
     "admin:promote": "pnpm --filter @poke/api admin:promote"

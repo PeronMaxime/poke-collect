@@ -18,6 +18,7 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
   evolution: 'Objets d’évolution',
   breeding: 'Élevage',
   endgame: 'Objets rares',
+  fossil: 'Fossiles',
   misc: 'Divers',
 };
 

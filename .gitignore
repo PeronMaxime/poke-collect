@@ -7,3 +7,6 @@ coverage/
 *.log
 scripts/import-pokeapi/.cache/
 .turbo/
+
+# Illustrations des Pokémon (pnpm sprites:download), trop lourdes pour Git
+apps/api/sprites/artwork/

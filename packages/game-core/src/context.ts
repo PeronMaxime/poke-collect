@@ -143,6 +143,27 @@ export function createGameContext(content: GameContent): GameContext {
   };
 }
 
+/**
+ * Contenu vu par les joueurs : sans les régions, zones, dresseurs et quêtes désactivés (ni ce
+ * qui dépend d'une région désactivée : ses zones, dresseurs, quêtes et paliers de Pokédex, et
+ * les collections qui demandent une de ses espèces).
+ */
+export function playableContent(content: GameContent): GameContent {
+  const regions = content.regions.filter((r) => r.enabled);
+  const regionIds = new Set(regions.map((r) => r.id));
+  const speciesIds = new Set(regions.flatMap((r) => r.speciesIds));
+  const regionOk = (regionId: string | null) => regionId === null || regionIds.has(regionId);
+  return {
+    ...content,
+    regions,
+    zones: content.zones.filter((z) => z.enabled && regionOk(z.regionId)),
+    trainers: content.trainers.filter((t) => t.enabled && regionOk(t.regionId)),
+    quests: content.quests.filter((q) => q.enabled && regionOk(q.regionId)),
+    dexMilestones: content.dexMilestones.filter((m) => regionOk(m.regionId)),
+    collections: content.collections.filter((c) => c.speciesIds.every((id) => speciesIds.has(id))),
+  };
+}
+
 /** Probabilité de base qu'une rencontre ou une éclosion soit shiny. */
 export function baseShinyProbability(ctx: GameContext): number {
   return 1 / ctx.balance.shiny.baseRateDenominator;

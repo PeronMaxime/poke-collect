@@ -91,7 +91,8 @@ describe('conditions d’équipe', () => {
     const codes = checkBattleTeam(ctx, strict, [member('a', 4, 10)]).map((e) => e.code);
     expect(codes).toEqual(['TEAM_SIZE', 'FORBIDDEN_TYPES', 'MISSING_TYPES', 'POWER_TOO_LOW']);
     expect(checkBattleTeam(ctx, pierre, [])).toContainEqual({ code: 'TEAM_EMPTY' });
-    expect(checkBattleTeam(ctx, pierre, [member('a', 7, 10)])).toEqual([]);
+    // Pierre : combat à 2 contre 2.
+    expect(checkBattleTeam(ctx, pierre, [member('a', 7, 14), member('b', 1, 14)])).toEqual([]);
   });
 });
 
@@ -119,7 +120,7 @@ describe('résolution', () => {
     );
     const win = results.find((r) => r.outcome === 'win')!;
     const loss = results.find((r) => r.outcome === 'loss')!;
-    expect(win).toMatchObject({ money: 1200, koMinutes: 0 });
+    expect(win).toMatchObject({ money: 1400, koMinutes: 0 });
     expect(win.roll).toBeLessThan(win.estimate.winProbability);
     expect(win.team[0]!.happinessAfter).toBe(70 + 3);
     expect(results.some((r) => r.loot.length > 0)).toBe(true);

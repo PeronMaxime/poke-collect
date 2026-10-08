@@ -1,13 +1,35 @@
 import { useState } from 'react';
+import { DEX_FORM_SECTIONS, speciesForms } from '@poke/data';
 import { collectionState, dexProgress, milestoneState } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { PlayerProfileDto } from '@poke/shared';
 import { PokemonSprite, ProgressBar, ShinyStar, TypeBadge } from '../../components/ui';
-import { useClaimedRewards, useDexCatches, usePokedex, useShinyCharm } from '../../lib/game';
+import {
+  useClaimedRewards,
+  useDexCatches,
+  usePokedex,
+  usePokedexForms,
+  useShinyCharm,
+} from '../../lib/game';
 import { formatShinyRate } from '../../lib/labels';
 import { CollectionsView, MilestonesView } from './ProgressionViews';
 
 type Filter = 'all' | 'caught' | 'missing';
+
+/** Case du Pokédex : une espèce (formId null) ou l'une de ses formes. */
+interface DexSlot {
+  speciesId: number;
+  formId: number | null;
+}
+
+/** État d'une case : inconnue (silhouette), vue ou capturée. */
+interface SlotState {
+  seen: boolean;
+  caught: boolean;
+  /** Date de première capture (ISO). */
+  caughtAt: string | null;
+  caughtShiny: boolean;
+}
 
 const VIEWS = [
   { id: 'dex', label: 'Pokédex' },
@@ -64,21 +86,68 @@ function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto
   const [regionId, setRegionId] = useState(profile.regionUnlocked);
   const [filter, setFilter] = useState<Filter>('all');
   const [shiny, setShiny] = useState(false);
-  const [selected, setSelected] = useState<number | null>(null);
+  const [selected, setSelected] = useState<DexSlot | null>(null);
+  const formsDex = usePokedexForms();
   const entries = new Map(pokedex.data?.map((e) => [e.speciesId, e]));
+  const formEntries = new Map(formsDex.data?.map((e) => [e.formId, e]));
   const region = ctx.region(regionId) ?? ctx.regions[0];
   if (!region) return <p className="text-slate-500">Aucune région configurée.</p>;
 
   const progress = dexProgress(ctx, region.id, catches, shiny);
   const seenCount = region.speciesIds.filter((id) => entries.get(id)?.seen).length;
-  const isCaught = (id: number) =>
-    (shiny ? entries.get(id)?.caughtShiny : entries.get(id)?.caught) ?? false;
-  const ids = region.speciesIds.filter((id) => {
-    const caught = isCaught(id);
+  const slotState = ({ speciesId, formId }: DexSlot): SlotState => {
+    const entry = entries.get(speciesId);
+    if (formId === null) {
+      return {
+        seen: entry?.seen ?? false,
+        caught: (shiny ? entry?.caughtShiny : entry?.caught) ?? false,
+        caughtAt: entry?.firstCaughtAt ?? null,
+        caughtShiny: entry?.caughtShiny ?? false,
+      };
+    }
+    // Une forme est connue dès que son espèce a été vue.
+    const formEntry = formEntries.get(formId);
+    return {
+      seen: !!formEntry || (entry?.seen ?? false),
+      caught: shiny ? !!formEntry?.caughtShiny : !!formEntry,
+      caughtAt: formEntry?.firstCaughtAt ?? null,
+      caughtShiny: formEntry?.caughtShiny ?? false,
+    };
+  };
+  const keep = (slot: DexSlot) => {
+    const { caught } = slotState(slot);
     return filter === 'all' || (filter === 'caught' ? caught : !caught);
-  });
-  const detail = selected !== null ? ctx.species(selected) : undefined;
-  const detailEntry = selected !== null ? entries.get(selected) : undefined;
+  };
+  const slots = region.speciesIds.map((speciesId) => ({ speciesId, formId: null }));
+  const regionForms = region.speciesIds.flatMap((id) => speciesForms(id));
+  const formSections = DEX_FORM_SECTIONS.map((section) => {
+    const all = regionForms
+      .filter((f) => f.kind === section.kind)
+      .map((f) => ({ speciesId: f.speciesId, formId: f.id }));
+    return {
+      ...section,
+      total: all.length,
+      caught: all.filter((slot) => slotState(slot).caught).length,
+      slots: all.filter(keep),
+    };
+  }).filter((section) => section.total > 0);
+  const detail = selected ? ctx.species(selected.speciesId, selected.formId) : undefined;
+  const detailState = selected ? slotState(selected) : undefined;
+
+  const grid = (list: DexSlot[]) => (
+    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
+      {list.map((slot) => (
+        <DexTile
+          key={`${slot.speciesId}:${slot.formId}`}
+          ctx={ctx}
+          slot={slot}
+          state={slotState(slot)}
+          shiny={shiny}
+          onSelect={() => setSelected(slot)}
+        />
+      ))}
+    </div>
+  );
 
   return (
     <div className="space-y-4">
@@ -147,55 +216,32 @@ function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto
         ))}
       </div>
 
-      <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
-        {ids.map((id) => {
-          const entry = entries.get(id);
-          const species = ctx.species(id);
-          const caught = isCaught(id);
-          return (
-            <button
-              key={id}
-              type="button"
-              disabled={!entry?.seen}
-              onClick={() => setSelected(id)}
-              className={`relative flex flex-col items-center rounded-xl border p-1 text-[11px] ${
-                caught
-                  ? shiny
-                    ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40'
-                    : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
-                  : 'border-dashed border-slate-300 dark:border-slate-700'
-              }`}
-            >
-              <span className="self-start text-slate-400">{String(id).padStart(3, '0')}</span>
-              <PokemonSprite
-                speciesId={id}
-                size={56}
-                shiny={shiny && caught}
-                silhouette={!entry?.seen}
-                className={entry?.seen && !caught ? 'opacity-50 grayscale' : ''}
-              />
-              <span className="truncate">{entry?.seen ? species?.nameFr : '???'}</span>
-              {caught &&
-                (shiny ? (
-                  <ShinyStar className="absolute top-0.5 right-1 text-xs" />
-                ) : (
-                  <span
-                    className="absolute top-1 right-1 h-2 w-2 rounded-full bg-brand-500"
-                    title="Capturé"
-                  />
-                ))}
-            </button>
-          );
-        })}
-      </div>
+      {grid(slots.filter(keep))}
 
-      {detail && (
+      {formSections.map((section) => (
+        <section key={section.kind} className="space-y-2">
+          <div className="flex items-baseline justify-between gap-2 border-b border-slate-200 pb-1 dark:border-slate-800">
+            <h3 className="font-semibold">{section.label}</h3>
+            <span className="text-sm text-slate-500">
+              {section.caught} / {section.total}
+            </span>
+          </div>
+          {section.slots.length > 0 ? (
+            grid(section.slots)
+          ) : (
+            <p className="text-sm text-slate-500">Aucune forme à afficher.</p>
+          )}
+        </section>
+      ))}
+
+      {selected && detail && detailState && (
         <div className="card fixed inset-x-4 bottom-4 z-20 mx-auto flex max-w-md items-center gap-4 p-4 shadow-xl">
           <PokemonSprite
             speciesId={detail.id}
+            formId={selected.formId}
             kind="artwork"
             size={96}
-            shiny={shiny && !!detailEntry?.caughtShiny}
+            shiny={shiny && detailState.caughtShiny}
           />
           <div className="flex-1 text-sm">
             <p className="font-semibold">
@@ -207,10 +253,12 @@ function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto
               ))}
             </div>
             <p className="mt-1 text-slate-500">
-              {detailEntry?.caught
-                ? `Capturé le ${new Date(detailEntry.firstCaughtAt!).toLocaleDateString('fr-FR')}`
-                : 'Vu, pas encore capturé'}
-              {detailEntry?.caughtShiny && ' · version shiny obtenue ★'}
+              {detailState.caughtAt
+                ? `Capturé le ${new Date(detailState.caughtAt).toLocaleDateString('fr-FR')}`
+                : selected.formId === null
+                  ? 'Vu, pas encore capturé'
+                  : 'Forme pas encore capturée'}
+              {detailState.caughtShiny && ' · version shiny obtenue ★'}
             </p>
           </div>
           <button
@@ -223,5 +271,58 @@ function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto
         </div>
       )}
     </div>
+  );
+}
+
+/** Case d'une espèce ou d'une forme : silhouette tant qu'elle n'a pas été vue. */
+function DexTile({
+  ctx,
+  slot,
+  state,
+  shiny,
+  onSelect,
+}: {
+  ctx: GameContext;
+  slot: DexSlot;
+  state: SlotState;
+  shiny: boolean;
+  onSelect: () => void;
+}) {
+  const { seen, caught } = state;
+  const species = ctx.species(slot.speciesId, slot.formId);
+  return (
+    <button
+      type="button"
+      disabled={!seen}
+      onClick={onSelect}
+      title={seen ? species?.nameFr : undefined}
+      className={`relative flex flex-col items-center rounded-xl border p-1 text-[11px] ${
+        caught
+          ? shiny
+            ? 'border-amber-300 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/40'
+            : 'border-slate-200 bg-white dark:border-slate-800 dark:bg-slate-900'
+          : 'border-dashed border-slate-300 dark:border-slate-700'
+      }`}
+    >
+      <span className="self-start text-slate-400">{String(slot.speciesId).padStart(3, '0')}</span>
+      <PokemonSprite
+        speciesId={slot.speciesId}
+        formId={slot.formId}
+        size={56}
+        shiny={shiny && caught}
+        silhouette={!seen}
+        className={seen && !caught ? 'opacity-50 grayscale' : ''}
+      />
+      <span className="w-full truncate text-center">{seen ? species?.nameFr : '???'}</span>
+      {caught &&
+        (shiny ? (
+          <ShinyStar className="absolute top-0.5 right-1 text-xs" />
+        ) : (
+          <span
+            className="absolute top-1 right-1 h-2 w-2 rounded-full bg-brand-500"
+            title="Capturé"
+          />
+        ))}
+    </button>
   );
 }

@@ -45,6 +45,16 @@ pnpm install
 Cette commande télécharge toutes les bibliothèques du projet dans `node_modules`. À relancer
 seulement si quelqu'un a ajouté une dépendance (par exemple après une phase du plan).
 
+**Les illustrations des Pokémon.** Les petits sprites (Pokémon, objets, dresseurs) sont déjà dans
+le projet, mais les grandes illustrations (Pokédex, starters, évolutions) sont trop lourdes pour
+Git. Pour les télécharger (≈ 40 Mo, quelques minutes) :
+
+```sh
+pnpm sprites:download
+```
+
+Sans elles, le jeu marche quand même : il affiche le petit sprite à la place.
+
 **Le fichier `.env` (optionnel en local).** Il contient les réglages (port, secret de connexion…).
 Sans lui, des valeurs par défaut pour le développement sont utilisées. Pour le créer :
 
@@ -74,8 +84,10 @@ Elle démarre l'API, le jeu et l'admin ensemble. Attends quelques secondes : qua
 1. Elle ouvre la base dans `.data/pglite` (et la crée si elle n'existe pas).
 2. Elle applique les **migrations** : les mises à jour de la structure de la base (nouvelles
    tables, nouvelles colonnes). Rien à faire de ton côté.
-3. Si la base est toute neuve, elle importe le **contenu de test** (Kanto, 4 zones, objets de
-   base) et le publie.
+3. Si la base est toute neuve, elle importe le contenu de `content/game-content.json` (ou, à
+   défaut, le **contenu de test** : Kanto, 8 arènes, la Ligue, zones spéciales et quêtes
+   légendaires ; objets de base) et le publie.
+4. Elle écrit le contenu publié dans `content/game-content.json` (voir plus bas).
 
 Le mode `dev` recharge tout seul quand tu modifies le code : pas besoin de relancer.
 
@@ -117,6 +129,11 @@ Le contenu fonctionne comme un document avec brouillon :
 2. Modifie ce que tu veux (Zones, Objets, Équilibrage…).
 3. **Tableau de bord → Publier.** La publication est refusée s'il reste des erreurs de cohérence
    (elles sont listées sur le tableau de bord).
+
+À chaque publication, l'API réécrit **`content/game-content.json`** avec le contenu publié. Ce
+fichier est suivi par Git : **commite-le** pour garder tes ajustements (historique, retour en
+arrière). C'est aussi lui qui servira de contenu de départ en production. Les mises à jour du
+contenu faites par Claude ne touchent que les champs concernés et n'écrasent pas tes réglages.
 
 Le bouton **« Charger le contenu de test »** remet le contenu de départ dans un nouveau brouillon.
 Il est utile si ta base date d'avant la phase 1 (aucune zone, aucun starter).
@@ -175,7 +192,8 @@ lancé pendant que `pnpm dev` tourne), ou un fichier est bloqué.
 ### Repartir d'une base toute neuve
 
 Arrête `pnpm dev`, supprime (ou renomme) le dossier `.data/pglite`, puis relance `pnpm dev`. Tu
-perds les comptes et les Pokémon, mais le contenu de test est réimporté automatiquement.
+perds les comptes et les Pokémon ; le contenu est réimporté depuis `content/game-content.json`
+(tes ajustements compris), ou depuis le contenu de test si ce fichier n'existe pas.
 
 ### Utiliser un « vrai » Postgres (optionnel, avec Docker)
 

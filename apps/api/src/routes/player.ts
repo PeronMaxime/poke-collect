@@ -111,8 +111,7 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
       });
       await recordPokedex(tx, user.id, {
         seen: [speciesId],
-        caught: [speciesId],
-        caughtShiny: starter.isShiny ? [speciesId] : [],
+        caught: [starter],
         at,
       });
       await addItems(tx, user.id, newPlayer.startingInventory);

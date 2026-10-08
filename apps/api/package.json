@@ -13,6 +13,7 @@
   "dependencies": {
     "@fastify/cors": "^11.3.0",
     "@poke/content": "workspace:*",
+    "@poke/data": "workspace:*",
     "@poke/db": "workspace:*",
     "@poke/game-core": "workspace:*",
     "@poke/shared": "workspace:*",

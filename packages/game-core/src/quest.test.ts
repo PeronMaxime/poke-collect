@@ -43,7 +43,7 @@ describe('avancement des quêtes', () => {
       step: 0,
       count: 2,
     });
-    expect(advanceQuest(ctx, artikodin, { step: 0, count: 9 }, twoBadges, event)).toEqual({
+    expect(advanceQuest(ctx, artikodin, { step: 0, count: 13 }, twoBadges, event)).toEqual({
       step: 1,
       count: 0,
     });
@@ -53,7 +53,7 @@ describe('avancement des quêtes', () => {
     const artikodin = quest('artikodin');
     // L'étape 1 se termine : les captures Glace de la même expédition ne comptent pas pour l'étape 2.
     const event = expedition({ captured: [129, 87, 87].map((speciesId) => ({ speciesId })) });
-    expect(advanceQuest(ctx, artikodin, { step: 0, count: 9 }, twoBadges, event)).toEqual({
+    expect(advanceQuest(ctx, artikodin, { step: 0, count: 13 }, twoBadges, event)).toEqual({
       step: 1,
       count: 0,
     });
@@ -74,18 +74,36 @@ describe('avancement des quêtes', () => {
   });
 
   it('valide paresseusement les étapes « état » et s’arrête à la première non remplie', () => {
-    const electhor = quest('electhor');
-    expect(advanceQuest(ctx, electhor, NEW_QUEST, progress())).toEqual({ step: 0, count: 0 });
-    expect(advanceQuest(ctx, electhor, NEW_QUEST, twoBadges)).toEqual({ step: 1, count: 0 });
+    const mewtwo = quest('mewtwo');
+    const champion = progress({ defeatedTrainerIds: new Set(['maitre-blue']) });
+    expect(advanceQuest(ctx, mewtwo, NEW_QUEST, progress())).toEqual({ step: 0, count: 0 });
+    // Étape 2 : les trois quêtes des oiseaux (condition combinée), pas encore terminées.
+    expect(advanceQuest(ctx, mewtwo, NEW_QUEST, champion)).toEqual({ step: 1, count: 0 });
+    const birds = new Map([
+      ['artikodin', 3],
+      ['electhor', 4],
+      ['sulfura', 3],
+    ]);
+    expect(advanceQuest(ctx, mewtwo, NEW_QUEST, { ...champion, questSteps: birds })).toEqual({
+      step: 2,
+      count: 0,
+    });
+    birds.set('sulfura', 2);
+    expect(advanceQuest(ctx, mewtwo, NEW_QUEST, { ...champion, questSteps: birds }).step).toBe(1);
   });
 
   it('calcule les étapes validées, quêtes dépendantes comprises', () => {
-    const records = new Map([['mewtwo', { step: 3, count: 0 }]]);
-    const steps = questStepsDone(ctx, twoBadges, records);
-    expect(steps.get('mewtwo')).toBe(3);
+    const records = new Map([['mewtwo', { step: 4, count: 0 }]]);
+    const fourBadges = progress({
+      defeatedTrainerIds: new Set(['pierre', 'ondine', 'major-bob', 'erika']),
+    });
+    const steps = questStepsDone(ctx, fourBadges, records);
+    expect(steps.get('mewtwo')).toBe(4);
     // Mew se débloque quand Mewtwo est terminé ; son étape 1 (20 œufs) n'est pas remplie.
     expect(steps.get('mew')).toBe(0);
-    expect(steps.get('electhor')).toBe(1);
+    // Électhor s'ouvre au 4e badge (étape 1 : des captures), Artikodin au 5e.
+    expect(steps.get('electhor')).toBe(0);
+    expect(steps.has('artikodin')).toBe(false);
     expect(questStepsDone(ctx, progress(), new Map()).size).toBe(0);
   });
 
@@ -93,8 +111,8 @@ describe('avancement des quêtes', () => {
     const grotte = ctx.zone('grotte-azuree')!;
     const at = (step: number) =>
       isZoneUnlocked(ctx, grotte, { ...twoBadges, questSteps: new Map([['mewtwo', step]]) });
-    expect(at(1)).toBe(false);
-    expect(at(2)).toBe(true);
+    expect(at(2)).toBe(false);
+    expect(at(3)).toBe(true);
   });
 
   it('donne un statut à chaque quête', () => {

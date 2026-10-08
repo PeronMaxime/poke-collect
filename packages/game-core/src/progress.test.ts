@@ -42,4 +42,12 @@ describe('déblocages', () => {
     expect(isUnlocked(ctx, oneBadge, caught(1, ['gamin-tom']))).toBe(false);
     expect(isUnlocked(ctx, oneBadge, caught(1, ['pierre']))).toBe(true);
   });
+
+  it('exige toutes les briques d’une condition combinée', () => {
+    const safari = ctx.zone('parc-safari')!; // 5 badges et 60 espèces capturées
+    const fiveBadges = ['pierre', 'ondine', 'major-bob', 'erika', 'koga'];
+    expect(isZoneUnlocked(ctx, safari, caught(60, fiveBadges.slice(0, 4)))).toBe(false);
+    expect(isZoneUnlocked(ctx, safari, caught(59, fiveBadges))).toBe(false);
+    expect(isZoneUnlocked(ctx, safari, caught(60, fiveBadges))).toBe(true);
+  });
 });

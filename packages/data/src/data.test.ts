@@ -118,6 +118,10 @@ describe('données PokéAPI importées', () => {
   });
 
   it('construit les URLs de sprites', () => {
-    expect(pokemonSpriteUrl(6, { shiny: true })).toMatch(/pokemon\/shiny\/6\.png$/);
+    expect(pokemonSpriteUrl(6)).toBe('/api/sprites/pokemon/6.png');
+    expect(pokemonSpriteUrl(6, { shiny: true })).toBe('/api/sprites/pokemon/shiny/6.png');
+    expect(pokemonSpriteUrl('10033', { kind: 'artwork', shiny: true })).toBe(
+      '/api/sprites/artwork/shiny/10033.webp',
+    );
   });
 });

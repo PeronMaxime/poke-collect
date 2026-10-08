@@ -1,3 +1,4 @@
+import { species } from '@poke/data';
 import { describe, expect, it } from 'vitest';
 import { contentIssues, findUsages, gameContentSchema } from './integrity';
 import { seedContent } from './seed';
@@ -7,6 +8,48 @@ describe('seedContent', () => {
   it('respecte le schéma du contenu, sans erreur de cohérence', () => {
     expect(gameContentSchema.parse(seedContent)).toEqual(seedContent);
     expect(contentIssues(seedContent).filter((i) => i.severity === 'error')).toEqual([]);
+  });
+
+  it('rend obtenables les 151 espèces de Kanto', () => {
+    // Rencontres de Kanto (hors formes de l'Archipel Lointain), fossiles et quêtes…
+    const obtainable = new Set([
+      ...seedContent.zones
+        .filter((z) => z.regionId === 'kanto')
+        .flatMap((z) => z.encounters.filter((e) => !e.formId).map((e) => e.speciesId)),
+      ...seedContent.items.flatMap((i) =>
+        i.effects.flatMap((e) => (e.type === 'fossil' ? [e.speciesId] : [])),
+      ),
+      ...seedContent.quests.flatMap((q) => q.rewards.pokemon.map((p) => p.speciesId)),
+    ]);
+    // … puis leurs évolutions.
+    for (const s of [...species].sort((a, b) => a.id - b.id)) {
+      if (s.evolvesFromSpeciesId && obtainable.has(s.evolvesFromSpeciesId)) obtainable.add(s.id);
+    }
+    const kanto = seedContent.regions.find((r) => r.id === 'kanto')!.speciesIds;
+    expect(kanto.filter((id) => !obtainable.has(id))).toEqual([]);
+  });
+
+  it('vérifie chaque brique d’une condition combinée', () => {
+    const bad = structuredClone(seedContent);
+    bad.zones.find((z) => z.id === 'dojo-karate')!.unlock = {
+      type: 'allOf',
+      conditions: [
+        { type: 'badgeCount', count: 30 },
+        { type: 'trainerDefeated', trainerId: 'personne' },
+      ],
+    };
+    const messages = contentIssues(bad)
+      .filter((i) => i.severity === 'error')
+      .map((i) => `${i.entityId}: ${i.message}`);
+    expect(messages).toEqual([
+      'dojo-karate: Condition de déblocage : 30 badge(s) requis, 17 existent',
+      'dojo-karate: Condition de déblocage : dresseur « personne » inconnu',
+    ]);
+    const single = {
+      ...bad.zones[0]!,
+      unlock: { type: 'allOf', conditions: [{ type: 'always' }] },
+    };
+    expect(gameContentSchema.safeParse({ ...seedContent, zones: [single] }).success).toBe(false);
   });
 
   it('refuse un identifiant de région invalide', () => {
@@ -32,7 +75,9 @@ describe('cohérence du contenu', () => {
 
   it('refuse une zone dont toutes les rencontres sont désactivées', () => {
     const bad = structuredClone(seedContent);
-    bad.zones[3]!.encounters = [{ speciesId: 129, weight: 1, minLevel: 5, maxLevel: 5 }];
+    bad.zones.find((z) => z.id === 'cap-azuria')!.encounters = [
+      { speciesId: 129, weight: 1, minLevel: 5, maxLevel: 5 },
+    ];
     bad.speciesOverrides.push({
       speciesId: 129,
       enabled: false,
@@ -71,7 +116,7 @@ describe('cohérence du contenu', () => {
       'gamin-tom: Nature « grincheuse » inconnue',
       'gamin-tom: Un type est à la fois imposé et interdit',
       'fillette-lise: Condition de déblocage : dresseur « personne » inconnu',
-      'scout-rick: Condition de déblocage : 20 badge(s) requis, 11 existent',
+      'scout-rick: Condition de déblocage : 20 badge(s) requis, 17 existent',
     ]);
     expect(
       gameContentSchema.safeParse({ ...seedContent, trainers: [{ ...tom, team: [] }] }).success,
@@ -90,6 +135,9 @@ describe('cohérence du contenu', () => {
       'Table de butin « Butin de route »',
       'Table de butin « Butin de forêt »',
       'Table de butin « Butin de grotte »',
+      'Table de butin « Butin de fouilles (Kanto) »',
+      'Table de butin « Butin de fouilles (Hoenn) »',
+      'Table de butin « Butin de fouilles (Sinnoh) »',
       'Table de butin « Butin des berges »',
       'Article de boutique « poke-ball »',
       'Article de boutique « poke-ball-x10 »',
@@ -97,11 +145,14 @@ describe('cohérence du contenu', () => {
     ]);
     expect(findUsages(seedContent, 'lootTable', 'butin-mer')).toEqual([
       'Zone « Cap Azuria »',
+      'Zone « Routes maritimes »',
       'Zone « Îles Écume »',
       'Zone « Archipel Lointain »',
       'Zone « Lac Colère »',
       'Zone « Lac Salinas »',
       'Dresseur « Ondine »',
+      'Dresseur « Hugo »',
+      'Dresseur « Léna »',
       'Dresseur « Maya »',
     ]);
     // Léo et Ondine dépendent du nombre de badges, pas de Pierre directement ; la Super Ball si.
@@ -140,7 +191,17 @@ describe('cohérence du contenu', () => {
     ]);
     expect(findUsages(seedContent, 'trainer', 'ondine')).toEqual([
       'Condition de déblocage de « Article Hyper Ball (ultra-ball) »',
-      'Condition de déblocage de « Quête L’oiseau de foudre, étape 1 »',
+    ]);
+    expect(findUsages(seedContent, 'trainer', 'koga')).toEqual([
+      'Condition de déblocage de « Quête L’oiseau de foudre, étape 3 »',
+    ]);
+    // Conditions combinées : chaque brique compte.
+    expect(findUsages(seedContent, 'trainer', 'karateka-kiyo')).toEqual([
+      'Condition de déblocage de « Dojo Karaté »',
+    ]);
+    expect(findUsages(seedContent, 'quest', 'sulfura')).toEqual([
+      'Condition de « Mont Braise »',
+      'Condition de « Quête Le Pokémon génétique, étape 2 »',
     ]);
   });
 

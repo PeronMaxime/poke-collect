@@ -278,12 +278,21 @@ describe('combats de dresseurs', () => {
     await forceOutcome(start.body.id, 'win');
     advance(60);
     const claim = await call<ClaimBattleResponse>('POST', `/api/battles/${start.body.id}/claim`);
-    expect(claim.body.battle.result).toMatchObject({ badgeEarned: true, money: 1200 });
-    expect(claim.body.currency).toBe(80 + 1200);
+    expect(claim.body.battle.result).toMatchObject({ badgeEarned: true, money: 1400 });
+    expect(claim.body.currency).toBe(80 + 1400);
 
     const rematch = await call('POST', '/api/battles', { trainerId: 'pierre', team: ids });
     expect(rematch.body).toMatchObject({ error: 'TRAINER_DEFEATED' });
-    // Un badge débloque Ondine (et sa condition de PE minimale est remplie par cette équipe).
+    // Le badge ouvre le Mont Sélénite ; Ondine attend la Pique-niqueuse Ali (et sa condition de
+    // PE minimale est remplie par cette équipe).
+    const leo = await call('POST', '/api/battles', { trainerId: 'campeur-leo', team: ids });
+    expect(leo.body).toMatchObject({ error: 'TEAM_INVALID' }); // débloqué, mais niveau 15 max
+    expect((await call('POST', '/api/battles', { trainerId: 'ondine', team: ids })).body).toEqual({
+      error: 'TRAINER_LOCKED',
+    });
+    await handle.db
+      .insert(trainerProgress)
+      .values({ ownerId: userId, trainerId: 'pique-niqueuse-ali', wins: 1, lastWinAt: clock });
     const misty = await call<BattleDto>('POST', '/api/battles', { trainerId: 'ondine', team: ids });
     expect(misty.status, JSON.stringify(misty.body)).toBe(201);
   });

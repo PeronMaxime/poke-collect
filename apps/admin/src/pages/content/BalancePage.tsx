@@ -749,6 +749,19 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
               disabled={disabled}
             />
           </Field>
+          <Field
+            label="Places au Musée"
+            hint="Fossiles restaurés en même temps (la durée se règle sur chaque fossile, dans Objets)."
+            error={err('museum.slots')}
+          >
+            <NumberInput
+              value={b.museum.slots}
+              min={1}
+              max={20}
+              onChange={set('museum')('slots')}
+              disabled={disabled}
+            />
+          </Field>
         </div>
       </Section>
 

@@ -1,3 +1,5 @@
+import type { FormKind } from './types';
+
 /** Couleurs officielles des types, pour l'affichage (jeu et admin). */
 export const TYPE_COLORS: Record<string, string> = {
   normal: '#9fa19f',
@@ -19,3 +21,16 @@ export const TYPE_COLORS: Record<string, string> = {
   dark: '#624d4e',
   fairy: '#ef70ef',
 };
+
+/**
+ * Sections de formes du Pokédex et de l'admin, dans l'ordre d'affichage. Les formes naturelles
+ * (`alternate`, `cosmetic` : Prismillon, Zarbi, Motisma…) n'y figurent pas pour l'instant.
+ */
+export const DEX_FORM_SECTIONS = [
+  { kind: 'regional', label: 'Formes régionales' },
+  { kind: 'mega', label: 'Méga-Évolutions' },
+  { kind: 'primal', label: 'Primo-Résurgences' },
+  { kind: 'gmax', label: 'Formes Gigamax' },
+  { kind: 'battle', label: 'Formes de combat' },
+  { kind: 'totem', label: 'Pokémon Dominants' },
+] as const satisfies readonly { kind: FormKind; label: string }[];

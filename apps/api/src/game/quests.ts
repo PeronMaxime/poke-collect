@@ -173,8 +173,7 @@ export async function claimQuest(
     });
     const newSpeciesIds = await recordPokedex(tx, userId, {
       seen: generated.map((p) => p.speciesId),
-      caught: generated.map((p) => p.speciesId),
-      caughtShiny: generated.filter((p) => p.isShiny).map((p) => p.speciesId),
+      caught: generated,
       at: now,
     });
     const slots = playerSlots(ctx, await claimedRewards(tx, userId));

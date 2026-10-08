@@ -108,7 +108,7 @@ describe('notifications push', () => {
     const config = await player.call<PushConfigResponse>('GET', '/api/push');
     expect(config.body).toEqual({
       publicKey: env.vapid!.publicKey,
-      settings: { expeditions: true, battles: true, eggs: true },
+      settings: { expeditions: true, battles: true, eggs: true, fossils: true },
       subscriptions: 0,
     });
   });
@@ -136,7 +136,7 @@ describe('notifications push', () => {
   });
 
   it('respecte les réglages du joueur', async () => {
-    const settings = { expeditions: false, battles: true, eggs: true };
+    const settings = { expeditions: false, battles: true, eggs: true, fossils: true };
     expect((await player.call('PUT', '/api/push/settings', settings)).body).toEqual(settings);
     const exp = await expedition();
     advance(20);
@@ -181,7 +181,7 @@ describe('télémétrie (admin)', () => {
     expect(first).toMatchObject({ players: 1, reachedPercent: 50 });
     expect(first.medianHours).toBeGreaterThan(0);
     expect(t.steps.filter((s) => s.kind === 'region').map((s) => s.id)).toEqual(
-      seedContent.regions.map((r) => r.id),
+      seedContent.regions.filter((r) => r.enabled).map((r) => r.id),
     );
     expect(t.zones.find((z) => z.zoneId === 'route-1')).toMatchObject({
       expeditions: 2,

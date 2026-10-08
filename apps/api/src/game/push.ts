@@ -1,6 +1,13 @@
 import { and, eq, gt, inArray, isNull, lte } from 'drizzle-orm';
 import webpush from 'web-push';
-import { eggs, expeditions, playerProfiles, pushSubscriptions, trainerBattles } from '@poke/db';
+import {
+  eggs,
+  expeditions,
+  fossilRevivals,
+  playerProfiles,
+  pushSubscriptions,
+  trainerBattles,
+} from '@poke/db';
 import type { Db } from '@poke/db';
 import type { GameContext } from '@poke/game-core';
 import { DEFAULT_NOTIFICATION_SETTINGS, notificationSettingsSchema } from '@poke/shared';
@@ -9,8 +16,8 @@ import type { ContentCache } from '../content-cache';
 import type { VapidKeys } from '../env';
 
 /**
- * Notifications Web Push : une tournée périodique repère les expéditions et combats terminés et
- * les œufs prêts à éclore, puis prévient leurs propriétaires abonnés (une notification groupée
+ * Notifications Web Push : une tournée périodique repère les expéditions et combats terminés, les
+ * œufs prêts à éclore et les fossiles restaurés, puis prévient leurs propriétaires abonnés (une notification groupée
  * par joueur). Chaque élément n'est notifié qu'une fois (`notified_at`).
  */
 
@@ -58,6 +65,7 @@ export interface ActivitySummary {
   zoneIds: string[];
   trainerIds: string[];
   eggs: number;
+  fossils: number;
 }
 
 /** Texte de la notification groupée ; null si rien à signaler (types désactivés). */
@@ -67,7 +75,7 @@ export function pushMessage(
   settings: NotificationSettings,
 ): PushPayload | null {
   const parts: { text: string; tab: string }[] = [];
-  const { zoneIds, trainerIds, eggs: eggCount } = summary;
+  const { zoneIds, trainerIds, eggs: eggCount, fossils } = summary;
   if (settings.expeditions && zoneIds.length > 0) {
     parts.push({
       tab: 'expeditions',
@@ -90,6 +98,15 @@ export function pushMessage(
     parts.push({
       tab: 'daycare',
       text: eggCount === 1 ? 'Un œuf est prêt à éclore' : `${eggCount} œufs sont prêts à éclore`,
+    });
+  }
+  if (settings.fossils && fossils > 0) {
+    parts.push({
+      tab: 'museum',
+      text:
+        fossils === 1
+          ? 'Un fossile a été restauré au Musée'
+          : `${fossils} fossiles restaurés au Musée`,
     });
   }
   if (parts.length === 0) return null;
@@ -181,16 +198,30 @@ export async function runPushRound(
       ),
     )
     .returning({ ownerId: eggs.ownerId });
+  const readyFossils = await db
+    .update(fossilRevivals)
+    .set({ notifiedAt: now })
+    .where(
+      and(
+        isNull(fossilRevivals.revivedAt),
+        isNull(fossilRevivals.notifiedAt),
+        lte(fossilRevivals.readyAt, now),
+        gt(fossilRevivals.readyAt, since),
+        inArray(fossilRevivals.ownerId, subscribed),
+      ),
+    )
+    .returning({ ownerId: fossilRevivals.ownerId });
 
   const summaries = new Map<string, ActivitySummary>();
   const summary = (ownerId: string) => {
     let s = summaries.get(ownerId);
-    if (!s) summaries.set(ownerId, (s = { zoneIds: [], trainerIds: [], eggs: 0 }));
+    if (!s) summaries.set(ownerId, (s = { zoneIds: [], trainerIds: [], eggs: 0, fossils: 0 }));
     return s;
   };
   for (const e of doneExpeditions) summary(e.ownerId).zoneIds.push(e.zoneId);
   for (const b of doneBattles) summary(b.ownerId).trainerIds.push(b.trainerId);
   for (const e of readyEggs) summary(e.ownerId).eggs++;
+  for (const f of readyFossils) summary(f.ownerId).fossils++;
   if (summaries.size === 0) return 0;
 
   const ctx = await content.get();

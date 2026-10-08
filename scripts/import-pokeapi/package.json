@@ -5,12 +5,15 @@
   "type": "module",
   "scripts": {
     "start": "tsx src/index.ts",
+    "sprites": "tsx src/sprites.ts",
     "typecheck": "tsc -p tsconfig.json"
   },
   "dependencies": {
+    "@poke/content": "workspace:*",
     "@poke/data": "workspace:*"
   },
   "devDependencies": {
+    "sharp": "0.34.3",
     "tsx": "^4.23.15"
   }
 }

@@ -9,10 +9,12 @@ import type {
   ExpeditionsResponse,
   InventoryEntryDto,
   PokedexEntryDto,
+  PokedexFormEntryDto,
   PokemonDto,
 } from '@poke/shared';
 import { buildApp } from './app';
 import { loadEnv } from './env';
+import { recordPokedex } from './game/store';
 
 const handle = createDb({ pgliteDataDir: 'memory://' });
 const env = loadEnv({ NODE_ENV: 'test' });
@@ -144,20 +146,20 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
   it('lance une expédition et réserve les Balls et baies', async () => {
     const res = await call<ExpeditionDto>('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 60,
+      durationMinutes: 5,
       team: [starter.id],
       ballItemId: 'poke-ball',
       berryItemId: 'razz-berry',
     });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     expedition = res.body;
-    expect(expedition).toMatchObject({ slotIndex: 0, balls: 3, berries: 3, contentVersionId: 1 });
-    expect(new Date(expedition.endsAt).getTime() - clock.getTime()).toBe(60 * 60_000);
+    expect(expedition).toMatchObject({ slotIndex: 0, balls: 2, berries: 2, contentVersionId: 1 });
+    expect(new Date(expedition.endsAt).getTime() - clock.getTime()).toBe(5 * 60_000);
 
     const inv = await call<InventoryEntryDto[]>('GET', '/api/inventory');
     expect(inv.body).toEqual([
-      { itemId: 'poke-ball', quantity: 17 },
-      { itemId: 'razz-berry', quantity: 2 },
+      { itemId: 'poke-ball', quantity: 18 },
+      { itemId: 'razz-berry', quantity: 3 },
     ]);
     const list = await call<ExpeditionsResponse>('GET', '/api/expeditions');
     expect(list.body.slots).toBe(2);
@@ -178,7 +180,7 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
   });
 
   it('refuse de réclamer avant la fin', async () => {
-    advance(59);
+    advance(4);
     const res = await call('POST', `/api/expeditions/${expedition.id}/claim`);
     expect(res).toMatchObject({ status: 409, body: { error: 'NOT_FINISHED' } });
   });
@@ -191,8 +193,8 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
     );
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     const result = res.body.expedition.result!;
-    expect(result.encounters).toHaveLength(3);
-    expect(result.ballsUsed).toBe(3);
+    expect(result.encounters).toHaveLength(2);
+    expect(result.ballsUsed).toBe(2);
     const capturedIds = result.encounters.flatMap((e) => (e.pokemonId ? [e.pokemonId] : []));
     expect(res.body.captured.map((p) => p.id)).toEqual(capturedIds);
 
@@ -215,7 +217,7 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
 
     const inv = await call<InventoryEntryDto[]>('GET', '/api/inventory');
     const lootBalls = result.loot.find((l) => l.itemId === 'poke-ball')?.quantity ?? 0;
-    expect(inv.body.find((i) => i.itemId === 'poke-ball')?.quantity).toBe(17 + lootBalls);
+    expect(inv.body.find((i) => i.itemId === 'poke-ball')?.quantity).toBe(18 + lootBalls);
   });
 
   it('résout une expédition avec le contenu de sa version de départ', async () => {
@@ -258,19 +260,53 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
     // Les nouvelles expéditions utilisent le nouveau contenu.
     const next = await call<ExpeditionDto>('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 15,
+      durationMinutes: 2,
       team: [starter.id],
       ballItemId: null,
       berryItemId: null,
     });
     expect(next.body.contentVersionId).toBe(draft.body.id);
-    advance(15);
+    advance(2);
     const claimed = await call<ClaimExpeditionResponse>(
       'POST',
       `/api/expeditions/${next.body.id}/claim`,
     );
     expect(claimed.body.expedition.result!.encounters.map((e) => e.speciesId)).toEqual([129]);
     expect(claimed.body.expedition.result!.encounters[0]!.outcome).toBe('noBall');
+  });
+});
+
+describe('Pokédex des formes', () => {
+  it('enregistre les formes capturées et leur version shiny', async () => {
+    const call = client(await signUp('lilie@example.com'));
+    expect((await call('POST', '/api/profile', { trainerName: 'Lilie' })).status).toBe(201);
+    expect((await call<PokedexFormEntryDto[]>('GET', '/api/pokedex/forms')).body).toEqual([]);
+
+    const [user] = await handle.db.select().from(users).where(eq(users.email, 'lilie@example.com'));
+    const at = new Date('2026-10-08T12:00:00Z');
+    // Rattata d’Alola (10091), puis sa version shiny ; Florizarre Gigamax (10195).
+    const first = await recordPokedex(handle.db, user!.id, {
+      seen: [19],
+      caught: [
+        { speciesId: 19, formId: 10091, isShiny: false },
+        { speciesId: 3, formId: 10195, isShiny: false },
+      ],
+      at,
+    });
+    expect(first.sort((a, b) => a - b)).toEqual([3, 19]);
+    await recordPokedex(handle.db, user!.id, {
+      seen: [],
+      caught: [{ speciesId: 19, formId: 10091, isShiny: true }],
+      at: new Date('2026-10-09T12:00:00Z'),
+    });
+
+    const forms = await call<PokedexFormEntryDto[]>('GET', '/api/pokedex/forms');
+    expect(forms.body).toEqual([
+      { formId: 10091, caughtShiny: true, firstCaughtAt: at.toISOString() },
+      { formId: 10195, caughtShiny: false, firstCaughtAt: at.toISOString() },
+    ]);
+    const dex = await call<PokedexEntryDto[]>('GET', '/api/pokedex');
+    expect(dex.body.find((d) => d.speciesId === 19)).toMatchObject({ caughtShiny: true });
   });
 });
 

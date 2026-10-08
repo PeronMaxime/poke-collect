@@ -11,7 +11,7 @@ import {
   SelectInput,
   TextInput,
 } from '../../components/forms/fields';
-import { ItemIcon } from '../../components/forms/pickers';
+import { FormSelect, ItemIcon, SpeciesSelect } from '../../components/forms/pickers';
 
 export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   ball: 'Ball',
@@ -19,6 +19,7 @@ export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   evolution: 'Évolution',
   breeding: 'Élevage',
   endgame: 'Endgame',
+  fossil: 'Fossile',
   misc: 'Divers',
 };
 
@@ -74,6 +75,11 @@ const EFFECTS: Record<
     label: 'Changement de talent',
     help: 'Utilisé sur un Pokémon : passe à un autre talent normal (Pilule Talent) ou au talent caché (Patch Talent). Consommé.',
     create: () => ({ type: 'abilityChange', hidden: false }),
+  },
+  fossil: {
+    label: 'Fossile',
+    help: 'Déposé au Musée (consommé) : devient le Pokémon choisi, au niveau donné, après la durée de restauration.',
+    create: () => ({ type: 'fossil', speciesId: 138, formId: null, level: 10, minutes: 120 }),
   },
 };
 
@@ -338,6 +344,45 @@ function ItemForm({
                     ]}
                   />
                 </Field>
+              )}
+              {effect.type === 'fossil' && (
+                <>
+                  <Field label="Pokémon" error={errors.get(`effects.${i}.speciesId`)}>
+                    <SpeciesSelect
+                      ctx={working.ctx}
+                      value={effect.speciesId}
+                      onChange={(speciesId) => update({ ...effect, speciesId, formId: null })}
+                      disabled={disabled}
+                    />
+                    <FormSelect
+                      speciesId={effect.speciesId}
+                      value={effect.formId}
+                      onChange={(formId) => update({ ...effect, formId })}
+                      disabled={disabled}
+                    />
+                  </Field>
+                  <Field label="Niveau" error={errors.get(`effects.${i}.level`)}>
+                    <NumberInput
+                      className="w-24"
+                      value={effect.level}
+                      min={1}
+                      max={100}
+                      disabled={disabled}
+                      onChange={(v) => update({ ...effect, level: v })}
+                    />
+                  </Field>
+                  <Field label="Restauration" error={errors.get(`effects.${i}.minutes`)}>
+                    <NumberInput
+                      className="w-32"
+                      value={effect.minutes}
+                      min={1}
+                      max={10_080}
+                      unit="min"
+                      disabled={disabled}
+                      onChange={(v) => update({ ...effect, minutes: v })}
+                    />
+                  </Field>
+                </>
               )}
               {editable && (
                 <button

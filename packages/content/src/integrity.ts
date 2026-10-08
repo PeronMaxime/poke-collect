@@ -1,6 +1,7 @@
 import { getForm, getSpecies, natures, types as typeData } from '@poke/data';
-import { gameContentStructureSchema } from './schemas';
+import { gameContentStructureSchema, unlockParts } from './schemas';
 import type {
+  BaseUnlockCondition,
   GameContentData,
   ProgressReward,
   QuestCondition,
@@ -107,7 +108,7 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   for (const id of duplicates(content.quests.map((q) => q.id)))
     add('error', 'quest', id, 'Identifiant de quête en double');
 
-  const checkUnlock = (entity: ContentEntityKind, id: string, unlock: UnlockCondition) => {
+  const checkUnlockPart = (entity: ContentEntityKind, id: string, unlock: BaseUnlockCondition) => {
     if (unlock.type === 'regionDexPercent' && !regionIds.has(unlock.regionId)) {
       add('error', entity, id, `Condition de déblocage : région « ${unlock.regionId} » inconnue`);
     }
@@ -149,6 +150,9 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
         );
       }
     }
+  };
+  const checkUnlock = (entity: ContentEntityKind, id: string, unlock: UnlockCondition) => {
+    for (const part of unlockParts(unlock)) checkUnlockPart(entity, id, part);
   };
 
   const checkReward = (entity: ContentEntityKind, id: string, reward: ProgressReward) => {
@@ -269,9 +273,11 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
       add('warning', 'region', region.id, 'Aucune zone d’expédition dans cette région');
     }
   }
-  const first = sortedRegions[0];
+  // Les nouveaux joueurs commencent dans la première région active.
+  const first = sortedRegions.find((r) => r.enabled);
+  if (sortedRegions.length > 0 && !first) add('error', 'region', null, 'Aucune région active');
   if (first && first.starterSpeciesIds.length === 0) {
-    add('error', 'region', first.id, 'La première région doit proposer au moins un starter');
+    add('error', 'region', first.id, 'La première région active doit proposer au moins un starter');
   }
 
   // Surcharges d'espèces
@@ -288,6 +294,13 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     for (const effect of item.effects) {
       if (effect.type === 'mint' && !KNOWN_NATURES.has(effect.nature)) {
         add('error', 'item', item.id, `Aromate : nature « ${effect.nature} » inconnue`);
+      }
+      if (effect.type === 'fossil') {
+        if (!getSpecies(effect.speciesId)) {
+          add('error', 'item', item.id, `Fossile : espèce ${effect.speciesId} inconnue`);
+        }
+        const form = formError(effect);
+        if (form) add('error', 'item', item.id, `Fossile : ${form}`);
       }
     }
   }
@@ -507,19 +520,20 @@ export const gameContentSchema = gameContentStructureSchema.superRefine((content
  * Entités qui portent une condition de déblocage, et étapes de quête (avec un libellé pour les
  * usages).
  */
-const unlockables = (content: GameContentData): { unlock: QuestCondition; name: string }[] => [
-  ...content.regions,
-  ...content.zones,
-  ...content.trainers,
-  ...content.shopEntries.map((e) => ({
-    unlock: e.unlock,
-    name: `Article ${content.items.find((i) => i.id === e.itemId)?.name ?? e.itemId} (${e.id})`,
-  })),
-  ...content.quests,
-  ...content.quests.flatMap((q) =>
-    q.steps.map((s, i) => ({ unlock: s.condition, name: `Quête ${q.name}, étape ${i + 1}` })),
-  ),
-];
+const unlockables = (content: GameContentData): { unlock: QuestCondition; name: string }[] =>
+  [
+    ...content.regions,
+    ...content.zones,
+    ...content.trainers,
+    ...content.shopEntries.map((e) => ({
+      unlock: e.unlock,
+      name: `Article ${content.items.find((i) => i.id === e.itemId)?.name ?? e.itemId} (${e.id})`,
+    })),
+    ...content.quests,
+    ...content.quests.flatMap((q) =>
+      q.steps.map((s, i) => ({ unlock: s.condition, name: `Quête ${q.name}, étape ${i + 1}` })),
+    ),
+  ].flatMap((e) => unlockParts(e.unlock).map((unlock) => ({ unlock, name: e.name })));
 
 /** Où une entité est-elle utilisée ? (avant suppression : intégrité des références) */
 export function findUsages(

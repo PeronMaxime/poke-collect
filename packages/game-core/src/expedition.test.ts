@@ -4,6 +4,7 @@ import {
   checkTeam,
   encounterCount,
   encounterProbabilities,
+  lootProbabilities,
   lootRollCount,
   pityMultiplier,
   resolveExpedition,
@@ -17,8 +18,9 @@ const route1 = ctx.zone('route-1')!;
 
 describe('quantités selon la durée', () => {
   it('applique le taux horaire et les rendements décroissants', () => {
-    expect([15, 60, 240, 480].map((d) => encounterCount(ctx, d))).toEqual([1, 3, 10, 19]);
-    expect([15, 60, 240, 480].map((d) => lootRollCount(ctx, d))).toEqual([1, 2, 6, 12]);
+    const durations = [2, 5, 15, 60, 240, 480];
+    expect(durations.map((d) => encounterCount(ctx, d))).toEqual([1, 2, 5, 20, 69, 129]);
+    expect(durations.map((d) => lootRollCount(ctx, d))).toEqual([1, 1, 2, 10, 34, 64]);
   });
 
   it('lit les réglages, pas de valeurs en dur', () => {
@@ -28,6 +30,20 @@ describe('quantités selon la durée', () => {
     });
     expect(encounterCount(linear, 60)).toBe(5);
     expect(encounterCount(linear, 480)).toBe(40);
+  });
+});
+
+describe('lootProbabilities', () => {
+  it('cumule la chance de chaque objet sur tous les tirages', () => {
+    const short = lootProbabilities(ctx, route1, 2).find((l) => l.itemId === 'poke-ball')!;
+    expect(short).toEqual({ itemId: 'poke-ball', probability: 0.7, min: 1, max: 3 });
+    // 60 min = 10 tirages.
+    const long = lootProbabilities(ctx, route1, 60).find((l) => l.itemId === 'poke-ball')!;
+    expect(long.probability).toBeCloseTo(1 - 0.3 ** 10);
+  });
+
+  it('est vide sans table de butin', () => {
+    expect(lootProbabilities(ctx, { ...route1, lootTableId: null }, 60)).toEqual([]);
   });
 });
 
@@ -56,9 +72,9 @@ describe('capture', () => {
     expect(pityMultiplier(ctx, 0)).toBe(1);
     expect(pityMultiplier(ctx, 10)).toBeCloseTo(1.5);
     expect(pityMultiplier(ctx, 1000)).toBe(3);
-    const base = encounterProbabilities(ctx, route1).find((p) => p.speciesId === 43)!;
-    const pity = encounterProbabilities(ctx, route1, new Map([[43, 40]])).find(
-      (p) => p.speciesId === 43,
+    const base = encounterProbabilities(ctx, route1).find((p) => p.speciesId === 10)!;
+    const pity = encounterProbabilities(ctx, route1, new Map([[10, 40]])).find(
+      (p) => p.speciesId === 10,
     )!;
     expect(base.probability).toBeCloseTo(0.05);
     expect(pity.probability).toBeGreaterThan(base.probability * 2.5);
@@ -91,7 +107,7 @@ describe('checkTeam', () => {
 describe('resolveExpedition', () => {
   const input: ExpeditionInput = {
     zone: route1,
-    durationMinutes: 240,
+    durationMinutes: 60,
     seed: 1234,
     team: [member('starter', 4, 5, { xp: 135 })],
     balls: { itemId: 'poke-ball', quantity: 10 },
@@ -108,7 +124,7 @@ describe('resolveExpedition', () => {
 
   it('consomme une Ball par tentative et une baie tant qu’il en reste', () => {
     const result = resolveExpedition(ctx, input);
-    expect(result.encounters).toHaveLength(10);
+    expect(result.encounters).toHaveLength(20);
     expect(result.ballsUsed).toBe(10);
     expect(result.berriesUsed).toBe(3);
     for (const e of result.encounters) {
@@ -123,11 +139,15 @@ describe('resolveExpedition', () => {
       balls: { itemId: 'poke-ball', quantity: 2 },
     });
     expect(result.ballsUsed).toBe(2);
-    expect(result.encounters.filter((e) => e.outcome === 'noBall')).toHaveLength(8);
+    expect(result.encounters.filter((e) => e.outcome === 'noBall')).toHaveLength(18);
   });
 
   it('met à jour la pitié : +1 par échec, remise à zéro à la capture', () => {
-    const result = resolveExpedition(ctx, { ...input, pity: { 19: 4 } });
+    const result = resolveExpedition(ctx, {
+      ...input,
+      balls: { itemId: 'poke-ball', quantity: 30 },
+      pity: { 19: 4 },
+    });
     for (const [speciesId, misses] of Object.entries(result.pity)) {
       const attempts = result.encounters.filter((e) => e.speciesId === Number(speciesId));
       const last = attempts.at(-1)!;
@@ -149,7 +169,7 @@ describe('resolveExpedition', () => {
 
   it('ignore les espèces désactivées', () => {
     const custom = testContext((c) => {
-      for (const id of [16, 21, 29, 32, 43]) {
+      for (const id of [10, 16, 21, 29, 32]) {
         c.speciesOverrides.push({
           speciesId: id,
           enabled: false,
@@ -176,7 +196,7 @@ describe('simulateZone', () => {
       runs: 2000,
       seed: 1,
     });
-    expect(sim.encountersPerRun).toBe(3);
+    expect(sim.encountersPerRun).toBe(20);
     const rattata = sim.species.find((s) => s.speciesId === 19)!;
     expect(rattata.encounterShare).toBeGreaterThan(0.25);
     expect(rattata.encounterShare).toBeLessThan(0.35);

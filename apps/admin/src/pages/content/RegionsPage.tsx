@@ -8,6 +8,7 @@ import {
   NumberInput,
   Section,
   TextInput,
+  Toggle,
   errorsUnder,
 } from '../../components/forms/fields';
 import { SpeciesSetEditor, Sprite, UnlockEditor } from '../../components/forms/pickers';
@@ -25,7 +26,9 @@ export function RegionsPage() {
       searchText={(r) => `${r.id} ${r.name}`}
       renderListItem={(r) => (
         <>
-          <span className="block truncate font-medium">{r.name}</span>
+          <span className={`block truncate font-medium ${r.enabled ? '' : 'line-through'}`}>
+            {r.name}
+          </span>
           <span className="block text-xs text-slate-500">
             {r.speciesIds.length} espèces · ordre {r.order}
           </span>
@@ -38,6 +41,7 @@ export function RegionsPage() {
         image: null,
         speciesIds: [],
         starterSpeciesIds: [],
+        enabled: true,
         unlock: { type: 'always' },
       })}
       renderForm={(p) => <RegionForm {...p} />}
@@ -106,6 +110,12 @@ function RegionForm({
           />
         </Field>
       </div>
+      <Toggle
+        checked={r.enabled}
+        onChange={(v) => set('enabled', v)}
+        label="Région activée (désactivée : cachée aux joueurs, avec ses zones, dresseurs, quêtes et paliers de Pokédex)"
+        disabled={disabled}
+      />
 
       <Section title="Espèces incluses">
         <SpeciesSetEditor

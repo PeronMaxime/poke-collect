@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Quest, Region, Trainer, UnlockCondition } from '@poke/content';
+import type { BaseUnlockCondition, Quest, Region, Trainer, UnlockCondition } from '@poke/content';
 import {
   TYPE_COLORS,
   itemSpriteUrl,
@@ -389,6 +389,7 @@ export function UnlockEditor({
   trainers = [],
   quests = [],
   disabled,
+  nested,
 }: {
   value: UnlockCondition;
   onChange: (v: UnlockCondition) => void;
@@ -398,6 +399,8 @@ export function UnlockEditor({
   /** Quêtes proposées pour les conditions d'avancement de quête. */
   quests?: readonly Quest[];
   disabled?: boolean;
+  /** Brique d'un « toutes ces conditions » : pas de combinaison imbriquée. */
+  nested?: boolean;
 }) {
   const initial = (type: UnlockCondition['type']): UnlockCondition => {
     switch (type) {
@@ -415,8 +418,19 @@ export function UnlockEditor({
         return { type, questId: quests[0]?.id ?? '', count: 1 };
       case 'questCompleted':
         return { type, questId: quests[0]?.id ?? '' };
+      case 'allOf':
+        return {
+          type,
+          conditions: [
+            value.type === 'always' || value.type === 'allOf'
+              ? { type: 'badgeCount', count: 1 }
+              : value,
+            { type: 'speciesCaught', count: 10 },
+          ],
+        };
     }
   };
+  const editorProps = { regions, trainers, quests, disabled, nested: true };
   const quest = 'questId' in value ? quests.find((q) => q.id === value.questId) : undefined;
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -440,7 +454,50 @@ export function UnlockEditor({
         <option value="questCompleted" disabled={quests.length === 0}>
           Quête terminée
         </option>
+        {!nested && <option value="allOf">Plusieurs conditions (toutes)</option>}
       </select>
+      {value.type === 'allOf' && (
+        <div className="basis-full space-y-2 border-l-2 border-slate-200 pl-3 dark:border-slate-700">
+          {value.conditions.map((condition, i) => (
+            <div key={i} className="flex items-start gap-2">
+              <UnlockEditor
+                {...editorProps}
+                value={condition}
+                onChange={(c) =>
+                  onChange({
+                    ...value,
+                    conditions: value.conditions.with(i, c as BaseUnlockCondition),
+                  })
+                }
+              />
+              <button
+                type="button"
+                className="btn-ghost px-2 py-1 text-xs"
+                disabled={disabled || value.conditions.length <= 2}
+                title="Au moins deux conditions"
+                onClick={() =>
+                  onChange({ ...value, conditions: value.conditions.filter((_, j) => j !== i) })
+                }
+              >
+                Retirer
+              </button>
+            </div>
+          ))}
+          <button
+            type="button"
+            className="btn-ghost py-1 text-xs"
+            disabled={disabled || value.conditions.length >= 5}
+            onClick={() =>
+              onChange({
+                ...value,
+                conditions: [...value.conditions, { type: 'badgeCount', count: 1 }],
+              })
+            }
+          >
+            + Ajouter une condition
+          </button>
+        </div>
+      )}
       {value.type === 'questStepsDone' && (
         <NumberInput
           className="w-36"

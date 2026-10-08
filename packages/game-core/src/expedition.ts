@@ -113,6 +113,26 @@ export function rollLoot(rng: Rng, table: LootTable): ItemStack[] {
   return drops;
 }
 
+/**
+ * Butin possible d'une expédition (pour l'affichage) : probabilité d'obtenir chaque objet au
+ * moins une fois sur l'ensemble des tirages, et quantité par tirage réussi.
+ */
+export function lootProbabilities(
+  ctx: GameContext,
+  zone: Zone,
+  durationMinutes: number,
+): { itemId: string; probability: number; min: number; max: number }[] {
+  const table = zone.lootTableId ? ctx.lootTable(zone.lootTableId) : undefined;
+  if (!table) return [];
+  const rolls = lootRollCount(ctx, durationMinutes);
+  return table.entries.map((e) => ({
+    itemId: e.itemId,
+    probability: 1 - (1 - e.chance) ** rolls,
+    min: e.min,
+    max: e.max,
+  }));
+}
+
 // --- Validation de l'équipe -----------------------------------------------------------------
 
 export interface TeamMember extends PokemonInstance {

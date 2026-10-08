@@ -51,7 +51,7 @@ export type ChooseStarterInput = z.infer<typeof chooseStarterInputSchema>;
 
 // --- Pokémon, Pokédex, inventaire -------------------------------------------------
 
-export type PokemonOrigin = 'starter' | 'capture' | 'egg' | 'quest';
+export type PokemonOrigin = 'starter' | 'capture' | 'egg' | 'quest' | 'fossil';
 
 export interface PokemonDto {
   id: string;
@@ -89,6 +89,13 @@ export interface PokedexEntryDto {
   caught: boolean;
   caughtShiny: boolean;
   firstCaughtAt: string | null;
+}
+
+/** Forme capturée (régionale, Méga, Gigamax…). */
+export interface PokedexFormEntryDto {
+  formId: number;
+  caughtShiny: boolean;
+  firstCaughtAt: string;
 }
 
 export interface InventoryEntryDto {
@@ -279,6 +286,34 @@ export interface HatchEggsResponse {
 export interface DaycareErrorBody {
   error: 'INCOMPATIBLE_PARENTS';
   errors: BreedingError[];
+}
+
+// --- Musée (fossiles) ---------------------------------------------------------------------
+
+export const depositFossilInputSchema = z.object({ itemId: slugSchema });
+export type DepositFossilInput = z.infer<typeof depositFossilInputSchema>;
+
+/** Fossile en cours de restauration au Musée. */
+export interface FossilRevivalDto {
+  id: string;
+  itemId: string;
+  speciesId: number;
+  formId: number | null;
+  startedAt: string;
+  readyAt: string;
+}
+
+export interface MuseumResponse {
+  /** Fossiles restaurables en même temps. */
+  slots: number;
+  serverTime: string;
+  revivals: FossilRevivalDto[];
+}
+
+export interface ReviveFossilsResponse {
+  revived: PokemonDto[];
+  /** Espèces obtenues pour la première fois. */
+  newSpeciesIds: number[];
 }
 
 // --- Expéditions --------------------------------------------------------------------
@@ -596,6 +631,8 @@ export const notificationSettingsSchema = z.object({
   battles: z.boolean(),
   /** Œuf prêt à éclore. */
   eggs: z.boolean(),
+  /** Fossile restauré au Musée (absent des réglages enregistrés avant le Musée). */
+  fossils: z.boolean().default(true),
 });
 export type NotificationSettings = z.infer<typeof notificationSettingsSchema>;
 
@@ -603,6 +640,7 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   expeditions: true,
   battles: true,
   eggs: true,
+  fossils: true,
 };
 
 /** Abonnement Web Push du navigateur (`PushSubscription.toJSON()`). */

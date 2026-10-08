@@ -239,8 +239,7 @@ export async function claimExpedition(
     );
     const newSpeciesIds = await recordPokedex(tx, userId, {
       seen: result.encounters.map((e) => e.speciesId),
-      caught: capturedEncounters.map((e) => e.speciesId),
-      caughtShiny: capturedEncounters.filter((e) => e.isShiny).map((e) => e.speciesId),
+      caught: captured,
       at: now,
     });
 

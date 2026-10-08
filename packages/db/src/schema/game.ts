@@ -43,7 +43,13 @@ export const playerProfiles = pgTable(
   (t) => [uniqueIndex('player_profiles_trainer_name_lower').on(sql`lower(${t.trainerName})`)],
 );
 
-export const pokemonOrigin = pgEnum('pokemon_origin', ['starter', 'capture', 'egg', 'quest']);
+export const pokemonOrigin = pgEnum('pokemon_origin', [
+  'starter',
+  'capture',
+  'egg',
+  'quest',
+  'fossil',
+]);
 
 export const pokemon = pgTable(
   'pokemon',
@@ -110,6 +116,41 @@ export const eggs = pgTable(
     index('eggs_to_notify')
       .on(t.hatchAt)
       .where(sql`${t.hatched} = false and ${t.notifiedAt} is null`),
+  ],
+);
+
+/**
+ * Musée : fossiles en cours de restauration. Le fossile est consommé au dépôt ; le Pokémon se
+ * calcule à la restauration, avec le seed et la version de contenu du dépôt.
+ */
+export const fossilRevivals = pgTable(
+  'fossil_revivals',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: ownerId(),
+    itemId: text('item_id').notNull(),
+    speciesId: integer('species_id').notNull(),
+    formId: integer('form_id'),
+    level: smallint('level').notNull(),
+    contentVersionId: integer('content_version_id')
+      .notNull()
+      .references(() => contentVersions.id),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    readyAt: timestamp('ready_at', { withTimezone: true }).notNull(),
+    seed: bigint('seed', { mode: 'number' }).notNull(),
+    /** Pokémon récupéré (null = encore au Musée). */
+    revivedAt: timestamp('revived_at', { withTimezone: true }),
+    /** Notification push « fossile restauré » envoyée. */
+    notifiedAt: timestamp('notified_at', { withTimezone: true }),
+    pokemonId: uuid('pokemon_id').references(() => pokemon.id, { onDelete: 'set null' }),
+  },
+  (t) => [
+    index('fossil_revivals_owner_active')
+      .on(t.ownerId)
+      .where(sql`${t.revivedAt} is null`),
+    index('fossil_revivals_to_notify')
+      .on(t.readyAt)
+      .where(sql`${t.revivedAt} is null and ${t.notifiedAt} is null`),
   ],
 );
 
@@ -295,6 +336,18 @@ export const pokedex = pgTable(
     firstCaughtAt: timestamp('first_caught_at', { withTimezone: true }),
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.speciesId] })],
+);
+
+/** Formes capturées (régionales, Méga, Gigamax…), pour les sections de formes du Pokédex. */
+export const pokedexForms = pgTable(
+  'pokedex_forms',
+  {
+    ownerId: ownerId(),
+    formId: integer('form_id').notNull(),
+    caughtShiny: boolean('caught_shiny').notNull().default(false),
+    firstCaughtAt: timestamp('first_caught_at', { withTimezone: true }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.ownerId, t.formId] })],
 );
 
 /**

@@ -12,7 +12,11 @@ export const slugSchema = z
   .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, 'Identifiant attendu en minuscules-avec-tirets');
 
 const nameSchema = z.string().trim().min(1, 'Obligatoire').max(64);
-const imageSchema = z.url('URL invalide').nullable();
+/** URL complète, ou chemin servi par l'API (ex. `/api/sprites/trainers/brock.png`). */
+const imageSchema = z
+  .string()
+  .refine((v) => /^\/[^/]/.test(v) || z.url().safeParse(v).success, 'URL invalide')
+  .nullable();
 const probabilitySchema = z.number().min(0).max(1);
 /**
  * Forme alternative ou régionale (identifiant PokéAPI `pokemon`, ex. Goupix d'Alola) ;
@@ -106,6 +110,10 @@ export const balanceSettingsSchema = z.object({
     initialSlots: z.int().min(0),
     maxSlots: z.int().min(1),
   }),
+  museum: z.object({
+    /** Fossiles en cours de restauration au Musée au maximum (en même temps). */
+    slots: z.int().min(1).max(20),
+  }),
   battles: z.object({
     initialSlots: z.int().min(1).max(6),
     maxSlots: z.int().min(1).max(6),
@@ -151,7 +159,7 @@ export type BalanceSettings = z.infer<typeof balanceSettingsSchema>;
 
 // --- Conditions de déblocage (briques génériques) ----------------------------
 
-export const unlockConditionSchema = z.discriminatedUnion('type', [
+const baseUnlockConditions = [
   z.object({ type: z.literal('always') }),
   z.object({
     type: z.literal('regionDexPercent'),
@@ -174,6 +182,19 @@ export const unlockConditionSchema = z.discriminatedUnion('type', [
   }),
   /** Avoir validé toutes les étapes d'une quête. */
   z.object({ type: z.literal('questCompleted'), questId: slugSchema }),
+] as const;
+
+/** Condition simple (une seule brique). */
+export const baseUnlockConditionSchema = z.discriminatedUnion('type', [...baseUnlockConditions]);
+export type BaseUnlockCondition = z.infer<typeof baseUnlockConditionSchema>;
+
+export const unlockConditionSchema = z.discriminatedUnion('type', [
+  ...baseUnlockConditions,
+  /** Toutes les conditions de la liste à la fois (ex. 5 badges et 50 espèces capturées). */
+  z.object({
+    type: z.literal('allOf'),
+    conditions: z.array(baseUnlockConditionSchema).min(2, 'Au moins deux conditions').max(5),
+  }),
 ]);
 export type UnlockCondition = z.infer<typeof unlockConditionSchema>;
 
@@ -187,6 +208,8 @@ export const regionSchema = z.object({
   speciesIds: z.array(z.int().positive()),
   /** Starters proposés aux nouveaux joueurs (seule la première région en a besoin). */
   starterSpeciesIds: z.array(z.int().positive()),
+  /** Désactivée : la région, ses zones, ses dresseurs et ses quêtes sont cachés aux joueurs. */
+  enabled: z.boolean().default(true),
   unlock: unlockConditionSchema,
 });
 export type Region = z.infer<typeof regionSchema>;
@@ -213,6 +236,7 @@ export const ITEM_CATEGORIES = [
   'evolution',
   'breeding',
   'endgame',
+  'fossil',
   'misc',
 ] as const;
 export const itemCategorySchema = z.enum(ITEM_CATEGORIES);
@@ -239,6 +263,17 @@ export const itemEffectSchema = z.discriminatedUnion('type', [
    * (Patch Talent).
    */
   z.object({ type: z.literal('abilityChange'), hidden: z.boolean() }),
+  /**
+   * Déposé au Musée : redonne vie à un Pokémon (Fossile Nautile → Amonita) après `minutes`.
+   * Consommé au dépôt.
+   */
+  z.object({
+    type: z.literal('fossil'),
+    speciesId: z.int().positive(),
+    formId: formIdSchema,
+    level: z.int().min(1).max(100),
+    minutes: z.int().min(1).max(10_080),
+  }),
 ]);
 export type ItemEffect = z.infer<typeof itemEffectSchema>;
 export type ItemEffectType = ItemEffect['type'];
@@ -301,6 +336,8 @@ export const zoneSchema = z.object({
   image: imageSchema,
   habitat: z.string().nullable(),
   /** Puissance d'expédition (PE) totale minimale de l'équipe. */
+  /** Désactivée : cachée aux joueurs, plus aucune expédition ne peut y partir. */
+  enabled: z.boolean().default(true),
   minPower: z.int().min(0),
   /** Exemple : 2 Pokémon de type Eau pour une zone sous-marine. */
   requiredTypes: z.array(z.object({ type: z.string().min(1), count: z.int().min(1).max(6) })),
@@ -363,6 +400,8 @@ export const trainerSchema = z.object({
   cooldownMinutes: z.int().min(0).nullable(),
   /** Durée de K.O. après une défaite ; null = valeur de l'équilibrage. */
   koMinutes: z.int().min(0).nullable(),
+  /** Désactivé : caché aux joueurs, plus aucun combat ne peut être lancé contre lui. */
+  enabled: z.boolean().default(true),
   unlock: unlockConditionSchema,
 });
 export type Trainer = z.infer<typeof trainerSchema>;
@@ -558,6 +597,15 @@ export const questConditionSchema = z.discriminatedUnion('type', [
 export type QuestCondition = z.infer<typeof questConditionSchema>;
 export type QuestActionCondition = Extract<QuestCondition, { type: 'catchPokemon' | 'expedition' }>;
 
+/** Briques d'une condition : celles d'un « toutes ces conditions », ou la condition elle-même. */
+export function unlockParts(condition: UnlockCondition): BaseUnlockCondition[];
+export function unlockParts(
+  condition: QuestCondition,
+): Exclude<QuestCondition, { type: 'allOf' }>[];
+export function unlockParts(condition: QuestCondition) {
+  return condition.type === 'allOf' ? condition.conditions : [condition];
+}
+
 export const questStepSchema = z.object({
   name: nameSchema,
   description: z.string().max(500),
@@ -589,6 +637,8 @@ export const questSchema = z.object({
   image: imageSchema,
   /** Région de rattachement (affichage, origine des Pokémon offerts) ; null = aucune. */
   regionId: slugSchema.nullable(),
+  /** Désactivée : cachée aux joueurs, elle ne progresse plus et sa récompense n'est plus réclamable. */
+  enabled: z.boolean().default(true),
   /** Condition d'apparition de la quête. */
   unlock: unlockConditionSchema,
   steps: z.array(questStepSchema).min(1, 'Au moins une étape').max(20),

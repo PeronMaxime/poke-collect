@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
+import { forms, itemSpriteUrl, pokemonSpriteUrl, species } from '@poke/data';
 import { createDb, ensureSeedContent, users } from '@poke/db';
 import { buildApp } from './app';
 import { loadEnv } from './env';
@@ -32,6 +33,45 @@ async function signUp(email: string): Promise<string> {
   const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
   return list.map((c) => c.split(';')[0]).join('; ');
 }
+
+describe('sprites', () => {
+  it('sert une image pour chaque objet et chaque dresseur du contenu de test', async () => {
+    const urls = [
+      ...seedContent.items.map((i) => i.icon ?? itemSpriteUrl(i.id)),
+      ...seedContent.trainers.map((t) => t.sprite),
+    ];
+    for (const url of urls) {
+      expect(url, 'image manquante').toMatch(/^\/api\/sprites\//);
+      const res = await app.inject({ method: 'GET', url: url! });
+      expect(res.statusCode, url!).toBe(200);
+      expect(res.headers['content-type']).toBe('image/png');
+    }
+  });
+
+  it('sert le petit sprite (normal et shiny) de chaque espèce et de chaque forme', async () => {
+    const sprites = [...species.map((s) => s.id), ...forms.flatMap((f) => f.sprite ?? [])];
+    for (const sprite of sprites) {
+      for (const shiny of [false, true]) {
+        const url = pokemonSpriteUrl(sprite, { shiny });
+        const res = await app.inject({ method: 'GET', url });
+        expect(res.statusCode, url).toBe(200);
+      }
+    }
+  });
+
+  it('refuse les chemins inconnus', async () => {
+    for (const url of [
+      '/api/sprites/items/inconnu.png',
+      '/api/sprites/autre/brock.png',
+      '/api/sprites/items/..%2F..%2Fpackage.json',
+      '/api/sprites/pokemon/../../package.json',
+      '/api/sprites/artwork/25.png',
+    ]) {
+      const res = await app.inject({ method: 'GET', url });
+      expect(res.statusCode, url).toBe(404);
+    }
+  });
+});
 
 describe('authentification et profil dresseur', () => {
   let cookie: string;
@@ -166,7 +206,7 @@ describe('administration', () => {
 
     // Le jeu voit toujours la version publiée tant que le brouillon n'est pas publié.
     const before = await app.inject({ method: 'GET', url: '/api/content' });
-    expect(before.json().balance.expeditions.encountersPerHour).toBe(3);
+    expect(before.json().balance.expeditions.encountersPerHour).toBe(20);
 
     const pub = await app.inject({
       method: 'POST',
