@@ -7,12 +7,59 @@ describe('createGameContext', () => {
 
   it('expose les régions et les zones du contenu', () => {
     expect(ctx.region('kanto')?.speciesIds).toHaveLength(151);
-    expect(ctx.region('johto')).toBeUndefined();
+    // Régions suivantes : sans légendaires ni mythiques (réservés aux quêtes).
+    expect(ctx.regions.map((r) => r.id)).toEqual([
+      'kanto',
+      'johto',
+      'hoenn',
+      'sinnoh',
+      'unys',
+      'kalos',
+      'alola',
+      'galar',
+      'hisui',
+      'paldea',
+    ]);
+    expect(ctx.region('johto')?.speciesIds).toHaveLength(94);
+    expect(ctx.region('orre')).toBeUndefined();
     expect(ctx.zones.map((z) => z.id)).toEqual([
       'route-1',
       'foret-de-jade',
       'mont-selenite',
       'cap-azuria',
+      'route-victoire',
+      'iles-ecume',
+      'centrale',
+      'mont-braise',
+      'grotte-azuree',
+      'ile-lointaine',
+      'archipel-lointain',
+      'route-29',
+      'tour-chetiflor',
+      'lac-colere',
+      'route-101',
+      'grotte-granite',
+      'route-201',
+      'mont-couronne',
+      'route-1-unys',
+      'desert-delassant',
+      'route-2-kalos',
+      'tour-maitrise',
+      'route-1-alola',
+      'mont-lanakila',
+      'route-1-galar',
+      'terres-sauvages',
+      'antre-dynamax',
+      'plaine-obsidienne',
+      'province-sud-paldea',
+      'lac-salinas',
+    ]);
+    expect(ctx.quests.map((q) => q.id)).toEqual([
+      'artikodin',
+      'electhor',
+      'sulfura',
+      'mewtwo',
+      'mew',
     ]);
   });
 

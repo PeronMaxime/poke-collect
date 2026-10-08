@@ -100,6 +100,7 @@ function RegionForm({
             value={r.unlock}
             regions={others.length > 0 ? others : working.ctx.regions}
             trainers={working.ctx.trainers}
+            quests={working.ctx.quests}
             onChange={(v) => set('unlock', v)}
             disabled={disabled}
           />

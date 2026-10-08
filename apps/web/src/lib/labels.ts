@@ -5,6 +5,7 @@ import type {
   ItemEffect,
   PermanentBonus,
   ProgressReward,
+  QuestCondition,
   Rarity,
   UnlockCondition,
 } from '@poke/content';
@@ -55,8 +56,12 @@ export function itemIcon(ctx: GameContext | undefined, itemId: string): string {
 export const itemName = (ctx: GameContext | undefined, itemId: string) =>
   ctx?.item(itemId)?.name ?? itemId;
 
-export const speciesName = (ctx: GameContext | undefined, speciesId: number) =>
-  ctx?.species(speciesId)?.nameFr ?? `#${speciesId}`;
+/** Nom de l'espèce, ou de la forme (« Goupix d’Alola ») quand elle est indiquée. */
+export const speciesName = (
+  ctx: GameContext | undefined,
+  speciesId: number,
+  formId?: number | null,
+) => ctx?.species(speciesId, formId)?.nameFr ?? `#${speciesId}`;
 
 const lineageBase = new Map(evolutionChains.map((c) => [c.id, c.chain.speciesId]));
 
@@ -80,6 +85,12 @@ export function effectText(effect: ItemEffect): string {
       return `Pension : transmet la nature${effect.chance < 1 ? ` (${Math.round(effect.chance * 100)} %)` : ''}`;
     case 'shinyCharm':
       return `Dans le sac : shiny × ${effect.multiplier}`;
+    case 'ivCap':
+      return effect.all ? 'Sur un Pokémon : 6 IV à 31' : 'Sur un Pokémon : 1 IV au choix à 31';
+    case 'mint':
+      return `Sur un Pokémon : nature ${natureLabel(effect.nature)}`;
+    case 'abilityChange':
+      return effect.hidden ? 'Sur un Pokémon : talent caché' : 'Sur un Pokémon : autre talent';
   }
 }
 
@@ -111,6 +122,40 @@ export function unlockConditionText(ctx: GameContext, u: UnlockCondition): strin
       return `Capture ${u.count} espèce${u.count > 1 ? 's' : ''} différente${u.count > 1 ? 's' : ''}`;
     case 'eggsHatched':
       return `Fais éclore ${u.count} œuf${u.count > 1 ? 's' : ''}`;
+    case 'questStepsDone': {
+      const quest = ctx.quest(u.questId);
+      const name = `« ${quest?.name ?? u.questId} »`;
+      return u.count === 1
+        ? `Avance dans la quête ${name}`
+        : `Valide ${u.count} étapes de la quête ${name}`;
+    }
+    case 'questCompleted':
+      return `Termine la quête « ${ctx.quest(u.questId)?.name ?? u.questId} »`;
+  }
+}
+
+/** Condition d'une étape de quête en clair. */
+export function questConditionText(ctx: GameContext, c: QuestCondition): string {
+  const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
+  switch (c.type) {
+    case 'catchPokemon': {
+      const what = c.speciesId
+        ? speciesName(ctx, c.speciesId)
+        : `Pokémon${c.pokemonType ? ` ${typeLabel(c.pokemonType)}` : ''}`;
+      return `Capture ${c.count} ${what}`;
+    }
+    case 'expedition': {
+      const zone = ctx.zone(c.zoneId)?.name ?? c.zoneId;
+      const times = c.count > 1 ? `${c.count} expéditions` : 'une expédition';
+      if (c.memberCount === 0) return `Réussis ${times} : ${zone}`;
+      const members = `${plural(c.memberCount, 'Pokémon')}${c.memberType ? ` ${typeLabel(c.memberType)}` : ''}`;
+      const power = c.minMemberPower > 0 ? ` de PE ${c.minMemberPower} ou plus` : '';
+      return `Réussis ${times} (${zone}) avec ${members}${power}`;
+    }
+    case 'always':
+      return 'Aucune condition';
+    default:
+      return unlockConditionText(ctx, c) ?? '';
   }
 }
 
@@ -214,6 +259,11 @@ export const GAME_ERRORS: Record<string, string> = {
   POKEMON_NOT_FOUND: 'Ce Pokémon n’existe plus.',
   REWARD_NOT_FOUND: 'Cette récompense n’existe plus.',
   REWARD_LOCKED: 'Cette récompense n’est pas encore débloquée.',
+  QUEST_NOT_FOUND: 'Cette quête n’existe plus.',
+  QUEST_NOT_COMPLETED: 'Cette quête n’est pas encore terminée.',
+  NO_EFFECT: 'Cet objet n’aurait aucun effet sur ce Pokémon.',
+  CHOICE_REQUIRED: 'Choisis d’abord la statistique ou le talent.',
+  NOT_USABLE_ON_POKEMON: 'Cet objet ne s’utilise pas sur un Pokémon.',
 };
 
 export function formatMoney(amount: number): string {

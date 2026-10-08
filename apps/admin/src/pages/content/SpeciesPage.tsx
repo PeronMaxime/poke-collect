@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { RARITIES, speciesOverrideSchema } from '@poke/content';
 import type { SpeciesOverride } from '@poke/content';
-import { STAT_NAMES, habitats, species as allSpecies } from '@poke/data';
+import { STAT_NAMES, habitats, species as allSpecies, speciesForms } from '@poke/data';
 import { IssueList, VersionBanner } from '../../components/EntityPage';
 import { Field, NullableTextInput, Toggle, validate } from '../../components/forms/fields';
 import { Sprite, TypeBadge, typeLabel } from '../../components/forms/pickers';
@@ -118,6 +118,14 @@ export function SpeciesPage() {
                   </td>
                   <td className="px-3 py-1 text-slate-500">
                     {merged.habitat ? (habitatNames.get(merged.habitat) ?? merged.habitat) : '—'}
+                    {s.habitatInferred && !overrides.get(s.id)?.habitat && (
+                      <span
+                        className="ml-1 text-xs text-amber-600"
+                        title="Gen IV+ : habitat maison déduit des espèces proches (types, forme, couleur)"
+                      >
+                        (déduit)
+                      </span>
+                    )}
                   </td>
                   <td className="px-3 py-1 text-right font-mono">{s.captureRate}</td>
                   <td className="px-3 py-1 text-right font-mono">
@@ -187,6 +195,14 @@ function SpeciesEditor({
             <p className="text-xs text-slate-500">
               {STAT_NAMES.map((s, i) => `${STAT_SHORT[i]} ${base.baseStats[s]}`).join(' · ')}
             </p>
+            {speciesForms(speciesId).length > 0 && (
+              <p className="text-xs text-slate-500">
+                Formes :{' '}
+                {speciesForms(speciesId)
+                  .map((f) => `${f.nameFr} (${f.types.map(typeLabel).join('/')})`)
+                  .join(', ')}
+              </p>
+            )}
             <p className="text-xs text-slate-500">
               Rencontrée dans :{' '}
               {usedIn.length ? usedIn.map((z) => z.name).join(', ') : 'aucune zone'}
@@ -224,7 +240,14 @@ function SpeciesEditor({
             placeholder={base.nameFr}
           />
         </Field>
-        <Field label="Habitat" hint={`PokéAPI : ${base.habitat ?? 'aucun (Gen IV+)'}`}>
+        <Field
+          label="Habitat"
+          hint={
+            base.habitatInferred
+              ? `Gen IV+ : déduit des espèces proches (${base.habitat ?? '—'})`
+              : `PokéAPI : ${base.habitat ?? 'aucun'}`
+          }
+        >
           <input
             className="input"
             list="species-habitats"

@@ -46,7 +46,7 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
 
   const now = useNow(10_000);
   const available = (pokemon.data ?? [])
-    .filter((p) => isUsable(p, now) && isBreedable(ctx.species(p.speciesId)!))
+    .filter((p) => isUsable(p, now) && isBreedable(ctx.species(p.speciesId, p.formId)!))
     .sort((a, b) => a.speciesId - b.speciesId || b.level - a.level);
   const byId = new Map(available.map((p) => [p.id, p]));
   const [a, b] = parents.map((id) => (id ? byId.get(id) : undefined));
@@ -85,7 +85,12 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
             className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800"
           >
             {p ? (
-              <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} size={56} />
+              <PokemonSprite
+                speciesId={p.speciesId}
+                formId={p.formId}
+                shiny={p.isShiny}
+                size={56}
+              />
             ) : (
               <div className="grid h-14 w-14 place-items-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
                 ?
@@ -95,7 +100,8 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
               <p className="font-medium">
                 {p ? (
                   <>
-                    {speciesName(ctx, p.speciesId)} {GENDER_LABELS[p.gender]} · N.{p.level}
+                    {speciesName(ctx, p.speciesId, p.formId)} {GENDER_LABELS[p.gender]} · N.
+                    {p.level}
                   </>
                 ) : (
                   `Parent ${i + 1}`
@@ -140,9 +146,14 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
                   : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
               } ${compatible ? '' : 'opacity-40'}`}
             >
-              <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} size={56} />
+              <PokemonSprite
+                speciesId={p.speciesId}
+                formId={p.formId}
+                shiny={p.isShiny}
+                size={56}
+              />
               <span className="truncate">
-                {speciesName(ctx, p.speciesId)} {GENDER_LABELS[p.gender]}{' '}
+                {speciesName(ctx, p.speciesId, p.formId)} {GENDER_LABELS[p.gender]}{' '}
                 {p.isShiny && <ShinyStar />}
               </span>
               <span className="text-slate-500">N.{p.level}</span>

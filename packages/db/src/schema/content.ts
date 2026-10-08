@@ -21,6 +21,8 @@ import type {
   LootEntry,
   ProgressReward,
   PurchaseLimit,
+  QuestReward,
+  QuestStep,
   Trainer,
   TrainerPokemon,
   UnlockCondition,
@@ -257,6 +259,23 @@ export const collections = pgTable(
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
 );
 
+export const quests = pgTable(
+  'quests',
+  {
+    contentVersionId: versionId(),
+    id: text('id').notNull(),
+    order: integer('order').notNull(),
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    image: text('image'),
+    regionId: text('region_id'),
+    unlock: jsonb('unlock').$type<UnlockCondition>().notNull(),
+    steps: jsonb('steps').$type<QuestStep[]>().notNull(),
+    rewards: jsonb('rewards').$type<QuestReward>().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
+);
+
 /**
  * Tables versionnées : copiées en bloc lors de la création d'un brouillon.
  * Toute nouvelle table de contenu (zones, objets, quêtes…) doit être ajoutée ici.
@@ -274,4 +293,5 @@ export const versionedContentTables = [
   evolutionOverrides,
   dexMilestones,
   collections,
+  quests,
 ] as const;

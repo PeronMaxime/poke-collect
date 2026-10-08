@@ -58,11 +58,11 @@ function offenseScore(attackers: readonly string[][], defenders: readonly string
  */
 export function typeAdvantage(
   ctx: GameContext,
-  team: readonly Pick<PokemonInstance, 'speciesId'>[],
-  opponents: readonly Pick<PokemonInstance, 'speciesId'>[],
+  team: readonly Pick<PokemonInstance, 'speciesId' | 'formId'>[],
+  opponents: readonly Pick<PokemonInstance, 'speciesId' | 'formId'>[],
 ): number {
-  const typesOf = (list: readonly Pick<PokemonInstance, 'speciesId'>[]) =>
-    list.map((m) => ctx.species(m.speciesId)?.types ?? []).filter((t) => t.length > 0);
+  const typesOf = (list: readonly Pick<PokemonInstance, 'speciesId' | 'formId'>[]) =>
+    list.map((m) => ctx.species(m.speciesId, m.formId)?.types ?? []).filter((t) => t.length > 0);
   const mine = typesOf(team);
   const theirs = typesOf(opponents);
   const score = (offenseScore(mine, theirs) - offenseScore(theirs, mine)) / 2;
@@ -75,11 +75,12 @@ export function typeAdvantage(
 export function trainerPokemonInstance(
   ctx: GameContext,
   member: TrainerPokemon,
-): Pick<PokemonInstance, 'speciesId' | 'level' | 'ivs' | 'nature'> {
+): Pick<PokemonInstance, 'speciesId' | 'formId' | 'level' | 'ivs' | 'nature'> {
   const iv = member.iv ?? ctx.balance.battles.defaultTrainerIv;
   const ivs = Object.fromEntries(STAT_NAMES.map((s) => [s, iv])) as Stats;
   return {
     speciesId: member.speciesId,
+    formId: member.formId ?? null,
     level: member.level,
     ivs,
     nature: member.nature ?? 'hardy',
@@ -87,7 +88,7 @@ export function trainerPokemonInstance(
 }
 
 export function trainerMemberPower(ctx: GameContext, member: TrainerPokemon): number {
-  const species = ctx.species(member.speciesId);
+  const species = ctx.species(member.speciesId, member.formId);
   return species ? pokemonPower(species, trainerPokemonInstance(ctx, member)) : 0;
 }
 
@@ -128,7 +129,7 @@ export function estimateBattle(
   team: readonly PokemonInstance[],
 ): BattleEstimate {
   const playerPower = team.reduce((sum, m) => {
-    const species = ctx.species(m.speciesId);
+    const species = ctx.species(m.speciesId, m.formId);
     return sum + (species ? pokemonPower(species, m) : 0);
   }, 0);
   const power = trainerPower(ctx, trainer);
@@ -176,14 +177,14 @@ export function checkBattleTeam(
     errors.push({ code: 'LEVEL_TOO_HIGH', maxLevel: rules.maxLevel });
   }
   const forbidden = new Set(rules.forbiddenTypes);
-  const used = [...new Set(team.flatMap((m) => ctx.species(m.speciesId)?.types ?? []))].filter(
-    (t) => forbidden.has(t),
-  );
+  const used = [
+    ...new Set(team.flatMap((m) => ctx.species(m.speciesId, m.formId)?.types ?? [])),
+  ].filter((t) => forbidden.has(t));
   if (used.length > 0) errors.push({ code: 'FORBIDDEN_TYPES', types: used });
   const missing = missingTypes(ctx, team, rules.requiredTypes);
   if (missing.length > 0) errors.push({ code: 'MISSING_TYPES', missing });
   const power = team.reduce((sum, m) => {
-    const species = ctx.species(m.speciesId);
+    const species = ctx.species(m.speciesId, m.formId);
     return sum + (species ? pokemonPower(species, m) : 0);
   }, 0);
   if (power < rules.minPower)
@@ -268,7 +269,7 @@ export function resolveBattle(ctx: GameContext, input: BattleInput): BattleResul
   const win = roll < estimate.winProbability;
 
   const baseXp = trainer.team.reduce((sum, m) => {
-    const species = ctx.species(m.speciesId);
+    const species = ctx.species(m.speciesId, m.formId);
     return sum + (species ? defeatXp(species, m.level) : 0);
   }, 0);
   const bonuses = input.bonuses ?? NO_BONUSES;

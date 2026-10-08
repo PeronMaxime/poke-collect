@@ -94,10 +94,15 @@ function HatchContent({
                 )}
                 <span className="relative">
                   {p.isShiny && <ShinySparkles delay={delay(i)} loop />}
-                  <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} size={72} />
+                  <PokemonSprite
+                    speciesId={p.speciesId}
+                    formId={p.formId}
+                    shiny={p.isShiny}
+                    size={72}
+                  />
                 </span>
                 <span className="font-medium">
-                  {speciesName(ctx, p.speciesId)} {p.isShiny && <ShinyStar />}
+                  {speciesName(ctx, p.speciesId, p.formId)} {p.isShiny && <ShinyStar />}
                 </span>
                 <span className="text-slate-500">{natureLabel(p.nature)}</span>
                 <span className={perfect >= 3 ? 'font-semibold text-amber-600' : 'text-slate-500'}>

@@ -127,13 +127,14 @@ function RevealContent({
                 {e.isShiny && <ShinySparkles delay={delay(i) + 0.15} loop />}
                 <PokemonSprite
                   speciesId={e.speciesId}
+                  formId={e.formId}
                   shiny={e.isShiny}
                   size={64}
                   className={e.outcome === 'escaped' ? 'opacity-50 grayscale' : ''}
                 />
               </motion.div>
               <span className="font-medium">
-                {speciesName(ctx, e.speciesId)} {e.isShiny && <ShinyStar />}
+                {speciesName(ctx, e.speciesId, e.formId)} {e.isShiny && <ShinyStar />}
               </span>
               <span className="text-slate-500">N.{e.level}</span>
               <span
@@ -193,8 +194,15 @@ function RevealContent({
               return (
                 p && (
                   <li key={m.id} className="flex items-center gap-2">
-                    <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} size={32} />
-                    <span className="flex-1 truncate">{speciesName(ctx, p.speciesId)}</span>
+                    <PokemonSprite
+                      speciesId={p.speciesId}
+                      formId={p.formId}
+                      shiny={p.isShiny}
+                      size={32}
+                    />
+                    <span className="flex-1 truncate">
+                      {speciesName(ctx, p.speciesId, p.formId)}
+                    </span>
                     <span className="text-slate-500">+{m.xpGained} XP</span>
                     {m.levelAfter > m.levelBefore && (
                       <motion.span

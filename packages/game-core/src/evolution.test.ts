@@ -51,10 +51,11 @@ describe('méthodes PokéAPI', () => {
 });
 
 describe('évolutions possibles', () => {
-  it('suit la chaîne PokéAPI et ignore les espèces non importées', () => {
+  it('suit la chaîne PokéAPI', () => {
     expect(targets(1)).toEqual([2]);
-    expect(targets(133)).toEqual([134, 135, 136]); // Évoli : pas Mentali, Noctali… (Gén. II+)
-    expect(targets(42)).toEqual([]); // Nosferalto → Nostenfer (Gén. II)
+    expect(targets(133)).toEqual([134, 135, 136, 196, 197, 470, 471, 700]); // Évoli
+    expect(targets(42)).toEqual([169]); // Nosferalto → Nostenfer (Gén. II)
+    expect(targets(122)).toEqual([]); // M. Glaquette : seulement depuis M. Mime de Galar
     expect(targets(150)).toEqual([]);
   });
 
@@ -65,10 +66,37 @@ describe('évolutions possibles', () => {
     ]);
   });
 
-  it('applique les surcharges du contenu (formes régionales écartées)', () => {
-    const [persian] = evolutionOptions(ctx, 52);
-    expect(persian).toMatchObject({ source: 'override', methods: [{ minLevel: 28 }] });
-    expect(persian?.methods).toHaveLength(1);
+  it('applique les surcharges du contenu à l’évolution générale seulement', () => {
+    // Kirlia → Gallame : genre (non transposable) remplacé par la Pierre Aube.
+    const gallade = evolutionOptions(ctx, 281).find((o) => o.toSpeciesId === 475);
+    expect(gallade).toMatchObject({ source: 'override', methods: [{ itemId: 'dawn-stone' }] });
+    // Une surcharge Pikachu → Raichu laisse Raichu d'Alola à ses conditions PokéAPI.
+    const custom = testContext((c) => {
+      c.evolutionOverrides.push({
+        id: '25-26',
+        fromSpeciesId: 25,
+        toSpeciesId: 26,
+        enabled: true,
+        methods: [{ minLevel: 30, itemId: null, minHappiness: null, timeOfDay: null }],
+      });
+    });
+    const [raichu, alolan] = evolutionOptions(custom, 25);
+    expect(raichu).toMatchObject({ toFormId: null, source: 'override' });
+    expect(alolan).toMatchObject({ source: 'pokeapi', methods: [{ itemId: 'thunder-stone' }] });
+  });
+
+  it('regroupe les formes d’arrivée impossibles à obtenir', () => {
+    // Crèmy → Charmilly : 63 formes PokéAPI, une seule ligne (remplacée par une surcharge).
+    const alcremie = evolutionOptions(ctx, 868);
+    expect(alcremie).toHaveLength(1);
+    expect(alcremie[0]).toMatchObject({ toFormId: null, source: 'override' });
+    const raw = testContext((c) => {
+      c.evolutionOverrides = [];
+    });
+    expect(evolutionOptions(raw, 868)).toHaveLength(1);
+    expect(evolutionOptions(raw, 868)[0]!.methods).toEqual([]);
+    // Compagnol → Famignol : montée de niveau en combat, deux formes possibles.
+    expect(evolutionOptions(raw, 924).map((o) => o.methods[0]?.minLevel)).toEqual([25, 25]);
   });
 
   it('désactive ou ajoute une évolution par surcharge', () => {
@@ -168,6 +196,6 @@ describe('application', () => {
 
     const before = member('a', 1, 16, { ability: 'overgrow', xp: 4000, happiness: 90 });
     const after = evolvePokemon(ctx, before, 2);
-    expect(after).toEqual({ ...before, speciesId: 2, ability: 'overgrow' });
+    expect(after).toEqual({ ...before, speciesId: 2, formId: null, ability: 'overgrow' });
   });
 });

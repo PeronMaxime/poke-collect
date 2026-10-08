@@ -30,8 +30,8 @@ describe('compatibilité', () => {
   it('trouve l’espèce de base de la lignée', () => {
     expect(baseSpeciesId(ctx, 3)).toBe(1);
     expect(baseSpeciesId(ctx, 130)).toBe(129);
-    // Pichu n'est pas dans les données importées : Pikachu reste la base.
-    expect(baseSpeciesId(ctx, 26)).toBe(25);
+    // Bébés (Gén. II) : Pichu est la base de Raichu.
+    expect(baseSpeciesId(ctx, 26)).toBe(172);
   });
 
   it('accepte un mâle et une femelle d’un groupe commun ; l’œuf suit la mère', () => {
@@ -39,6 +39,7 @@ describe('compatibilité', () => {
     expect(checkBreedingPair(ctx, parent(3, 'male'), parent(29, 'female'))).toEqual({
       ok: true,
       eggSpeciesId: 29,
+      eggFormId: null,
       motherIndex: 1,
     });
     expect(checkBreedingPair(ctx, parent(130, 'female'), parent(147, 'male'))).toMatchObject({
@@ -51,11 +52,12 @@ describe('compatibilité', () => {
     expect(checkBreedingPair(ctx, parent(132, 'genderless'), parent(81, 'genderless'))).toEqual({
       ok: true,
       eggSpeciesId: 81,
+      eggFormId: null,
       motherIndex: 1,
     });
     expect(checkBreedingPair(ctx, parent(26, 'male'), parent(132, 'genderless'))).toMatchObject({
       ok: true,
-      eggSpeciesId: 25,
+      eggSpeciesId: 172,
       motherIndex: 0,
     });
   });

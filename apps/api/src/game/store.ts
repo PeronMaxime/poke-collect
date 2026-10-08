@@ -1,4 +1,4 @@
-import { and, count, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
+import { and, count, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import {
   daycareSlots,
   eggs,
@@ -6,19 +6,21 @@ import {
   inventory,
   pokedex,
   pokemon,
+  questProgress,
   rewardClaims,
   trainerBattles,
   trainerProgress,
 } from '@poke/db';
 import type { Db } from '@poke/db';
 import type { ItemStack } from '@poke/content';
-import { charmMultiplier, isKnockedOut } from '@poke/game-core';
+import { charmMultiplier, isKnockedOut, questStepsDone } from '@poke/game-core';
 import type {
   ClaimedRewards,
   DexCatches,
   GameContext,
   PlayerProgress,
   PokemonInstance,
+  QuestRecord,
   TeamMember,
 } from '@poke/game-core';
 import type { ExpeditionDto, PokemonActivity, PokemonDto, PokemonOrigin } from '@poke/shared';
@@ -28,11 +30,13 @@ import { GameError } from './errors';
 
 export type PokemonRow = typeof pokemon.$inferSelect;
 export type ExpeditionRow = typeof expeditions.$inferSelect;
+export type QuestProgressRow = typeof questProgress.$inferSelect;
 
 export function toInstance(row: PokemonRow): TeamMember {
   return {
     id: row.id,
     speciesId: row.speciesId,
+    formId: row.formId,
     level: row.level,
     xp: row.xp,
     ivs: {
@@ -56,6 +60,8 @@ export function toPokemonDto(row: PokemonRow, activity: PokemonActivity | null =
   return {
     id: row.id,
     ...instance,
+    formId: row.formId,
+    originalNature: row.natureOverride ? row.nature : null,
     origin: row.origin,
     originRegion: row.originRegion,
     caughtAt: row.caughtAt.toISOString(),
@@ -99,6 +105,7 @@ export async function insertPokemon(
       list.map((p) => ({
         ownerId,
         speciesId: p.speciesId,
+        formId: p.formId ?? null,
         level: p.level,
         xp: p.xp,
         ivHp: p.ivs.hp,
@@ -171,8 +178,21 @@ export async function assertAvailable(
   }
 }
 
-/** Avancement utile aux conditions de déblocage (Pokédex, dresseurs battus, œufs éclos). */
-export async function playerProgress(db: Db, ownerId: string): Promise<PlayerProgress> {
+/**
+ * Avancement utile aux conditions de déblocage : Pokédex, dresseurs battus, œufs éclos et étapes
+ * validées des quêtes (calculées paresseusement à partir de l'avancement enregistré).
+ */
+export async function playerProgress(
+  db: Db,
+  ctx: GameContext,
+  ownerId: string,
+): Promise<PlayerProgress> {
+  const [base, rows] = await Promise.all([baseProgress(db, ownerId), questRows(db, ownerId)]);
+  return { ...base, questSteps: questStepsDone(ctx, base, questRecords(rows)) };
+}
+
+/** Avancement hors quêtes. */
+export async function baseProgress(db: Db, ownerId: string): Promise<PlayerProgress> {
   const [caught, defeated, hatched] = await Promise.all([
     caughtSpeciesIds(db, ownerId),
     db
@@ -188,14 +208,35 @@ export async function playerProgress(db: Db, ownerId: string): Promise<PlayerPro
   };
 }
 
-/** Récompenses de progression réclamées (emplacements et bonus permanents en découlent). */
+export async function questRows(db: Db, ownerId: string): Promise<QuestProgressRow[]> {
+  return db.select().from(questProgress).where(eq(questProgress.ownerId, ownerId));
+}
+
+export function questRecords(rows: readonly QuestProgressRow[]): Map<string, QuestRecord> {
+  return new Map(rows.map((r) => [r.questId, { step: r.step, count: r.progress.count ?? 0 }]));
+}
+
+/**
+ * Récompenses de progression réclamées : paliers, collections et quêtes (emplacements et bonus
+ * permanents en découlent).
+ */
 export async function claimedRewards(db: Db, ownerId: string): Promise<ClaimedRewards> {
-  const rows = await db
-    .select({ kind: rewardClaims.kind, rewardId: rewardClaims.rewardId })
-    .from(rewardClaims)
-    .where(eq(rewardClaims.ownerId, ownerId));
+  const [rows, quests] = await Promise.all([
+    db
+      .select({ kind: rewardClaims.kind, rewardId: rewardClaims.rewardId })
+      .from(rewardClaims)
+      .where(eq(rewardClaims.ownerId, ownerId)),
+    db
+      .select({ questId: questProgress.questId })
+      .from(questProgress)
+      .where(and(eq(questProgress.ownerId, ownerId), isNotNull(questProgress.claimedAt))),
+  ]);
   const ids = (kind: string) => new Set(rows.filter((r) => r.kind === kind).map((r) => r.rewardId));
-  return { milestoneIds: ids('milestone'), collectionIds: ids('collection') };
+  return {
+    milestoneIds: ids('milestone'),
+    collectionIds: ids('collection'),
+    questIds: new Set(quests.map((q) => q.questId)),
+  };
 }
 
 export async function eggsHatchedCount(db: Db, ownerId: string): Promise<number> {

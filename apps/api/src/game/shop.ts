@@ -69,7 +69,7 @@ export async function shopState(
   const ctx = await content.get();
   const profile = await requireStartedProfile(db, userId);
   const [progress, purchases, seenRows] = await Promise.all([
-    playerProgress(db, userId),
+    playerProgress(db, ctx, userId),
     limitedPurchases(db, ctx, userId, now),
     db.select().from(shopSeen).where(eq(shopSeen.ownerId, userId)),
   ]);
@@ -141,7 +141,7 @@ export async function purchase(
       .where(eq(playerProfiles.userId, userId))
       .for('update');
     const [progress, purchases] = await Promise.all([
-      playerProgress(tx, userId),
+      playerProgress(tx, ctx, userId),
       limitedPurchases(tx, ctx, userId, now),
     ]);
     const check = checkPurchase(ctx, {

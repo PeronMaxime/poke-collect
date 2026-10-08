@@ -5,7 +5,8 @@
   "type": "module",
   "exports": {
     ".": "./src/index.ts",
-    "./types": "./src/types.ts"
+    "./types": "./src/types.ts",
+    "./habitat": "./src/habitat.ts"
   },
   "scripts": {
     "typecheck": "tsc -p tsconfig.json",

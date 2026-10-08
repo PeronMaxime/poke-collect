@@ -5,14 +5,27 @@ import type {
   EvolutionMethod,
   EvolutionOverride,
   GameContentData,
+  Item,
   ProgressReward,
   LootEntry,
+  Quest,
+  QuestCondition,
+  QuestPokemon,
+  QuestStep,
   ShopCategory,
   ShopEntry,
   Trainer,
   TrainerPokemon,
   Zone,
 } from './schemas';
+import {
+  expansionDexMilestones,
+  expansionItems,
+  expansionRegions,
+  expansionShopEntries,
+  expansionTrainers,
+  expansionZones,
+} from './seed-expansion';
 
 /**
  * Contenu de test, importé en base au premier lancement (version 1, publiée).
@@ -33,6 +46,16 @@ const loot = (itemId: string, chance: number, min = 1, max = min): LootEntry => 
   min,
   max,
 });
+
+/** Aromates proposés dans le contenu de test : nature PokéAPI et nom français. */
+const MINTS = [
+  ['adamant', 'Rigide'],
+  ['modest', 'Modeste'],
+  ['jolly', 'Jovial'],
+  ['timid', 'Timide'],
+  ['bold', 'Assuré'],
+  ['calm', 'Calme'],
+] as const;
 
 const zones: Zone[] = [
   {
@@ -125,6 +148,151 @@ const zones: Zone[] = [
     ],
     lootTableId: 'butin-mer',
     unlock: { type: 'regionDexPercent', regionId: 'kanto', percent: 10 },
+  },
+  // Haut niveau (phase 7) : après les badges, puis zones ouvertes par les quêtes légendaires.
+  {
+    id: 'route-victoire',
+    regionId: 'kanto',
+    order: 4,
+    name: 'Route Victoire',
+    description: 'La grotte qui mène à la Ligue Pokémon. Seuls les dresseurs aguerris en sortent.',
+    image: null,
+    habitat: 'cave',
+    minPower: 1200,
+    requiredTypes: [],
+    affinityTypes: ['fighting', 'rock', 'ground'],
+    durationsMinutes: [60, 240, 480],
+    encounters: [
+      enc(67, 20, 40, 44),
+      enc(75, 20, 40, 44),
+      enc(95, 15, 40, 46),
+      enc(42, 15, 40, 44),
+      enc(105, 10, 42, 46),
+      enc(49, 10, 42, 46),
+    ],
+    lootTableId: 'butin-elite',
+    unlock: { type: 'badgeCount', count: 2 },
+  },
+  {
+    id: 'iles-ecume',
+    regionId: 'kanto',
+    order: 5,
+    name: 'Îles Écume',
+    description: 'Deux îles glacées au large de Parmanie. Un oiseau légendaire y aurait son nid.',
+    image: null,
+    habitat: 'sea',
+    minPower: 800,
+    requiredTypes: [{ type: 'water', count: 1 }],
+    affinityTypes: ['ice', 'water'],
+    durationsMinutes: [60, 240, 480],
+    encounters: [
+      enc(86, 30, 30, 35),
+      enc(87, 15, 32, 38),
+      enc(90, 20, 30, 35),
+      enc(91, 5, 34, 38),
+      enc(124, 10, 32, 36),
+      enc(79, 15, 30, 35),
+      enc(131, 3, 35, 40),
+    ],
+    lootTableId: 'butin-mer',
+    unlock: { type: 'questStepsDone', questId: 'artikodin', count: 1 },
+  },
+  {
+    id: 'centrale',
+    regionId: 'kanto',
+    order: 6,
+    name: 'Centrale',
+    description: 'Une centrale électrique abandonnée où crépitent les Pokémon Électrik.',
+    image: null,
+    habitat: 'urban',
+    minPower: 800,
+    requiredTypes: [],
+    affinityTypes: ['electric'],
+    durationsMinutes: [60, 240, 480],
+    encounters: [
+      enc(100, 30, 30, 35),
+      enc(81, 30, 30, 35),
+      enc(25, 15, 30, 34),
+      enc(82, 8, 34, 38),
+      enc(101, 7, 34, 38),
+      enc(125, 5, 35, 38),
+      enc(88, 5, 30, 34),
+    ],
+    lootTableId: 'butin-grotte',
+    unlock: { type: 'questStepsDone', questId: 'electhor', count: 1 },
+  },
+  {
+    id: 'mont-braise',
+    regionId: 'kanto',
+    order: 7,
+    name: 'Mont Braise',
+    description: 'Un volcan des Îles Sevii. La lave y garde au chaud un oiseau de feu.',
+    image: null,
+    habitat: 'mountain',
+    minPower: 800,
+    requiredTypes: [],
+    affinityTypes: ['fire', 'rock'],
+    durationsMinutes: [60, 240, 480],
+    encounters: [
+      enc(77, 30, 30, 35),
+      enc(37, 20, 30, 35),
+      enc(74, 20, 30, 34),
+      enc(75, 10, 33, 37),
+      enc(78, 8, 34, 38),
+      enc(126, 5, 35, 38),
+      enc(58, 7, 30, 35),
+    ],
+    lootTableId: 'butin-grotte',
+    unlock: { type: 'questStepsDone', questId: 'sulfura', count: 1 },
+  },
+  {
+    id: 'grotte-azuree',
+    regionId: 'kanto',
+    order: 8,
+    name: 'Grotte Azurée',
+    description: 'La caverne interdite d’Azuria, peuplée de Pokémon redoutables.',
+    image: null,
+    habitat: 'cave',
+    minPower: 2000,
+    requiredTypes: [],
+    affinityTypes: ['psychic', 'ground'],
+    durationsMinutes: [240, 480],
+    encounters: [
+      enc(64, 15, 50, 55),
+      enc(47, 15, 50, 55),
+      enc(112, 15, 52, 58),
+      enc(101, 15, 50, 55),
+      enc(113, 8, 52, 58),
+      enc(132, 12, 50, 55),
+      enc(55, 10, 52, 56),
+      enc(82, 10, 50, 55),
+    ],
+    lootTableId: 'butin-elite',
+    unlock: { type: 'questStepsDone', questId: 'mewtwo', count: 2 },
+  },
+  {
+    id: 'ile-lointaine',
+    regionId: 'kanto',
+    order: 9,
+    name: 'Île Lointaine',
+    description: 'Une île couverte de hautes herbes, absente des cartes. Quelque chose y joue…',
+    image: null,
+    habitat: 'grassland',
+    minPower: 800,
+    requiredTypes: [],
+    affinityTypes: ['grass', 'bug', 'psychic'],
+    durationsMinutes: [60, 240, 480],
+    encounters: [
+      enc(114, 20, 30, 35),
+      enc(102, 20, 30, 35),
+      enc(48, 20, 30, 34),
+      enc(46, 15, 30, 34),
+      enc(123, 8, 33, 37),
+      enc(127, 8, 33, 37),
+      enc(103, 4, 35, 38),
+    ],
+    lootTableId: 'butin-foret',
+    unlock: { type: 'questStepsDone', questId: 'mew', count: 2 },
   },
 ];
 
@@ -264,13 +432,106 @@ const trainers: Trainer[] = [
     koMinutes: 120,
     unlock: { type: 'badgeCount', count: 1 },
   },
+  ...eliteFour(),
 ];
+
+/** Conseil 4 puis Maître de la Ligue : uniques, à affronter dans l'ordre, IV élevés. */
+function eliteFour(): Trainer[] {
+  const ace = (speciesId: number, level: number, iv: number): TrainerPokemon => ({
+    speciesId,
+    level,
+    iv,
+    nature: null,
+  });
+  const league = (
+    id: string,
+    order: number,
+    name: string,
+    sprite: string,
+    team: TrainerPokemon[],
+    previous: string | null,
+    extra: Partial<Trainer> = {},
+  ): Trainer => ({
+    id,
+    regionId: 'kanto',
+    zoneId: null,
+    order,
+    name,
+    trainerClass: 'Conseil 4',
+    sprite: `${TRAINER_SPRITES}/${sprite}.png`,
+    team,
+    durationMinutes: 120,
+    rules: noRules(),
+    money: 6000,
+    lootTableId: 'butin-elite',
+    lootRolls: 3,
+    badge: null,
+    repeatable: false,
+    cooldownMinutes: null,
+    koMinutes: 240,
+    unlock: previous
+      ? { type: 'trainerDefeated', trainerId: previous }
+      : { type: 'badgeCount', count: 2 },
+    ...extra,
+  });
+  return [
+    league(
+      'olga',
+      6,
+      'Olga',
+      'lorelei',
+      [ace(87, 54, 25), ace(91, 53, 25), ace(80, 54, 25), ace(124, 56, 25), ace(131, 56, 25)],
+      null,
+    ),
+    league(
+      'aldo',
+      7,
+      'Aldo',
+      'bruno',
+      [ace(95, 53, 25), ace(107, 55, 25), ace(106, 55, 25), ace(95, 56, 25), ace(68, 58, 25)],
+      'olga',
+    ),
+    league(
+      'agatha',
+      8,
+      'Agatha',
+      'agatha',
+      [ace(94, 56, 25), ace(42, 56, 25), ace(93, 55, 25), ace(24, 58, 25), ace(94, 60, 25)],
+      'aldo',
+    ),
+    league(
+      'peter',
+      9,
+      'Peter',
+      'lance',
+      [ace(130, 56, 25), ace(148, 54, 25), ace(148, 54, 25), ace(142, 58, 25), ace(149, 60, 25)],
+      'agatha',
+    ),
+    league(
+      'maitre-blue',
+      10,
+      'Blue',
+      'blue',
+      [
+        ace(18, 61, 31),
+        ace(65, 59, 31),
+        ace(112, 61, 31),
+        ace(103, 61, 31),
+        ace(130, 63, 31),
+        ace(6, 65, 31),
+      ],
+      'peter',
+      { trainerClass: 'Maître de la Ligue', durationMinutes: 180, money: 15_000, lootRolls: 5 },
+    ),
+  ];
+}
 
 const shopCategories: ShopCategory[] = [
   { id: 'balls', name: 'Balls', icon: null, order: 0 },
   { id: 'baies', name: 'Baies', icon: null, order: 1 },
   { id: 'elevage', name: 'Élevage', icon: null, order: 2 },
   { id: 'evolution', name: 'Évolution', icon: null, order: 3 },
+  { id: 'rare', name: 'Rare', icon: null, order: 4 },
 ];
 
 const article = (
@@ -334,6 +595,27 @@ const shopEntries: ShopEntry[] = [
   article('linking-cord', 'linking-cord', 'evolution', 5, 5000, {
     unlock: { type: 'badgeCount', count: 2 },
   }),
+  // Objets endgame : chers, limités, débloqués par le Conseil 4 et le Maître.
+  article('bottle-cap', 'bottle-cap', 'rare', 0, 50_000, {
+    unlock: { type: 'trainerDefeated', trainerId: 'olga' },
+    purchaseLimit: { lots: 1, period: 'week' },
+  }),
+  article('gold-bottle-cap', 'gold-bottle-cap', 'rare', 1, 300_000, {
+    unlock: { type: 'trainerDefeated', trainerId: 'maitre-blue' },
+    purchaseLimit: { lots: 1, period: 'total' },
+  }),
+  ...MINTS.map(([nature], i) =>
+    article(`${nature}-mint`, `${nature}-mint`, 'rare', 2 + i, 20_000, {
+      unlock: { type: 'badgeCount', count: 2 },
+    }),
+  ),
+  article('ability-capsule', 'ability-capsule', 'rare', 10, 30_000, {
+    unlock: { type: 'trainerDefeated', trainerId: 'olga' },
+  }),
+  article('ability-patch', 'ability-patch', 'rare', 11, 150_000, {
+    unlock: { type: 'trainerDefeated', trainerId: 'maitre-blue' },
+    purchaseLimit: { lots: 1, period: 'week' },
+  }),
 ];
 
 const method = (m: Partial<EvolutionMethod>): EvolutionMethod => ({
@@ -352,15 +634,54 @@ const evolution = (from: number, to: number, ...methods: EvolutionMethod[]): Evo
 });
 
 /**
- * PokéAPI mélange les conditions des formes régionales (Miaouss d'Alola évolue par le bonheur,
- * Goupix d'Alola par la Pierre Glace…) : on garde ici la méthode de la forme de Kanto.
+ * Évolutions dont la condition PokéAPI n'est pas transposable au jeu idle (attaque connue, genre,
+ * pas effectués, Pokémon retourné, nature…) : une condition de niveau ou d'objet équivalente.
  */
 const evolutionOverrides: EvolutionOverride[] = [
-  evolution(52, 53, method({ minLevel: 28 })),
-  evolution(27, 28, method({ minLevel: 22 })),
-  evolution(37, 38, method({ itemId: 'fire-stone' })),
-  evolution(100, 101, method({ minLevel: 30 })),
-  evolution(79, 80, method({ minLevel: 37 })),
+  evolution(108, 463, method({ minLevel: 33 })), // Excelangue → Coudlangue (Roulade)
+  evolution(281, 475, method({ itemId: 'dawn-stone' })), // Kirlia → Gallame (mâle)
+  evolution(361, 478, method({ itemId: 'dawn-stone' })), // Stalgamin → Momartik (femelle)
+  evolution(114, 465, method({ minLevel: 33 })), // Saquedeneu → Bouldeneu (Pouvoir Antique)
+  evolution(190, 424, method({ minLevel: 32 })), // Capumain → Capidextre (Coup Double)
+  evolution(193, 469, method({ minLevel: 33 })), // Yanma → Yanmega (Pouvoir Antique)
+  evolution(221, 473, method({ minLevel: 34 })), // Cochignon → Mammochon (Pouvoir Antique)
+  evolution(133, 700, method({ minHappiness: 220 })), // Évoli → Nymphali (attaque Fée)
+  evolution(236, 106, method({ minLevel: 20 })), // Debugant : selon Attaque / Défense
+  evolution(236, 107, method({ minLevel: 20 })),
+  evolution(236, 237, method({ minLevel: 20 })),
+  evolution(290, 292, method({ minLevel: 20 })), // Ningale → Munja (place libre)
+  evolution(412, 413, method({ minLevel: 20 })), // Cheniti : selon le genre
+  evolution(412, 414, method({ minLevel: 20 })),
+  evolution(415, 416, method({ minLevel: 21 })), // Apitrini → Apireine (femelle)
+  evolution(438, 185, method({ minLevel: 17 })), // Manzaï → Simularbre (Copie)
+  evolution(439, 122, method({ minLevel: 18 })), // Mime Jr. → M. Mime (Copie)
+  evolution(458, 226, method({ minLevel: 20 })), // Babimanta → Démanta (Rémoraid)
+  evolution(588, 589, method({ itemId: 'linking-cord' })), // Carabing ⇄ Escargaume
+  evolution(616, 617, method({ itemId: 'linking-cord' })),
+  evolution(674, 675, method({ minLevel: 32 })), // Pandespiègle → Pandarbare (Ténèbres)
+  evolution(677, 678, method({ minLevel: 25 })), // Psystigri → Mistigrix
+  evolution(686, 687, method({ minLevel: 30 })), // Sepiatop → Sepiatroce (console retournée)
+  evolution(705, 706, method({ minLevel: 50 })), // Colimucus → Muplodocus (pluie)
+  evolution(757, 758, method({ minLevel: 33 })), // Tritox → Malamandre (femelle)
+  evolution(762, 763, method({ minLevel: 29 })), // Candine → Sucreine (Écrasement)
+  evolution(803, 804, method({ minLevel: 40 })), // Vémini → Mandrillon (Draco-Choc)
+  evolution(808, 809, method({ minLevel: 50 })), // Meltan → Melmetal (Bonbons Meltan)
+  evolution(848, 849, method({ minLevel: 30 })), // Toxizap → Salarsen (nature)
+  evolution(852, 853, method({ minLevel: 35 })), // Poulpaf → Krakos (Provoc)
+  evolution(868, 869, method({ itemId: 'strawberry-sweet' })), // Crèmy → Charmilly (pirouette)
+  evolution(915, 916, method({ minLevel: 18 })), // Gourmelet → Fragroin
+  evolution(922, 923, method({ minLevel: 35 })), // Pohmotte → Pohmarmotte (1 000 pas)
+  evolution(946, 947, method({ minLevel: 30 })), // Virovent → Virevorreur (1 000 pas)
+  evolution(953, 954, method({ minLevel: 30 })), // Léboulérou → Bérasca (1 000 pas)
+  evolution(963, 964, method({ minLevel: 38 })), // Dofin → Superdofin (multijoueur)
+  evolution(57, 979, method({ minLevel: 45 })), // Colossinge → Courrousinge (Poing de Colère)
+  evolution(203, 981, method({ minLevel: 32 })), // Girafarig → Farigiraf (Double Laser)
+  evolution(206, 982, method({ minLevel: 32 })), // Insolourdo → Deusolourdo (Vrille Infernale)
+  evolution(217, 901, method({ itemId: 'peat-block', timeOfDay: 'night' })), // Ursaring → Ursaking
+  evolution(234, 899, method({ minLevel: 31 })), // Cerfrousse → Cerbyllin (Sprint Bouclier)
+  evolution(625, 983, method({ minLevel: 52 })), // Scalproie → Scalpereur (3 Scalproie vaincus)
+  evolution(999, 1000, method({ minLevel: 40 })), // Mordudor → Gromago (999 pièces)
+  evolution(1011, 1019, method({ minLevel: 40 })), // Pomdramour → Pomdorochi (Cri Draconique)
 ];
 
 const reward = (r: Partial<ProgressReward>): ProgressReward => ({
@@ -492,6 +813,183 @@ const collections: Collection[] = [
   },
 ];
 
+/** Pokémon offert par une quête : au moins 3 IV parfaits, comme dans les jeux récents. */
+const legendary = (speciesId: number, level: number): QuestPokemon => ({
+  speciesId,
+  level,
+  perfectIvs: 3,
+});
+const step = (name: string, description: string, condition: QuestCondition): QuestStep => ({
+  name,
+  description,
+  condition,
+});
+/** Expédition réussie dans une zone de quête, avec des Pokémon d'un type et d'une PE donnés. */
+const questExpedition = (
+  zoneId: string,
+  memberType: string | null,
+  memberCount: number,
+  minMemberPower: number,
+  count = 1,
+): QuestCondition => ({
+  type: 'expedition',
+  zoneId,
+  count,
+  memberType,
+  memberCount,
+  minMemberPower,
+});
+
+/** Quêtes des légendaires de Kanto (PLAN.md, section 2.7). */
+const quests: Quest[] = [
+  {
+    id: 'artikodin',
+    order: 0,
+    name: 'L’oiseau des glaces',
+    description: 'Un oiseau légendaire ferait tomber la neige sur les Îles Écume.',
+    image: null,
+    regionId: 'kanto',
+    unlock: { type: 'badgeCount', count: 2 },
+    steps: [
+      step('Les pieds dans l’eau', 'Capture 10 Pokémon Eau pour préparer la traversée.', {
+        type: 'catchPokemon',
+        count: 10,
+        pokemonType: 'water',
+        speciesId: null,
+      }),
+      step('Le froid des îles', 'Capture 5 Pokémon Glace aux Îles Écume.', {
+        type: 'catchPokemon',
+        count: 5,
+        pokemonType: 'ice',
+        speciesId: null,
+      }),
+      step(
+        'Le nid d’Artikodin',
+        'Réussis une expédition aux Îles Écume avec 2 Pokémon Glace de PE 400 ou plus.',
+        questExpedition('iles-ecume', 'ice', 2, 400),
+      ),
+    ],
+    rewards: {
+      ...reward({ currency: 10_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] }),
+      pokemon: [legendary(144, 50)],
+    },
+  },
+  {
+    id: 'electhor',
+    order: 1,
+    name: 'L’oiseau de foudre',
+    description: 'Des éclairs zèbrent le ciel au-dessus de la Centrale abandonnée.',
+    image: null,
+    regionId: 'kanto',
+    unlock: { type: 'badgeCount', count: 2 },
+    steps: [
+      step('Prouver sa valeur', 'Bats la Championne Ondine.', {
+        type: 'trainerDefeated',
+        trainerId: 'ondine',
+      }),
+      step('Courts-circuits', 'Capture 8 Pokémon Électrik à la Centrale.', {
+        type: 'catchPokemon',
+        count: 8,
+        pokemonType: 'electric',
+        speciesId: null,
+      }),
+      step(
+        'Le cœur de la Centrale',
+        'Réussis une expédition à la Centrale avec 2 Pokémon Électrik de PE 400 ou plus.',
+        questExpedition('centrale', 'electric', 2, 400),
+      ),
+    ],
+    rewards: {
+      ...reward({ currency: 10_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] }),
+      pokemon: [legendary(145, 50)],
+    },
+  },
+  {
+    id: 'sulfura',
+    order: 2,
+    name: 'L’oiseau de feu',
+    description: 'Le Mont Braise gronde : un oiseau de flammes y aurait été aperçu.',
+    image: null,
+    regionId: 'kanto',
+    unlock: { type: 'badgeCount', count: 2 },
+    steps: [
+      step('Explorateur', 'Capture 40 espèces différentes.', { type: 'speciesCaught', count: 40 }),
+      step('Coulées de lave', 'Capture 8 Pokémon Feu au Mont Braise.', {
+        type: 'catchPokemon',
+        count: 8,
+        pokemonType: 'fire',
+        speciesId: null,
+      }),
+      step(
+        'Le sommet du volcan',
+        'Réussis une expédition au Mont Braise avec 2 Pokémon Feu de PE 400 ou plus.',
+        questExpedition('mont-braise', 'fire', 2, 400),
+      ),
+    ],
+    rewards: {
+      ...reward({ currency: 10_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] }),
+      pokemon: [legendary(146, 50)],
+    },
+  },
+  {
+    id: 'mewtwo',
+    order: 3,
+    name: 'Le Pokémon génétique',
+    description:
+      'Une créature née d’expériences interdites se cacherait au fond de la Grotte Azurée.',
+    image: null,
+    regionId: 'kanto',
+    unlock: { type: 'badgeCount', count: 2 },
+    steps: [
+      step('Chercheur', 'Capture 60 % du Pokédex de Kanto.', {
+        type: 'regionDexPercent',
+        regionId: 'kanto',
+        percent: 60,
+      }),
+      step('Maître de la Ligue', 'Bats le Maître de la Ligue Pokémon.', {
+        type: 'trainerDefeated',
+        trainerId: 'maitre-blue',
+      }),
+      step(
+        'La Grotte Azurée',
+        'Réussis une expédition dans la Grotte Azurée avec 3 Pokémon de PE 700 ou plus.',
+        questExpedition('grotte-azuree', null, 3, 700),
+      ),
+    ],
+    rewards: {
+      ...reward({ currency: 50_000, items: [{ itemId: 'gold-bottle-cap', quantity: 1 }] }),
+      pokemon: [legendary(150, 70)],
+    },
+  },
+  {
+    id: 'mew',
+    order: 4,
+    name: 'Le Pokémon fabuleux',
+    description: 'Mewtwo n’est qu’une copie. L’original jouerait sur une île absente des cartes.',
+    image: null,
+    regionId: 'kanto',
+    unlock: { type: 'questCompleted', questId: 'mewtwo' },
+    steps: [
+      step('Origines', 'Fais éclore 20 œufs.', { type: 'eggsHatched', count: 20 }),
+      step('Grand collectionneur', 'Capture 30 Pokémon.', {
+        type: 'catchPokemon',
+        count: 30,
+        pokemonType: null,
+        speciesId: null,
+      }),
+      step(
+        'Les hautes herbes',
+        'Réussis 3 expéditions sur l’Île Lointaine.',
+        questExpedition('ile-lointaine', null, 0, 0, 3),
+      ),
+    ],
+    rewards: {
+      ...reward({ items: [{ itemId: 'ability-patch', quantity: 1 }] }),
+      pokemon: [legendary(151, 30)],
+    },
+  },
+];
+
 export const seedContent: GameContentData = {
   balance: {
     expeditions: {
@@ -568,6 +1066,7 @@ export const seedContent: GameContentData = {
       starterSpeciesIds: [1, 4, 7],
       unlock: { type: 'always' },
     },
+    ...expansionRegions,
   ],
   speciesOverrides: [],
   items: [
@@ -689,6 +1188,8 @@ export const seedContent: GameContentData = {
       rarity: 'legendary',
       effects: [{ type: 'shinyCharm', multiplier: 3 }],
     },
+    ...endgameItems(),
+    ...expansionItems,
   ],
   lootTables: [
     {
@@ -731,12 +1232,74 @@ export const seedContent: GameContentData = {
         loot('destiny-knot', 0.02),
       ],
     },
+    {
+      id: 'butin-elite',
+      name: 'Butin d’élite',
+      entries: [
+        loot('ultra-ball', 0.5, 1, 2),
+        loot('great-ball', 0.4, 1, 3),
+        loot('bottle-cap', 0.02),
+        loot('ability-capsule', 0.01),
+        ...MINTS.map(([nature]) => loot(`${nature}-mint`, 0.01)),
+      ],
+    },
   ],
-  zones,
-  trainers,
+  zones: [...zones, ...expansionZones],
+  trainers: [...trainers, ...expansionTrainers],
   shopCategories,
-  shopEntries,
+  shopEntries: [...shopEntries, ...expansionShopEntries],
   evolutionOverrides,
-  dexMilestones,
+  dexMilestones: [...dexMilestones, ...expansionDexMilestones],
   collections,
+  quests,
 };
+
+/** Objets endgame (PLAN.md, section 2.7) : Capsules, Aromates, Pilule et Patch Talent. */
+function endgameItems(): Item[] {
+  const item = (
+    id: string,
+    name: string,
+    description: string,
+    rarity: Item['rarity'],
+    effects: Item['effects'],
+  ): Item => ({ id, name, description, icon: null, category: 'endgame', rarity, effects });
+  return [
+    item(
+      'bottle-cap',
+      'Capsule d’Argent',
+      'Utilisée sur un Pokémon : un IV au choix passe à 31.',
+      'epic',
+      [{ type: 'ivCap', all: false }],
+    ),
+    item(
+      'gold-bottle-cap',
+      'Capsule d’Or',
+      'Utilisée sur un Pokémon : ses 6 IV passent à 31.',
+      'legendary',
+      [{ type: 'ivCap', all: true }],
+    ),
+    ...MINTS.map(([nature, label]) =>
+      item(
+        `${nature}-mint`,
+        `Aromate ${label}`,
+        `Utilisé sur un Pokémon : sa nature effective devient ${label}.`,
+        'epic',
+        [{ type: 'mint', nature }],
+      ),
+    ),
+    item(
+      'ability-capsule',
+      'Pilule Talent',
+      'Utilisée sur un Pokémon : il passe à son autre talent normal.',
+      'epic',
+      [{ type: 'abilityChange', hidden: false }],
+    ),
+    item(
+      'ability-patch',
+      'Patch Talent',
+      'Utilisé sur un Pokémon : il obtient son talent caché.',
+      'legendary',
+      [{ type: 'abilityChange', hidden: true }],
+    ),
+  ];
+}

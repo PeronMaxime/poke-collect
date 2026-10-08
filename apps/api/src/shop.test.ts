@@ -96,6 +96,16 @@ describe('boutique', () => {
       'fire-stone:locked',
       'leaf-stone:locked',
       'linking-cord:locked',
+      'bottle-cap:locked',
+      'gold-bottle-cap:locked',
+      'adamant-mint:locked',
+      'modest-mint:locked',
+      'jolly-mint:locked',
+      'timid-mint:locked',
+      'bold-mint:locked',
+      'calm-mint:locked',
+      'ability-capsule:locked',
+      'ability-patch:locked',
     ]);
 
     const seen = await call('POST', '/api/shop/seen', {

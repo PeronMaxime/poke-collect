@@ -1,6 +1,6 @@
 import { ITEM_CATEGORIES, RARITIES, itemSchema } from '@poke/content';
 import type { Item, ItemCategory, ItemEffect, Rarity } from '@poke/content';
-import { items as pokeApiItems } from '@poke/data';
+import { items as pokeApiItems, natures } from '@poke/data';
 import { EntityPage } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
 import {
@@ -59,6 +59,21 @@ const EFFECTS: Record<
     label: 'Charme Chroma',
     help: 'Possédé dans le sac (non consommé) : multiplie le taux shiny des rencontres et des éclosions. Non cumulable : le meilleur s’applique.',
     create: () => ({ type: 'shinyCharm', multiplier: 3 }),
+  },
+  ivCap: {
+    label: 'Capsule (IV)',
+    help: 'Utilisée sur un Pokémon : un IV au choix passe à 31 (Capsule d’Argent), ou les 6 (Capsule d’Or). Consommée.',
+    create: () => ({ type: 'ivCap', all: false }),
+  },
+  mint: {
+    label: 'Aromate (nature)',
+    help: 'Utilisé sur un Pokémon : change sa nature effective (stats), la nature d’origine reste affichée. Consommé.',
+    create: () => ({ type: 'mint', nature: 'adamant' }),
+  },
+  abilityChange: {
+    label: 'Changement de talent',
+    help: 'Utilisé sur un Pokémon : passe à un autre talent normal (Pilule Talent) ou au talent caché (Patch Talent). Consommé.',
+    create: () => ({ type: 'abilityChange', hidden: false }),
   },
 };
 
@@ -285,6 +300,42 @@ function ItemForm({
                     unit="×"
                     disabled={disabled}
                     onChange={(v) => update({ ...effect, multiplier: v })}
+                  />
+                </Field>
+              )}
+              {effect.type === 'ivCap' && (
+                <Field label="IV concernés">
+                  <SelectInput
+                    value={effect.all ? 'all' : 'one'}
+                    disabled={disabled}
+                    onChange={(v) => update({ ...effect, all: v === 'all' })}
+                    options={[
+                      { value: 'one', label: 'Un IV au choix' },
+                      { value: 'all', label: 'Les 6 IV' },
+                    ]}
+                  />
+                </Field>
+              )}
+              {effect.type === 'mint' && (
+                <Field label="Nature" error={errors.get(`effects.${i}.nature`)}>
+                  <SelectInput
+                    value={effect.nature}
+                    disabled={disabled}
+                    onChange={(nature) => update({ ...effect, nature })}
+                    options={natures.map((n) => ({ value: n.name, label: n.nameFr }))}
+                  />
+                </Field>
+              )}
+              {effect.type === 'abilityChange' && (
+                <Field label="Talent visé">
+                  <SelectInput
+                    value={effect.hidden ? 'hidden' : 'regular'}
+                    disabled={disabled}
+                    onChange={(v) => update({ ...effect, hidden: v === 'hidden' })}
+                    options={[
+                      { value: 'regular', label: 'Autre talent normal' },
+                      { value: 'hidden', label: 'Talent caché' },
+                    ]}
                   />
                 </Field>
               )}

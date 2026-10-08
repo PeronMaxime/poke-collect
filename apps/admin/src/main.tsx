@@ -7,11 +7,13 @@ import { Layout } from './components/Layout';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
+import { TelemetryPage } from './pages/TelemetryPage';
 import { BalancePage } from './pages/content/BalancePage';
 import { EvolutionsPage } from './pages/content/EvolutionsPage';
 import { ItemsPage } from './pages/content/ItemsPage';
 import { LootTablesPage } from './pages/content/LootTablesPage';
 import { ProgressionPage } from './pages/content/ProgressionPage';
+import { QuestsPage } from './pages/content/QuestsPage';
 import { RegionsPage } from './pages/content/RegionsPage';
 import { ShopPage } from './pages/content/ShopPage';
 import { SpeciesPage } from './pages/content/SpeciesPage';
@@ -43,6 +45,8 @@ const router = createBrowserRouter([
           { path: 'shop', element: <ShopPage /> },
           { path: 'evolutions', element: <EvolutionsPage /> },
           { path: 'progression', element: <ProgressionPage /> },
+          { path: 'quests', element: <QuestsPage /> },
+          { path: 'telemetry', element: <TelemetryPage /> },
           ...SECTIONS.filter((s) => s.phase > CURRENT_PHASE).map((section) => ({
             path: section.path.slice(1),
             element: <PlaceholderPage section={section} />,

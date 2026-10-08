@@ -1,5 +1,5 @@
 /** Phase de la roadmap en cours : les sections des phases suivantes sont des emplacements réservés. */
-export const CURRENT_PHASE = 6;
+export const CURRENT_PHASE = 8;
 
 /** Sections du panneau d'administration, dans l'ordre de PLAN.md (section 5.2). */
 export interface AdminSection {
@@ -75,7 +75,7 @@ export const SECTIONS: AdminSection[] = [
   {
     path: '/quests',
     label: 'Quêtes',
-    description: 'Chaînes, étapes, conditions et récompenses.',
+    description: 'Chaînes, étapes, conditions et récompenses (légendaires).',
     phase: 7,
   },
   {
@@ -85,16 +85,22 @@ export const SECTIONS: AdminSection[] = [
     phase: 5,
   },
   {
+    path: '/telemetry',
+    label: 'Télémétrie',
+    description: 'Temps de complétion, goulets (dresseurs, quêtes, zones), activité, économie.',
+    phase: 8,
+  },
+  {
     path: '/events',
     label: 'Événements',
     description: 'Périodes, zones temporaires, multiplicateurs.',
-    phase: 8,
+    phase: 9,
   },
   {
     path: '/players',
     label: 'Joueurs',
     description: 'Consultation de profil et outils de support.',
-    phase: 8,
+    phase: 9,
   },
   {
     path: '/audit-log',

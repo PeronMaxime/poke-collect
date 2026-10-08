@@ -6,6 +6,8 @@ import { createAuth } from './auth';
 import { ContentCache } from './content-cache';
 import type { Env } from './env';
 import { GameError } from './game/errors';
+import { webPushSender } from './game/push';
+import type { PushSender } from './game/push';
 import { authRoutes } from './plugins/auth-routes';
 import { sessionHooks } from './plugins/session';
 import { adminRoutes } from './routes/admin';
@@ -14,6 +16,7 @@ import { breedingRoutes } from './routes/breeding';
 import { gameRoutes } from './routes/game';
 import { playerRoutes } from './routes/player';
 import { progressionRoutes } from './routes/progression';
+import { pushRoutes } from './routes/push';
 import { shopRoutes } from './routes/shop';
 
 export interface AppOptions {
@@ -22,13 +25,22 @@ export interface AppOptions {
   logger?: boolean;
   /** Horloge injectable (tests : faire avancer le temps sans attendre). */
   now?: () => Date;
+  /** Envoi des notifications push (tests : faux expéditeur) ; par défaut, Web Push. */
+  pushSender?: PushSender;
 }
 
-export async function buildApp({ db, env, logger = false, now = () => new Date() }: AppOptions) {
+export async function buildApp({
+  db,
+  env,
+  logger = false,
+  now = () => new Date(),
+  pushSender,
+}: AppOptions) {
   const app = Fastify({ logger });
   const auth = createAuth(db, env);
   const content = new ContentCache(db);
   const hooks = sessionHooks(auth);
+  const push = env.vapid ? (pushSender ?? webPushSender(env.vapid)) : null;
 
   app.decorateRequest('user', null);
   await app.register(cors, { origin: env.trustedOrigins, credentials: true });
@@ -59,7 +71,14 @@ export async function buildApp({ db, env, logger = false, now = () => new Date()
   await app.register(battleRoutes, { db, content, hooks, now });
   await app.register(shopRoutes, { db, content, hooks, now });
   await app.register(progressionRoutes, { db, content, hooks, now });
-  await app.register(adminRoutes, { db, content, hooks });
+  await app.register(pushRoutes, {
+    db,
+    hooks,
+    now,
+    publicKey: env.vapid?.publicKey ?? null,
+    send: push,
+  });
+  await app.register(adminRoutes, { db, content, hooks, now });
 
-  return { app, auth, content };
+  return { app, auth, content, push };
 }

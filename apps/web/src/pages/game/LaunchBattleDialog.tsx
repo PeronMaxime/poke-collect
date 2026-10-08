@@ -91,7 +91,7 @@ export function LaunchBattleDialog({
 
   const available = (pokemon.data ?? [])
     .filter((p) => isUsable(p, now))
-    .map((p) => ({ p, power: pokemonPower(ctx.species(p.speciesId)!, p) }))
+    .map((p) => ({ p, power: pokemonPower(ctx.species(p.speciesId, p.formId)!, p) }))
     .sort((a, b) => b.power - a.power);
   const members = team.flatMap((id) => available.find((a) => a.p.id === id)?.p ?? []);
   const maxSize = trainer.rules.teamSize ?? ctx.balance.battles.maxTeamSize;
@@ -123,7 +123,7 @@ export function LaunchBattleDialog({
         <div className="ml-auto hidden gap-1 sm:flex">
           {trainer.team.map((m, i) => (
             <span key={i} className="flex flex-col items-center text-[10px] text-slate-500">
-              <PokemonSprite speciesId={m.speciesId} size={48} />
+              <PokemonSprite speciesId={m.speciesId} formId={m.formId} size={48} />
               N.{m.level}
             </span>
           ))}
@@ -139,7 +139,7 @@ export function LaunchBattleDialog({
       <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5">
         {available.map(({ p, power }) => {
           const selected = team.includes(p.id);
-          const species = ctx.species(p.speciesId);
+          const species = ctx.species(p.speciesId, p.formId);
           return (
             <button
               key={p.id}
@@ -151,7 +151,12 @@ export function LaunchBattleDialog({
                   : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
               }`}
             >
-              <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} size={56} />
+              <PokemonSprite
+                speciesId={p.speciesId}
+                formId={p.formId}
+                shiny={p.isShiny}
+                size={56}
+              />
               <span className="truncate">
                 {species?.nameFr} {p.isShiny && <ShinyStar />}
               </span>

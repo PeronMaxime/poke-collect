@@ -9,6 +9,7 @@ import {
   gameContentStructureSchema,
   itemSchema,
   lootTableSchema,
+  questSchema,
   regionSchema,
   shopCategorySchema,
   shopEntrySchema,
@@ -26,6 +27,7 @@ import type {
   GameContentData,
   Item,
   LootTable,
+  Quest,
   Region,
   ShopCategory,
   ShopEntry,
@@ -43,6 +45,7 @@ import {
   evolutionOverrides,
   items,
   lootTables,
+  quests,
   regions,
   shopCategories,
   shopEntries,
@@ -129,6 +132,7 @@ const entityDefs = {
     order: dexMilestones.order,
   },
   collection: { table: collections, key: 'id', schema: collectionSchema, order: collections.order },
+  quest: { table: quests, key: 'id', schema: questSchema, order: quests.order },
 } as const;
 
 export type ContentEntityType = keyof typeof entityDefs;
@@ -145,6 +149,7 @@ export interface ContentEntityMap {
   evolutionOverride: EvolutionOverride;
   dexMilestone: DexMilestone;
   collection: Collection;
+  quest: Quest;
 }
 
 /** Collection de `GameContentData` correspondant à chaque type d'entité. */
@@ -160,6 +165,7 @@ const collectionOf = {
   evolutionOverride: 'evolutionOverrides',
   dexMilestone: 'dexMilestones',
   collection: 'collections',
+  quest: 'quests',
 } as const satisfies Record<ContentEntityType, keyof GameContentData>;
 
 export const contentEntitySchemas: { [K in ContentEntityType]: z.ZodType<ContentEntityMap[K]> } = {
@@ -174,6 +180,7 @@ export const contentEntitySchemas: { [K in ContentEntityType]: z.ZodType<Content
   evolutionOverride: evolutionOverrideSchema,
   dexMilestone: dexMilestoneSchema,
   collection: collectionSchema,
+  quest: questSchema,
 };
 
 type AnyRow = Record<string, unknown>;

@@ -5,6 +5,7 @@ import type {
   ItemEffect,
   ItemEffectType,
   LootTable,
+  Quest,
   Region,
   ShopCategory,
   ShopEntry,
@@ -12,13 +13,18 @@ import type {
   Trainer,
   Zone,
 } from '@poke/content';
-import { getSpecies } from '@poke/data';
-import type { Species } from '@poke/data';
+import { getForm, getSpecies } from '@poke/data';
+import type { PokemonForm, Species } from '@poke/data';
 
-/** Espèce PokéAPI, avec les surcharges de l'admin appliquées. */
+/**
+ * Espèce PokéAPI, avec les surcharges de l'admin appliquées. Avec une forme (alternative ou
+ * régionale), ses types, statistiques, talents et XP de base remplacent ceux de l'espèce.
+ */
 export interface GameSpecies extends Species {
   enabled: boolean;
   override: SpeciesOverride | null;
+  /** Forme appliquée ; null = forme par défaut. */
+  form: PokemonForm | null;
 }
 
 /**
@@ -38,13 +44,17 @@ export interface GameContext {
   readonly shopCategories: readonly ShopCategory[];
   /** Articles triés par catégorie puis par ordre. */
   readonly shopEntries: readonly ShopEntry[];
+  /** Quêtes triées selon leur ordre. */
+  readonly quests: readonly Quest[];
+  quest(id: string): Quest | undefined;
   region(id: string): Region | undefined;
   zone(id: string): Zone | undefined;
   trainer(id: string): Trainer | undefined;
   shopEntry(id: string): ShopEntry | undefined;
   item(id: string): Item | undefined;
   lootTable(id: string): LootTable | undefined;
-  species(id: number): GameSpecies | undefined;
+  /** Espèce, éventuellement dans une forme donnée (ignorée si elle n'appartient pas à l'espèce). */
+  species(id: number, formId?: number | null): GameSpecies | undefined;
   /** Premier effet du type demandé porté par l'objet. */
   itemEffect<T extends ItemEffectType>(
     itemId: string,
@@ -77,7 +87,9 @@ export function createGameContext(content: GameContent): GameContext {
   const itemsById = new Map(content.items.map((i) => [i.id, i]));
   const lootById = new Map(content.lootTables.map((t) => [t.id, t]));
   const overrides = new Map(content.speciesOverrides.map((o) => [o.speciesId, o]));
-  const speciesCache = new Map<number, GameSpecies>();
+  const speciesCache = new Map<string, GameSpecies>();
+  const quests = [...content.quests].sort((a, b) => a.order - b.order);
+  const questsById = new Map(quests.map((q) => [q.id, q]));
 
   return {
     content,
@@ -87,14 +99,18 @@ export function createGameContext(content: GameContent): GameContext {
     trainers,
     shopCategories,
     shopEntries,
+    quests,
+    quest: (id) => questsById.get(id),
     region: (id) => regionsById.get(id),
     zone: (id) => zonesById.get(id),
     trainer: (id) => trainersById.get(id),
     shopEntry: (id) => shopEntriesById.get(id),
     item: (id) => itemsById.get(id),
     lootTable: (id) => lootById.get(id),
-    species(id) {
-      const cached = speciesCache.get(id);
+    species(id, formId) {
+      const form = formId != null ? getForm(formId) : undefined;
+      const key = form?.speciesId === id ? `${id}:${form.id}` : `${id}`;
+      const cached = speciesCache.get(key);
       if (cached) return cached;
       const base = getSpecies(id);
       if (!base) return undefined;
@@ -105,8 +121,19 @@ export function createGameContext(content: GameContent): GameContext {
         habitat: override?.habitat ?? base.habitat,
         enabled: override?.enabled ?? true,
         override,
+        form: null,
       };
-      speciesCache.set(id, merged);
+      if (form?.speciesId === id) {
+        Object.assign(merged, {
+          nameFr: form.nameFr,
+          types: form.types,
+          baseStats: form.baseStats,
+          abilities: form.abilities,
+          baseExperience: form.baseExperience ?? base.baseExperience,
+          form,
+        });
+      }
+      speciesCache.set(key, merged);
       return merged;
     },
     itemEffect(itemId, type) {

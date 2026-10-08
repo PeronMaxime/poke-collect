@@ -1,32 +1,50 @@
 import { useState } from 'react';
-import type { Region, Trainer, UnlockCondition } from '@poke/content';
+import type { Quest, Region, Trainer, UnlockCondition } from '@poke/content';
 import {
   TYPE_COLORS,
   itemSpriteUrl,
+  pokemonSprite,
   pokemonSpriteUrl,
   species as allSpecies,
+  speciesForms,
   types,
 } from '@poke/data';
+import type { FormKind } from '@poke/data';
 import type { GameContext } from '@poke/game-core';
 import { NumberInput } from './fields';
 
 /** Sélecteurs avec recherche et aperçu (sprites, icônes, couleurs de type). */
+
+/** Catégories de formes, dans l'ordre d'affichage du sélecteur. */
+const FORM_KINDS: [FormKind, string][] = [
+  ['regional', 'Formes régionales'],
+  ['alternate', 'Formes alternatives'],
+  ['cosmetic', 'Apparences'],
+  ['mega', 'Méga-Évolutions'],
+  ['primal', 'Primo-Résurgences'],
+  ['gmax', 'Gigamax'],
+  ['battle', 'Formes de combat'],
+  ['totem', 'Pokémon Dominants'],
+];
 
 const typeNames = new Map(types.map((t) => [t.name, t.nameFr]));
 export const typeLabel = (t: string) => typeNames.get(t) ?? t;
 
 export function Sprite({
   id,
+  formId = null,
   size = 40,
   className = '',
 }: {
   id: number;
+  /** Forme de l'espèce (régionale, Méga, Gigamax…), qui a ses propres sprites. */
+  formId?: number | null;
   size?: number;
   className?: string;
 }) {
   return (
     <img
-      src={pokemonSpriteUrl(id)}
+      src={pokemonSpriteUrl(pokemonSprite(id, formId))}
       alt=""
       width={size}
       height={size}
@@ -134,6 +152,49 @@ export function SpeciesSelect({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * Forme d'une espèce (régionale ou alternative), affichée seulement si l'espèce en a :
+ * « Forme par défaut » ou l'une des variétés PokéAPI importées.
+ */
+export function FormSelect({
+  speciesId,
+  value,
+  onChange,
+  disabled,
+}: {
+  speciesId: number | null;
+  value: number | null | undefined;
+  onChange: (formId: number | null) => void;
+  disabled?: boolean;
+}) {
+  const forms = speciesId ? speciesForms(speciesId) : [];
+  if (forms.length === 0) return null;
+  return (
+    <select
+      className="input mt-1"
+      value={value ?? ''}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value ? Number(e.target.value) : null)}
+    >
+      <option value="">Forme par défaut</option>
+      {FORM_KINDS.map(([kind, label]) => {
+        const group = forms.filter((f) => f.kind === kind);
+        return (
+          group.length > 0 && (
+            <optgroup key={kind} label={label}>
+              {group.map((f) => (
+                <option key={f.id} value={f.id}>
+                  {f.nameFr}
+                </option>
+              ))}
+            </optgroup>
+          )
+        );
+      })}
+    </select>
   );
 }
 
@@ -326,6 +387,7 @@ export function UnlockEditor({
   onChange,
   regions,
   trainers = [],
+  quests = [],
   disabled,
 }: {
   value: UnlockCondition;
@@ -333,6 +395,8 @@ export function UnlockEditor({
   regions: readonly Region[];
   /** Dresseurs proposés pour « avoir battu un dresseur ». */
   trainers?: readonly Trainer[];
+  /** Quêtes proposées pour les conditions d'avancement de quête. */
+  quests?: readonly Quest[];
   disabled?: boolean;
 }) {
   const initial = (type: UnlockCondition['type']): UnlockCondition => {
@@ -347,8 +411,13 @@ export function UnlockEditor({
       case 'speciesCaught':
       case 'eggsHatched':
         return { type, count: type === 'badgeCount' ? 1 : 10 };
+      case 'questStepsDone':
+        return { type, questId: quests[0]?.id ?? '', count: 1 };
+      case 'questCompleted':
+        return { type, questId: quests[0]?.id ?? '' };
     }
   };
+  const quest = 'questId' in value ? quests.find((q) => q.id === value.questId) : undefined;
   return (
     <div className="flex flex-wrap items-center gap-2">
       <select
@@ -365,7 +434,39 @@ export function UnlockEditor({
         <option value="badgeCount">Nombre de badges</option>
         <option value="speciesCaught">Nombre d’espèces capturées</option>
         <option value="eggsHatched">Nombre d’œufs éclos</option>
+        <option value="questStepsDone" disabled={quests.length === 0}>
+          Étapes validées d’une quête
+        </option>
+        <option value="questCompleted" disabled={quests.length === 0}>
+          Quête terminée
+        </option>
       </select>
+      {value.type === 'questStepsDone' && (
+        <NumberInput
+          className="w-36"
+          value={value.count}
+          min={1}
+          max={quest?.steps.length ?? 20}
+          unit="étape(s) de"
+          disabled={disabled}
+          onChange={(count) => onChange({ ...value, count })}
+        />
+      )}
+      {(value.type === 'questStepsDone' || value.type === 'questCompleted') && (
+        <select
+          className="input w-auto"
+          value={value.questId}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...value, questId: e.target.value })}
+        >
+          {!quest && <option value={value.questId}>{value.questId || '—'} (inconnue)</option>}
+          {quests.map((q) => (
+            <option key={q.id} value={q.id}>
+              {q.name}
+            </option>
+          ))}
+        </select>
+      )}
       {value.type === 'regionDexPercent' && (
         <>
           <NumberInput

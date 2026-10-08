@@ -50,6 +50,34 @@
       "when": 1791405763821,
       "tag": "0006_phase6_shinies",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1791407746133,
+      "tag": "0007_phase7_quests",
+      "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791407839324,
+      "tag": "0008_phase7_content",
+      "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1791411460964,
+      "tag": "0009_phase8_expansion",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1791411462102,
+      "tag": "0010_phase8_content",
+      "breakpoints": true
     }
   ]
 }

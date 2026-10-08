@@ -15,6 +15,7 @@ import {
   useExpeditions,
   useGameContext,
   usePokemon,
+  useQuests,
   useShop,
 } from '../lib/game';
 import { formatMoney } from '../lib/labels';
@@ -24,12 +25,15 @@ import { ExpeditionsPage } from './game/ExpeditionsPage';
 import { InventoryPage } from './game/InventoryPage';
 import { PcPage } from './game/PcPage';
 import { PokedexPage } from './game/PokedexPage';
+import { QuestsPage } from './game/QuestsPage';
 import { ShopPage } from './game/ShopPage';
+import { SettingsDialog } from './SettingsDialog';
 
 const TABS = [
   { id: 'expeditions', label: 'Expéditions' },
   { id: 'battles', label: 'Dresseurs' },
   { id: 'daycare', label: 'Pension' },
+  { id: 'quests', label: 'Quêtes' },
   { id: 'shop', label: 'Boutique' },
   { id: 'pc', label: 'PC' },
   { id: 'pokedex', label: 'Pokédex' },
@@ -47,10 +51,12 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const queryClient = useQueryClient();
   const ctx = useGameContext();
   const [tab, setTab] = useState<TabId>(tabFromHash);
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const expeditions = useExpeditions();
   const daycare = useDaycare();
   const battles = useBattles();
   const shop = useShop();
+  const quests = useQuests();
   const pokemon = usePokemon();
   const claimed = useClaimedRewards();
   const evolutionsOf = useEvolutionChecker(ctx);
@@ -71,6 +77,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const evolutionsReady =
     pokemon.data?.filter((p) => isUsable(p, now) && evolutionsOf(p).some((e) => e.method)).length ??
     0;
+  const questsReady = quests.data?.quests.filter((q) => q.status === 'completed').length ?? 0;
   // Articles débloqués pas encore vus (évalués par le serveur à chaque chargement de la boutique).
   const shopNew = shop.data?.entries.filter((e) => e.isNew).length ?? 0;
   // Œufs à faire éclore + pensions où des œufs attendent d'être ramassés.
@@ -111,11 +118,15 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
               Admin
             </a>
           )}
+          <button className="btn-ghost" onClick={() => setSettingsOpen(true)}>
+            Réglages
+          </button>
           <button className="btn-ghost" onClick={signOut}>
             Se déconnecter
           </button>
         </div>
       </header>
+      <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
       <nav className="sticky top-0 z-10 -mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-slate-200 bg-slate-50/90 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
         {TABS.map((t) => (
@@ -142,6 +153,14 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
             {t.id === 'daycare' && daycareReady > 0 && (
               <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
                 {daycareReady}
+              </span>
+            )}
+            {t.id === 'quests' && questsReady > 0 && (
+              <span
+                className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950"
+                title="Récompenses de quête à réclamer"
+              >
+                {questsReady}
               </span>
             )}
             {t.id === 'shop' && shopNew > 0 && (
@@ -183,6 +202,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
           {tab === 'expeditions' && <ExpeditionsPage ctx={ctx} />}
           {tab === 'battles' && <BattlesPage ctx={ctx} />}
           {tab === 'daycare' && <DaycarePage ctx={ctx} />}
+          {tab === 'quests' && <QuestsPage ctx={ctx} />}
           {tab === 'shop' && <ShopPage ctx={ctx} />}
           {tab === 'pc' && <PcPage ctx={ctx} />}
           {tab === 'pokedex' && <PokedexPage ctx={ctx} profile={profile} />}

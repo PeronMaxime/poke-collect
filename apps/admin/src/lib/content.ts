@@ -18,7 +18,8 @@ export type EntityCollection =
   | 'shop-entries'
   | 'evolutions'
   | 'dex-milestones'
-  | 'collections';
+  | 'collections'
+  | 'quests';
 
 export const versionsQuery = {
   queryKey: ['content-versions'],

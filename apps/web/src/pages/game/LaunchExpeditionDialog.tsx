@@ -91,7 +91,7 @@ export function LaunchExpeditionDialog({
   const now = useNow(10_000);
   const available = (pokemon.data ?? [])
     .filter((p) => isUsable(p, now))
-    .map((p) => ({ p, power: pokemonPower(ctx.species(p.speciesId)!, p) }))
+    .map((p) => ({ p, power: pokemonPower(ctx.species(p.speciesId, p.formId)!, p) }))
     .sort((a, b) => b.power - a.power);
   const members = team.flatMap((id) => available.find((a) => a.p.id === id)?.p ?? []);
   const check = checkTeam(ctx, zone, duration, members);
@@ -146,7 +146,7 @@ export function LaunchExpeditionDialog({
       <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5">
         {available.map(({ p, power }) => {
           const selected = team.includes(p.id);
-          const species = ctx.species(p.speciesId);
+          const species = ctx.species(p.speciesId, p.formId);
           const affinity = species?.types.some((t) => zone.affinityTypes.includes(t));
           return (
             <button
@@ -167,7 +167,12 @@ export function LaunchExpeditionDialog({
                   ◆
                 </span>
               )}
-              <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} size={56} />
+              <PokemonSprite
+                speciesId={p.speciesId}
+                formId={p.formId}
+                shiny={p.isShiny}
+                size={56}
+              />
               <span className="truncate">
                 {species?.nameFr} {p.isShiny && <ShinyStar />}
               </span>
@@ -224,8 +229,8 @@ export function LaunchExpeditionDialog({
 
       <h3 className="mt-5 text-sm font-semibold">Rencontres possibles</h3>
       <ul className="mt-2 grid grid-cols-2 gap-1 text-xs sm:grid-cols-3">
-        {encounterProbabilities(ctx, zone).map(({ speciesId, probability }) => {
-          const species = ctx.species(speciesId)!;
+        {encounterProbabilities(ctx, zone).map(({ speciesId, formId, probability }) => {
+          const species = ctx.species(speciesId, formId)!;
           const chance = ballEffect
             ? captureProbability(ctx, {
                 captureRate: species.captureRate,
@@ -235,8 +240,8 @@ export function LaunchExpeditionDialog({
               })
             : 0;
           return (
-            <li key={speciesId} className="flex items-center gap-1">
-              <PokemonSprite speciesId={speciesId} size={32} />
+            <li key={`${speciesId}:${formId ?? ''}`} className="flex items-center gap-1">
+              <PokemonSprite speciesId={speciesId} formId={formId} size={32} />
               <span className="truncate">
                 {species.nameFr} · {Math.round(probability * 100)} %
                 <span className="text-slate-500"> (capture {Math.round(chance * 100)} %)</span>

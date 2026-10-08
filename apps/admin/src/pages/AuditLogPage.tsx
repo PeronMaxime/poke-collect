@@ -25,6 +25,7 @@ const ENTITY_LABELS: Record<string, string> = {
   evolution_override: 'surcharge d’évolution',
   dex_milestone: 'palier du Pokédex',
   collection: 'collection',
+  quest: 'quête',
 };
 const VERB_LABELS: Record<string, string> = {
   create: 'Création',

@@ -6,18 +6,22 @@ export const SPRITE_BASE_URL = 'https://raw.githubusercontent.com/PokeAPI/sprite
 
 export type SpriteKind = 'default' | 'artwork' | 'animated';
 
+/**
+ * @param sprite Nom de fichier du sprite : identifiant de l'espèce, ou sprite d'une forme
+ *   (voir `pokemonSprite`).
+ */
 export function pokemonSpriteUrl(
-  speciesId: number,
+  sprite: number | string,
   { shiny = false, kind = 'default' }: { shiny?: boolean; kind?: SpriteKind } = {},
 ): string {
   const shinyPath = shiny ? 'shiny/' : '';
   switch (kind) {
     case 'artwork':
-      return `${SPRITE_BASE_URL}/pokemon/other/official-artwork/${shinyPath}${speciesId}.png`;
+      return `${SPRITE_BASE_URL}/pokemon/other/official-artwork/${shinyPath}${sprite}.png`;
     case 'animated':
-      return `${SPRITE_BASE_URL}/pokemon/versions/generation-v/black-white/animated/${shinyPath}${speciesId}.gif`;
+      return `${SPRITE_BASE_URL}/pokemon/versions/generation-v/black-white/animated/${shinyPath}${sprite}.gif`;
     default:
-      return `${SPRITE_BASE_URL}/pokemon/${shinyPath}${speciesId}.png`;
+      return `${SPRITE_BASE_URL}/pokemon/${shinyPath}${sprite}.png`;
   }
 }
 

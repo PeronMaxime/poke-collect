@@ -24,7 +24,8 @@ type View = (typeof VIEWS)[number]['id'];
 
 const TIME_LABELS: Record<TimeOfDay, string> = { day: 'de jour', night: 'de nuit' };
 
-const speciesLabel = (ctx: GameContext, id: number) => `#${id} ${ctx.species(id)?.nameFr ?? '?'}`;
+const speciesLabel = (ctx: GameContext, id: number, formId?: number | null) =>
+  `#${id} ${ctx.species(id, formId)?.nameFr ?? '?'}`;
 
 function methodText(ctx: GameContext, m: EvolutionMethod): string {
   return (
@@ -97,7 +98,7 @@ function OverviewView() {
       ({ from, option, missing }) =>
         (!onlyProblems || option.methods.length === 0 || missing.length > 0) &&
         (!needle ||
-          `${speciesLabel(ctx, from)} ${speciesLabel(ctx, option.toSpeciesId)}`
+          `${speciesLabel(ctx, from)} ${speciesLabel(ctx, option.toSpeciesId, option.toFormId)}`
             .toLowerCase()
             .includes(needle)),
     );
@@ -140,7 +141,7 @@ function OverviewView() {
           <tbody>
             {rows.map(({ from, option, missing }) => (
               <OverviewRow
-                key={`${from}-${option.toSpeciesId}`}
+                key={`${from}-${option.toSpeciesId}-${option.toFormId ?? ''}`}
                 ctx={ctx}
                 from={from}
                 option={option}
@@ -175,8 +176,8 @@ function OverviewRow({
       </td>
       <td className="p-2">
         <span className="flex items-center gap-1">
-          <Sprite id={option.toSpeciesId} size={32} />
-          {speciesLabel(ctx, option.toSpeciesId)}
+          <Sprite id={option.toSpeciesId} formId={option.toFormId} size={32} />
+          {speciesLabel(ctx, option.toSpeciesId, option.toFormId)}
         </span>
       </td>
       <td className="space-y-0.5 p-2">

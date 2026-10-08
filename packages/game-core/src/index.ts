@@ -10,3 +10,6 @@ export * from './shop';
 export * from './evolution';
 export * from './progression';
 export * from './shiny';
+export * from './quest';
+export * from './endgame';
+export * from './forms';

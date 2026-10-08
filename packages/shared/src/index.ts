@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { slugSchema } from '@poke/content';
-import type { ContentIssue, GameContent, ProgressReward } from '@poke/content';
-import type { Stats } from '@poke/data';
+import type { ContentIssue, GameContent, ProgressReward, QuestReward } from '@poke/content';
+import { STAT_NAMES } from '@poke/data';
+import type { StatName, Stats } from '@poke/data';
 import type {
   BattleError,
   BattleResult,
@@ -11,6 +12,7 @@ import type {
   Gender,
   PlayerBonuses,
   PlayerSlots,
+  QuestStatus,
   RewardKind,
   ShopEntryState,
 } from '@poke/game-core';
@@ -54,6 +56,8 @@ export type PokemonOrigin = 'starter' | 'capture' | 'egg' | 'quest';
 export interface PokemonDto {
   id: string;
   speciesId: number;
+  /** Forme alternative ou régionale ; null = forme par défaut. */
+  formId: number | null;
   level: number;
   xp: number;
   ivs: Stats;
@@ -62,6 +66,8 @@ export interface PokemonDto {
   isShiny: boolean;
   gender: Gender;
   happiness: number;
+  /** Nature d'origine, quand un Aromate a changé la nature effective (`nature`). */
+  originalNature: string | null;
   origin: PokemonOrigin;
   originRegion: string | null;
   caughtAt: string;
@@ -94,6 +100,8 @@ export interface InventoryEntryDto {
 
 export const evolveInputSchema = z.object({
   toSpeciesId: z.int().positive(),
+  /** Forme d'arrivée (Raichu d'Alola) ; absente = première évolution vers l'espèce. */
+  toFormId: z.int().positive().nullish(),
   /** Décalage de l'heure locale du joueur par rapport à UTC (évolutions de jour ou de nuit). */
   utcOffsetMinutes: z
     .int()
@@ -105,6 +113,7 @@ export type EvolveInput = z.infer<typeof evolveInputSchema>;
 export interface EvolveResponse {
   pokemon: PokemonDto;
   fromSpeciesId: number;
+  fromFormId: number | null;
   /** Objet consommé (pierre, Câble Link…). */
   consumedItemId: string | null;
   /** Espèces obtenues pour la première fois. */
@@ -140,6 +149,54 @@ export interface ClaimRewardResponse {
   /** Solde après la récompense. */
   currency: number;
   slots: PlayerSlots;
+}
+
+// --- Quêtes -------------------------------------------------------------------------------
+
+/** Avancement d'une quête visible (débloquée ou commencée) ; les quêtes absentes sont verrouillées. */
+export interface QuestProgressDto {
+  questId: string;
+  status: Exclude<QuestStatus, 'locked'>;
+  /** Étapes validées (= index de l'étape en cours). */
+  step: number;
+  /** Compteur de l'étape en cours (captures, expéditions). */
+  count: number;
+  stepStartedAt: string;
+  completedAt: string | null;
+  claimedAt: string | null;
+}
+
+export interface QuestsResponse {
+  quests: QuestProgressDto[];
+}
+
+export interface ClaimQuestResponse {
+  questId: string;
+  rewards: QuestReward;
+  /** Pokémon offerts (légendaires…). */
+  pokemon: PokemonDto[];
+  /** Espèces obtenues pour la première fois. */
+  newSpeciesIds: number[];
+  currency: number;
+  slots: PlayerSlots;
+}
+
+// --- Objets utilisés sur un Pokémon (Capsules, Aromates, Pilule / Patch Talent) ---------
+
+export const useItemInputSchema = z.object({
+  itemId: slugSchema,
+  /** Capsule d'Argent : statistique à monter à 31. */
+  stat: z.enum(STAT_NAMES as [StatName, ...StatName[]]).optional(),
+  /** Pilule / Patch Talent : talent visé (facultatif s'il n'y a qu'un choix). */
+  ability: z.string().min(1).max(64).optional(),
+});
+export type UseItemInput = z.infer<typeof useItemInputSchema>;
+
+export interface UseItemResponse {
+  pokemon: PokemonDto;
+  itemId: string;
+  /** Quantité restante dans le sac. */
+  remaining: number;
 }
 
 // --- Transfert et Bonbons de lignée ---------------------------------------------------
@@ -184,12 +241,15 @@ export interface DaycareDto {
   startedAt: string;
   /** Espèce des œufs pondus (null si un parent a disparu). */
   eggSpeciesId: number | null;
+  /** Forme des œufs pondus (régionale, héritée de la mère). */
+  eggFormId: number | null;
 }
 
 /** Un œuf ne révèle rien de son contenu avant l'éclosion, à part l'espèce. */
 export interface EggDto {
   id: string;
   speciesId: number;
+  formId: number | null;
   laidAt: string;
   hatchAt: string;
 }
@@ -442,4 +502,132 @@ export interface AuditLogEntryDto {
 export interface Paginated<T> {
   items: T[];
   nextCursor: number | null;
+}
+
+// --- Télémétrie (équilibrage) ---------------------------------------------------------------
+
+export const telemetryQuerySchema = z.object({
+  /** Période d'observation des combats, expéditions et achats. */
+  days: z.coerce.number().int().min(1).max(365).default(30),
+});
+
+/** Répartition d'une durée (en heures) sur les joueurs concernés. */
+export interface DurationStats {
+  players: number;
+  medianHours: number | null;
+  p90Hours: number | null;
+}
+
+export type TelemetryStepKind = 'expedition' | 'region' | 'trainer' | 'reward' | 'quest';
+
+/** Étape de progression : combien de joueurs l'ont atteinte, en combien de temps (inscription). */
+export interface TelemetryStep extends DurationStats {
+  kind: TelemetryStepKind;
+  id: string;
+  label: string;
+  /** Part des joueurs (ayant choisi leur starter) qui l'ont atteinte. */
+  reachedPercent: number;
+}
+
+export interface TelemetryTrainer {
+  trainerId: string;
+  label: string;
+  battles: number;
+  wins: number;
+  /** Probabilité de victoire moyenne estimée au lancement. */
+  avgWinChance: number | null;
+  /** Joueurs qui ont perdu sans jamais gagner (goulet potentiel). */
+  stuckPlayers: number;
+}
+
+export interface TelemetryZone {
+  zoneId: string;
+  label: string;
+  expeditions: number;
+  players: number;
+  avgDurationMinutes: number | null;
+  encounters: number;
+  captures: number;
+}
+
+export interface TelemetryQuest {
+  questId: string;
+  label: string;
+  started: number;
+  completed: number;
+  /** Joueurs actuellement bloqués à chaque étape, et depuis combien de temps. */
+  steps: (DurationStats & { index: number; name: string })[];
+}
+
+export interface TelemetryResponse {
+  generatedAt: string;
+  days: number;
+  players: {
+    total: number;
+    withStarter: number;
+    new7d: number;
+    /** Joueurs ayant lancé une action (expédition, combat, achat) récemment. */
+    active1d: number;
+    active7d: number;
+  };
+  /** Parcours : étapes dans l'ordre du contenu. */
+  steps: TelemetryStep[];
+  trainers: TelemetryTrainer[];
+  zones: TelemetryZone[];
+  quests: TelemetryQuest[];
+  /** Joueurs par tranche de Pokédex national capturé (en %). */
+  dexDistribution: { label: string; players: number }[];
+  economy: {
+    /** Poké Dollars gagnés en combat sur la période. */
+    earned: number;
+    /** Poké Dollars dépensés en boutique sur la période. */
+    spent: number;
+    medianBalance: number | null;
+  };
+}
+
+// --- Notifications push (PWA) -------------------------------------------------------------
+
+/** Types de notifications push, activables séparément (réglages du joueur). */
+export const notificationSettingsSchema = z.object({
+  /** Expédition terminée, prête à être récupérée. */
+  expeditions: z.boolean(),
+  /** Combat de dresseur terminé. */
+  battles: z.boolean(),
+  /** Œuf prêt à éclore. */
+  eggs: z.boolean(),
+});
+export type NotificationSettings = z.infer<typeof notificationSettingsSchema>;
+
+export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
+  expeditions: true,
+  battles: true,
+  eggs: true,
+};
+
+/** Abonnement Web Push du navigateur (`PushSubscription.toJSON()`). */
+export const pushSubscriptionInputSchema = z.object({
+  endpoint: z.url().max(2000),
+  keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
+});
+export type PushSubscriptionInput = z.infer<typeof pushSubscriptionInputSchema>;
+
+export const pushUnsubscribeInputSchema = z.object({ endpoint: z.url().max(2000) });
+
+export interface PushConfigResponse {
+  /** Clé publique VAPID ; null = notifications push désactivées sur le serveur. */
+  publicKey: string | null;
+  settings: NotificationSettings;
+  /** Appareils abonnés pour ce joueur. */
+  subscriptions: number;
+}
+
+/** Contenu d'une notification, lu par le service worker. */
+export interface PushPayload {
+  title: string;
+  body: string;
+  /** Page à ouvrir au clic (onglet du jeu). */
+  url: string;
+  /** Une nouvelle notification remplace la précédente de même tag. */
+  tag: string;
 }

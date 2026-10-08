@@ -4,6 +4,7 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import { App } from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { logError } from './lib/log';
+import { registerServiceWorker } from './lib/pwa';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -19,6 +20,7 @@ const queryClient = new QueryClient({
 
 window.addEventListener('error', (e) => logError('Erreur non interceptée', e.error ?? e.message));
 window.addEventListener('unhandledrejection', (e) => logError('Promesse rejetée', e.reason));
+registerServiceWorker();
 
 createRoot(document.getElementById('root')!, {
   onCaughtError: (error, info) => logError('Rendu', error, { componentStack: info.componentStack }),

@@ -100,7 +100,12 @@ function RevealContent({
                 transition={{ duration: after || 0.01, times: [0, 0.2, 0.85, 1] }}
                 className={!win && instant ? 'opacity-40 grayscale' : ''}
               >
-                <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} size={72} />
+                <PokemonSprite
+                  speciesId={p.speciesId}
+                  formId={p.formId}
+                  shiny={p.isShiny}
+                  size={72}
+                />
               </motion.div>
             ) : null;
           })}
@@ -200,9 +205,14 @@ function RevealContent({
               return (
                 p && (
                   <li key={m.id} className="flex items-center gap-2">
-                    <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} size={32} />
+                    <PokemonSprite
+                      speciesId={p.speciesId}
+                      formId={p.formId}
+                      shiny={p.isShiny}
+                      size={32}
+                    />
                     <span className="flex-1 truncate">
-                      {speciesName(ctx, p.speciesId)} {p.isShiny && <ShinyStar />}
+                      {speciesName(ctx, p.speciesId, p.formId)} {p.isShiny && <ShinyStar />}
                     </span>
                     <span className="text-slate-500">+{m.xpGained} XP</span>
                     {m.levelAfter > m.levelBefore && (

@@ -79,14 +79,21 @@ export function encounterProbabilities(
   ctx: GameContext,
   zone: Zone,
   pity?: ReadonlyMap<number, number>,
-): { speciesId: number; probability: number }[] {
+): { speciesId: number; formId: number | null; probability: number }[] {
   const entries = weightedEncounters(ctx, zone, pity);
   const total = entries.reduce((sum, e) => sum + e.weight, 0);
-  const bySpecies = new Map<number, number>();
+  const byForm = new Map<
+    string,
+    { speciesId: number; formId: number | null; probability: number }
+  >();
   for (const e of entries) {
-    bySpecies.set(e.value.speciesId, (bySpecies.get(e.value.speciesId) ?? 0) + e.weight / total);
+    const formId = e.value.formId ?? null;
+    const key = `${e.value.speciesId}:${formId}`;
+    const current = byForm.get(key) ?? { speciesId: e.value.speciesId, formId, probability: 0 };
+    current.probability += e.weight / total;
+    byForm.set(key, current);
   }
-  return [...bySpecies].map(([speciesId, probability]) => ({ speciesId, probability }));
+  return [...byForm.values()];
 }
 
 // --- Butin ---------------------------------------------------------------------------------
@@ -127,13 +134,16 @@ export interface TeamCheck {
 }
 
 /** Types de chaque membre de l'équipe. */
-function memberTypes(ctx: GameContext, team: readonly Pick<PokemonInstance, 'speciesId'>[]) {
-  return team.map((m) => ctx.species(m.speciesId)?.types ?? []);
+function memberTypes(
+  ctx: GameContext,
+  team: readonly Pick<PokemonInstance, 'speciesId' | 'formId'>[],
+) {
+  return team.map((m) => ctx.species(m.speciesId, m.formId)?.types ?? []);
 }
 
 export function teamPower(ctx: GameContext, team: readonly PokemonInstance[]): number {
   return team.reduce((sum, m) => {
-    const species = ctx.species(m.speciesId);
+    const species = ctx.species(m.speciesId, m.formId);
     return sum + (species ? pokemonPower(species, m) : 0);
   }, 0);
 }
@@ -141,7 +151,7 @@ export function teamPower(ctx: GameContext, team: readonly PokemonInstance[]): n
 export function countAffinity(
   ctx: GameContext,
   zone: Zone,
-  team: readonly Pick<PokemonInstance, 'speciesId'>[],
+  team: readonly Pick<PokemonInstance, 'speciesId' | 'formId'>[],
 ): number {
   const affinity = new Set(zone.affinityTypes);
   return memberTypes(ctx, team).filter((types) => types.some((t) => affinity.has(t))).length;
@@ -150,7 +160,7 @@ export function countAffinity(
 /** Types requis (« 2 Pokémon Eau ») qui manquent encore à l'équipe. */
 export function missingTypes(
   ctx: GameContext,
-  team: readonly Pick<PokemonInstance, 'speciesId'>[],
+  team: readonly Pick<PokemonInstance, 'speciesId' | 'formId'>[],
   required: readonly { type: string; count: number }[],
 ): { type: string; count: number }[] {
   const types = memberTypes(ctx, team);
@@ -208,6 +218,8 @@ export type EncounterOutcome = 'captured' | 'escaped' | 'noBall';
 
 export interface EncounterResult {
   speciesId: number;
+  /** Forme rencontrée ; null = forme par défaut. */
+  formId: number | null;
   level: number;
   isShiny: boolean;
   outcome: EncounterOutcome;
@@ -252,7 +264,7 @@ export function applyTeamXp(
   happinessDelta: number,
 ): TeamMemberResult[] {
   return team.map((m) => {
-    const growth = ctx.species(m.speciesId)?.growthRate;
+    const growth = ctx.species(m.speciesId, m.formId)?.growthRate;
     const xpCap = growth ? xpForLevel(growth, MAX_LEVEL) : m.xp;
     const xpAfter = Math.max(m.xp, Math.min(m.xp + xp, xpCap));
     return {
@@ -294,16 +306,19 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
     const table = weightedEncounters(ctx, zone, pity);
     if (table.length === 0) break;
     const encounter = rng.weighted(table);
-    const species = ctx.species(encounter.speciesId)!;
+    const species = ctx.species(encounter.speciesId, encounter.formId)!;
+    const formId = species.form?.id ?? null;
     const level = rng.int(encounter.minLevel, encounter.maxLevel);
     const wild = generatePokemon(ctx, rng, species.id, level, {
       shinyProbability: shinyChance,
+      formId,
     });
     xpPerMember += Math.floor(defeatXp(species, level) * ctx.balance.xp.multiplier * bonuses.xp);
 
     if (ballsLeft <= 0) {
       encounters.push({
         speciesId: species.id,
+        formId,
         level,
         isShiny: wild.isShiny,
         outcome: 'noBall',
@@ -326,6 +341,7 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
     touched.add(species.id);
     encounters.push({
       speciesId: species.id,
+      formId,
       level,
       isShiny: wild.isShiny,
       outcome: captured ? 'captured' : 'escaped',

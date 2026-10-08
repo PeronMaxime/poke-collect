@@ -23,6 +23,7 @@ import type {
   PokemonDto,
   ProgressionResponse,
   PublicContentDto,
+  QuestsResponse,
   ShopResponse,
 } from '@poke/shared';
 import { api } from './api';
@@ -39,6 +40,7 @@ export const keys = {
   battles: ['battles'],
   shop: ['shop'],
   progression: ['progression'],
+  quests: ['quests'],
   /** Profil (argent) : voir `App`. */
   me: ['me'],
 } as const;
@@ -53,6 +55,7 @@ export const PLAYER_STATE_KEYS = [
   keys.battles,
   keys.shop,
   keys.progression,
+  keys.quests,
   keys.me,
 ];
 
@@ -96,11 +99,19 @@ export const useBattles = () =>
 export const useShop = () =>
   useQuery({ queryKey: keys.shop, queryFn: () => api<ShopResponse>('/api/shop') });
 
-/** Avancement du joueur pour les déblocages (Pokédex, dresseurs battus, œufs éclos). */
+/** Quêtes visibles et leur avancement (calculé et enregistré par le serveur). */
+export const useQuests = () =>
+  useQuery({ queryKey: keys.quests, queryFn: () => api<QuestsResponse>('/api/quests') });
+
+/**
+ * Avancement du joueur pour les déblocages (Pokédex, dresseurs battus, œufs éclos, étapes de
+ * quête validées).
+ */
 export function usePlayerProgress(): PlayerProgress {
   const pokedex = usePokedex();
   const battles = useBattles();
   const daycare = useDaycare();
+  const quests = useQuests();
   return useMemo(
     () => ({
       caughtSpeciesIds: new Set(pokedex.data?.filter((d) => d.caught).map((d) => d.speciesId)),
@@ -108,8 +119,9 @@ export function usePlayerProgress(): PlayerProgress {
         battles.data?.records.filter((r) => r.wins > 0).map((r) => r.trainerId),
       ),
       eggsHatched: daycare.data?.eggsHatched ?? 0,
+      questSteps: new Map(quests.data?.quests.map((q) => [q.questId, q.step])),
     }),
-    [pokedex.data, battles.data, daycare.data],
+    [pokedex.data, battles.data, daycare.data, quests.data],
   );
 }
 

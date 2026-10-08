@@ -50,6 +50,10 @@ function unlockSummary(ctx: GameContext, u: UnlockCondition): string {
       return `${u.count} espèce(s) capturée(s)`;
     case 'eggsHatched':
       return `${u.count} œuf(s) éclos`;
+    case 'questStepsDone':
+      return `${u.count} étape(s) de la quête ${ctx.quest(u.questId)?.name ?? u.questId}`;
+    case 'questCompleted':
+      return `quête ${ctx.quest(u.questId)?.name ?? u.questId} terminée`;
   }
 }
 
@@ -240,6 +244,7 @@ function EntryForm({
             value={e.unlock}
             regions={ctx.regions}
             trainers={ctx.trainers}
+            quests={ctx.quests}
             onChange={(v) => set('unlock', v)}
             disabled={disabled}
           />

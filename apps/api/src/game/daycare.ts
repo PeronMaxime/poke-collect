@@ -43,6 +43,7 @@ export function toEggDto(row: EggRow): EggDto {
   return {
     id: row.id,
     speciesId: row.speciesId,
+    formId: row.formId,
     laidAt: row.laidAt.toISOString(),
     hatchAt: row.hatchAt.toISOString(),
   };
@@ -64,6 +65,7 @@ export function toDaycareDto(
     heldItemBId: row.heldItemBId,
     startedAt: row.startedAt.toISOString(),
     eggSpeciesId: check?.ok ? check.eggSpeciesId : null,
+    eggFormId: check?.ok ? check.eggFormId : null,
   };
 }
 
@@ -228,6 +230,7 @@ async function collectInTx(
       Array.from({ length: collected }, () => ({
         ownerId: userId,
         speciesId: check.eggSpeciesId,
+        formId: check.eggFormId,
         parentAId: a.id,
         parentBId: b.id,
         parents: parentsSnapshot,
@@ -327,6 +330,7 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
       const child = resolveEgg(ctx, {
         seed: egg.seed,
         speciesId: egg.speciesId,
+        formId: egg.formId,
         parents: egg.parents,
         motherIndex: egg.motherIndex === 1 ? 1 : 0,
         shinyCharm: charm,

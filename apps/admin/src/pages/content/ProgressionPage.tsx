@@ -320,13 +320,21 @@ function SummaryView() {
       id: c.id,
       label: `Collection « ${c.name} »`,
     })),
+    ...ctx.quests.map((q) => ({ kind: 'quest' as const, id: q.id, label: `Quête « ${q.name} »` })),
   ];
-  const milestoneIds = new Set<string>();
-  const collectionIds = new Set<string>();
+  const ids = {
+    milestone: new Set<string>(),
+    collection: new Set<string>(),
+    quest: new Set<string>(),
+  };
   const start = playerSlots(ctx, NO_CLAIMS);
   const rows = steps.map((step) => {
-    (step.kind === 'milestone' ? milestoneIds : collectionIds).add(step.id);
-    const claimed = { milestoneIds, collectionIds };
+    ids[step.kind].add(step.id);
+    const claimed = {
+      milestoneIds: ids.milestone,
+      collectionIds: ids.collection,
+      questIds: ids.quest,
+    };
     return { ...step, slots: playerSlots(ctx, claimed), bonuses: playerBonuses(ctx, claimed) };
   });
   const { balance } = ctx;
@@ -337,7 +345,7 @@ function SummaryView() {
         <h1 className="text-2xl font-bold">Progression : récapitulatif</h1>
         <p className="mt-1 text-slate-500">
           Emplacements et bonus cumulés si le joueur réclame chaque récompense, dans l’ordre
-          (paliers puis collections). Les maxima viennent de l’Équilibrage.
+          (paliers, collections, puis quêtes). Les maxima viennent de l’Équilibrage.
         </p>
       </div>
       <VersionBanner working={w} />

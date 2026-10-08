@@ -188,9 +188,14 @@ function PensionCard({
           <div key={i} className="flex flex-col items-center text-xs">
             {p ? (
               <>
-                <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} size={64} />
+                <PokemonSprite
+                  speciesId={p.speciesId}
+                  formId={p.formId}
+                  shiny={p.isShiny}
+                  size={64}
+                />
                 <span className="font-medium">
-                  {speciesName(ctx, p.speciesId)} {p.isShiny && <ShinyStar />}
+                  {speciesName(ctx, p.speciesId, p.formId)} {p.isShiny && <ShinyStar />}
                 </span>
                 <span className="text-slate-500">N.{p.level}</span>
               </>
@@ -257,7 +262,7 @@ function EggCard({ ctx, egg, serverNow }: { ctx: GameContext; egg: EggDto; serve
   return (
     <div className="card flex flex-col items-center gap-1 p-3 text-xs">
       <Egg ready={ready} />
-      <span className="font-medium">{speciesName(ctx, egg.speciesId)} ?</span>
+      <span className="font-medium">{speciesName(ctx, egg.speciesId, egg.formId)} ?</span>
       <ProgressBar className="w-full" value={(serverNow - laid) / (end - laid)} />
       <span className="font-mono text-slate-500">
         {ready ? 'Prêt !' : formatCountdown(end - serverNow)}

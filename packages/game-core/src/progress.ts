@@ -8,6 +8,8 @@ export interface PlayerProgress {
   defeatedTrainerIds: ReadonlySet<string>;
   /** Œufs éclos depuis le début de la partie. */
   eggsHatched: number;
+  /** Étapes validées de chaque quête commencée (voir `questStepsDone`) ; absent : aucune. */
+  questSteps?: ReadonlyMap<string, number>;
 }
 
 export interface DexProgress {
@@ -52,6 +54,12 @@ export function isUnlocked(
       return progress.caughtSpeciesIds.size >= condition.count;
     case 'eggsHatched':
       return progress.eggsHatched >= condition.count;
+    case 'questStepsDone':
+      return (progress.questSteps?.get(condition.questId) ?? 0) >= condition.count;
+    case 'questCompleted': {
+      const quest = ctx.quest(condition.questId);
+      return !!quest && (progress.questSteps?.get(quest.id) ?? 0) >= quest.steps.length;
+    }
   }
 }
 

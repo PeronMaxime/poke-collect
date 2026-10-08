@@ -86,6 +86,8 @@ export const eggs = pgTable(
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: ownerId(),
     speciesId: integer('species_id').notNull(),
+    /** Forme de l'œuf (régionale, héritée de la mère) ; null = forme par défaut. */
+    formId: integer('form_id'),
     parentAId: uuid('parent_a_id').references(() => pokemon.id, { onDelete: 'set null' }),
     parentBId: uuid('parent_b_id').references(() => pokemon.id, { onDelete: 'set null' }),
     parents: jsonb('parents').$type<[DaycareParent, DaycareParent]>().notNull(),
@@ -97,11 +99,18 @@ export const eggs = pgTable(
     hatchAt: timestamp('hatch_at', { withTimezone: true }).notNull(),
     seed: bigint('seed', { mode: 'number' }).notNull(),
     hatched: boolean('hatched').notNull().default(false),
+    /** Notification push « prêt à éclore » envoyée. */
+    notifiedAt: timestamp('notified_at', { withTimezone: true }),
     hatchedPokemonId: uuid('hatched_pokemon_id').references(() => pokemon.id, {
       onDelete: 'set null',
     }),
   },
-  (t) => [index('eggs_owner_hatched').on(t.ownerId, t.hatched)],
+  (t) => [
+    index('eggs_owner_hatched').on(t.ownerId, t.hatched),
+    index('eggs_to_notify')
+      .on(t.hatchAt)
+      .where(sql`${t.hatched} = false and ${t.notifiedAt} is null`),
+  ],
 );
 
 /** Pension : un couple par emplacement, tant qu'il y est déposé (ligne supprimée au retrait). */
@@ -145,10 +154,15 @@ export const expeditions = pgTable(
     /** Maillon de la chaîne de zone au départ (bonus shiny). */
     shinyChain: smallint('shiny_chain').notNull().default(0),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    /** Notification push « expédition terminée » envoyée. */
+    notifiedAt: timestamp('notified_at', { withTimezone: true }),
     result: jsonb('result'),
   },
   (t) => [
     index('expeditions_owner_claimed').on(t.ownerId, t.claimedAt),
+    index('expeditions_to_notify')
+      .on(t.endsAt)
+      .where(sql`${t.claimedAt} is null and ${t.notifiedAt} is null`),
     index('expeditions_owner_zone').on(t.ownerId, t.zoneId, t.startedAt),
     // Un emplacement ne porte qu'une expédition non réclamée à la fois.
     uniqueIndex('expeditions_owner_slot_active')
@@ -175,11 +189,16 @@ export const trainerBattles = pgTable(
     endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
     seed: bigint('seed', { mode: 'number' }).notNull(),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    /** Notification push « combat terminé » envoyée. */
+    notifiedAt: timestamp('notified_at', { withTimezone: true }),
     outcome: battleOutcome('outcome'),
     result: jsonb('result'),
   },
   (t) => [
     index('trainer_battles_owner_claimed').on(t.ownerId, t.claimedAt),
+    index('trainer_battles_to_notify')
+      .on(t.endsAt)
+      .where(sql`${t.claimedAt} is null and ${t.notifiedAt} is null`),
     uniqueIndex('trainer_battles_owner_slot_active')
       .on(t.ownerId, t.slotIndex)
       .where(sql`${t.claimedAt} is null`),
@@ -278,17 +297,29 @@ export const pokedex = pgTable(
   (t) => [primaryKey({ columns: [t.ownerId, t.speciesId] })],
 );
 
+/**
+ * Avancement des quêtes. Les étapes « état du joueur » se valident paresseusement ; la ligne
+ * enregistre l'étape en cours, son début et le compteur des étapes « action » (captures,
+ * expéditions), mis à jour à la réclamation des expéditions.
+ */
 export const questProgress = pgTable(
   'quest_progress',
   {
     ownerId: ownerId(),
     questId: text('quest_id').notNull(),
+    /** Version de contenu active au démarrage de la quête. */
     contentVersionId: integer('content_version_id')
       .notNull()
       .references(() => contentVersions.id),
+    /** Étapes validées (= index de l'étape en cours). */
     step: smallint('step').notNull().default(0),
-    progress: jsonb('progress').notNull().default({}),
+    /** Début de l'étape en cours : seules les actions suivantes comptent. */
+    stepStartedAt: timestamp('step_started_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Compteur de l'étape en cours : `{ count }`. */
+    progress: jsonb('progress').$type<{ count?: number }>().notNull().default({}),
     completedAt: timestamp('completed_at', { withTimezone: true }),
+    /** Récompense réclamée. */
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.questId] })],
 );
@@ -312,4 +343,26 @@ export const candies = pgTable(
     quantity: integer('quantity').notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.lineageId] })],
+);
+
+/**
+ * Abonnements Web Push (un par navigateur ou appareil). Supprimés quand le service push répond
+ * que l'abonnement a expiré.
+ */
+export const pushSubscriptions = pgTable(
+  'push_subscriptions',
+  {
+    id: serial('id').primaryKey(),
+    ownerId: ownerId(),
+    endpoint: text('endpoint').notNull(),
+    p256dh: text('p256dh').notNull(),
+    auth: text('auth').notNull(),
+    userAgent: text('user_agent'),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    lastSentAt: timestamp('last_sent_at', { withTimezone: true }),
+  },
+  (t) => [
+    uniqueIndex('push_subscriptions_endpoint').on(t.endpoint),
+    index('push_subscriptions_owner').on(t.ownerId),
+  ],
 );

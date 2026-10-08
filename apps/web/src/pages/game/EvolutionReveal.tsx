@@ -23,8 +23,8 @@ export function EvolutionReveal({
   const reduced = useReducedMotion();
   const [done, setDone] = useState(!!reduced);
   const { pokemon } = data;
-  const from = speciesName(ctx, data.fromSpeciesId);
-  const to = speciesName(ctx, pokemon.speciesId);
+  const from = speciesName(ctx, data.fromSpeciesId, data.fromFormId);
+  const to = speciesName(ctx, pokemon.speciesId, pokemon.formId);
 
   useEffect(() => {
     if (done) return;
@@ -57,6 +57,7 @@ export function EvolutionReveal({
             >
               <PokemonSprite
                 speciesId={data.fromSpeciesId}
+                formId={data.fromFormId}
                 shiny={pokemon.isShiny}
                 kind="artwork"
                 size={180}
@@ -71,6 +72,7 @@ export function EvolutionReveal({
             >
               <PokemonSprite
                 speciesId={pokemon.speciesId}
+                formId={pokemon.formId}
                 shiny={pokemon.isShiny}
                 kind="artwork"
                 size={180}
@@ -87,6 +89,7 @@ export function EvolutionReveal({
           >
             <PokemonSprite
               speciesId={pokemon.speciesId}
+              formId={pokemon.formId}
               shiny={pokemon.isShiny}
               kind="artwork"
               size={180}

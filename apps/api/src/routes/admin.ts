@@ -18,20 +18,27 @@ import {
   updateDraftBalance,
 } from '@poke/db';
 import type { ContentEntityType, ContentErrorCode, Db } from '@poke/db';
-import { createDraftInputSchema, importContentInputSchema } from '@poke/shared';
+import {
+  createDraftInputSchema,
+  importContentInputSchema,
+  telemetryQuerySchema,
+} from '@poke/shared';
 import type {
   AuditLogEntryDto,
   ContentVersionDetailDto,
   ContentVersionDto,
   Paginated,
+  TelemetryResponse,
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
+import { telemetry } from '../game/telemetry';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
   db: Db;
   content: ContentCache;
   hooks: ReturnType<typeof sessionHooks>;
+  now: () => Date;
 }
 
 const idParams = z.object({ id: z.coerce.number().int().positive() });
@@ -63,6 +70,7 @@ const ENTITY_ROUTES: Record<string, { type: ContentEntityType; audit: string }> 
   evolutions: { type: 'evolutionOverride', audit: 'evolution_override' },
   'dex-milestones': { type: 'dexMilestone', audit: 'dex_milestone' },
   collections: { type: 'collection', audit: 'collection' },
+  quests: { type: 'quest', audit: 'quest' },
 };
 
 const entityParams = z.object({
@@ -93,7 +101,7 @@ function versionDto(v: Awaited<ReturnType<typeof listContentVersions>>[number]):
 }
 
 /** Routes /api/admin/* : toutes réservées au rôle admin, toutes les écritures sont journalisées. */
-export async function adminRoutes(app: FastifyInstance, { db, content, hooks }: Deps) {
+export async function adminRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
   app.addHook('preHandler', hooks.requireAdmin);
 
   app.get('/api/admin/me', async (request) => ({ user: request.user }));
@@ -276,6 +284,12 @@ export async function adminRoutes(app: FastifyInstance, { db, content, hooks }: 
     } catch (err) {
       return sendContentError(reply, err);
     }
+  });
+
+  /** Télémétrie d'équilibrage : temps de complétion et goulets (contenu publié). */
+  app.get('/api/admin/telemetry', async (request): Promise<TelemetryResponse> => {
+    const { days } = telemetryQuerySchema.parse(request.query);
+    return telemetry(db, await content.get(), days, now());
   });
 
   app.get('/api/admin/audit-log', async (request): Promise<Paginated<AuditLogEntryDto>> => {

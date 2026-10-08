@@ -4,6 +4,7 @@ import type { GameContext, GameSpecies } from './context';
 import { MAX_LEVEL, generatePokemon, levelForXp, xpForLevel } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import { createRng } from './rng';
+import { counterpartFormId } from './forms';
 import { isMasudaPair, shinyProbability } from './shiny';
 
 // --- Compatibilité ------------------------------------------------------------------
@@ -38,12 +39,16 @@ export type BreedingError =
   | { code: 'NO_COMMON_EGG_GROUP' }
   | { code: 'INCOMPATIBLE_GENDERS' };
 
-export type BreedingParent = Pick<PokemonInstance, 'speciesId' | 'gender'> & { id?: string };
+export type BreedingParent = Pick<PokemonInstance, 'speciesId' | 'formId' | 'gender'> & {
+  id?: string;
+};
 
 export type BreedingCheck =
   | {
       ok: true;
       eggSpeciesId: number;
+      /** Forme de l'œuf : celle de la mère quand l'espèce de base l'a (formes régionales). */
+      eggFormId: number | null;
       /** Index du parent qui détermine l'espèce. */ motherIndex: 0 | 1;
     }
   | { ok: false; errors: BreedingError[] };
@@ -59,8 +64,8 @@ export function checkBreedingPair(
 ): BreedingCheck {
   const errors: BreedingError[] = [];
   if (a.id !== undefined && a.id === b.id) return { ok: false, errors: [{ code: 'SAME_POKEMON' }] };
-  const sa = ctx.species(a.speciesId);
-  const sb = ctx.species(b.speciesId);
+  const sa = ctx.species(a.speciesId, a.formId);
+  const sb = ctx.species(b.speciesId, b.formId);
   if (!sa || !sb) return { ok: false, errors: [{ code: 'NO_COMMON_EGG_GROUP' }] };
   for (const s of [sa, sb]) {
     if (!isBreedable(s)) errors.push({ code: 'NOT_BREEDABLE', speciesId: s.id });
@@ -72,8 +77,7 @@ export function checkBreedingPair(
   if (dittoA && dittoB) return { ok: false, errors: [{ code: 'TWO_DITTOS' }] };
   if (dittoA || dittoB) {
     const motherIndex = dittoA ? 1 : 0;
-    const mother = motherIndex === 0 ? sa : sb;
-    return { ok: true, eggSpeciesId: baseSpeciesId(ctx, mother.id), motherIndex };
+    return { ok: true, ...eggOf(ctx, motherIndex === 0 ? a : b), motherIndex };
   }
 
   if (!sa.eggGroups.some((g) => sb.eggGroups.includes(g))) {
@@ -85,11 +89,12 @@ export function checkBreedingPair(
   }
   if (errors.length > 0) return { ok: false, errors };
   const motherIndex = a.gender === 'female' ? 0 : 1;
-  return {
-    ok: true,
-    eggSpeciesId: baseSpeciesId(ctx, (motherIndex === 0 ? sa : sb).id),
-    motherIndex,
-  };
+  return { ok: true, ...eggOf(ctx, motherIndex === 0 ? a : b), motherIndex };
+}
+
+function eggOf(ctx: GameContext, mother: BreedingParent) {
+  const eggSpeciesId = baseSpeciesId(ctx, mother.speciesId);
+  return { eggSpeciesId, eggFormId: counterpartFormId(mother.formId, eggSpeciesId) };
 }
 
 // --- Objets tenus et règles d'héritage ------------------------------------------------
@@ -152,6 +157,8 @@ export function eggsLaid(ctx: GameContext, since: Date, now: Date): number {
 export interface EggInput {
   seed: number;
   speciesId: number;
+  /** Forme de l'œuf ; absente = forme par défaut. */
+  formId?: number | null;
   /** Les deux parents, dans l'ordre du dépôt en pension. */
   parents: readonly [DaycareParent, DaycareParent];
   /** Index de la mère (parent qui transmet le talent caché). */
@@ -184,7 +191,7 @@ function shuffled<T>(rng: ReturnType<typeof createRng>, list: readonly T[]): T[]
  */
 export function resolveEgg(ctx: GameContext, input: EggInput): PokemonInstance {
   const rng = createRng(input.seed);
-  const species = ctx.species(input.speciesId);
+  const species = ctx.species(input.speciesId, input.formId);
   if (!species) throw new Error(`Espèce inconnue : ${input.speciesId}`);
   const { breeding } = ctx.balance;
   const [pa, pb] = input.parents;
@@ -193,6 +200,7 @@ export function resolveEgg(ctx: GameContext, input: EggInput): PokemonInstance {
   // Base aléatoire (IV, nature, talent standard, sexe, shiny), puis héritage par-dessus.
   const child = generatePokemon(ctx, rng, species.id, breeding.eggLevel, {
     shinyProbability: eggShinyProbability(ctx, input.parents, input.shinyCharm),
+    formId: species.form?.id ?? null,
   });
 
   const ivs: Stats = { ...child.ivs };
@@ -209,7 +217,7 @@ export function resolveEgg(ctx: GameContext, input: EggInput): PokemonInstance {
   const regular = species.abilities.filter((a) => !a.isHidden);
   const hidden = species.abilities.filter((a) => a.isHidden);
   const mother = input.parents[input.motherIndex];
-  const motherSpecies = ctx.species(mother.speciesId);
+  const motherSpecies = ctx.species(mother.speciesId, mother.formId);
   const motherHasHidden = !!motherSpecies?.abilities.some(
     (a) => a.isHidden && a.name === mother.ability,
   );

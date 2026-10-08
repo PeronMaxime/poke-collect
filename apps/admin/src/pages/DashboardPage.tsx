@@ -22,6 +22,7 @@ const ISSUE_SECTIONS: Record<ContentEntityKind, { path: string; label: string }>
   evolutionOverride: { path: '/evolutions', label: 'Évolutions' },
   dexMilestone: { path: '/progression', label: 'Progression (paliers)' },
   collection: { path: '/progression', label: 'Progression (collections)' },
+  quest: { path: '/quests', label: 'Quêtes' },
 };
 
 const STATUS_LABELS: Record<ContentVersionStatus, string> = {

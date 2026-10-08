@@ -16,6 +16,7 @@ import type { ClaimedRewards, GameContext, ZoneChainStatus } from '@poke/game-co
 import type { StartExpeditionInput, StoredExpeditionResult } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
+import { syncQuests } from './quests';
 import {
   addItems,
   assertAvailable,
@@ -100,7 +101,7 @@ export async function startExpedition(
   await requireStartedProfile(db, userId);
   const zone = ctx.zone(input.zoneId);
   if (!zone) throw new GameError(404, 'ZONE_NOT_FOUND');
-  if (!isZoneUnlocked(ctx, zone, await playerProgress(db, userId))) {
+  if (!isZoneUnlocked(ctx, zone, await playerProgress(db, ctx, userId))) {
     throw new GameError(403, 'ZONE_LOCKED');
   }
   if (input.ballItemId && !ctx.itemEffect(input.ballItemId, 'ball')) {
@@ -192,6 +193,8 @@ export async function claimExpedition(
   const ctx = await content.version(found.contentVersionId);
   const zone = ctx.zone(found.zoneId);
   if (!zone) throw new GameError(500, 'ZONE_MISSING_IN_VERSION');
+  // Les quêtes suivent le contenu publié, pas la version de départ de l'expédition.
+  const current = await content.get();
 
   return db.transaction(async (tx) => {
     // Verrou : seule la première réclamation passe.
@@ -268,6 +271,13 @@ export async function claimExpedition(
         .set({ xp: m.xpAfter, level: m.levelAfter, happiness: m.happinessAfter })
         .where(eq(pokemon.id, m.id));
     }
+
+    await syncQuests(tx, current, userId, now, {
+      type: 'expedition',
+      zoneId: zone.id,
+      team: teamRows.map(toInstance),
+      captured: capturedEncounters.map((e) => e.pokemon!),
+    });
 
     let capturedIndex = 0;
     const stored: StoredExpeditionResult = {

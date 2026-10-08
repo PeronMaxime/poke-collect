@@ -1,6 +1,23 @@
-import { getSpecies, natures, types as typeData } from '@poke/data';
+import { getForm, getSpecies, natures, types as typeData } from '@poke/data';
 import { gameContentStructureSchema } from './schemas';
-import type { GameContentData, ProgressReward, UnlockCondition } from './schemas';
+import type {
+  GameContentData,
+  ProgressReward,
+  QuestCondition,
+  QuestReward,
+  UnlockCondition,
+} from './schemas';
+
+/** Forme qui n'appartient pas à l'espèce (message d'erreur), ou null si tout va bien. */
+function formError(p: { speciesId: number; formId?: number | null }): string | null {
+  if (p.formId == null) return null;
+  const form = getForm(p.formId);
+  if (!form) return `Forme ${p.formId} inconnue`;
+  if (form.speciesId !== p.speciesId) {
+    return `${form.nameFr} n'est pas une forme de l'espèce ${p.speciesId}`;
+  }
+  return null;
+}
 
 /**
  * Cohérence du contenu : références croisées (zone → région, butin → objet…) et alertes.
@@ -19,7 +36,8 @@ export type ContentEntityKind =
   | 'shopEntry'
   | 'evolutionOverride'
   | 'dexMilestone'
-  | 'collection';
+  | 'collection'
+  | 'quest';
 
 export interface ContentIssue {
   severity: 'error' | 'warning';
@@ -59,6 +77,7 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   const zoneIds = new Set(content.zones.map((z) => z.id));
   const trainerIds = new Set(content.trainers.map((t) => t.id));
   const shopCategoryIds = new Set(content.shopCategories.map((c) => c.id));
+  const questsById = new Map(content.quests.map((q) => [q.id, q]));
   const disabled = new Set(
     content.speciesOverrides.filter((o) => !o.enabled).map((o) => o.speciesId),
   );
@@ -85,6 +104,8 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     add('error', 'dexMilestone', id, 'Identifiant de palier en double');
   for (const id of duplicates(content.collections.map((c) => c.id)))
     add('error', 'collection', id, 'Identifiant de collection en double');
+  for (const id of duplicates(content.quests.map((q) => q.id)))
+    add('error', 'quest', id, 'Identifiant de quête en double');
 
   const checkUnlock = (entity: ContentEntityKind, id: string, unlock: UnlockCondition) => {
     if (unlock.type === 'regionDexPercent' && !regionIds.has(unlock.regionId)) {
@@ -100,6 +121,21 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
         );
       } else if (entity === 'trainer' && unlock.trainerId === id) {
         add('error', entity, id, 'Condition de déblocage : le dresseur dépend de lui-même');
+      }
+    }
+    if (unlock.type === 'questStepsDone' || unlock.type === 'questCompleted') {
+      const quest = questsById.get(unlock.questId);
+      if (!quest) {
+        add('error', entity, id, `Condition de déblocage : quête « ${unlock.questId} » inconnue`);
+      } else if (entity === 'quest' && unlock.questId === id) {
+        add('error', entity, id, 'Condition de déblocage : la quête dépend d’elle-même');
+      } else if (unlock.type === 'questStepsDone' && unlock.count > quest.steps.length) {
+        add(
+          'error',
+          entity,
+          id,
+          `Condition de déblocage : ${unlock.count} étape(s) requise(s), la quête « ${quest.name} » en a ${quest.steps.length}`,
+        );
       }
     }
     if (unlock.type === 'badgeCount') {
@@ -127,8 +163,57 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     }
   };
 
-  // Équilibrage
   const { balance } = content;
+
+  /** Condition d'étape de quête : brique de déblocage ou action (captures, expédition). */
+  const checkQuestCondition = (id: string, step: number, condition: QuestCondition) => {
+    const report = (severity: ContentIssue['severity'], message: string) =>
+      add(severity, 'quest', id, `Étape ${step + 1} : ${message}`);
+    switch (condition.type) {
+      case 'catchPokemon': {
+        if (condition.pokemonType && !KNOWN_TYPES.has(condition.pokemonType)) {
+          report('error', `type « ${condition.pokemonType} » inconnu`);
+        }
+        if (condition.speciesId === null) break;
+        const species = getSpecies(condition.speciesId);
+        if (!species) {
+          report('error', `espèce ${condition.speciesId} inconnue`);
+        } else if (condition.pokemonType && !species.types.includes(condition.pokemonType)) {
+          report('error', `${species.nameFr} n’est pas du type demandé`);
+        } else if (
+          !content.zones.some((z) => z.encounters.some((e) => e.speciesId === species.id))
+        ) {
+          report('warning', `${species.nameFr} n’apparaît dans aucune zone`);
+        }
+        break;
+      }
+      case 'expedition':
+        if (!zoneIds.has(condition.zoneId))
+          report('error', `zone « ${condition.zoneId} » inconnue`);
+        if (condition.memberType && !KNOWN_TYPES.has(condition.memberType)) {
+          report('error', `type « ${condition.memberType} » inconnu`);
+        }
+        if (condition.memberCount > balance.expeditions.maxTeamSize) {
+          report('error', 'plus de Pokémon requis que la taille d’équipe maximale');
+        }
+        break;
+      default:
+        checkUnlock('quest', id, condition);
+    }
+  };
+
+  const checkQuestReward = (id: string, reward: QuestReward) => {
+    checkReward('quest', id, reward);
+    for (const p of reward.pokemon) {
+      if (!getSpecies(p.speciesId)) {
+        add('error', 'quest', id, `Récompense : espèce ${p.speciesId} inconnue`);
+      }
+      const formIssue = formError(p);
+      if (formIssue) add('error', 'quest', id, `Récompense : ${formIssue}`);
+    }
+  };
+
+  // Équilibrage
   if (balance.expeditions.initialSlots > balance.expeditions.maxSlots) {
     add('error', 'balance', null, 'Expéditions : emplacements initiaux > maximum');
   }
@@ -200,6 +285,11 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     if (new Set(types).size !== types.length) {
       add('warning', 'item', item.id, 'Plusieurs effets du même type');
     }
+    for (const effect of item.effects) {
+      if (effect.type === 'mint' && !KNOWN_NATURES.has(effect.nature)) {
+        add('error', 'item', item.id, `Aromate : nature « ${effect.nature} » inconnue`);
+      }
+    }
   }
 
   // Tables de butin
@@ -248,6 +338,8 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
         add('error', 'zone', zone.id, `Espèce ${e.speciesId} inconnue`);
         continue;
       }
+      const formIssue = formError(e);
+      if (formIssue) add('error', 'zone', zone.id, formIssue);
       if (disabled.has(e.speciesId)) {
         add('warning', 'zone', zone.id, `${species.nameFr} est désactivé : rencontre ignorée`);
       } else {
@@ -285,6 +377,8 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     }
     for (const member of trainer.team) {
       if (!getSpecies(member.speciesId)) report('error', `Espèce ${member.speciesId} inconnue`);
+      const formIssue = formError(member);
+      if (formIssue) report('error', formIssue);
       if (member.nature && !KNOWN_NATURES.has(member.nature)) {
         report('error', `Nature « ${member.nature} » inconnue`);
       }
@@ -363,7 +457,19 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     }
     checkReward('collection', c.id, c.rewards);
   }
-  const rewards = [...content.dexMilestones, ...content.collections].map((r) => r.rewards);
+  // Quêtes
+  for (const quest of content.quests) {
+    if (quest.regionId && !regionIds.has(quest.regionId)) {
+      add('error', 'quest', quest.id, `Région « ${quest.regionId} » inconnue`);
+    }
+    checkUnlock('quest', quest.id, quest.unlock);
+    quest.steps.forEach((step, i) => checkQuestCondition(quest.id, i, step.condition));
+    checkQuestReward(quest.id, quest.rewards);
+  }
+
+  const rewards = [...content.dexMilestones, ...content.collections, ...content.quests].map(
+    (r) => r.rewards,
+  );
   const slotTotal = (key: 'expeditionSlots' | 'battleSlots' | 'daycareSlots') =>
     rewards.reduce((sum, r) => sum + r[key], 0);
   for (const [key, group, label] of [
@@ -397,8 +503,11 @@ export const gameContentSchema = gameContentStructureSchema.superRefine((content
   }
 });
 
-/** Entités qui portent une condition de déblocage (avec un libellé pour les usages). */
-const unlockables = (content: GameContentData) => [
+/**
+ * Entités qui portent une condition de déblocage, et étapes de quête (avec un libellé pour les
+ * usages).
+ */
+const unlockables = (content: GameContentData): { unlock: QuestCondition; name: string }[] => [
   ...content.regions,
   ...content.zones,
   ...content.trainers,
@@ -406,6 +515,10 @@ const unlockables = (content: GameContentData) => [
     unlock: e.unlock,
     name: `Article ${content.items.find((i) => i.id === e.itemId)?.name ?? e.itemId} (${e.id})`,
   })),
+  ...content.quests,
+  ...content.quests.flatMap((q) =>
+    q.steps.map((s, i) => ({ unlock: s.condition, name: `Quête ${q.name}, étape ${i + 1}` })),
+  ),
 ];
 
 /** Où une entité est-elle utilisée ? (avant suppression : intégrité des références) */
@@ -438,6 +551,9 @@ export function findUsages(
       for (const c of content.collections) {
         if (c.rewards.items.some((s) => s.itemId === id)) usages.push(`Collection « ${c.name} »`);
       }
+      for (const q of content.quests) {
+        if (q.rewards.items.some((s) => s.itemId === id)) usages.push(`Quête « ${q.name} »`);
+      }
       break;
     case 'shopCategory':
       for (const e of content.shopEntries) {
@@ -462,17 +578,34 @@ export function findUsages(
       for (const m of content.dexMilestones) {
         if (m.regionId === id) usages.push(`Palier « ${m.name} »`);
       }
+      for (const q of content.quests) {
+        if (q.regionId === id) usages.push(`Quête « ${q.name} »`);
+      }
       const unlocks = unlockables(content).filter(
         (e) => e.unlock.type === 'regionDexPercent' && e.unlock.regionId === id,
       );
       for (const e of unlocks) usages.push(`Condition de déblocage de « ${e.name} »`);
       break;
     }
-    case 'zone':
+    case 'zone': {
       for (const t of content.trainers) {
         if (t.zoneId === id) usages.push(`Dresseur « ${t.name} »`);
       }
+      const steps = unlockables(content).filter(
+        (e) => e.unlock.type === 'expedition' && e.unlock.zoneId === id,
+      );
+      for (const e of steps) usages.push(e.name);
       break;
+    }
+    case 'quest': {
+      const unlocks = unlockables(content).filter(
+        (e) =>
+          (e.unlock.type === 'questStepsDone' || e.unlock.type === 'questCompleted') &&
+          e.unlock.questId === id,
+      );
+      for (const e of unlocks) usages.push(`Condition de « ${e.name} »`);
+      break;
+    }
     case 'trainer': {
       const unlocks = unlockables(content).filter(
         (e) => e.unlock.type === 'trainerDefeated' && e.unlock.trainerId === id,

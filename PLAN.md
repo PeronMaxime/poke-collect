@@ -349,7 +349,7 @@ Les expéditions, combats, œufs et quêtes en cours enregistrent la `content_ve
 
 ### Phase 0 : Fondations (≈ 1 à 2 semaines)
 - [x] Initialiser le monorepo (pnpm, TS, ESLint, Prettier, Vitest)
-- [x] Script d'import PokéAPI → JSON (Gen I d'abord), avec noms FR et sprites
+- [x] Script d'import PokéAPI → JSON (toutes les générations), avec noms FR et sprites
 - [x] Schéma DB initial + migrations, Postgres local (Docker)
 - [x] Auth (inscription, connexion, session) + création du profil dresseur
 - [x] Rôle admin + squelette de `apps/admin` (navigation, authentification, journal)
@@ -408,17 +408,17 @@ Les expéditions, combats, œufs et quêtes en cours enregistrent la `content_ve
 - [x] Admin : réglages shiny
 
 ### Phase 7 : Légendaires et endgame
-- [ ] Système de quêtes générique (étapes + conditions déclaratives en config)
-- [ ] Quêtes des légendaires de Kanto (oiseaux, Mewtwo, Mew)
-- [ ] Objets endgame : Capsules d'Argent / d'Or, Aromates, Capsule Talent
-- [ ] Expéditions et dresseurs de haut niveau (Conseil 4, Maître)
-- [ ] Admin : éditeur de quêtes (étapes, conditions, récompenses)
+- [x] Système de quêtes générique (étapes + conditions déclaratives en config)
+- [x] Quêtes des légendaires de Kanto (oiseaux, Mewtwo, Mew)
+- [x] Objets endgame : Capsules d'Argent / d'Or, Aromates, Capsule Talent
+- [x] Expéditions et dresseurs de haut niveau (Conseil 4, Maître)
+- [x] Admin : éditeur de quêtes (étapes, conditions, récompenses)
 
 ### Phase 8 : Expansion
-- [ ] Régions suivantes (Johto, Hoenn, ...), mapping habitat Gen IV+
-- [ ] Formes alternatives / régionales (`varieties`)
-- [ ] Notifications (Web Push), mode PWA installable
-- [ ] Équilibrage avec la télémétrie (temps de complétion, goulets)
+- [x] Régions suivantes (Johto → Paldea, et Hisui), mapping habitat Gen IV+
+- [x] Toutes les formes : régionales, alternatives, apparence, Méga, Gigamax, combat, Dominants (`varieties` + `pokemon.forms`), évolutions vers une forme précise
+- [x] Notifications (Web Push), mode PWA installable
+- [x] Équilibrage avec la télémétrie (temps de complétion, goulets)
 
 ### Plus tard / à étudier
 - Social : profils publics, classements Pokédex, échanges entre joueurs (attention à l'économie et à la triche)

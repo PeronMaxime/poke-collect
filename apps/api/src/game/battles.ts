@@ -79,7 +79,7 @@ export async function startBattle(
 
   return db.transaction(async (tx) => {
     const [progress, [record]] = await Promise.all([
-      playerProgress(tx, userId),
+      playerProgress(tx, ctx, userId),
       tx
         .select()
         .from(trainerProgress)

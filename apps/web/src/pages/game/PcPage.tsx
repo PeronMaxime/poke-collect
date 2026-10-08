@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { STAT_NAMES } from '@poke/data';
+import type { StatName } from '@poke/data';
 import {
   MAX_IV,
   MAX_LEVEL,
@@ -9,17 +10,20 @@ import {
   expeditionPower,
   getNature,
   isKnockedOut,
+  itemUseOptions,
   lineageId,
   pokemonPower,
   transferCandies,
   xpForLevel,
 } from '@poke/game-core';
-import type { EvolutionCheck, GameContext } from '@poke/game-core';
+import type { EvolutionCheck, EvolutionOption, GameContext } from '@poke/game-core';
 import type {
   EvolveResponse,
   PokemonActivity,
   PokemonDto,
   TransferPokemonResponse,
+  UseItemInput,
+  UseItemResponse,
 } from '@poke/shared';
 import {
   Modal,
@@ -37,6 +41,7 @@ import {
   keys,
   useCandies,
   useEvolutionChecker,
+  useInventory,
   usePokemon,
   utcOffsetMinutes,
 } from '../../lib/game';
@@ -44,10 +49,12 @@ import {
   STAT_LABELS,
   abilityLabel,
   candyName,
+  effectText,
   errorText,
   evolutionMethodText,
   formatCountdown,
   itemIcon,
+  itemName,
   natureLabel,
   requirementText,
   speciesName,
@@ -94,16 +101,19 @@ export function KoBadge({ koUntil, now }: { koUntil: string | null; now: number 
 const canTransfer = (p: PokemonDto) => !p.locked && !p.busy;
 
 /**
- * Doublons à transférer : pour chaque espèce, on garde le Pokémon de plus forte PE, les
- * favoris, les shiny et les Pokémon occupés ; tous les autres sont proposés.
+ * Doublons à transférer : pour chaque espèce (et forme), on garde le Pokémon de plus forte PE,
+ * les favoris, les shiny et les Pokémon occupés ; tous les autres sont proposés.
  */
 function duplicates(ctx: GameContext, list: readonly PokemonDto[]): string[] {
-  const bySpecies = new Map<number, PokemonDto[]>();
-  for (const p of list) bySpecies.set(p.speciesId, [...(bySpecies.get(p.speciesId) ?? []), p]);
+  const bySpecies = new Map<string, PokemonDto[]>();
+  for (const p of list) {
+    const key = `${p.speciesId}:${p.formId ?? ''}`;
+    bySpecies.set(key, [...(bySpecies.get(key) ?? []), p]);
+  }
   const ids: string[] = [];
-  for (const [speciesId, group] of bySpecies) {
+  for (const group of bySpecies.values()) {
     if (group.length < 2) continue;
-    const species = ctx.species(speciesId)!;
+    const species = ctx.species(group[0]!.speciesId, group[0]!.formId)!;
     const best = group.reduce((x, y) =>
       pokemonPower(species, y) > pokemonPower(species, x) ? y : x,
     );
@@ -140,8 +150,8 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
 
   const list = (pokemon.data ?? []).map((p) => ({
     p,
-    species: ctx.species(p.speciesId),
-    power: pokemonPower(ctx.species(p.speciesId)!, p),
+    species: ctx.species(p.speciesId, p.formId),
+    power: pokemonPower(ctx.species(p.speciesId, p.formId)!, p),
   }));
   const needle = search.trim().toLowerCase();
   const filtered = list
@@ -282,7 +292,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
                 </span>
               )}
             </span>
-            <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} size={72} />
+            <PokemonSprite speciesId={p.speciesId} formId={p.formId} shiny={p.isShiny} size={72} />
             <span className="truncate font-medium">
               {species?.nameFr} {p.isShiny && <ShinyStar />}
             </span>
@@ -327,10 +337,10 @@ function PokemonDetail({
   const queryClient = useQueryClient();
   const [reveal, setReveal] = useState<EvolveResponse | null>(null);
   const evolve = useMutation({
-    mutationFn: (toSpeciesId: number) =>
+    mutationFn: ({ toSpeciesId, toFormId }: Pick<EvolutionOption, 'toSpeciesId' | 'toFormId'>) =>
       api<EvolveResponse>(`/api/pokemon/${p.id}/evolve`, {
         method: 'POST',
-        json: { toSpeciesId, utcOffsetMinutes: utcOffsetMinutes() },
+        json: { toSpeciesId, toFormId, utcOffsetMinutes: utcOffsetMinutes() },
       }),
     onSuccess: (data) => {
       setReveal(data);
@@ -339,7 +349,7 @@ function PokemonDetail({
       );
     },
   });
-  const species = ctx.species(p.speciesId)!;
+  const species = ctx.species(p.speciesId, p.formId)!;
   const stats = computeStats(species, p);
   const nature = getNature(p.nature);
   const levelXp = xpForLevel(species.growthRate, p.level);
@@ -375,7 +385,13 @@ function PokemonDetail({
       <div className="flex flex-col items-center text-center">
         <div className="relative">
           {p.isShiny && <ShinySparkles loop radius={110} />}
-          <PokemonSprite speciesId={p.speciesId} shiny={p.isShiny} kind="artwork" size={180} />
+          <PokemonSprite
+            speciesId={p.speciesId}
+            formId={p.formId}
+            shiny={p.isShiny}
+            kind="artwork"
+            size={180}
+          />
         </div>
         <h2 className="mt-2 text-xl font-bold">
           {species.nameFr} <span className="text-slate-400">{GENDER_LABELS[p.gender]}</span>{' '}
@@ -435,8 +451,9 @@ function PokemonDetail({
           evolutions={evolutions}
           pending={evolve.isPending}
           error={evolve.error}
-          onEvolve={(toSpeciesId) => evolve.mutate(toSpeciesId)}
+          onEvolve={(option) => evolve.mutate(option)}
         />
+        <ItemUsePanel ctx={ctx} pokemon={p} />
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
           <dt className="text-slate-500">Nature</dt>
           <dd>
@@ -445,6 +462,11 @@ function PokemonDetail({
               <span className="text-xs text-slate-500">
                 {' '}
                 (+{STAT_LABELS[nature.increasedStat]}, −{STAT_LABELS[nature.decreasedStat!]})
+              </span>
+            )}
+            {p.originalNature && (
+              <span className="block text-xs text-slate-500">
+                Aromate · d’origine {natureLabel(p.originalNature)}
               </span>
             )}
           </dd>
@@ -547,7 +569,7 @@ function EvolutionPanel({
   evolutions: EvolutionCheck[];
   pending: boolean;
   error: unknown;
-  onEvolve: (toSpeciesId: number) => void;
+  onEvolve: (option: EvolutionOption) => void;
 }) {
   const now = useNow();
   if (evolutions.length === 0) return null;
@@ -558,15 +580,21 @@ function EvolutionPanel({
       <p className="mb-2 font-medium">Évolution</p>
       <ul className="space-y-2">
         {evolutions.map(({ option, method, methods }) => (
-          <li key={option.toSpeciesId} className="flex items-center gap-3">
+          <li
+            key={`${option.toSpeciesId}:${option.toFormId ?? ''}`}
+            className="flex items-center gap-3"
+          >
             <PokemonSprite
               speciesId={option.toSpeciesId}
+              formId={option.toFormId}
               shiny={p.isShiny}
               size={48}
               silhouette={!method}
             />
             <div className="min-w-0 flex-1 text-xs">
-              <p className="text-sm font-medium">{speciesName(ctx, option.toSpeciesId)}</p>
+              <p className="text-sm font-medium">
+                {speciesName(ctx, option.toSpeciesId, option.toFormId)}
+              </p>
               {methods.length === 0 && (
                 <p className="text-slate-500">Pas encore possible dans le jeu.</p>
               )}
@@ -595,7 +623,7 @@ function EvolutionPanel({
                 className="btn-primary shrink-0 py-1"
                 disabled={pending || !usable}
                 title={usable ? undefined : 'Le Pokémon doit être disponible (ni occupé, ni K.O.)'}
-                onClick={() => onEvolve(option.toSpeciesId)}
+                onClick={() => onEvolve(option)}
               >
                 Faire évoluer
               </button>
@@ -604,6 +632,108 @@ function EvolutionPanel({
         ))}
       </ul>
       {!!error && <p className="mt-2 text-xs text-red-600">{errorText(error)}</p>}
+    </div>
+  );
+}
+
+/**
+ * Objets endgame du sac utilisables sur ce Pokémon (Capsules, Aromates, Pilule / Patch Talent) :
+ * le serveur vérifie de nouveau et consomme l'objet.
+ */
+function ItemUsePanel({ ctx, pokemon: p }: { ctx: GameContext; pokemon: PokemonDto }) {
+  const queryClient = useQueryClient();
+  const inventory = useInventory();
+  const [stat, setStat] = useState<StatName | ''>('');
+  const [abilities, setAbilities] = useState<Record<string, string>>({});
+  const use = useMutation({
+    mutationFn: (input: UseItemInput) =>
+      api<UseItemResponse>(`/api/pokemon/${p.id}/use-item`, { method: 'POST', json: input }),
+    onSuccess: () => {
+      setStat('');
+      return Promise.all(
+        [keys.pokemon, keys.inventory].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      );
+    },
+  });
+  const target = { ...p, originalNature: p.originalNature ?? p.nature };
+  const items = (inventory.data ?? [])
+    .filter((i) => i.quantity > 0)
+    .flatMap((i) => {
+      const options = itemUseOptions(ctx, target, i.itemId);
+      return options ? [{ ...i, options }] : [];
+    });
+  if (items.length === 0) return null;
+
+  return (
+    <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
+      <p className="mb-2 font-medium">Objets</p>
+      <ul className="space-y-2">
+        {items.map(({ itemId, quantity, options }) => {
+          const { effect } = options;
+          const needsStat = effect.type === 'ivCap' && !effect.all;
+          const ability = abilities[itemId] ?? options.abilities[0];
+          const ready = options.usable && (!needsStat || stat !== '');
+          return (
+            <li key={itemId} className="flex flex-wrap items-center gap-2 text-xs">
+              <img src={itemIcon(ctx, itemId)} alt="" width={24} height={24} />
+              <div className="min-w-32 flex-1">
+                <p className="text-sm font-medium">
+                  {itemName(ctx, itemId)} <span className="text-slate-400">× {quantity}</span>
+                </p>
+                <p className="text-slate-500">
+                  {options.usable ? effectText(effect) : 'Sans effet sur ce Pokémon'}
+                </p>
+              </div>
+              {options.usable && needsStat && (
+                <select
+                  className="input w-auto py-1 text-xs"
+                  value={stat}
+                  onChange={(e) => setStat(e.target.value as StatName | '')}
+                >
+                  <option value="">IV à monter…</option>
+                  {options.stats.map((s) => (
+                    <option key={s} value={s}>
+                      {STAT_LABELS[s]} ({p.ivs[s]})
+                    </option>
+                  ))}
+                </select>
+              )}
+              {options.usable && options.abilities.length > 1 && (
+                <select
+                  className="input w-auto py-1 text-xs"
+                  value={ability}
+                  onChange={(e) => setAbilities({ ...abilities, [itemId]: e.target.value })}
+                >
+                  {options.abilities.map((a) => (
+                    <option key={a} value={a}>
+                      {abilityLabel(a)}
+                    </option>
+                  ))}
+                </select>
+              )}
+              {options.usable && (
+                <button
+                  className="btn-primary shrink-0 py-1"
+                  disabled={!ready || use.isPending || p.busy}
+                  title={p.busy ? 'Le Pokémon doit être disponible (ni en activité)' : undefined}
+                  onClick={() =>
+                    use.mutate({
+                      itemId,
+                      ...(needsStat && stat && { stat }),
+                      ...(effect.type === 'abilityChange' && ability && { ability }),
+                    })
+                  }
+                >
+                  Utiliser
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {!!use.error && <p className="mt-2 text-xs text-red-600">{errorText(use.error)}</p>}
     </div>
   );
 }

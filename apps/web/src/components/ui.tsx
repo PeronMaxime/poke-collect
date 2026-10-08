@@ -1,12 +1,13 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { pokemonSpriteUrl } from '@poke/data';
+import { pokemonSprite, pokemonSpriteUrl } from '@poke/data';
 import type { SpriteKind } from '@poke/data';
 import { TYPE_COLORS, typeLabel } from '../lib/labels';
 
 export function PokemonSprite({
   speciesId,
+  formId = null,
   shiny = false,
   size = 96,
   kind = 'default',
@@ -15,6 +16,8 @@ export function PokemonSprite({
   alt = '',
 }: {
   speciesId: number;
+  /** Forme de l'espèce (régionale, Méga, Gigamax…), qui a ses propres sprites. */
+  formId?: number | null;
   shiny?: boolean;
   size?: number;
   kind?: SpriteKind;
@@ -22,9 +25,15 @@ export function PokemonSprite({
   silhouette?: boolean;
   alt?: string;
 }) {
+  const sprite = pokemonSprite(speciesId, formId);
   return (
     <img
-      src={pokemonSpriteUrl(speciesId, { shiny, kind })}
+      src={pokemonSpriteUrl(sprite, { shiny, kind })}
+      onError={(e) => {
+        // Sprite animé ou artwork absent (formes, générations récentes) : repli sur le sprite fixe.
+        const fallback = pokemonSpriteUrl(sprite, { shiny });
+        if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+      }}
       alt={alt}
       width={size}
       height={size}

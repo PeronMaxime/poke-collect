@@ -204,7 +204,13 @@ function ActiveBattle({
         <div className="flex -space-x-3">
           {team.map((p, i) =>
             p ? (
-              <PokemonSprite key={i} speciesId={p.speciesId} shiny={p.isShiny} size={48} />
+              <PokemonSprite
+                key={i}
+                speciesId={p.speciesId}
+                formId={p.formId}
+                shiny={p.isShiny}
+                size={48}
+              />
             ) : null,
           )}
         </div>
@@ -293,9 +299,10 @@ function TrainerCard({
           <span key={i} className="flex flex-col items-center text-[10px] text-slate-500">
             <PokemonSprite
               speciesId={m.speciesId}
+              formId={m.formId}
               size={44}
               silhouette={locked}
-              alt={locked ? '?' : ctx.species(m.speciesId)?.nameFr}
+              alt={locked ? '?' : ctx.species(m.speciesId, m.formId)?.nameFr}
             />
             N.{m.level}
           </span>

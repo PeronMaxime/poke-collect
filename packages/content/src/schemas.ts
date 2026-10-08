@@ -14,6 +14,11 @@ export const slugSchema = z
 const nameSchema = z.string().trim().min(1, 'Obligatoire').max(64);
 const imageSchema = z.url('URL invalide').nullable();
 const probabilitySchema = z.number().min(0).max(1);
+/**
+ * Forme alternative ou régionale (identifiant PokéAPI `pokemon`, ex. Goupix d'Alola) ;
+ * null ou absente = forme par défaut. Elle doit appartenir à l'espèce (alertes de cohérence).
+ */
+const formIdSchema = z.int().positive().nullish();
 
 export const RARITIES = ['common', 'uncommon', 'rare', 'epic', 'legendary'] as const;
 export const raritySchema = z.enum(RARITIES);
@@ -161,6 +166,14 @@ export const unlockConditionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('speciesCaught'), count: z.int().min(1).max(10_000) }),
   /** Avoir fait éclore au moins N œufs. */
   z.object({ type: z.literal('eggsHatched'), count: z.int().min(1).max(100_000) }),
+  /** Avoir validé au moins N étapes d'une quête (ex. zone ouverte pendant une quête). */
+  z.object({
+    type: z.literal('questStepsDone'),
+    questId: slugSchema,
+    count: z.int().min(1).max(20),
+  }),
+  /** Avoir validé toutes les étapes d'une quête. */
+  z.object({ type: z.literal('questCompleted'), questId: slugSchema }),
 ]);
 export type UnlockCondition = z.infer<typeof unlockConditionSchema>;
 
@@ -217,6 +230,15 @@ export const itemEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('breedingNature'), chance: probabilitySchema }),
   /** Possédé dans le sac (non consommé) : multiplie le taux shiny (Charme Chroma). */
   z.object({ type: z.literal('shinyCharm'), multiplier: z.number().min(1).max(100) }),
+  /** Utilisé sur un Pokémon : met un IV au choix à 31, ou les 6 (Capsules d'Argent / d'Or). */
+  z.object({ type: z.literal('ivCap'), all: z.boolean() }),
+  /** Utilisé sur un Pokémon : change sa nature effective (Aromates). */
+  z.object({ type: z.literal('mint'), nature: z.string().min(1) }),
+  /**
+   * Utilisé sur un Pokémon : passe à un autre talent normal (Pilule Talent) ou au talent caché
+   * (Patch Talent).
+   */
+  z.object({ type: z.literal('abilityChange'), hidden: z.boolean() }),
 ]);
 export type ItemEffect = z.infer<typeof itemEffectSchema>;
 export type ItemEffectType = ItemEffect['type'];
@@ -259,6 +281,7 @@ export type LootTable = z.infer<typeof lootTableSchema>;
 export const encounterSchema = z
   .object({
     speciesId: z.int().positive(),
+    formId: formIdSchema,
     weight: z.number().positive(),
     minLevel: z.int().min(1).max(100),
     maxLevel: z.int().min(1).max(100),
@@ -293,6 +316,7 @@ export type Zone = z.infer<typeof zoneSchema>;
 
 export const trainerPokemonSchema = z.object({
   speciesId: z.int().positive(),
+  formId: formIdSchema,
   level: z.int().min(1).max(100),
   /** IV appliqués aux 6 statistiques ; null = valeur par défaut de l'équilibrage. */
   iv: z.int().min(0).max(31).nullable(),
@@ -498,6 +522,80 @@ export const collectionSchema = z.object({
 });
 export type Collection = z.infer<typeof collectionSchema>;
 
+// --- Quêtes (légendaires) --------------------------------------------------------------
+
+/** Conditions d'étape propres aux quêtes, comptées à partir du début de l'étape. */
+const questActionConditions = [
+  /** Capturer N Pokémon en expédition (filtrés par type et / ou espèce). */
+  z.object({
+    type: z.literal('catchPokemon'),
+    count: z.int().min(1).max(10_000),
+    pokemonType: z.string().min(1).nullable(),
+    speciesId: z.int().positive().nullable(),
+  }),
+  /**
+   * Réussir N expéditions dans une zone, avec au moins `memberCount` Pokémon (du type demandé,
+   * le cas échéant) de PE individuelle ≥ `minMemberPower`.
+   */
+  z.object({
+    type: z.literal('expedition'),
+    zoneId: slugSchema,
+    count: z.int().min(1).max(1000),
+    memberType: z.string().min(1).nullable(),
+    memberCount: z.int().min(0).max(6),
+    minMemberPower: z.int().min(0),
+  }),
+] as const;
+
+/**
+ * Condition d'une étape : une condition de déblocage (état du joueur, évaluée à tout moment) ou
+ * une action à accomplir pendant l'étape (captures, expédition réussie).
+ */
+export const questConditionSchema = z.discriminatedUnion('type', [
+  ...unlockConditionSchema.options,
+  ...questActionConditions,
+]);
+export type QuestCondition = z.infer<typeof questConditionSchema>;
+export type QuestActionCondition = Extract<QuestCondition, { type: 'catchPokemon' | 'expedition' }>;
+
+export const questStepSchema = z.object({
+  name: nameSchema,
+  description: z.string().max(500),
+  condition: questConditionSchema,
+});
+export type QuestStep = z.infer<typeof questStepSchema>;
+
+/** Pokémon offert (légendaire…) : IV aléatoires, dont au moins `perfectIvs` à 31. */
+export const questPokemonSchema = z.object({
+  speciesId: z.int().positive(),
+  formId: formIdSchema,
+  level: z.int().min(1).max(100),
+  perfectIvs: z.int().min(0).max(6),
+});
+export type QuestPokemon = z.infer<typeof questPokemonSchema>;
+
+export const questRewardSchema = progressRewardSchema.extend({
+  pokemon: z.array(questPokemonSchema).max(6),
+});
+export type QuestReward = z.infer<typeof questRewardSchema>;
+
+/** Chaîne de quêtes : étapes ordonnées, validées l'une après l'autre, puis récompense. */
+export const questSchema = z.object({
+  id: slugSchema,
+  order: z.int().min(0),
+  name: nameSchema,
+  description: z.string().max(1000),
+  /** Illustration ; si absente, artwork du premier Pokémon offert. */
+  image: imageSchema,
+  /** Région de rattachement (affichage, origine des Pokémon offerts) ; null = aucune. */
+  regionId: slugSchema.nullable(),
+  /** Condition d'apparition de la quête. */
+  unlock: unlockConditionSchema,
+  steps: z.array(questStepSchema).min(1, 'Au moins une étape').max(20),
+  rewards: questRewardSchema,
+});
+export type Quest = z.infer<typeof questSchema>;
+
 // --- Contenu complet d'une version -------------------------------------------
 
 /** Structure seule : chaque entité est valide, sans vérifier les références croisées. */
@@ -514,6 +612,7 @@ export const gameContentStructureSchema = z.object({
   evolutionOverrides: z.array(evolutionOverrideSchema),
   dexMilestones: z.array(dexMilestoneSchema),
   collections: z.array(collectionSchema),
+  quests: z.array(questSchema),
 });
 export type GameContentData = z.infer<typeof gameContentStructureSchema>;
 

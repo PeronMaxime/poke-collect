@@ -25,6 +25,7 @@ import {
 } from '../../components/forms/fields';
 import {
   ItemIcon,
+  FormSelect,
   SpeciesSelect,
   Sprite,
   TypeMultiSelect,
@@ -439,6 +440,7 @@ function TrainerForm({
             value={t.unlock}
             regions={ctx.regions}
             trainers={ctx.trainers.filter((x) => x.id !== t.id)}
+            quests={ctx.quests}
             onChange={(v) => set('unlock', v)}
             disabled={disabled}
           />
@@ -489,7 +491,13 @@ function TeamEditor({
                     ctx={ctx}
                     value={m.speciesId}
                     disabled={disabled}
-                    onChange={(speciesId) => update(i, { speciesId })}
+                    onChange={(speciesId) => update(i, { speciesId, formId: null })}
+                  />
+                  <FormSelect
+                    speciesId={m.speciesId}
+                    value={m.formId}
+                    disabled={disabled}
+                    onChange={(formId) => update(i, { formId })}
                   />
                   {errorsUnder(errors, `team.${i}`).map((msg) => (
                     <p key={msg} className="text-xs text-red-600">

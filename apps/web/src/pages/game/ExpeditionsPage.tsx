@@ -152,7 +152,7 @@ function ActiveExpedition({
   ctx: GameContext;
   expedition: ExpeditionDto;
   serverNow: number;
-  teamSpecies: ({ speciesId: number; isShiny: boolean } | undefined)[];
+  teamSpecies: ({ speciesId: number; formId: number | null; isShiny: boolean } | undefined)[];
   claiming: boolean;
   onClaim: () => void;
 }) {
@@ -177,7 +177,13 @@ function ActiveExpedition({
         <div className="flex -space-x-3">
           {teamSpecies.map((p, i) =>
             p ? (
-              <PokemonSprite key={i} speciesId={p.speciesId} shiny={p.isShiny} size={48} />
+              <PokemonSprite
+                key={i}
+                speciesId={p.speciesId}
+                formId={p.formId}
+                shiny={p.isShiny}
+                size={48}
+              />
             ) : null,
           )}
         </div>
@@ -215,9 +221,14 @@ function ZoneCard({
   onLaunch: () => void;
 }) {
   const expiresIn = chain?.expiresAt ? Date.parse(chain.expiresAt) - serverNow : null;
-  const species = [...new Set(zone.encounters.map((e) => e.speciesId))].filter(
-    (id) => ctx.species(id)?.enabled,
-  );
+  // Espèces et formes rencontrées (une silhouette tant que l'espèce n'a pas été vue).
+  const species = [
+    ...new Map(
+      zone.encounters
+        .filter((e) => ctx.species(e.speciesId)?.enabled)
+        .map((e) => [`${e.speciesId}:${e.formId ?? ''}`, e] as const),
+    ).values(),
+  ];
   const unlock = zone.unlock;
   return (
     <div className={`card flex flex-col p-4 ${unlocked ? '' : 'opacity-60'}`}>
@@ -252,13 +263,14 @@ function ZoneCard({
         ))}
       </div>
       <div className="mt-3 flex flex-wrap gap-1">
-        {species.map((id) => (
+        {species.map(({ speciesId: id, formId }) => (
           <PokemonSprite
-            key={id}
+            key={`${id}:${formId ?? ''}`}
             speciesId={id}
+            formId={formId}
             size={40}
             silhouette={!seen.has(id)}
-            alt={seen.has(id) ? ctx.species(id)?.nameFr : '?'}
+            alt={seen.has(id) ? ctx.species(id, formId)?.nameFr : '?'}
           />
         ))}
       </div>

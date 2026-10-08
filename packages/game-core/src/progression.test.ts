@@ -25,7 +25,9 @@ const claims = (milestones: string[] = [], collections: string[] = []) => ({
 describe('paliers du Pokédex', () => {
   it('mesure un Pokédex régional ou national', () => {
     expect(dexProgress(ctx, 'kanto', caught(1, 2, 3)).caught).toBe(3);
-    expect(dexProgress(ctx, null, caught(1, 2, 3, 999)).total).toBe(151);
+    // National : toutes les espèces des régions (Hisui reprend des espèces d'autres régions).
+    const national = new Set(ctx.regions.flatMap((r) => r.speciesIds)).size;
+    expect(dexProgress(ctx, null, caught(1, 2, 3, 999)).total).toBe(national);
   });
 
   it('passe de verrouillé à réclamable puis réclamé', () => {

@@ -16,6 +16,7 @@ import {
 } from '../../components/forms/fields';
 import {
   ItemIcon,
+  FormSelect,
   ItemSelect,
   SpeciesSelect,
   Sprite,
@@ -163,6 +164,7 @@ function ZoneForm({ value: z, onChange, errors, isNew, editable, working }: Enti
               value={z.unlock}
               regions={ctx.regions}
               trainers={ctx.trainers}
+              quests={ctx.quests}
               onChange={(v) => set('unlock', v)}
               disabled={disabled}
             />
@@ -349,7 +351,13 @@ function EncounterTable({
                       ctx={ctx}
                       value={e.speciesId}
                       disabled={disabled}
-                      onChange={(speciesId) => update(i, { speciesId })}
+                      onChange={(speciesId) => update(i, { speciesId, formId: null })}
+                    />
+                    <FormSelect
+                      speciesId={e.speciesId}
+                      value={e.formId}
+                      disabled={disabled}
+                      onChange={(formId) => update(i, { formId })}
                     />
                     {species && !species.enabled && (
                       <p className="text-xs text-amber-600">Espèce désactivée</p>

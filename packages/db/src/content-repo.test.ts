@@ -37,8 +37,11 @@ describe('contenu versionné', () => {
     const content = await loadPublishedContent(db);
     expect(content.versionId).toBe(1);
     expect(content.balance).toEqual(seedContent.balance);
-    expect(content.regions.map((r) => r.id)).toEqual(['kanto']);
-    expect(content.zones.map((z) => z.id)).toEqual(seedContent.zones.map((z) => z.id));
+    expect(content.regions.map((r) => r.id)).toEqual(seedContent.regions.map((r) => r.id));
+    // Ordre par région puis par ordre : appliqué par game-core (createGameContext).
+    expect(content.zones.map((z) => z.id).sort()).toEqual(
+      seedContent.zones.map((z) => z.id).sort(),
+    );
     expect(content.items).toHaveLength(seedContent.items.length);
     expect(content.lootTables).toHaveLength(seedContent.lootTables.length);
   });
@@ -55,7 +58,7 @@ describe('contenu versionné', () => {
 
     expect((await loadContent(db, draft.id)).balance.shiny.baseRateDenominator).toBe(2048);
     expect((await loadPublishedContent(db)).balance.shiny.baseRateDenominator).toBe(4096);
-    expect((await loadContent(db, draft.id)).regions).toHaveLength(1);
+    expect((await loadContent(db, draft.id)).regions).toHaveLength(seedContent.regions.length);
     expect((await loadContent(db, draft.id)).zones).toHaveLength(seedContent.zones.length);
   });
 

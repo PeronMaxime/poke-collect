@@ -8,6 +8,8 @@ export type Gender = 'male' | 'female' | 'genderless';
 
 export interface PokemonInstance {
   speciesId: number;
+  /** Forme alternative ou régionale (identifiant PokéAPI `pokemon`) ; absente = forme par défaut. */
+  formId?: number | null;
   level: number;
   xp: number;
   ivs: Stats;
@@ -120,9 +122,9 @@ export function generatePokemon(
   rng: Rng,
   speciesId: number,
   level: number,
-  { shinyProbability }: { shinyProbability: number },
+  { shinyProbability, formId = null }: { shinyProbability: number; formId?: number | null },
 ): PokemonInstance {
-  const species = ctx.species(speciesId);
+  const species = ctx.species(speciesId, formId);
   if (!species) throw new Error(`Espèce inconnue : ${speciesId}`);
   const isShiny = rng.chance(shinyProbability);
   const ivs = rollIvs(rng);
@@ -131,6 +133,7 @@ export function generatePokemon(
   const gender = rollGender(rng, species.genderRate);
   return {
     speciesId,
+    formId: species.form?.id ?? null,
     level,
     xp: xpForLevel(species.growthRate, level),
     ivs,

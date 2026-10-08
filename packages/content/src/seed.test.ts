@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { contentIssues, findUsages, gameContentSchema } from './integrity';
 import { seedContent } from './seed';
+import { formIdOf } from './seed-expansion';
 
 describe('seedContent', () => {
   it('respecte le schéma du contenu, sans erreur de cohérence', () => {
@@ -18,7 +19,7 @@ describe('cohérence du contenu', () => {
   it('détecte les références cassées', () => {
     const bad = structuredClone(seedContent);
     bad.zones[0]!.lootTableId = 'inexistante';
-    bad.zones[1]!.regionId = 'johto';
+    bad.zones[1]!.regionId = 'orre';
     bad.lootTables[0]!.entries.push({ itemId: 'master-ball', chance: 1, min: 1, max: 1 });
     const errors = contentIssues(bad)
       .filter((i) => i.severity === 'error')
@@ -61,7 +62,7 @@ describe('cohérence du contenu', () => {
     tom.rules.requiredTypes = [{ type: 'fire', count: 1 }];
     tom.rules.forbiddenTypes = ['fire'];
     bad.trainers[1]!.unlock = { type: 'trainerDefeated', trainerId: 'personne' };
-    bad.trainers[2]!.unlock = { type: 'badgeCount', count: 5 };
+    bad.trainers[2]!.unlock = { type: 'badgeCount', count: 20 };
     const messages = contentIssues(bad)
       .filter((i) => i.severity === 'error' && i.entity === 'trainer')
       .map((i) => `${i.entityId}: ${i.message}`);
@@ -70,7 +71,7 @@ describe('cohérence du contenu', () => {
       'gamin-tom: Nature « grincheuse » inconnue',
       'gamin-tom: Un type est à la fois imposé et interdit',
       'fillette-lise: Condition de déblocage : dresseur « personne » inconnu',
-      'scout-rick: Condition de déblocage : 5 badge(s) requis, 2 existent',
+      'scout-rick: Condition de déblocage : 20 badge(s) requis, 11 existent',
     ]);
     expect(
       gameContentSchema.safeParse({ ...seedContent, trainers: [{ ...tom, team: [] }] }).success,
@@ -96,7 +97,12 @@ describe('cohérence du contenu', () => {
     ]);
     expect(findUsages(seedContent, 'lootTable', 'butin-mer')).toEqual([
       'Zone « Cap Azuria »',
+      'Zone « Îles Écume »',
+      'Zone « Archipel Lointain »',
+      'Zone « Lac Colère »',
+      'Zone « Lac Salinas »',
       'Dresseur « Ondine »',
+      'Dresseur « Maya »',
     ]);
     // Léo et Ondine dépendent du nombre de badges, pas de Pierre directement ; la Super Ball si.
     expect(findUsages(seedContent, 'trainer', 'pierre')).toEqual([
@@ -111,9 +117,19 @@ describe('cohérence du contenu', () => {
     ]);
     expect(findUsages(seedContent, 'item', 'ultra-ball')).toEqual([
       'Table de butin « Butin des berges »',
+      'Table de butin « Butin d’élite »',
       'Article de boutique « ultra-ball »',
       'Palier « Chercheur de Kanto »',
       'Palier « Premiers éclats de Kanto »',
+      'Palier « Chercheur de Johto »',
+      'Palier « Chercheur de Hoenn »',
+      'Palier « Chercheur de Sinnoh »',
+      'Palier « Chercheur d’Unys »',
+      'Palier « Chercheur de Kalos »',
+      'Palier « Chercheur d’Alola »',
+      'Palier « Chercheur de Galar »',
+      'Palier « Chercheur de Hisui »',
+      'Palier « Chercheur de Paldea »',
     ]);
     expect(findUsages(seedContent, 'item', 'shiny-charm')).toEqual([
       'Palier « Pokédex national complet »',
@@ -124,6 +140,7 @@ describe('cohérence du contenu', () => {
     ]);
     expect(findUsages(seedContent, 'trainer', 'ondine')).toEqual([
       'Condition de déblocage de « Article Hyper Ball (ultra-ball) »',
+      'Condition de déblocage de « Quête L’oiseau de foudre, étape 1 »',
     ]);
   });
 
@@ -161,17 +178,19 @@ describe('cohérence du contenu', () => {
       .map((i) => `${i.entity}:${i.entityId}: ${i.message}`);
     expect(messages).toEqual(
       expect.arrayContaining([
-        'evolutionOverride:27-28: Surcharge d’évolution en double',
-        'evolutionOverride:52-53: Objet « pierre-inconnue » inconnu',
+        'evolutionOverride:281-475: Surcharge d’évolution en double',
+        'evolutionOverride:108-463: Objet « pierre-inconnue » inconnu',
         'balance:null: Évolutions : objet de remplacement de l’échange « cable-inconnu » inconnu',
       ]),
     );
     expect(findUsages(seedContent, 'item', 'linking-cord')).toEqual([
       'Article de boutique « linking-cord »',
       'Équilibrage : objet qui remplace l’échange',
+      'Évolution « 588-589 »',
+      'Évolution « 616-617 »',
       'Palier « Chercheur de Kanto »',
     ]);
-    expect(findUsages(seedContent, 'item', 'fire-stone')).toContain('Évolution « 37-38 »');
+    expect(findUsages(seedContent, 'item', 'dawn-stone')).toContain('Évolution « 281-475 »');
   });
 
   it('refuse une surcharge d’évolution mal identifiée ou sans méthode', () => {
@@ -187,19 +206,83 @@ describe('cohérence du contenu', () => {
 
   it('vérifie les paliers et les collections', () => {
     const bad = structuredClone(seedContent);
-    bad.dexMilestones[0]!.regionId = 'johto';
+    bad.dexMilestones[0]!.regionId = 'orre';
     bad.dexMilestones[1]!.rewards.items.push({ itemId: 'master-ball', quantity: 1 });
     bad.collections[0]!.speciesIds.push(9999);
     bad.collections[1]!.rewards.expeditionSlots = 3;
     const issues = contentIssues(bad).map((i) => `${i.severity}:${i.entityId}: ${i.message}`);
     expect(issues).toEqual(
       expect.arrayContaining([
-        'error:kanto-10: Région « johto » inconnue',
+        'error:kanto-10: Région « orre » inconnue',
         'error:kanto-25: Récompense : objet « master-ball » inconnu',
         'error:insectes-de-jade: Espèces inconnues : 9999',
         'warning:null: Progression : 3 emplacement(s) d’expédition au-delà du maximum (sans effet)',
       ]),
     );
     expect(findUsages(seedContent, 'region', 'kanto')).toContain('Palier « Apprenti de Kanto »');
+  });
+
+  it('vérifie les formes des rencontres, dresseurs et récompenses', () => {
+    const bad = structuredClone(seedContent);
+    const alolanVulpix = formIdOf('vulpix-alola');
+    bad.zones[0]!.encounters[0]!.formId = alolanVulpix; // Rattata
+    bad.trainers[0]!.team[0]!.formId = 999_999;
+    const messages = contentIssues(bad)
+      .filter((i) => i.severity === 'error')
+      .map((i) => `${i.entityId}: ${i.message}`);
+    expect(messages).toEqual([
+      expect.stringMatching(/^route-1: Goupix d.Alola n'est pas une forme de l'espèce 19$/),
+      'gamin-tom: Forme 999999 inconnue',
+    ]);
+    // Le contenu de test utilise des formes régionales valides.
+    expect(seedContent.zones.some((z) => z.encounters.some((e) => e.formId))).toBe(true);
+  });
+
+  it('vérifie les quêtes et leurs références', () => {
+    const bad = structuredClone(seedContent);
+    const [artikodin, electhor] = bad.quests;
+    artikodin!.unlock = { type: 'questCompleted', questId: 'artikodin' };
+    artikodin!.steps[0]!.condition = {
+      type: 'catchPokemon',
+      count: 3,
+      pokemonType: 'water',
+      speciesId: 25,
+    };
+    artikodin!.steps[2]!.condition = {
+      type: 'expedition',
+      zoneId: 'atlantide',
+      count: 1,
+      memberType: 'glace',
+      memberCount: 2,
+      minMemberPower: 0,
+    };
+    artikodin!.rewards.pokemon.push({ speciesId: 9999, level: 50, perfectIvs: 3 });
+    electhor!.unlock = { type: 'questStepsDone', questId: 'sulfura', count: 4 };
+    bad.items.find((i) => i.id === 'adamant-mint')!.effects = [{ type: 'mint', nature: 'grognon' }];
+    const messages = contentIssues(bad)
+      .filter((i) => i.severity === 'error')
+      .map((i) => `${i.entityId}: ${i.message}`);
+    expect(messages).toEqual(
+      expect.arrayContaining([
+        'artikodin: Condition de déblocage : la quête dépend d’elle-même',
+        'artikodin: Étape 1 : Pikachu n’est pas du type demandé',
+        'artikodin: Étape 3 : zone « atlantide » inconnue',
+        'artikodin: Étape 3 : type « glace » inconnu',
+        'artikodin: Récompense : espèce 9999 inconnue',
+        'electhor: Condition de déblocage : 4 étape(s) requise(s), la quête « L’oiseau de feu » en a 3',
+        'adamant-mint: Aromate : nature « grognon » inconnue',
+      ]),
+    );
+    expect(findUsages(seedContent, 'quest', 'mewtwo')).toEqual([
+      'Condition de « Grotte Azurée »',
+      'Condition de « Le Pokémon fabuleux »',
+    ]);
+    expect(findUsages(seedContent, 'zone', 'iles-ecume')).toEqual([
+      'Quête L’oiseau des glaces, étape 3',
+    ]);
+    expect(findUsages(seedContent, 'item', 'gold-bottle-cap')).toEqual([
+      'Article de boutique « gold-bottle-cap »',
+      'Quête « Le Pokémon génétique »',
+    ]);
   });
 });

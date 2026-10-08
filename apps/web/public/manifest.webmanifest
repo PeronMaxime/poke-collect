@@ -1,0 +1,28 @@
+{
+  "name": "Poké Collect",
+  "short_name": "Poké Collect",
+  "description": "Jeu idle de collection Pokémon : expéditions, dresseurs, élevage, shinies et légendaires.",
+  "lang": "fr",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0f172a",
+  "theme_color": "#e3350d",
+  "categories": ["games"],
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    {
+      "src": "/icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    { "name": "Expéditions", "url": "/#expeditions" },
+    { "name": "Dresseurs", "url": "/#battles" },
+    { "name": "Pension", "url": "/#daycare" }
+  ]
+}

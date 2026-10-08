@@ -14,6 +14,8 @@ export type RewardKind = 'milestone' | 'collection';
 export interface ClaimedRewards {
   milestoneIds: ReadonlySet<string>;
   collectionIds: ReadonlySet<string>;
+  /** Quêtes dont la récompense a été réclamée ; absent : aucune. */
+  questIds?: ReadonlySet<string>;
 }
 
 /** Espèces capturées (Pokédex normal) et capturées en version shiny (Pokédex shiny). */
@@ -120,11 +122,15 @@ export function claimableRewardCount(
   );
 }
 
-/** Récompenses réclamées encore présentes dans le contenu (une récompense supprimée ne compte plus). */
+/**
+ * Récompenses réclamées encore présentes dans le contenu (une récompense supprimée ne compte
+ * plus) : paliers, collections et quêtes.
+ */
 function claimedRewardList(ctx: GameContext, claimed: ClaimedRewards): ProgressReward[] {
   return [
     ...ctx.content.dexMilestones.filter((m) => claimed.milestoneIds.has(m.id)),
     ...ctx.content.collections.filter((c) => claimed.collectionIds.has(c.id)),
+    ...ctx.quests.filter((q) => claimed.questIds?.has(q.id)),
   ].map((r) => r.rewards);
 }
 

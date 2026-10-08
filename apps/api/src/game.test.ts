@@ -316,7 +316,18 @@ describe('admin : entités de contenu', () => {
     );
     expect(res).toMatchObject({
       status: 409,
-      body: { error: 'IN_USE', details: ['Zone « Cap Azuria »', 'Dresseur « Ondine »'] },
+      body: {
+        error: 'IN_USE',
+        // L'ordre dépend du stockage en base.
+        details: expect.arrayContaining([
+          'Zone « Cap Azuria »',
+          'Zone « Îles Écume »',
+          'Zone « Archipel Lointain »',
+          'Zone « Lac Colère »',
+          'Dresseur « Ondine »',
+          'Dresseur « Maya »',
+        ]),
+      },
     });
   });
 
@@ -350,7 +361,7 @@ describe('admin : entités de contenu', () => {
     await call('PUT', `/api/admin/content/versions/${draftId}/zones/route-22`, {
       ...seedContent.zones[0]!,
       id: 'route-22',
-      regionId: 'johto',
+      regionId: 'orre',
     });
     const res = await call('POST', `/api/admin/content/versions/${draftId}/publish`);
     expect(res).toMatchObject({ status: 422, body: { error: 'INVALID_CONTENT' } });
