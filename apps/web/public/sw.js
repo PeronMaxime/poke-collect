@@ -1,4 +1,4 @@
-/* Service worker de Poké Collect : jeu installable (PWA) et notifications push.
+/* Service worker de Dexpedition : jeu installable (PWA) et notifications push.
  *
  * Cache :
  *  - pages et code du jeu : réseau d'abord, cache en secours (hors ligne, on rouvre la dernière
@@ -88,7 +88,7 @@ self.addEventListener('fetch', (event) => {
 // --- Notifications push ------------------------------------------------------------------
 
 self.addEventListener('push', (event) => {
-  let data = { title: 'Poké Collect', body: '', url: '/', tag: 'activity' };
+  let data = { title: 'Dexpedition', body: '', url: '/', tag: 'activity' };
   try {
     data = { ...data, ...event.data.json() };
   } catch {

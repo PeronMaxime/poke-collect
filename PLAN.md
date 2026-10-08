@@ -1,4 +1,4 @@
-# Poké Collect — Plan de développement
+# Dexpedition — Plan de développement
 
 > Jeu web idle de collection Pokémon : expéditions, combats de dresseurs, élevage, shinies et quêtes légendaires.
 > Données issues de [PokéAPI](https://pokeapi.co). Sauvegarde dans le cloud.

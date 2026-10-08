@@ -112,7 +112,7 @@ export function pushMessage(
   if (parts.length === 0) return null;
   const single = parts.length === 1 ? parts[0]! : null;
   return {
-    title: single ? single.text : 'Poké Collect',
+    title: single ? single.text : 'Dexpedition',
     body: single ? 'Touchez pour récupérer.' : parts.map((p) => p.text).join(' · '),
     url: single ? `/#${single.tab}` : '/',
     tag: 'activity',

@@ -1,4 +1,4 @@
-# Poké Collect — Plan de mise en production
+# Dexpedition — Plan de mise en production
 
 > Objectif : mettre le jeu en ligne sur un VPS pour une **bêta fermée entre amis**, puis l'ouvrir
 > en vraie production sur la même infrastructure.

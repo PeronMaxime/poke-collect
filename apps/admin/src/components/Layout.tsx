@@ -10,7 +10,7 @@ export function Layout() {
       <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:h-screen md:w-64 md:shrink-0 md:border-r md:border-b-0 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex h-full flex-col p-4">
           <div className="px-2 pb-4">
-            <p className="text-lg font-bold">Poké Collect</p>
+            <p className="text-lg font-bold">Dexpedition</p>
             <p className="text-xs text-slate-500">Administration</p>
           </div>
           <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">

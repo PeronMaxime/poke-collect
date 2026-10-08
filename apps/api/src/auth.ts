@@ -10,7 +10,7 @@ import type { Mailer } from './mail';
 /** `mailer` absent : pas de réinitialisation du mot de passe (aucun moyen d'envoyer le lien). */
 export function createAuth(db: Db, env: Env, mailer: Mailer | null = null) {
   return betterAuth({
-    appName: 'Poké Collect',
+    appName: 'Dexpedition',
     baseURL: env.authUrl,
     basePath: '/api/auth',
     secret: env.authSecret,

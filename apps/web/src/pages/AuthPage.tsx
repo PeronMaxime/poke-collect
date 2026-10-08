@@ -65,7 +65,7 @@ export function AuthPage() {
   return (
     <main className="grid min-h-screen place-items-center px-4">
       <div className="card w-full max-w-sm">
-        <h1 className="text-2xl font-bold">Poké Collect</h1>
+        <h1 className="text-2xl font-bold">Dexpedition</h1>
         <p className="mt-1 text-sm text-slate-500">
           {mode === 'sign-in'
             ? 'Connecte-toi pour reprendre ta collection.'

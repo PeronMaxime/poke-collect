@@ -1,4 +1,4 @@
-# Lancer Poké Collect en local : le guide pas à pas
+# Lancer Dexpedition en local : le guide pas à pas
 
 Ce guide explique comment démarrer le projet sur ton ordinateur, ce que fait chaque morceau, et
 quoi faire quand quelque chose ne marche pas.

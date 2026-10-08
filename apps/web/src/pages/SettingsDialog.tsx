@@ -42,7 +42,7 @@ function InstallSection() {
     <section className="mt-5">
       <h3 className="text-sm font-semibold">Application</h3>
       {installed ? (
-        <p className="mt-1 text-sm text-slate-500">Poké Collect est installé sur cet appareil.</p>
+        <p className="mt-1 text-sm text-slate-500">Dexpedition est installé sur cet appareil.</p>
       ) : canInstall ? (
         <div className="mt-2 flex items-center justify-between gap-3">
           <p className="text-sm text-slate-500">

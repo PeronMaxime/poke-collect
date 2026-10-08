@@ -32,18 +32,18 @@ const escapeHtml = (s: string) => s.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt
 
 /** E-mail de réinitialisation du mot de passe. */
 export function resetPasswordMail(to: string, url: string): MailMessage {
-  const subject = 'Poké Collect : réinitialisation du mot de passe';
+  const subject = 'Dexpedition : réinitialisation du mot de passe';
   const text = [
     'Bonjour,',
     '',
-    'Tu as demandé à réinitialiser ton mot de passe Poké Collect. Ouvre ce lien pour en choisir un nouveau (valable 1 heure) :',
+    'Tu as demandé à réinitialiser ton mot de passe Dexpedition. Ouvre ce lien pour en choisir un nouveau (valable 1 heure) :',
     url,
     '',
     'Si tu n’as rien demandé, ignore cet e-mail : ton mot de passe ne change pas.',
   ].join('\n');
   const link = escapeHtml(url);
   const html = `<p>Bonjour,</p>
-<p>Tu as demandé à réinitialiser ton mot de passe Poké Collect. Ce lien est valable 1 heure :</p>
+<p>Tu as demandé à réinitialiser ton mot de passe Dexpedition. Ce lien est valable 1 heure :</p>
 <p><a href="${link}">Choisir un nouveau mot de passe</a></p>
 <p style="color:#64748b">Si tu n’as rien demandé, ignore cet e-mail : ton mot de passe ne change pas.</p>`;
   return { to, subject, text, html };

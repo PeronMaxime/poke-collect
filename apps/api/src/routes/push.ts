@@ -102,7 +102,7 @@ export async function pushRoutes(app: FastifyInstance, { db, hooks, now, publicK
       send,
       request.user!.id,
       {
-        title: 'Poké Collect',
+        title: 'Dexpedition',
         body: 'Les notifications fonctionnent : tu seras prévenu à la fin de tes expéditions.',
         url: '/',
         tag: 'test',

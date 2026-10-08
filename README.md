@@ -1,4 +1,4 @@
-# Poké Collect
+# Dexpedition
 
 Jeu web idle de collection Pokémon. Voir [PLAN.md](PLAN.md) pour la vision, l'architecture et la roadmap.
 

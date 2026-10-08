@@ -81,7 +81,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     discord: pair(source.DISCORD_CLIENT_ID, source.DISCORD_CLIENT_SECRET),
     vapid: vapidKeys(source, isProd),
     ...(source.SMTP_URL && {
-      smtp: { url: source.SMTP_URL, from: source.MAIL_FROM || 'Poké Collect <noreply@localhost>' },
+      smtp: { url: source.SMTP_URL, from: source.MAIL_FROM || 'Dexpedition <noreply@localhost>' },
     }),
     pushIntervalSeconds: Number(source.PUSH_INTERVAL_SECONDS || 60),
   };
@@ -93,7 +93,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
  * l'autre. En production, sans variables, les notifications push sont désactivées.
  */
 function vapidKeys(source: NodeJS.ProcessEnv, isProd: boolean): VapidKeys | undefined {
-  const subject = source.VAPID_SUBJECT || 'mailto:admin@poke-collect.local';
+  const subject = source.VAPID_SUBJECT || 'mailto:admin@dexpedition.local';
   if (source.VAPID_PUBLIC_KEY && source.VAPID_PRIVATE_KEY) {
     return {
       publicKey: source.VAPID_PUBLIC_KEY,

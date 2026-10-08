@@ -7,5 +7,5 @@ import { ApiError } from './api';
 export function logError(source: string, error: unknown, details?: Record<string, unknown>) {
   const expected = error instanceof ApiError && error.status < 500;
   const log = expected ? console.warn : console.error;
-  log(`[poke-collect] ${source}`, error, ...(details ? [details] : []));
+  log(`[dexpedition] ${source}`, error, ...(details ? [details] : []));
 }

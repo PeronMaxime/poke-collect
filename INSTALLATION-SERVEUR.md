@@ -1,4 +1,4 @@
-# Installer Poké Collect sur le VPS : le guide pas à pas
+# Installer Dexpedition sur le VPS : le guide pas à pas
 
 Ce guide installe le jeu sur un VPS neuf (OVH VPS-1, Ubuntu 26.04, centre de Beauharnois). Il
 se suit **une seule fois**. Pour les mises à jour ensuite, voir [MISE-A-JOUR.md](MISE-A-JOUR.md).
@@ -72,13 +72,17 @@ c'est lui qui fera tourner le jeu.
 **Connexion SSH par clé uniquement**, sans root :
 
 ```bash
-sudo tee /etc/ssh/sshd_config.d/99-durcissement.conf >/dev/null <<'EOF'
+sudo tee /etc/ssh/sshd_config.d/00-durcissement.conf >/dev/null <<'EOF'
 PasswordAuthentication no
 KbdInteractiveAuthentication no
 PermitRootLogin no
 EOF
 sudo systemctl restart ssh
+sudo sshd -T 2>&1 | grep -iE 'passwordauth|kbdinteractive|permitroot|error|missing'
 ```
+
+Les trois lignes affichées doivent finir par `no`. Le fichier commence par `00-` car SSH garde la
+première valeur lue, et le `50-cloud-init.conf` d'OVH réactive souvent les mots de passe.
 
 ⚠️ Garde cette session ouverte et vérifie dans **un autre terminal** que `ssh ubuntu@IP_DU_VPS`
 fonctionne encore avant de fermer quoi que ce soit.
