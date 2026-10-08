@@ -14,7 +14,8 @@ https://admin.dexpedition.fr).
       (voir [INSTALLATION-SERVEUR.md](INSTALLATION-SERVEUR.md) étape 11)
 - [ ] Tester sur téléphone : expédition, installation PWA, notifications push
 - [ ] Service d'envoi d'e-mails pour « Mot de passe oublié ? » (`SMTP_URL`, SPF, DKIM)
-- [ ] Phase 5 : aspects légaux
+- [ ] Adresse **contact@dexpedition.fr** (publiée dans les pages légales) : redirection e-mail
+      chez le registrar vers une boîte lue ; coordonnées complètes de l'éditeur données à OVH
 
 ---
 
@@ -160,12 +161,24 @@ Mises à jour : [MISE-A-JOUR.md](MISE-A-JOUR.md).
 
 ### Phase 5 : Aspects légaux (France)
 
-- [ ] Avertissement visible : projet de fan **non commercial**, Pokémon © Nintendo / Game Freak /
-      The Pokémon Company, aucune monétisation
-- [ ] Mentions légales (éditeur du site, hébergeur : OVH, serveur situé au Canada)
-- [ ] Politique de confidentialité (données stockées : e-mail, progression, abonnements push ;
-      durée de conservation ; droit à la suppression ; hébergement au Canada)
-- [ ] Liens vers ces pages depuis l'accueil et l'écran d'inscription
+Pages dans `apps/web/src/pages/LegalPages.tsx`, lisibles sans compte. **À tenir à jour** si
+les données collectées ou les prestataires changent (e-mails, sauvegardes hors VPS, Sentry,
+connexion Google / Discord).
+
+- [x] Avertissement visible (écran de connexion et pied de page du jeu) : projet de fan
+      **non commercial**, Pokémon © Nintendo / Creatures / Game Freak / The Pokémon Company,
+      aucune monétisation, non affilié
+- [x] Mentions légales `/mentions-legales` : éditeur et directeur de la publication (Maxime
+      Peron, particulier, coordonnées complètes données à l'hébergeur, art. 6-III-2 LCEN),
+      contact `contact@dexpedition.fr`, hébergeur OVH SAS, serveur à Beauharnois (Canada),
+      propriété intellectuelle et retrait sur demande
+- [x] Politique de confidentialité `/confidentialite` : données (compte, partie, sessions avec
+      IP, abonnements push, journaux), bases légales, durées (sessions 7 j, sauvegardes 5
+      semaines au plus, compte inactif 3 ans), hébergement au Canada (adéquation), destinataires
+      (services push des navigateurs, prestataire e-mail), cookie de session seul (pas de
+      bandeau), droits et CNIL, moins de 15 ans
+- [x] Liens depuis l'écran de connexion / inscription et le pied de page du jeu
+- [ ] Créer `contact@dexpedition.fr` (voir en haut)
 
 ### Phase 6 : Lancement
 

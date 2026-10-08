@@ -30,6 +30,7 @@ import { PokedexPage } from './game/PokedexPage';
 import { QuestsPage } from './game/QuestsPage';
 import { ShopPage } from './game/ShopPage';
 import { TrainerCardPage } from './game/TrainerCardPage';
+import { FanDisclaimer, LegalLinks } from './LegalPages';
 import { SettingsDialog } from './SettingsDialog';
 
 const TABS = [
@@ -228,9 +229,11 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
         </ErrorBoundary>
       )}
 
-      <footer className="mt-12 text-center text-xs text-slate-400">
-        Projet de fan non commercial. Pokémon © Nintendo / Creatures / Game Freak. Données :
-        PokéAPI. Contenu v{ctx?.content.versionId ?? '…'}
+      <footer className="mt-12 space-y-2 text-center text-xs text-slate-400">
+        <p>
+          <FanDisclaimer /> Données : PokéAPI. Contenu v{ctx?.content.versionId ?? '…'}
+        </p>
+        <LegalLinks />
       </footer>
     </div>
   );

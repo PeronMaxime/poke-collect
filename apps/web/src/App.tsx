@@ -5,6 +5,7 @@ import { ApiError, api } from './lib/api';
 import { AuthPage, RESET_PASSWORD_PATH } from './pages/AuthPage';
 import { CreateProfilePage } from './pages/CreateProfilePage';
 import { HomePage } from './pages/HomePage';
+import { LEGAL_PATHS, LegalPage } from './pages/LegalPages';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { StarterPage } from './pages/StarterPage';
 
@@ -20,8 +21,9 @@ function usePathname(): string {
 }
 
 /**
- * Aiguillage : lien de réinitialisation du mot de passe → nouveau mot de passe ; non connecté →
- * connexion ; sans profil → création du dresseur ; sinon → jeu.
+ * Aiguillage : lien de réinitialisation du mot de passe → nouveau mot de passe ; pages légales
+ * (accessibles sans compte) ; non connecté → connexion ; sans profil → création du dresseur ;
+ * sinon → jeu.
  */
 export function App() {
   const me = useQuery({
@@ -38,6 +40,7 @@ export function App() {
   const pathname = usePathname();
 
   if (pathname === RESET_PASSWORD_PATH) return <ResetPasswordPage />;
+  if (LEGAL_PATHS.includes(pathname)) return <LegalPage pathname={pathname} />;
   if (me.isPending) {
     return <div className="grid min-h-screen place-items-center text-slate-500">Chargement…</div>;
   }
