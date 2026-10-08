@@ -10,3 +10,4 @@ scripts/import-pokeapi/.cache/
 
 # Illustrations des Pokémon (pnpm sprites:download), trop lourdes pour Git
 apps/api/sprites/artwork/
+deploy/.history

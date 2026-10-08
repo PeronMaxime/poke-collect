@@ -1,0 +1,42 @@
+# Déploiement automatique sur le VPS après une CI réussie sur main (voir MISE-A-JOUR.md).
+# Inactif tant que la variable du dépôt DEPLOY_ENABLED ne vaut pas « true »
+# (GitHub → Settings → Secrets and variables → Actions → Variables).
+# Secrets nécessaires : DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS
+# (voir INSTALLATION-SERVEUR.md, étape « Déploiement automatique »).
+name: Déploiement
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+  # Bouton « Run workflow » : redéployer à la main la dernière version de main.
+  workflow_dispatch:
+
+# Un seul déploiement à la fois, sans annuler celui en cours.
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: >-
+      vars.DEPLOY_ENABLED == 'true' &&
+      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Déployer sur le VPS
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+          TARGET: ${{ secrets.DEPLOY_USER }}@${{ secrets.DEPLOY_HOST }}
+          # Le commit exact validé par la CI (ou main pour un lancement manuel).
+          VERSION: ${{ github.event.workflow_run.head_sha || github.sha }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          # La clé est limitée côté serveur à deploy/deploy.sh : seule la version est transmise.
+          ssh -i ~/.ssh/deploy_key -o BatchMode=yes "$TARGET" "$VERSION"

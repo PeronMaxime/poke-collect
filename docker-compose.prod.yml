@@ -4,10 +4,18 @@
 
 name: poke-collect
 
+# Journaux de chaque service limités à 3 × 10 Mo (sinon ils grossissent jusqu'à remplir le disque).
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: '3'
+
 services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
+    logging: *logging
     environment:
       POSTGRES_USER: poke
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD manquant dans .env}
@@ -26,6 +34,7 @@ services:
       target: api
     image: poke-collect-api
     restart: unless-stopped
+    logging: *logging
     init: true
     env_file: .env
     environment:
@@ -58,6 +67,7 @@ services:
       target: caddy
     image: poke-collect-caddy
     restart: unless-stopped
+    logging: *logging
     ports:
       - '80:80'
       - '443:443'

@@ -85,7 +85,7 @@ Contraintes qui découlent du code actuel :
 - [x] Limitation du nombre de requêtes : `@fastify/rate-limit` sur `/api` (300 / min / IP par
       défaut), plus celle de Better Auth sur la connexion (3 essais / 10 s)
 - [x] Sprites : versionnés dans l'image Caddy ; illustrations dans le volume `artwork`, remplies
-      une fois avec `docker compose -f docker-compose.prod.yml run --rm api pnpm sprites:download`
+      une fois avec `docker compose -f docker-compose.prod.yml run --rm api pnpm -w sprites:download`
 - [x] Derrière un proxy : `trustProxy` en production (Caddy remplace `X-Forwarded-For`, pas de
       contournement de la limite) ; cookies `Secure` automatiques avec une `BETTER_AUTH_URL` en HTTPS
 - [x] Test local de la construction de production **sans Docker** : pages compilées, API en
@@ -112,7 +112,11 @@ Contraintes qui découlent du code actuel :
 
 ### Phase 3 : Serveur
 
-- [ ] Commander le VPS-1 (vérifier le prix **sans engagement**), Ubuntu 26.04, centre de données au Canada (Beauharnois)
+Guide pas à pas : [INSTALLATION-SERVEUR.md](INSTALLATION-SERVEUR.md).
+
+- [x] Guide d'installation écrit
+- [ ] Commander le VPS-1 (vérifier le prix **sans engagement**), Ubuntu 26.04, centre de données
+      au Canada (Beauharnois)
 - [ ] Acheter le nom de domaine ; enregistrements DNS `A` pour `mondomaine.fr` et
       `admin.mondomaine.fr` vers l'IP du VPS
 - [ ] Sécuriser le serveur : utilisateur non root, connexion SSH par clé uniquement, pare-feu
@@ -123,15 +127,23 @@ Contraintes qui découlent du code actuel :
 
 ### Phase 4 : Données et exploitation
 
-- [ ] Sauvegarde nocturne `pg_dump`, compressée, copiée **hors du VPS**, rotation (7 jours + 4 semaines)
-- [ ] **Tester une restauration** sur une base vide au moins une fois
-- [ ] Déploiement automatique : action GitHub déclenchée après la CI sur `main` (connexion SSH,
-      `git pull`, reconstruction, redémarrage). Les migrations s'appliquent au démarrage de l'API.
-- [ ] Supervision : UptimeRobot (ou équivalent) sur `/api/health`, alerte par e-mail
+Mises à jour : [MISE-A-JOUR.md](MISE-A-JOUR.md).
+
+- [x] Script de sauvegarde `deploy/backup.sh` : `pg_dump` compressé, rotation (7 jours +
+      4 semaines, 5 avant déploiement), copie hors du VPS avec `rclone` ; restauration
+      `deploy/restore.sh`
+- [x] Déploiement : `deploy/deploy.sh` (sauvegarde, code, reconstruction, redémarrage,
+      vérification de santé, historique) et action GitHub `Déploiement` après une CI verte sur
+      `main`, avec une clé SSH limitée à ce script ; inactive tant que `DEPLOY_ENABLED` ≠ `true`
+- [x] Journaux Docker limités en taille (3 × 10 Mo par service)
+- [x] Procédure pour livrer du contenu (admin de production ou migration ciblée) et ramener le
+      contenu de la production en local
+- [x] Guide `MISE-A-JOUR.md` : code, migrations, contenu, sprites, `.env`, vérifications, retour
+      arrière
+- [ ] Sur le VPS : sauvegarde nocturne (cron), remote `rclone`, **tester une restauration**
+- [ ] Sur GitHub : secrets du déploiement et `DEPLOY_ENABLED`
+- [ ] Supervision : UptimeRobot sur `/api/health`, alerte par e-mail
 - [ ] Facultatif : Sentry pour les erreurs de l'API et du front
-- [ ] Procédure écrite pour livrer du contenu par migration ciblée, avec sauvegarde juste avant
-- [ ] Guide `MISE-A-JOUR.md` : mettre à jour la production après des modifications (code, migrations,
-      contenu, sprites), vérifications, retour arrière en cas de problème
 
 ### Phase 5 : Aspects légaux (France)
 
