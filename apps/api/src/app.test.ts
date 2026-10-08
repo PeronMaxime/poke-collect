@@ -34,6 +34,31 @@ async function signUp(email: string): Promise<string> {
   return list.map((c) => c.split(';')[0]).join('; ');
 }
 
+describe('production', () => {
+  it('santé : répond quand la base est joignable', async () => {
+    const res = await app.inject({ method: 'GET', url: '/api/health' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json()).toEqual({ ok: true });
+  });
+
+  it('limite les requêtes par IP, sauf la santé et les sprites', async () => {
+    const limited = await buildApp({
+      db: handle.db,
+      env: { ...env, rateLimitPerMinute: 2 },
+    });
+    try {
+      const get = (url: string) => limited.app.inject({ method: 'GET', url });
+      expect((await get('/api/config')).statusCode).toBe(200);
+      expect((await get('/api/config')).statusCode).toBe(200);
+      expect((await get('/api/config')).statusCode).toBe(429);
+      expect((await get('/api/health')).statusCode).toBe(200);
+      expect((await get(itemSpriteUrl('poke-ball'))).statusCode).toBe(200);
+    } finally {
+      await limited.app.close();
+    }
+  });
+});
+
 describe('sprites', () => {
   it('sert une image pour chaque objet et chaque dresseur du contenu de test', async () => {
     const urls = [

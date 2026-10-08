@@ -11,7 +11,9 @@ const CONTENT_TYPES = { png: 'image/png', webp: 'image/webp' } as Record<string,
 
 /** Sprites des Pokémon, objets et dresseurs (publics, sans session). */
 export async function spriteRoutes(app: FastifyInstance) {
-  app.get<{ Params: { '*': string } }>('/api/sprites/*', async (request, reply) => {
+  // En production, Caddy sert les sprites directement ; ici, pas de limite de requêtes.
+  const options = { config: { rateLimit: false as const } };
+  app.get<{ Params: { '*': string } }>('/api/sprites/*', options, async (request, reply) => {
     const path = request.params['*'];
     if (!PATH.test(path)) return reply.code(404).send();
     const data = await readFile(`${SPRITES_DIR}${path}`).catch(() => null);

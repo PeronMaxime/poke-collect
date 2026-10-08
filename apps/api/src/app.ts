@@ -1,5 +1,7 @@
 import Fastify from 'fastify';
 import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
+import { sql } from 'drizzle-orm';
 import { ZodError } from 'zod';
 import type { Db } from '@poke/db';
 import { createAuth } from './auth';
@@ -41,7 +43,7 @@ export async function buildApp({
   pushSender,
   onContentPublished,
 }: AppOptions) {
-  const app = Fastify({ logger });
+  const app = Fastify({ logger, trustProxy: env.trustProxy });
   const auth = createAuth(db, env);
   const content = new ContentCache(db);
   const hooks = sessionHooks(auth);
@@ -49,6 +51,10 @@ export async function buildApp({
 
   app.decorateRequest('user', null);
   await app.register(cors, { origin: env.trustedOrigins, credentials: true });
+  // Garde-fou contre les abus ; l'authentification a en plus ses propres limites (Better Auth).
+  if (env.rateLimitPerMinute > 0) {
+    await app.register(rateLimit, { max: env.rateLimitPerMinute, timeWindow: '1 minute' });
+  }
 
   app.setErrorHandler((err, _request, reply) => {
     if (err instanceof ZodError) {
@@ -64,7 +70,16 @@ export async function buildApp({
       .send({ error: status >= 500 ? 'INTERNAL' : 'REQUEST', message: (err as Error).message });
   });
 
-  app.get('/api/health', async () => ({ ok: true }));
+  /** Supervision : l'API répond et la base est joignable. */
+  app.get('/api/health', { config: { rateLimit: false } }, async (_request, reply) => {
+    try {
+      await db.execute(sql`select 1`);
+      return { ok: true };
+    } catch (err) {
+      app.log.error(err, 'Santé : base injoignable');
+      return reply.code(503).send({ ok: false });
+    }
+  });
   /** Fournisseurs OAuth activés, pour n'afficher que les boutons utiles. */
   app.get('/api/config', async () => ({
     oauthProviders: [env.google && 'google', env.discord && 'discord'].filter(Boolean),

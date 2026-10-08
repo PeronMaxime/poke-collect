@@ -1,0 +1,48 @@
+# Serveur web de production : HTTPS automatique (Let's Encrypt), pages statiques du jeu et de
+# l'admin, sprites servis depuis le disque, et /api transmis à l'API Node.
+# Les valeurs par défaut ({$VAR:défaut}) sont celles de l'image Docker ; les variables permettent
+# de tester ce fichier hors de Docker.
+{
+	email {$ACME_EMAIL}
+}
+
+# /api sur chaque domaine : les pages appellent l'API sur leur propre origine (cookies de session).
+(api) {
+	handle_path /api/sprites/* {
+		root * {$SPRITES_ROOT:/srv/sprites}
+		header Cache-Control "public, max-age=604800"
+		file_server
+	}
+	handle /api/* {
+		reverse_proxy {$API_UPSTREAM:api:3000}
+	}
+}
+
+# Application monopage : fichiers de Vite, sinon index.html (navigation côté client).
+(app) {
+	encode zstd gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy strict-origin-when-cross-origin
+		-Server
+	}
+	import api
+	handle {
+		root * {args[0]}
+		# Fichiers de Vite nommés d'après leur contenu : jamais modifiés, cache d'un an.
+		@immutable path /assets/*
+		header @immutable Cache-Control "public, max-age=31536000, immutable"
+		# Le reste (index.html, sw.js, manifeste) : toujours revalidé, pour voir les mises à jour.
+		header ?Cache-Control "no-cache"
+		try_files {path} /index.html
+		file_server
+	}
+}
+
+{$SITE_DOMAIN} {
+	import app {$WEB_ROOT:/srv/web}
+}
+
+{$ADMIN_DOMAIN} {
+	import app {$ADMIN_ROOT:/srv/admin}
+}

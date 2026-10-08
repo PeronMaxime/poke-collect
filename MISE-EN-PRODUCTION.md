@@ -70,23 +70,29 @@ Contraintes qui découlent du code actuel :
 
 ### Phase 0 : Mettre le code au propre
 
-- [ ] Vérifier que `pnpm lint`, `pnpm format:check`, `pnpm typecheck` et `pnpm test` passent
-- [ ] Commiter le travail en cours (Johto, sprites de dresseurs…)
-- [ ] CI GitHub au vert
+- [x] Vérifier que `pnpm lint`, `pnpm format:check`, `pnpm typecheck` et `pnpm test` passent
+- [x] Commiter le travail en cours (Johto, sprites de dresseurs…)
+- [x] CI GitHub au vert
 
 ### Phase 1 : Préparer la production dans le code
 
-- [ ] `Dockerfile` de l'API (installation pnpm, démarrage avec `tsx`, `NODE_ENV=production`)
-- [ ] Construction des pages du jeu et de l'admin (`vite build`) servies par Caddy
-- [ ] `docker-compose.prod.yml` : services `caddy`, `api`, `postgres`, volumes persistants
-- [ ] `Caddyfile` : deux domaines, `/api` vers l'API, sprites avec cache long, compression
-- [ ] `.env.production.example` documentant toutes les variables de production
-- [ ] Route `GET /api/health` (API + base joignables) pour la supervision
-- [ ] Limitation du nombre de requêtes (`@fastify/rate-limit`), en priorité sur l'authentification
-- [ ] Sprites et artworks : téléchargement au déploiement ou volume dédié
-- [ ] Vérifier le comportement derrière un proxy (`trustProxy`, cookies `Secure`)
-- [ ] Test local de la construction de production **sans Docker** : pages compilées, API en
-      `NODE_ENV=production`, migrations sur une base neuve
+- [x] `Dockerfile` (deux images : `api` lancée avec `tsx`, `caddy` avec les pages et les sprites)
+- [x] Construction des pages du jeu et de l'admin (`vite build`) servies par Caddy
+- [x] `docker-compose.prod.yml` : services `caddy`, `api`, `postgres`, volumes persistants
+- [x] `deploy/Caddyfile` : deux domaines, `/api` vers l'API, sprites avec cache long, compression
+- [x] `.env.production.example` documentant toutes les variables de production
+- [x] Route `GET /api/health` (API + base joignables) pour la supervision
+- [x] Limitation du nombre de requêtes : `@fastify/rate-limit` sur `/api` (300 / min / IP par
+      défaut), plus celle de Better Auth sur la connexion (3 essais / 10 s)
+- [x] Sprites : versionnés dans l'image Caddy ; illustrations dans le volume `artwork`, remplies
+      une fois avec `docker compose -f docker-compose.prod.yml run --rm api pnpm sprites:download`
+- [x] Derrière un proxy : `trustProxy` en production (Caddy remplace `X-Forwarded-For`, pas de
+      contournement de la limite) ; cookies `Secure` automatiques avec une `BETTER_AUTH_URL` en HTTPS
+- [x] Test local de la construction de production **sans Docker** : pages compilées, API en
+      `NODE_ENV=production` sur une base neuve, Caddy avec le vrai Caddyfile (HTTP), parcours
+      inscription → profil → starter, connexion depuis le domaine de l'admin
+- [x] CI : actions mises à jour (Node 24)
+- [ ] Première construction des images Docker : sur le VPS (pas de Docker en local)
 
 ### Phase 2 : Comptes et sécurité
 

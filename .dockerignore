@@ -1,0 +1,12 @@
+.git
+**/node_modules
+**/dist
+coverage
+.data
+.env
+.env.*
+*.log
+.turbo
+scripts/import-pokeapi/.cache
+# Illustrations : téléchargées dans un volume sur le serveur (voir MISE-EN-PRODUCTION.md)
+apps/api/sprites/artwork
