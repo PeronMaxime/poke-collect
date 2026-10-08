@@ -4,6 +4,7 @@ import { buildApp } from './app';
 import { loadEnv } from './env';
 import { readContentSnapshot, writeContentSnapshot } from './content-snapshot';
 import { startPushNotifier } from './game/push';
+import { consoleMailer, smtpMailer } from './mail';
 
 const env = loadEnv();
 const handle = createDb({ databaseUrl: env.databaseUrl, pgliteDataDir: env.pgliteDataDir });
@@ -29,9 +30,17 @@ if (env.contentSnapshotWrite) {
   await saveSnapshot().catch((err: unknown) => console.error('Instantané du contenu :', err));
 }
 
+// E-mails : SMTP s'il est configuré ; sinon affichés dans la console, sauf en production.
+const mailer = env.smtp
+  ? smtpMailer(env.smtp.url, env.smtp.from)
+  : process.env.NODE_ENV === 'production'
+    ? null
+    : consoleMailer((text) => console.log(text));
+
 const { app, content, push } = await buildApp({
   db: handle.db,
   env,
+  mailer,
   logger: true,
   ...(env.contentSnapshotWrite && { onContentPublished: saveSnapshot }),
 });

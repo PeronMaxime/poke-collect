@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { NotificationSettings, PushConfigResponse } from '@poke/shared';
+import type { MeResponse, NotificationSettings, PushConfigResponse } from '@poke/shared';
 import { Modal } from '../components/ui';
 import { api } from '../lib/api';
+import { authClient } from '../lib/auth-client';
 import { isIos, pushSupported, useDeviceSubscription, useInstallPrompt } from '../lib/pwa';
 
 const PUSH_KEY = ['push'] as const;
@@ -14,7 +15,7 @@ const TYPES: { key: keyof NotificationSettings; label: string }[] = [
   { key: 'fossils', label: 'Fossile restauré au Musée' },
 ];
 
-/** Réglages : installation du jeu (PWA) et notifications push. */
+/** Réglages : installation du jeu (PWA), notifications push et compte. */
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Modal open={open} onClose={onClose}>
@@ -23,6 +24,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         <>
           <InstallSection />
           <NotificationSection />
+          <AccountSection />
         </>
       )}
       <div className="mt-6 flex justify-end">
@@ -161,6 +163,87 @@ function NotificationSection() {
         </>
       )}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    </section>
+  );
+}
+
+/** Compte : adresse de connexion et suppression définitive (RGPD). */
+function AccountSection() {
+  const queryClient = useQueryClient();
+  const me = queryClient.getQueryData<MeResponse | null>(['me']);
+  const [confirming, setConfirming] = useState(false);
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const remove = useMutation({
+    mutationFn: async () => {
+      const result = await authClient.deleteUser({ password });
+      if (result.error) throw new Error(result.error.message ?? '');
+    },
+    onSuccess: () => {
+      // Comme la déconnexion (HomePage) : `me` à null d'abord, pour revenir à l'écran de connexion.
+      queryClient.setQueryData(['me'], null);
+      queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
+    },
+    onError: (err) =>
+      setError(
+        /password/i.test(err.message)
+          ? 'Mot de passe incorrect.'
+          : err.message || 'Suppression impossible, réessaie plus tard.',
+      ),
+  });
+
+  return (
+    <section className="mt-5">
+      <h3 className="text-sm font-semibold">Compte</h3>
+      {me && <p className="mt-1 text-sm text-slate-500">Connecté avec {me.user.email}.</p>}
+      {!confirming ? (
+        <button className="btn-danger mt-3" onClick={() => setConfirming(true)}>
+          Supprimer mon compte
+        </button>
+      ) : (
+        <form
+          className="mt-3 space-y-2 rounded-lg border border-red-300 p-3 dark:border-red-900"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setError(null);
+            remove.mutate();
+          }}
+        >
+          <p className="text-sm">
+            Ton compte et toute ta progression (Pokémon, objets, Pokédex…) seront{' '}
+            <strong>supprimés définitivement</strong>. Cette action est irréversible.
+          </p>
+          <label className="block text-sm">
+            Mot de passe, pour confirmer
+            <input
+              className="input mt-1"
+              type="password"
+              autoComplete="current-password"
+              required
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+            />
+          </label>
+          {error && <p className="text-sm text-red-600">{error}</p>}
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              className="btn-ghost"
+              onClick={() => {
+                setConfirming(false);
+                setPassword('');
+                setError(null);
+              }}
+            >
+              Annuler
+            </button>
+            <button type="submit" className="btn-danger" disabled={remove.isPending}>
+              Supprimer définitivement
+            </button>
+          </div>
+        </form>
+      )}
     </section>
   );
 }

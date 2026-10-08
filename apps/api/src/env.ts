@@ -31,6 +31,11 @@ export interface Env {
   discord?: { clientId: string; clientSecret: string };
   /** Absentes : notifications push désactivées. */
   vapid?: VapidKeys;
+  /**
+   * Envoi des e-mails (réinitialisation du mot de passe). Absent : en développement, les e-mails
+   * sont affichés dans la console ; en production, la réinitialisation est désactivée.
+   */
+  smtp?: { url: string; from: string };
   /** Intervalle de la tournée des notifications push (0 = désactivée). */
   pushIntervalSeconds: number;
 }
@@ -75,6 +80,9 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     google: pair(source.GOOGLE_CLIENT_ID, source.GOOGLE_CLIENT_SECRET),
     discord: pair(source.DISCORD_CLIENT_ID, source.DISCORD_CLIENT_SECRET),
     vapid: vapidKeys(source, isProd),
+    ...(source.SMTP_URL && {
+      smtp: { url: source.SMTP_URL, from: source.MAIL_FROM || 'Poké Collect <noreply@localhost>' },
+    }),
     pushIntervalSeconds: Number(source.PUSH_INTERVAL_SECONDS || 60),
   };
 }

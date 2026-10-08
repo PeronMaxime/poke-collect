@@ -96,12 +96,19 @@ Contraintes qui découlent du code actuel :
 
 ### Phase 2 : Comptes et sécurité
 
-- [ ] Réinitialisation du mot de passe par e-mail (code prêt, clé du service d'envoi au déploiement)
-- [ ] Suppression de compte par le joueur (obligation RGPD)
-- [ ] Secrets de production : `BETTER_AUTH_SECRET` aléatoire, `BETTER_AUTH_URL`,
-      `TRUSTED_ORIGINS`, clés VAPID (`npx web-push generate-vapid-keys`), `VAPID_SUBJECT`
-- [ ] Facultatif : connexion Google et Discord (voir section 4)
-- [ ] Premier compte admin : inscription, puis `pnpm admin:promote` sur le serveur
+- [x] Réinitialisation du mot de passe par e-mail : envoi SMTP (`SMTP_URL`, `MAIL_FROM`), lien
+      valable 1 h et à usage unique, déconnexion de tous les appareils ; en développement, le
+      lien s'affiche dans la console de l'API ; sans SMTP en production, le lien « Mot de passe
+      oublié ? » est masqué
+- [x] Suppression de compte par le joueur (obligation RGPD) : Réglages → Compte, mot de passe
+      demandé, données du jeu supprimées en cascade ; refusée pour un compte admin
+- [x] Secrets de production documentés dans `.env.production.example` (génération :
+      `openssl rand -hex 32`, `npx web-push generate-vapid-keys`)
+- [ ] Choisir le service d'envoi d'e-mails, déclarer le domaine (SPF, DKIM) et remplir `SMTP_URL`
+- [ ] Remplir le `.env` du serveur (phase 3)
+- [ ] Premier compte admin : inscription dans le jeu, puis sur le serveur
+      `docker compose -f docker-compose.prod.yml exec api pnpm admin:promote <email>`
+- Plus tard : connexion Google et Discord (voir section 4)
 
 ### Phase 3 : Serveur
 

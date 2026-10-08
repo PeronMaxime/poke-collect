@@ -1,12 +1,28 @@
+import { useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { MeResponse } from '@poke/shared';
 import { ApiError, api } from './lib/api';
-import { AuthPage } from './pages/AuthPage';
+import { AuthPage, RESET_PASSWORD_PATH } from './pages/AuthPage';
 import { CreateProfilePage } from './pages/CreateProfilePage';
 import { HomePage } from './pages/HomePage';
+import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { StarterPage } from './pages/StarterPage';
 
-/** Aiguillage : non connecté → connexion ; sans profil → création du dresseur ; sinon → jeu. */
+/** Chemin de l'adresse, suivi lors des changements faits avec `history` (événement popstate). */
+function usePathname(): string {
+  return useSyncExternalStore(
+    (onChange) => {
+      window.addEventListener('popstate', onChange);
+      return () => window.removeEventListener('popstate', onChange);
+    },
+    () => window.location.pathname,
+  );
+}
+
+/**
+ * Aiguillage : lien de réinitialisation du mot de passe → nouveau mot de passe ; non connecté →
+ * connexion ; sans profil → création du dresseur ; sinon → jeu.
+ */
 export function App() {
   const me = useQuery({
     queryKey: ['me'],
@@ -19,7 +35,9 @@ export function App() {
       }
     },
   });
+  const pathname = usePathname();
 
+  if (pathname === RESET_PASSWORD_PATH) return <ResetPasswordPage />;
   if (me.isPending) {
     return <div className="grid min-h-screen place-items-center text-slate-500">Chargement…</div>;
   }

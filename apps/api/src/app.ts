@@ -7,6 +7,7 @@ import type { Db } from '@poke/db';
 import { createAuth } from './auth';
 import { ContentCache } from './content-cache';
 import type { Env } from './env';
+import type { Mailer } from './mail';
 import { GameError } from './game/errors';
 import { webPushSender } from './game/push';
 import type { PushSender } from './game/push';
@@ -31,6 +32,8 @@ export interface AppOptions {
   now?: () => Date;
   /** Envoi des notifications push (tests : faux expéditeur) ; par défaut, Web Push. */
   pushSender?: PushSender;
+  /** Envoi des e-mails ; absent : pas de réinitialisation du mot de passe. */
+  mailer?: Mailer | null;
   /** Appelé après chaque publication de contenu (développement : écrire l'instantané). */
   onContentPublished?: () => Promise<void>;
 }
@@ -41,10 +44,11 @@ export async function buildApp({
   logger = false,
   now = () => new Date(),
   pushSender,
+  mailer = null,
   onContentPublished,
 }: AppOptions) {
   const app = Fastify({ logger, trustProxy: env.trustProxy });
-  const auth = createAuth(db, env);
+  const auth = createAuth(db, env, mailer);
   const content = new ContentCache(db);
   const hooks = sessionHooks(auth);
   const push = env.vapid ? (pushSender ?? webPushSender(env.vapid)) : null;
@@ -80,9 +84,10 @@ export async function buildApp({
       return reply.code(503).send({ ok: false });
     }
   });
-  /** Fournisseurs OAuth activés, pour n'afficher que les boutons utiles. */
+  /** Fournisseurs OAuth activés et réinitialisation du mot de passe, pour n'afficher que l'utile. */
   app.get('/api/config', async () => ({
     oauthProviders: [env.google && 'google', env.discord && 'discord'].filter(Boolean),
+    passwordReset: mailer !== null,
   }));
   await app.register(spriteRoutes);
   await app.register(authRoutes, { auth });
