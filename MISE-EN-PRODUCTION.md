@@ -3,6 +3,19 @@
 > Objectif : mettre le jeu en ligne sur un VPS pour une **bêta fermée entre amis**, puis l'ouvrir
 > en vraie production sur la même infrastructure.
 
+**En ligne depuis le 9 octobre 2026** sur https://dexpedition.fr (admin :
+https://admin.dexpedition.fr).
+
+## Reste à faire plus tard
+
+- [ ] **Copie des sauvegardes hors du VPS** (remote `rclone` et `BACKUP_REMOTE`, voir
+      [INSTALLATION-SERVEUR.md](INSTALLATION-SERVEUR.md) étape 9) : **avant d'inviter des amis**
+- [ ] **Supervision** : moniteur UptimeRobot sur `https://dexpedition.fr/api/health`
+      (voir [INSTALLATION-SERVEUR.md](INSTALLATION-SERVEUR.md) étape 11)
+- [ ] Tester sur téléphone : expédition, installation PWA, notifications push
+- [ ] Service d'envoi d'e-mails pour « Mot de passe oublié ? » (`SMTP_URL`, SPF, DKIM)
+- [ ] Phase 5 : aspects légaux
+
 ---
 
 ## 1. Décisions prises
@@ -27,9 +40,8 @@ restauration, changement DNS : ≈ 30 min de coupure).
 
 ### Questions encore ouvertes
 
-1. Nom définitif du jeu et **nom de domaine** (à acheter tôt : HTTPS, OAuth, propagation DNS).
-2. Service d'envoi d'e-mails (Resend, Brevo…) pour la réinitialisation du mot de passe.
-3. Où stocker les sauvegardes hors du VPS (OVH Object Storage, Backblaze B2…).
+1. Service d'envoi d'e-mails (Resend, Brevo…) pour la réinitialisation du mot de passe.
+2. Où stocker les sauvegardes hors du VPS (OVH Object Storage, Backblaze B2…).
 
 ---
 
@@ -92,7 +104,7 @@ Contraintes qui découlent du code actuel :
       `NODE_ENV=production` sur une base neuve, Caddy avec le vrai Caddyfile (HTTP), parcours
       inscription → profil → starter, connexion depuis le domaine de l'admin
 - [x] CI : actions mises à jour (Node 24)
-- [ ] Première construction des images Docker : sur le VPS (pas de Docker en local)
+- [x] Première construction des images Docker : sur le VPS (pas de Docker en local)
 
 ### Phase 2 : Comptes et sécurité
 
@@ -105,8 +117,8 @@ Contraintes qui découlent du code actuel :
 - [x] Secrets de production documentés dans `.env.production.example` (génération :
       `openssl rand -hex 32`, `npx web-push generate-vapid-keys`)
 - [ ] Choisir le service d'envoi d'e-mails, déclarer le domaine (SPF, DKIM) et remplir `SMTP_URL`
-- [ ] Remplir le `.env` du serveur (phase 3)
-- [ ] Premier compte admin : inscription dans le jeu, puis sur le serveur
+- [x] Remplir le `.env` du serveur (phase 3)
+- [x] Premier compte admin : inscription dans le jeu, puis sur le serveur
       `docker compose -f docker-compose.prod.yml exec api pnpm admin:promote <email>`
 - Plus tard : connexion Google et Discord (voir section 4)
 
@@ -115,15 +127,15 @@ Contraintes qui découlent du code actuel :
 Guide pas à pas : [INSTALLATION-SERVEUR.md](INSTALLATION-SERVEUR.md).
 
 - [x] Guide d'installation écrit
-- [ ] Commander le VPS-1 (vérifier le prix **sans engagement**), Ubuntu 26.04, centre de données
-      au Canada (Beauharnois)
-- [ ] Acheter le nom de domaine ; enregistrements DNS `A` pour `mondomaine.fr` et
-      `admin.mondomaine.fr` vers l'IP du VPS
-- [ ] Sécuriser le serveur : utilisateur non root, connexion SSH par clé uniquement, pare-feu
+- [x] VPS-1 commandé : Ubuntu 26.04, Canada (Beauharnois), IP `144.217.14.148`
+- [x] Nom de domaine **dexpedition.fr** (le jeu s'appelle Dexpedition) ; DNS `A` pour
+      `dexpedition.fr` et `admin.dexpedition.fr` vers l'IP du VPS
+- [x] Sécuriser le serveur : utilisateur non root, connexion SSH par clé uniquement, pare-feu
       (`ufw` : 22, 80, 443), mises à jour de sécurité automatiques (`unattended-upgrades`)
-- [ ] Installer Docker (dépôt officiel)
-- [ ] Premier déploiement : cloner le dépôt, remplir `.env`, `docker compose up -d`
-- [ ] Vérifier HTTPS, inscription, expédition, notifications push sur mobile, installation PWA
+- [x] Installer Docker (dépôt officiel)
+- [x] Premier déploiement : cloner le dépôt, remplir `.env`, `docker compose up -d`
+- [x] Vérifier HTTPS, inscription, starter, accès à l'admin
+- [ ] Vérifier expédition, notifications push sur mobile, installation PWA
 
 ### Phase 4 : Données et exploitation
 
@@ -140,9 +152,10 @@ Mises à jour : [MISE-A-JOUR.md](MISE-A-JOUR.md).
       contenu de la production en local
 - [x] Guide `MISE-A-JOUR.md` : code, migrations, contenu, sprites, `.env`, vérifications, retour
       arrière
-- [ ] Sur le VPS : sauvegarde nocturne (cron), remote `rclone`, **tester une restauration**
-- [ ] Sur GitHub : secrets du déploiement et `DEPLOY_ENABLED`
-- [ ] Supervision : UptimeRobot sur `/api/health`, alerte par e-mail
+- [x] Sur le VPS : sauvegarde nocturne (cron), restauration testée
+- [ ] Copie des sauvegardes hors du VPS : remote `rclone` et `BACKUP_REMOTE` (**avant la bêta**)
+- [x] Sur GitHub : secrets du déploiement et `DEPLOY_ENABLED`
+- [ ] Supervision : UptimeRobot sur `/api/health`, alerte par e-mail (plus tard, voir en haut)
 - [ ] Facultatif : Sentry pour les erreurs de l'API et du front
 
 ### Phase 5 : Aspects légaux (France)
@@ -167,10 +180,10 @@ Mises à jour : [MISE-A-JOUR.md](MISE-A-JOUR.md).
 
 Les boutons n'apparaissent que si les deux variables du fournisseur sont renseignées.
 
-| Fournisseur | Où                       | Adresse de retour à déclarer                      | Variables                                    |
-| ----------- | ------------------------ | ------------------------------------------------- | -------------------------------------------- |
-| Google      | Google Cloud Console     | `https://mondomaine.fr/api/auth/callback/google`  | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`   |
-| Discord     | Discord Developer Portal | `https://mondomaine.fr/api/auth/callback/discord` | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` |
+| Fournisseur | Où                       | Adresse de retour à déclarer                       | Variables                                    |
+| ----------- | ------------------------ | -------------------------------------------------- | -------------------------------------------- |
+| Google      | Google Cloud Console     | `https://dexpedition.fr/api/auth/callback/google`  | `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`   |
+| Discord     | Discord Developer Portal | `https://dexpedition.fr/api/auth/callback/discord` | `DISCORD_CLIENT_ID`, `DISCORD_CLIENT_SECRET` |
 
 Google demande aussi un écran d'autorisation (nom du jeu, logo, lien vers la politique de
 confidentialité) : la phase 5 doit être faite avant.
