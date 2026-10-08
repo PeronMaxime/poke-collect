@@ -27,6 +27,7 @@ import type {
   PublicContentDto,
   QuestsResponse,
   ShopResponse,
+  TrainerCardResponse,
 } from '@poke/shared';
 import { api } from './api';
 
@@ -44,6 +45,7 @@ export const keys = {
   shop: ['shop'],
   progression: ['progression'],
   quests: ['quests'],
+  trainerCard: ['trainer-card'],
   /** Profil (argent) : voir `App`. */
   me: ['me'],
 } as const;
@@ -60,6 +62,7 @@ export const PLAYER_STATE_KEYS = [
   keys.shop,
   keys.progression,
   keys.quests,
+  keys.trainerCard,
   keys.me,
 ];
 
@@ -115,6 +118,13 @@ export const useShop = () =>
 /** Quêtes visibles et leur avancement (calculé et enregistré par le serveur). */
 export const useQuests = () =>
   useQuery({ queryKey: keys.quests, queryFn: () => api<QuestsResponse>('/api/quests') });
+
+/** Statistiques cumulées de la Fiche Dresseur. */
+export const useTrainerCard = () =>
+  useQuery({
+    queryKey: keys.trainerCard,
+    queryFn: () => api<TrainerCardResponse>('/api/trainer-card'),
+  });
 
 /**
  * Avancement du joueur pour les déblocages (Pokédex, dresseurs battus, œufs éclos, étapes de

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Trainer } from '@poke/content';
-import { battleDurationMinutes, earnedBadges, trainerPower, trainerStatus } from '@poke/game-core';
+import { battleDurationMinutes, trainerPower, trainerStatus } from '@poke/game-core';
 import type { GameContext, TrainerStatus } from '@poke/game-core';
 import type { BattleDto, ClaimBattleResponse, PokemonDto } from '@poke/shared';
 import { PokemonSprite, ProgressBar, TypeBadge, useNow } from '../../components/ui';
@@ -93,8 +93,6 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
   const freeSlots = slots - active.length;
   const records = new Map(battles.data?.records.map((r) => [r.trainerId, r]));
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
-  const badges = earnedBadges(ctx, progress);
-  const allBadges = ctx.trainers.filter((t) => t.badge);
 
   return (
     <div className="space-y-8">
@@ -130,23 +128,6 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
         </div>
         {claim.error && <p className="mt-2 text-sm text-red-600">{errorText(claim.error)}</p>}
       </section>
-
-      {allBadges.length > 0 && (
-        <section className="card flex flex-wrap items-center gap-3 p-4">
-          <h2 className="mr-2 font-semibold">
-            Badges {badges.length} / {allBadges.length}
-          </h2>
-          {allBadges.map((t) => (
-            <span
-              key={t.id}
-              className={`flex items-center gap-1 text-sm ${badges.includes(t) ? '' : 'opacity-30 grayscale'}`}
-            >
-              <BadgeIcon badge={t.badge!} />
-              {t.badge!.name}
-            </span>
-          ))}
-        </section>
-      )}
 
       {ctx.regions.map((region) => {
         const trainers = ctx.trainers.filter((t) => t.regionId === region.id);

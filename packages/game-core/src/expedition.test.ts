@@ -102,6 +102,17 @@ describe('checkTeam', () => {
     const dup = [member('a', 19, 5), member('a', 19, 5)];
     expect(checkTeam(ctx, route1, 15, dup).errors.map((e) => e.code)).toEqual(['DUPLICATE_MEMBER']);
   });
+  it('n’accepte que les Pokémon du Pokédex de la région', () => {
+    const route29 = ctx.zone('route-29')!;
+    // Un Roucool (Kanto) ne part pas à Johto, même s'il y apparaît ; un Héricendre, si.
+    expect(checkTeam(ctx, route29, 15, [member('a', 16, 10), member('b', 155, 5)]).errors).toEqual([
+      { code: 'WRONG_REGION', regionId: 'johto', speciesIds: [16] },
+    ]);
+    expect(checkTeam(ctx, route29, 15, [member('b', 155, 5)]).errors).toEqual([]);
+    expect(checkTeam(ctx, route1, 15, [member('b', 155, 5)]).errors.map((e) => e.code)).toEqual([
+      'WRONG_REGION',
+    ]);
+  });
 });
 
 describe('resolveExpedition', () => {

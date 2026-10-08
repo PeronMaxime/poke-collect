@@ -118,8 +118,10 @@ export function unlockConditionText(ctx: GameContext, u: UnlockCondition): strin
       const other = ctx.trainer(u.trainerId);
       return `Bats ${other ? `${other.trainerClass} ${other.name}` : u.trainerId}`;
     }
-    case 'badgeCount':
-      return `Obtiens ${u.count} badge${u.count > 1 ? 's' : ''}`;
+    case 'badgeCount': {
+      const region = u.regionId && (ctx.region(u.regionId)?.name ?? u.regionId);
+      return `Obtiens ${u.count} badge${u.count > 1 ? 's' : ''}${region ? ` de ${region}` : ''}`;
+    }
     case 'speciesCaught':
       return `Capture ${u.count} espèce${u.count > 1 ? 's' : ''} différente${u.count > 1 ? 's' : ''}`;
     case 'eggsHatched':
@@ -241,6 +243,8 @@ export const GAME_ERRORS: Record<string, string> = {
   ALREADY_CLAIMED: 'Déjà récupéré.',
   STOCK_CHANGED: 'Ton inventaire a changé, réessaie.',
   INVALID_STARTER: 'Ce starter n’est pas disponible.',
+  REGION_LOCKED: 'Cette région n’est pas encore débloquée.',
+  REGION_NOT_FOUND: 'Région introuvable.',
   INCOMPATIBLE_PARENTS: 'Ces deux Pokémon ne peuvent pas avoir d’œuf ensemble.',
   NOT_A_BREEDING_ITEM: 'Cet objet n’a pas d’effet en pension.',
   ITEM_MISSING: 'Tu n’as plus cet objet.',

@@ -140,13 +140,19 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
       }
     }
     if (unlock.type === 'badgeCount') {
-      const badges = content.trainers.filter((t) => t.badge).length;
+      const { regionId } = unlock;
+      if (regionId !== undefined && !regionIds.has(regionId)) {
+        add('error', entity, id, `Condition de déblocage : région « ${regionId} » inconnue`);
+      }
+      const badges = content.trainers.filter(
+        (t) => t.badge && (regionId === undefined || t.regionId === regionId),
+      ).length;
       if (unlock.count > badges) {
         add(
           'error',
           entity,
           id,
-          `Condition de déblocage : ${unlock.count} badge(s) requis, ${badges} existent`,
+          `Condition de déblocage : ${unlock.count} badge(s) requis, ${badges} existent${regionId ? ` dans cette région` : ''}`,
         );
       }
     }
@@ -343,7 +349,12 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     }
     checkUnlock('zone', zone.id, zone.unlock);
 
-    const included = new Set(region?.speciesIds ?? []);
+    // Les Pokémon des régions précédentes peuvent apparaître (Kanto à Johto), pas les suivants.
+    const included = new Set(
+      content.regions
+        .filter((r) => region && (r.id === region.id || r.order < region.order))
+        .flatMap((r) => r.speciesIds),
+    );
     let enabledCount = 0;
     for (const e of zone.encounters) {
       const species = getSpecies(e.speciesId);
@@ -367,7 +378,12 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
         );
       }
       if (region && !included.has(e.speciesId)) {
-        add('warning', 'zone', zone.id, `${species.nameFr} ne fait pas partie de la région`);
+        add(
+          'warning',
+          'zone',
+          zone.id,
+          `${species.nameFr} n’appartient ni à la région ni à une région précédente`,
+        );
       }
     }
     if (enabledCount === 0) add('error', 'zone', zone.id, 'Aucune rencontre active');

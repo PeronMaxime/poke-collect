@@ -1,5 +1,6 @@
 import { evolutionChains, forms, getSpecies, items as dataItems } from '@poke/data';
 import type { EvolutionNode } from '@poke/data';
+import { johtoRegion } from './seed-johto';
 import type {
   BattleRules,
   DexMilestone,
@@ -12,8 +13,8 @@ import type {
 } from './schemas';
 
 /**
- * Contenu de test de l'expansion : les régions de Johto à Paldea (et Hisui), débloquées l'une
- * après l'autre par le Pokédex de la région précédente, l'Archipel Lointain de Kanto, peuplé de
+ * Contenu de test de l'expansion : les régions de Hoenn à Paldea (et Hisui), débloquées l'une
+ * après l'autre par le Pokédex de la région précédente (Johto a son propre fichier), l'Archipel Lointain de Kanto, peuplé de
  * formes régionales, et des zones à Méga-Évolutions (Kalos) et à Gigamax (Galar). Les légendaires
  * et mythiques des nouvelles régions sont exclus de leur Pokédex tant qu'aucune quête ne permet
  * de les obtenir.
@@ -97,16 +98,6 @@ const region = (
 
 export const expansionRegions: Region[] = [
   {
-    id: 'johto',
-    order: 1,
-    name: 'Johto',
-    image: null,
-    speciesIds: dexRange(152, 251),
-    starterSpeciesIds: [],
-    enabled: false,
-    unlock: { type: 'regionDexPercent', regionId: 'kanto', percent: 50 },
-  },
-  {
     id: 'hoenn',
     order: 2,
     name: 'Hoenn',
@@ -177,65 +168,6 @@ export const expansionZones: Zone[] = [
     ],
     lootTableId: 'butin-mer',
     unlock: { type: 'regionDexPercent', regionId: 'kanto', percent: 50 },
-  }),
-  zone({
-    id: 'route-29',
-    regionId: 'johto',
-    order: 0,
-    name: 'Route 29',
-    description: 'Le chemin herbeux qui relie Bourg Geon à Ville Griotte.',
-    habitat: 'grassland',
-    minPower: 0,
-    affinityTypes: ['normal', 'flying'],
-    encounters: [
-      enc(161, 30, 3, 6),
-      enc(163, 25, 3, 6),
-      enc(165, 15, 4, 6),
-      enc(187, 15, 4, 6),
-      enc(167, 15, 4, 6),
-    ],
-    lootTableId: 'butin-route',
-    unlock: { type: 'always' },
-  }),
-  zone({
-    id: 'tour-chetiflor',
-    regionId: 'johto',
-    order: 1,
-    name: 'Tour Chétiflor',
-    description: 'Une vieille tour de bois qui oscille doucement. Des ombres y rôdent la nuit.',
-    habitat: 'urban',
-    minPower: 200,
-    affinityTypes: ['ghost', 'psychic', 'dark'],
-    encounters: [
-      enc(177, 25, 10, 14),
-      enc(198, 20, 10, 14),
-      enc(200, 15, 12, 15),
-      enc(167, 25, 9, 12),
-      enc(203, 15, 12, 15),
-    ],
-    lootTableId: 'butin-grotte',
-    unlock: { type: 'regionDexPercent', regionId: 'johto', percent: 5 },
-  }),
-  zone({
-    id: 'lac-colere',
-    regionId: 'johto',
-    order: 2,
-    name: 'Lac Colère',
-    description: 'Un grand lac agité. On murmure qu’un Léviator rouge y aurait été aperçu.',
-    habitat: 'waters-edge',
-    minPower: 400,
-    requiredTypes: [{ type: 'water', count: 1 }],
-    affinityTypes: ['water'],
-    encounters: [
-      enc(183, 25, 15, 20),
-      enc(194, 20, 15, 20),
-      enc(194, 5, 15, 20, 'wooper-paldea'),
-      enc(170, 15, 18, 22),
-      enc(223, 15, 18, 22),
-      enc(211, 10, 20, 24),
-    ],
-    lootTableId: 'butin-mer',
-    unlock: { type: 'trainerDefeated', trainerId: 'albert' },
   }),
   zone({
     id: 'route-101',
@@ -603,35 +535,6 @@ export const expansionTrainers: Trainer[] = [
     unlock: { type: 'regionDexPercent', regionId: 'kanto', percent: 50 },
   }),
   trainer({
-    id: 'gamin-joey',
-    regionId: 'johto',
-    zoneId: 'route-29',
-    order: 0,
-    name: 'Joey',
-    trainerClass: 'Gamin',
-    sprite: `${TRAINER_SPRITES}/youngster-gen4.png`,
-    team: [mon(161, 6), mon(19, 6)],
-    durationMinutes: 10,
-    money: 150,
-  }),
-  trainer({
-    id: 'albert',
-    regionId: 'johto',
-    zoneId: null,
-    order: 1,
-    name: 'Albert',
-    trainerClass: 'Champion d’arène',
-    sprite: `${TRAINER_SPRITES}/falkner.png`,
-    team: [mon(16, 13), mon(163, 14), mon(17, 16)],
-    durationMinutes: 60,
-    money: 1800,
-    lootTableId: 'butin-route',
-    lootRolls: 3,
-    badge: { name: 'Badge Zéphyr', image: null },
-    repeatable: false,
-    unlock: { type: 'trainerDefeated', trainerId: 'gamin-joey' },
-  }),
-  trainer({
     id: 'montagnard-bruno',
     regionId: 'hoenn',
     zoneId: 'grotte-granite',
@@ -819,22 +722,24 @@ export const expansionTrainers: Trainer[] = [
 ];
 
 /** Un palier « 50 % » par nouvelle région. */
-export const expansionDexMilestones: DexMilestone[] = expansionRegions.map((region, i) => ({
-  id: `${region.id}-50`,
-  order: 5 + i,
-  name: `Chercheur ${/^[AEIOUY]/.test(region.name) ? 'd’' : 'de '}${region.name}`,
-  regionId: region.id,
-  shiny: false,
-  percent: 50,
-  rewards: {
-    currency: 10_000 * (i + 1),
-    items: [{ itemId: 'ultra-ball', quantity: 10 }],
-    expeditionSlots: 0,
-    battleSlots: 0,
-    daycareSlots: 0,
-    bonuses: [],
-  },
-}));
+export const expansionDexMilestones: DexMilestone[] = [johtoRegion, ...expansionRegions].map(
+  (region, i) => ({
+    id: `${region.id}-50`,
+    order: 5 + i,
+    name: `Chercheur ${/^[AEIOUY]/.test(region.name) ? 'd’' : 'de '}${region.name}`,
+    regionId: region.id,
+    shiny: false,
+    percent: 50,
+    rewards: {
+      currency: 10_000 * (i + 1),
+      items: [{ itemId: 'ultra-ball', quantity: 10 }],
+      expeditionSlots: 0,
+      battleSlots: 0,
+      daycareSlots: 0,
+      bonuses: [],
+    },
+  }),
+);
 
 // --- Objets d'évolution des autres régions --------------------------------------------------
 

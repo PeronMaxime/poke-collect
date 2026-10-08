@@ -11,6 +11,7 @@ import type {
   PokedexEntryDto,
   PokedexFormEntryDto,
   PokemonDto,
+  TrainerCardResponse,
 } from '@poke/shared';
 import { buildApp } from './app';
 import { loadEnv } from './env';
@@ -218,6 +219,17 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
     const inv = await call<InventoryEntryDto[]>('GET', '/api/inventory');
     const lootBalls = result.loot.find((l) => l.itemId === 'poke-ball')?.quantity ?? 0;
     expect(inv.body.find((i) => i.itemId === 'poke-ball')?.quantity).toBe(18 + lootBalls);
+
+    const card = await call<TrainerCardResponse>('GET', '/api/trainer-card');
+    expect(card.status).toBe(200);
+    expect(card.body).toMatchObject({
+      captures: capturedIds.length,
+      pokemonOwned: 1 + capturedIds.length,
+      expeditionsCompleted: 1,
+      battlesWon: 0,
+      eggsHatched: 0,
+      moneySpent: 0,
+    });
   });
 
   it('résout une expédition avec le contenu de sa version de départ', async () => {

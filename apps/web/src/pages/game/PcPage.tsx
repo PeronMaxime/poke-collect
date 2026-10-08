@@ -10,6 +10,7 @@ import {
   expeditionPower,
   getNature,
   isKnockedOut,
+  isRegionalSpecies,
   itemUseOptions,
   lineageId,
   pokemonPower,
@@ -42,6 +43,7 @@ import {
   useCandies,
   useEvolutionChecker,
   useInventory,
+  usePlayerProgress,
   usePokemon,
   utcOffsetMinutes,
 } from '../../lib/game';
@@ -60,6 +62,7 @@ import {
   speciesName,
 } from '../../lib/labels';
 import { EvolutionReveal } from './EvolutionReveal';
+import { RegionTabs, currentRegionTab } from './RegionTabs';
 
 type Sort = 'recent' | 'level' | 'power' | 'dex';
 
@@ -77,6 +80,9 @@ const ORIGIN_LABELS: Record<PokemonDto['origin'], string> = {
   quest: 'Récompense de quête',
   fossil: 'Fossile restauré',
 };
+
+/** Onglet de tout le PC, avant les onglets de région (Pokédex régional de chaque espèce). */
+const ALL_TAB = { id: '__tous', label: 'Tous' };
 
 const GENDER_LABELS = { male: '♂', female: '♀', genderless: '' } as const;
 
@@ -127,6 +133,8 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   const pokemon = usePokemon();
   const now = useNow();
   const evolutionsOf = useEvolutionChecker(ctx);
+  const progress = usePlayerProgress();
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [sort, setSort] = useState<Sort>('recent');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
@@ -154,8 +162,13 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
     species: ctx.species(p.speciesId, p.formId),
     power: pokemonPower(ctx.species(p.speciesId, p.formId)!, p),
   }));
+  const tab = currentRegionTab(ctx, progress, selectedRegion ?? ALL_TAB.id, [ALL_TAB]);
   const needle = search.trim().toLowerCase();
-  const filtered = list
+  const inTab = list.filter(
+    ({ p }) => tab === ALL_TAB.id || isRegionalSpecies(ctx, tab, p.speciesId),
+  );
+  const tabPokemon = inTab.map(({ p }) => p);
+  const filtered = inTab
     .filter(({ species }) => !needle || species?.nameFr.toLowerCase().includes(needle))
     .filter(({ p }) => (!onlyFavorites || p.locked) && (!onlyShiny || p.isShiny))
     .sort((a, b) => {
@@ -186,6 +199,17 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
 
   return (
     <div>
+      {ctx.regions.length > 1 && (
+        <div className="mb-4">
+          <RegionTabs
+            ctx={ctx}
+            progress={progress}
+            selected={tab}
+            onSelect={setSelectedRegion}
+            leading={[ALL_TAB]}
+          />
+        </div>
+      )}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         <input
           className="input max-w-56"
@@ -220,7 +244,9 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
           />
           Shiny
         </label>
-        <span className="ml-auto text-sm text-slate-500">{list.length} Pokémon</span>
+        <span className="ml-auto text-sm text-slate-500">
+          {tab === ALL_TAB.id ? list.length : `${filtered.length} / ${list.length}`} Pokémon
+        </span>
         <button
           className={transferMode ? 'btn-primary' : 'btn-ghost'}
           onClick={() => {
@@ -242,7 +268,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
           </span>
           <button
             className="btn-ghost"
-            onClick={() => setToTransfer(new Set(duplicates(ctx, pokemon.data ?? [])))}
+            onClick={() => setToTransfer(new Set(duplicates(ctx, tabPokemon)))}
           >
             Sélectionner les doublons
           </button>

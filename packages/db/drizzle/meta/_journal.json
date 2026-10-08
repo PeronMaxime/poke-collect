@@ -127,6 +127,20 @@
       "when": 1791461864829,
       "tag": "0017_expeditions_test_durees",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1791465008553,
+      "tag": "0018_starters_regionaux",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1791465592554,
+      "tag": "0019_johto_refait",
+      "breakpoints": true
     }
   ]
 }

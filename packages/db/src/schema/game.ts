@@ -36,6 +36,8 @@ export const playerProfiles = pgTable(
     regionUnlocked: text('region_unlocked').notNull(),
     /** Null tant que le joueur n'a pas choisi son starter. */
     starterSpeciesId: integer('starter_species_id'),
+    /** Starter choisi dans chaque région suivante (`{ johto: 155 }`), un seul par région. */
+    regionStarters: jsonb('region_starters').$type<Record<string, number>>().notNull().default({}),
     currency: bigint('currency', { mode: 'number' }).notNull().default(0),
     settings: jsonb('settings').$type<Record<string, unknown>>().notNull().default({}),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

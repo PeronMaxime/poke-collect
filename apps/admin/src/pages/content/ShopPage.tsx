@@ -45,7 +45,7 @@ function unlockSummary(ctx: GameContext, u: UnlockCondition): string {
       return `victoire contre ${t ? `${t.trainerClass} ${t.name}` : u.trainerId}`;
     }
     case 'badgeCount':
-      return `${u.count} badge(s)`;
+      return `${u.count} badge(s)${u.regionId ? ` de ${ctx.region(u.regionId)?.name ?? u.regionId}` : ''}`;
     case 'speciesCaught':
       return `${u.count} espèce(s) capturée(s)`;
     case 'eggsHatched':

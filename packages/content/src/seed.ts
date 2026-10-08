@@ -18,6 +18,7 @@ import {
   expansionTrainers,
   expansionZones,
 } from './seed-expansion';
+import { johtoQuests, johtoRegion, johtoTrainers, johtoZones } from './seed-johto';
 import { kantoQuests, kantoTrainers, kantoZones } from './seed-kanto';
 
 /**
@@ -409,6 +410,7 @@ export const seedContent: GameContentData = {
       enabled: true,
       unlock: { type: 'always' },
     },
+    johtoRegion,
     ...expansionRegions,
   ],
   speciesOverrides: [],
@@ -600,14 +602,14 @@ export const seedContent: GameContentData = {
       ],
     },
   ],
-  zones: [...kantoZones, ...expansionZones],
-  trainers: [...kantoTrainers, ...expansionTrainers],
+  zones: [...kantoZones, ...johtoZones, ...expansionZones],
+  trainers: [...kantoTrainers, ...johtoTrainers, ...expansionTrainers],
   shopCategories,
   shopEntries: [...shopEntries, ...expansionShopEntries],
   evolutionOverrides,
   dexMilestones: [...dexMilestones, ...expansionDexMilestones],
   collections,
-  quests: kantoQuests,
+  quests: [...kantoQuests, ...johtoQuests],
 };
 
 function caveLoot(): LootEntry[] {

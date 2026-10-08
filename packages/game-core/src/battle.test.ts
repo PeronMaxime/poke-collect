@@ -93,6 +93,9 @@ describe('conditions d’équipe', () => {
     expect(checkBattleTeam(ctx, pierre, [])).toContainEqual({ code: 'TEAM_EMPTY' });
     // Pierre : combat à 2 contre 2.
     expect(checkBattleTeam(ctx, pierre, [member('a', 7, 14), member('b', 1, 14)])).toEqual([]);
+    expect(checkBattleTeam(ctx, pierre, [member('a', 7, 14), member('b', 152, 14)])).toEqual([
+      { code: 'WRONG_REGION', regionId: 'kanto', speciesIds: [152] },
+    ]);
   });
 });
 

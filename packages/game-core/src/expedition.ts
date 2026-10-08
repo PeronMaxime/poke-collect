@@ -2,6 +2,7 @@ import type { Encounter, ItemStack, LootTable, Zone } from '@poke/content';
 import type { GameContext } from './context';
 import { MAX_LEVEL, generatePokemon, levelForXp, pokemonPower, xpForLevel } from './pokemon';
 import type { PokemonInstance } from './pokemon';
+import { outOfRegionSpecies } from './progress';
 import { NO_BONUSES } from './progression';
 import type { PlayerBonuses } from './progression';
 import { createRng } from './rng';
@@ -144,6 +145,8 @@ export type ExpeditionError =
   | { code: 'TEAM_EMPTY' }
   | { code: 'TEAM_TOO_LARGE'; max: number }
   | { code: 'DUPLICATE_MEMBER' }
+  /** Espèces hors du Pokédex de la région de la zone. */
+  | { code: 'WRONG_REGION'; regionId: string; speciesIds: number[] }
   | { code: 'POWER_TOO_LOW'; power: number; minPower: number }
   | { code: 'MISSING_TYPES'; missing: { type: string; count: number }[] };
 
@@ -203,6 +206,9 @@ export function checkTeam(
   if (team.length > maxTeamSize) errors.push({ code: 'TEAM_TOO_LARGE', max: maxTeamSize });
   if (new Set(team.map((m) => m.id)).size !== team.length)
     errors.push({ code: 'DUPLICATE_MEMBER' });
+  const outside = outOfRegionSpecies(ctx, zone.regionId, team);
+  if (outside.length > 0)
+    errors.push({ code: 'WRONG_REGION', regionId: zone.regionId, speciesIds: outside });
 
   const power = teamPower(ctx, team);
   if (power < zone.minPower) errors.push({ code: 'POWER_TOO_LOW', power, minPower: zone.minPower });

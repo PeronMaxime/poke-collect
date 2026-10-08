@@ -65,12 +65,12 @@ export interface GameContext {
 export function createGameContext(content: GameContent): GameContext {
   const regions = [...content.regions].sort((a, b) => a.order - b.order);
   const regionOrder = new Map(regions.map((r, i) => [r.id, i]));
+  // Sans région (quêtes générales) ou région inconnue : à la fin.
+  const rank = (regionId: string | null) => regionOrder.get(regionId ?? '') ?? regions.length;
   const byRegionThenOrder = (
-    a: { regionId: string; order: number },
-    b: { regionId: string; order: number },
-  ) =>
-    (regionOrder.get(a.regionId) ?? Infinity) - (regionOrder.get(b.regionId) ?? Infinity) ||
-    a.order - b.order;
+    a: { regionId: string | null; order: number },
+    b: { regionId: string | null; order: number },
+  ) => rank(a.regionId) - rank(b.regionId) || a.order - b.order;
   const zones = [...content.zones].sort(byRegionThenOrder);
   const trainers = [...content.trainers].sort(byRegionThenOrder);
   const shopCategories = [...content.shopCategories].sort((a, b) => a.order - b.order);
@@ -88,7 +88,7 @@ export function createGameContext(content: GameContent): GameContext {
   const lootById = new Map(content.lootTables.map((t) => [t.id, t]));
   const overrides = new Map(content.speciesOverrides.map((o) => [o.speciesId, o]));
   const speciesCache = new Map<string, GameSpecies>();
-  const quests = [...content.quests].sort((a, b) => a.order - b.order);
+  const quests = [...content.quests].sort(byRegionThenOrder);
   const questsById = new Map(quests.map((q) => [q.id, q]));
 
   return {

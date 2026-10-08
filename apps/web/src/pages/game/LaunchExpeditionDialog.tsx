@@ -6,6 +6,7 @@ import {
   checkTeam,
   encounterCount,
   encounterProbabilities,
+  isRegionalSpecies,
   lootProbabilities,
   pokemonPower,
   shinyProbability,
@@ -46,6 +47,8 @@ function errorText(e: ExpeditionError): string {
       return `Au plus ${e.max} Pokémon.`;
     case 'DUPLICATE_MEMBER':
       return 'Un Pokémon est sélectionné deux fois.';
+    case 'WRONG_REGION':
+      return 'Seuls les Pokémon du Pokédex de la région peuvent explorer cette zone.';
     case 'POWER_TOO_LOW':
       return `PE de l’équipe insuffisante (${e.power} / ${e.minPower}).`;
     case 'MISSING_TYPES':
@@ -96,8 +99,9 @@ export function LaunchExpeditionDialog({
   });
 
   const now = useNow(10_000);
+  const region = ctx.region(zone.regionId);
   const available = (pokemon.data ?? [])
-    .filter((p) => isUsable(p, now))
+    .filter((p) => isUsable(p, now) && isRegionalSpecies(ctx, zone.regionId, p.speciesId))
     .map((p) => ({ p, power: pokemonPower(ctx.species(p.speciesId, p.formId)!, p) }))
     .sort((a, b) => b.power - a.power);
   const members = team.flatMap((id) => available.find((a) => a.p.id === id)?.p ?? []);
@@ -192,10 +196,14 @@ export function LaunchExpeditionDialog({
         })}
         {available.length === 0 && (
           <p className="col-span-full text-sm text-slate-500">
-            Tous tes Pokémon sont occupés ou K.O.
+            Aucun Pokémon de {region?.name} disponible : ils sont occupés, K.O., ou pas encore
+            capturés.
           </p>
         )}
       </div>
+      <p className="mt-1 text-xs text-slate-500">
+        Seuls les Pokémon du Pokédex de {region?.name} peuvent explorer ses zones.
+      </p>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div>

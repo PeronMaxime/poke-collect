@@ -581,6 +581,27 @@ export function UnlockEditor({
           onChange={(count) => onChange({ ...value, count })}
         />
       )}
+      {value.type === 'badgeCount' && (
+        <select
+          className="input w-auto"
+          value={value.regionId ?? ''}
+          disabled={disabled}
+          onChange={(e) => {
+            const { regionId: _regionId, ...rest } = value;
+            onChange(e.target.value ? { ...rest, regionId: e.target.value } : rest);
+          }}
+        >
+          <option value="">toutes régions</option>
+          {value.regionId && !regions.some((r) => r.id === value.regionId) && (
+            <option value={value.regionId}>{value.regionId} (inconnue)</option>
+          )}
+          {regions.map((r) => (
+            <option key={r.id} value={r.id}>
+              de {r.name}
+            </option>
+          ))}
+        </select>
+      )}
     </div>
   );
 }

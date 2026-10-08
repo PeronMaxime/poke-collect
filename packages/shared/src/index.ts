@@ -42,6 +42,8 @@ export interface PlayerProfileDto {
   regionUnlocked: string;
   /** Null tant que le starter n'a pas été choisi. */
   starterSpeciesId: number | null;
+  /** Starter choisi dans chaque région suivante (identifiant de région → espèce). */
+  regionStarters: Record<string, number>;
   currency: number;
   createdAt: string;
 }
@@ -156,6 +158,27 @@ export interface ClaimRewardResponse {
   /** Solde après la récompense. */
   currency: number;
   slots: PlayerSlots;
+}
+
+// --- Fiche Dresseur -----------------------------------------------------------------------
+
+/** Statistiques cumulées du joueur (calculées à partir de son historique). */
+export interface TrainerCardResponse {
+  /** Pokémon capturés en expédition (transférés compris). */
+  captures: number;
+  /** Pokémon actuellement possédés, dont chromatiques. */
+  pokemonOwned: number;
+  shiniesOwned: number;
+  expeditionsCompleted: number;
+  battlesWon: number;
+  battlesLost: number;
+  /** Dresseurs différents battus au moins une fois. */
+  trainersDefeated: number;
+  eggsHatched: number;
+  fossilsRevived: number;
+  questsCompleted: number;
+  /** Poké Dollars dépensés en boutique. */
+  moneySpent: number;
 }
 
 // --- Quêtes -------------------------------------------------------------------------------

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
 import { forms, itemSpriteUrl, pokemonSpriteUrl, species } from '@poke/data';
-import { createDb, ensureSeedContent, users } from '@poke/db';
+import { createDb, ensureSeedContent, playerProfiles, pokedex, users } from '@poke/db';
 import { buildApp } from './app';
 import { loadEnv } from './env';
 
@@ -151,6 +151,40 @@ describe('authentification et profil dresseur', () => {
     });
     expect(res.statusCode).toBe(409);
     expect(res.json()).toMatchObject({ error: 'TRAINER_NAME_TAKEN' });
+  });
+  it('donne un starter de Johto, une fois la région débloquée', async () => {
+    const post = (url: string, speciesId: number) =>
+      app.inject({ method: 'POST', url, headers: { cookie }, payload: { speciesId } });
+    expect((await post('/api/starter', 4)).statusCode).toBe(201);
+
+    // Johto s'ouvre à 50 % du Pokédex de Kanto.
+    const locked = await post('/api/regions/johto/starter', 155);
+    expect(locked.json()).toMatchObject({ error: 'REGION_LOCKED' });
+    const [profile] = await handle.db.select().from(playerProfiles);
+    await handle.db
+      .insert(pokedex)
+      .values(
+        Array.from({ length: 76 }, (_, i) => ({
+          ownerId: profile!.userId,
+          speciesId: i + 1,
+          seen: true,
+          caught: true,
+        })),
+      )
+      .onConflictDoNothing();
+
+    expect((await post('/api/regions/johto/starter', 25)).json()).toMatchObject({
+      error: 'INVALID_STARTER',
+    });
+    expect((await post('/api/regions/kanto/starter', 1)).statusCode).toBe(404);
+    const res = await post('/api/regions/johto/starter', 155);
+    expect(res.statusCode).toBe(201);
+    expect(res.json()).toMatchObject({ speciesId: 155, origin: 'starter', originRegion: 'johto' });
+    expect((await post('/api/regions/johto/starter', 158)).json()).toMatchObject({
+      error: 'STARTER_ALREADY_CHOSEN',
+    });
+    const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
+    expect(me.json().profile.regionStarters).toEqual({ johto: 155 });
   });
 });
 

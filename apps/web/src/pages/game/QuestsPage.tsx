@@ -17,6 +17,10 @@ import {
   unlockConditionText,
 } from '../../lib/labels';
 import { RewardList } from './ProgressionViews';
+import { RegionTabs, currentRegionTab } from './RegionTabs';
+
+/** Onglet des quêtes rattachées à aucune région. */
+const OTHER_TAB = { id: '__autres', label: 'Autres' };
 
 /** Quêtes (légendaires) : étapes à valider dans l'ordre, puis récompense à réclamer. */
 export function QuestsPage({ ctx }: { ctx: GameContext }) {
@@ -24,6 +28,7 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
   const quests = useQuests();
   const progress = usePlayerProgress();
   const [reveal, setReveal] = useState<ClaimQuestResponse | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const claim = useMutation({
     mutationFn: (questId: string) =>
       api<ClaimQuestResponse>(`/api/quests/${questId}/claim`, { method: 'POST' }),
@@ -43,6 +48,14 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
   const rank = (q: Quest) =>
     ({ completed: 0, active: 1, locked: 2, claimed: 3 })[byId.get(q.id)?.status ?? 'locked'];
   const sorted = [...ctx.quests].sort((a, b) => rank(a) - rank(b) || a.order - b.order);
+  const tabOf = (q: Quest) => q.regionId ?? OTHER_TAB.id;
+  const extra = ctx.quests.some((q) => q.regionId === null) ? [OTHER_TAB] : [];
+  const tab = currentRegionTab(ctx, progress, selectedRegion, extra);
+  const shown = sorted.filter((q) => tabOf(q) === tab);
+  const toClaim = (id: string) =>
+    ctx.quests.some((q) => tabOf(q) === id && byId.get(q.id)?.status === 'completed')
+      ? 'Récompense à réclamer'
+      : null;
 
   return (
     <div className="space-y-4">
@@ -51,9 +64,20 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
         étapes se valident dans l’ordre ; captures et expéditions ne comptent qu’à partir du début
         de l’étape.
       </p>
+      <RegionTabs
+        ctx={ctx}
+        progress={progress}
+        selected={tab}
+        onSelect={setSelectedRegion}
+        marker={toClaim}
+        extra={extra}
+      />
       {claim.error && <p className="text-sm text-red-600">{errorText(claim.error)}</p>}
+      {shown.length === 0 && (
+        <p className="text-sm text-slate-500">Aucune quête dans cette région pour le moment.</p>
+      )}
       <div className="grid gap-4 md:grid-cols-2">
-        {sorted.map((quest) => (
+        {shown.map((quest) => (
           <QuestCard
             key={quest.id}
             ctx={ctx}

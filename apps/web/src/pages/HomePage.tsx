@@ -29,11 +29,12 @@ import { PcPage } from './game/PcPage';
 import { PokedexPage } from './game/PokedexPage';
 import { QuestsPage } from './game/QuestsPage';
 import { ShopPage } from './game/ShopPage';
+import { TrainerCardPage } from './game/TrainerCardPage';
 import { SettingsDialog } from './SettingsDialog';
 
 const TABS = [
   { id: 'expeditions', label: 'Expéditions' },
-  { id: 'battles', label: 'Dresseurs' },
+  { id: 'battles', label: 'Combats' },
   { id: 'daycare', label: 'Pension' },
   { id: 'museum', label: 'Musée' },
   { id: 'quests', label: 'Quêtes' },
@@ -41,6 +42,7 @@ const TABS = [
   { id: 'pc', label: 'PC' },
   { id: 'pokedex', label: 'Pokédex' },
   { id: 'bag', label: 'Sac' },
+  { id: 'trainer', label: 'Fiche Dresseur' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -97,8 +99,10 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
 
   async function signOut() {
     await authClient.signOut();
-    queryClient.clear();
-    await queryClient.invalidateQueries({ queryKey: ['me'] });
+    // `clear()` retirerait aussi `['me']` du cache sans prévenir son observateur (App) :
+    // l'écran resterait figé. On bascule d'abord `me` à null, puis on vide le reste.
+    queryClient.setQueryData(['me'], null);
+    queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== 'me' });
   }
 
   return (
@@ -135,7 +139,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
       </header>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      <nav className="sticky top-0 z-10 -mx-4 mb-6 flex gap-1 overflow-x-auto border-b border-slate-200 bg-slate-50/90 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
+      <nav className="sticky top-0 z-10 -mx-4 mb-6 flex gap-1 overflow-x-auto overflow-y-hidden border-b lg:flex-wrap lg:overflow-visible border-slate-200 bg-slate-50/90 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
         {TABS.map((t) => (
           <a
             key={t.id}
@@ -200,7 +204,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
               </span>
             )}
             {tab === t.id && (
-              <span className="absolute inset-x-2 -bottom-px h-0.5 rounded bg-brand-500" />
+              <span className="absolute inset-x-2 bottom-0 h-0.5 rounded bg-brand-500" />
             )}
           </a>
         ))}
@@ -211,7 +215,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
       ) : (
         // Une erreur dans un onglet n'emporte pas la navigation ; changer d'onglet la réinitialise.
         <ErrorBoundary key={tab}>
-          {tab === 'expeditions' && <ExpeditionsPage ctx={ctx} />}
+          {tab === 'expeditions' && <ExpeditionsPage ctx={ctx} profile={profile} />}
           {tab === 'battles' && <BattlesPage ctx={ctx} />}
           {tab === 'daycare' && <DaycarePage ctx={ctx} />}
           {tab === 'museum' && <MuseumPage ctx={ctx} />}
@@ -220,6 +224,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
           {tab === 'pc' && <PcPage ctx={ctx} />}
           {tab === 'pokedex' && <PokedexPage ctx={ctx} profile={profile} />}
           {tab === 'bag' && <InventoryPage ctx={ctx} />}
+          {tab === 'trainer' && <TrainerCardPage ctx={ctx} profile={profile} />}
         </ErrorBoundary>
       )}
 

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isUnlocked, isZoneUnlocked, regionDexProgress } from './progress';
+import { isUnlocked, isUnlockedSoon, isZoneUnlocked, regionDexProgress } from './progress';
 import { testContext } from './test-helpers';
 
 const ctx = testContext();
@@ -41,6 +41,11 @@ describe('déblocages', () => {
     // Tom ne donne pas de badge, Pierre si.
     expect(isUnlocked(ctx, oneBadge, caught(1, ['gamin-tom']))).toBe(false);
     expect(isUnlocked(ctx, oneBadge, caught(1, ['pierre']))).toBe(true);
+    // Les badges d'une région ne comptent pas pour une autre.
+    const kantoBadge = { ...oneBadge, regionId: 'kanto' };
+    expect(isUnlocked(ctx, kantoBadge, caught(1, ['albert']))).toBe(false);
+    expect(isUnlocked(ctx, oneBadge, caught(1, ['albert']))).toBe(true);
+    expect(isUnlocked(ctx, kantoBadge, caught(1, ['pierre']))).toBe(true);
   });
 
   it('exige toutes les briques d’une condition combinée', () => {
@@ -49,5 +54,20 @@ describe('déblocages', () => {
     expect(isZoneUnlocked(ctx, safari, caught(60, fiveBadges.slice(0, 4)))).toBe(false);
     expect(isZoneUnlocked(ctx, safari, caught(59, fiveBadges))).toBe(false);
     expect(isZoneUnlocked(ctx, safari, caught(60, fiveBadges))).toBe(true);
+  });
+
+  it('anticipe les déblocages du prochain badge', () => {
+    const twoBadges = { type: 'badgeCount' as const, count: 2, regionId: 'kanto' };
+    expect(isUnlockedSoon(ctx, twoBadges, caught(1))).toBe(false);
+    expect(isUnlockedSoon(ctx, twoBadges, caught(1, ['pierre']))).toBe(true);
+    // Les zones combinées apparaissent aussi au prochain badge, objectifs de collection compris.
+    const safari = ctx.zone('parc-safari')!.unlock; // 5 badges et 60 espèces capturées
+    const fourBadges = ['pierre', 'ondine', 'major-bob', 'erika'];
+    expect(isUnlockedSoon(ctx, safari, caught(1, fourBadges.slice(0, 3)))).toBe(false);
+    expect(isUnlockedSoon(ctx, safari, caught(1, fourBadges))).toBe(true);
+    // Seul, un objectif de collection n'apparaît qu'à l'approche.
+    const halfDex = { type: 'regionDexPercent' as const, regionId: 'kanto', percent: 50 };
+    expect(isUnlockedSoon(ctx, halfDex, caught(1))).toBe(false);
+    expect(isUnlockedSoon(ctx, halfDex, caught(61))).toBe(true);
   });
 });

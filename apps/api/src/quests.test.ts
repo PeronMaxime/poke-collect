@@ -196,18 +196,18 @@ describe('quêtes', () => {
   it('cache les régions, zones et quêtes désactivées', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/content' });
     const playable = res.json<typeof content>();
-    expect(playable.regions.map((r) => r.id)).toEqual(['kanto']);
-    expect(playable.zones.map((z) => z.id)).not.toContain('route-29');
+    expect(playable.regions.map((r) => r.id)).toEqual(['kanto', 'johto']);
+    expect(playable.zones.map((z) => z.id)).not.toContain('route-101');
     expect(playable.quests.map((q) => q.id)).not.toContain('quete-desactivee');
 
-    const johto = await call('POST', '/api/expeditions', {
-      zoneId: 'route-29',
+    const hoenn = await call('POST', '/api/expeditions', {
+      zoneId: 'route-101',
       durationMinutes: 15,
       team: [starter.id],
       ballItemId: null,
       berryItemId: null,
     });
-    expect(johto.status).toBe(404);
+    expect(hoenn.status).toBe(404);
     const { body } = await call<QuestsResponse>('GET', '/api/quests');
     expect(body.quests.map((q) => q.questId)).not.toContain('quete-desactivee');
     expect((await call('POST', '/api/quests/quete-desactivee/claim')).status).toBe(404);
@@ -259,6 +259,11 @@ describe('quêtes', () => {
       const patch = await call<UseItemResponse>('POST', `/api/pokemon/${target.id}/use-item`, {
         itemId: 'ability-patch',
       });
+      // Talent caché déjà tiré à la capture (5 %) : le Patch Talent n'a aucun effet.
+      if (target.ability === 'unnerve') {
+        expect(patch.status).toBe(400);
+        return;
+      }
       expect(patch.status).toBe(200);
       expect(patch.body.pokemon.ability).toBe('unnerve');
       const [left] = await handle.db

@@ -362,12 +362,22 @@
         240,
         241,
         242,
+        243,
+        244,
+        245,
         246,
         247,
-        248
+        248,
+        249,
+        250,
+        251
       ],
-      "starterSpeciesIds": [],
-      "enabled": false,
+      "starterSpeciesIds": [
+        152,
+        155,
+        158
+      ],
+      "enabled": true,
       "unlock": {
         "type": "regionDexPercent",
         "regionId": "kanto",
@@ -2620,68 +2630,6 @@
       }
     },
     {
-      "id": "route-1-galar",
-      "regionId": "galar",
-      "order": 0,
-      "name": "Route 1 de Galar",
-      "description": "Les champs paisibles qui bordent Paddoxton.",
-      "image": null,
-      "habitat": "grassland",
-      "enabled": true,
-      "minPower": 0,
-      "requiredTypes": [],
-      "affinityTypes": [
-        "normal",
-        "flying",
-        "bug"
-      ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
-      "encounters": [
-        {
-          "speciesId": 819,
-          "weight": 30,
-          "minLevel": 4,
-          "maxLevel": 7
-        },
-        {
-          "speciesId": 821,
-          "weight": 25,
-          "minLevel": 4,
-          "maxLevel": 7
-        },
-        {
-          "speciesId": 824,
-          "weight": 20,
-          "minLevel": 4,
-          "maxLevel": 7
-        },
-        {
-          "speciesId": 831,
-          "weight": 15,
-          "minLevel": 5,
-          "maxLevel": 8
-        },
-        {
-          "speciesId": 263,
-          "formId": 10174,
-          "weight": 10,
-          "minLevel": 4,
-          "maxLevel": 7
-        }
-      ],
-      "lootTableId": "butin-route",
-      "unlock": {
-        "type": "always"
-      }
-    },
-    {
       "id": "route-1",
       "regionId": "kanto",
       "order": 0,
@@ -2740,66 +2688,6 @@
           "weight": 5,
           "minLevel": 3,
           "maxLevel": 5
-        }
-      ],
-      "lootTableId": "butin-route",
-      "unlock": {
-        "type": "always"
-      }
-    },
-    {
-      "id": "route-29",
-      "regionId": "johto",
-      "order": 0,
-      "name": "Route 29",
-      "description": "Le chemin herbeux qui relie Bourg Geon à Ville Griotte.",
-      "image": null,
-      "habitat": "grassland",
-      "enabled": true,
-      "minPower": 0,
-      "requiredTypes": [],
-      "affinityTypes": [
-        "normal",
-        "flying"
-      ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
-      "encounters": [
-        {
-          "speciesId": 161,
-          "weight": 30,
-          "minLevel": 3,
-          "maxLevel": 6
-        },
-        {
-          "speciesId": 163,
-          "weight": 25,
-          "minLevel": 3,
-          "maxLevel": 6
-        },
-        {
-          "speciesId": 165,
-          "weight": 15,
-          "minLevel": 4,
-          "maxLevel": 6
-        },
-        {
-          "speciesId": 187,
-          "weight": 15,
-          "minLevel": 4,
-          "maxLevel": 6
-        },
-        {
-          "speciesId": 167,
-          "weight": 15,
-          "minLevel": 4,
-          "maxLevel": 6
         }
       ],
       "lootTableId": "butin-route",
@@ -2986,6 +2874,209 @@
       }
     },
     {
+      "id": "route-1-galar",
+      "regionId": "galar",
+      "order": 0,
+      "name": "Route 1 de Galar",
+      "description": "Les champs paisibles qui bordent Paddoxton.",
+      "image": null,
+      "habitat": "grassland",
+      "enabled": true,
+      "minPower": 0,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "normal",
+        "flying",
+        "bug"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 819,
+          "weight": 30,
+          "minLevel": 4,
+          "maxLevel": 7
+        },
+        {
+          "speciesId": 821,
+          "weight": 25,
+          "minLevel": 4,
+          "maxLevel": 7
+        },
+        {
+          "speciesId": 824,
+          "weight": 20,
+          "minLevel": 4,
+          "maxLevel": 7
+        },
+        {
+          "speciesId": 831,
+          "weight": 15,
+          "minLevel": 5,
+          "maxLevel": 8
+        },
+        {
+          "speciesId": 263,
+          "formId": 10174,
+          "weight": 10,
+          "minLevel": 4,
+          "maxLevel": 7
+        }
+      ],
+      "lootTableId": "butin-route",
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "route-29",
+      "regionId": "johto",
+      "order": 0,
+      "name": "Route 29",
+      "description": "Le chemin herbeux qui relie Bourg Geon à Ville Griotte. Idéal pour débuter.",
+      "image": null,
+      "habitat": "grassland",
+      "enabled": true,
+      "minPower": 0,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "normal",
+        "flying"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 161,
+          "weight": 30,
+          "minLevel": 2,
+          "maxLevel": 4
+        },
+        {
+          "speciesId": 163,
+          "weight": 25,
+          "minLevel": 2,
+          "maxLevel": 4
+        },
+        {
+          "speciesId": 187,
+          "weight": 15,
+          "minLevel": 3,
+          "maxLevel": 5
+        },
+        {
+          "speciesId": 16,
+          "weight": 15,
+          "minLevel": 2,
+          "maxLevel": 4
+        },
+        {
+          "speciesId": 19,
+          "weight": 15,
+          "minLevel": 2,
+          "maxLevel": 4
+        }
+      ],
+      "lootTableId": "butin-route",
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mont-lanakila",
+      "regionId": "alola",
+      "order": 1,
+      "name": "Mont Lanakila",
+      "description": "Le sommet enneigé d’Ula-Ula. Les formes d’Alola y abondent, et un Pokémon Dominant y règne.",
+      "image": null,
+      "habitat": "mountain",
+      "enabled": true,
+      "minPower": 1200,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "ice",
+        "rock",
+        "dark"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 27,
+          "formId": 10101,
+          "weight": 20,
+          "minLevel": 28,
+          "maxLevel": 32
+        },
+        {
+          "speciesId": 37,
+          "formId": 10103,
+          "weight": 20,
+          "minLevel": 28,
+          "maxLevel": 32
+        },
+        {
+          "speciesId": 50,
+          "formId": 10105,
+          "weight": 15,
+          "minLevel": 28,
+          "maxLevel": 32
+        },
+        {
+          "speciesId": 74,
+          "formId": 10109,
+          "weight": 15,
+          "minLevel": 28,
+          "maxLevel": 32
+        },
+        {
+          "speciesId": 88,
+          "formId": 10112,
+          "weight": 10,
+          "minLevel": 28,
+          "maxLevel": 32
+        },
+        {
+          "speciesId": 105,
+          "formId": 10115,
+          "weight": 5,
+          "minLevel": 30,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 20,
+          "formId": 10093,
+          "weight": 1,
+          "minLevel": 40,
+          "maxLevel": 40
+        }
+      ],
+      "lootTableId": "butin-grotte",
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "ilima"
+      }
+    },
+    {
       "id": "tour-maitrise",
       "regionId": "kalos",
       "order": 1,
@@ -3084,75 +3175,6 @@
       }
     },
     {
-      "id": "desert-delassant",
-      "regionId": "unys",
-      "order": 1,
-      "name": "Désert Délassant",
-      "description": "Une tempête de sable permanente souffle sur ce désert et ses ruines anciennes.",
-      "image": null,
-      "habitat": "rough-terrain",
-      "enabled": true,
-      "minPower": 700,
-      "requiredTypes": [],
-      "affinityTypes": [
-        "ground",
-        "rock",
-        "fire"
-      ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
-      "encounters": [
-        {
-          "speciesId": 551,
-          "weight": 25,
-          "minLevel": 22,
-          "maxLevel": 26
-        },
-        {
-          "speciesId": 554,
-          "weight": 20,
-          "minLevel": 22,
-          "maxLevel": 26
-        },
-        {
-          "speciesId": 557,
-          "weight": 20,
-          "minLevel": 22,
-          "maxLevel": 26
-        },
-        {
-          "speciesId": 562,
-          "weight": 15,
-          "minLevel": 22,
-          "maxLevel": 26
-        },
-        {
-          "speciesId": 556,
-          "weight": 15,
-          "minLevel": 22,
-          "maxLevel": 26
-        },
-        {
-          "speciesId": 550,
-          "formId": 10247,
-          "weight": 5,
-          "minLevel": 22,
-          "maxLevel": 26
-        }
-      ],
-      "lootTableId": "butin-grotte",
-      "unlock": {
-        "type": "trainerDefeated",
-        "trainerId": "aloe"
-      }
-    },
-    {
       "id": "mont-couronne",
       "regionId": "sinnoh",
       "order": 1,
@@ -3222,20 +3244,19 @@
       }
     },
     {
-      "id": "grotte-granite",
-      "regionId": "hoenn",
+      "id": "routes-30-31",
+      "regionId": "johto",
       "order": 1,
-      "name": "Grotte Granite",
-      "description": "Une grotte de l’île de Village Myokara, aux parois couvertes de fresques.",
+      "name": "Routes 30 et 31",
+      "description": "Les sentiers boisés au nord de Ville Griotte, où Coxy et Mimigal se relaient jour et nuit.",
       "image": null,
-      "habitat": "cave",
+      "habitat": "forest",
       "enabled": true,
-      "minPower": 300,
+      "minPower": 100,
       "requiredTypes": [],
       "affinityTypes": [
-        "rock",
-        "fighting",
-        "steel"
+        "bug",
+        "grass"
       ],
       "durationsMinutes": [
         2,
@@ -3247,41 +3268,139 @@
       ],
       "encounters": [
         {
-          "speciesId": 296,
+          "speciesId": 165,
           "weight": 25,
-          "minLevel": 10,
-          "maxLevel": 14
+          "minLevel": 3,
+          "maxLevel": 6
         },
         {
-          "speciesId": 304,
+          "speciesId": 167,
           "weight": 25,
-          "minLevel": 10,
-          "maxLevel": 14
+          "minLevel": 3,
+          "maxLevel": 6
         },
         {
-          "speciesId": 302,
+          "speciesId": 163,
+          "weight": 12,
+          "minLevel": 3,
+          "maxLevel": 6
+        },
+        {
+          "speciesId": 161,
           "weight": 10,
-          "minLevel": 12,
-          "maxLevel": 15
+          "minLevel": 4,
+          "maxLevel": 6
         },
         {
-          "speciesId": 299,
-          "weight": 15,
-          "minLevel": 12,
-          "maxLevel": 15
+          "speciesId": 10,
+          "weight": 8,
+          "minLevel": 3,
+          "maxLevel": 5
         },
         {
-          "speciesId": 293,
-          "weight": 25,
-          "minLevel": 10,
-          "maxLevel": 13
+          "speciesId": 13,
+          "weight": 8,
+          "minLevel": 3,
+          "maxLevel": 5
+        },
+        {
+          "speciesId": 69,
+          "weight": 12,
+          "minLevel": 4,
+          "maxLevel": 6
         }
       ],
-      "lootTableId": "butin-fouilles-hoenn",
+      "lootTableId": "butin-foret",
       "unlock": {
         "type": "regionDexPercent",
-        "regionId": "hoenn",
-        "percent": 5
+        "regionId": "johto",
+        "percent": 3
+      }
+    },
+    {
+      "id": "lac-salinas",
+      "regionId": "paldea",
+      "order": 1,
+      "name": "Lac Salinas",
+      "description": "Les rives du grand lac de Paldea : des Tauros de trois races y galopent, des Nigirigon s’y cachent.",
+      "image": null,
+      "habitat": "waters-edge",
+      "enabled": true,
+      "minPower": 1200,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "water",
+        "fire",
+        "fighting"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 128,
+          "formId": 10250,
+          "weight": 15,
+          "minLevel": 30,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 128,
+          "formId": 10251,
+          "weight": 8,
+          "minLevel": 30,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 128,
+          "formId": 10252,
+          "weight": 8,
+          "minLevel": 30,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 978,
+          "weight": 10,
+          "minLevel": 30,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 978,
+          "formId": 10258,
+          "weight": 6,
+          "minLevel": 30,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 978,
+          "formId": 10259,
+          "weight": 6,
+          "minLevel": 30,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 194,
+          "formId": 10253,
+          "weight": 20,
+          "minLevel": 28,
+          "maxLevel": 32
+        },
+        {
+          "speciesId": 963,
+          "weight": 15,
+          "minLevel": 28,
+          "maxLevel": 32
+        }
+      ],
+      "lootTableId": "butin-mer",
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "katy"
       }
     },
     {
@@ -3433,20 +3552,20 @@
       }
     },
     {
-      "id": "tour-chetiflor",
-      "regionId": "johto",
+      "id": "grotte-granite",
+      "regionId": "hoenn",
       "order": 1,
-      "name": "Tour Chétiflor",
-      "description": "Une vieille tour de bois qui oscille doucement. Des ombres y rôdent la nuit.",
+      "name": "Grotte Granite",
+      "description": "Une grotte de l’île de Village Myokara, aux parois couvertes de fresques.",
       "image": null,
-      "habitat": "urban",
+      "habitat": "cave",
       "enabled": true,
-      "minPower": 200,
+      "minPower": 300,
       "requiredTypes": [],
       "affinityTypes": [
-        "ghost",
-        "psychic",
-        "dark"
+        "rock",
+        "fighting",
+        "steel"
       ],
       "durationsMinutes": [
         2,
@@ -3458,144 +3577,58 @@
       ],
       "encounters": [
         {
-          "speciesId": 177,
+          "speciesId": 296,
           "weight": 25,
           "minLevel": 10,
           "maxLevel": 14
         },
         {
-          "speciesId": 198,
-          "weight": 20,
+          "speciesId": 304,
+          "weight": 25,
           "minLevel": 10,
           "maxLevel": 14
         },
         {
-          "speciesId": 200,
+          "speciesId": 302,
+          "weight": 10,
+          "minLevel": 12,
+          "maxLevel": 15
+        },
+        {
+          "speciesId": 299,
           "weight": 15,
           "minLevel": 12,
           "maxLevel": 15
         },
         {
-          "speciesId": 167,
+          "speciesId": 293,
           "weight": 25,
-          "minLevel": 9,
-          "maxLevel": 12
-        },
-        {
-          "speciesId": 203,
-          "weight": 15,
-          "minLevel": 12,
-          "maxLevel": 15
+          "minLevel": 10,
+          "maxLevel": 13
         }
       ],
-      "lootTableId": "butin-grotte",
+      "lootTableId": "butin-fouilles-hoenn",
       "unlock": {
         "type": "regionDexPercent",
-        "regionId": "johto",
+        "regionId": "hoenn",
         "percent": 5
       }
     },
     {
-      "id": "lac-salinas",
-      "regionId": "paldea",
+      "id": "desert-delassant",
+      "regionId": "unys",
       "order": 1,
-      "name": "Lac Salinas",
-      "description": "Les rives du grand lac de Paldea : des Tauros de trois races y galopent, des Nigirigon s’y cachent.",
+      "name": "Désert Délassant",
+      "description": "Une tempête de sable permanente souffle sur ce désert et ses ruines anciennes.",
       "image": null,
-      "habitat": "waters-edge",
+      "habitat": "rough-terrain",
       "enabled": true,
-      "minPower": 1200,
+      "minPower": 700,
       "requiredTypes": [],
       "affinityTypes": [
-        "water",
-        "fire",
-        "fighting"
-      ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
-      "encounters": [
-        {
-          "speciesId": 128,
-          "formId": 10250,
-          "weight": 15,
-          "minLevel": 30,
-          "maxLevel": 34
-        },
-        {
-          "speciesId": 128,
-          "formId": 10251,
-          "weight": 8,
-          "minLevel": 30,
-          "maxLevel": 34
-        },
-        {
-          "speciesId": 128,
-          "formId": 10252,
-          "weight": 8,
-          "minLevel": 30,
-          "maxLevel": 34
-        },
-        {
-          "speciesId": 978,
-          "weight": 10,
-          "minLevel": 30,
-          "maxLevel": 34
-        },
-        {
-          "speciesId": 978,
-          "formId": 10258,
-          "weight": 6,
-          "minLevel": 30,
-          "maxLevel": 34
-        },
-        {
-          "speciesId": 978,
-          "formId": 10259,
-          "weight": 6,
-          "minLevel": 30,
-          "maxLevel": 34
-        },
-        {
-          "speciesId": 194,
-          "formId": 10253,
-          "weight": 20,
-          "minLevel": 28,
-          "maxLevel": 32
-        },
-        {
-          "speciesId": 963,
-          "weight": 15,
-          "minLevel": 28,
-          "maxLevel": 32
-        }
-      ],
-      "lootTableId": "butin-mer",
-      "unlock": {
-        "type": "trainerDefeated",
-        "trainerId": "katy"
-      }
-    },
-    {
-      "id": "mont-lanakila",
-      "regionId": "alola",
-      "order": 1,
-      "name": "Mont Lanakila",
-      "description": "Le sommet enneigé d’Ula-Ula. Les formes d’Alola y abondent, et un Pokémon Dominant y règne.",
-      "image": null,
-      "habitat": "mountain",
-      "enabled": true,
-      "minPower": 1200,
-      "requiredTypes": [],
-      "affinityTypes": [
-        "ice",
+        "ground",
         "rock",
-        "dark"
+        "fire"
       ],
       "durationsMinutes": [
         2,
@@ -3607,59 +3640,47 @@
       ],
       "encounters": [
         {
-          "speciesId": 27,
-          "formId": 10101,
+          "speciesId": 551,
+          "weight": 25,
+          "minLevel": 22,
+          "maxLevel": 26
+        },
+        {
+          "speciesId": 554,
           "weight": 20,
-          "minLevel": 28,
-          "maxLevel": 32
+          "minLevel": 22,
+          "maxLevel": 26
         },
         {
-          "speciesId": 37,
-          "formId": 10103,
+          "speciesId": 557,
           "weight": 20,
-          "minLevel": 28,
-          "maxLevel": 32
+          "minLevel": 22,
+          "maxLevel": 26
         },
         {
-          "speciesId": 50,
-          "formId": 10105,
+          "speciesId": 562,
           "weight": 15,
-          "minLevel": 28,
-          "maxLevel": 32
+          "minLevel": 22,
+          "maxLevel": 26
         },
         {
-          "speciesId": 74,
-          "formId": 10109,
+          "speciesId": 556,
           "weight": 15,
-          "minLevel": 28,
-          "maxLevel": 32
+          "minLevel": 22,
+          "maxLevel": 26
         },
         {
-          "speciesId": 88,
-          "formId": 10112,
-          "weight": 10,
-          "minLevel": 28,
-          "maxLevel": 32
-        },
-        {
-          "speciesId": 105,
-          "formId": 10115,
+          "speciesId": 550,
+          "formId": 10247,
           "weight": 5,
-          "minLevel": 30,
-          "maxLevel": 34
-        },
-        {
-          "speciesId": 20,
-          "formId": 10093,
-          "weight": 1,
-          "minLevel": 40,
-          "maxLevel": 40
+          "minLevel": 22,
+          "maxLevel": 26
         }
       ],
       "lootTableId": "butin-grotte",
       "unlock": {
         "type": "trainerDefeated",
-        "trainerId": "ilima"
+        "trainerId": "aloe"
       }
     },
     {
@@ -3830,27 +3851,25 @@
       "lootTableId": "butin-route",
       "unlock": {
         "type": "badgeCount",
-        "count": 1
+        "count": 1,
+        "regionId": "kanto"
       }
     },
     {
-      "id": "lac-colere",
+      "id": "tour-chetiflor",
       "regionId": "johto",
       "order": 2,
-      "name": "Lac Colère",
-      "description": "Un grand lac agité. On murmure qu’un Léviator rouge y aurait été aperçu.",
+      "name": "Tour Chétiflor",
+      "description": "Une vieille tour de bois qui oscille doucement. Des ombres y rôdent la nuit.",
       "image": null,
-      "habitat": "waters-edge",
+      "habitat": "urban",
       "enabled": true,
-      "minPower": 400,
-      "requiredTypes": [
-        {
-          "type": "water",
-          "count": 1
-        }
-      ],
+      "minPower": 180,
+      "requiredTypes": [],
       "affinityTypes": [
-        "water"
+        "ghost",
+        "grass",
+        "normal"
       ],
       "durationsMinutes": [
         2,
@@ -3862,47 +3881,46 @@
       ],
       "encounters": [
         {
-          "speciesId": 183,
+          "speciesId": 163,
           "weight": 25,
-          "minLevel": 15,
-          "maxLevel": 20
+          "minLevel": 4,
+          "maxLevel": 7
         },
         {
-          "speciesId": 194,
+          "speciesId": 198,
+          "weight": 8,
+          "minLevel": 5,
+          "maxLevel": 8
+        },
+        {
+          "speciesId": 177,
+          "weight": 12,
+          "minLevel": 5,
+          "maxLevel": 8
+        },
+        {
+          "speciesId": 19,
+          "weight": 25,
+          "minLevel": 4,
+          "maxLevel": 7
+        },
+        {
+          "speciesId": 92,
           "weight": 20,
-          "minLevel": 15,
-          "maxLevel": 20
+          "minLevel": 4,
+          "maxLevel": 7
         },
         {
-          "speciesId": 194,
-          "formId": 10253,
-          "weight": 5,
-          "minLevel": 15,
-          "maxLevel": 20
-        },
-        {
-          "speciesId": 170,
-          "weight": 15,
-          "minLevel": 18,
-          "maxLevel": 22
-        },
-        {
-          "speciesId": 223,
-          "weight": 15,
-          "minLevel": 18,
-          "maxLevel": 22
-        },
-        {
-          "speciesId": 211,
+          "speciesId": 69,
           "weight": 10,
-          "minLevel": 20,
-          "maxLevel": 24
+          "minLevel": 4,
+          "maxLevel": 7
         }
       ],
-      "lootTableId": "butin-mer",
+      "lootTableId": "butin-grotte",
       "unlock": {
         "type": "trainerDefeated",
-        "trainerId": "albert"
+        "trainerId": "scout-willy"
       }
     },
     {
@@ -3963,7 +3981,164 @@
       "lootTableId": "butin-fouilles",
       "unlock": {
         "type": "badgeCount",
-        "count": 1
+        "count": 1,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "route-32",
+      "regionId": "johto",
+      "order": 3,
+      "name": "Route 32",
+      "description": "La longue route qui descend de Mauville vers les Caves Jumelles, bordée d’étangs.",
+      "image": null,
+      "habitat": "grassland",
+      "enabled": true,
+      "minPower": 250,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "electric",
+        "grass",
+        "water"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 179,
+          "weight": 25,
+          "minLevel": 6,
+          "maxLevel": 9
+        },
+        {
+          "speciesId": 187,
+          "weight": 18,
+          "minLevel": 6,
+          "maxLevel": 9
+        },
+        {
+          "speciesId": 163,
+          "weight": 12,
+          "minLevel": 6,
+          "maxLevel": 9
+        },
+        {
+          "speciesId": 211,
+          "weight": 6,
+          "minLevel": 7,
+          "maxLevel": 10
+        },
+        {
+          "speciesId": 23,
+          "weight": 10,
+          "minLevel": 6,
+          "maxLevel": 9
+        },
+        {
+          "speciesId": 69,
+          "weight": 10,
+          "minLevel": 6,
+          "maxLevel": 9
+        },
+        {
+          "speciesId": 72,
+          "weight": 9,
+          "minLevel": 6,
+          "maxLevel": 9
+        },
+        {
+          "speciesId": 129,
+          "weight": 10,
+          "minLevel": 5,
+          "maxLevel": 10
+        }
+      ],
+      "lootTableId": "butin-route",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 1,
+        "regionId": "johto"
+      }
+    },
+    {
+      "id": "caves-jumelles",
+      "regionId": "johto",
+      "order": 4,
+      "name": "Caves Jumelles",
+      "description": "Un réseau de galeries humides sous la Route 32, où barbotent les Axoloto.",
+      "image": null,
+      "habitat": "cave",
+      "enabled": true,
+      "minPower": 300,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "rock",
+        "ground",
+        "water"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 194,
+          "weight": 25,
+          "minLevel": 7,
+          "maxLevel": 10
+        },
+        {
+          "speciesId": 41,
+          "weight": 22,
+          "minLevel": 6,
+          "maxLevel": 10
+        },
+        {
+          "speciesId": 74,
+          "weight": 22,
+          "minLevel": 6,
+          "maxLevel": 10
+        },
+        {
+          "speciesId": 27,
+          "weight": 10,
+          "minLevel": 7,
+          "maxLevel": 10
+        },
+        {
+          "speciesId": 19,
+          "weight": 12,
+          "minLevel": 6,
+          "maxLevel": 9
+        },
+        {
+          "speciesId": 95,
+          "weight": 6,
+          "minLevel": 8,
+          "maxLevel": 11
+        },
+        {
+          "speciesId": 195,
+          "weight": 3,
+          "minLevel": 15,
+          "maxLevel": 18
+        }
+      ],
+      "lootTableId": "butin-grotte",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 1,
+        "regionId": "johto"
       }
     },
     {
@@ -4040,6 +4215,73 @@
       }
     },
     {
+      "id": "ruines-alpha",
+      "regionId": "johto",
+      "order": 5,
+      "name": "Ruines d’Alpha",
+      "description": "Des ruines millénaires couvertes d’inscriptions. Les Zarbi semblent former des lettres.",
+      "image": null,
+      "habitat": "rough-terrain",
+      "enabled": true,
+      "minPower": 380,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "psychic",
+        "rock"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 201,
+          "weight": 32,
+          "minLevel": 8,
+          "maxLevel": 12
+        },
+        {
+          "speciesId": 177,
+          "weight": 22,
+          "minLevel": 8,
+          "maxLevel": 12
+        },
+        {
+          "speciesId": 194,
+          "weight": 14,
+          "minLevel": 8,
+          "maxLevel": 12
+        },
+        {
+          "speciesId": 235,
+          "weight": 8,
+          "minLevel": 9,
+          "maxLevel": 13
+        },
+        {
+          "speciesId": 63,
+          "weight": 12,
+          "minLevel": 8,
+          "maxLevel": 12
+        },
+        {
+          "speciesId": 54,
+          "weight": 12,
+          "minLevel": 8,
+          "maxLevel": 12
+        }
+      ],
+      "lootTableId": "butin-fouilles",
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "montagnard-anthony"
+      }
+    },
+    {
       "id": "cap-azuria",
       "regionId": "kanto",
       "order": 5,
@@ -4104,7 +4346,8 @@
       "lootTableId": "butin-mer",
       "unlock": {
         "type": "badgeCount",
-        "count": 2
+        "count": 2,
+        "regionId": "kanto"
       }
     },
     {
@@ -4189,7 +4432,155 @@
       "lootTableId": "butin-route",
       "unlock": {
         "type": "badgeCount",
-        "count": 2
+        "count": 2,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "puits-ramoloss",
+      "regionId": "johto",
+      "order": 6,
+      "name": "Puits Ramoloss",
+      "description": "Le puits d’Écorcia, où la Team Rocket coupe la queue des Ramoloss pour la revendre.",
+      "image": null,
+      "habitat": "cave",
+      "enabled": true,
+      "minPower": 420,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "water",
+        "psychic"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 79,
+          "weight": 40,
+          "minLevel": 9,
+          "maxLevel": 13
+        },
+        {
+          "speciesId": 41,
+          "weight": 25,
+          "minLevel": 9,
+          "maxLevel": 13
+        },
+        {
+          "speciesId": 194,
+          "weight": 15,
+          "minLevel": 9,
+          "maxLevel": 13
+        },
+        {
+          "speciesId": 118,
+          "weight": 10,
+          "minLevel": 9,
+          "maxLevel": 13
+        },
+        {
+          "speciesId": 129,
+          "weight": 10,
+          "minLevel": 8,
+          "maxLevel": 12
+        }
+      ],
+      "lootTableId": "butin-grotte",
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "montagnard-anthony"
+      }
+    },
+    {
+      "id": "bois-aux-chenes",
+      "regionId": "johto",
+      "order": 7,
+      "name": "Bois aux Chênes",
+      "description": "Une forêt si dense que le soleil n’y perce jamais. Un petit autel y est dédié au protecteur des bois.",
+      "image": null,
+      "habitat": "forest",
+      "enabled": true,
+      "minPower": 480,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "bug",
+        "grass"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 204,
+          "weight": 18,
+          "minLevel": 10,
+          "maxLevel": 14
+        },
+        {
+          "speciesId": 165,
+          "weight": 12,
+          "minLevel": 10,
+          "maxLevel": 14
+        },
+        {
+          "speciesId": 167,
+          "weight": 12,
+          "minLevel": 10,
+          "maxLevel": 14
+        },
+        {
+          "speciesId": 163,
+          "weight": 10,
+          "minLevel": 10,
+          "maxLevel": 14
+        },
+        {
+          "speciesId": 46,
+          "weight": 16,
+          "minLevel": 10,
+          "maxLevel": 14
+        },
+        {
+          "speciesId": 43,
+          "weight": 14,
+          "minLevel": 10,
+          "maxLevel": 14
+        },
+        {
+          "speciesId": 54,
+          "weight": 10,
+          "minLevel": 10,
+          "maxLevel": 14
+        },
+        {
+          "speciesId": 166,
+          "weight": 4,
+          "minLevel": 16,
+          "maxLevel": 18
+        },
+        {
+          "speciesId": 168,
+          "weight": 4,
+          "minLevel": 20,
+          "maxLevel": 22
+        }
+      ],
+      "lootTableId": "butin-foret",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 2,
+        "regionId": "johto"
       }
     },
     {
@@ -4237,7 +4628,107 @@
       "lootTableId": "butin-grotte",
       "unlock": {
         "type": "badgeCount",
-        "count": 2
+        "count": 2,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "routes-34-35",
+      "regionId": "johto",
+      "order": 8,
+      "name": "Routes 34 et 35",
+      "description": "Les prés qui entourent Doublonville et sa Pension. Un Métamorph s’y cache parfois.",
+      "image": null,
+      "habitat": "grassland",
+      "enabled": true,
+      "minPower": 520,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "normal",
+        "fairy",
+        "grass"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 209,
+          "weight": 18,
+          "minLevel": 12,
+          "maxLevel": 16
+        },
+        {
+          "speciesId": 191,
+          "weight": 15,
+          "minLevel": 12,
+          "maxLevel": 16
+        },
+        {
+          "speciesId": 193,
+          "weight": 8,
+          "minLevel": 12,
+          "maxLevel": 16
+        },
+        {
+          "speciesId": 161,
+          "weight": 8,
+          "minLevel": 12,
+          "maxLevel": 16
+        },
+        {
+          "speciesId": 96,
+          "weight": 12,
+          "minLevel": 12,
+          "maxLevel": 16
+        },
+        {
+          "speciesId": 39,
+          "weight": 10,
+          "minLevel": 12,
+          "maxLevel": 16
+        },
+        {
+          "speciesId": 63,
+          "weight": 7,
+          "minLevel": 12,
+          "maxLevel": 16
+        },
+        {
+          "speciesId": 132,
+          "weight": 6,
+          "minLevel": 12,
+          "maxLevel": 16
+        },
+        {
+          "speciesId": 29,
+          "weight": 6,
+          "minLevel": 12,
+          "maxLevel": 16
+        },
+        {
+          "speciesId": 32,
+          "weight": 6,
+          "minLevel": 12,
+          "maxLevel": 16
+        },
+        {
+          "speciesId": 162,
+          "weight": 4,
+          "minLevel": 16,
+          "maxLevel": 18
+        }
+      ],
+      "lootTableId": "butin-route",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 2,
+        "regionId": "johto"
       }
     },
     {
@@ -4323,7 +4814,8 @@
       "lootTableId": "butin-route",
       "unlock": {
         "type": "badgeCount",
-        "count": 3
+        "count": 3,
+        "regionId": "kanto"
       }
     },
     {
@@ -4391,7 +4883,83 @@
       "lootTableId": "butin-grotte",
       "unlock": {
         "type": "badgeCount",
-        "count": 3
+        "count": 3,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "antre-noir",
+      "regionId": "johto",
+      "order": 9,
+      "name": "Antre Noir",
+      "description": "Une grotte plongée dans le noir complet. On y bute sur des Insolourdo et des Qulbutoké.",
+      "image": null,
+      "habitat": "cave",
+      "enabled": true,
+      "minPower": 560,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "normal",
+        "psychic",
+        "rock"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 216,
+          "weight": 14,
+          "minLevel": 13,
+          "maxLevel": 17
+        },
+        {
+          "speciesId": 206,
+          "weight": 10,
+          "minLevel": 13,
+          "maxLevel": 17
+        },
+        {
+          "speciesId": 202,
+          "weight": 7,
+          "minLevel": 14,
+          "maxLevel": 18
+        },
+        {
+          "speciesId": 41,
+          "weight": 26,
+          "minLevel": 12,
+          "maxLevel": 16
+        },
+        {
+          "speciesId": 74,
+          "weight": 25,
+          "minLevel": 12,
+          "maxLevel": 16
+        },
+        {
+          "speciesId": 95,
+          "weight": 8,
+          "minLevel": 14,
+          "maxLevel": 18
+        },
+        {
+          "speciesId": 42,
+          "weight": 5,
+          "minLevel": 22,
+          "maxLevel": 25
+        }
+      ],
+      "lootTableId": "butin-grotte",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 2,
+        "regionId": "johto"
       }
     },
     {
@@ -4482,7 +5050,182 @@
       "lootTableId": "butin-route",
       "unlock": {
         "type": "badgeCount",
-        "count": 3
+        "count": 3,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "routes-36-37",
+      "regionId": "johto",
+      "order": 10,
+      "name": "Routes 36 et 37",
+      "description": "Les routes qui mènent à Rosalia, où paissent les Cerfrousse à la nuit tombée.",
+      "image": null,
+      "habitat": "grassland",
+      "enabled": true,
+      "minPower": 800,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "normal",
+        "psychic",
+        "dark"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 234,
+          "weight": 14,
+          "minLevel": 16,
+          "maxLevel": 20
+        },
+        {
+          "speciesId": 198,
+          "weight": 10,
+          "minLevel": 16,
+          "maxLevel": 20
+        },
+        {
+          "speciesId": 177,
+          "weight": 10,
+          "minLevel": 16,
+          "maxLevel": 20
+        },
+        {
+          "speciesId": 163,
+          "weight": 10,
+          "minLevel": 16,
+          "maxLevel": 20
+        },
+        {
+          "speciesId": 164,
+          "weight": 5,
+          "minLevel": 20,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 166,
+          "weight": 6,
+          "minLevel": 18,
+          "maxLevel": 20
+        },
+        {
+          "speciesId": 168,
+          "weight": 6,
+          "minLevel": 22,
+          "maxLevel": 24
+        },
+        {
+          "speciesId": 58,
+          "weight": 10,
+          "minLevel": 16,
+          "maxLevel": 20
+        },
+        {
+          "speciesId": 37,
+          "weight": 10,
+          "minLevel": 16,
+          "maxLevel": 20
+        },
+        {
+          "speciesId": 17,
+          "weight": 9,
+          "minLevel": 18,
+          "maxLevel": 21
+        },
+        {
+          "speciesId": 69,
+          "weight": 10,
+          "minLevel": 16,
+          "maxLevel": 20
+        }
+      ],
+      "lootTableId": "butin-route",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 3,
+        "regionId": "johto"
+      }
+    },
+    {
+      "id": "tour-cendree",
+      "regionId": "johto",
+      "order": 11,
+      "name": "Tour Cendrée",
+      "description": "Les ruines calcinées d’une tour de Rosalia. Trois Pokémon légendaires y seraient nés des flammes.",
+      "image": null,
+      "habitat": "urban",
+      "enabled": true,
+      "minPower": 850,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "fire",
+        "dark",
+        "poison"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 218,
+          "weight": 18,
+          "minLevel": 16,
+          "maxLevel": 21
+        },
+        {
+          "speciesId": 228,
+          "weight": 12,
+          "minLevel": 16,
+          "maxLevel": 21
+        },
+        {
+          "speciesId": 19,
+          "weight": 22,
+          "minLevel": 16,
+          "maxLevel": 21
+        },
+        {
+          "speciesId": 109,
+          "weight": 18,
+          "minLevel": 16,
+          "maxLevel": 21
+        },
+        {
+          "speciesId": 20,
+          "weight": 10,
+          "minLevel": 20,
+          "maxLevel": 23
+        },
+        {
+          "speciesId": 58,
+          "weight": 10,
+          "minLevel": 16,
+          "maxLevel": 21
+        },
+        {
+          "speciesId": 41,
+          "weight": 10,
+          "minLevel": 16,
+          "maxLevel": 21
+        }
+      ],
+      "lootTableId": "butin-grotte",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 3,
+        "regionId": "johto"
       }
     },
     {
@@ -4534,7 +5277,101 @@
       "lootTableId": "butin-grotte",
       "unlock": {
         "type": "badgeCount",
-        "count": 4
+        "count": 4,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "routes-38-39",
+      "regionId": "johto",
+      "order": 12,
+      "name": "Routes 38 et 39",
+      "description": "Les pâturages de la Ferme Meuh Meuh, entre Rosalia et Oliville.",
+      "image": null,
+      "habitat": "grassland",
+      "enabled": true,
+      "minPower": 900,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "normal",
+        "electric",
+        "water"
+      ],
+      "durationsMinutes": [
+        2,
+        5,
+        15,
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 241,
+          "weight": 12,
+          "minLevel": 18,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 209,
+          "weight": 8,
+          "minLevel": 18,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 164,
+          "weight": 8,
+          "minLevel": 20,
+          "maxLevel": 24
+        },
+        {
+          "speciesId": 52,
+          "weight": 15,
+          "minLevel": 18,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 20,
+          "weight": 10,
+          "minLevel": 18,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 17,
+          "weight": 10,
+          "minLevel": 18,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 79,
+          "weight": 10,
+          "minLevel": 18,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 81,
+          "weight": 10,
+          "minLevel": 18,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 22,
+          "weight": 6,
+          "minLevel": 20,
+          "maxLevel": 24
+        },
+        {
+          "speciesId": 210,
+          "weight": 3,
+          "minLevel": 23,
+          "maxLevel": 25
+        }
+      ],
+      "lootTableId": "butin-route",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 3,
+        "regionId": "johto"
       }
     },
     {
@@ -4623,7 +5460,8 @@
       "lootTableId": "butin-foret",
       "unlock": {
         "type": "badgeCount",
-        "count": 4
+        "count": 4,
+        "regionId": "kanto"
       }
     },
     {
@@ -4706,7 +5544,104 @@
       "lootTableId": "butin-route",
       "unlock": {
         "type": "badgeCount",
-        "count": 4
+        "count": 4,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "routes-42-44",
+      "regionId": "johto",
+      "order": 13,
+      "name": "Routes 42 à 44",
+      "description": "Les routes de montagne qui relient Rosalia, Acajou et Ebenelle, au pied du Mont Creuset.",
+      "image": null,
+      "habitat": "mountain",
+      "enabled": true,
+      "minPower": 1300,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "normal",
+        "electric",
+        "water"
+      ],
+      "durationsMinutes": [
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 190,
+          "weight": 12,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 203,
+          "weight": 10,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 179,
+          "weight": 10,
+          "minLevel": 22,
+          "maxLevel": 26
+        },
+        {
+          "speciesId": 180,
+          "weight": 6,
+          "minLevel": 24,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 183,
+          "weight": 10,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 223,
+          "weight": 10,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 21,
+          "weight": 10,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 22,
+          "weight": 6,
+          "minLevel": 26,
+          "maxLevel": 30
+        },
+        {
+          "speciesId": 56,
+          "weight": 8,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 77,
+          "weight": 8,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 224,
+          "weight": 3,
+          "minLevel": 25,
+          "maxLevel": 30
+        }
+      ],
+      "lootTableId": "butin-route",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 4,
+        "regionId": "johto"
       }
     },
     {
@@ -4810,7 +5745,86 @@
       "lootTableId": "butin-mer",
       "unlock": {
         "type": "badgeCount",
-        "count": 5
+        "count": 5,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "mont-creuset",
+      "regionId": "johto",
+      "order": 14,
+      "name": "Mont Creuset",
+      "description": "Une montagne creusée de cascades et de galeries. Un Maître Karaté s’y entraîne.",
+      "image": null,
+      "habitat": "cave",
+      "enabled": true,
+      "minPower": 1400,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "fighting",
+        "rock",
+        "water"
+      ],
+      "durationsMinutes": [
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 183,
+          "weight": 16,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 184,
+          "weight": 4,
+          "minLevel": 26,
+          "maxLevel": 30
+        },
+        {
+          "speciesId": 66,
+          "weight": 16,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 74,
+          "weight": 15,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 75,
+          "weight": 8,
+          "minLevel": 25,
+          "maxLevel": 30
+        },
+        {
+          "speciesId": 41,
+          "weight": 12,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 42,
+          "weight": 8,
+          "minLevel": 25,
+          "maxLevel": 30
+        },
+        {
+          "speciesId": 217,
+          "weight": 3,
+          "minLevel": 30,
+          "maxLevel": 32
+        }
+      ],
+      "lootTableId": "butin-grotte",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 4,
+        "regionId": "johto"
       }
     },
     {
@@ -4892,7 +5906,107 @@
       "lootTableId": "butin-grotte",
       "unlock": {
         "type": "badgeCount",
-        "count": 6
+        "count": 6,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "routes-40-41",
+      "regionId": "johto",
+      "order": 15,
+      "name": "Routes 40 et 41",
+      "description": "Le bras de mer entre Oliville et Irisia, semé d’îlots. Il faut un Pokémon Eau pour le traverser.",
+      "image": null,
+      "habitat": "sea",
+      "enabled": true,
+      "minPower": 1500,
+      "requiredTypes": [
+        {
+          "type": "water",
+          "count": 1
+        }
+      ],
+      "affinityTypes": [
+        "water"
+      ],
+      "durationsMinutes": [
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 170,
+          "weight": 16,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 226,
+          "weight": 5,
+          "minLevel": 24,
+          "maxLevel": 30
+        },
+        {
+          "speciesId": 213,
+          "weight": 6,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 171,
+          "weight": 3,
+          "minLevel": 27,
+          "maxLevel": 30
+        },
+        {
+          "speciesId": 72,
+          "weight": 24,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 98,
+          "weight": 10,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 116,
+          "weight": 8,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 120,
+          "weight": 8,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 90,
+          "weight": 6,
+          "minLevel": 22,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 73,
+          "weight": 6,
+          "minLevel": 28,
+          "maxLevel": 32
+        },
+        {
+          "speciesId": 129,
+          "weight": 8,
+          "minLevel": 20,
+          "maxLevel": 30
+        }
+      ],
+      "lootTableId": "butin-mer",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 4,
+        "regionId": "johto"
       }
     },
     {
@@ -4963,7 +6077,92 @@
       "lootTableId": "butin-route",
       "unlock": {
         "type": "badgeCount",
-        "count": 7
+        "count": 7,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "phare-oliville",
+      "regionId": "johto",
+      "order": 16,
+      "name": "Phare d’Oliville",
+      "description": "Le grand phare du port, dont la lumière vient d’un Pharamp malade. Des Magnéti y grésillent.",
+      "image": null,
+      "habitat": "urban",
+      "enabled": true,
+      "minPower": 2000,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "electric",
+        "steel",
+        "water"
+      ],
+      "durationsMinutes": [
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 180,
+          "weight": 16,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 181,
+          "weight": 4,
+          "minLevel": 32,
+          "maxLevel": 36
+        },
+        {
+          "speciesId": 81,
+          "weight": 22,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 82,
+          "weight": 8,
+          "minLevel": 32,
+          "maxLevel": 36
+        },
+        {
+          "speciesId": 52,
+          "weight": 14,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 72,
+          "weight": 14,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 171,
+          "weight": 10,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 53,
+          "weight": 6,
+          "minLevel": 30,
+          "maxLevel": 36
+        },
+        {
+          "speciesId": 79,
+          "weight": 6,
+          "minLevel": 28,
+          "maxLevel": 34
+        }
+      ],
+      "lootTableId": "butin-mer",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 5,
+        "regionId": "johto"
       }
     },
     {
@@ -5040,7 +6239,96 @@
       "lootTableId": "butin-elite",
       "unlock": {
         "type": "badgeCount",
-        "count": 8
+        "count": 8,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "lac-colere",
+      "regionId": "johto",
+      "order": 17,
+      "name": "Lac Colère",
+      "description": "Un grand lac agité au nord d’Acajou. On murmure qu’un Léviator rouge y aurait été aperçu.",
+      "image": null,
+      "habitat": "waters-edge",
+      "enabled": true,
+      "minPower": 2400,
+      "requiredTypes": [
+        {
+          "type": "water",
+          "count": 1
+        }
+      ],
+      "affinityTypes": [
+        "water",
+        "bug"
+      ],
+      "durationsMinutes": [
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 129,
+          "weight": 32,
+          "minLevel": 28,
+          "maxLevel": 38
+        },
+        {
+          "speciesId": 194,
+          "weight": 14,
+          "minLevel": 30,
+          "maxLevel": 36
+        },
+        {
+          "speciesId": 195,
+          "weight": 8,
+          "minLevel": 32,
+          "maxLevel": 38
+        },
+        {
+          "speciesId": 193,
+          "weight": 8,
+          "minLevel": 30,
+          "maxLevel": 36
+        },
+        {
+          "speciesId": 118,
+          "weight": 12,
+          "minLevel": 30,
+          "maxLevel": 36
+        },
+        {
+          "speciesId": 119,
+          "weight": 4,
+          "minLevel": 34,
+          "maxLevel": 40
+        },
+        {
+          "speciesId": 60,
+          "weight": 10,
+          "minLevel": 30,
+          "maxLevel": 36
+        },
+        {
+          "speciesId": 61,
+          "weight": 6,
+          "minLevel": 32,
+          "maxLevel": 38
+        },
+        {
+          "speciesId": 130,
+          "weight": 3,
+          "minLevel": 36,
+          "maxLevel": 40
+        }
+      ],
+      "lootTableId": "butin-mer",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 6,
+        "regionId": "johto"
       }
     },
     {
@@ -5125,7 +6413,8 @@
         "conditions": [
           {
             "type": "badgeCount",
-            "count": 2
+            "count": 2,
+            "regionId": "kanto"
           },
           {
             "type": "regionDexPercent",
@@ -5133,6 +6422,180 @@
             "percent": 20
           }
         ]
+      }
+    },
+    {
+      "id": "route-de-glace",
+      "regionId": "johto",
+      "order": 18,
+      "name": "Route de Glace",
+      "description": "Un passage gelé entre Acajou et Ebenelle, où l’on glisse d’un bout à l’autre de la grotte.",
+      "image": null,
+      "habitat": "cave",
+      "enabled": true,
+      "minPower": 2800,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "ice",
+        "water",
+        "dark"
+      ],
+      "durationsMinutes": [
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 220,
+          "weight": 24,
+          "minLevel": 32,
+          "maxLevel": 38
+        },
+        {
+          "speciesId": 221,
+          "weight": 4,
+          "minLevel": 36,
+          "maxLevel": 40
+        },
+        {
+          "speciesId": 225,
+          "weight": 7,
+          "minLevel": 32,
+          "maxLevel": 38
+        },
+        {
+          "speciesId": 215,
+          "weight": 7,
+          "minLevel": 32,
+          "maxLevel": 38
+        },
+        {
+          "speciesId": 86,
+          "weight": 16,
+          "minLevel": 32,
+          "maxLevel": 38
+        },
+        {
+          "speciesId": 87,
+          "weight": 4,
+          "minLevel": 36,
+          "maxLevel": 40
+        },
+        {
+          "speciesId": 41,
+          "weight": 12,
+          "minLevel": 32,
+          "maxLevel": 38
+        },
+        {
+          "speciesId": 42,
+          "weight": 10,
+          "minLevel": 34,
+          "maxLevel": 40
+        },
+        {
+          "speciesId": 74,
+          "weight": 10,
+          "minLevel": 32,
+          "maxLevel": 38
+        }
+      ],
+      "lootTableId": "butin-grotte",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 7,
+        "regionId": "johto"
+      }
+    },
+    {
+      "id": "routes-45-46",
+      "regionId": "johto",
+      "order": 19,
+      "name": "Routes 45 et 46",
+      "description": "Un sentier de montagne abrupt au sud d’Ebenelle, où dévalent les Phanpy.",
+      "image": null,
+      "habitat": "mountain",
+      "enabled": true,
+      "minPower": 3200,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "ground",
+        "rock",
+        "normal"
+      ],
+      "durationsMinutes": [
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 231,
+          "weight": 18,
+          "minLevel": 36,
+          "maxLevel": 42
+        },
+        {
+          "speciesId": 232,
+          "weight": 4,
+          "minLevel": 40,
+          "maxLevel": 44
+        },
+        {
+          "speciesId": 216,
+          "weight": 10,
+          "minLevel": 36,
+          "maxLevel": 42
+        },
+        {
+          "speciesId": 217,
+          "weight": 5,
+          "minLevel": 40,
+          "maxLevel": 44
+        },
+        {
+          "speciesId": 74,
+          "weight": 12,
+          "minLevel": 36,
+          "maxLevel": 42
+        },
+        {
+          "speciesId": 75,
+          "weight": 10,
+          "minLevel": 38,
+          "maxLevel": 44
+        },
+        {
+          "speciesId": 57,
+          "weight": 10,
+          "minLevel": 38,
+          "maxLevel": 44
+        },
+        {
+          "speciesId": 66,
+          "weight": 10,
+          "minLevel": 36,
+          "maxLevel": 42
+        },
+        {
+          "speciesId": 67,
+          "weight": 6,
+          "minLevel": 40,
+          "maxLevel": 44
+        },
+        {
+          "speciesId": 22,
+          "weight": 8,
+          "minLevel": 38,
+          "maxLevel": 44
+        }
+      ],
+      "lootTableId": "butin-fouilles",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 8,
+        "regionId": "johto"
       }
     },
     {
@@ -5209,7 +6672,8 @@
         "conditions": [
           {
             "type": "badgeCount",
-            "count": 4
+            "count": 4,
+            "regionId": "kanto"
           },
           {
             "type": "speciesCaught",
@@ -5343,13 +6807,110 @@
         "conditions": [
           {
             "type": "badgeCount",
-            "count": 5
+            "count": 5,
+            "regionId": "kanto"
           },
           {
             "type": "speciesCaught",
             "count": 60
           }
         ]
+      }
+    },
+    {
+      "id": "routes-26-27",
+      "regionId": "johto",
+      "order": 20,
+      "name": "Routes 26 et 27",
+      "description": "Les routes côtières qui mènent au Plateau Indigo. Les dresseurs y sont tous aguerris.",
+      "image": null,
+      "habitat": "waters-edge",
+      "enabled": true,
+      "minPower": 3600,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "normal",
+        "water",
+        "psychic"
+      ],
+      "durationsMinutes": [
+        60,
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 164,
+          "weight": 10,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 178,
+          "weight": 8,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 195,
+          "weight": 8,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 232,
+          "weight": 6,
+          "minLevel": 42,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 229,
+          "weight": 5,
+          "minLevel": 42,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 20,
+          "weight": 10,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 22,
+          "weight": 10,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 78,
+          "weight": 8,
+          "minLevel": 42,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 85,
+          "weight": 8,
+          "minLevel": 42,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 57,
+          "weight": 8,
+          "minLevel": 42,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 73,
+          "weight": 8,
+          "minLevel": 40,
+          "maxLevel": 46
+        }
+      ],
+      "lootTableId": "butin-elite",
+      "unlock": {
+        "type": "badgeCount",
+        "count": 8,
+        "regionId": "johto"
       }
     },
     {
@@ -5419,11 +6980,105 @@
         "conditions": [
           {
             "type": "badgeCount",
-            "count": 5
+            "count": 5,
+            "regionId": "kanto"
           },
           {
             "type": "trainerDefeated",
             "trainerId": "karateka-kiyo"
+          }
+        ]
+      }
+    },
+    {
+      "id": "labo-orme",
+      "regionId": "johto",
+      "order": 21,
+      "name": "Labo du Prof. Orme",
+      "description": "Le Prof. Orme élève des Germignon, Héricendre et Kaiminus, et étudie un mystérieux œuf de Togepi. Il ouvre son labo aux dresseurs confirmés.",
+      "image": null,
+      "habitat": "grassland",
+      "enabled": true,
+      "minPower": 1000,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "grass",
+        "fire",
+        "water"
+      ],
+      "durationsMinutes": [
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 161,
+          "weight": 22,
+          "minLevel": 14,
+          "maxLevel": 18
+        },
+        {
+          "speciesId": 163,
+          "weight": 22,
+          "minLevel": 14,
+          "maxLevel": 18
+        },
+        {
+          "speciesId": 165,
+          "weight": 14,
+          "minLevel": 14,
+          "maxLevel": 18
+        },
+        {
+          "speciesId": 167,
+          "weight": 14,
+          "minLevel": 14,
+          "maxLevel": 18
+        },
+        {
+          "speciesId": 187,
+          "weight": 14,
+          "minLevel": 14,
+          "maxLevel": 18
+        },
+        {
+          "speciesId": 152,
+          "weight": 3,
+          "minLevel": 10,
+          "maxLevel": 12
+        },
+        {
+          "speciesId": 155,
+          "weight": 3,
+          "minLevel": 10,
+          "maxLevel": 12
+        },
+        {
+          "speciesId": 158,
+          "weight": 3,
+          "minLevel": 10,
+          "maxLevel": 12
+        },
+        {
+          "speciesId": 175,
+          "weight": 3,
+          "minLevel": 5,
+          "maxLevel": 8
+        }
+      ],
+      "lootTableId": "butin-foret",
+      "unlock": {
+        "type": "allOf",
+        "conditions": [
+          {
+            "type": "badgeCount",
+            "count": 2,
+            "regionId": "johto"
+          },
+          {
+            "type": "regionDexPercent",
+            "regionId": "johto",
+            "percent": 20
           }
         ]
       }
@@ -5527,7 +7182,8 @@
         "conditions": [
           {
             "type": "badgeCount",
-            "count": 6
+            "count": 6,
+            "regionId": "kanto"
           },
           {
             "type": "trainerDefeated",
@@ -5536,6 +7192,98 @@
           {
             "type": "speciesCaught",
             "count": 70
+          }
+        ]
+      }
+    },
+    {
+      "id": "arbre-etrange",
+      "regionId": "johto",
+      "order": 22,
+      "name": "Arbre étrange",
+      "description": "Un arbre bloque la Route 36… et il bouge quand on l’arrose. Il faut un Pokémon Eau pour le déloger.",
+      "image": null,
+      "habitat": "forest",
+      "enabled": true,
+      "minPower": 1400,
+      "requiredTypes": [
+        {
+          "type": "water",
+          "count": 1
+        }
+      ],
+      "affinityTypes": [
+        "grass",
+        "rock",
+        "water"
+      ],
+      "durationsMinutes": [
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 191,
+          "weight": 16,
+          "minLevel": 18,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 192,
+          "weight": 4,
+          "minLevel": 22,
+          "maxLevel": 26
+        },
+        {
+          "speciesId": 187,
+          "weight": 16,
+          "minLevel": 18,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 188,
+          "weight": 8,
+          "minLevel": 20,
+          "maxLevel": 24
+        },
+        {
+          "speciesId": 43,
+          "weight": 14,
+          "minLevel": 18,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 69,
+          "weight": 14,
+          "minLevel": 18,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 190,
+          "weight": 8,
+          "minLevel": 18,
+          "maxLevel": 22
+        },
+        {
+          "speciesId": 185,
+          "weight": 4,
+          "minLevel": 20,
+          "maxLevel": 22
+        }
+      ],
+      "lootTableId": "butin-foret",
+      "unlock": {
+        "type": "allOf",
+        "conditions": [
+          {
+            "type": "badgeCount",
+            "count": 3,
+            "regionId": "johto"
+          },
+          {
+            "type": "regionDexPercent",
+            "regionId": "johto",
+            "percent": 30
           }
         ]
       }
@@ -5607,6 +7355,120 @@
         "type": "questStepsDone",
         "questId": "electhor",
         "count": 1
+      }
+    },
+    {
+      "id": "parc-naturel",
+      "regionId": "johto",
+      "order": 23,
+      "name": "Parc Naturel",
+      "description": "Le parc de Doublonville et son Concours de Capture d’insectes. Seules les équipes d’au moins deux Pokémon Insecte y participent ; un Scarhino s’y montre parfois.",
+      "image": null,
+      "habitat": "grassland",
+      "enabled": true,
+      "minPower": 1800,
+      "requiredTypes": [
+        {
+          "type": "bug",
+          "count": 2
+        }
+      ],
+      "affinityTypes": [
+        "bug",
+        "grass"
+      ],
+      "durationsMinutes": [
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 165,
+          "weight": 12,
+          "minLevel": 20,
+          "maxLevel": 26
+        },
+        {
+          "speciesId": 166,
+          "weight": 6,
+          "minLevel": 24,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 167,
+          "weight": 12,
+          "minLevel": 20,
+          "maxLevel": 26
+        },
+        {
+          "speciesId": 168,
+          "weight": 6,
+          "minLevel": 24,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 193,
+          "weight": 8,
+          "minLevel": 20,
+          "maxLevel": 26
+        },
+        {
+          "speciesId": 204,
+          "weight": 10,
+          "minLevel": 20,
+          "maxLevel": 26
+        },
+        {
+          "speciesId": 191,
+          "weight": 8,
+          "minLevel": 20,
+          "maxLevel": 26
+        },
+        {
+          "speciesId": 12,
+          "weight": 6,
+          "minLevel": 24,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 15,
+          "weight": 6,
+          "minLevel": 24,
+          "maxLevel": 28
+        },
+        {
+          "speciesId": 48,
+          "weight": 10,
+          "minLevel": 20,
+          "maxLevel": 26
+        },
+        {
+          "speciesId": 46,
+          "weight": 10,
+          "minLevel": 20,
+          "maxLevel": 26
+        },
+        {
+          "speciesId": 214,
+          "weight": 3,
+          "minLevel": 24,
+          "maxLevel": 28
+        }
+      ],
+      "lootTableId": "butin-foret",
+      "unlock": {
+        "type": "allOf",
+        "conditions": [
+          {
+            "type": "badgeCount",
+            "count": 3,
+            "regionId": "johto"
+          },
+          {
+            "type": "trainerDefeated",
+            "trainerId": "scout-hugo"
+          }
+        ]
       }
     },
     {
@@ -5700,6 +7562,215 @@
         "type": "questStepsDone",
         "questId": "artikodin",
         "count": 1
+      }
+    },
+    {
+      "id": "parc-safari-johto",
+      "regionId": "johto",
+      "order": 24,
+      "name": "Parc Safari de Johto",
+      "description": "La réserve ouverte au-delà d’Irisia, sur des terres arides et rocheuses. Scorplane et Airmure ne se montrent qu’aux dresseurs patients.",
+      "image": null,
+      "habitat": "rough-terrain",
+      "enabled": true,
+      "minPower": 2600,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "ground",
+        "rock",
+        "flying"
+      ],
+      "durationsMinutes": [
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 231,
+          "weight": 14,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 195,
+          "weight": 10,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 178,
+          "weight": 8,
+          "minLevel": 30,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 203,
+          "weight": 8,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 111,
+          "weight": 14,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 102,
+          "weight": 12,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 114,
+          "weight": 10,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 84,
+          "weight": 10,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 27,
+          "weight": 8,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 207,
+          "weight": 4,
+          "minLevel": 28,
+          "maxLevel": 34
+        },
+        {
+          "speciesId": 227,
+          "weight": 2,
+          "minLevel": 30,
+          "maxLevel": 34
+        }
+      ],
+      "lootTableId": "butin-fouilles",
+      "unlock": {
+        "type": "allOf",
+        "conditions": [
+          {
+            "type": "badgeCount",
+            "count": 5,
+            "regionId": "johto"
+          },
+          {
+            "type": "regionDexPercent",
+            "regionId": "johto",
+            "percent": 40
+          }
+        ]
+      }
+    },
+    {
+      "id": "mont-argente",
+      "regionId": "johto",
+      "order": 25,
+      "name": "Mont Argenté",
+      "description": "La montagne interdite entre Johto et Kanto, réservée aux Maîtres. Un dresseur silencieux attendrait au sommet.",
+      "image": null,
+      "habitat": "mountain",
+      "enabled": true,
+      "minPower": 5000,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "rock",
+        "ghost",
+        "ground"
+      ],
+      "durationsMinutes": [
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 217,
+          "weight": 12,
+          "minLevel": 45,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 232,
+          "weight": 10,
+          "minLevel": 45,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 229,
+          "weight": 8,
+          "minLevel": 45,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 75,
+          "weight": 12,
+          "minLevel": 45,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 95,
+          "weight": 10,
+          "minLevel": 45,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 57,
+          "weight": 10,
+          "minLevel": 45,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 105,
+          "weight": 8,
+          "minLevel": 45,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 59,
+          "weight": 6,
+          "minLevel": 48,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 78,
+          "weight": 6,
+          "minLevel": 48,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 200,
+          "weight": 3,
+          "minLevel": 45,
+          "maxLevel": 50
+        },
+        {
+          "speciesId": 246,
+          "weight": 3,
+          "minLevel": 20,
+          "maxLevel": 25
+        }
+      ],
+      "lootTableId": "butin-elite",
+      "unlock": {
+        "type": "allOf",
+        "conditions": [
+          {
+            "type": "trainerDefeated",
+            "trainerId": "maitre-peter"
+          },
+          {
+            "type": "regionDexPercent",
+            "regionId": "johto",
+            "percent": 60
+          }
+        ]
       }
     },
     {
@@ -5884,6 +7955,105 @@
       }
     },
     {
+      "id": "tourb-iles",
+      "regionId": "johto",
+      "order": 26,
+      "name": "Tourb’Îles",
+      "description": "Quatre îles cernées de tourbillons, au large d’Irisia. Un gardien des mers dormirait dans leurs profondeurs ; des Corayon s’y accrochent aux rochers.",
+      "image": null,
+      "habitat": "sea",
+      "enabled": true,
+      "minPower": 3000,
+      "requiredTypes": [
+        {
+          "type": "water",
+          "count": 2
+        }
+      ],
+      "affinityTypes": [
+        "water",
+        "psychic"
+      ],
+      "durationsMinutes": [
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 72,
+          "weight": 18,
+          "minLevel": 38,
+          "maxLevel": 44
+        },
+        {
+          "speciesId": 73,
+          "weight": 8,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 98,
+          "weight": 10,
+          "minLevel": 38,
+          "maxLevel": 44
+        },
+        {
+          "speciesId": 99,
+          "weight": 5,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 116,
+          "weight": 10,
+          "minLevel": 38,
+          "maxLevel": 44
+        },
+        {
+          "speciesId": 117,
+          "weight": 5,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 86,
+          "weight": 10,
+          "minLevel": 38,
+          "maxLevel": 44
+        },
+        {
+          "speciesId": 87,
+          "weight": 4,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 129,
+          "weight": 8,
+          "minLevel": 35,
+          "maxLevel": 45
+        },
+        {
+          "speciesId": 171,
+          "weight": 6,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 222,
+          "weight": 4,
+          "minLevel": 38,
+          "maxLevel": 44
+        }
+      ],
+      "lootTableId": "butin-mer",
+      "unlock": {
+        "type": "questStepsDone",
+        "questId": "lugia",
+        "count": 1
+      }
+    },
+    {
       "id": "ile-lointaine",
       "regionId": "kanto",
       "order": 27,
@@ -5963,6 +8133,95 @@
       "unlock": {
         "type": "questStepsDone",
         "questId": "mew",
+        "count": 2
+      }
+    },
+    {
+      "id": "tour-carillon",
+      "regionId": "johto",
+      "order": 27,
+      "name": "Tour Carillon",
+      "description": "La tour à neuf étages de Rosalia. Ses cloches sonnent pour accueillir l’oiseau arc-en-ciel.",
+      "image": null,
+      "habitat": "urban",
+      "enabled": true,
+      "minPower": 4000,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "fire",
+        "psychic",
+        "ghost"
+      ],
+      "durationsMinutes": [
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 198,
+          "weight": 12,
+          "minLevel": 45,
+          "maxLevel": 50
+        },
+        {
+          "speciesId": 228,
+          "weight": 10,
+          "minLevel": 45,
+          "maxLevel": 50
+        },
+        {
+          "speciesId": 229,
+          "weight": 6,
+          "minLevel": 48,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 218,
+          "weight": 10,
+          "minLevel": 45,
+          "maxLevel": 50
+        },
+        {
+          "speciesId": 219,
+          "weight": 6,
+          "minLevel": 48,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 177,
+          "weight": 10,
+          "minLevel": 45,
+          "maxLevel": 50
+        },
+        {
+          "speciesId": 178,
+          "weight": 6,
+          "minLevel": 48,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 92,
+          "weight": 12,
+          "minLevel": 45,
+          "maxLevel": 50
+        },
+        {
+          "speciesId": 93,
+          "weight": 8,
+          "minLevel": 48,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 20,
+          "weight": 10,
+          "minLevel": 45,
+          "maxLevel": 50
+        }
+      ],
+      "lootTableId": "butin-elite",
+      "unlock": {
+        "type": "questStepsDone",
+        "questId": "ho-oh",
         "count": 2
       }
     },
@@ -6075,28 +8334,115 @@
         "regionId": "kanto",
         "percent": 50
       }
+    },
+    {
+      "id": "autel-bois-aux-chenes",
+      "regionId": "johto",
+      "order": 28,
+      "name": "Autel du Bois aux Chênes",
+      "description": "Le petit autel de bois, au cœur de la forêt. On raconte qu’un voyageur du temps y apparaît.",
+      "image": null,
+      "habitat": "forest",
+      "enabled": true,
+      "minPower": 3600,
+      "requiredTypes": [],
+      "affinityTypes": [
+        "grass",
+        "bug",
+        "psychic"
+      ],
+      "durationsMinutes": [
+        240,
+        480
+      ],
+      "encounters": [
+        {
+          "speciesId": 204,
+          "weight": 14,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 205,
+          "weight": 6,
+          "minLevel": 42,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 191,
+          "weight": 12,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 192,
+          "weight": 6,
+          "minLevel": 42,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 188,
+          "weight": 10,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 189,
+          "weight": 6,
+          "minLevel": 42,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 166,
+          "weight": 8,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 168,
+          "weight": 8,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 47,
+          "weight": 8,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 45,
+          "weight": 6,
+          "minLevel": 42,
+          "maxLevel": 46
+        }
+      ],
+      "lootTableId": "butin-foret",
+      "unlock": {
+        "type": "questStepsDone",
+        "questId": "celebi",
+        "count": 2
+      }
     }
   ],
   "trainers": [
     {
-      "id": "nouvel",
-      "regionId": "hisui",
-      "zoneId": "plaine-obsidienne",
+      "id": "montagnard-bruno",
+      "regionId": "hoenn",
+      "zoneId": "grotte-granite",
       "order": 0,
-      "name": "Nouvel",
-      "trainerClass": "Membre du Groupe Galaxie",
-      "sprite": "/api/sprites/trainers/youngster-gen4.png",
+      "name": "Bruno",
+      "trainerClass": "Montagnard",
+      "sprite": "/api/sprites/trainers/hiker-gen3.png",
       "team": [
         {
-          "speciesId": 58,
-          "formId": 10229,
-          "level": 14,
+          "speciesId": 296,
+          "level": 13,
           "iv": null,
           "nature": null
         },
         {
-          "speciesId": 100,
-          "formId": 10231,
+          "speciesId": 304,
           "level": 14,
           "iv": null,
           "nature": null
@@ -6110,206 +8456,16 @@
         "forbiddenTypes": [],
         "minPower": 0
       },
-      "money": 800,
-      "lootTableId": "butin-route",
-      "lootRolls": 1,
-      "badge": null,
-      "repeatable": true,
-      "cooldownMinutes": null,
-      "koMinutes": null,
-      "enabled": true,
-      "unlock": {
-        "type": "always"
-      }
-    },
-    {
-      "id": "katy",
-      "regionId": "paldea",
-      "zoneId": null,
-      "order": 0,
-      "name": "Katy",
-      "trainerClass": "Championne d’arène",
-      "sprite": "/api/sprites/trainers/katy.png",
-      "team": [
-        {
-          "speciesId": 917,
-          "level": 14,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 919,
-          "level": 14,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 216,
-          "level": 15,
-          "iv": null,
-          "nature": null
-        }
-      ],
-      "durationMinutes": 60,
-      "rules": {
-        "teamSize": null,
-        "maxLevel": null,
-        "requiredTypes": [],
-        "forbiddenTypes": [],
-        "minPower": 0
-      },
-      "money": 5500,
-      "lootTableId": "butin-route",
-      "lootRolls": 3,
-      "badge": {
-        "name": "Badge Insecte",
-        "image": null
-      },
-      "repeatable": false,
-      "cooldownMinutes": null,
-      "koMinutes": null,
-      "enabled": true,
-      "unlock": {
-        "type": "regionDexPercent",
-        "regionId": "paldea",
-        "percent": 5
-      }
-    },
-    {
-      "id": "gamin-joey",
-      "regionId": "johto",
-      "zoneId": "route-29",
-      "order": 0,
-      "name": "Joey",
-      "trainerClass": "Gamin",
-      "sprite": "/api/sprites/trainers/youngster-gen4.png",
-      "team": [
-        {
-          "speciesId": 161,
-          "level": 6,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 19,
-          "level": 6,
-          "iv": null,
-          "nature": null
-        }
-      ],
-      "durationMinutes": 10,
-      "rules": {
-        "teamSize": null,
-        "maxLevel": null,
-        "requiredTypes": [],
-        "forbiddenTypes": [],
-        "minPower": 0
-      },
-      "money": 150,
-      "lootTableId": "butin-route",
-      "lootRolls": 1,
-      "badge": null,
-      "repeatable": true,
-      "cooldownMinutes": null,
-      "koMinutes": null,
-      "enabled": true,
-      "unlock": {
-        "type": "always"
-      }
-    },
-    {
-      "id": "gamin-unys",
-      "regionId": "unys",
-      "zoneId": "route-1-unys",
-      "order": 0,
-      "name": "Kévin",
-      "trainerClass": "Gamin",
-      "sprite": "/api/sprites/trainers/youngster.png",
-      "team": [
-        {
-          "speciesId": 504,
-          "level": 7,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 506,
-          "level": 8,
-          "iv": null,
-          "nature": null
-        }
-      ],
-      "durationMinutes": 10,
-      "rules": {
-        "teamSize": null,
-        "maxLevel": null,
-        "requiredTypes": [],
-        "forbiddenTypes": [],
-        "minPower": 0
-      },
-      "money": 300,
-      "lootTableId": "butin-route",
-      "lootRolls": 1,
-      "badge": null,
-      "repeatable": true,
-      "cooldownMinutes": null,
-      "koMinutes": null,
-      "enabled": true,
-      "unlock": {
-        "type": "always"
-      }
-    },
-    {
-      "id": "pierrick",
-      "regionId": "sinnoh",
-      "zoneId": null,
-      "order": 0,
-      "name": "Pierrick",
-      "trainerClass": "Champion d’arène",
-      "sprite": "/api/sprites/trainers/roark.png",
-      "team": [
-        {
-          "speciesId": 74,
-          "level": 22,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 95,
-          "level": 23,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 408,
-          "level": 26,
-          "iv": null,
-          "nature": null
-        }
-      ],
-      "durationMinutes": 60,
-      "rules": {
-        "teamSize": null,
-        "maxLevel": null,
-        "requiredTypes": [],
-        "forbiddenTypes": [],
-        "minPower": 0
-      },
-      "money": 3000,
+      "money": 400,
       "lootTableId": "butin-grotte",
-      "lootRolls": 3,
-      "badge": {
-        "name": "Badge Charbon",
-        "image": null
-      },
-      "repeatable": false,
+      "lootRolls": 1,
+      "badge": null,
+      "repeatable": true,
       "cooldownMinutes": null,
       "koMinutes": null,
       "enabled": true,
       "unlock": {
-        "type": "regionDexPercent",
-        "regionId": "sinnoh",
-        "percent": 5
+        "type": "always"
       }
     },
     {
@@ -6498,22 +8654,24 @@
       }
     },
     {
-      "id": "montagnard-bruno",
-      "regionId": "hoenn",
-      "zoneId": "grotte-granite",
+      "id": "nouvel",
+      "regionId": "hisui",
+      "zoneId": "plaine-obsidienne",
       "order": 0,
-      "name": "Bruno",
-      "trainerClass": "Montagnard",
-      "sprite": "/api/sprites/trainers/hiker-gen3.png",
+      "name": "Nouvel",
+      "trainerClass": "Membre du Groupe Galaxie",
+      "sprite": "/api/sprites/trainers/youngster-gen4.png",
       "team": [
         {
-          "speciesId": 296,
-          "level": 13,
+          "speciesId": 58,
+          "formId": 10229,
+          "level": 14,
           "iv": null,
           "nature": null
         },
         {
-          "speciesId": 304,
+          "speciesId": 100,
+          "formId": 10231,
           "level": 14,
           "iv": null,
           "nature": null
@@ -6527,8 +8685,8 @@
         "forbiddenTypes": [],
         "minPower": 0
       },
-      "money": 400,
-      "lootTableId": "butin-grotte",
+      "money": 800,
+      "lootTableId": "butin-route",
       "lootRolls": 1,
       "badge": null,
       "repeatable": true,
@@ -6540,29 +8698,29 @@
       }
     },
     {
-      "id": "albert",
-      "regionId": "johto",
+      "id": "katy",
+      "regionId": "paldea",
       "zoneId": null,
-      "order": 1,
-      "name": "Albert",
-      "trainerClass": "Champion d’arène",
-      "sprite": "/api/sprites/trainers/falkner.png",
+      "order": 0,
+      "name": "Katy",
+      "trainerClass": "Championne d’arène",
+      "sprite": "/api/sprites/trainers/katy.png",
       "team": [
         {
-          "speciesId": 16,
-          "level": 13,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 163,
+          "speciesId": 917,
           "level": 14,
           "iv": null,
           "nature": null
         },
         {
-          "speciesId": 17,
-          "level": 16,
+          "speciesId": 919,
+          "level": 14,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 216,
+          "level": 15,
           "iv": null,
           "nature": null
         }
@@ -6575,11 +8733,11 @@
         "forbiddenTypes": [],
         "minPower": 0
       },
-      "money": 1800,
+      "money": 5500,
       "lootTableId": "butin-route",
       "lootRolls": 3,
       "badge": {
-        "name": "Badge Zéphyr",
+        "name": "Badge Insecte",
         "image": null
       },
       "repeatable": false,
@@ -6587,8 +8745,146 @@
       "koMinutes": null,
       "enabled": true,
       "unlock": {
-        "type": "trainerDefeated",
-        "trainerId": "gamin-joey"
+        "type": "regionDexPercent",
+        "regionId": "paldea",
+        "percent": 5
+      }
+    },
+    {
+      "id": "gamin-unys",
+      "regionId": "unys",
+      "zoneId": "route-1-unys",
+      "order": 0,
+      "name": "Kévin",
+      "trainerClass": "Gamin",
+      "sprite": "/api/sprites/trainers/youngster.png",
+      "team": [
+        {
+          "speciesId": 504,
+          "level": 7,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 506,
+          "level": 8,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 10,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 300,
+      "lootTableId": "butin-route",
+      "lootRolls": 1,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "pierrick",
+      "regionId": "sinnoh",
+      "zoneId": null,
+      "order": 0,
+      "name": "Pierrick",
+      "trainerClass": "Champion d’arène",
+      "sprite": "/api/sprites/trainers/roark.png",
+      "team": [
+        {
+          "speciesId": 74,
+          "level": 22,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 95,
+          "level": 23,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 408,
+          "level": 26,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 60,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 3000,
+      "lootTableId": "butin-grotte",
+      "lootRolls": 3,
+      "badge": {
+        "name": "Badge Charbon",
+        "image": null
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "regionDexPercent",
+        "regionId": "sinnoh",
+        "percent": 5
+      }
+    },
+    {
+      "id": "gamin-joey",
+      "regionId": "johto",
+      "zoneId": "route-29",
+      "order": 0,
+      "name": "Joey",
+      "trainerClass": "Gamin",
+      "sprite": "/api/sprites/trainers/youngster-gen4.png",
+      "team": [
+        {
+          "speciesId": 161,
+          "level": 4,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 19,
+          "level": 4,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 10,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 80,
+      "lootTableId": "butin-route",
+      "lootRolls": 1,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
       }
     },
     {
@@ -6632,6 +8928,56 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "gamin-tom"
+      }
+    },
+    {
+      "id": "scout-willy",
+      "regionId": "johto",
+      "zoneId": "routes-30-31",
+      "order": 1,
+      "name": "Willy",
+      "trainerClass": "Scout",
+      "sprite": "/api/sprites/trainers/bugcatcher-gen3.png",
+      "team": [
+        {
+          "speciesId": 165,
+          "level": 5,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 167,
+          "level": 5,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 13,
+          "level": 6,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 15,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 150,
+      "lootTableId": "butin-foret",
+      "lootRolls": 1,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "regionDexPercent",
+        "regionId": "johto",
+        "percent": 3
       }
     },
     {
@@ -6688,6 +9034,104 @@
       }
     },
     {
+      "id": "roxanne",
+      "regionId": "hoenn",
+      "zoneId": null,
+      "order": 1,
+      "name": "Roxanne",
+      "trainerClass": "Championne d’arène",
+      "sprite": "/api/sprites/trainers/roxanne.png",
+      "team": [
+        {
+          "speciesId": 74,
+          "level": 15,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 74,
+          "level": 15,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 299,
+          "level": 18,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 60,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2400,
+      "lootTableId": "butin-grotte",
+      "lootRolls": 3,
+      "badge": {
+        "name": "Badge Rocher",
+        "image": null
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "montagnard-bruno"
+      }
+    },
+    {
+      "id": "aloe",
+      "regionId": "unys",
+      "zoneId": null,
+      "order": 1,
+      "name": "Aloé",
+      "trainerClass": "Championne d’arène",
+      "sprite": "/api/sprites/trainers/lenora.png",
+      "team": [
+        {
+          "speciesId": 506,
+          "level": 20,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 505,
+          "level": 22,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 60,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 3500,
+      "lootTableId": "butin-route",
+      "lootRolls": 3,
+      "badge": {
+        "name": "Badge Basique",
+        "image": null
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "gamin-unys"
+      }
+    },
+    {
       "id": "tarak",
       "regionId": "galar",
       "zoneId": "antre-dynamax",
@@ -6739,28 +9183,34 @@
       }
     },
     {
-      "id": "aloe",
-      "regionId": "unys",
-      "zoneId": null,
-      "order": 1,
-      "name": "Aloé",
-      "trainerClass": "Championne d’arène",
-      "sprite": "/api/sprites/trainers/lenora.png",
+      "id": "sage-li",
+      "regionId": "johto",
+      "zoneId": "tour-chetiflor",
+      "order": 2,
+      "name": "Li",
+      "trainerClass": "Sage",
+      "sprite": "/api/sprites/trainers/sage.png",
       "team": [
         {
-          "speciesId": 506,
-          "level": 20,
+          "speciesId": 69,
+          "level": 7,
           "iv": null,
           "nature": null
         },
         {
-          "speciesId": 505,
-          "level": 22,
+          "speciesId": 69,
+          "level": 7,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 163,
+          "level": 10,
           "iv": null,
           "nature": null
         }
       ],
-      "durationMinutes": 60,
+      "durationMinutes": 20,
       "rules": {
         "teamSize": null,
         "maxLevel": null,
@@ -6768,72 +9218,17 @@
         "forbiddenTypes": [],
         "minPower": 0
       },
-      "money": 3500,
-      "lootTableId": "butin-route",
-      "lootRolls": 3,
-      "badge": {
-        "name": "Badge Basique",
-        "image": null
-      },
-      "repeatable": false,
-      "cooldownMinutes": null,
-      "koMinutes": null,
-      "enabled": true,
-      "unlock": {
-        "type": "trainerDefeated",
-        "trainerId": "gamin-unys"
-      }
-    },
-    {
-      "id": "roxanne",
-      "regionId": "hoenn",
-      "zoneId": null,
-      "order": 1,
-      "name": "Roxanne",
-      "trainerClass": "Championne d’arène",
-      "sprite": "/api/sprites/trainers/roxanne.png",
-      "team": [
-        {
-          "speciesId": 74,
-          "level": 15,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 74,
-          "level": 15,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 299,
-          "level": 18,
-          "iv": null,
-          "nature": null
-        }
-      ],
-      "durationMinutes": 60,
-      "rules": {
-        "teamSize": null,
-        "maxLevel": null,
-        "requiredTypes": [],
-        "forbiddenTypes": [],
-        "minPower": 0
-      },
-      "money": 2400,
+      "money": 200,
       "lootTableId": "butin-grotte",
-      "lootRolls": 3,
-      "badge": {
-        "name": "Badge Rocher",
-        "image": null
-      },
-      "repeatable": false,
+      "lootRolls": 2,
+      "badge": null,
+      "repeatable": true,
       "cooldownMinutes": null,
       "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
-        "trainerId": "montagnard-bruno"
+        "trainerId": "scout-willy"
       }
     },
     {
@@ -6887,6 +9282,52 @@
       }
     },
     {
+      "id": "albert",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 3,
+      "name": "Albert",
+      "trainerClass": "Champion d’arène",
+      "sprite": "/api/sprites/trainers/falkner.png",
+      "team": [
+        {
+          "speciesId": 16,
+          "level": 11,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 17,
+          "level": 15,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 60,
+      "rules": {
+        "teamSize": 2,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 160
+      },
+      "money": 1500,
+      "lootTableId": "butin-route",
+      "lootRolls": 3,
+      "badge": {
+        "name": "Badge Zéphyr",
+        "image": null
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "sage-li"
+      }
+    },
+    {
       "id": "pierre",
       "regionId": "kanto",
       "zoneId": null,
@@ -6933,6 +9374,56 @@
       }
     },
     {
+      "id": "pecheur-raoul",
+      "regionId": "johto",
+      "zoneId": "route-32",
+      "order": 4,
+      "name": "Raoul",
+      "trainerClass": "Pêcheur",
+      "sprite": "/api/sprites/trainers/fisherman.png",
+      "team": [
+        {
+          "speciesId": 129,
+          "level": 10,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 211,
+          "level": 12,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 72,
+          "level": 11,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 30,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 300,
+      "lootTableId": "butin-mer",
+      "lootRolls": 2,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 1,
+        "regionId": "johto"
+      }
+    },
+    {
       "id": "campeur-leo",
       "regionId": "kanto",
       "zoneId": "mont-selenite",
@@ -6972,7 +9463,57 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 1
+        "count": 1,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "montagnard-anthony",
+      "regionId": "johto",
+      "zoneId": "caves-jumelles",
+      "order": 5,
+      "name": "Anthony",
+      "trainerClass": "Montagnard",
+      "sprite": "/api/sprites/trainers/hiker-gen4.png",
+      "team": [
+        {
+          "speciesId": 74,
+          "level": 12,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 41,
+          "level": 12,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 95,
+          "level": 13,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 30,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 360,
+      "lootTableId": "butin-grotte",
+      "lootRolls": 2,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "pecheur-raoul"
       }
     },
     {
@@ -7074,6 +9615,55 @@
       }
     },
     {
+      "id": "sbire-puits",
+      "regionId": "johto",
+      "zoneId": "puits-ramoloss",
+      "order": 6,
+      "name": "Sbire",
+      "trainerClass": "Team Rocket",
+      "sprite": "/api/sprites/trainers/rocketgrunt.png",
+      "team": [
+        {
+          "speciesId": 19,
+          "level": 13,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 23,
+          "level": 14,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 41,
+          "level": 15,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 30,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 450,
+      "lootTableId": "butin-grotte",
+      "lootRolls": 2,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "montagnard-anthony"
+      }
+    },
+    {
       "id": "ondine",
       "regionId": "kanto",
       "zoneId": null,
@@ -7117,6 +9707,58 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "pique-niqueuse-ali"
+      }
+    },
+    {
+      "id": "hector",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 7,
+      "name": "Hector",
+      "trainerClass": "Champion d’arène",
+      "sprite": "/api/sprites/trainers/bugsy.png",
+      "team": [
+        {
+          "speciesId": 11,
+          "level": 16,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 14,
+          "level": 16,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 123,
+          "level": 18,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 60,
+      "rules": {
+        "teamSize": 3,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 290
+      },
+      "money": 1800,
+      "lootTableId": "butin-foret",
+      "lootRolls": 3,
+      "badge": {
+        "name": "Badge Essaim",
+        "image": null
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 120,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "sbire-puits"
       }
     },
     {
@@ -7165,7 +9807,107 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 2
+        "count": 2,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "scout-hugo",
+      "regionId": "johto",
+      "zoneId": "bois-aux-chenes",
+      "order": 8,
+      "name": "Hugo",
+      "trainerClass": "Scout",
+      "sprite": "/api/sprites/trainers/bugcatcher-gen3.png",
+      "team": [
+        {
+          "speciesId": 204,
+          "level": 16,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 166,
+          "level": 17,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 168,
+          "level": 17,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 45,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 500,
+      "lootTableId": "butin-foret",
+      "lootRolls": 2,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 2,
+        "regionId": "johto"
+      }
+    },
+    {
+      "id": "pique-niqueuse-gina",
+      "regionId": "johto",
+      "zoneId": "routes-34-35",
+      "order": 9,
+      "name": "Gina",
+      "trainerClass": "Pique-niqueuse",
+      "sprite": "/api/sprites/trainers/picnicker.png",
+      "team": [
+        {
+          "speciesId": 209,
+          "level": 17,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 191,
+          "level": 17,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 39,
+          "level": 18,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 45,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 550,
+      "lootTableId": "butin-route",
+      "lootRolls": 2,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "scout-hugo"
       }
     },
     {
@@ -7221,6 +9963,58 @@
       }
     },
     {
+      "id": "blanche",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 10,
+      "name": "Blanche",
+      "trainerClass": "Championne d’arène",
+      "sprite": "/api/sprites/trainers/whitney.png",
+      "team": [
+        {
+          "speciesId": 39,
+          "level": 20,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 35,
+          "level": 21,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 241,
+          "level": 24,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 60,
+      "rules": {
+        "teamSize": 3,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 400
+      },
+      "money": 2400,
+      "lootTableId": "butin-grotte",
+      "lootRolls": 3,
+      "badge": {
+        "name": "Badge Plaine",
+        "image": null
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 120,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "pique-niqueuse-gina"
+      }
+    },
+    {
       "id": "montagnard-ivan",
       "regionId": "kanto",
       "zoneId": "tunnel-roche",
@@ -7272,7 +10066,8 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 3
+        "count": 3,
+        "regionId": "kanto"
       }
     },
     {
@@ -7328,6 +10123,62 @@
       }
     },
     {
+      "id": "mediume-edith",
+      "regionId": "johto",
+      "zoneId": "tour-cendree",
+      "order": 11,
+      "name": "Édith",
+      "trainerClass": "Médium",
+      "sprite": "/api/sprites/trainers/medium.png",
+      "team": [
+        {
+          "speciesId": 92,
+          "level": 20,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 92,
+          "level": 20,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 93,
+          "level": 22,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 228,
+          "level": 22,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 60,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 900,
+      "lootTableId": "butin-grotte",
+      "lootRolls": 2,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 3,
+        "regionId": "johto"
+      }
+    },
+    {
       "id": "mediume-paula",
       "regionId": "kanto",
       "zoneId": "tour-pokemon",
@@ -7379,7 +10230,122 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 4
+        "count": 4,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "mortimer",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 12,
+      "name": "Mortimer",
+      "trainerClass": "Champion d’arène",
+      "sprite": "/api/sprites/trainers/morty.png",
+      "team": [
+        {
+          "speciesId": 92,
+          "level": 23,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 93,
+          "level": 23,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 93,
+          "level": 25,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 94,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 60,
+      "rules": {
+        "teamSize": 4,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 640
+      },
+      "money": 2700,
+      "lootTableId": "butin-grotte",
+      "lootRolls": 3,
+      "badge": {
+        "name": "Badge Brume",
+        "image": null
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 120,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "mediume-edith"
+      }
+    },
+    {
+      "id": "nageuse-marina",
+      "regionId": "johto",
+      "zoneId": "routes-40-41",
+      "order": 13,
+      "name": "Marina",
+      "trainerClass": "Nageuse",
+      "sprite": "/api/sprites/trainers/swimmerf-gen4.png",
+      "team": [
+        {
+          "speciesId": 170,
+          "level": 26,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 72,
+          "level": 26,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 116,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 226,
+          "level": 28,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 60,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 1300,
+      "lootTableId": "butin-mer",
+      "lootRolls": 2,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 4,
+        "regionId": "johto"
       }
     },
     {
@@ -7496,6 +10462,64 @@
       }
     },
     {
+      "id": "chuck",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 14,
+      "name": "Chuck",
+      "trainerClass": "Champion d’arène",
+      "sprite": "/api/sprites/trainers/chuck.png",
+      "team": [
+        {
+          "speciesId": 56,
+          "level": 30,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 66,
+          "level": 30,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 57,
+          "level": 32,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 62,
+          "level": 34,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 90,
+      "rules": {
+        "teamSize": 4,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 780
+      },
+      "money": 3400,
+      "lootTableId": "butin-grotte",
+      "lootRolls": 3,
+      "badge": {
+        "name": "Badge Choc",
+        "image": null
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 120,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "nageuse-marina"
+      }
+    },
+    {
       "id": "karateka-kiyo",
       "regionId": "kanto",
       "zoneId": null,
@@ -7547,7 +10571,122 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 5
+        "count": 5,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "marin-gilles",
+      "regionId": "johto",
+      "zoneId": "phare-oliville",
+      "order": 15,
+      "name": "Gilles",
+      "trainerClass": "Marin",
+      "sprite": "/api/sprites/trainers/sailor.png",
+      "team": [
+        {
+          "speciesId": 72,
+          "level": 30,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 81,
+          "level": 30,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 171,
+          "level": 31,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 82,
+          "level": 32,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 60,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 1600,
+      "lootTableId": "butin-mer",
+      "lootRolls": 2,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 5,
+        "regionId": "johto"
+      }
+    },
+    {
+      "id": "jasmine",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 16,
+      "name": "Jasmine",
+      "trainerClass": "Championne d’arène",
+      "sprite": "/api/sprites/trainers/jasmine.png",
+      "team": [
+        {
+          "speciesId": 81,
+          "level": 34,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 82,
+          "level": 35,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 205,
+          "level": 35,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 208,
+          "level": 39,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 90,
+      "rules": {
+        "teamSize": 4,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 970
+      },
+      "money": 3900,
+      "lootTableId": "butin-grotte",
+      "lootRolls": 3,
+      "badge": {
+        "name": "Badge Minéral",
+        "image": null
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 120,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "marin-gilles"
       }
     },
     {
@@ -7602,7 +10741,8 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 5
+        "count": 5,
+        "regionId": "kanto"
       }
     },
     {
@@ -7664,6 +10804,62 @@
       }
     },
     {
+      "id": "sbire-qg-rocket",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 17,
+      "name": "Sbire",
+      "trainerClass": "Team Rocket",
+      "sprite": "/api/sprites/trainers/rocketgrunt.png",
+      "team": [
+        {
+          "speciesId": 24,
+          "level": 33,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 89,
+          "level": 33,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 110,
+          "level": 34,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 20,
+          "level": 34,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 60,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 1800,
+      "lootTableId": "butin-grotte",
+      "lootRolls": 2,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 6,
+        "regionId": "johto"
+      }
+    },
+    {
       "id": "nageuse-lena",
       "regionId": "kanto",
       "zoneId": "routes-maritimes",
@@ -7715,7 +10911,72 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 6
+        "count": 6,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "fredo",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 18,
+      "name": "Frédo",
+      "trainerClass": "Champion d’arène",
+      "sprite": "/api/sprites/trainers/pryce.png",
+      "team": [
+        {
+          "speciesId": 86,
+          "level": 36,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 124,
+          "level": 37,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 91,
+          "level": 37,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 87,
+          "level": 38,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 221,
+          "level": 40,
+          "iv": 20,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 90,
+      "rules": {
+        "teamSize": 5,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 1290
+      },
+      "money": 4000,
+      "lootTableId": "butin-grotte",
+      "lootRolls": 3,
+      "badge": {
+        "name": "Badge Glacier",
+        "image": null
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 120,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "sbire-qg-rocket"
       }
     },
     {
@@ -7777,6 +11038,132 @@
       }
     },
     {
+      "id": "skieuse-rosa",
+      "regionId": "johto",
+      "zoneId": "route-de-glace",
+      "order": 19,
+      "name": "Rosa",
+      "trainerClass": "Skieuse",
+      "sprite": "/api/sprites/trainers/skier.png",
+      "team": [
+        {
+          "speciesId": 220,
+          "level": 35,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 86,
+          "level": 35,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 225,
+          "level": 36,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 215,
+          "level": 37,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 87,
+          "level": 37,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 60,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2200,
+      "lootTableId": "butin-grotte",
+      "lootRolls": 2,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 7,
+        "regionId": "johto"
+      }
+    },
+    {
+      "id": "sandra",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 20,
+      "name": "Sandra",
+      "trainerClass": "Championne d’arène",
+      "sprite": "/api/sprites/trainers/clair.png",
+      "team": [
+        {
+          "speciesId": 148,
+          "level": 40,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 148,
+          "level": 40,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 148,
+          "level": 40,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 130,
+          "level": 41,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 230,
+          "level": 44,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 120,
+      "rules": {
+        "teamSize": 5,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 1480
+      },
+      "money": 4400,
+      "lootTableId": "butin-elite",
+      "lootRolls": 3,
+      "badge": {
+        "name": "Badge Lever",
+        "image": null
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 180,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "skieuse-rosa"
+      }
+    },
+    {
       "id": "scientifique-hector",
       "regionId": "kanto",
       "zoneId": "manoir-pokemon",
@@ -7834,7 +11221,8 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 7
+        "count": 7,
+        "regionId": "kanto"
       }
     },
     {
@@ -7902,6 +11290,139 @@
       }
     },
     {
+      "id": "topdresseur-gaston",
+      "regionId": "johto",
+      "zoneId": "routes-26-27",
+      "order": 21,
+      "name": "Gaston",
+      "trainerClass": "Topdresseur",
+      "sprite": "/api/sprites/trainers/acetrainer-gen4.png",
+      "team": [
+        {
+          "speciesId": 181,
+          "level": 44,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 229,
+          "level": 44,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 195,
+          "level": 43,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 232,
+          "level": 44,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 164,
+          "level": 43,
+          "iv": 20,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 90,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 3500,
+      "lootTableId": "butin-elite",
+      "lootRolls": 2,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 8,
+        "regionId": "johto"
+      }
+    },
+    {
+      "id": "clement",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 22,
+      "name": "Clément",
+      "trainerClass": "Conseil 4",
+      "sprite": "/api/sprites/trainers/will.png",
+      "team": [
+        {
+          "speciesId": 178,
+          "level": 50,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 124,
+          "level": 51,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 103,
+          "level": 51,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 80,
+          "level": 51,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 178,
+          "level": 53,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 120,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 7000,
+      "lootTableId": "butin-elite",
+      "lootRolls": 3,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 240,
+      "enabled": true,
+      "unlock": {
+        "type": "allOf",
+        "conditions": [
+          {
+            "type": "badgeCount",
+            "count": 8,
+            "regionId": "johto"
+          },
+          {
+            "type": "trainerDefeated",
+            "trainerId": "topdresseur-gaston"
+          }
+        ]
+      }
+    },
+    {
       "id": "topdresseuse-alice",
       "regionId": "kanto",
       "zoneId": "route-victoire",
@@ -7959,7 +11480,69 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 8
+        "count": 8,
+        "regionId": "kanto"
+      }
+    },
+    {
+      "id": "koga-conseil",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 23,
+      "name": "Koga",
+      "trainerClass": "Conseil 4",
+      "sprite": "/api/sprites/trainers/koga.png",
+      "team": [
+        {
+          "speciesId": 168,
+          "level": 51,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 49,
+          "level": 52,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 205,
+          "level": 54,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 89,
+          "level": 53,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 169,
+          "level": 55,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 120,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 7000,
+      "lootTableId": "butin-elite",
+      "lootRolls": 3,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 240,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "clement"
       }
     },
     {
@@ -8023,7 +11606,8 @@
         "conditions": [
           {
             "type": "badgeCount",
-            "count": 8
+            "count": 8,
+            "regionId": "kanto"
           },
           {
             "type": "trainerDefeated",
@@ -8094,6 +11678,67 @@
       }
     },
     {
+      "id": "aldo-johto",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 24,
+      "name": "Aldo",
+      "trainerClass": "Conseil 4",
+      "sprite": "/api/sprites/trainers/bruno.png",
+      "team": [
+        {
+          "speciesId": 237,
+          "level": 53,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 106,
+          "level": 53,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 107,
+          "level": 53,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 95,
+          "level": 54,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 68,
+          "level": 57,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 120,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 7000,
+      "lootTableId": "butin-elite",
+      "lootRolls": 3,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 240,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "koga-conseil"
+      }
+    },
+    {
       "id": "agatha",
       "regionId": "kanto",
       "zoneId": null,
@@ -8152,6 +11797,134 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "aldo"
+      }
+    },
+    {
+      "id": "marion",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 25,
+      "name": "Marion",
+      "trainerClass": "Conseil 4",
+      "sprite": "/api/sprites/trainers/karen.png",
+      "team": [
+        {
+          "speciesId": 197,
+          "level": 54,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 45,
+          "level": 54,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 198,
+          "level": 56,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 94,
+          "level": 57,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 229,
+          "level": 59,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 120,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 7000,
+      "lootTableId": "butin-elite",
+      "lootRolls": 3,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 240,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "aldo-johto"
+      }
+    },
+    {
+      "id": "maitre-peter",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 26,
+      "name": "Peter",
+      "trainerClass": "Maître de la Ligue",
+      "sprite": "/api/sprites/trainers/lance.png",
+      "team": [
+        {
+          "speciesId": 130,
+          "level": 58,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 149,
+          "level": 60,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 149,
+          "level": 60,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 142,
+          "level": 59,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 6,
+          "level": 59,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 149,
+          "level": 63,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 18000,
+      "lootTableId": "butin-elite",
+      "lootRolls": 5,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 240,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "marion"
       }
     },
     {
@@ -8280,6 +12053,82 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "peter"
+      }
+    },
+    {
+      "id": "red",
+      "regionId": "johto",
+      "zoneId": "mont-argente",
+      "order": 27,
+      "name": "Red",
+      "trainerClass": "Dresseur légendaire",
+      "sprite": "/api/sprites/trainers/red.png",
+      "team": [
+        {
+          "speciesId": 25,
+          "level": 81,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 196,
+          "level": 73,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 143,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 3,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 6,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 9,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "durationMinutes": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 30000,
+      "lootTableId": "butin-elite",
+      "lootRolls": 6,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "koMinutes": 480,
+      "enabled": true,
+      "unlock": {
+        "type": "allOf",
+        "conditions": [
+          {
+            "type": "trainerDefeated",
+            "trainerId": "maitre-peter"
+          },
+          {
+            "type": "trainerDefeated",
+            "trainerId": "maitre-blue"
+          }
+        ]
       }
     },
     {
@@ -10629,7 +14478,8 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 4
+        "count": 4,
+        "regionId": "kanto"
       },
       "steps": [
         {
@@ -10695,6 +14545,74 @@
       }
     },
     {
+      "id": "raikou",
+      "order": 0,
+      "name": "La bête du tonnerre",
+      "description": "Un grondement de tonnerre résonne sous la Tour Cendrée.",
+      "image": null,
+      "regionId": "johto",
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 4,
+        "regionId": "johto"
+      },
+      "steps": [
+        {
+          "name": "Orage",
+          "description": "Capture 10 Pokémon Électrik.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 10,
+            "pokemonType": "electric",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Les cendres",
+          "description": "Capture 5 Pokémon Feu.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 5,
+            "pokemonType": "fire",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Le sous-sol de la tour",
+          "description": "Réussis une expédition à la Tour Cendrée avec 2 Pokémon Électrik de PE 350 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "tour-cendree",
+            "count": 1,
+            "memberType": "electric",
+            "memberCount": 2,
+            "minMemberPower": 350
+          }
+        }
+      ],
+      "rewards": {
+        "currency": 12000,
+        "items": [
+          {
+            "itemId": "bottle-cap",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "battleSlots": 0,
+        "daycareSlots": 0,
+        "bonuses": [],
+        "pokemon": [
+          {
+            "speciesId": 243,
+            "level": 50,
+            "perfectIvs": 3
+          }
+        ]
+      }
+    },
+    {
       "id": "artikodin",
       "order": 1,
       "name": "L’oiseau des glaces",
@@ -10704,7 +14622,8 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 5
+        "count": 5,
+        "regionId": "kanto"
       },
       "steps": [
         {
@@ -10762,6 +14681,139 @@
       }
     },
     {
+      "id": "entei",
+      "order": 1,
+      "name": "La bête du volcan",
+      "description": "Une bête de feu aurait fui la Tour Cendrée en faisant trembler la terre.",
+      "image": null,
+      "regionId": "johto",
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 5,
+        "regionId": "johto"
+      },
+      "steps": [
+        {
+          "name": "Braises",
+          "description": "Capture 10 Pokémon Feu.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 10,
+            "pokemonType": "fire",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Sur ses traces",
+          "description": "Capture 40 % du Pokédex de Johto.",
+          "condition": {
+            "type": "regionDexPercent",
+            "regionId": "johto",
+            "percent": 40
+          }
+        },
+        {
+          "name": "Le brasier",
+          "description": "Réussis une expédition à la Tour Cendrée avec 2 Pokémon Feu de PE 450 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "tour-cendree",
+            "count": 1,
+            "memberType": "fire",
+            "memberCount": 2,
+            "minMemberPower": 450
+          }
+        }
+      ],
+      "rewards": {
+        "currency": 12000,
+        "items": [
+          {
+            "itemId": "bottle-cap",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "battleSlots": 0,
+        "daycareSlots": 0,
+        "bonuses": [],
+        "pokemon": [
+          {
+            "speciesId": 244,
+            "level": 50,
+            "perfectIvs": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "suicune",
+      "order": 2,
+      "name": "La bête des aurores",
+      "description": "Une bête aux reflets de cristal court sur l’eau du Lac Colère.",
+      "image": null,
+      "regionId": "johto",
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 6,
+        "regionId": "johto"
+      },
+      "steps": [
+        {
+          "name": "Eaux pures",
+          "description": "Capture 15 Pokémon Eau.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 15,
+            "pokemonType": "water",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Le vent du nord",
+          "description": "Bats Frédo, le Champion d’Acajou.",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "fredo"
+          }
+        },
+        {
+          "name": "Sur le lac",
+          "description": "Réussis une expédition au Lac Colère avec 2 Pokémon Eau de PE 500 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "lac-colere",
+            "count": 1,
+            "memberType": "water",
+            "memberCount": 2,
+            "minMemberPower": 500
+          }
+        }
+      ],
+      "rewards": {
+        "currency": 12000,
+        "items": [
+          {
+            "itemId": "bottle-cap",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "battleSlots": 0,
+        "daycareSlots": 0,
+        "bonuses": [],
+        "pokemon": [
+          {
+            "speciesId": 245,
+            "level": 50,
+            "perfectIvs": 3
+          }
+        ]
+      }
+    },
+    {
       "id": "sulfura",
       "order": 2,
       "name": "L’oiseau de feu",
@@ -10771,7 +14823,8 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 7
+        "count": 7,
+        "regionId": "kanto"
       },
       "steps": [
         {
@@ -10836,7 +14889,8 @@
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 8
+        "count": 8,
+        "regionId": "kanto"
       },
       "steps": [
         {
@@ -10912,6 +14966,168 @@
       }
     },
     {
+      "id": "lugia",
+      "order": 3,
+      "name": "Le gardien des mers",
+      "description": "Les tourbillons des Tourb’Îles cacheraient un Pokémon aux ailes d’argent.",
+      "image": null,
+      "regionId": "johto",
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 7,
+        "regionId": "johto"
+      },
+      "steps": [
+        {
+          "name": "Plongée",
+          "description": "Capture 20 Pokémon Eau pour franchir les tourbillons.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 20,
+            "pokemonType": "water",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Le chant des kimonos",
+          "description": "Bats Sandra, la Championne d’Ebenelle.",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "sandra"
+          }
+        },
+        {
+          "name": "Esprits",
+          "description": "Capture 10 Pokémon Psy.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 10,
+            "pokemonType": "psychic",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Les profondeurs",
+          "description": "Réussis une expédition aux Tourb’Îles avec 2 Pokémon Psy de PE 600 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "tourb-iles",
+            "count": 1,
+            "memberType": "psychic",
+            "memberCount": 2,
+            "minMemberPower": 600
+          }
+        }
+      ],
+      "rewards": {
+        "currency": 40000,
+        "items": [
+          {
+            "itemId": "gold-bottle-cap",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "battleSlots": 0,
+        "daycareSlots": 0,
+        "bonuses": [],
+        "pokemon": [
+          {
+            "speciesId": 249,
+            "level": 70,
+            "perfectIvs": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "ho-oh",
+      "order": 4,
+      "name": "L’oiseau arc-en-ciel",
+      "description": "Les cloches de la Tour Carillon attendent un dresseur digne de l’oiseau sacré.",
+      "image": null,
+      "regionId": "johto",
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 8,
+        "regionId": "johto"
+      },
+      "steps": [
+        {
+          "name": "Les trois bêtes",
+          "description": "Termine les quêtes de Raikou, d’Entei et de Suicune.",
+          "condition": {
+            "type": "allOf",
+            "conditions": [
+              {
+                "type": "questCompleted",
+                "questId": "raikou"
+              },
+              {
+                "type": "questCompleted",
+                "questId": "entei"
+              },
+              {
+                "type": "questCompleted",
+                "questId": "suicune"
+              }
+            ]
+          }
+        },
+        {
+          "name": "Maître de Johto",
+          "description": "Bats Peter, le Maître de la Ligue.",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "maitre-peter"
+          }
+        },
+        {
+          "name": "Chercheur",
+          "description": "Capture 80 % du Pokédex de Johto.",
+          "condition": {
+            "type": "regionDexPercent",
+            "regionId": "johto",
+            "percent": 80
+          }
+        },
+        {
+          "name": "Le sommet de la tour",
+          "description": "Réussis une expédition à la Tour Carillon avec 3 Pokémon Feu de PE 750 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "tour-carillon",
+            "count": 1,
+            "memberType": "fire",
+            "memberCount": 3,
+            "minMemberPower": 750
+          }
+        }
+      ],
+      "rewards": {
+        "currency": 50000,
+        "items": [
+          {
+            "itemId": "gold-bottle-cap",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "battleSlots": 0,
+        "daycareSlots": 0,
+        "bonuses": [],
+        "pokemon": [
+          {
+            "speciesId": 250,
+            "level": 70,
+            "perfectIvs": 3
+          }
+        ]
+      }
+    },
+    {
       "id": "mew",
       "order": 4,
       "name": "Le Pokémon fabuleux",
@@ -10979,6 +15195,89 @@
         "pokemon": [
           {
             "speciesId": 151,
+            "level": 30,
+            "perfectIvs": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "celebi",
+      "order": 5,
+      "name": "Le voyageur du temps",
+      "description": "Lugia et Ho-Oh apaisés, l’autel du Bois aux Chênes se met à briller.",
+      "image": null,
+      "regionId": "johto",
+      "enabled": true,
+      "unlock": {
+        "type": "allOf",
+        "conditions": [
+          {
+            "type": "questCompleted",
+            "questId": "lugia"
+          },
+          {
+            "type": "questCompleted",
+            "questId": "ho-oh"
+          }
+        ]
+      },
+      "steps": [
+        {
+          "name": "Générations",
+          "description": "Fais éclore 40 œufs.",
+          "condition": {
+            "type": "eggsHatched",
+            "count": 40
+          }
+        },
+        {
+          "name": "Presque complet",
+          "description": "Capture 95 % du Pokédex de Johto.",
+          "condition": {
+            "type": "regionDexPercent",
+            "regionId": "johto",
+            "percent": 95
+          }
+        },
+        {
+          "name": "Le souffle des bois",
+          "description": "Capture 30 Pokémon Plante.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 30,
+            "pokemonType": "grass",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "L’autel",
+          "description": "Réussis 3 expéditions à l’Autel du Bois aux Chênes.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "autel-bois-aux-chenes",
+            "count": 3,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0
+          }
+        }
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [
+          {
+            "itemId": "ability-patch",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "battleSlots": 0,
+        "daycareSlots": 0,
+        "bonuses": [],
+        "pokemon": [
+          {
+            "speciesId": 251,
             "level": 30,
             "perfectIvs": 3
           }

@@ -130,7 +130,10 @@ describe('combats de dresseurs', () => {
   it('refuse un dresseur verrouillé ou inconnu', async () => {
     const locked = await call('POST', '/api/battles', { trainerId: 'pierre', team: [starter.id] });
     expect(locked).toMatchObject({ status: 403, body: { error: 'TRAINER_LOCKED' } });
-    const unknown = await call('POST', '/api/battles', { trainerId: 'red', team: [starter.id] });
+    const unknown = await call('POST', '/api/battles', {
+      trainerId: 'inconnu',
+      team: [starter.id],
+    });
     expect(unknown).toMatchObject({ status: 404, body: { error: 'TRAINER_NOT_FOUND' } });
   });
 

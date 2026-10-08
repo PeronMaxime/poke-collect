@@ -39,7 +39,12 @@ const enc = (speciesId: number, weight: number, minLevel: number, maxLevel: numb
   maxLevel,
 });
 
-const badges = (count: number): UnlockCondition => ({ type: 'badgeCount', count });
+/** Badges de Kanto uniquement (ceux des autres régions ne comptent pas). */
+const badges = (count: number): UnlockCondition => ({
+  type: 'badgeCount',
+  count,
+  regionId: 'kanto',
+});
 const defeated = (trainerId: string): UnlockCondition => ({ type: 'trainerDefeated', trainerId });
 const allOf = (...conditions: UnlockCondition[]): UnlockCondition => ({
   type: 'allOf',

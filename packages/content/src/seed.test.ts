@@ -29,6 +29,54 @@ describe('seedContent', () => {
     expect(kanto.filter((id) => !obtainable.has(id))).toEqual([]);
   });
 
+  it('rend obtenables les 100 espèces de Johto', () => {
+    // Rencontres de toutes les régions (sans formes), fossiles et quêtes…
+    const obtainable = new Set([
+      ...seedContent.zones.flatMap((z) =>
+        z.encounters.filter((e) => !e.formId).map((e) => e.speciesId),
+      ),
+      ...seedContent.items.flatMap((i) =>
+        i.effects.flatMap((e) => (e.type === 'fossil' ? [e.speciesId] : [])),
+      ),
+      ...seedContent.quests.flatMap((q) => q.rewards.pokemon.map((p) => p.speciesId)),
+    ]);
+    // … puis leurs évolutions et leurs œufs (les bébés : Pichu, Debugant…), jusqu'à stabilité.
+    const bySpecies = new Map(species.map((s) => [s.id, s]));
+    const base = (id: number): number => {
+      const from = bySpecies.get(id)?.evolvesFromSpeciesId;
+      return from ? base(from) : id;
+    };
+    let size = 0;
+    while (size !== obtainable.size) {
+      size = obtainable.size;
+      for (const s of species) {
+        if (s.evolvesFromSpeciesId && obtainable.has(s.evolvesFromSpeciesId)) obtainable.add(s.id);
+        if (obtainable.has(s.id) && !s.eggGroups.includes('no-eggs')) obtainable.add(base(s.id));
+      }
+    }
+    const johto = seedContent.regions.find((r) => r.id === 'johto')!;
+    expect(johto.speciesIds).toHaveLength(100);
+    expect(johto.speciesIds.filter((id) => !obtainable.has(id))).toEqual([]);
+  });
+
+  it('ne compte que les badges de la région demandée', () => {
+    const issues = contentIssues({
+      ...seedContent,
+      zones: seedContent.zones.map((z) =>
+        z.id === 'route-32'
+          ? { ...z, unlock: { type: 'badgeCount', count: 9, regionId: 'johto' } }
+          : z,
+      ),
+    });
+    expect(issues).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        entityId: 'route-32',
+        message: 'Condition de déblocage : 9 badge(s) requis, 8 existent dans cette région',
+      }),
+    );
+  });
+
   it('vérifie chaque brique d’une condition combinée', () => {
     const bad = structuredClone(seedContent);
     bad.zones.find((z) => z.id === 'dojo-karate')!.unlock = {
@@ -42,7 +90,7 @@ describe('seedContent', () => {
       .filter((i) => i.severity === 'error')
       .map((i) => `${i.entityId}: ${i.message}`);
     expect(messages).toEqual([
-      'dojo-karate: Condition de déblocage : 30 badge(s) requis, 17 existent',
+      'dojo-karate: Condition de déblocage : 30 badge(s) requis, 24 existent',
       'dojo-karate: Condition de déblocage : dresseur « personne » inconnu',
     ]);
     const single = {
@@ -107,7 +155,7 @@ describe('cohérence du contenu', () => {
     tom.rules.requiredTypes = [{ type: 'fire', count: 1 }];
     tom.rules.forbiddenTypes = ['fire'];
     bad.trainers[1]!.unlock = { type: 'trainerDefeated', trainerId: 'personne' };
-    bad.trainers[2]!.unlock = { type: 'badgeCount', count: 20 };
+    bad.trainers[2]!.unlock = { type: 'badgeCount', count: 30 };
     const messages = contentIssues(bad)
       .filter((i) => i.severity === 'error' && i.entity === 'trainer')
       .map((i) => `${i.entityId}: ${i.message}`);
@@ -116,7 +164,7 @@ describe('cohérence du contenu', () => {
       'gamin-tom: Nature « grincheuse » inconnue',
       'gamin-tom: Un type est à la fois imposé et interdit',
       'fillette-lise: Condition de déblocage : dresseur « personne » inconnu',
-      'scout-rick: Condition de déblocage : 20 badge(s) requis, 17 existent',
+      'scout-rick: Condition de déblocage : 30 badge(s) requis, 24 existent',
     ]);
     expect(
       gameContentSchema.safeParse({ ...seedContent, trainers: [{ ...tom, team: [] }] }).success,
@@ -147,12 +195,18 @@ describe('cohérence du contenu', () => {
       'Zone « Cap Azuria »',
       'Zone « Routes maritimes »',
       'Zone « Îles Écume »',
-      'Zone « Archipel Lointain »',
+      'Zone « Routes 40 et 41 »',
+      'Zone « Phare d’Oliville »',
       'Zone « Lac Colère »',
+      'Zone « Tourb’Îles »',
+      'Zone « Archipel Lointain »',
       'Zone « Lac Salinas »',
       'Dresseur « Ondine »',
       'Dresseur « Hugo »',
       'Dresseur « Léna »',
+      'Dresseur « Raoul »',
+      'Dresseur « Marina »',
+      'Dresseur « Gilles »',
       'Dresseur « Maya »',
     ]);
     // Léo et Ondine dépendent du nombre de badges, pas de Pierre directement ; la Super Ball si.
@@ -344,6 +398,8 @@ describe('cohérence du contenu', () => {
     expect(findUsages(seedContent, 'item', 'gold-bottle-cap')).toEqual([
       'Article de boutique « gold-bottle-cap »',
       'Quête « Le Pokémon génétique »',
+      'Quête « Le gardien des mers »',
+      'Quête « L’oiseau arc-en-ciel »',
     ]);
   });
 });

@@ -168,8 +168,15 @@ const baseUnlockConditions = [
   }),
   /** Avoir battu un dresseur donné au moins une fois. */
   z.object({ type: z.literal('trainerDefeated'), trainerId: slugSchema }),
-  /** Posséder au moins N badges (victoires contre des dresseurs qui en donnent un). */
-  z.object({ type: z.literal('badgeCount'), count: z.int().min(1).max(100) }),
+  /**
+   * Posséder au moins N badges (victoires contre des dresseurs qui en donnent un), ceux d'une
+   * région donnée ou de toutes les régions.
+   */
+  z.object({
+    type: z.literal('badgeCount'),
+    count: z.int().min(1).max(100),
+    regionId: slugSchema.optional(),
+  }),
   /** Avoir capturé au moins N espèces différentes (Pokédex national). */
   z.object({ type: z.literal('speciesCaught'), count: z.int().min(1).max(10_000) }),
   /** Avoir fait éclore au moins N œufs. */

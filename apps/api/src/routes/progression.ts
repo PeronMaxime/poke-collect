@@ -12,11 +12,13 @@ import type {
   EvolveResponse,
   ProgressionResponse,
   QuestsResponse,
+  TrainerCardResponse,
   UseItemResponse,
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { claimReward, evolve, useItemOnPokemon } from '../game/progression';
 import { claimQuest, questsState } from '../game/quests';
+import { trainerCard } from '../game/stats';
 import { claimedRewards, pokemonActivities, toPokemonDto } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
@@ -87,6 +89,11 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
   });
 
   /** Quêtes visibles (débloquées ou commencées), avancement à jour. */
+  /** Fiche Dresseur : statistiques cumulées. */
+  app.get('/api/trainer-card', async (request): Promise<TrainerCardResponse> =>
+    trainerCard(db, request.user!.id),
+  );
+
   app.get('/api/quests', async (request): Promise<QuestsResponse> => ({
     quests: await questsState(db, content, request.user!.id, now()),
   }));

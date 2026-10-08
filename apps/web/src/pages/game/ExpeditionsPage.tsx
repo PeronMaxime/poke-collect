@@ -1,9 +1,20 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Zone } from '@poke/content';
-import { chainMultiplier, isZoneUnlocked, regionDexProgress } from '@poke/game-core';
+import {
+  chainMultiplier,
+  isUnlocked,
+  isUnlockedSoon,
+  isZoneUnlocked,
+  regionDexProgress,
+} from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { ClaimExpeditionResponse, ExpeditionDto, ShinyChainDto } from '@poke/shared';
+import type {
+  ClaimExpeditionResponse,
+  ExpeditionDto,
+  PlayerProfileDto,
+  ShinyChainDto,
+} from '@poke/shared';
 import { PokemonSprite, ProgressBar, TypeBadge, useNow } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
@@ -22,8 +33,10 @@ import {
 } from '../../lib/labels';
 import { LaunchExpeditionDialog } from './LaunchExpeditionDialog';
 import { LootReveal } from './LootReveal';
+import { RegionStarterCard } from './RegionStarterCard';
+import { RegionTabs, currentRegionTab } from './RegionTabs';
 
-export function ExpeditionsPage({ ctx }: { ctx: GameContext }) {
+export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto }) {
   const queryClient = useQueryClient();
   const expeditions = useExpeditions();
   const pokedex = usePokedex();
@@ -31,6 +44,7 @@ export function ExpeditionsPage({ ctx }: { ctx: GameContext }) {
   const now = useNow();
   const [launchZone, setLaunchZone] = useState<Zone | null>(null);
   const [reveal, setReveal] = useState<ClaimExpeditionResponse | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
 
   const claim = useMutation({
     mutationFn: (id: string) =>
@@ -55,6 +69,29 @@ export function ExpeditionsPage({ ctx }: { ctx: GameContext }) {
   const freeSlots = slots - active.length;
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
   const chains = new Map(expeditions.data?.chains.map((c) => [c.zoneId, c]));
+
+  // Région suivante débloquée : son starter, à choisir une fois.
+  const needsStarter = (id: string) => {
+    const r = ctx.region(id);
+    return (
+      !!r &&
+      r.id !== profile.regionUnlocked &&
+      r.starterSpeciesIds.length > 0 &&
+      !(r.id in profile.regionStarters) &&
+      isUnlocked(ctx, r.unlock, progress)
+    );
+  };
+  const regionId = currentRegionTab(ctx, progress, selectedRegion);
+  const region = ctx.region(regionId);
+  const dex = regionDexProgress(ctx, regionId, progress);
+  // Zones débloquées et celles du prochain badge ; les autres apparaîtront plus tard.
+  const regionZones = ctx.zones
+    .filter((z) => z.regionId === regionId)
+    .map((zone) => ({ zone, unlocked: isZoneUnlocked(ctx, zone, progress) }));
+  const visibleZones = regionZones.filter(
+    ({ zone, unlocked }) => unlocked || isUnlockedSoon(ctx, zone.unlock, progress),
+  );
+  const hiddenZones = regionZones.length - visibleZones.length;
 
   return (
     <div className="space-y-8">
@@ -97,26 +134,31 @@ export function ExpeditionsPage({ ctx }: { ctx: GameContext }) {
         )}
       </section>
 
-      {ctx.regions.map((region) => {
-        const zones = ctx.zones.filter((z) => z.regionId === region.id);
-        if (zones.length === 0) return null;
-        const dex = regionDexProgress(ctx, region.id, progress);
-        return (
-          <section key={region.id}>
-            <div className="mb-3 flex items-baseline justify-between">
+      <section className="space-y-3">
+        <RegionTabs
+          ctx={ctx}
+          progress={progress}
+          selected={regionId}
+          onSelect={setSelectedRegion}
+          marker={(id) => (needsStarter(id) ? 'Starter à choisir' : null)}
+        />
+        {region && (
+          <>
+            <div className="flex items-baseline justify-between">
               <h2 className="text-lg font-semibold">Zones de {region.name}</h2>
               <span className="text-sm text-slate-500">
                 Pokédex : {dex.caught} / {dex.total}
               </span>
             </div>
+            {needsStarter(region.id) && <RegionStarterCard ctx={ctx} region={region} />}
             <div className="grid gap-3 md:grid-cols-2">
-              {zones.map((zone) => (
+              {visibleZones.map(({ zone, unlocked }) => (
                 <ZoneCard
                   key={zone.id}
                   ctx={ctx}
                   zone={zone}
                   seen={seen}
-                  unlocked={isZoneUnlocked(ctx, zone, progress)}
+                  unlocked={unlocked}
                   canLaunch={freeSlots > 0}
                   chain={chains.get(zone.id)}
                   serverNow={serverNow}
@@ -124,9 +166,15 @@ export function ExpeditionsPage({ ctx }: { ctx: GameContext }) {
                 />
               ))}
             </div>
-          </section>
-        );
-      })}
+            {hiddenZones > 0 && (
+              <p className="text-center text-sm text-slate-500">
+                {hiddenZones} autre{hiddenZones > 1 ? 's' : ''} zone{hiddenZones > 1 ? 's' : ''} à
+                découvrir en progressant dans l’aventure.
+              </p>
+            )}
+          </>
+        )}
+      </section>
 
       {launchZone && (
         <LaunchExpeditionDialog

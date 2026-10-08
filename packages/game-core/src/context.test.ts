@@ -20,7 +20,7 @@ describe('createGameContext', () => {
       'hisui',
       'paldea',
     ]);
-    expect(ctx.region('johto')?.speciesIds).toHaveLength(94);
+    expect(ctx.region('johto')?.speciesIds).toHaveLength(100);
     expect(ctx.region('orre')).toBeUndefined();
     expect(ctx.zones.map((z) => z.id)).toEqual([
       'route-1',
@@ -53,8 +53,34 @@ describe('createGameContext', () => {
       'ile-lointaine',
       'archipel-lointain',
       'route-29',
+      'routes-30-31',
       'tour-chetiflor',
+      'route-32',
+      'caves-jumelles',
+      'ruines-alpha',
+      'puits-ramoloss',
+      'bois-aux-chenes',
+      'routes-34-35',
+      'antre-noir',
+      'routes-36-37',
+      'tour-cendree',
+      'routes-38-39',
+      'routes-42-44',
+      'mont-creuset',
+      'routes-40-41',
+      'phare-oliville',
       'lac-colere',
+      'route-de-glace',
+      'routes-45-46',
+      'routes-26-27',
+      'labo-orme',
+      'arbre-etrange',
+      'parc-naturel',
+      'parc-safari-johto',
+      'mont-argente',
+      'tourb-iles',
+      'tour-carillon',
+      'autel-bois-aux-chenes',
       'route-101',
       'grotte-granite',
       'route-201',
@@ -78,6 +104,12 @@ describe('createGameContext', () => {
       'sulfura',
       'mewtwo',
       'mew',
+      'raikou',
+      'entei',
+      'suicune',
+      'lugia',
+      'ho-oh',
+      'celebi',
     ]);
   });
 
@@ -109,17 +141,18 @@ describe('createGameContext', () => {
 });
 
 describe('playableContent', () => {
-  it('ne garde que Kanto avec le seed (autres régions désactivées)', () => {
+  it('ne garde que Kanto et Johto avec le seed (autres régions désactivées)', () => {
     const { content } = testContext();
     const playable = playableContent(content);
-    expect(playable.regions.map((r) => r.id)).toEqual(['kanto']);
-    expect(playable.zones.every((z) => z.regionId === 'kanto')).toBe(true);
+    const open = ['kanto', 'johto'];
+    expect(playable.regions.map((r) => r.id)).toEqual(open);
+    expect(playable.zones.every((z) => open.includes(z.regionId))).toBe(true);
     expect(playable.zones.length).toBeGreaterThan(0);
-    expect(playable.trainers.every((t) => t.regionId === 'kanto')).toBe(true);
-    expect(playable.dexMilestones.every((m) => m.regionId === null || m.regionId === 'kanto')).toBe(
-      true,
-    );
-    expect(content.zones.some((z) => z.regionId === 'johto')).toBe(true);
+    expect(playable.trainers.every((t) => open.includes(t.regionId))).toBe(true);
+    expect(
+      playable.dexMilestones.every((m) => m.regionId === null || open.includes(m.regionId)),
+    ).toBe(true);
+    expect(content.zones.some((z) => z.regionId === 'hoenn')).toBe(true);
   });
 
   it('retire les zones, dresseurs et quêtes désactivés un par un', () => {

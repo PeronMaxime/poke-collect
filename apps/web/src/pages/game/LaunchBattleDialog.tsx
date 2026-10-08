@@ -6,6 +6,7 @@ import {
   battleKoMinutes,
   checkBattleTeam,
   estimateBattle,
+  isRegionalSpecies,
   pokemonPower,
 } from '@poke/game-core';
 import type { BattleError, GameContext } from '@poke/game-core';
@@ -26,6 +27,8 @@ function ruleText(e: BattleError): string {
       return `Ce dresseur exige exactement ${e.required} Pokémon.`;
     case 'DUPLICATE_MEMBER':
       return 'Un Pokémon est sélectionné deux fois.';
+    case 'WRONG_REGION':
+      return 'Seuls les Pokémon du Pokédex de la région peuvent affronter ce dresseur.';
     case 'LEVEL_TOO_HIGH':
       return `Niveau ${e.maxLevel} maximum.`;
     case 'FORBIDDEN_TYPES':
@@ -89,8 +92,9 @@ export function LaunchBattleDialog({
     },
   });
 
+  const region = ctx.region(trainer.regionId);
   const available = (pokemon.data ?? [])
-    .filter((p) => isUsable(p, now))
+    .filter((p) => isUsable(p, now) && isRegionalSpecies(ctx, trainer.regionId, p.speciesId))
     .map((p) => ({ p, power: pokemonPower(ctx.species(p.speciesId, p.formId)!, p) }))
     .sort((a, b) => b.power - a.power);
   const members = team.flatMap((id) => available.find((a) => a.p.id === id)?.p ?? []);
@@ -168,10 +172,14 @@ export function LaunchBattleDialog({
         })}
         {available.length === 0 && (
           <p className="col-span-full text-sm text-slate-500">
-            Tous tes Pokémon sont occupés ou K.O.
+            Aucun Pokémon de {region?.name} disponible : ils sont occupés, K.O., ou pas encore
+            capturés.
           </p>
         )}
       </div>
+      <p className="mt-1 text-xs text-slate-500">
+        Seuls les Pokémon du Pokédex de {region?.name} peuvent affronter les dresseurs de la région.
+      </p>
 
       <div className="mt-5 grid gap-4 rounded-xl bg-slate-100 p-4 sm:grid-cols-[1fr_auto] dark:bg-slate-800/60">
         <WinGauge probability={estimate.winProbability} />

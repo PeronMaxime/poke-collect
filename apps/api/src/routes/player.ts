@@ -2,12 +2,18 @@ import type { FastifyInstance } from 'fastify';
 import { eq, sql } from 'drizzle-orm';
 import { playerProfiles } from '@poke/db';
 import type { Db } from '@poke/db';
-import { baseShinyProbability, createRng, generatePokemon } from '@poke/game-core';
+import { baseShinyProbability, createRng, generatePokemon, isUnlocked } from '@poke/game-core';
 import { chooseStarterInputSchema, createProfileInputSchema } from '@poke/shared';
 import type { MeResponse, PlayerProfileDto, PokemonDto, PublicContentDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError, newSeed } from '../game/expeditions';
-import { addItems, insertPokemon, recordPokedex, toPokemonDto } from '../game/store';
+import {
+  addItems,
+  insertPokemon,
+  playerProgress,
+  recordPokedex,
+  toPokemonDto,
+} from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
@@ -22,6 +28,7 @@ function toDto(row: typeof playerProfiles.$inferSelect): PlayerProfileDto {
     trainerName: row.trainerName,
     regionUnlocked: row.regionUnlocked,
     starterSpeciesId: row.starterSpeciesId,
+    regionStarters: row.regionStarters,
     currency: row.currency,
     createdAt: row.createdAt.toISOString(),
   };
@@ -67,7 +74,7 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
 
     const [created] = await db
       .insert(playerProfiles)
-      .values({ userId: user.id, trainerName, regionUnlocked: startRegion.id })
+      .values({ userId: user.id, trainerName, regionUnlocked: startRegion.id, createdAt: now() })
       .returning();
     return reply.code(201).send(toDto(created!));
   });
@@ -120,4 +127,66 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
     const dto: PokemonDto = toPokemonDto(created);
     return reply.code(201).send(dto);
   });
+
+  /**
+   * Starter d'une région suivante (Johto…) : un par région, une fois celle-ci débloquée. Seuls les
+   * Pokémon du Pokédex d'une région y partent en expédition, il faut donc un premier compagnon.
+   */
+  app.post<{ Params: { regionId: string } }>(
+    '/api/regions/:regionId/starter',
+    { preHandler: hooks.requireUser },
+    async (request, reply) => {
+      const { speciesId } = chooseStarterInputSchema.parse(request.body);
+      const user = request.user!;
+      const ctx = await content.get();
+      const [profile] = await db
+        .select()
+        .from(playerProfiles)
+        .where(eq(playerProfiles.userId, user.id));
+      if (!profile) throw new GameError(409, 'NO_PROFILE');
+      const region = ctx.region(request.params.regionId);
+      if (!region || region.id === profile.regionUnlocked) {
+        throw new GameError(404, 'REGION_NOT_FOUND');
+      }
+      if (!isUnlocked(ctx, region.unlock, await playerProgress(db, ctx, user.id))) {
+        throw new GameError(403, 'REGION_LOCKED');
+      }
+      if (region.id in profile.regionStarters) {
+        throw new GameError(409, 'STARTER_ALREADY_CHOSEN');
+      }
+      if (!region.starterSpeciesIds.includes(speciesId)) {
+        throw new GameError(400, 'INVALID_STARTER');
+      }
+
+      const starter = generatePokemon(
+        ctx,
+        createRng(newSeed()),
+        speciesId,
+        ctx.balance.newPlayer.starterLevel,
+        { shinyProbability: baseShinyProbability(ctx) },
+      );
+      const at = now();
+      const created = await db.transaction(async (tx) => {
+        const [claimed] = await tx
+          .update(playerProfiles)
+          .set({
+            regionStarters: sql`${playerProfiles.regionStarters} || ${JSON.stringify({ [region.id]: speciesId })}::jsonb`,
+          })
+          .where(
+            sql`${playerProfiles.userId} = ${user.id} and ${playerProfiles.regionStarters} ->> ${region.id} is null`,
+          )
+          .returning();
+        if (!claimed) throw new GameError(409, 'STARTER_ALREADY_CHOSEN');
+        const [row] = await insertPokemon(tx, user.id, [starter], {
+          origin: 'starter',
+          originRegion: region.id,
+          at,
+        });
+        await recordPokedex(tx, user.id, { seen: [speciesId], caught: [starter], at });
+        return row!;
+      });
+      const dto: PokemonDto = toPokemonDto(created);
+      return reply.code(201).send(dto);
+    },
+  );
 }

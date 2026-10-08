@@ -7,7 +7,7 @@ import type { TeamMember, TeamMemberResult } from './expedition';
 import { pokemonPower } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import type { PlayerProgress } from './progress';
-import { isUnlocked } from './progress';
+import { isUnlocked, outOfRegionSpecies } from './progress';
 import { NO_BONUSES } from './progression';
 import type { PlayerBonuses } from './progression';
 import { createRng } from './rng';
@@ -152,6 +152,8 @@ export type BattleError =
   | { code: 'TEAM_TOO_LARGE'; max: number }
   | { code: 'TEAM_SIZE'; required: number }
   | { code: 'DUPLICATE_MEMBER' }
+  /** Espèces hors du Pokédex de la région du dresseur. */
+  | { code: 'WRONG_REGION'; regionId: string; speciesIds: number[] }
   | { code: 'LEVEL_TOO_HIGH'; maxLevel: number }
   | { code: 'FORBIDDEN_TYPES'; types: string[] }
   | { code: 'MISSING_TYPES'; missing: { type: string; count: number }[] }
@@ -172,6 +174,10 @@ export function checkBattleTeam(
   }
   if (new Set(team.map((m) => m.id)).size !== team.length) {
     errors.push({ code: 'DUPLICATE_MEMBER' });
+  }
+  const outside = outOfRegionSpecies(ctx, trainer.regionId, team);
+  if (outside.length > 0) {
+    errors.push({ code: 'WRONG_REGION', regionId: trainer.regionId, speciesIds: outside });
   }
   if (rules.maxLevel !== null && team.some((m) => m.level > rules.maxLevel!)) {
     errors.push({ code: 'LEVEL_TOO_HIGH', maxLevel: rules.maxLevel });

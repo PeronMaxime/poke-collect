@@ -8,8 +8,9 @@ export function SignOutButton({ className = 'btn-ghost' }: { className?: string 
       className={className}
       onClick={async () => {
         await authClient.signOut();
-        queryClient.clear();
-        await queryClient.invalidateQueries({ queryKey: ['admin-me'] });
+        // `clear()` retirerait aussi `['admin-me']` sans prévenir son observateur : écran figé.
+        queryClient.setQueryData(['admin-me'], { status: 'anonymous' });
+        queryClient.removeQueries({ predicate: (q) => q.queryKey[0] !== 'admin-me' });
       }}
     >
       Se déconnecter
