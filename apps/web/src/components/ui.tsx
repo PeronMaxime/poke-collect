@@ -182,6 +182,36 @@ export function useNow(intervalMs = 1000): number {
   return now;
 }
 
+/** Bouton d'annulation à deux temps : un premier clic demande confirmation. */
+export function CancelButton({
+  label,
+  pending,
+  onConfirm,
+}: {
+  label: string;
+  pending: boolean;
+  onConfirm: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+  if (!confirming) {
+    return (
+      <button className="btn-ghost" disabled={pending} onClick={() => setConfirming(true)}>
+        Annuler
+      </button>
+    );
+  }
+  return (
+    <span className="flex items-center gap-2">
+      <button className="btn-danger" disabled={pending} onClick={onConfirm}>
+        {pending ? 'Annulation…' : label}
+      </button>
+      <button className="btn-ghost" disabled={pending} onClick={() => setConfirming(false)}>
+        Non
+      </button>
+    </span>
+  );
+}
+
 export function ProgressBar({ value, className = '' }: { value: number; className?: string }) {
   return (
     <div className={`h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800 ${className}`}>

@@ -1,4 +1,4 @@
-import { and, eq, inArray, isNull, sql } from 'drizzle-orm';
+import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { playerProfiles, pokemon, trainerBattles, trainerProgress } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
@@ -131,6 +131,33 @@ export async function startBattle(
       .returning();
     return row!;
   });
+}
+
+/** Annule un combat en cours : il disparaît sans résultat et l'équipe redevient disponible. */
+export async function cancelBattle(
+  db: Db,
+  userId: string,
+  battleId: string,
+  now: Date,
+): Promise<void> {
+  const [found] = await db
+    .delete(trainerBattles)
+    .where(
+      and(
+        eq(trainerBattles.id, battleId),
+        eq(trainerBattles.ownerId, userId),
+        isNull(trainerBattles.claimedAt),
+        gt(trainerBattles.endsAt, now),
+      ),
+    )
+    .returning({ id: trainerBattles.id });
+  if (found) return;
+  const [existing] = await db
+    .select({ claimedAt: trainerBattles.claimedAt })
+    .from(trainerBattles)
+    .where(and(eq(trainerBattles.id, battleId), eq(trainerBattles.ownerId, userId)));
+  if (!existing) throw new GameError(404, 'BATTLE_NOT_FOUND');
+  throw new GameError(409, existing.claimedAt ? 'ALREADY_CLAIMED' : 'ALREADY_FINISHED');
 }
 
 /**

@@ -15,7 +15,7 @@ import type {
   PlayerProfileDto,
   ShinyChainDto,
 } from '@poke/shared';
-import { PokemonSprite, ProgressBar, TypeBadge, useNow } from '../../components/ui';
+import { CancelButton, PokemonSprite, ProgressBar, TypeBadge, useNow } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
   PLAYER_STATE_KEYS,
@@ -55,6 +55,12 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
         PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       );
     },
+  });
+
+  const cancel = useMutation({
+    mutationFn: (id: string) => api<void>(`/api/expeditions/${id}/cancel`, { method: 'POST' }),
+    onSuccess: () =>
+      Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
   });
 
   const progress = usePlayerProgress();
@@ -114,6 +120,8 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
                 teamSpecies={exp.team.map((id) => pokemonById.get(id))}
                 claiming={claim.isPending && claim.variables === exp.id}
                 onClaim={() => claim.mutate(exp.id)}
+                cancelling={cancel.isPending && cancel.variables === exp.id}
+                onCancel={() => cancel.mutate(exp.id)}
               />
             ) : (
               <div
@@ -125,12 +133,15 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
             );
           })}
         </div>
-        {claim.error && (
-          <p className="mt-2 text-sm text-red-600">
-            {claim.error instanceof ApiError
-              ? (GAME_ERRORS[claim.error.code] ?? claim.error.code)
-              : 'Erreur inconnue'}
-          </p>
+        {[claim.error, cancel.error].map(
+          (error, i) =>
+            error && (
+              <p key={i} className="mt-2 text-sm text-red-600">
+                {error instanceof ApiError
+                  ? (GAME_ERRORS[error.code] ?? error.code)
+                  : 'Erreur inconnue'}
+              </p>
+            ),
         )}
       </section>
 
@@ -196,6 +207,8 @@ function ActiveExpedition({
   teamSpecies,
   claiming,
   onClaim,
+  cancelling,
+  onCancel,
 }: {
   ctx: GameContext;
   expedition: ExpeditionDto;
@@ -203,6 +216,8 @@ function ActiveExpedition({
   teamSpecies: ({ speciesId: number; formId: number | null; isShiny: boolean } | undefined)[];
   claiming: boolean;
   onClaim: () => void;
+  cancelling: boolean;
+  onCancel: () => void;
 }) {
   const start = Date.parse(expedition.startedAt);
   const end = Date.parse(expedition.endsAt);
@@ -220,6 +235,7 @@ function ActiveExpedition({
                 · ✦ chaîne {expedition.shinyChain}
               </span>
             )}
+            {expedition.captureFilter && ' · captures filtrées'}
           </p>
         </div>
         <div className="flex -space-x-3">
@@ -241,9 +257,13 @@ function ActiveExpedition({
         <span className="font-mono text-sm text-slate-500">
           {done ? 'Terminée !' : formatCountdown(end - serverNow)}
         </span>
-        <button className="btn-primary" disabled={!done || claiming} onClick={onClaim}>
-          {claiming ? 'Ouverture…' : 'Récupérer'}
-        </button>
+        {done ? (
+          <button className="btn-primary" disabled={claiming} onClick={onClaim}>
+            {claiming ? 'Ouverture…' : 'Récupérer'}
+          </button>
+        ) : (
+          <CancelButton label="Annuler l’expédition" pending={cancelling} onConfirm={onCancel} />
+        )}
       </div>
     </div>
   );

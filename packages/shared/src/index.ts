@@ -7,6 +7,7 @@ import type {
   BattleError,
   BattleResult,
   BreedingError,
+  CaptureFilter,
   ExpeditionError,
   ExpeditionResult,
   Gender,
@@ -79,11 +80,40 @@ export interface PokemonDto {
   activity: PokemonActivity | null;
   /** K.O. après une défaite : indisponible jusqu'à cette date (comparer à l'heure du serveur). */
   koUntil: string | null;
+  /** Étiquettes du joueur (identifiants de `PokemonTagDto`). */
+  tagIds: string[];
 }
 
 export type PokemonActivity = 'expedition' | 'battle' | 'daycare';
 
-export const updatePokemonInputSchema = z.object({ locked: z.boolean() });
+// --- Étiquettes (tags) -----------------------------------------------------------------
+
+export const TAG_LABEL_MAX = 10;
+export const MAX_TAGS = 50;
+
+export const updatePokemonInputSchema = z
+  .object({ locked: z.boolean(), tagIds: z.array(z.uuid()).max(MAX_TAGS) })
+  .partial()
+  .refine((v) => v.locked !== undefined || v.tagIds !== undefined, 'Rien à modifier');
+export type UpdatePokemonInput = z.infer<typeof updatePokemonInputSchema>;
+
+export const tagInputSchema = z.object({
+  label: z
+    .string()
+    .trim()
+    .min(1, 'Texte obligatoire')
+    .max(TAG_LABEL_MAX, `Au plus ${TAG_LABEL_MAX} caractères`),
+  color: z.string().regex(/^#[0-9a-f]{6}$/i, 'Couleur invalide'),
+});
+export type TagInput = z.infer<typeof tagInputSchema>;
+
+/** Étiquette collée sur des Pokémon du joueur (plusieurs possibles par Pokémon). */
+export interface PokemonTagDto {
+  id: string;
+  label: string;
+  /** Couleur de fond, `#rrggbb`. */
+  color: string;
+}
 
 export interface PokedexEntryDto {
   speciesId: number;
@@ -341,12 +371,22 @@ export interface ReviveFossilsResponse {
 
 // --- Expéditions --------------------------------------------------------------------
 
+export const captureFilterSchema = z.object({
+  speciesIds: z.array(z.int().positive()).max(100),
+  minPerfectIvs: z.int().min(0).max(STAT_NAMES.length),
+  shiny: z.enum(['any', 'always', 'only']),
+});
+
 export const startExpeditionInputSchema = z.object({
   zoneId: slugSchema,
   durationMinutes: z.int().positive(),
   team: z.array(z.uuid()).min(1).max(6),
   ballItemId: slugSchema.nullable(),
+  /** Nombre de Balls à emporter (absent : une par rencontre, dans la limite du stock). */
+  ballCount: z.int().positive().optional(),
   berryItemId: slugSchema.nullable(),
+  /** Pokémon à tenter de capturer ; absent ou null = tous. */
+  captureFilter: captureFilterSchema.nullable().optional(),
 });
 export type StartExpeditionInput = z.infer<typeof startExpeditionInputSchema>;
 
@@ -367,6 +407,7 @@ export interface ExpeditionDto {
   balls: number;
   berryItemId: string | null;
   berries: number;
+  captureFilter: CaptureFilter | null;
   contentVersionId: number;
   startedAt: string;
   endsAt: string;

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { STAT_NAMES } from '@poke/data';
+import type { Stats } from '@poke/data';
 import {
   captureProbability,
   checkTeam,
@@ -6,6 +8,7 @@ import {
   encounterProbabilities,
   lootProbabilities,
   lootRollCount,
+  matchesCaptureFilter,
   pityMultiplier,
   resolveExpedition,
 } from './expedition';
@@ -153,6 +156,22 @@ describe('resolveExpedition', () => {
     expect(result.encounters.filter((e) => e.outcome === 'noBall')).toHaveLength(18);
   });
 
+  it('ne tente de capturer que les Pokémon du filtre, sans Ball pour les autres', () => {
+    const result = resolveExpedition(ctx, {
+      ...input,
+      balls: { itemId: 'poke-ball', quantity: 30 },
+      captureFilter: { speciesIds: [19], minPerfectIvs: 0, shiny: 'any' },
+    });
+    const targeted = result.encounters.filter((e) => e.speciesId === 19);
+    expect(targeted.length).toBeGreaterThan(0);
+    expect(targeted.every((e) => e.outcome !== 'ignored')).toBe(true);
+    expect(
+      result.encounters.filter((e) => e.speciesId !== 19).every((e) => e.outcome === 'ignored'),
+    ).toBe(true);
+    expect(result.ballsUsed).toBe(targeted.length);
+    expect(Object.keys(result.pity)).toEqual(['19']);
+  });
+
   it('met à jour la pitié : +1 par échec, remise à zéro à la capture', () => {
     const result = resolveExpedition(ctx, {
       ...input,
@@ -229,5 +248,35 @@ describe('simulateZone', () => {
       seed: 2,
     });
     expect(sim.capturesPerRun).toBe(0);
+  });
+});
+
+describe('matchesCaptureFilter', () => {
+  const ivs = (perfect: number) =>
+    Object.fromEntries(STAT_NAMES.map((stat, i) => [stat, i < perfect ? 31 : 10])) as Stats;
+  const wild = (speciesId: number, isShiny: boolean, perfect: number) => ({
+    speciesId,
+    isShiny,
+    ivs: ivs(perfect),
+  });
+
+  it('laisse tout passer sans filtre', () => {
+    expect(matchesCaptureFilter(null, wild(16, false, 0))).toBe(true);
+  });
+
+  it('cumule espèces et IV parfaits', () => {
+    const filter = { speciesIds: [16], minPerfectIvs: 2, shiny: 'any' as const };
+    expect(matchesCaptureFilter(filter, wild(16, false, 2))).toBe(true);
+    expect(matchesCaptureFilter(filter, wild(16, false, 1))).toBe(false);
+    expect(matchesCaptureFilter(filter, wild(19, false, 6))).toBe(false);
+  });
+
+  it('gère les shiny : uniquement, ou toujours en plus des critères', () => {
+    const only = { speciesIds: [], minPerfectIvs: 0, shiny: 'only' as const };
+    expect(matchesCaptureFilter(only, wild(16, true, 0))).toBe(true);
+    expect(matchesCaptureFilter(only, wild(16, false, 6))).toBe(false);
+    const always = { speciesIds: [16], minPerfectIvs: 3, shiny: 'always' as const };
+    expect(matchesCaptureFilter(always, wild(19, true, 0))).toBe(true);
+    expect(matchesCaptureFilter(always, wild(19, false, 6))).toBe(false);
   });
 });

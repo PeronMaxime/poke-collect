@@ -11,8 +11,9 @@ import {
   pokemonPower,
   shinyProbability,
 } from '@poke/game-core';
-import type { ExpeditionError, GameContext } from '@poke/game-core';
+import type { CaptureFilter, ExpeditionError, GameContext } from '@poke/game-core';
 import type { ExpeditionDto, PokemonDto, StartExpeditionInput } from '@poke/shared';
+import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { Modal, PokemonSprite, ShinyStar, TypeBadge, useNow } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
@@ -36,6 +37,29 @@ function formatChance(p: number): string {
   const pct = p * 100;
   return pct < 1 ? '< 1 %' : `${Math.round(pct)} %`;
 }
+
+const SORTS = {
+  power: 'PE',
+  affinity: 'Affinité',
+  level: 'Niveau',
+  tag: 'Étiquette',
+} as const;
+type Sort = keyof typeof SORTS;
+
+const SHINY_MODES = {
+  any: 'Indifférent',
+  always: 'Toujours tenter',
+  only: 'Uniquement',
+} as const;
+
+export const pillClass = (active: boolean) =>
+  `rounded-full px-2 py-0.5 ${
+    active
+      ? 'bg-brand-500 text-white'
+      : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700'
+  }`;
+
+const NO_FILTER: CaptureFilter = { speciesIds: [], minPerfectIvs: 0, shiny: 'any' };
 
 function errorText(e: ExpeditionError): string {
   switch (e.code) {
@@ -75,15 +99,30 @@ export function LaunchExpeditionDialog({
   const [duration, setDuration] = useState(zone.durationsMinutes[0]!);
   const [team, setTeam] = useState<string[]>([]);
   const owned = new Map(inventory.data?.map((i) => [i.itemId, i.quantity]));
-  const balls = ctx.content.items.filter(
-    (i) => ctx.itemEffect(i.id, 'ball') && (owned.get(i.id) ?? 0) > 0,
-  );
-  const berries = ctx.content.items.filter(
-    (i) => ctx.itemEffect(i.id, 'captureBoost') && (owned.get(i.id) ?? 0) > 0,
-  );
+  // Du multiplicateur le plus faible au plus fort : la Ball par défaut reste la plus courante.
+  const balls = ctx.content.items
+    .filter((i) => ctx.itemEffect(i.id, 'ball') && (owned.get(i.id) ?? 0) > 0)
+    .sort(
+      (a, b) =>
+        ctx.itemEffect(a.id, 'ball')!.catchMultiplier -
+        ctx.itemEffect(b.id, 'ball')!.catchMultiplier,
+    );
+  const berries = ctx.content.items
+    .filter((i) => ctx.itemEffect(i.id, 'captureBoost') && (owned.get(i.id) ?? 0) > 0)
+    .sort(
+      (a, b) =>
+        ctx.itemEffect(a.id, 'captureBoost')!.multiplier -
+        ctx.itemEffect(b.id, 'captureBoost')!.multiplier,
+    );
   // undefined = choix par défaut (première Ball possédée) ; null = aucune Ball.
   const [ballId, setBallId] = useState<string | null | undefined>(undefined);
   const [berryId, setBerryId] = useState<string | null>(null);
+  // null = autant que possible (une par rencontre, dans la limite du stock).
+  const [ballCount, setBallCount] = useState<number | null>(null);
+  const [sort, setSort] = useState<Sort>('power');
+  const tagFilter = useTagFilter();
+  // null = tenter de capturer toutes les rencontres.
+  const [captureFilter, setCaptureFilter] = useState<CaptureFilter | null>(null);
   const selectedBall = ballId === undefined ? (balls[0]?.id ?? null) : ballId;
 
   const start = useMutation({
@@ -102,14 +141,40 @@ export function LaunchExpeditionDialog({
   const region = ctx.region(zone.regionId);
   const available = (pokemon.data ?? [])
     .filter((p) => isUsable(p, now) && isRegionalSpecies(ctx, zone.regionId, p.speciesId))
-    .map((p) => ({ p, power: pokemonPower(ctx.species(p.speciesId, p.formId)!, p) }))
-    .sort((a, b) => b.power - a.power);
+    // Les membres déjà choisis restent visibles, quel que soit le filtre.
+    .filter((p) => tagFilter.matches(p) || team.includes(p.id))
+    .map((p) => {
+      const species = ctx.species(p.speciesId, p.formId)!;
+      return {
+        p,
+        species,
+        power: pokemonPower(species, p),
+        affinity: species.types.some((t) => zone.affinityTypes.includes(t)),
+      };
+    })
+    .sort(
+      (a, b) =>
+        (sort === 'affinity' ? Number(b.affinity) - Number(a.affinity) : 0) ||
+        (sort === 'level' ? b.p.level - a.p.level : 0) ||
+        (sort === 'tag' ? tagFilter.compare(a.p, b.p) : 0) ||
+        b.power - a.power,
+    );
   const members = team.flatMap((id) => available.find((a) => a.p.id === id)?.p ?? []);
   const check = checkTeam(ctx, zone, duration, members);
   const { maxTeamSize } = ctx.balance.expeditions;
   const encounters = encounterCount(ctx, duration);
+  const maxBalls = selectedBall ? Math.min(encounters, owned.get(selectedBall) ?? 0) : 0;
+  const ballsTaken = Math.min(ballCount ?? maxBalls, maxBalls);
   const ballEffect = selectedBall ? ctx.itemEffect(selectedBall, 'ball') : undefined;
   const boost = berryId ? ctx.itemEffect(berryId, 'captureBoost')?.multiplier : undefined;
+  const possibleEncounters = encounterProbabilities(ctx, zone);
+  const zoneSpeciesIds = [...new Set(possibleEncounters.map((e) => e.speciesId))];
+  const updateFilter = (patch: Partial<CaptureFilter>) =>
+    setCaptureFilter((f) => ({ ...(f ?? NO_FILTER), ...patch }));
+  const targeted = (speciesId: number) =>
+    !captureFilter ||
+    captureFilter.speciesIds.length === 0 ||
+    captureFilter.speciesIds.includes(speciesId);
   const loot = lootProbabilities(ctx, zone, duration).sort((a, b) => b.probability - a.probability);
 
   function toggle(p: PokemonDto) {
@@ -145,40 +210,52 @@ export function LaunchExpeditionDialog({
         .
       </p>
 
-      <div className="mt-5 flex items-baseline justify-between">
+      <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold">
           Équipe ({team.length} / {maxTeamSize})
         </h3>
+        <div className="flex items-center gap-1 text-xs">
+          <span className="text-slate-500">Trier par</span>
+          {(Object.keys(SORTS) as Sort[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSort(key)}
+              className={pillClass(sort === key)}
+            >
+              {SORTS[key]}
+            </button>
+          ))}
+          <TagFilterSelect
+            tags={tagFilter.tags}
+            value={tagFilter.filter}
+            onChange={tagFilter.setFilter}
+            className="ml-1 py-0.5 text-xs"
+          />
+        </div>
         <span
           className={`text-sm font-medium ${check.power >= zone.minPower ? 'text-emerald-600' : 'text-red-600'}`}
         >
           PE {check.power} / {zone.minPower}
         </span>
       </div>
-      <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5">
-        {available.map(({ p, power }) => {
+      <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto p-1 sm:grid-cols-5">
+        {available.map(({ p, species, power, affinity }) => {
           const selected = team.includes(p.id);
-          const species = ctx.species(p.speciesId, p.formId);
-          const affinity = species?.types.some((t) => zone.affinityTypes.includes(t));
           return (
             <button
               key={p.id}
               type="button"
               onClick={() => toggle(p)}
+              title={affinity ? 'Affinité avec la zone' : undefined}
               className={`relative flex flex-col items-center rounded-xl border p-1 text-xs transition ${
                 selected
                   ? 'border-brand-500 bg-brand-500/10'
-                  : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
-              }`}
+                  : affinity
+                    ? 'border-emerald-400 hover:bg-slate-100 dark:border-emerald-500 dark:hover:bg-slate-800'
+                    : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
+              } ${affinity ? 'shadow-[0_0_8px_2px_rgba(52,211,153,0.65)]' : ''}`}
             >
-              {affinity && (
-                <span
-                  className="absolute top-1 left-1 text-[10px] text-emerald-600"
-                  title="Affinité"
-                >
-                  ◆
-                </span>
-              )}
               <PokemonSprite
                 speciesId={p.speciesId}
                 formId={p.formId}
@@ -186,18 +263,20 @@ export function LaunchExpeditionDialog({
                 size={56}
               />
               <span className="truncate">
-                {species?.nameFr} {p.isShiny && <ShinyStar />}
+                {species.nameFr} {p.isShiny && <ShinyStar />}
               </span>
               <span className="text-slate-500">
                 N.{p.level} · PE {power}
               </span>
+              <PokemonTagBadges pokemon={p} tags={tagFilter.tags} />
             </button>
           );
         })}
         {available.length === 0 && (
           <p className="col-span-full text-sm text-slate-500">
-            Aucun Pokémon de {region?.name} disponible : ils sont occupés, K.O., ou pas encore
-            capturés.
+            {tagFilter.filter === 'all'
+              ? `Aucun Pokémon de ${region?.name} disponible : ils sont occupés, K.O., ou pas encore capturés.`
+              : `Aucun Pokémon de ${region?.name} disponible avec cette étiquette.`}
           </p>
         )}
       </div>
@@ -211,7 +290,10 @@ export function LaunchExpeditionDialog({
           <select
             className="input mt-2"
             value={selectedBall ?? ''}
-            onChange={(e) => setBallId(e.target.value || null)}
+            onChange={(e) => {
+              setBallId(e.target.value || null);
+              setBallCount(null);
+            }}
           >
             {balls.map((b) => (
               <option key={b.id} value={b.id}>
@@ -220,10 +302,34 @@ export function LaunchExpeditionDialog({
             ))}
             <option value="">Aucune (observer seulement)</option>
           </select>
-          {selectedBall && (
-            <p className="mt-1 text-xs text-slate-500">
-              {Math.min(encounters, owned.get(selectedBall) ?? 0)} réservée(s), une par rencontre.
-            </p>
+          {selectedBall && maxBalls > 0 && (
+            <>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="range"
+                  className="flex-1 accent-brand-500"
+                  min={1}
+                  max={maxBalls}
+                  value={ballsTaken}
+                  onChange={(e) => setBallCount(Number(e.target.value))}
+                  aria-label="Nombre de Balls"
+                />
+                <input
+                  type="number"
+                  className="input w-20"
+                  min={1}
+                  max={maxBalls}
+                  value={ballsTaken}
+                  onChange={(e) =>
+                    setBallCount(Math.max(1, Math.min(maxBalls, Number(e.target.value) || 1)))
+                  }
+                />
+              </div>
+              <p className="mt-1 text-xs text-slate-500">
+                {ballsTaken} / {maxBalls} emportée{ballsTaken > 1 ? 's' : ''}, une par rencontre au
+                plus ; les Balls non utilisées sont rendues.
+              </p>
+            </>
           )}
         </div>
         <div>
@@ -243,9 +349,107 @@ export function LaunchExpeditionDialog({
         </div>
       </div>
 
+      {selectedBall && (
+        <div className="mt-5">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <h3 className="text-sm font-semibold">Captures</h3>
+            <div className="flex gap-1 text-xs">
+              <button
+                type="button"
+                onClick={() => setCaptureFilter(null)}
+                className={pillClass(!captureFilter)}
+              >
+                Tout tenter
+              </button>
+              <button
+                type="button"
+                onClick={() => setCaptureFilter((f) => f ?? NO_FILTER)}
+                className={pillClass(!!captureFilter)}
+              >
+                Filtrer
+              </button>
+            </div>
+          </div>
+          {captureFilter ? (
+            <div className="mt-2 space-y-3 rounded-xl border border-slate-200 p-3 text-xs dark:border-slate-800">
+              <div>
+                <p className="text-slate-500">
+                  Espèces visées
+                  {captureFilter.speciesIds.length === 0 && ' (aucune sélection = toutes)'}
+                </p>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {zoneSpeciesIds.map((id) => {
+                    const on = captureFilter.speciesIds.includes(id);
+                    return (
+                      <button
+                        key={id}
+                        type="button"
+                        onClick={() =>
+                          updateFilter({
+                            speciesIds: on
+                              ? captureFilter.speciesIds.filter((s) => s !== id)
+                              : [...captureFilter.speciesIds, id],
+                          })
+                        }
+                        className={`flex items-center gap-1 rounded-full border py-0.5 pr-2 pl-0.5 ${
+                          on
+                            ? 'border-brand-500 bg-brand-500/10'
+                            : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
+                        }`}
+                      >
+                        <PokemonSprite speciesId={id} size={24} />
+                        {ctx.species(id)?.nameFr}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
+                <label className="flex items-center gap-2">
+                  <span className="text-slate-500">IV à 31, au moins</span>
+                  <select
+                    className="input w-16 py-1"
+                    value={captureFilter.minPerfectIvs}
+                    onChange={(e) => updateFilter({ minPerfectIvs: Number(e.target.value) })}
+                  >
+                    {[0, 1, 2, 3, 4, 5, 6].map((n) => (
+                      <option key={n} value={n}>
+                        {n}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <div className="flex items-center gap-1">
+                  <span className="mr-1 text-slate-500">Shiny</span>
+                  {(Object.keys(SHINY_MODES) as CaptureFilter['shiny'][]).map((mode) => (
+                    <button
+                      key={mode}
+                      type="button"
+                      onClick={() => updateFilter({ shiny: mode })}
+                      className={pillClass(captureFilter.shiny === mode)}
+                    >
+                      {SHINY_MODES[mode]}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <p className="text-slate-500">
+                Les rencontres hors filtre sont ignorées : aucune Ball ni baie utilisée.
+                {captureFilter.shiny === 'always' &&
+                  ' Les shiny sont tentés même hors des autres critères.'}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 text-xs text-slate-500">
+              Une capture est tentée à chaque rencontre, tant qu’il reste des Balls.
+            </p>
+          )}
+        </div>
+      )}
+
       <h3 className="mt-5 text-sm font-semibold">Rencontres possibles</h3>
       <ul className="mt-2 grid grid-cols-2 gap-1 text-xs sm:grid-cols-3">
-        {encounterProbabilities(ctx, zone).map(({ speciesId, formId, probability }) => {
+        {possibleEncounters.map(({ speciesId, formId, probability }) => {
           const species = ctx.species(speciesId, formId)!;
           const chance = ballEffect
             ? captureProbability(ctx, {
@@ -256,7 +460,10 @@ export function LaunchExpeditionDialog({
               })
             : 0;
           return (
-            <li key={`${speciesId}:${formId ?? ''}`} className="flex items-center gap-1">
+            <li
+              key={`${speciesId}:${formId ?? ''}`}
+              className={`flex items-center gap-1 ${targeted(speciesId) ? '' : 'opacity-40'}`}
+            >
               <PokemonSprite speciesId={speciesId} formId={formId} size={32} />
               <span className="truncate">
                 {species.nameFr} · {Math.round(probability * 100)} %
@@ -329,6 +536,7 @@ export function LaunchExpeditionDialog({
               durationMinutes: duration,
               team,
               ballItemId: selectedBall,
+              ...(selectedBall && ballsTaken > 0 ? { ballCount: ballsTaken, captureFilter } : {}),
               berryItemId: berryId,
             })
           }

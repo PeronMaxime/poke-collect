@@ -16,7 +16,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { users } from './auth';
-import type { DaycareParent } from '@poke/game-core';
+import type { CaptureFilter, DaycareParent } from '@poke/game-core';
 import { contentVersions } from './content';
 
 /** État des joueurs (première ébauche, PLAN.md section 4.4). */
@@ -43,6 +43,20 @@ export const playerProfiles = pgTable(
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('player_profiles_trainer_name_lower').on(sql`lower(${t.trainerName})`)],
+);
+
+/** Étiquettes du joueur (couleur + texte court), collées sur ses Pokémon pour les trier. */
+export const pokemonTags = pgTable(
+  'pokemon_tags',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: ownerId(),
+    label: text('label').notNull(),
+    /** Couleur de fond, `#rrggbb`. */
+    color: text('color').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('pokemon_tags_owner').on(t.ownerId)],
 );
 
 export const pokemonOrigin = pgEnum('pokemon_origin', [
@@ -80,6 +94,11 @@ export const pokemon = pgTable(
     locked: boolean('locked').notNull().default(false),
     /** K.O. après une défaite : indisponible jusqu'à cette date (évaluation paresseuse). */
     koUntil: timestamp('ko_until', { withTimezone: true }),
+    /** Étiquettes du joueur (`pokemon_tags`), retirées du tableau quand l'une est supprimée. */
+    tagIds: uuid('tag_ids')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
   },
   (t) => [index('pokemon_owner_species').on(t.ownerId, t.speciesId)],
 );
@@ -188,6 +207,8 @@ export const expeditions = pgTable(
     balls: integer('balls').notNull().default(0),
     berryItemId: text('berry_item_id'),
     berries: integer('berries').notNull().default(0),
+    /** Pokémon à tenter de capturer ; null = tous. */
+    captureFilter: jsonb('capture_filter').$type<CaptureFilter>(),
     contentVersionId: integer('content_version_id')
       .notNull()
       .references(() => contentVersions.id),

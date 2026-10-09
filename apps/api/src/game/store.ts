@@ -70,6 +70,7 @@ export function toPokemonDto(row: PokemonRow, activity: PokemonActivity | null =
     busy: activity !== null,
     activity,
     koUntil: row.koUntil?.toISOString() ?? null,
+    tagIds: row.tagIds,
   };
 }
 
@@ -84,6 +85,7 @@ export function toExpeditionDto(row: ExpeditionRow): ExpeditionDto {
     balls: row.balls,
     berryItemId: row.berryItemId,
     berries: row.berries,
+    captureFilter: row.captureFilter,
     contentVersionId: row.contentVersionId,
     startedAt: row.startedAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
