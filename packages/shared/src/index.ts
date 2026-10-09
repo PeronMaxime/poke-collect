@@ -80,11 +80,40 @@ export interface PokemonDto {
   activity: PokemonActivity | null;
   /** K.O. après une défaite : indisponible jusqu'à cette date (comparer à l'heure du serveur). */
   koUntil: string | null;
+  /** Étiquette du joueur ; null = aucune. */
+  tagId: string | null;
 }
 
 export type PokemonActivity = 'expedition' | 'battle' | 'daycare';
 
-export const updatePokemonInputSchema = z.object({ locked: z.boolean() });
+export const updatePokemonInputSchema = z
+  .object({ locked: z.boolean(), tagId: z.uuid().nullable() })
+  .partial()
+  .refine((v) => v.locked !== undefined || v.tagId !== undefined, 'Rien à modifier');
+export type UpdatePokemonInput = z.infer<typeof updatePokemonInputSchema>;
+
+// --- Étiquettes (tags) -----------------------------------------------------------------
+
+export const TAG_LABEL_MAX = 10;
+export const MAX_TAGS = 50;
+
+export const tagInputSchema = z.object({
+  label: z
+    .string()
+    .trim()
+    .min(1, 'Texte obligatoire')
+    .max(TAG_LABEL_MAX, `Au plus ${TAG_LABEL_MAX} caractères`),
+  color: z.string().regex(/^#[0-9a-f]{6}$/i, 'Couleur invalide'),
+});
+export type TagInput = z.infer<typeof tagInputSchema>;
+
+/** Étiquette collée sur des Pokémon du joueur (une au plus par Pokémon). */
+export interface PokemonTagDto {
+  id: string;
+  label: string;
+  /** Couleur de fond, `#rrggbb`. */
+  color: string;
+}
 
 export interface PokedexEntryDto {
   speciesId: number;

@@ -23,6 +23,7 @@ import type {
   PokedexEntryDto,
   PokedexFormEntryDto,
   PokemonDto,
+  PokemonTagDto,
   ProgressionResponse,
   PublicContentDto,
   QuestsResponse,
@@ -35,6 +36,7 @@ import { api } from './api';
 export const keys = {
   content: ['content'],
   pokemon: ['pokemon'],
+  tags: ['tags'],
   pokedex: ['pokedex'],
   inventory: ['inventory'],
   expeditions: ['expeditions'],
@@ -81,6 +83,10 @@ export function useGameContext(): GameContext | undefined {
 
 export const usePokemon = () =>
   useQuery({ queryKey: keys.pokemon, queryFn: () => api<PokemonDto[]>('/api/pokemon') });
+
+/** Étiquettes du joueur, dans leur ordre de création. */
+export const useTags = () =>
+  useQuery({ queryKey: keys.tags, queryFn: () => api<PokemonTagDto[]>('/api/tags') });
 
 export const usePokedex = () =>
   useQuery({ queryKey: keys.pokedex, queryFn: () => api<PokedexEntryDto[]>('/api/pokedex') });

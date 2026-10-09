@@ -45,6 +45,20 @@ export const playerProfiles = pgTable(
   (t) => [uniqueIndex('player_profiles_trainer_name_lower').on(sql`lower(${t.trainerName})`)],
 );
 
+/** Étiquettes du joueur (couleur + texte court), collées sur ses Pokémon pour les trier. */
+export const pokemonTags = pgTable(
+  'pokemon_tags',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: ownerId(),
+    label: text('label').notNull(),
+    /** Couleur de fond, `#rrggbb`. */
+    color: text('color').notNull(),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('pokemon_tags_owner').on(t.ownerId)],
+);
+
 export const pokemonOrigin = pgEnum('pokemon_origin', [
   'starter',
   'capture',
@@ -80,6 +94,8 @@ export const pokemon = pgTable(
     locked: boolean('locked').notNull().default(false),
     /** K.O. après une défaite : indisponible jusqu'à cette date (évaluation paresseuse). */
     koUntil: timestamp('ko_until', { withTimezone: true }),
+    /** Étiquette du joueur (une au plus) ; retirée si l'étiquette est supprimée. */
+    tagId: uuid('tag_id').references(() => pokemonTags.id, { onDelete: 'set null' }),
   },
   (t) => [index('pokemon_owner_species').on(t.ownerId, t.speciesId)],
 );

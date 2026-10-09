@@ -17,6 +17,7 @@ import { adminRoutes } from './routes/admin';
 import { battleRoutes } from './routes/battles';
 import { breedingRoutes } from './routes/breeding';
 import { gameRoutes } from './routes/game';
+import { tagRoutes } from './routes/tags';
 import { museumRoutes } from './routes/museum';
 import { playerRoutes } from './routes/player';
 import { progressionRoutes } from './routes/progression';
@@ -93,6 +94,7 @@ export async function buildApp({
   await app.register(authRoutes, { auth });
   await app.register(playerRoutes, { db, content, hooks, now });
   await app.register(gameRoutes, { db, content, hooks, now });
+  await app.register(tagRoutes, { db, hooks });
   await app.register(breedingRoutes, { db, content, hooks, now });
   await app.register(museumRoutes, { db, content, hooks, now });
   await app.register(battleRoutes, { db, content, hooks, now });

@@ -13,6 +13,7 @@ import {
 } from '@poke/game-core';
 import type { CaptureFilter, ExpeditionError, GameContext } from '@poke/game-core';
 import type { ExpeditionDto, PokemonDto, StartExpeditionInput } from '@poke/shared';
+import { PokemonTagBadge, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { Modal, PokemonSprite, ShinyStar, TypeBadge, useNow } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
@@ -41,6 +42,7 @@ const SORTS = {
   power: 'PE',
   affinity: 'Affinité',
   level: 'Niveau',
+  tag: 'Étiquette',
 } as const;
 type Sort = keyof typeof SORTS;
 
@@ -50,7 +52,7 @@ const SHINY_MODES = {
   only: 'Uniquement',
 } as const;
 
-const pillClass = (active: boolean) =>
+export const pillClass = (active: boolean) =>
   `rounded-full px-2 py-0.5 ${
     active
       ? 'bg-brand-500 text-white'
@@ -109,6 +111,7 @@ export function LaunchExpeditionDialog({
   // null = autant que possible (une par rencontre, dans la limite du stock).
   const [ballCount, setBallCount] = useState<number | null>(null);
   const [sort, setSort] = useState<Sort>('power');
+  const tagFilter = useTagFilter();
   // null = tenter de capturer toutes les rencontres.
   const [captureFilter, setCaptureFilter] = useState<CaptureFilter | null>(null);
   const selectedBall = ballId === undefined ? (balls[0]?.id ?? null) : ballId;
@@ -129,6 +132,8 @@ export function LaunchExpeditionDialog({
   const region = ctx.region(zone.regionId);
   const available = (pokemon.data ?? [])
     .filter((p) => isUsable(p, now) && isRegionalSpecies(ctx, zone.regionId, p.speciesId))
+    // Les membres déjà choisis restent visibles, quel que soit le filtre.
+    .filter((p) => tagFilter.matches(p) || team.includes(p.id))
     .map((p) => {
       const species = ctx.species(p.speciesId, p.formId)!;
       return {
@@ -142,6 +147,7 @@ export function LaunchExpeditionDialog({
       (a, b) =>
         (sort === 'affinity' ? Number(b.affinity) - Number(a.affinity) : 0) ||
         (sort === 'level' ? b.p.level - a.p.level : 0) ||
+        (sort === 'tag' ? tagFilter.compare(a.p, b.p) : 0) ||
         b.power - a.power,
     );
   const members = team.flatMap((id) => available.find((a) => a.p.id === id)?.p ?? []);
@@ -211,6 +217,12 @@ export function LaunchExpeditionDialog({
               {SORTS[key]}
             </button>
           ))}
+          <TagFilterSelect
+            tags={tagFilter.tags}
+            value={tagFilter.filter}
+            onChange={tagFilter.setFilter}
+            className="ml-1 py-0.5 text-xs"
+          />
         </div>
         <span
           className={`text-sm font-medium ${check.power >= zone.minPower ? 'text-emerald-600' : 'text-red-600'}`}
@@ -247,13 +259,15 @@ export function LaunchExpeditionDialog({
               <span className="text-slate-500">
                 N.{p.level} · PE {power}
               </span>
+              <PokemonTagBadge pokemon={p} tags={tagFilter.tags} />
             </button>
           );
         })}
         {available.length === 0 && (
           <p className="col-span-full text-sm text-slate-500">
-            Aucun Pokémon de {region?.name} disponible : ils sont occupés, K.O., ou pas encore
-            capturés.
+            {tagFilter.filter === 'all'
+              ? `Aucun Pokémon de ${region?.name} disponible : ils sont occupés, K.O., ou pas encore capturés.`
+              : `Aucun Pokémon de ${region?.name} disponible avec cette étiquette.`}
           </p>
         )}
       </div>

@@ -148,6 +148,13 @@
       "when": 1791560073551,
       "tag": "0020_expeditions_filtre_capture",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1791561388300,
+      "tag": "0021_etiquettes",
+      "breakpoints": true
     }
   ]
 }

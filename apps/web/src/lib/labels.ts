@@ -284,6 +284,8 @@ export const GAME_ERRORS: Record<string, string> = {
   NO_FOSSIL_READY: 'Aucun fossile n’est encore restauré.',
   FOSSIL_NOT_FOUND: 'Ce fossile n’est plus au Musée.',
   FOSSIL_ALREADY_REVIVED: 'Ce fossile est déjà restauré : récupère le Pokémon.',
+  TAG_NOT_FOUND: 'Cette étiquette n’existe plus.',
+  TOO_MANY_TAGS: 'Tu as atteint le nombre maximal d’étiquettes.',
 };
 
 export function formatMoney(amount: number): string {

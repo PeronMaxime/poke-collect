@@ -35,6 +35,13 @@ import {
   TypeBadge,
   useNow,
 } from '../../components/ui';
+import {
+  PokemonTagBadge,
+  TagFilterSelect,
+  TagManagerDialog,
+  TagPicker,
+  useTagFilter,
+} from '../../components/tags';
 import { api } from '../../lib/api';
 import {
   PLAYER_STATE_KEYS,
@@ -45,6 +52,7 @@ import {
   useInventory,
   usePlayerProgress,
   usePokemon,
+  useTags,
   utcOffsetMinutes,
 } from '../../lib/game';
 import {
@@ -64,13 +72,14 @@ import {
 import { EvolutionReveal } from './EvolutionReveal';
 import { RegionTabs, currentRegionTab } from './RegionTabs';
 
-type Sort = 'recent' | 'level' | 'power' | 'dex';
+type Sort = 'recent' | 'level' | 'power' | 'dex' | 'tag';
 
 const SORTS: Record<Sort, string> = {
   recent: 'Plus récents',
   level: 'Niveau',
   power: 'PE',
   dex: 'N° Pokédex',
+  tag: 'Étiquette',
 };
 
 const ORIGIN_LABELS: Record<PokemonDto['origin'], string> = {
@@ -139,6 +148,8 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   const [sort, setSort] = useState<Sort>('recent');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [onlyShiny, setOnlyShiny] = useState(false);
+  const tagFilter = useTagFilter();
+  const [tagsOpen, setTagsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [transferMode, setTransferMode] = useState(false);
   const [toTransfer, setToTransfer] = useState<Set<string>>(new Set());
@@ -171,6 +182,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   const filtered = inTab
     .filter(({ species }) => !needle || species?.nameFr.toLowerCase().includes(needle))
     .filter(({ p }) => (!onlyFavorites || p.locked) && (!onlyShiny || p.isShiny))
+    .filter(({ p }) => tagFilter.matches(p))
     .sort((a, b) => {
       switch (sort) {
         case 'recent':
@@ -181,6 +193,8 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
           return b.power - a.power;
         case 'dex':
           return a.p.speciesId - b.p.speciesId;
+        case 'tag':
+          return tagFilter.compare(a.p, b.p) || b.power - a.power;
       }
     });
   const selected = pokemon.data?.find((p) => p.id === selectedId);
@@ -244,9 +258,17 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
           />
           Shiny
         </label>
+        <TagFilterSelect
+          tags={tagFilter.tags}
+          value={tagFilter.filter}
+          onChange={tagFilter.setFilter}
+        />
         <span className="ml-auto text-sm text-slate-500">
           {tab === ALL_TAB.id ? list.length : `${filtered.length} / ${list.length}`} Pokémon
         </span>
+        <button className="btn-ghost" onClick={() => setTagsOpen(true)}>
+          Étiquettes
+        </button>
         <button
           className={transferMode ? 'btn-primary' : 'btn-ghost'}
           onClick={() => {
@@ -326,6 +348,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
             <span className="text-slate-500">
               N.{p.level} · PE {power}
             </span>
+            <PokemonTagBadge pokemon={p} tags={tagFilter.tags} className="mt-0.5" />
           </button>
         ))}
       </div>
@@ -333,6 +356,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
         <p className="text-sm text-slate-500">Aucun Pokémon ne correspond.</p>
       )}
 
+      <TagManagerDialog open={tagsOpen} onClose={() => setTagsOpen(false)} />
       <Modal open={!!selected} onClose={() => setSelectedId(null)} wide>
         {selected && (
           <PokemonDetail ctx={ctx} pokemon={selected} evolutions={evolutionsOf(selected)} />
@@ -362,6 +386,7 @@ function PokemonDetail({
   evolutions: EvolutionCheck[];
 }) {
   const queryClient = useQueryClient();
+  const tags = useTags().data ?? [];
   const [reveal, setReveal] = useState<EvolveResponse | null>(null);
   const evolve = useMutation({
     mutationFn: ({ toSpeciesId, toFormId }: Pick<EvolutionOption, 'toSpeciesId' | 'toFormId'>) =>
@@ -427,6 +452,7 @@ function PokemonDetail({
         <p className="text-sm text-slate-500">
           N° {String(p.speciesId).padStart(3, '0')} · Niveau {p.level}
         </p>
+        <PokemonTagBadge pokemon={p} tags={tags} className="mt-1 px-2 text-xs leading-5" />
         <KoDetail koUntil={p.koUntil} />
         <div className="mt-2 flex gap-1">
           {species.types.map((t) => (
@@ -440,6 +466,7 @@ function PokemonDetail({
         >
           {p.locked ? '♥ Retirer des favoris' : '♡ Ajouter aux favoris'}
         </button>
+        <TagPicker pokemon={p} />
 
         {lineage !== undefined && (
           <div className="mt-4 w-full rounded-xl border border-slate-200 p-3 text-left text-xs dark:border-slate-800">
