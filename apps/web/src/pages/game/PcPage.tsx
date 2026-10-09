@@ -36,7 +36,7 @@ import {
   useNow,
 } from '../../components/ui';
 import {
-  PokemonTagBadge,
+  PokemonTagBadges,
   TagFilterSelect,
   TagManagerDialog,
   TagPicker,
@@ -348,7 +348,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
             <span className="text-slate-500">
               N.{p.level} · PE {power}
             </span>
-            <PokemonTagBadge pokemon={p} tags={tagFilter.tags} className="mt-0.5" />
+            <PokemonTagBadges pokemon={p} tags={tagFilter.tags} className="mt-0.5 gap-0.5" />
           </button>
         ))}
       </div>
@@ -452,7 +452,12 @@ function PokemonDetail({
         <p className="text-sm text-slate-500">
           N° {String(p.speciesId).padStart(3, '0')} · Niveau {p.level}
         </p>
-        <PokemonTagBadge pokemon={p} tags={tags} className="mt-1 px-2 text-xs leading-5" />
+        <PokemonTagBadges
+          pokemon={p}
+          tags={tags}
+          className="mt-1 gap-1"
+          badgeClassName="px-2 text-xs leading-5"
+        />
         <KoDetail koUntil={p.koUntil} />
         <div className="mt-2 flex gap-1">
           {species.types.map((t) => (

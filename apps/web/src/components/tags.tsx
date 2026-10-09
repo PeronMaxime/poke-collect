@@ -43,18 +43,27 @@ export function TagBadge({ tag, className = '' }: { tag: PokemonTagDto; classNam
   );
 }
 
-/** Étiquette d'un Pokémon, s'il en porte une. */
-export function PokemonTagBadge({
+/** Étiquettes d'un Pokémon, dans l'ordre de la liste des étiquettes. */
+export function PokemonTagBadges({
   pokemon,
   tags,
-  className,
+  className = 'gap-0.5',
+  badgeClassName,
 }: {
-  pokemon: Pick<PokemonDto, 'tagId'>;
+  pokemon: Pick<PokemonDto, 'tagIds'>;
   tags: readonly PokemonTagDto[];
   className?: string;
+  badgeClassName?: string;
 }) {
-  const tag = pokemon.tagId ? tags.find((t) => t.id === pokemon.tagId) : undefined;
-  return tag ? <TagBadge tag={tag} className={className} /> : null;
+  const own = tags.filter((t) => pokemon.tagIds.includes(t.id));
+  if (own.length === 0) return null;
+  return (
+    <span className={`flex max-w-full flex-wrap justify-center ${className}`}>
+      {own.map((t) => (
+        <TagBadge key={t.id} tag={t} className={badgeClassName} />
+      ))}
+    </span>
+  );
 }
 
 /** `all` = tous les Pokémon, `none` = sans étiquette, sinon l'identifiant d'une étiquette. */
@@ -68,12 +77,14 @@ export function useTagFilter() {
     selected === 'all' || selected === 'none' || tags.some((t) => t.id === selected)
       ? selected
       : 'all';
-  const matches = (p: Pick<PokemonDto, 'tagId'>) =>
-    filter === 'all' || (filter === 'none' ? p.tagId === null : p.tagId === filter);
-  /** Comparaison pour le tri : ordre des étiquettes, Pokémon sans étiquette à la fin. */
-  const compare = (a: Pick<PokemonDto, 'tagId'>, b: Pick<PokemonDto, 'tagId'>) => {
-    const rank = (p: Pick<PokemonDto, 'tagId'>) => {
-      const i = tags.findIndex((t) => t.id === p.tagId);
+  const known = (p: Pick<PokemonDto, 'tagIds'>) =>
+    p.tagIds.filter((id) => tags.some((t) => t.id === id));
+  const matches = (p: Pick<PokemonDto, 'tagIds'>) =>
+    filter === 'all' || (filter === 'none' ? known(p).length === 0 : p.tagIds.includes(filter));
+  /** Comparaison pour le tri : première étiquette dans l'ordre des étiquettes, sans étiquette à la fin. */
+  const compare = (a: Pick<PokemonDto, 'tagIds'>, b: Pick<PokemonDto, 'tagIds'>) => {
+    const rank = (p: Pick<PokemonDto, 'tagIds'>) => {
+      const i = tags.findIndex((t) => p.tagIds.includes(t.id));
       return i < 0 ? tags.length : i;
     };
     return rank(a) - rank(b);
@@ -111,13 +122,13 @@ export function TagFilterSelect({
   );
 }
 
-/** Choix de l'étiquette d'un Pokémon, dans sa fiche. */
+/** Choix des étiquettes d'un Pokémon, dans sa fiche : chaque étiquette s'active ou se retire. */
 export function TagPicker({ pokemon: p }: { pokemon: PokemonDto }) {
   const queryClient = useQueryClient();
   const tags = useTags().data ?? [];
   const assign = useMutation({
-    mutationFn: (tagId: string | null) =>
-      api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { tagId } }),
+    mutationFn: (tagIds: string[]) =>
+      api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { tagIds } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.pokemon }),
   });
   if (tags.length === 0) {
@@ -127,32 +138,34 @@ export function TagPicker({ pokemon: p }: { pokemon: PokemonDto }) {
       </p>
     );
   }
-  const choice = (active: boolean) =>
-    `rounded transition ${active ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900' : 'opacity-60 hover:opacity-100'}`;
+  // Les étiquettes supprimées entre-temps ne sont pas renvoyées.
+  const current = tags.filter((t) => p.tagIds.includes(t.id)).map((t) => t.id);
+  const toggle = (id: string) =>
+    assign.mutate(current.includes(id) ? current.filter((c) => c !== id) : [...current, id]);
 
   return (
     <div className="mt-3 w-full text-left">
-      <p className="mb-1 text-xs text-slate-500">Étiquette</p>
+      <p className="mb-1 text-xs text-slate-500">Étiquettes (touche pour ajouter ou retirer)</p>
       <div className="flex flex-wrap gap-1.5">
-        <button
-          type="button"
-          disabled={assign.isPending}
-          onClick={() => assign.mutate(null)}
-          className={`${choice(p.tagId === null)} border border-dashed border-slate-400 px-1 text-[10px] leading-4 text-slate-500`}
-        >
-          Aucune
-        </button>
-        {tags.map((t) => (
-          <button
-            key={t.id}
-            type="button"
-            disabled={assign.isPending}
-            onClick={() => assign.mutate(t.id)}
-            className={choice(p.tagId === t.id)}
-          >
-            <TagBadge tag={t} className="text-xs" />
-          </button>
-        ))}
+        {tags.map((t) => {
+          const active = current.includes(t.id);
+          return (
+            <button
+              key={t.id}
+              type="button"
+              disabled={assign.isPending}
+              onClick={() => toggle(t.id)}
+              aria-pressed={active}
+              className={`rounded transition ${
+                active
+                  ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900'
+                  : 'opacity-40 hover:opacity-100'
+              }`}
+            >
+              <TagBadge tag={t} className="text-xs" />
+            </button>
+          );
+        })}
       </div>
       {assign.error && <p className="mt-1 text-xs text-red-600">{errorText(assign.error)}</p>}
     </div>
@@ -200,7 +213,7 @@ export function TagManagerDialog({ open, onClose }: { open: boolean; onClose: ()
 
       <ul className="mt-4 space-y-2">
         {tags.map((t) => {
-          const used = pokemon.filter((p) => p.tagId === t.id).length;
+          const used = pokemon.filter((p) => p.tagIds.includes(t.id)).length;
           return (
             <li key={t.id} className="flex items-center gap-2 text-sm">
               <TagBadge tag={t} className="text-sm leading-6 px-2" />

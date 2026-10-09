@@ -13,7 +13,7 @@ import {
 } from '@poke/game-core';
 import type { CaptureFilter, ExpeditionError, GameContext } from '@poke/game-core';
 import type { ExpeditionDto, PokemonDto, StartExpeditionInput } from '@poke/shared';
-import { PokemonTagBadge, TagFilterSelect, useTagFilter } from '../../components/tags';
+import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { Modal, PokemonSprite, ShinyStar, TypeBadge, useNow } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
@@ -268,7 +268,7 @@ export function LaunchExpeditionDialog({
               <span className="text-slate-500">
                 N.{p.level} · PE {power}
               </span>
-              <PokemonTagBadge pokemon={p} tags={tagFilter.tags} />
+              <PokemonTagBadges pokemon={p} tags={tagFilter.tags} />
             </button>
           );
         })}

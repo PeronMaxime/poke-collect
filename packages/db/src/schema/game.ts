@@ -94,8 +94,11 @@ export const pokemon = pgTable(
     locked: boolean('locked').notNull().default(false),
     /** K.O. après une défaite : indisponible jusqu'à cette date (évaluation paresseuse). */
     koUntil: timestamp('ko_until', { withTimezone: true }),
-    /** Étiquette du joueur (une au plus) ; retirée si l'étiquette est supprimée. */
-    tagId: uuid('tag_id').references(() => pokemonTags.id, { onDelete: 'set null' }),
+    /** Étiquettes du joueur (`pokemon_tags`), retirées du tableau quand l'une est supprimée. */
+    tagIds: uuid('tag_ids')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
   },
   (t) => [index('pokemon_owner_species').on(t.ownerId, t.speciesId)],
 );

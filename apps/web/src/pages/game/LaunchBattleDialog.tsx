@@ -11,7 +11,7 @@ import {
 } from '@poke/game-core';
 import type { BattleError, GameContext } from '@poke/game-core';
 import type { BattleDto, PokemonDto, StartBattleInput } from '@poke/shared';
-import { PokemonTagBadge, TagFilterSelect, useTagFilter } from '../../components/tags';
+import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { Modal, PokemonSprite, ShinyStar, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
 import { PLAYER_STATE_KEYS, isUsable, usePokemon } from '../../lib/game';
@@ -204,7 +204,7 @@ export function LaunchBattleDialog({
               <span className="text-slate-500">
                 N.{p.level} · PE {power}
               </span>
-              <PokemonTagBadge pokemon={p} tags={tagFilter.tags} />
+              <PokemonTagBadges pokemon={p} tags={tagFilter.tags} />
             </button>
           );
         })}

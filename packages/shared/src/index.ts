@@ -80,22 +80,22 @@ export interface PokemonDto {
   activity: PokemonActivity | null;
   /** K.O. après une défaite : indisponible jusqu'à cette date (comparer à l'heure du serveur). */
   koUntil: string | null;
-  /** Étiquette du joueur ; null = aucune. */
-  tagId: string | null;
+  /** Étiquettes du joueur (identifiants de `PokemonTagDto`). */
+  tagIds: string[];
 }
 
 export type PokemonActivity = 'expedition' | 'battle' | 'daycare';
-
-export const updatePokemonInputSchema = z
-  .object({ locked: z.boolean(), tagId: z.uuid().nullable() })
-  .partial()
-  .refine((v) => v.locked !== undefined || v.tagId !== undefined, 'Rien à modifier');
-export type UpdatePokemonInput = z.infer<typeof updatePokemonInputSchema>;
 
 // --- Étiquettes (tags) -----------------------------------------------------------------
 
 export const TAG_LABEL_MAX = 10;
 export const MAX_TAGS = 50;
+
+export const updatePokemonInputSchema = z
+  .object({ locked: z.boolean(), tagIds: z.array(z.uuid()).max(MAX_TAGS) })
+  .partial()
+  .refine((v) => v.locked !== undefined || v.tagIds !== undefined, 'Rien à modifier');
+export type UpdatePokemonInput = z.infer<typeof updatePokemonInputSchema>;
 
 export const tagInputSchema = z.object({
   label: z
@@ -107,7 +107,7 @@ export const tagInputSchema = z.object({
 });
 export type TagInput = z.infer<typeof tagInputSchema>;
 
-/** Étiquette collée sur des Pokémon du joueur (une au plus par Pokémon). */
+/** Étiquette collée sur des Pokémon du joueur (plusieurs possibles par Pokémon). */
 export interface PokemonTagDto {
   id: string;
   label: string;

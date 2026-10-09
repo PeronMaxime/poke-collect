@@ -70,7 +70,7 @@ export function toPokemonDto(row: PokemonRow, activity: PokemonActivity | null =
     busy: activity !== null,
     activity,
     koUntil: row.koUntil?.toISOString() ?? null,
-    tagId: row.tagId,
+    tagIds: row.tagIds,
   };
 }
 

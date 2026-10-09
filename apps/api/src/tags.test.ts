@@ -59,7 +59,7 @@ describe('étiquettes des Pokémon', () => {
     other = client(await signUp('autre-tags@example.com'));
     await call('POST', '/api/profile', { trainerName: 'Etiquette' });
     starter = (await call<PokemonDto>('POST', '/api/starter', { speciesId: 1 })).body;
-    expect(starter.tagId).toBeNull();
+    expect(starter.tagIds).toEqual([]);
   });
 
   it('crée, liste et modifie une étiquette', async () => {
@@ -90,24 +90,30 @@ describe('étiquettes des Pokémon', () => {
     expect((await other('DELETE', `/api/tags/${tag.id}`)).status).toBe(404);
   });
 
-  it('colle une étiquette sur un Pokémon, puis la retire à la suppression', async () => {
+  it('colle plusieurs étiquettes sur un Pokémon, puis retire celle qui est supprimée', async () => {
+    const second = (
+      await call<PokemonTagDto>('POST', '/api/tags', { label: 'Shiny', color: '#ffd700' })
+    ).body;
     const tagged = await call<PokemonDto>('PATCH', `/api/pokemon/${starter.id}`, {
-      tagId: tag.id,
+      tagIds: [tag.id, second.id, tag.id],
     });
-    expect(tagged.body).toMatchObject({ tagId: tag.id, locked: false });
+    expect(tagged.body).toMatchObject({ tagIds: [tag.id, second.id], locked: false });
 
-    // Le favori ne touche pas à l'étiquette.
+    // Le favori ne touche pas aux étiquettes.
     const locked = await call<PokemonDto>('PATCH', `/api/pokemon/${starter.id}`, { locked: true });
-    expect(locked.body).toMatchObject({ tagId: tag.id, locked: true });
+    expect(locked.body).toMatchObject({ tagIds: [tag.id, second.id], locked: true });
 
     const unknown = await call('PATCH', `/api/pokemon/${starter.id}`, {
-      tagId: '00000000-0000-4000-8000-000000000000',
+      tagIds: [tag.id, '00000000-0000-4000-8000-000000000000'],
     });
     expect(unknown).toMatchObject({ status: 404, body: { error: 'TAG_NOT_FOUND' } });
     expect((await call('PATCH', `/api/pokemon/${starter.id}`, {})).status).toBe(400);
 
     expect((await call('DELETE', `/api/tags/${tag.id}`)).status).toBe(204);
     const list = await call<PokemonDto[]>('GET', '/api/pokemon');
-    expect(list.body.find((p) => p.id === starter.id)?.tagId).toBeNull();
+    expect(list.body.find((p) => p.id === starter.id)?.tagIds).toEqual([second.id]);
+
+    const cleared = await call<PokemonDto>('PATCH', `/api/pokemon/${starter.id}`, { tagIds: [] });
+    expect(cleared.body.tagIds).toEqual([]);
   });
 });

@@ -1,7 +1,7 @@
 import type { FastifyInstance } from 'fastify';
-import { and, asc, count, eq } from 'drizzle-orm';
+import { and, arrayContains, asc, count, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { pokemonTags } from '@poke/db';
+import { pokemon, pokemonTags } from '@poke/db';
 import type { Db } from '@poke/db';
 import { MAX_TAGS, tagInputSchema } from '@poke/shared';
 import type { PokemonTagDto } from '@poke/shared';
@@ -61,14 +61,21 @@ export async function tagRoutes(app: FastifyInstance, { db, hooks }: Deps) {
     return toTagDto(row);
   });
 
-  /** Les Pokémon qui la portaient perdent leur étiquette (clé étrangère `set null`). */
+  /** Les Pokémon qui la portaient la perdent. */
   app.delete('/api/tags/:id', async (request, reply) => {
     const { id } = uuidParams.parse(request.params);
-    const [row] = await db
-      .delete(pokemonTags)
-      .where(and(eq(pokemonTags.id, id), eq(pokemonTags.ownerId, request.user!.id)))
-      .returning({ id: pokemonTags.id });
-    if (!row) throw new GameError(404, 'TAG_NOT_FOUND');
+    const userId = request.user!.id;
+    await db.transaction(async (tx) => {
+      const [row] = await tx
+        .delete(pokemonTags)
+        .where(and(eq(pokemonTags.id, id), eq(pokemonTags.ownerId, userId)))
+        .returning({ id: pokemonTags.id });
+      if (!row) throw new GameError(404, 'TAG_NOT_FOUND');
+      await tx
+        .update(pokemon)
+        .set({ tagIds: sql`array_remove(${pokemon.tagIds}, ${id}::uuid)` })
+        .where(and(eq(pokemon.ownerId, userId), arrayContains(pokemon.tagIds, [id])));
+    });
     return reply.code(204).send();
   });
 }

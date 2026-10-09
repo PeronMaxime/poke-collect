@@ -1,5 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { and, asc, desc, eq, gt, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { z } from 'zod';
 import { expeditions, inventory, pokedex, pokedexForms, pokemon, pokemonTags } from '@poke/db';
 import type { Db } from '@poke/db';
@@ -53,18 +53,21 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
 
   app.patch('/api/pokemon/:id', async (request, reply) => {
     const { id } = uuidParams.parse(request.params);
-    const { locked, tagId } = updatePokemonInputSchema.parse(request.body);
+    const { locked, tagIds: requested } = updatePokemonInputSchema.parse(request.body);
     const userId = request.user!.id;
-    if (tagId) {
-      const [tag] = await db
+    const tagIds = requested && [...new Set(requested)];
+    if (tagIds?.length) {
+      const owned = await db
         .select({ id: pokemonTags.id })
         .from(pokemonTags)
-        .where(and(eq(pokemonTags.id, tagId), eq(pokemonTags.ownerId, userId)));
-      if (!tag) return reply.code(404).send({ error: 'TAG_NOT_FOUND' });
+        .where(and(inArray(pokemonTags.id, tagIds), eq(pokemonTags.ownerId, userId)));
+      if (owned.length !== tagIds.length) {
+        return reply.code(404).send({ error: 'TAG_NOT_FOUND' });
+      }
     }
     const [row] = await db
       .update(pokemon)
-      .set({ locked, tagId })
+      .set({ locked, tagIds })
       .where(and(eq(pokemon.id, id), eq(pokemon.ownerId, userId)))
       .returning();
     if (!row) return reply.code(404).send({ error: 'POKEMON_NOT_FOUND' });
