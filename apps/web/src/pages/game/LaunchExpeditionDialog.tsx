@@ -99,12 +99,21 @@ export function LaunchExpeditionDialog({
   const [duration, setDuration] = useState(zone.durationsMinutes[0]!);
   const [team, setTeam] = useState<string[]>([]);
   const owned = new Map(inventory.data?.map((i) => [i.itemId, i.quantity]));
-  const balls = ctx.content.items.filter(
-    (i) => ctx.itemEffect(i.id, 'ball') && (owned.get(i.id) ?? 0) > 0,
-  );
-  const berries = ctx.content.items.filter(
-    (i) => ctx.itemEffect(i.id, 'captureBoost') && (owned.get(i.id) ?? 0) > 0,
-  );
+  // Du multiplicateur le plus faible au plus fort : la Ball par défaut reste la plus courante.
+  const balls = ctx.content.items
+    .filter((i) => ctx.itemEffect(i.id, 'ball') && (owned.get(i.id) ?? 0) > 0)
+    .sort(
+      (a, b) =>
+        ctx.itemEffect(a.id, 'ball')!.catchMultiplier -
+        ctx.itemEffect(b.id, 'ball')!.catchMultiplier,
+    );
+  const berries = ctx.content.items
+    .filter((i) => ctx.itemEffect(i.id, 'captureBoost') && (owned.get(i.id) ?? 0) > 0)
+    .sort(
+      (a, b) =>
+        ctx.itemEffect(a.id, 'captureBoost')!.multiplier -
+        ctx.itemEffect(b.id, 'captureBoost')!.multiplier,
+    );
   // undefined = choix par défaut (première Ball possédée) ; null = aucune Ball.
   const [ballId, setBallId] = useState<string | null | undefined>(undefined);
   const [berryId, setBerryId] = useState<string | null>(null);
