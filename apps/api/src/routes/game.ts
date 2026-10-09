@@ -15,6 +15,7 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import {
+  cancelExpedition,
   claimExpedition,
   expeditionSlots,
   requireStartedProfile,
@@ -136,6 +137,12 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     const input = startExpeditionInputSchema.parse(request.body);
     const row = await startExpedition(db, content, request.user!.id, input, now());
     return reply.code(201).send(toExpeditionDto(row));
+  });
+
+  app.post('/api/expeditions/:id/cancel', async (request, reply) => {
+    const { id } = uuidParams.parse(request.params);
+    await cancelExpedition(db, request.user!.id, id, now());
+    return reply.code(204).send();
   });
 
   app.post('/api/expeditions/:id/claim', async (request): Promise<ClaimExpeditionResponse> => {

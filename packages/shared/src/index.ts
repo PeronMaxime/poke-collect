@@ -7,6 +7,7 @@ import type {
   BattleError,
   BattleResult,
   BreedingError,
+  CaptureFilter,
   ExpeditionError,
   ExpeditionResult,
   Gender,
@@ -341,12 +342,22 @@ export interface ReviveFossilsResponse {
 
 // --- Expéditions --------------------------------------------------------------------
 
+export const captureFilterSchema = z.object({
+  speciesIds: z.array(z.int().positive()).max(100),
+  minPerfectIvs: z.int().min(0).max(STAT_NAMES.length),
+  shiny: z.enum(['any', 'always', 'only']),
+});
+
 export const startExpeditionInputSchema = z.object({
   zoneId: slugSchema,
   durationMinutes: z.int().positive(),
   team: z.array(z.uuid()).min(1).max(6),
   ballItemId: slugSchema.nullable(),
+  /** Nombre de Balls à emporter (absent : une par rencontre, dans la limite du stock). */
+  ballCount: z.int().positive().optional(),
   berryItemId: slugSchema.nullable(),
+  /** Pokémon à tenter de capturer ; absent ou null = tous. */
+  captureFilter: captureFilterSchema.nullable().optional(),
 });
 export type StartExpeditionInput = z.infer<typeof startExpeditionInputSchema>;
 
@@ -367,6 +378,7 @@ export interface ExpeditionDto {
   balls: number;
   berryItemId: string | null;
   berries: number;
+  captureFilter: CaptureFilter | null;
   contentVersionId: number;
   startedAt: string;
   endsAt: string;

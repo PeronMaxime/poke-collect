@@ -16,7 +16,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { users } from './auth';
-import type { DaycareParent } from '@poke/game-core';
+import type { CaptureFilter, DaycareParent } from '@poke/game-core';
 import { contentVersions } from './content';
 
 /** État des joueurs (première ébauche, PLAN.md section 4.4). */
@@ -188,6 +188,8 @@ export const expeditions = pgTable(
     balls: integer('balls').notNull().default(0),
     berryItemId: text('berry_item_id'),
     berries: integer('berries').notNull().default(0),
+    /** Pokémon à tenter de capturer ; null = tous. */
+    captureFilter: jsonb('capture_filter').$type<CaptureFilter>(),
     contentVersionId: integer('content_version_id')
       .notNull()
       .references(() => contentVersions.id),

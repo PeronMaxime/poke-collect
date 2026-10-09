@@ -141,6 +141,13 @@
       "when": 1791465592554,
       "tag": "0019_johto_refait",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1791560073551,
+      "tag": "0020_expeditions_filtre_capture",
+      "breakpoints": true
     }
   ]
 }

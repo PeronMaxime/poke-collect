@@ -4,7 +4,7 @@ import type { Trainer } from '@poke/content';
 import { battleDurationMinutes, trainerPower, trainerStatus } from '@poke/game-core';
 import type { GameContext, TrainerStatus } from '@poke/game-core';
 import type { BattleDto, ClaimBattleResponse, PokemonDto } from '@poke/shared';
-import { PokemonSprite, ProgressBar, TypeBadge, useNow } from '../../components/ui';
+import { CancelButton, PokemonSprite, ProgressBar, TypeBadge, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
 import {
   PLAYER_STATE_KEYS,
@@ -87,6 +87,12 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
     },
   });
 
+  const cancel = useMutation({
+    mutationFn: (id: string) => api<void>(`/api/battles/${id}/cancel`, { method: 'POST' }),
+    onSuccess: () =>
+      Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+  });
+
   const serverNow = now + serverOffset(battles.data, battles.dataUpdatedAt);
   const active = battles.data?.active ?? [];
   const slots = battles.data?.slots ?? 0;
@@ -115,6 +121,8 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
                 team={battle.team.map((id) => pokemonById.get(id))}
                 claiming={claim.isPending && claim.variables === battle.id}
                 onClaim={() => claim.mutate(battle.id)}
+                cancelling={cancel.isPending && cancel.variables === battle.id}
+                onCancel={() => cancel.mutate(battle.id)}
               />
             ) : (
               <div
@@ -127,6 +135,7 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
           })}
         </div>
         {claim.error && <p className="mt-2 text-sm text-red-600">{errorText(claim.error)}</p>}
+        {cancel.error && <p className="mt-2 text-sm text-red-600">{errorText(cancel.error)}</p>}
       </section>
 
       {ctx.regions.map((region) => {
@@ -167,6 +176,8 @@ function ActiveBattle({
   team,
   claiming,
   onClaim,
+  cancelling,
+  onCancel,
 }: {
   ctx: GameContext;
   battle: BattleDto;
@@ -174,6 +185,8 @@ function ActiveBattle({
   team: (PokemonDto | undefined)[];
   claiming: boolean;
   onClaim: () => void;
+  cancelling: boolean;
+  onCancel: () => void;
 }) {
   const start = Date.parse(battle.startedAt);
   const end = Date.parse(battle.endsAt);
@@ -209,9 +222,13 @@ function ActiveBattle({
         <span className="font-mono text-sm text-slate-500">
           {done ? 'Combat terminé !' : formatCountdown(end - serverNow)}
         </span>
-        <button className="btn-primary" disabled={!done || claiming} onClick={onClaim}>
-          {claiming ? 'Ouverture…' : 'Voir le résultat'}
-        </button>
+        {done ? (
+          <button className="btn-primary" disabled={claiming} onClick={onClaim}>
+            {claiming ? 'Ouverture…' : 'Voir le résultat'}
+          </button>
+        ) : (
+          <CancelButton label="Abandonner le combat" pending={cancelling} onConfirm={onCancel} />
+        )}
       </div>
     </div>
   );

@@ -137,6 +137,20 @@ describe('combats de dresseurs', () => {
     expect(unknown).toMatchObject({ status: 404, body: { error: 'TRAINER_NOT_FOUND' } });
   });
 
+  it('abandonne un combat en cours sans résultat ni bilan', async () => {
+    const start = await call<BattleDto>('POST', '/api/battles', {
+      trainerId: 'gamin-tom',
+      team: [starter.id],
+    });
+    expect(start.status).toBe(201);
+    const cancel = await call('POST', `/api/battles/${start.body.id}/cancel`);
+    expect(cancel.status).toBe(204);
+    const res = await call<BattlesResponse>('GET', '/api/battles');
+    expect(res.body).toMatchObject({ active: [], records: [] });
+    const pokemon = await call<PokemonDto[]>('GET', '/api/pokemon');
+    expect(pokemon.body[0]).toMatchObject({ busy: false });
+  });
+
   it('gagne : argent, butin, XP, bonheur, temps de recharge et déblocages', async () => {
     const start = await call<BattleDto>('POST', '/api/battles', {
       trainerId: 'gamin-tom',

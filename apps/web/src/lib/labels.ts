@@ -241,6 +241,7 @@ export const GAME_ERRORS: Record<string, string> = {
   TEAM_INVALID: 'L’équipe ne remplit pas les conditions de la zone.',
   NOT_FINISHED: 'L’expédition n’est pas encore terminée.',
   ALREADY_CLAIMED: 'Déjà récupéré.',
+  ALREADY_FINISHED: 'Déjà terminé : il ne reste plus qu’à récupérer le résultat.',
   STOCK_CHANGED: 'Ton inventaire a changé, réessaie.',
   INVALID_STARTER: 'Ce starter n’est pas disponible.',
   REGION_LOCKED: 'Cette région n’est pas encore débloquée.',

@@ -6,12 +6,21 @@ import { Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components
 import { usePokemon } from '../../lib/game';
 import { formatShinyRate, itemIcon, itemName, speciesName } from '../../lib/labels';
 
-const STEP = 0.45; // secondes entre deux rencontres
+// Secondes entre deux rencontres : on accélère quand il y en a beaucoup, pour que
+// l'apparition dure au plus ~REVEAL_BUDGET secondes (sans descendre sous MIN_STEP).
+const MAX_STEP = 0.45;
+const MIN_STEP = 0.06;
+const REVEAL_BUDGET = 6;
+
+function revealStep(count: number): number {
+  return Math.max(MIN_STEP, Math.min(MAX_STEP, REVEAL_BUDGET / Math.max(1, count)));
+}
 
 const OUTCOME_LABELS = {
   captured: 'Capturé !',
   escaped: 'S’est échappé…',
   noBall: 'Observé',
+  ignored: 'Ignoré',
 } as const;
 
 /** Ouverture animée du résultat d'une expédition : rencontres une à une, puis butin et XP. */
@@ -51,7 +60,8 @@ function RevealContent({
   const shinies = result.encounters.filter((e) => e.isShiny).length;
   const firstShiny = result.encounters.findIndex((e) => e.isShiny);
   const newSpecies = new Set(result.newSpeciesIds);
-  const delay = (i: number) => (instant ? 0 : 0.3 + i * STEP);
+  const step = revealStep(result.encounters.length);
+  const delay = (i: number) => (instant ? 0 : 0.3 + i * step);
   const after = delay(result.encounters.length);
 
   return (
@@ -130,7 +140,9 @@ function RevealContent({
                   formId={e.formId}
                   shiny={e.isShiny}
                   size={64}
-                  className={e.outcome === 'escaped' ? 'opacity-50 grayscale' : ''}
+                  className={
+                    e.outcome === 'escaped' || e.outcome === 'ignored' ? 'opacity-50 grayscale' : ''
+                  }
                 />
               </motion.div>
               <span className="font-medium">

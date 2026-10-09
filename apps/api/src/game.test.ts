@@ -142,6 +142,34 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
     expect(notABall.body).toMatchObject({ error: 'NOT_A_BALL' });
   });
 
+  it('limite les Balls emportées et annule une expédition en rendant la réserve', async () => {
+    const res = await call<ExpeditionDto>('POST', '/api/expeditions', {
+      zoneId: 'route-1',
+      durationMinutes: 5,
+      team: [starter.id],
+      ballItemId: 'poke-ball',
+      ballCount: 1,
+      berryItemId: 'razz-berry',
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body).toMatchObject({ balls: 1, berries: 2 });
+
+    const cancel = await call('POST', `/api/expeditions/${res.body.id}/cancel`);
+    expect(cancel.status).toBe(204);
+    const inv = await call<InventoryEntryDto[]>('GET', '/api/inventory');
+    expect(inv.body).toEqual([
+      { itemId: 'poke-ball', quantity: 20 },
+      { itemId: 'razz-berry', quantity: 5 },
+    ]);
+    const list = await call<ExpeditionsResponse>('GET', '/api/expeditions');
+    expect(list.body.active).toEqual([]);
+    const pc = await call<PokemonDto[]>('GET', '/api/pokemon');
+    expect(pc.body.find((p) => p.id === starter.id)?.busy).toBe(false);
+
+    const again = await call('POST', `/api/expeditions/${res.body.id}/cancel`);
+    expect(again).toMatchObject({ status: 404, body: { error: 'EXPEDITION_NOT_FOUND' } });
+  });
+
   let expedition: ExpeditionDto;
 
   it('lance une expédition et réserve les Balls et baies', async () => {
@@ -188,6 +216,8 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
 
   it('réclame le résultat une seule fois et l’applique', async () => {
     advance(1);
+    const cancel = await call('POST', `/api/expeditions/${expedition.id}/cancel`);
+    expect(cancel).toMatchObject({ status: 409, body: { error: 'ALREADY_FINISHED' } });
     const res = await call<ClaimExpeditionResponse>(
       'POST',
       `/api/expeditions/${expedition.id}/claim`,
@@ -285,6 +315,29 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
     );
     expect(claimed.body.expedition.result!.encounters.map((e) => e.speciesId)).toEqual([129]);
     expect(claimed.body.expedition.result!.encounters[0]!.outcome).toBe('noBall');
+  });
+
+  it('ignore les rencontres hors du filtre de capture, sans utiliser de Ball', async () => {
+    const captureFilter = { speciesIds: [16], minPerfectIvs: 0, shiny: 'any' };
+    const started = await call<ExpeditionDto>('POST', '/api/expeditions', {
+      zoneId: 'route-1',
+      durationMinutes: 5,
+      team: [starter.id],
+      ballItemId: 'poke-ball',
+      berryItemId: null,
+      captureFilter,
+    });
+    expect(started.status, JSON.stringify(started.body)).toBe(201);
+    expect(started.body.captureFilter).toEqual(captureFilter);
+    advance(5);
+    const claimed = await call<ClaimExpeditionResponse>(
+      'POST',
+      `/api/expeditions/${started.body.id}/claim`,
+    );
+    // La Route 1 ne propose plus que Magicarpe (version publiée au test précédent).
+    const result = claimed.body.expedition.result!;
+    expect(result.encounters.map((e) => e.outcome)).toEqual(['ignored', 'ignored']);
+    expect(result.ballsUsed).toBe(0);
   });
 });
 

@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto';
-import { and, eq, gte, inArray, isNull, or } from 'drizzle-orm';
+import { and, eq, gt, gte, inArray, isNull, or } from 'drizzle-orm';
 import { expeditions, pityCounters, playerProfiles, pokemon } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
@@ -137,14 +137,14 @@ export async function startExpedition(
 
     // Une Ball (et une baie) par rencontre au maximum : on réserve ce qui sera utilisé.
     const encounters = encounterCount(ctx, input.durationMinutes);
-    const reserve = async (itemId: string | null) => {
+    const reserve = async (itemId: string | null, max = encounters) => {
       if (!itemId) return 0;
-      const quantity = Math.min(encounters, await itemQuantity(tx, userId, itemId));
+      const quantity = Math.min(encounters, max, await itemQuantity(tx, userId, itemId));
       if (!(await takeItems(tx, userId, itemId, quantity)))
         throw new GameError(409, 'STOCK_CHANGED');
       return quantity;
     };
-    const balls = await reserve(input.ballItemId);
+    const balls = await reserve(input.ballItemId, input.ballCount);
     const berries = await reserve(input.berryItemId);
     const chain = (await shinyChains(tx, ctx, userId, now, zone.id)).get(zone.id)?.chain ?? 0;
 
@@ -160,6 +160,7 @@ export async function startExpedition(
         balls,
         berryItemId: berries > 0 ? input.berryItemId : null,
         berries,
+        captureFilter: input.captureFilter ?? null,
         contentVersionId: ctx.content.versionId,
         startedAt: now,
         endsAt: new Date(now.getTime() + input.durationMinutes * 60_000),
@@ -168,6 +169,43 @@ export async function startExpedition(
       })
       .returning();
     return row!;
+  });
+}
+
+/**
+ * Annule une expédition en cours : elle disparaît sans résultat, l'équipe redevient disponible
+ * et les Balls et baies réservées sont rendues. Une expédition terminée se réclame.
+ */
+export async function cancelExpedition(
+  db: Db,
+  userId: string,
+  expeditionId: string,
+  now: Date,
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    const [found] = await tx
+      .delete(expeditions)
+      .where(
+        and(
+          eq(expeditions.id, expeditionId),
+          eq(expeditions.ownerId, userId),
+          isNull(expeditions.claimedAt),
+          gt(expeditions.endsAt, now),
+        ),
+      )
+      .returning();
+    if (!found) {
+      const [existing] = await tx
+        .select({ claimedAt: expeditions.claimedAt })
+        .from(expeditions)
+        .where(and(eq(expeditions.id, expeditionId), eq(expeditions.ownerId, userId)));
+      if (!existing) throw new GameError(404, 'EXPEDITION_NOT_FOUND');
+      throw new GameError(409, existing.claimedAt ? 'ALREADY_CLAIMED' : 'ALREADY_FINISHED');
+    }
+    await addItems(tx, userId, [
+      ...(found.ballItemId ? [{ itemId: found.ballItemId, quantity: found.balls }] : []),
+      ...(found.berryItemId ? [{ itemId: found.berryItemId, quantity: found.berries }] : []),
+    ]);
   });
 }
 
@@ -228,6 +266,7 @@ export async function claimExpedition(
       bonuses: playerBonuses(ctx, await claimedRewards(tx, userId)),
       // Chaîne figée au départ ; Charme Chroma possédé à la réclamation.
       shiny: { chain: found.shinyChain, charm: await shinyCharm(tx, ctx, userId) },
+      captureFilter: found.captureFilter,
     });
 
     const capturedEncounters = result.encounters.filter((e) => e.pokemon);

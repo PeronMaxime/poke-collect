@@ -8,6 +8,7 @@ import type { BattleDto, BattlesResponse, ClaimBattleResponse } from '@poke/shar
 import type { ContentCache } from '../content-cache';
 import {
   battleSlots,
+  cancelBattle,
   claimBattle,
   startBattle,
   toBattleDto,
@@ -66,6 +67,12 @@ export async function battleRoutes(app: FastifyInstance, { db, content, hooks, n
     const input = startBattleInputSchema.parse(request.body);
     const row = await startBattle(db, content, request.user!.id, input, now());
     return reply.code(201).send(toBattleDto(row));
+  });
+
+  app.post('/api/battles/:id/cancel', async (request, reply) => {
+    const { id } = uuidParams.parse(request.params);
+    await cancelBattle(db, request.user!.id, id, now());
+    return reply.code(204).send();
   });
 
   app.post('/api/battles/:id/claim', async (request): Promise<ClaimBattleResponse> => {

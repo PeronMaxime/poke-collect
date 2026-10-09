@@ -84,6 +84,7 @@ export function toExpeditionDto(row: ExpeditionRow): ExpeditionDto {
     balls: row.balls,
     berryItemId: row.berryItemId,
     berries: row.berries,
+    captureFilter: row.captureFilter,
     contentVersionId: row.contentVersionId,
     startedAt: row.startedAt.toISOString(),
     endsAt: row.endsAt.toISOString(),

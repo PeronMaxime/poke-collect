@@ -1,6 +1,14 @@
+import { STAT_NAMES } from '@poke/data';
 import type { Encounter, ItemStack, LootTable, Zone } from '@poke/content';
 import type { GameContext } from './context';
-import { MAX_LEVEL, generatePokemon, levelForXp, pokemonPower, xpForLevel } from './pokemon';
+import {
+  MAX_IV,
+  MAX_LEVEL,
+  generatePokemon,
+  levelForXp,
+  pokemonPower,
+  xpForLevel,
+} from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import { outOfRegionSpecies } from './progress';
 import { NO_BONUSES } from './progression';
@@ -219,6 +227,36 @@ export function checkTeam(
   return { power, affinityCount: countAffinity(ctx, zone, team), errors };
 }
 
+// --- Filtre de capture -------------------------------------------------------------------
+
+/**
+ * Pokémon à tenter de capturer ; les autres rencontres sont ignorées (ni Ball ni baie).
+ * Les critères se cumulent ; `shiny: 'always'` tente en plus tout shiny, quels que soient
+ * les autres critères.
+ */
+export interface CaptureFilter {
+  /** Espèces visées ; vide = toutes. */
+  speciesIds: number[];
+  /** Nombre minimal d'IV au maximum (31). */
+  minPerfectIvs: number;
+  shiny: 'any' | 'always' | 'only';
+}
+
+export function perfectIvCount(pokemon: Pick<PokemonInstance, 'ivs'>): number {
+  return STAT_NAMES.filter((stat) => pokemon.ivs[stat] === MAX_IV).length;
+}
+
+export function matchesCaptureFilter(
+  filter: CaptureFilter | null | undefined,
+  wild: Pick<PokemonInstance, 'speciesId' | 'isShiny' | 'ivs'>,
+): boolean {
+  if (!filter) return true;
+  if (filter.shiny === 'always' && wild.isShiny) return true;
+  if (filter.shiny === 'only' && !wild.isShiny) return false;
+  if (filter.speciesIds.length > 0 && !filter.speciesIds.includes(wild.speciesId)) return false;
+  return perfectIvCount(wild) >= filter.minPerfectIvs;
+}
+
 // --- Résolution ----------------------------------------------------------------------------
 
 export interface ExpeditionInput {
@@ -238,9 +276,12 @@ export interface ExpeditionInput {
   bonuses?: PlayerBonuses;
   /** Chaîne de zone et Charme Chroma ; aucun multiplicateur par défaut. */
   shiny?: ShinyFactors;
+  /** Pokémon à tenter de capturer ; absent = tous. */
+  captureFilter?: CaptureFilter | null;
 }
 
-export type EncounterOutcome = 'captured' | 'escaped' | 'noBall';
+/** `ignored` : écarté par le filtre de capture. */
+export type EncounterOutcome = 'captured' | 'escaped' | 'noBall' | 'ignored';
 
 export interface EncounterResult {
   speciesId: number;
@@ -341,13 +382,13 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
     });
     xpPerMember += Math.floor(defeatXp(species, level) * ctx.balance.xp.multiplier * bonuses.xp);
 
-    if (ballsLeft <= 0) {
+    if (ballsLeft <= 0 || !matchesCaptureFilter(input.captureFilter, wild)) {
       encounters.push({
         speciesId: species.id,
         formId,
         level,
         isShiny: wild.isShiny,
-        outcome: 'noBall',
+        outcome: ballsLeft <= 0 ? 'noBall' : 'ignored',
         captureChance: 0,
       });
       continue;
