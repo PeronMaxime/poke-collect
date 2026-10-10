@@ -30,7 +30,8 @@ import { PokedexPage } from './game/PokedexPage';
 import { QuestsPage } from './game/QuestsPage';
 import { ShopPage } from './game/ShopPage';
 import { TrainerCardPage } from './game/TrainerCardPage';
-import { FanDisclaimer, LegalLinks } from './LegalPages';
+import { CHANGELOG_PATH } from './ChangelogPage';
+import { FanDisclaimer, LegalLinks, navigate } from './LegalPages';
 import { SettingsDialog } from './SettingsDialog';
 
 const TABS = [
@@ -130,6 +131,13 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
               Admin
             </a>
           )}
+          <a
+            className="btn-ghost"
+            href={CHANGELOG_PATH}
+            onClick={(e) => navigate(e, CHANGELOG_PATH)}
+          >
+            Nouveautés
+          </a>
           <button className="btn-ghost" onClick={() => setSettingsOpen(true)}>
             Réglages
           </button>
