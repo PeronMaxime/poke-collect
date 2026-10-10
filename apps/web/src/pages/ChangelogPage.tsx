@@ -16,6 +16,36 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '10 octobre 2026',
+    title: 'Pension plus pratique et chaînes d’expédition renforcées',
+    changes: [
+      {
+        section: 'Expéditions',
+        items: [
+          'Les chaînes de zone garantissent désormais des IV parfaits aux Pokémon sauvages : 1 IV à 31 dès 5 maillons, 2 à 10, 3 à 15 et 4 à 20.',
+          'Les IV garantis par la chaîne en cours sont affichés sur la zone et au lancement de l’expédition.',
+          'Nouveau filtre de capture « Nouveaux Pokémon uniquement » : seuls les Pokémon absents du Pokédex sont tentés, jusqu’à en capturer un de chaque.',
+        ],
+      },
+      {
+        section: 'Pension',
+        items: [
+          'Recherche, filtres (sexe, groupe d’œufs, étiquette, shiny) et tri dans la fenêtre de dépôt.',
+          'Une fois le premier parent choisi, seuls ses partenaires compatibles sont proposés.',
+          'Étiquettes et groupes d’œufs affichés sur les Pokémon de la fenêtre de dépôt.',
+          'Mise en favori et étiquettes directement depuis l’écran d’éclosion.',
+        ],
+      },
+      {
+        section: 'Boutique',
+        items: [
+          'Nouvel onglet « Vendre » : revends les objets de ton sac contre des Poké Dollars, en général à la moitié de leur prix d’achat.',
+          'Certains objets précieux, comme le Charme Chroma, ne se revendent pas.',
+        ],
+      },
+    ],
+  },
+  {
     date: '9 octobre 2026',
     title: 'Expéditions plus pratiques et étiquettes',
     changes: [

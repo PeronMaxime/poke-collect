@@ -123,7 +123,14 @@ export function TagFilterSelect({
 }
 
 /** Choix des étiquettes d'un Pokémon, dans sa fiche : chaque étiquette s'active ou se retire. */
-export function TagPicker({ pokemon: p }: { pokemon: PokemonDto }) {
+export function TagPicker({
+  pokemon: p,
+  compact = false,
+}: {
+  pokemon: PokemonDto;
+  /** Sans légende, centré : pour les petites cartes (éclosions). */
+  compact?: boolean;
+}) {
   const queryClient = useQueryClient();
   const tags = useTags().data ?? [];
   const assign = useMutation({
@@ -132,6 +139,7 @@ export function TagPicker({ pokemon: p }: { pokemon: PokemonDto }) {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.pokemon }),
   });
   if (tags.length === 0) {
+    if (compact) return null;
     return (
       <p className="mt-3 text-xs text-slate-500">
         Crée des étiquettes depuis le bouton « Étiquettes » du PC pour classer tes Pokémon.
@@ -144,9 +152,11 @@ export function TagPicker({ pokemon: p }: { pokemon: PokemonDto }) {
     assign.mutate(current.includes(id) ? current.filter((c) => c !== id) : [...current, id]);
 
   return (
-    <div className="mt-3 w-full text-left">
-      <p className="mb-1 text-xs text-slate-500">Étiquettes (touche pour ajouter ou retirer)</p>
-      <div className="flex flex-wrap gap-1.5">
+    <div className={compact ? 'mt-1 w-full' : 'mt-3 w-full text-left'}>
+      {!compact && (
+        <p className="mb-1 text-xs text-slate-500">Étiquettes (touche pour ajouter ou retirer)</p>
+      )}
+      <div className={`flex flex-wrap gap-1.5 ${compact ? 'justify-center' : ''}`}>
         {tags.map((t) => {
           const active = current.includes(t.id);
           return (

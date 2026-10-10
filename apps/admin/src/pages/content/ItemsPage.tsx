@@ -1,10 +1,17 @@
-import { ITEM_CATEGORIES, RARITIES, itemSchema } from '@poke/content';
+import {
+  ITEM_CATEGORIES,
+  RARITIES,
+  itemSchema,
+  lowestUnitPrice,
+  suggestedSellPrice,
+} from '@poke/content';
 import type { Item, ItemCategory, ItemEffect, Rarity } from '@poke/content';
 import { items as pokeApiItems, natures } from '@poke/data';
 import { EntityPage } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
 import {
   Field,
+  NullableNumberInput,
   NullableTextInput,
   NumberInput,
   Section,
@@ -114,6 +121,7 @@ export function ItemsPage() {
         icon: null,
         category: 'misc',
         rarity: 'common',
+        sellPrice: null,
         effects: [],
       })}
       duplicate={(i) => ({ ...structuredClone(i), id: `${i.id}-copie`, name: `${i.name} (copie)` })}
@@ -135,6 +143,8 @@ function ItemForm({
   const disabled = !editable;
   const pokeApi = pokeApiById.get(item.id);
   const used = new Set(working.content.items.map((i) => i.id));
+  const unitPrice = lowestUnitPrice(working.content.shopEntries, item.id);
+  const suggested = suggestedSellPrice(item, working.content.shopEntries);
 
   return (
     <div className="space-y-6">
@@ -197,6 +207,35 @@ function ItemForm({
             onChange={(v) => set('rarity', v)}
             disabled={disabled}
             options={RARITIES.map((r) => ({ value: r, label: RARITY_LABELS[r] }))}
+          />
+        </Field>
+        <Field
+          label="Prix de revente (unité)"
+          hint={
+            <>
+              Vide = invendable.{' '}
+              {unitPrice !== null && `En boutique : ${Math.floor(unitPrice)} ₽ l’unité. `}
+              {suggested !== null && suggested !== item.sellPrice && (
+                <button
+                  type="button"
+                  className="underline"
+                  disabled={disabled}
+                  onClick={() => set('sellPrice', suggested)}
+                >
+                  Suggéré : {suggested} ₽
+                </button>
+              )}
+            </>
+          }
+          error={errors.get('sellPrice')}
+        >
+          <NullableNumberInput
+            value={item.sellPrice}
+            onChange={(v) => set('sellPrice', v)}
+            min={0}
+            unit="₽"
+            placeholder="Invendable"
+            disabled={disabled}
           />
         </Field>
         <Field label="Icône personnalisée (URL)" error={errors.get('icon')}>

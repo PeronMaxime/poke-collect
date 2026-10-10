@@ -121,6 +121,7 @@ export const items = pgTable(
     icon: text('icon'),
     category: text('category').notNull(),
     rarity: text('rarity').notNull(),
+    sellPrice: integer('sell_price'),
     effects: jsonb('effects').$type<ItemEffect[]>().notNull(),
   },
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],

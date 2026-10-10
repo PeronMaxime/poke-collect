@@ -312,6 +312,14 @@ export async function withdrawDaycare(
 /** Fait éclore tous les œufs arrivés à terme (contenu de la version de ponte). */
 export async function hatchEggs(db: Db, content: ContentCache, userId: string, now: Date) {
   await requireStartedProfile(db, userId);
+  // Contenu chargé avant la transaction : le cache lit via `db`, ce qui bloquerait PGlite
+  // (connexion unique) si la lecture attendait la fin de la transaction en cours.
+  const pending = await db
+    .selectDistinct({ versionId: eggs.contentVersionId })
+    .from(eggs)
+    .where(and(eq(eggs.ownerId, userId), eq(eggs.hatched, false)));
+  const published = await content.get();
+  await Promise.all(pending.map((e) => content.version(e.versionId)));
   return db.transaction(async (tx) => {
     // Verrou : seule la première demande fait éclore un œuf donné.
     const ready = await tx
@@ -324,7 +332,7 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
 
     const hatched: PokemonRow[] = [];
     // Charme Chroma possédé à l'éclosion (effet lu dans la version publiée).
-    const charm = await shinyCharm(tx, await content.get(), userId);
+    const charm = await shinyCharm(tx, published, userId);
     for (const egg of ready) {
       const ctx = await content.version(egg.contentVersionId);
       const child = resolveEgg(ctx, {

@@ -4,10 +4,10 @@ import { motion } from 'motion/react';
 import type { ShopEntry } from '@poke/content';
 import { maxPurchasableLots } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { PurchaseResponse, ShopEntryStatusDto } from '@poke/shared';
+import type { PurchaseResponse, SellResponse, ShopEntryStatusDto } from '@poke/shared';
 import { Modal, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, serverOffset, useShop } from '../../lib/game';
+import { keys, serverOffset, useInventory, useShop } from '../../lib/game';
 import {
   RARITY_LABELS,
   RARITY_STYLES,
@@ -31,6 +31,9 @@ function formatWait(ms: number): string {
   if (h > 0) return m ? `${h} h ${m} min` : `${h} h`;
   return `${m} min`;
 }
+
+/** Onglet de revente, à côté des catégories d'articles. */
+const SELL_TAB = 'vendre';
 
 const formatDay = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
@@ -86,12 +89,15 @@ export function ShopPage({ ctx }: { ctx: GameContext }) {
   const categories = ctx.shopCategories.filter((c) =>
     statuses.some((s) => s.entry.categoryId === c.id),
   );
+  const selling = category === SELL_TAB;
   const current = categories.find((c) => c.id === category) ?? categories[0];
   const shown = statuses.filter((s) => s.entry.categoryId === current?.id);
-
-  if (!current) {
-    return <p className="text-sm text-slate-500">La boutique n’a encore rien à te proposer.</p>;
-  }
+  const tabClass = (active: boolean) =>
+    `flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${
+      active
+        ? 'bg-brand-500 text-white'
+        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+    }`;
 
   return (
     <div className="space-y-4">
@@ -106,11 +112,7 @@ export function ShopPage({ ctx }: { ctx: GameContext }) {
               <button
                 key={c.id}
                 onClick={() => setCategory(c.id)}
-                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                  c.id === current.id
-                    ? 'bg-brand-500 text-white'
-                    : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-                }`}
+                className={tabClass(!selling && c.id === current?.id)}
               >
                 <img
                   src={c.icon ?? (firstEntry ? itemIcon(ctx, firstEntry.itemId) : '')}
@@ -122,29 +124,41 @@ export function ShopPage({ ctx }: { ctx: GameContext }) {
               </button>
             );
           })}
+          <button onClick={() => setCategory(SELL_TAB)} className={tabClass(selling)}>
+            <span aria-hidden>💰</span>
+            Vendre
+          </button>
         </div>
         <p className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
           Solde : {formatMoney(shop.data.currency)}
         </p>
       </div>
 
-      {buy.error && <p className="text-sm text-red-600">{errorText(buy.error)}</p>}
+      {selling ? (
+        <SellPanel ctx={ctx} />
+      ) : !current ? (
+        <p className="text-sm text-slate-500">La boutique n’a encore rien à te proposer.</p>
+      ) : (
+        <>
+          {buy.error && <p className="text-sm text-red-600">{errorText(buy.error)}</p>}
 
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {shown.map(({ entry, status }) => (
-          <ShopEntryCard
-            key={entry.id}
-            ctx={ctx}
-            entry={entry}
-            status={status}
-            isNew={highlight.has(entry.id)}
-            currency={shop.data.currency}
-            serverNow={serverNow}
-            buying={buy.isPending && buy.variables?.entryId === entry.id}
-            onBuy={(lots) => buy.mutate({ entryId: entry.id, lots })}
-          />
-        ))}
-      </ul>
+          <ul className="grid gap-3 sm:grid-cols-2">
+            {shown.map(({ entry, status }) => (
+              <ShopEntryCard
+                key={entry.id}
+                ctx={ctx}
+                entry={entry}
+                status={status}
+                isNew={highlight.has(entry.id)}
+                currency={shop.data.currency}
+                serverNow={serverNow}
+                buying={buy.isPending && buy.variables?.entryId === entry.id}
+                onBuy={(lots) => buy.mutate({ entryId: entry.id, lots })}
+              />
+            ))}
+          </ul>
+        </>
+      )}
 
       <PurchaseReceipt ctx={ctx} receipt={receipt} onClose={() => setReceipt(null)} />
     </div>
@@ -251,33 +265,7 @@ function ShopEntryCard({
           </p>
         ) : (
           <div className="flex items-center gap-2">
-            <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
-              <button
-                className="px-2.5 py-1.5 text-slate-500 disabled:opacity-30"
-                disabled={chosen <= 1}
-                onClick={() => setLots(chosen - 1)}
-                aria-label="Un lot de moins"
-              >
-                −
-              </button>
-              <input
-                type="number"
-                className="w-12 bg-transparent text-center text-sm [appearance:textfield]"
-                value={chosen}
-                min={1}
-                max={Math.max(1, max)}
-                aria-label="Nombre de lots"
-                onChange={(e) => setLots(e.target.valueAsNumber || 1)}
-              />
-              <button
-                className="px-2.5 py-1.5 text-slate-500 disabled:opacity-30"
-                disabled={chosen >= max}
-                onClick={() => setLots(chosen + 1)}
-                aria-label="Un lot de plus"
-              >
-                +
-              </button>
-            </div>
+            <Stepper value={chosen} max={max} onChange={setLots} unit="lot" />
             <button
               className="btn-primary flex-1"
               disabled={max === 0 || buying}
@@ -291,6 +279,225 @@ function ShopEntryCard({
             </button>
           </div>
         )}
+      </div>
+    </li>
+  );
+}
+
+/** Choix d'une quantité entre 1 et `max`. */
+function Stepper({
+  value,
+  max,
+  onChange,
+  unit,
+}: {
+  value: number;
+  max: number;
+  onChange: (v: number) => void;
+  unit: string;
+}) {
+  return (
+    <div className="flex items-center rounded-lg border border-slate-200 dark:border-slate-700">
+      <button
+        className="px-2.5 py-1.5 text-slate-500 disabled:opacity-30"
+        disabled={value <= 1}
+        onClick={() => onChange(value - 1)}
+        aria-label={`Un ${unit} de moins`}
+      >
+        −
+      </button>
+      <input
+        type="number"
+        className="w-12 bg-transparent text-center text-sm [appearance:textfield]"
+        value={value}
+        min={1}
+        max={Math.max(1, max)}
+        aria-label={`Nombre de ${unit}s`}
+        onChange={(e) => onChange(e.target.valueAsNumber || 1)}
+      />
+      <button
+        className="px-2.5 py-1.5 text-slate-500 disabled:opacity-30"
+        disabled={value >= max}
+        onClick={() => onChange(value + 1)}
+        aria-label={`Un ${unit} de plus`}
+      >
+        +
+      </button>
+    </div>
+  );
+}
+
+/** Revente : objets du sac qui ont un prix de revente, avec confirmation. */
+function SellPanel({ ctx }: { ctx: GameContext }) {
+  const queryClient = useQueryClient();
+  const inventory = useInventory();
+  const [pending, setPending] = useState<{ itemId: string; quantity: number } | null>(null);
+  const [receipt, setReceipt] = useState<SellResponse | null>(null);
+
+  const sell = useMutation({
+    mutationFn: (input: { itemId: string; quantity: number }) =>
+      api<SellResponse>('/api/shop/sell', { method: 'POST', json: input }),
+    onSuccess: (data) => {
+      setPending(null);
+      setReceipt(data);
+      return Promise.all(
+        [keys.shop, keys.inventory, keys.me].map((queryKey) =>
+          queryClient.invalidateQueries({ queryKey }),
+        ),
+      );
+    },
+  });
+
+  if (inventory.isPending) return <p className="text-sm text-slate-500">Chargement…</p>;
+  if (!inventory.data) return <p className="text-sm text-red-600">{errorText(inventory.error)}</p>;
+
+  const sellable = inventory.data
+    .flatMap((stack) => {
+      const item = ctx.item(stack.itemId);
+      return item && item.sellPrice !== null && stack.quantity > 0
+        ? [{ item, sellPrice: item.sellPrice, owned: stack.quantity }]
+        : [];
+    })
+    .sort((a, b) => a.item.name.localeCompare(b.item.name, 'fr'));
+  const pendingItem = pending && ctx.item(pending.itemId);
+
+  return (
+    <>
+      <p className="text-sm text-slate-500">
+        Revends les objets de ton sac. Certains objets précieux ne se revendent pas.
+      </p>
+      {sell.error && <p className="text-sm text-red-600">{errorText(sell.error)}</p>}
+      {sellable.length === 0 ? (
+        <p className="text-sm text-slate-500">Tu n’as aucun objet à revendre.</p>
+      ) : (
+        <ul className="grid gap-3 sm:grid-cols-2">
+          {sellable.map(({ item, sellPrice, owned }) => (
+            <SellCard
+              key={item.id}
+              ctx={ctx}
+              itemId={item.id}
+              sellPrice={sellPrice}
+              owned={owned}
+              onSell={(quantity) => {
+                sell.reset();
+                setPending({ itemId: item.id, quantity });
+              }}
+            />
+          ))}
+        </ul>
+      )}
+
+      <Modal open={!!pending} onClose={() => !sell.isPending && setPending(null)}>
+        {pending && pendingItem?.sellPrice != null && (
+          <div className="flex flex-col items-center gap-3 py-2 text-center">
+            <img
+              src={itemIcon(ctx, pending.itemId)}
+              alt=""
+              className="h-16 w-16 [image-rendering:pixelated]"
+            />
+            <p className="text-lg font-semibold">
+              Vendre {pending.quantity} {pendingItem.name} pour{' '}
+              {formatMoney(pendingItem.sellPrice * pending.quantity)} ?
+            </p>
+            <p className="text-sm text-slate-500">La vente est définitive.</p>
+            <div className="mt-2 flex gap-2">
+              <button
+                className="btn-ghost"
+                disabled={sell.isPending}
+                onClick={() => setPending(null)}
+              >
+                Annuler
+              </button>
+              <button
+                className="btn-primary"
+                disabled={sell.isPending}
+                onClick={() => sell.mutate(pending)}
+              >
+                {sell.isPending ? 'Vente…' : 'Vendre'}
+              </button>
+            </div>
+          </div>
+        )}
+      </Modal>
+
+      <Modal open={!!receipt} onClose={() => setReceipt(null)}>
+        {receipt && (
+          <div className="flex flex-col items-center gap-3 py-2 text-center">
+            <motion.p
+              className="text-3xl font-bold text-amber-600 dark:text-amber-400"
+              initial={{ y: 20, scale: 0.5, opacity: 0 }}
+              animate={{ y: 0, scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 260, damping: 14 }}
+            >
+              + {formatMoney(receipt.totalPrice)}
+            </motion.p>
+            <motion.p
+              className="text-sm text-slate-500"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.3 }}
+            >
+              − {receipt.quantity} {itemName(ctx, receipt.itemId)} · solde{' '}
+              {formatMoney(receipt.currency)} · il t’en reste {receipt.inventoryQuantity}
+            </motion.p>
+            <button className="btn-primary mt-2" onClick={() => setReceipt(null)}>
+              Merci !
+            </button>
+          </div>
+        )}
+      </Modal>
+    </>
+  );
+}
+
+function SellCard({
+  ctx,
+  itemId,
+  sellPrice,
+  owned,
+  onSell,
+}: {
+  ctx: GameContext;
+  itemId: string;
+  sellPrice: number;
+  owned: number;
+  onSell: (quantity: number) => void;
+}) {
+  const [quantity, setQuantity] = useState(1);
+  const item = ctx.item(itemId);
+  const chosen = Math.min(Math.max(1, quantity), owned);
+
+  return (
+    <li className="card flex flex-col gap-3 p-4">
+      <div className="flex items-start gap-3">
+        <img
+          src={itemIcon(ctx, itemId)}
+          alt=""
+          className="h-12 w-12 shrink-0 [image-rendering:pixelated]"
+        />
+        <div className="min-w-0 flex-1">
+          <p className="flex items-baseline justify-between gap-2">
+            <span className="font-semibold">{item?.name ?? itemId}</span>
+            <span className="shrink-0 font-semibold">{formatMoney(sellPrice)}</span>
+          </p>
+          {item && (
+            <p className={`text-xs ${RARITY_STYLES[item.rarity]}`}>{RARITY_LABELS[item.rarity]}</p>
+          )}
+          <p className="text-xs text-slate-500">Dans ton sac : {owned}</p>
+        </div>
+      </div>
+      <div className="mt-auto flex items-center gap-2">
+        <Stepper value={chosen} max={owned} onChange={setQuantity} unit="objet" />
+        <button
+          className="btn-ghost px-2.5"
+          disabled={chosen === owned}
+          onClick={() => setQuantity(owned)}
+        >
+          Tout
+        </button>
+        <button className="btn-primary flex-1" onClick={() => onSell(chosen)}>
+          Vendre · {formatMoney(sellPrice * chosen)}
+        </button>
       </div>
     </li>
   );

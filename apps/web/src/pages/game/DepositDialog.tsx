@@ -1,14 +1,36 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { eggGroups } from '@poke/data';
 import { checkBreedingPair, hatchMinutes, inheritanceRules, isBreedable } from '@poke/game-core';
 import type { BreedingError, GameContext } from '@poke/game-core';
 import type { DaycareDto, DepositDaycareInput, PokemonDto } from '@poke/shared';
 import { Modal, PokemonSprite, ShinyStar, useNow } from '../../components/ui';
+import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { api } from '../../lib/api';
 import { PLAYER_STATE_KEYS, isUsable, useInventory, usePokemon } from '../../lib/game';
 import { errorText, formatDuration, speciesName } from '../../lib/labels';
+import { pillClass } from './LaunchExpeditionDialog';
 
 const GENDER_LABELS = { male: '♂', female: '♀', genderless: '' } as const;
+
+const GENDER_FILTERS = {
+  all: 'Tous les sexes',
+  male: '♂ Mâles',
+  female: '♀ Femelles',
+  genderless: 'Asexués',
+} as const;
+type GenderFilter = keyof typeof GENDER_FILTERS;
+
+const SORTS = {
+  dex: 'N° Pokédex',
+  level: 'Niveau',
+  recent: 'Récents',
+  tag: 'Étiquette',
+} as const;
+type Sort = keyof typeof SORTS;
+
+const EGG_GROUP_NAMES = new Map(eggGroups.map((g) => [g.name, g.nameFr]));
+const eggGroupName = (name: string) => EGG_GROUP_NAMES.get(name) ?? name;
 
 function breedingErrorText(ctx: GameContext, e: BreedingError): string {
   switch (e.code) {
@@ -45,11 +67,48 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
   });
 
   const now = useNow(10_000);
-  const available = (pokemon.data ?? [])
-    .filter((p) => isUsable(p, now) && isBreedable(ctx.species(p.speciesId, p.formId)!))
-    .sort((a, b) => a.speciesId - b.speciesId || b.level - a.level);
-  const byId = new Map(available.map((p) => [p.id, p]));
+  const tagFilter = useTagFilter();
+  const [search, setSearch] = useState('');
+  const [gender, setGender] = useState<GenderFilter>('all');
+  const [eggGroup, setEggGroup] = useState('all');
+  const [onlyShiny, setOnlyShiny] = useState(false);
+  const [sort, setSort] = useState<Sort>('dex');
+
+  const breedable = (pokemon.data ?? []).filter(
+    (p) => isUsable(p, now) && isBreedable(ctx.species(p.speciesId, p.formId)!),
+  );
+  const byId = new Map(breedable.map((p) => [p.id, p]));
   const [a, b] = parents.map((id) => (id ? byId.get(id) : undefined));
+  /** Une fois un parent choisi, seuls ses partenaires possibles restent proposés. */
+  const partnerOf = a ?? b;
+  const groupsInPc = [
+    ...new Set(breedable.flatMap((p) => ctx.species(p.speciesId, p.formId)!.eggGroups)),
+  ].sort((x, y) => eggGroupName(x).localeCompare(eggGroupName(y)));
+  const needle = search.trim().toLowerCase();
+  const available = breedable
+    .filter(
+      (p) =>
+        parents.includes(p.id) ||
+        ((!partnerOf || checkBreedingPair(ctx, partnerOf, p).ok) &&
+          (!needle || speciesName(ctx, p.speciesId, p.formId).toLowerCase().includes(needle)) &&
+          (gender === 'all' || p.gender === gender) &&
+          (eggGroup === 'all' ||
+            ctx.species(p.speciesId, p.formId)!.eggGroups.includes(eggGroup)) &&
+          (!onlyShiny || p.isShiny) &&
+          tagFilter.matches(p)),
+    )
+    .sort((x, y) => {
+      switch (sort) {
+        case 'dex':
+          return x.speciesId - y.speciesId || y.level - x.level;
+        case 'level':
+          return y.level - x.level || x.speciesId - y.speciesId;
+        case 'recent':
+          return Date.parse(y.caughtAt) - Date.parse(x.caughtAt);
+        case 'tag':
+          return tagFilter.compare(x, y) || x.speciesId - y.speciesId;
+      }
+    });
   const check = a && b ? checkBreedingPair(ctx, a, b) : null;
   const owned = new Map(inventory.data?.map((i) => [i.itemId, i.quantity]));
   const breedingItems = ctx.content.items.filter(
@@ -107,6 +166,11 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
                   `Parent ${i + 1}`
                 )}
               </p>
+              {p && (
+                <p className="text-xs text-slate-500">
+                  {ctx.species(p.speciesId, p.formId)!.eggGroups.map(eggGroupName).join(' · ')}
+                </p>
+              )}
               <select
                 className="input mt-1 py-1"
                 value={items[i] ?? ''}
@@ -130,11 +194,77 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
         ))}
       </div>
 
-      <div className="mt-4 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5">
+      <div className="mt-4 flex flex-wrap items-center gap-2 text-sm">
+        <input
+          className="input max-w-44 py-1"
+          placeholder="Rechercher…"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+        />
+        <select
+          className="input w-auto py-1"
+          value={gender}
+          onChange={(e) => setGender(e.target.value as GenderFilter)}
+          aria-label="Filtrer par sexe"
+        >
+          {Object.entries(GENDER_FILTERS).map(([value, label]) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+        <select
+          className="input w-auto py-1"
+          value={eggGroup}
+          onChange={(e) => setEggGroup(e.target.value)}
+          aria-label="Filtrer par groupe d’œufs"
+        >
+          <option value="all">Tous les groupes d’œufs</option>
+          {groupsInPc.map((g) => (
+            <option key={g} value={g}>
+              {eggGroupName(g)}
+            </option>
+          ))}
+        </select>
+        <TagFilterSelect
+          tags={tagFilter.tags}
+          value={tagFilter.filter}
+          onChange={tagFilter.setFilter}
+          className="py-1"
+        />
+        <label className="flex items-center gap-1">
+          <input
+            type="checkbox"
+            checked={onlyShiny}
+            onChange={(e) => setOnlyShiny(e.target.checked)}
+          />
+          Shiny
+        </label>
+        <div className="flex items-center gap-1 text-xs">
+          <span className="text-slate-500">Trier par</span>
+          {(Object.keys(SORTS) as Sort[]).map((key) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setSort(key)}
+              className={pillClass(sort === key)}
+            >
+              {SORTS[key]}
+            </button>
+          ))}
+        </div>
+      </div>
+      {partnerOf && (
+        <p className="mt-2 text-xs text-slate-500">
+          Seuls les partenaires compatibles avec{' '}
+          {speciesName(ctx, partnerOf.speciesId, partnerOf.formId)}{' '}
+          {GENDER_LABELS[partnerOf.gender]} sont affichés.
+        </p>
+      )}
+
+      <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5">
         {available.map((p) => {
           const selected = parents.includes(p.id);
-          const other = parents[0] && parents[0] !== p.id ? byId.get(parents[0]) : undefined;
-          const compatible = other && !parents[1] ? checkBreedingPair(ctx, other, p).ok : true;
           return (
             <button
               key={p.id}
@@ -144,7 +274,7 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
                 selected
                   ? 'border-brand-500 bg-brand-500/10'
                   : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
-              } ${compatible ? '' : 'opacity-40'}`}
+              }`}
             >
               <PokemonSprite
                 speciesId={p.speciesId}
@@ -157,12 +287,15 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
                 {p.isShiny && <ShinyStar />}
               </span>
               <span className="text-slate-500">N.{p.level}</span>
+              <PokemonTagBadges pokemon={p} tags={tagFilter.tags} />
             </button>
           );
         })}
         {available.length === 0 && (
           <p className="col-span-full text-sm text-slate-500">
-            Aucun Pokémon disponible et élevable.
+            {breedable.length === 0
+              ? 'Aucun Pokémon disponible et élevable.'
+              : 'Aucun Pokémon ne correspond à ces filtres.'}
           </p>
         )}
       </div>

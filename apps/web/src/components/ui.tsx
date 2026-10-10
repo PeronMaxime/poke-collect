@@ -132,11 +132,14 @@ export function Modal({
   onClose,
   children,
   wide = false,
+  className = '',
 }: {
   open: boolean;
   onClose: () => void;
   children: ReactNode;
   wide?: boolean;
+  /** Classes ajoutées à la boîte de dialogue (taille fixe, mise en page…). */
+  className?: string;
 }) {
   useEffect(() => {
     if (!open) return;
@@ -158,7 +161,7 @@ export function Modal({
           <motion.div
             role="dialog"
             aria-modal="true"
-            className={`card w-full ${wide ? 'max-w-3xl' : 'max-w-lg'}`}
+            className={`card w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} ${className}`}
             initial={{ scale: 0.95, y: 10 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.95, y: 10 }}

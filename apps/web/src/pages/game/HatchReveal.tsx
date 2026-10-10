@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
 import { STAT_NAMES } from '@poke/data';
 import { MAX_IV } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { HatchEggsResponse } from '@poke/shared';
+import type { HatchEggsResponse, PokemonDto } from '@poke/shared';
 import { Egg, Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
-import { natureLabel, speciesName } from '../../lib/labels';
+import { TagPicker } from '../../components/tags';
+import { api } from '../../lib/api';
+import { keys, usePokemon } from '../../lib/game';
+import { errorText, natureLabel, speciesName } from '../../lib/labels';
 
 const STEP = 0.5; // secondes entre deux éclosions
 
@@ -54,8 +58,15 @@ function HatchContent({
   const reduced = useReducedMotion();
   const [skipped, setSkipped] = useState(false);
   const instant = reduced || skipped;
+  // « Nouveau ! » sur le premier Pokémon de chaque nouvelle espèce seulement.
   const newSpecies = new Set(data.newSpeciesIds);
+  const firstNew = new Set(
+    data.hatched.filter((p) => newSpecies.delete(p.speciesId)).map((p) => p.id),
+  );
   const delay = (i: number) => (instant ? 0 : 0.6 + i * STEP);
+  // État à jour (favori, étiquettes) une fois le PC rechargé ; sinon celui de l'éclosion.
+  const pokemon = usePokemon();
+  const current = new Map(pokemon.data?.map((p) => [p.id, p]));
 
   return (
     <div>
@@ -100,7 +111,7 @@ function HatchContent({
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: delay(i), type: 'spring', stiffness: 260, damping: 16 }}
               >
-                {newSpecies.has(p.speciesId) && (
+                {firstNew.has(p.id) && (
                   <span className="rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white">
                     Nouveau !
                   </span>
@@ -122,6 +133,7 @@ function HatchContent({
                   IV {total} / {MAX_IV * 6}
                   {perfect > 0 && ` · ${perfect} × 31`}
                 </span>
+                <NewbornActions pokemon={current.get(p.id) ?? p} />
               </motion.div>
             </div>
           );
@@ -134,5 +146,32 @@ function HatchContent({
         </button>
       </div>
     </div>
+  );
+}
+
+/** Favori et étiquettes directement depuis l'éclosion, sans passer par le PC. */
+function NewbornActions({ pokemon: p }: { pokemon: PokemonDto }) {
+  const queryClient = useQueryClient();
+  const toggleLock = useMutation({
+    mutationFn: () =>
+      api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { locked: !p.locked } }),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.pokemon }),
+  });
+  return (
+    <>
+      <button
+        type="button"
+        className={`mt-1 rounded-full px-2 py-0.5 transition hover:bg-slate-100 dark:hover:bg-slate-800 ${
+          p.locked ? 'text-amber-500' : 'text-slate-500'
+        }`}
+        disabled={toggleLock.isPending}
+        onClick={() => toggleLock.mutate()}
+        title={p.locked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+      >
+        {p.locked ? '♥ Favori' : '♡ Favori'}
+      </button>
+      {toggleLock.error && <p className="text-red-600">{errorText(toggleLock.error)}</p>}
+      <TagPicker pokemon={p} compact />
+    </>
   );
 }

@@ -306,6 +306,23 @@ export const shopPurchases = pgTable(
   (t) => [index('shop_purchases_owner_entry').on(t.ownerId, t.shopEntryId, t.purchasedAt)],
 );
 
+/** Ventes d'objets à la boutique : historique (le prix vient du contenu publié). */
+export const shopSales = pgTable(
+  'shop_sales',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: ownerId(),
+    itemId: text('item_id').notNull(),
+    quantity: integer('quantity').notNull(),
+    totalPrice: bigint('total_price', { mode: 'number' }).notNull(),
+    contentVersionId: integer('content_version_id')
+      .notNull()
+      .references(() => contentVersions.id),
+    soldAt: timestamp('sold_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('shop_sales_owner').on(t.ownerId, t.soldAt)],
+);
+
 /** Badge « Nouveau ! » : article débloqué (date), puis vu par le joueur. */
 export const shopSeen = pgTable(
   'shop_seen',

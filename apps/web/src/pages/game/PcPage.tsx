@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { STAT_NAMES } from '@poke/data';
 import type { StatName } from '@poke/data';
@@ -198,6 +198,25 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
       }
     });
   const selected = pokemon.data?.find((p) => p.id === selectedId);
+  // Navigation dans la fiche : suit l'ordre et les filtres de la grille affichée.
+  const selectedIndex = filtered.findIndex(({ p }) => p.id === selectedId);
+  const previous = selectedIndex > 0 ? filtered[selectedIndex - 1] : undefined;
+  const next = selectedIndex >= 0 ? filtered[selectedIndex + 1] : undefined;
+  const closeDetail = useCallback(() => setSelectedId(null), []);
+
+  useEffect(() => {
+    if (!selected) return;
+    const onKey = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      const to = e.key === 'ArrowLeft' ? previous : e.key === 'ArrowRight' ? next : undefined;
+      if (!to) return;
+      e.preventDefault();
+      setSelectedId(to.p.id);
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [selected, previous, next]);
   const transferList = (pokemon.data ?? []).filter((p) => toTransfer.has(p.id));
   const candiesGained = transferList.reduce((sum, p) => sum + transferCandies(ctx, p), 0);
 
@@ -357,9 +376,62 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
       )}
 
       <TagManagerDialog open={tagsOpen} onClose={() => setTagsOpen(false)} />
-      <Modal open={!!selected} onClose={() => setSelectedId(null)} wide>
+      {/* Taille fixe : les boutons de navigation restent au même endroit d'une fiche à l'autre. */}
+      <Modal
+        open={!!selected}
+        onClose={closeDetail}
+        wide
+        className="flex h-[min(44rem,calc(100dvh-2rem))] flex-col"
+      >
         {selected && (
-          <PokemonDetail ctx={ctx} pokemon={selected} evolutions={evolutionsOf(selected)} />
+          <>
+            <div className="-mt-2 mb-2 flex shrink-0 items-center justify-end gap-1">
+              {selectedIndex >= 0 && (
+                <>
+                  <button
+                    type="button"
+                    className="btn-ghost px-2.5 py-1"
+                    disabled={!previous}
+                    onClick={() => previous && setSelectedId(previous.p.id)}
+                    aria-label="Pokémon précédent"
+                    title="Pokémon précédent (←)"
+                  >
+                    ‹
+                  </button>
+                  <span className="min-w-16 text-center text-xs text-slate-500">
+                    {selectedIndex + 1} / {filtered.length}
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-ghost px-2.5 py-1"
+                    disabled={!next}
+                    onClick={() => next && setSelectedId(next.p.id)}
+                    aria-label="Pokémon suivant"
+                    title="Pokémon suivant (→)"
+                  >
+                    ›
+                  </button>
+                </>
+              )}
+              <button
+                type="button"
+                className="btn-ghost ml-2 px-2.5 py-1"
+                onClick={closeDetail}
+                aria-label="Fermer"
+                title="Fermer (Échap)"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="-mx-6 -mb-6 min-h-0 flex-1 overflow-y-auto px-6 pb-6">
+              <PokemonDetail
+                key={selected.id}
+                ctx={ctx}
+                pokemon={selected}
+                evolutions={evolutionsOf(selected)}
+              />
+            </div>
+          </>
         )}
       </Modal>
     </div>

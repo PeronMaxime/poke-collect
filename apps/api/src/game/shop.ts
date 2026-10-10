@@ -1,22 +1,24 @@
 import { and, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
-import { playerProfiles, shopPurchases, shopSeen } from '@poke/db';
+import { playerProfiles, shopPurchases, shopSales, shopSeen } from '@poke/db';
 import type { Db } from '@poke/db';
 import { checkPurchase, shopEntryStatus } from '@poke/game-core';
 import type { GameContext, ShopPurchaseRecord } from '@poke/game-core';
 import type {
   PurchaseInput,
   PurchaseResponse,
+  SellInput,
+  SellResponse,
   ShopEntryStatusDto,
   ShopResponse,
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
 import { requireStartedProfile } from './expeditions';
-import { addItems, itemQuantity, playerProgress } from './store';
+import { addItems, itemQuantity, playerProgress, takeItems } from './store';
 
 /**
- * Boutique : état des articles pour un joueur (évalué paresseusement à l'ouverture), achats
- * en une transaction, badge « Nouveau ! ».
+ * Boutique : état des articles pour un joueur (évalué paresseusement à l'ouverture), achats et
+ * ventes en une transaction, badge « Nouveau ! ».
  */
 
 const WEEK_MS = 7 * 24 * 3_600_000;
@@ -211,6 +213,54 @@ export async function purchase(
       totalPrice: check.totalPrice,
       currency: debited.currency,
       inventoryQuantity: await itemQuantity(tx, userId, entry.itemId),
+    };
+  });
+}
+
+/**
+ * Vente : dans une seule transaction, retire les objets du sac, crédite les Poké Dollars et
+ * enregistre la vente. Le prix vient toujours du contenu publié ; un objet sans prix de revente
+ * est invendable.
+ */
+export async function sell(
+  db: Db,
+  content: ContentCache,
+  userId: string,
+  input: SellInput,
+  now: Date,
+): Promise<SellResponse> {
+  const ctx = await content.get();
+  await requireStartedProfile(db, userId);
+  const item = ctx.item(input.itemId);
+  if (!item) throw new GameError(404, 'ITEM_NOT_FOUND');
+  if (item.sellPrice === null) throw new GameError(409, 'NOT_SELLABLE');
+  const totalPrice = item.sellPrice * input.quantity;
+
+  return db.transaction(async (tx) => {
+    if (!(await takeItems(tx, userId, item.id, input.quantity))) {
+      throw new GameError(409, 'NOT_ENOUGH_ITEMS', {
+        inventoryQuantity: await itemQuantity(tx, userId, item.id),
+      });
+    }
+    const [credited] = await tx
+      .update(playerProfiles)
+      .set({ currency: sql`${playerProfiles.currency} + ${totalPrice}` })
+      .where(eq(playerProfiles.userId, userId))
+      .returning({ currency: playerProfiles.currency });
+    await tx.insert(shopSales).values({
+      ownerId: userId,
+      itemId: item.id,
+      quantity: input.quantity,
+      totalPrice,
+      contentVersionId: ctx.content.versionId,
+      soldAt: now,
+    });
+    return {
+      itemId: item.id,
+      quantity: input.quantity,
+      totalPrice,
+      currency: credited!.currency,
+      inventoryQuantity: await itemQuantity(tx, userId, item.id),
     };
   });
 }

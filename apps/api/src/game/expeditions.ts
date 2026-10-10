@@ -20,6 +20,7 @@ import { syncQuests } from './quests';
 import {
   addItems,
   assertAvailable,
+  caughtDex,
   claimedRewards,
   insertPokemon,
   itemQuantity,
@@ -267,6 +268,7 @@ export async function claimExpedition(
       // Chaîne figée au départ ; Charme Chroma possédé à la réclamation.
       shiny: { chain: found.shinyChain, charm: await shinyCharm(tx, ctx, userId) },
       captureFilter: found.captureFilter,
+      ...(found.captureFilter?.newOnly && { caught: await caughtDex(tx, userId) }),
     });
 
     const capturedEncounters = result.encounters.filter((e) => e.pokemon);

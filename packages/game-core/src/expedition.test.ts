@@ -172,6 +172,26 @@ describe('resolveExpedition', () => {
     expect(Object.keys(result.pity)).toEqual(['19']);
   });
 
+  it('nouveaux Pokémon : tente jusqu’à la première capture, puis ignore l’espèce', () => {
+    const result = resolveExpedition(ctx, {
+      ...input,
+      balls: { itemId: 'poke-ball', quantity: 30 },
+      captureFilter: { speciesIds: [], minPerfectIvs: 0, shiny: 'any', newOnly: true },
+      caught: { speciesIds: new Set([16]), formIds: new Set() },
+    });
+    expect(
+      result.encounters.filter((e) => e.speciesId === 16).every((e) => e.outcome === 'ignored'),
+    ).toBe(true);
+    const others = result.encounters.filter((e) => e.speciesId !== 16);
+    expect(others.some((e) => e.outcome === 'captured')).toBe(true);
+    for (const speciesId of new Set(others.map((e) => e.speciesId))) {
+      const outcomes = others.filter((e) => e.speciesId === speciesId).map((e) => e.outcome);
+      const first = outcomes.indexOf('captured');
+      if (first >= 0) expect(outcomes.slice(first + 1).every((o) => o === 'ignored')).toBe(true);
+      else expect(outcomes.every((o) => o === 'escaped')).toBe(true);
+    }
+  });
+
   it('met à jour la pitié : +1 par échec, remise à zéro à la capture', () => {
     const result = resolveExpedition(ctx, {
       ...input,
@@ -254,8 +274,9 @@ describe('simulateZone', () => {
 describe('matchesCaptureFilter', () => {
   const ivs = (perfect: number) =>
     Object.fromEntries(STAT_NAMES.map((stat, i) => [stat, i < perfect ? 31 : 10])) as Stats;
-  const wild = (speciesId: number, isShiny: boolean, perfect: number) => ({
+  const wild = (speciesId: number, isShiny: boolean, perfect: number, formId?: number) => ({
     speciesId,
+    formId: formId ?? null,
     isShiny,
     ivs: ivs(perfect),
   });
@@ -278,5 +299,19 @@ describe('matchesCaptureFilter', () => {
     const always = { speciesIds: [16], minPerfectIvs: 3, shiny: 'always' as const };
     expect(matchesCaptureFilter(always, wild(19, true, 0))).toBe(true);
     expect(matchesCaptureFilter(always, wild(19, false, 6))).toBe(false);
+  });
+
+  it('nouveaux Pokémon : espèce, ou forme, absente du Pokédex ; shiny « toujours » prioritaire', () => {
+    const caught = { speciesIds: new Set([16, 19]), formIds: new Set([10091]) };
+    const newOnly = { speciesIds: [], minPerfectIvs: 0, shiny: 'any' as const, newOnly: true };
+    expect(matchesCaptureFilter(newOnly, wild(21, false, 0), caught)).toBe(true);
+    expect(matchesCaptureFilter(newOnly, wild(16, false, 6), caught)).toBe(false);
+    expect(matchesCaptureFilter(newOnly, wild(19, false, 0, 10091), caught)).toBe(false);
+    expect(matchesCaptureFilter(newOnly, wild(19, false, 0, 10092), caught)).toBe(true);
+    const always = { ...newOnly, shiny: 'always' as const };
+    expect(matchesCaptureFilter(always, wild(16, true, 0), caught)).toBe(true);
+    const only = { ...newOnly, shiny: 'only' as const };
+    expect(matchesCaptureFilter(only, wild(16, true, 0), caught)).toBe(false);
+    expect(matchesCaptureFilter(only, wild(21, true, 0), caught)).toBe(true);
   });
 });

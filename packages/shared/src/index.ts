@@ -375,6 +375,7 @@ export const captureFilterSchema = z.object({
   speciesIds: z.array(z.int().positive()).max(100),
   minPerfectIvs: z.int().min(0).max(STAT_NAMES.length),
   shiny: z.enum(['any', 'always', 'only']),
+  newOnly: z.boolean().optional(),
 });
 
 export const startExpeditionInputSchema = z.object({
@@ -536,6 +537,22 @@ export interface PurchaseResponse {
   /** Solde après l'achat. */
   currency: number;
   /** Quantité de l'objet dans le sac après l'achat. */
+  inventoryQuantity: number;
+}
+
+export const sellInputSchema = z.object({
+  itemId: slugSchema,
+  quantity: z.int().min(1).max(1_000_000),
+});
+export type SellInput = z.infer<typeof sellInputSchema>;
+
+export interface SellResponse {
+  itemId: string;
+  quantity: number;
+  totalPrice: number;
+  /** Solde après la vente. */
+  currency: number;
+  /** Quantité de l'objet restant dans le sac. */
   inventoryQuantity: number;
 }
 
