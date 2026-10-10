@@ -98,6 +98,18 @@ export function rollIvs(rng: Rng): Stats {
   return ivs;
 }
 
+/** `count` statistiques tirées au hasard passent à 31 (ordre des tirages figé). */
+export function withPerfectIvs(rng: Rng, ivs: Stats, count: number): Stats {
+  const stats = [...STAT_NAMES];
+  const result = { ...ivs };
+  for (let i = 0; i < Math.min(count, stats.length); i++) {
+    const j = rng.int(i, stats.length - 1);
+    [stats[i], stats[j]] = [stats[j]!, stats[i]!];
+    result[stats[i]!] = MAX_IV;
+  }
+  return result;
+}
+
 export function rollGender(rng: Rng, genderRate: number): Gender {
   if (genderRate < 0) return 'genderless';
   return rng.next() < genderRate / 8 ? 'female' : 'male';

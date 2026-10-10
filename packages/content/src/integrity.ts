@@ -1,5 +1,5 @@
 import { getForm, getSpecies, natures, types as typeData } from '@poke/data';
-import { gameContentStructureSchema, unlockParts } from './schemas';
+import { gameContentStructureSchema, lowestUnitPrice, unlockParts } from './schemas';
 import type {
   BaseUnlockCondition,
   GameContentData,
@@ -308,6 +308,16 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
         const form = formError(effect);
         if (form) add('error', 'item', item.id, `Fossile : ${form}`);
       }
+    }
+    // Revendre plus cher qu'on achète ferait de l'argent à l'infini.
+    const unitPrice = lowestUnitPrice(content.shopEntries, item.id);
+    if (item.sellPrice !== null && unitPrice !== null && item.sellPrice > unitPrice) {
+      add(
+        'error',
+        'item',
+        item.id,
+        `Prix de revente (${item.sellPrice} ₽) supérieur au prix d’achat en boutique (${Math.floor(unitPrice)} ₽ l’unité)`,
+      );
     }
   }
 

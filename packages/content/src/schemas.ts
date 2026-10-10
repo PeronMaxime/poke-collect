@@ -72,6 +72,17 @@ export const balanceSettingsSchema = z.object({
     chainMaxMultiplier: z.number().min(1),
     /** Délai pour relancer la zone après avoir récupéré l'expédition précédente. */
     chainWindowMinutes: z.int().min(1),
+    /**
+     * Maillons à atteindre pour garantir des IV parfaits aux Pokémon sauvages de la zone :
+     * le n-ième palier (ordre croissant) garantit n IV à 31.
+     */
+    chainPerfectIvThresholds: z
+      .array(z.int().positive())
+      .max(6, 'Six paliers au plus (un par statistique)')
+      .refine(
+        (t) => t.every((v, i) => i === 0 || v > t[i - 1]!),
+        'Paliers croissants et distincts',
+      ),
     /** Élevage : parents d'origines différentes (régions de capture), comme la méthode Masuda. */
     masudaMultiplier: z.number().min(1),
   }),
@@ -294,9 +305,46 @@ export const itemSchema = z.object({
   icon: imageSchema,
   category: itemCategorySchema,
   rarity: raritySchema,
+  /** Prix de revente unitaire à la boutique, en Poké Dollars ; null = invendable. */
+  sellPrice: z.int().min(0).max(100_000_000).nullable(),
   effects: z.array(itemEffectSchema),
 });
 export type Item = z.infer<typeof itemSchema>;
+
+/** Prix de revente par défaut d'un objet absent de la boutique ; null = invendable. */
+export const DEFAULT_SELL_PRICES: Record<Rarity, number | null> = {
+  common: 50,
+  uncommon: 150,
+  rare: 1000,
+  epic: 3000,
+  legendary: null,
+};
+
+/** Prix unitaire le plus bas d'un objet en boutique (articles actifs), ou null. */
+export function lowestUnitPrice(
+  entries: readonly Pick<ShopEntry, 'itemId' | 'price' | 'lotSize' | 'enabled'>[],
+  itemId: string,
+): number | null {
+  let lowest: number | null = null;
+  for (const e of entries) {
+    if (e.itemId !== itemId || !e.enabled) continue;
+    const unit = e.price / e.lotSize;
+    if (lowest === null || unit < lowest) lowest = unit;
+  }
+  return lowest;
+}
+
+/**
+ * Prix de revente suggéré : la moitié du prix unitaire en boutique (comme dans les jeux), sinon
+ * selon la rareté.
+ */
+export function suggestedSellPrice(
+  item: Pick<Item, 'id' | 'rarity'>,
+  entries: readonly Pick<ShopEntry, 'itemId' | 'price' | 'lotSize' | 'enabled'>[],
+): number | null {
+  const unit = lowestUnitPrice(entries, item.id);
+  return unit === null ? DEFAULT_SELL_PRICES[item.rarity] : Math.floor(unit / 2);
+}
 
 // --- Tables de butin ----------------------------------------------------------------
 

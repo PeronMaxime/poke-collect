@@ -767,7 +767,7 @@ const evolutionItemIds = (() => {
   return [...ids].filter((id) => !KANTO_EVOLUTION_ITEMS.has(id)).sort();
 })();
 
-export const expansionItems: Item[] = evolutionItemIds.flatMap((id) => {
+export const expansionItems: Omit<Item, 'sellPrice'>[] = evolutionItemIds.flatMap((id) => {
   const data = dataItems.find((i) => i.name === id);
   if (!data) return [];
   return [

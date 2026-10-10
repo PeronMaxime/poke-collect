@@ -1,12 +1,14 @@
 import { describe, expect, it } from 'vitest';
 import { resolveEgg } from './breeding';
 import type { DaycareParent } from './breeding';
-import { resolveExpedition } from './expedition';
+import { perfectIvCount, resolveExpedition } from './expedition';
 import { isMilestoneReached } from './progression';
 import {
   chainMultiplier,
+  chainPerfectIvs,
   charmMultiplier,
   isMasudaPair,
+  nextChainPerfectIvThreshold,
   shinyMultiplier,
   shinyProbability,
   zoneChainStatus,
@@ -99,6 +101,36 @@ describe('chaîne de zone', () => {
         now,
       ).chain,
     ).toBe(4);
+  });
+
+  it('garantit un IV parfait de plus à chaque palier atteint', () => {
+    // Paliers du contenu de test : 5, 10, 15 et 20 maillons.
+    expect([0, 4, 5, 9, 10, 19, 20, 99].map((c) => chainPerfectIvs(ctx, c))).toEqual([
+      0, 0, 1, 1, 2, 3, 4, 4,
+    ]);
+    expect(nextChainPerfectIvThreshold(ctx, 7)).toBe(10);
+    expect(nextChainPerfectIvThreshold(ctx, 20)).toBeNull();
+  });
+
+  it('applique les IV parfaits aux rencontres d’expédition', () => {
+    const input = {
+      zone: ctx.zone('route-1')!,
+      durationMinutes: 480,
+      seed: 7,
+      team: [member('a', 6, 50)],
+      balls: { itemId: 'poke-ball', quantity: 99 },
+      berries: null,
+      pity: {},
+    };
+    const unchained = resolveExpedition(ctx, input);
+    // Sans palier atteint, aucun tirage supplémentaire : résultat identique.
+    expect(resolveExpedition(ctx, { ...input, shiny: { chain: 4 } }).encounters).toEqual(
+      unchained.encounters,
+    );
+    const chained = resolveExpedition(ctx, { ...input, shiny: { chain: 10 } });
+    const caught = chained.encounters.flatMap((e) => (e.pokemon ? [e.pokemon] : []));
+    expect(caught.length).toBeGreaterThan(0);
+    for (const p of caught) expect(perfectIvCount(p)).toBeGreaterThanOrEqual(2);
   });
 });
 

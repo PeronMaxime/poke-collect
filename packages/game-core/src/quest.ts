@@ -1,7 +1,6 @@
-import { STAT_NAMES } from '@poke/data';
 import type { Quest, QuestActionCondition, QuestCondition, QuestPokemon } from '@poke/content';
 import type { GameContext } from './context';
-import { MAX_IV, generatePokemon, pokemonPower } from './pokemon';
+import { generatePokemon, pokemonPower, withPerfectIvs } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import { isUnlocked } from './progress';
 import type { PlayerProgress } from './progress';
@@ -161,12 +160,5 @@ export function generateQuestPokemon(
     shinyProbability,
     formId: reward.formId,
   });
-  const stats = [...STAT_NAMES];
-  const ivs = { ...pokemon.ivs };
-  for (let i = 0; i < Math.min(reward.perfectIvs, stats.length); i++) {
-    const j = rng.int(i, stats.length - 1);
-    [stats[i], stats[j]] = [stats[j]!, stats[i]!];
-    ivs[stats[i]!] = MAX_IV;
-  }
-  return { ...pokemon, ivs };
+  return { ...pokemon, ivs: withPerfectIvs(rng, pokemon.ivs, reward.perfectIvs) };
 }

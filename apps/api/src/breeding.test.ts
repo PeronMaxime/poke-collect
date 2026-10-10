@@ -210,6 +210,9 @@ describe('pension et œufs', () => {
     expect(early.body).toMatchObject({ error: 'NO_EGG_READY' });
 
     advance(40);
+    // Serveur redémarré : cache de contenu vide, l'éclosion ne doit pas bloquer PGlite.
+    await app.close();
+    ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
     const res = await call<HatchEggsResponse>('POST', '/api/eggs/hatch');
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body.hatched).toHaveLength(2);

@@ -59,7 +59,12 @@ function RevealContent({
   const captured = result.encounters.filter((e) => e.outcome === 'captured').length;
   const shinies = result.encounters.filter((e) => e.isShiny).length;
   const firstShiny = result.encounters.findIndex((e) => e.isShiny);
+  // « Nouveau ! » sur la première capture de chaque nouvelle espèce seulement.
   const newSpecies = new Set(result.newSpeciesIds);
+  const firstNew = new Set<number>();
+  result.encounters.forEach((e, i) => {
+    if (e.outcome === 'captured' && newSpecies.delete(e.speciesId)) firstNew.add(i);
+  });
   const step = revealStep(result.encounters.length);
   const delay = (i: number) => (instant ? 0 : 0.3 + i * step);
   const after = delay(result.encounters.length);
@@ -104,7 +109,7 @@ function RevealContent({
 
       <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
         {result.encounters.map((e, i) => {
-          const isNew = e.outcome === 'captured' && newSpecies.has(e.speciesId);
+          const isNew = firstNew.has(i);
           return (
             <motion.div
               key={i}

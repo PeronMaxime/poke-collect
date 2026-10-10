@@ -99,6 +99,14 @@ export async function cancelFossil(db: Db, userId: string, revivalId: string, no
 /** Récupère tous les Pokémon restaurés (contenu de la version du dépôt). */
 export async function reviveFossils(db: Db, content: ContentCache, userId: string, now: Date) {
   await requireStartedProfile(db, userId);
+  // Contenu chargé avant la transaction : le cache lit via `db`, ce qui bloquerait PGlite
+  // (connexion unique) si la lecture attendait la fin de la transaction en cours.
+  const pending = await db
+    .selectDistinct({ versionId: fossilRevivals.contentVersionId })
+    .from(fossilRevivals)
+    .where(and(eq(fossilRevivals.ownerId, userId), isNull(fossilRevivals.revivedAt)));
+  const published = await content.get();
+  await Promise.all(pending.map((f) => content.version(f.versionId)));
   return db.transaction(async (tx) => {
     // Verrou : seule la première demande restaure un fossile donné.
     const ready = await tx
@@ -116,7 +124,7 @@ export async function reviveFossils(db: Db, content: ContentCache, userId: strin
     ready.sort((x, y) => x.readyAt.getTime() - y.readyAt.getTime() || x.id.localeCompare(y.id));
 
     const revived: PokemonRow[] = [];
-    const charm = await shinyCharm(tx, await content.get(), userId);
+    const charm = await shinyCharm(tx, published, userId);
     for (const fossil of ready) {
       const ctx = await content.version(fossil.contentVersionId);
       const child = reviveFossil(ctx, { ...fossil, shinyCharm: charm });

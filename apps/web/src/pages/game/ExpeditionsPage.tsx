@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Zone } from '@poke/content';
 import {
   chainMultiplier,
+  chainPerfectIvs,
   isUnlocked,
   isUnlockedSoon,
   isZoneUnlocked,
@@ -289,6 +290,7 @@ function ZoneCard({
   onLaunch: () => void;
 }) {
   const expiresIn = chain?.expiresAt ? Date.parse(chain.expiresAt) - serverNow : null;
+  const perfectIvs = chain ? chainPerfectIvs(ctx, chain.chain) : 0;
   // Espèces et formes rencontrées (une silhouette tant que l'espèce n'a pas été vue).
   const species = [
     ...new Map(
@@ -316,6 +318,7 @@ function ZoneCard({
           title="Relance la zone avant la fin du délai pour allonger la chaîne."
         >
           ✦ Chaîne {chain.chain} : shiny {formatMultiplier(chainMultiplier(ctx, chain.chain))}
+          {perfectIvs > 0 && ` · ${perfectIvs} IV parfait${perfectIvs > 1 ? 's' : ''}`}
           {expiresIn !== null && ` · à relancer sous ${formatCountdown(expiresIn)}`}
         </p>
       )}

@@ -5,12 +5,20 @@ import {
   createDb,
   eggs,
   ensureSeedContent,
+  inventory,
   playerProfiles,
   shopPurchases,
+  shopSales,
   trainerProgress,
   users,
 } from '@poke/db';
-import type { InventoryEntryDto, PokemonDto, PurchaseResponse, ShopResponse } from '@poke/shared';
+import type {
+  InventoryEntryDto,
+  PokemonDto,
+  PurchaseResponse,
+  SellResponse,
+  ShopResponse,
+} from '@poke/shared';
 import { buildApp } from './app';
 import { loadEnv } from './env';
 
@@ -223,5 +231,47 @@ describe('boutique', () => {
       state: 'available',
       remainingLots: 1,
     });
+  });
+
+  it('vend : retrait du sac, crédit au prix de revente, historique', async () => {
+    const sell = (itemId: string, quantity: number) =>
+      call<SellResponse>('POST', '/api/shop/sell', { itemId, quantity });
+    const { currency } = await shop();
+    const before = (await call<InventoryEntryDto[]>('GET', '/api/inventory')).body.find(
+      (i) => i.itemId === 'poke-ball',
+    )!.quantity;
+
+    // Poké Ball : la moitié du prix unitaire le plus bas (lot de 10 à 1 800 ₽).
+    const res = await sell('poke-ball', 5);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body).toEqual({
+      itemId: 'poke-ball',
+      quantity: 5,
+      totalPrice: 450,
+      currency: currency + 450,
+      inventoryQuantity: before - 5,
+    });
+    const rows = await handle.db.select().from(shopSales).where(eq(shopSales.ownerId, userId));
+    expect(rows).toEqual([
+      expect.objectContaining({ itemId: 'poke-ball', quantity: 5, totalPrice: 450 }),
+    ]);
+
+    expect(await sell('poke-ball', before)).toMatchObject({
+      status: 409,
+      body: { error: 'NOT_ENOUGH_ITEMS', inventoryQuantity: before - 5 },
+    });
+    await handle.db
+      .insert(inventory)
+      .values({ ownerId: userId, itemId: 'shiny-charm', quantity: 1 });
+    expect(await sell('shiny-charm', 1)).toMatchObject({
+      status: 409,
+      body: { error: 'NOT_SELLABLE' },
+    });
+    expect(await sell('master-ball', 1)).toMatchObject({
+      status: 404,
+      body: { error: 'ITEM_NOT_FOUND' },
+    });
+    expect((await sell('poke-ball', 0)).status).toBe(400);
+    expect((await shop()).currency).toBe(currency + 450);
   });
 });

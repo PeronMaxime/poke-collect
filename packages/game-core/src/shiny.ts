@@ -23,6 +23,16 @@ export function chainMultiplier(ctx: GameContext, chain: number): number {
   return Math.min(chainMaxMultiplier, 1 + chainBonusPerExpedition * Math.max(0, chain));
 }
 
+/** IV parfaits garantis aux Pokémon sauvages par la chaîne : un par palier atteint. */
+export function chainPerfectIvs(ctx: GameContext, chain: number): number {
+  return ctx.balance.shiny.chainPerfectIvThresholds.filter((t) => chain >= t).length;
+}
+
+/** Prochain palier d'IV parfaits de la chaîne ; null une fois le dernier atteint. */
+export function nextChainPerfectIvThreshold(ctx: GameContext, chain: number): number | null {
+  return ctx.balance.shiny.chainPerfectIvThresholds.find((t) => chain < t) ?? null;
+}
+
 export function shinyMultiplier(ctx: GameContext, factors: ShinyFactors = {}): number {
   return (
     chainMultiplier(ctx, factors.chain ?? 0) *

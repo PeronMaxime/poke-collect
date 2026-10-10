@@ -7,6 +7,7 @@ import {
   generatePokemon,
   levelForXp,
   pokemonPower,
+  withPerfectIvs,
   xpForLevel,
 } from './pokemon';
 import type { PokemonInstance } from './pokemon';
@@ -15,7 +16,7 @@ import { NO_BONUSES } from './progression';
 import type { PlayerBonuses } from './progression';
 import { createRng } from './rng';
 import type { Rng } from './rng';
-import { shinyProbability } from './shiny';
+import { chainPerfectIvs, shinyProbability } from './shiny';
 import type { ShinyFactors } from './shiny';
 
 // --- Quantités selon la durée ----------------------------------------------------
@@ -240,6 +241,26 @@ export interface CaptureFilter {
   /** Nombre minimal d'IV au maximum (31). */
   minPerfectIvs: number;
   shiny: 'any' | 'always' | 'only';
+  /**
+   * Uniquement les Pokémon pas encore capturés (espèce, ou forme pour une forme régionale,
+   * Méga…) ; une fois l'un d'eux capturé, ses rencontres suivantes sont ignorées.
+   */
+  newOnly?: boolean;
+}
+
+/** Captures déjà enregistrées au Pokédex, pour le filtre « nouveaux Pokémon ». */
+export interface CaughtDex {
+  speciesIds: ReadonlySet<number>;
+  formIds: ReadonlySet<number>;
+}
+
+export function isNewToDex(
+  caught: CaughtDex,
+  wild: Pick<PokemonInstance, 'speciesId' | 'formId'>,
+): boolean {
+  return wild.formId != null
+    ? !caught.formIds.has(wild.formId)
+    : !caught.speciesIds.has(wild.speciesId);
 }
 
 export function perfectIvCount(pokemon: Pick<PokemonInstance, 'ivs'>): number {
@@ -248,11 +269,13 @@ export function perfectIvCount(pokemon: Pick<PokemonInstance, 'ivs'>): number {
 
 export function matchesCaptureFilter(
   filter: CaptureFilter | null | undefined,
-  wild: Pick<PokemonInstance, 'speciesId' | 'isShiny' | 'ivs'>,
+  wild: Pick<PokemonInstance, 'speciesId' | 'formId' | 'isShiny' | 'ivs'>,
+  caught?: CaughtDex,
 ): boolean {
   if (!filter) return true;
   if (filter.shiny === 'always' && wild.isShiny) return true;
   if (filter.shiny === 'only' && !wild.isShiny) return false;
+  if (filter.newOnly && caught && !isNewToDex(caught, wild)) return false;
   if (filter.speciesIds.length > 0 && !filter.speciesIds.includes(wild.speciesId)) return false;
   return perfectIvCount(wild) >= filter.minPerfectIvs;
 }
@@ -278,6 +301,8 @@ export interface ExpeditionInput {
   shiny?: ShinyFactors;
   /** Pokémon à tenter de capturer ; absent = tous. */
   captureFilter?: CaptureFilter | null;
+  /** Captures du Pokédex, lues à la réclamation ; requis par le filtre « nouveaux Pokémon ». */
+  caught?: CaughtDex;
 }
 
 /** `ignored` : écarté par le filtre de capture. */
@@ -364,7 +389,13 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
   let ballsLeft = input.balls?.quantity ?? 0;
   let berriesLeft = input.berries?.quantity ?? 0;
   const shinyChance = shinyProbability(ctx, input.shiny);
+  const perfectIvs = chainPerfectIvs(ctx, input.shiny?.chain ?? 0);
   const bonuses = input.bonuses ?? NO_BONUSES;
+  // Copie enrichie au fil des captures : un nouveau Pokémon capturé n'est plus visé ensuite.
+  const caught = {
+    speciesIds: new Set(input.caught?.speciesIds),
+    formIds: new Set(input.caught?.formIds),
+  };
 
   const encounters: EncounterResult[] = [];
   let xpPerMember = 0;
@@ -380,9 +411,11 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
       shinyProbability: shinyChance,
       formId,
     });
+    // Aucun tirage en plus sans palier atteint : les seeds sans chaîne restent inchangés.
+    if (perfectIvs > 0) wild.ivs = withPerfectIvs(rng, wild.ivs, perfectIvs);
     xpPerMember += Math.floor(defeatXp(species, level) * ctx.balance.xp.multiplier * bonuses.xp);
 
-    if (ballsLeft <= 0 || !matchesCaptureFilter(input.captureFilter, wild)) {
+    if (ballsLeft <= 0 || !matchesCaptureFilter(input.captureFilter, wild, caught)) {
       encounters.push({
         speciesId: species.id,
         formId,
@@ -406,6 +439,10 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
     const captured = rng.chance(captureChance);
     pity.set(species.id, captured ? 0 : (pity.get(species.id) ?? 0) + 1);
     touched.add(species.id);
+    if (captured) {
+      caught.speciesIds.add(species.id);
+      if (formId != null) caught.formIds.add(formId);
+    }
     encounters.push({
       speciesId: species.id,
       formId,

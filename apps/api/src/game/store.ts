@@ -16,6 +16,7 @@ import type { Db } from '@poke/db';
 import type { ItemStack } from '@poke/content';
 import { charmMultiplier, isKnockedOut, questStepsDone } from '@poke/game-core';
 import type {
+  CaughtDex,
   ClaimedRewards,
   DexCatches,
   GameContext,
@@ -386,6 +387,18 @@ export async function dexCatches(db: Db, ownerId: string): Promise<Required<DexC
   return {
     caughtSpeciesIds: new Set(rows.map((r) => r.speciesId)),
     caughtShinySpeciesIds: new Set(rows.filter((r) => r.shiny).map((r) => r.speciesId)),
+  };
+}
+
+/** Espèces et formes déjà capturées (filtre de capture « nouveaux Pokémon »). */
+export async function caughtDex(db: Db, ownerId: string): Promise<CaughtDex> {
+  const forms = await db
+    .select({ formId: pokedexForms.formId })
+    .from(pokedexForms)
+    .where(eq(pokedexForms.ownerId, ownerId));
+  return {
+    speciesIds: await caughtSpeciesIds(db, ownerId),
+    formIds: new Set(forms.map((r) => r.formId)),
   };
 }
 

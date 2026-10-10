@@ -33,6 +33,7 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
   const initial = working.content.balance;
   const [b, setB] = useState<BalanceSettings>(initial);
   const [newDuration, setNewDuration] = useState(30);
+  const [newIvThreshold, setNewIvThreshold] = useState(5);
   const save = useSaveBalance(working.version.id);
   const { valid, errors } = validate(balanceSettingsSchema, b);
   const disabled = !working.editable;
@@ -571,6 +572,65 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
             />
           </Field>
         </div>
+        <Field
+          label="Chaîne : IV parfaits garantis"
+          hint="Maillons à atteindre dans une zone : chaque palier garantit un IV à 31 de plus aux Pokémon sauvages."
+          error={err('shiny.chainPerfectIvThresholds')}
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            {b.shiny.chainPerfectIvThresholds.map((t, i) => (
+              <span
+                key={t}
+                className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm dark:bg-slate-800"
+              >
+                {t} maillon{t > 1 ? 's' : ''} → {i + 1} IV
+                {!disabled && (
+                  <button
+                    type="button"
+                    className="text-slate-400 hover:text-red-600"
+                    onClick={() =>
+                      sh('chainPerfectIvThresholds')(
+                        b.shiny.chainPerfectIvThresholds.filter((x) => x !== t),
+                      )
+                    }
+                  >
+                    ✕
+                  </button>
+                )}
+              </span>
+            ))}
+            {b.shiny.chainPerfectIvThresholds.length === 0 && (
+              <span className="text-sm text-slate-500">Aucun palier</span>
+            )}
+            {!disabled && b.shiny.chainPerfectIvThresholds.length < 6 && (
+              <span className="flex items-center gap-1">
+                <NumberInput
+                  className="w-32"
+                  value={newIvThreshold}
+                  min={1}
+                  unit="maillons"
+                  onChange={setNewIvThreshold}
+                />
+                <button
+                  type="button"
+                  className="btn-ghost py-1"
+                  disabled={
+                    !Number.isInteger(newIvThreshold) ||
+                    newIvThreshold < 1 ||
+                    b.shiny.chainPerfectIvThresholds.includes(newIvThreshold)
+                  }
+                  onClick={() =>
+                    sh('chainPerfectIvThresholds')(
+                      [...b.shiny.chainPerfectIvThresholds, newIvThreshold].sort((x, y) => x - y),
+                    )
+                  }
+                >
+                  Ajouter
+                </button>
+              </span>
+            )}
+          </div>
+        </Field>
         {preview && <ShinyRatesPreview ctx={preview} />}
       </Section>
 

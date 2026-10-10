@@ -10,6 +10,7 @@ import type {
   ShopCategory,
   ShopEntry,
 } from './schemas';
+import { suggestedSellPrice } from './schemas';
 import {
   expansionDexMilestones,
   expansionItems,
@@ -356,6 +357,7 @@ export const seedContent: GameContentData = {
       chainBonusPerExpedition: 0.25,
       chainMaxMultiplier: 3,
       chainWindowMinutes: 120,
+      chainPerfectIvThresholds: [5, 10, 15, 20],
       masudaMultiplier: 4,
     },
     pity: { weightBonusPerMiss: 0.05, maxMultiplier: 3 },
@@ -414,7 +416,7 @@ export const seedContent: GameContentData = {
     ...expansionRegions,
   ],
   speciesOverrides: [],
-  items: [
+  items: withSellPrices([
     {
       id: 'poke-ball',
       name: 'Poké Ball',
@@ -536,7 +538,7 @@ export const seedContent: GameContentData = {
     ...endgameItems(),
     ...fossilItems(),
     ...expansionItems,
-  ],
+  ]),
   lootTables: [
     {
       id: 'butin-route',
@@ -621,8 +623,17 @@ function caveLoot(): LootEntry[] {
   ];
 }
 
+/** Objet du seed : le prix de revente découle de la boutique (voir `withSellPrices`). */
+type SeedItem = Omit<Item, 'sellPrice'>;
+
+/** Prix de revente : la moitié du prix boutique, sinon selon la rareté. */
+function withSellPrices(items: SeedItem[]): Item[] {
+  const entries = [...shopEntries, ...expansionShopEntries];
+  return items.map((item) => ({ ...item, sellPrice: suggestedSellPrice(item, entries) }));
+}
+
 /** Fossiles : trouvés en expédition, restaurés au Musée (un Pokémon après quelques heures). */
-function fossilItems(): Item[] {
+function fossilItems(): SeedItem[] {
   const fossil = (
     id: string,
     name: string,
@@ -630,7 +641,7 @@ function fossilItems(): Item[] {
     pokemonName: string,
     minutes: number,
     rarity: Item['rarity'],
-  ): Item => ({
+  ): SeedItem => ({
     id,
     name,
     description: `Un fossile ancien. Le Musée peut en faire renaître un ${pokemonName}.`,
@@ -651,14 +662,14 @@ function fossilItems(): Item[] {
 }
 
 /** Objets endgame (PLAN.md, section 2.7) : Capsules, Aromates, Pilule et Patch Talent. */
-function endgameItems(): Item[] {
+function endgameItems(): SeedItem[] {
   const item = (
     id: string,
     name: string,
     description: string,
     rarity: Item['rarity'],
     effects: Item['effects'],
-  ): Item => ({ id, name, description, icon: null, category: 'endgame', rarity, effects });
+  ): SeedItem => ({ id, name, description, icon: null, category: 'endgame', rarity, effects });
   return [
     item(
       'bottle-cap',

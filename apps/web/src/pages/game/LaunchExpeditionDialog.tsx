@@ -3,11 +3,13 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Zone } from '@poke/content';
 import {
   captureProbability,
+  chainPerfectIvs,
   checkTeam,
   encounterCount,
   encounterProbabilities,
   isRegionalSpecies,
   lootProbabilities,
+  nextChainPerfectIvThreshold,
   pokemonPower,
   shinyProbability,
 } from '@poke/game-core';
@@ -94,6 +96,8 @@ export function LaunchExpeditionDialog({
 }) {
   const queryClient = useQueryClient();
   const charm = useShinyCharm(ctx);
+  const perfectIvs = chainPerfectIvs(ctx, chain);
+  const nextIvThreshold = nextChainPerfectIvThreshold(ctx, chain);
   const pokemon = usePokemon();
   const inventory = useInventory();
   const [duration, setDuration] = useState(zone.durationsMinutes[0]!);
@@ -208,6 +212,10 @@ export function LaunchExpeditionDialog({
             .filter(Boolean)
             .join(', ')})`}
         .
+        {perfectIvs > 0 &&
+          ` Chaque Pokémon sauvage aura au moins ${perfectIvs} IV parfait${perfectIvs > 1 ? 's' : ''}.`}
+        {nextIvThreshold !== null &&
+          ` Prochain IV parfait garanti à ${nextIvThreshold} maillon${nextIvThreshold > 1 ? 's' : ''}.`}
       </p>
 
       <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2">
@@ -406,6 +414,14 @@ export function LaunchExpeditionDialog({
               </div>
               <div className="flex flex-wrap items-center gap-x-6 gap-y-2">
                 <label className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    checked={!!captureFilter.newOnly}
+                    onChange={(e) => updateFilter({ newOnly: e.target.checked })}
+                  />
+                  <span>Nouveaux Pokémon uniquement</span>
+                </label>
+                <label className="flex items-center gap-2">
                   <span className="text-slate-500">IV à 31, au moins</span>
                   <select
                     className="input w-16 py-1"
@@ -435,6 +451,8 @@ export function LaunchExpeditionDialog({
               </div>
               <p className="text-slate-500">
                 Les rencontres hors filtre sont ignorées : aucune Ball ni baie utilisée.
+                {captureFilter.newOnly &&
+                  ' Un Pokémon absent du Pokédex n’est plus visé une fois capturé.'}
                 {captureFilter.shiny === 'always' &&
                   ' Les shiny sont tentés même hors des autres critères.'}
               </p>
