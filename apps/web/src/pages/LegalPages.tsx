@@ -1,4 +1,5 @@
 import type { MouseEvent, ReactNode } from 'react';
+import { CHANGELOG_PATH } from './ChangelogPage';
 
 /**
  * Pages légales (mentions légales, confidentialité), lisibles sans être connecté. Le texte décrit
@@ -13,7 +14,7 @@ const CONTACT_EMAIL = 'contact@dexpedition.fr';
 const UPDATED_AT = '9 octobre 2026';
 
 /** Navigation interne sans rechargement : App suit l'adresse via l'événement popstate. */
-function navigate(e: MouseEvent<HTMLAnchorElement>, path: string) {
+export function navigate(e: MouseEvent<HTMLAnchorElement>, path: string) {
   if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
   e.preventDefault();
   window.history.pushState(null, '', path);
@@ -29,10 +30,11 @@ function InternalLink({ to, children }: { to: string; children: ReactNode }) {
   );
 }
 
-/** Liens vers les pages légales, pour l'écran de connexion et le pied de page du jeu. */
+/** Liens vers les nouveautés et les pages légales, pour l'écran de connexion et le pied de page du jeu. */
 export function LegalLinks() {
   return (
     <span className="inline-flex gap-3">
+      <InternalLink to={CHANGELOG_PATH}>Nouveautés</InternalLink>
       <InternalLink to={LEGAL_NOTICE_PATH}>Mentions légales</InternalLink>
       <InternalLink to={PRIVACY_PATH}>Confidentialité</InternalLink>
     </span>
