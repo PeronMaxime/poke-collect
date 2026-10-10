@@ -17,7 +17,7 @@ interface Release {
 const RELEASES: Release[] = [
   {
     date: '10 octobre 2026',
-    title: 'Pension plus pratique et chaînes d’expédition renforcées',
+    title: 'Revente d’objets, Pension plus pratique et chaînes renforcées',
     changes: [
       {
         section: 'Expéditions',
