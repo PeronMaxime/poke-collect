@@ -24,6 +24,8 @@ import {
   telemetryQuerySchema,
 } from '@poke/shared';
 import type {
+  AdminPlayerDetailResponse,
+  AdminPlayerDto,
   AuditLogEntryDto,
   ContentVersionDetailDto,
   ContentVersionDto,
@@ -31,6 +33,7 @@ import type {
   TelemetryResponse,
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
+import { listPlayers, playerDetail } from '../game/admin-players';
 import { telemetry } from '../game/telemetry';
 import type { sessionHooks } from '../plugins/session';
 
@@ -297,6 +300,19 @@ export async function adminRoutes(
   app.get('/api/admin/telemetry', async (request): Promise<TelemetryResponse> => {
     const { days } = telemetryQuerySchema.parse(request.query);
     return telemetry(db, await content.get(), days, now());
+  });
+
+  app.get('/api/admin/players', async (): Promise<AdminPlayerDto[]> => listPlayers(db));
+
+  app.get('/api/admin/players/:userId', async (request, reply) => {
+    const { userId } = z.object({ userId: z.string().min(1).max(64) }).parse(request.params);
+    const detail: AdminPlayerDetailResponse | null = await playerDetail(
+      db,
+      await content.get(),
+      userId,
+    );
+    if (!detail) return reply.code(404).send({ error: 'NOT_FOUND' });
+    return detail;
   });
 
   app.get('/api/admin/audit-log', async (request): Promise<Paginated<AuditLogEntryDto>> => {

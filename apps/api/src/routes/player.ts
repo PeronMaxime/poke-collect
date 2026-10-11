@@ -23,7 +23,7 @@ interface Deps {
   now: () => Date;
 }
 
-function toDto(row: typeof playerProfiles.$inferSelect): PlayerProfileDto {
+export function toDto(row: typeof playerProfiles.$inferSelect): PlayerProfileDto {
   return {
     trainerName: row.trainerName,
     regionUnlocked: row.regionUnlocked,
@@ -46,6 +46,11 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
       .where(eq(playerProfiles.userId, user.id));
     return { user, profile: profile ? toDto(profile) : null };
   });
+
+  /** Signal de présence envoyé par le jeu ouvert (la session met à jour `last_seen_at`). */
+  app.post('/api/presence', { preHandler: hooks.requireUser }, async (_request, reply) =>
+    reply.code(204).send(),
+  );
 
   app.post('/api/profile', { preHandler: hooks.requireUser }, async (request, reply) => {
     const parsed = createProfileInputSchema.safeParse(request.body);

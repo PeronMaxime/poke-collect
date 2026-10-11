@@ -183,6 +183,13 @@
       "when": 1791657211421,
       "tag": "0025_prix_de_revente",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1791678647307,
+      "tag": "0026_presence_joueurs",
+      "breakpoints": true
     }
   ]
 }

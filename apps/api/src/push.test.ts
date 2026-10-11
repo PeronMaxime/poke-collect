@@ -3,6 +3,8 @@ import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
 import { createDb, ensureSeedContent, pushSubscriptions, users } from '@poke/db';
 import type {
+  AdminPlayerDetailResponse,
+  AdminPlayerDto,
   ExpeditionDto,
   PokemonDto,
   PushConfigResponse,
@@ -190,5 +192,41 @@ describe('télémétrie (admin)', () => {
     });
     expect(t.dexDistribution.reduce((s, b) => s + b.players, 0)).toBe(2);
     expect(t.quests.find((q) => q.questId === 'artikodin')?.steps.length).toBeGreaterThan(0);
+  });
+});
+
+describe('joueurs (admin)', () => {
+  it('liste les inscrits avec leur présence et ouvre une fiche dresseur', async () => {
+    const admin = await newPlayer('chen-joueurs@example.com', 'Orme');
+    expect((await admin.call('GET', '/api/admin/players')).status).toBe(403);
+    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, admin.userId));
+    const player = await newPlayer('sacha-joueurs@example.com', 'Sacha');
+    advance(5);
+    expect((await player.call('POST', '/api/presence')).status).toBe(204);
+
+    const list = await admin.call<AdminPlayerDto[]>('GET', '/api/admin/players');
+    expect(list.status).toBe(200);
+    const sacha = list.body.find((p) => p.id === player.userId)!;
+    expect(sacha).toMatchObject({
+      trainerName: 'Sacha',
+      email: 'sacha-joueurs@example.com',
+      role: 'player',
+      starterSpeciesId: 1,
+    });
+    expect(new Date(sacha.lastSeenAt!).getTime()).toBeGreaterThanOrEqual(clock.getTime());
+    expect(list.body.find((p) => p.id === admin.userId)?.role).toBe('admin');
+
+    const detail = await admin.call<AdminPlayerDetailResponse>(
+      'GET',
+      `/api/admin/players/${player.userId}`,
+    );
+    expect(detail.status).toBe(200);
+    expect(detail.body.profile?.trainerName).toBe('Sacha');
+    expect(detail.body.speciesCaught).toBe(1);
+    expect(detail.body.card?.pokemonOwned).toBe(1);
+    expect(detail.body.badges[0]?.regionId).toBe(seedContent.regions[0]!.id);
+    expect(detail.body.badges[0]?.badges.every((b) => !b.earned)).toBe(true);
+
+    expect((await admin.call('GET', '/api/admin/players/inconnu')).status).toBe(404);
   });
 });

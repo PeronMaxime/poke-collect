@@ -2,6 +2,7 @@ import { useSyncExternalStore } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { MeResponse } from '@poke/shared';
 import { ApiError, api } from './lib/api';
+import { usePresence } from './lib/presence';
 import { AuthPage, RESET_PASSWORD_PATH } from './pages/AuthPage';
 import { CHANGELOG_PATH, ChangelogPage } from './pages/ChangelogPage';
 import { CreateProfilePage } from './pages/CreateProfilePage';
@@ -39,6 +40,7 @@ export function App() {
     },
   });
   const pathname = usePathname();
+  usePresence(!!me.data);
 
   if (pathname === RESET_PASSWORD_PATH) return <ResetPasswordPage />;
   if (pathname === CHANGELOG_PATH) return <ChangelogPage />;

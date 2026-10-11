@@ -702,6 +702,50 @@ export interface TelemetryResponse {
   };
 }
 
+// --- Joueurs (administration) -------------------------------------------------------------
+
+/** Présence : connecté si vu il y a moins de 3 minutes (le jeu envoie un signal par minute). */
+export const ONLINE_WINDOW_MS = 3 * 60_000;
+/** Actif : vu au cours des 7 derniers jours. */
+export const ACTIVE_WINDOW_MS = 7 * 24 * 3_600_000;
+
+export interface AdminPlayerDto {
+  id: string;
+  email: string;
+  name: string;
+  role: UserRole;
+  /** Null tant que le joueur n'a pas créé son profil de dresseur. */
+  trainerName: string | null;
+  starterSpeciesId: number | null;
+  /** Date d'inscription. */
+  createdAt: string;
+  /** Dernière requête authentifiée connue (null : jamais vu depuis le suivi de présence). */
+  lastSeenAt: string | null;
+}
+
+export interface AdminPlayerRegionBadges {
+  regionId: string;
+  regionName: string;
+  badges: {
+    trainerId: string;
+    trainerName: string;
+    name: string;
+    image: string | null;
+    earned: boolean;
+  }[];
+}
+
+/** Fiche dresseur d'un joueur, vue depuis l'administration. */
+export interface AdminPlayerDetailResponse {
+  player: AdminPlayerDto;
+  profile: PlayerProfileDto | null;
+  /** Statistiques et badges : absents tant que le profil n'existe pas. */
+  card: TrainerCardResponse | null;
+  speciesCaught: number;
+  shinySpeciesCaught: number;
+  badges: AdminPlayerRegionBadges[];
+}
+
 // --- Notifications push (PWA) -------------------------------------------------------------
 
 /** Types de notifications push, activables séparément (réglages du joueur). */
