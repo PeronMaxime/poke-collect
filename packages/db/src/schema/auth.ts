@@ -14,6 +14,8 @@ export const users = pgTable('users', {
   role: text('role', { enum: ['player', 'admin'] })
     .notNull()
     .default('player'),
+  /** Dernière requête authentifiée (présence affichée dans l'administration). */
+  lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

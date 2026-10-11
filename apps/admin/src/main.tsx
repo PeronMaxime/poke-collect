@@ -7,6 +7,7 @@ import { Layout } from './components/Layout';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
+import { PlayersPage } from './pages/PlayersPage';
 import { TelemetryPage } from './pages/TelemetryPage';
 import { BalancePage } from './pages/content/BalancePage';
 import { EvolutionsPage } from './pages/content/EvolutionsPage';
@@ -47,6 +48,7 @@ const router = createBrowserRouter([
           { path: 'progression', element: <ProgressionPage /> },
           { path: 'quests', element: <QuestsPage /> },
           { path: 'telemetry', element: <TelemetryPage /> },
+          { path: 'players', element: <PlayersPage /> },
           ...SECTIONS.filter((s) => s.phase > CURRENT_PHASE).map((section) => ({
             path: section.path.slice(1),
             element: <PlaceholderPage section={section} />,

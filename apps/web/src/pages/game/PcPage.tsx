@@ -48,9 +48,11 @@ import {
   isUsable,
   keys,
   useCandies,
+  useDexCatches,
   useEvolutionChecker,
   useInventory,
   usePlayerProgress,
+  usePokedexForms,
   usePokemon,
   useTags,
   utcOffsetMinutes,
@@ -116,9 +118,13 @@ export function KoBadge({ koUntil, now }: { koUntil: string | null; now: number 
 
 const canTransfer = (p: PokemonDto) => !p.locked && !p.busy;
 
+/** Au moins un IV au maximum : précieux pour l'élevage. */
+const hasPerfectIv = (p: PokemonDto) => STAT_NAMES.some((s) => p.ivs[s] === MAX_IV);
+
 /**
  * Doublons à transférer : pour chaque espèce (et forme), on garde le Pokémon de plus forte PE,
- * les favoris, les shiny et les Pokémon occupés ; tous les autres sont proposés.
+ * les favoris, les Pokémon étiquetés, les shiny et les Pokémon occupés ; tous les autres sont
+ * proposés.
  */
 function duplicates(ctx: GameContext, list: readonly PokemonDto[]): string[] {
   const bySpecies = new Map<string, PokemonDto[]>();
@@ -133,7 +139,8 @@ function duplicates(ctx: GameContext, list: readonly PokemonDto[]): string[] {
     const best = group.reduce((x, y) =>
       pokemonPower(species, y) > pokemonPower(species, x) ? y : x,
     );
-    for (const p of group) if (p !== best && canTransfer(p) && !p.isShiny) ids.push(p.id);
+    for (const p of group)
+      if (p !== best && canTransfer(p) && !p.isShiny && p.tagIds.length === 0) ids.push(p.id);
   }
   return ids;
 }
@@ -142,10 +149,21 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   const pokemon = usePokemon();
   const now = useNow();
   const evolutionsOf = useEvolutionChecker(ctx);
+  const { caughtSpeciesIds } = useDexCatches();
+  const caughtFormIds = new Set(usePokedexForms().data?.map((f) => f.formId));
+  // Pastille « Évol. » : seulement si l'évolution possible manque encore au Pokédex.
+  const hasNewEvolution = (p: PokemonDto) =>
+    evolutionsOf(p).some(
+      ({ option, method }) =>
+        method &&
+        (option.toFormId === null
+          ? !caughtSpeciesIds.has(option.toSpeciesId)
+          : !caughtFormIds.has(option.toFormId)),
+    );
   const progress = usePlayerProgress();
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<Sort>('recent');
+  const [sort, setSort] = useState<Sort>('dex');
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [onlyShiny, setOnlyShiny] = useState(false);
   const tagFilter = useTagFilter();
@@ -153,6 +171,8 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [transferMode, setTransferMode] = useState(false);
   const [toTransfer, setToTransfer] = useState<Set<string>>(new Set());
+  // Doublons proposés dont certains ont des IV parfaits : le joueur choisit de les garder ou non.
+  const [pendingDuplicates, setPendingDuplicates] = useState<PokemonDto[] | null>(null);
   const [transferResult, setTransferResult] = useState<TransferPokemonResponse | null>(null);
   const queryClient = useQueryClient();
   const transfer = useMutation({
@@ -161,6 +181,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
     onSuccess: (data) => {
       setTransferResult(data);
       setToTransfer(new Set());
+      setPendingDuplicates(null);
       setTransferMode(false);
       return Promise.all(
         PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
@@ -192,7 +213,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
         case 'power':
           return b.power - a.power;
         case 'dex':
-          return a.p.speciesId - b.p.speciesId;
+          return a.p.speciesId - b.p.speciesId || b.power - a.power;
         case 'tag':
           return tagFilter.compare(a.p, b.p) || b.power - a.power;
       }
@@ -219,6 +240,20 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   }, [selected, previous, next]);
   const transferList = (pokemon.data ?? []).filter((p) => toTransfer.has(p.id));
   const candiesGained = transferList.reduce((sum, p) => sum + transferCandies(ctx, p), 0);
+  const perfectDuplicates = pendingDuplicates?.filter(hasPerfectIv) ?? [];
+
+  function selectDuplicates() {
+    const ids = new Set(duplicates(ctx, tabPokemon));
+    const found = tabPokemon.filter((p) => ids.has(p.id));
+    if (found.some(hasPerfectIv)) setPendingDuplicates(found);
+    else setToTransfer(ids);
+  }
+
+  function confirmDuplicates(includePerfect: boolean) {
+    const kept = (pendingDuplicates ?? []).filter((p) => includePerfect || !hasPerfectIv(p));
+    setToTransfer(new Set(kept.map((p) => p.id)));
+    setPendingDuplicates(null);
+  }
 
   function toggleTransfer(p: PokemonDto) {
     if (!canTransfer(p)) return;
@@ -293,6 +328,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
           onClick={() => {
             setTransferMode(!transferMode);
             setToTransfer(new Set());
+            setPendingDuplicates(null);
             setTransferResult(null);
           }}
         >
@@ -304,13 +340,11 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
         <div className="card mb-4 flex flex-wrap items-center gap-2 p-3 text-sm">
           <span className="flex-1">
             Touche les Pokémon à transférer contre des Bonbons de lignée (favoris et Pokémon occupés
-            exclus). <strong>{toTransfer.size}</strong> sélectionné(s), +{candiesGained} Bonbon
+            exclus ; les doublons ignorent aussi les Pokémon étiquetés).{' '}
+            <strong>{toTransfer.size}</strong> sélectionné(s), +{candiesGained} Bonbon
             {candiesGained > 1 ? 's' : ''}.
           </span>
-          <button
-            className="btn-ghost"
-            onClick={() => setToTransfer(new Set(duplicates(ctx, tabPokemon)))}
-          >
+          <button className="btn-ghost" onClick={selectDuplicates}>
             Sélectionner les doublons
           </button>
           <button
@@ -320,6 +354,28 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
           >
             Transférer ({toTransfer.size})
           </button>
+          {pendingDuplicates && (
+            <div className="flex w-full flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+              <span className="flex-1">
+                ⚠ {perfectDuplicates.length} doublon{perfectDuplicates.length > 1 ? 's ont' : ' a'}{' '}
+                au moins un IV parfait ({MAX_IV}) :{' '}
+                {perfectDuplicates
+                  .slice(0, 5)
+                  .map((p) => `${speciesName(ctx, p.speciesId, p.formId)} N.${p.level}`)
+                  .join(', ')}
+                {perfectDuplicates.length > 5 && '…'}
+              </span>
+              <button className="btn-ghost py-1" onClick={() => confirmDuplicates(false)}>
+                Les exclure
+              </button>
+              <button className="btn-danger py-1" onClick={() => confirmDuplicates(true)}>
+                Les inclure
+              </button>
+              <button className="btn-ghost py-1" onClick={() => setPendingDuplicates(null)}>
+                Annuler
+              </button>
+            </div>
+          )}
           {transfer.error && <p className="w-full text-red-600">{errorText(transfer.error)}</p>}
         </div>
       )}
@@ -351,7 +407,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
                 </span>
               )}
               <KoBadge koUntil={p.koUntil} now={now} />
-              {evolutionsOf(p).some((e) => e.method) && (
+              {hasNewEvolution(p) && (
                 <span
                   className="rounded bg-emerald-100 px-1 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
                   title="Peut évoluer"
@@ -362,7 +418,14 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
             </span>
             <PokemonSprite speciesId={p.speciesId} formId={p.formId} shiny={p.isShiny} size={72} />
             <span className="truncate font-medium">
-              {species?.nameFr} {p.isShiny && <ShinyStar />}
+              {species?.nameFr}
+              {p.gender !== 'genderless' && (
+                <span className={p.gender === 'male' ? 'text-sky-500' : 'text-pink-500'}>
+                  {' '}
+                  {GENDER_LABELS[p.gender]}
+                </span>
+              )}{' '}
+              {p.isShiny && <ShinyStar />}
             </span>
             <span className="text-slate-500">
               N.{p.level} · PE {power}
@@ -429,6 +492,10 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
                 ctx={ctx}
                 pokemon={selected}
                 evolutions={evolutionsOf(selected)}
+                onTransferred={(data) => {
+                  setTransferResult(data);
+                  setSelectedId(next?.p.id ?? previous?.p.id ?? null);
+                }}
               />
             </div>
           </>
@@ -452,10 +519,12 @@ function PokemonDetail({
   ctx,
   pokemon: p,
   evolutions,
+  onTransferred,
 }: {
   ctx: GameContext;
   pokemon: PokemonDto;
   evolutions: EvolutionCheck[];
+  onTransferred: (data: TransferPokemonResponse) => void;
 }) {
   const queryClient = useQueryClient();
   const tags = useTags().data ?? [];
@@ -498,6 +567,21 @@ function PokemonDetail({
       Promise.all(
         [keys.pokemon, keys.candies].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       ),
+  });
+
+  const [confirmTransfer, setConfirmTransfer] = useState(false);
+  const transfer = useMutation({
+    mutationFn: () =>
+      api<TransferPokemonResponse>('/api/pokemon/transfer', {
+        method: 'POST',
+        json: { ids: [p.id] },
+      }),
+    onSuccess: async (data) => {
+      onTransferred(data);
+      await Promise.all(
+        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      );
+    },
   });
 
   if (reveal) {
@@ -573,6 +657,45 @@ function PokemonDetail({
             {feed.error && <p className="mt-1 text-red-600">{errorText(feed.error)}</p>}
           </div>
         )}
+
+        <div className="mt-3 w-full text-xs">
+          {confirmTransfer ? (
+            <div className="rounded-xl border border-red-200 p-3 dark:border-red-900">
+              <p>
+                Transférer {species.nameFr} contre {transferCandies(ctx, p)} ×{' '}
+                {lineage !== undefined ? candyName(ctx, lineage) : 'Bonbon'} ? C’est définitif.
+              </p>
+              <div className="mt-2 flex justify-center gap-2">
+                <button
+                  className="btn-danger py-1"
+                  disabled={transfer.isPending}
+                  onClick={() => transfer.mutate()}
+                >
+                  Transférer
+                </button>
+                <button className="btn-ghost py-1" onClick={() => setConfirmTransfer(false)}>
+                  Annuler
+                </button>
+              </div>
+            </div>
+          ) : (
+            <button
+              className="btn-ghost w-full"
+              disabled={!canTransfer(p)}
+              title={
+                p.locked
+                  ? 'Retire-le des favoris pour pouvoir le transférer'
+                  : p.busy
+                    ? 'Le Pokémon doit être disponible (ni en activité)'
+                    : undefined
+              }
+              onClick={() => setConfirmTransfer(true)}
+            >
+              Transférer
+            </button>
+          )}
+          {transfer.error && <p className="mt-1 text-red-600">{errorText(transfer.error)}</p>}
+        </div>
       </div>
 
       <div className="space-y-4 text-sm">

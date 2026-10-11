@@ -30,7 +30,7 @@ import { PokedexPage } from './game/PokedexPage';
 import { QuestsPage } from './game/QuestsPage';
 import { ShopPage } from './game/ShopPage';
 import { TrainerCardPage } from './game/TrainerCardPage';
-import { CHANGELOG_PATH } from './ChangelogPage';
+import { CHANGELOG_PATH, hasUnseenChangelog } from './ChangelogPage';
 import { FanDisclaimer, LegalLinks, navigate } from './LegalPages';
 import { SettingsDialog } from './SettingsDialog';
 
@@ -59,6 +59,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const ctx = useGameContext();
   const [tab, setTab] = useState<TabId>(tabFromHash);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [unseenChangelog] = useState(hasUnseenChangelog);
   const expeditions = useExpeditions();
   const daycare = useDaycare();
   const museum = useMuseum();
@@ -132,11 +133,17 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
             </a>
           )}
           <a
-            className="btn-ghost"
+            className="btn-ghost relative"
             href={CHANGELOG_PATH}
             onClick={(e) => navigate(e, CHANGELOG_PATH)}
           >
             Nouveautés
+            {unseenChangelog && (
+              <span
+                className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-slate-50 dark:ring-slate-950"
+                title="Nouvelle mise à jour"
+              />
+            )}
           </a>
           <button className="btn-ghost" onClick={() => setSettingsOpen(true)}>
             Réglages

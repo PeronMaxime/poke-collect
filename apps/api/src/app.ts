@@ -51,7 +51,7 @@ export async function buildApp({
   const app = Fastify({ logger, trustProxy: env.trustProxy });
   const auth = createAuth(db, env, mailer);
   const content = new ContentCache(db);
-  const hooks = sessionHooks(auth);
+  const hooks = sessionHooks(auth, db, now);
   const push = env.vapid ? (pushSender ?? webPushSender(env.vapid)) : null;
 
   app.decorateRequest('user', null);

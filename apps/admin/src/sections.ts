@@ -99,8 +99,8 @@ export const SECTIONS: AdminSection[] = [
   {
     path: '/players',
     label: 'Joueurs',
-    description: 'Consultation de profil et outils de support.',
-    phase: 9,
+    description: 'Joueurs inscrits, présence et activité, fiche dresseur.',
+    phase: 8,
   },
   {
     path: '/audit-log',

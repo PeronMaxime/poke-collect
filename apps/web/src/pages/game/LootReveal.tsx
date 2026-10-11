@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import type { GameContext } from '@poke/game-core';
 import type { ClaimExpeditionResponse } from '@poke/shared';
-import { Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
+import { IvHover, Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
 import { usePokemon } from '../../lib/game';
 import { formatShinyRate, itemIcon, itemName, speciesName } from '../../lib/labels';
 
@@ -52,6 +52,7 @@ function RevealContent({
   const reduced = useReducedMotion();
   const pokemon = usePokemon();
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
+  const capturedById = new Map(data.captured.map((p) => [p.id, p]));
   const [skipped, setSkipped] = useState(false);
   const instant = reduced || skipped;
   const result = data.expedition.result!;
@@ -140,15 +141,23 @@ function RevealContent({
                 className="relative"
               >
                 {e.isShiny && <ShinySparkles delay={delay(i) + 0.15} loop />}
-                <PokemonSprite
-                  speciesId={e.speciesId}
-                  formId={e.formId}
-                  shiny={e.isShiny}
-                  size={64}
-                  className={
-                    e.outcome === 'escaped' || e.outcome === 'ignored' ? 'opacity-50 grayscale' : ''
+                <IvHover
+                  ivs={
+                    (e.pokemonId ? capturedById.get(e.pokemonId)?.ivs : undefined) ?? e.pokemon?.ivs
                   }
-                />
+                >
+                  <PokemonSprite
+                    speciesId={e.speciesId}
+                    formId={e.formId}
+                    shiny={e.isShiny}
+                    size={64}
+                    className={
+                      e.outcome === 'escaped' || e.outcome === 'ignored'
+                        ? 'opacity-50 grayscale'
+                        : ''
+                    }
+                  />
+                </IvHover>
               </motion.div>
               <span className="font-medium">
                 {speciesName(ctx, e.speciesId, e.formId)} {e.isShiny && <ShinyStar />}
