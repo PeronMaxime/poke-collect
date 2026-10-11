@@ -6,7 +6,7 @@ import { STAT_NAMES } from '@poke/data';
 import { MAX_IV } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { HatchEggsResponse, PokemonDto } from '@poke/shared';
-import { Egg, Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
+import { Egg, IvHover, Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
 import { TagPicker } from '../../components/tags';
 import { api } from '../../lib/api';
 import { keys, usePokemon } from '../../lib/game';
@@ -118,12 +118,14 @@ function HatchContent({
                 )}
                 <span className="relative">
                   {p.isShiny && <ShinySparkles delay={delay(i)} loop />}
-                  <PokemonSprite
-                    speciesId={p.speciesId}
-                    formId={p.formId}
-                    shiny={p.isShiny}
-                    size={72}
-                  />
+                  <IvHover ivs={p.ivs}>
+                    <PokemonSprite
+                      speciesId={p.speciesId}
+                      formId={p.formId}
+                      shiny={p.isShiny}
+                      size={72}
+                    />
+                  </IvHover>
                 </span>
                 <span className="font-medium">
                   {speciesName(ctx, p.speciesId, p.formId)} {p.isShiny && <ShinyStar />}

@@ -66,6 +66,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
 
   const progress = usePlayerProgress();
   const seen = new Set(pokedex.data?.filter((d) => d.seen).map((d) => d.speciesId));
+  const caught = new Set(pokedex.data?.filter((d) => d.caught).map((d) => d.speciesId));
   // Décalage entre l'horloge du serveur et celle du navigateur, pour des comptes à rebours justes.
   const offset = expeditions.data
     ? Date.parse(expeditions.data.serverTime) - expeditions.dataUpdatedAt
@@ -170,6 +171,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
                   ctx={ctx}
                   zone={zone}
                   seen={seen}
+                  caught={caught}
                   unlocked={unlocked}
                   canLaunch={freeSlots > 0}
                   chain={chains.get(zone.id)}
@@ -274,6 +276,7 @@ function ZoneCard({
   ctx,
   zone,
   seen,
+  caught,
   unlocked,
   canLaunch,
   chain,
@@ -283,6 +286,7 @@ function ZoneCard({
   ctx: GameContext;
   zone: Zone;
   seen: Set<number>;
+  caught: Set<number>;
   unlocked: boolean;
   canLaunch: boolean;
   chain: ShinyChainDto | undefined;
@@ -291,7 +295,8 @@ function ZoneCard({
 }) {
   const expiresIn = chain?.expiresAt ? Date.parse(chain.expiresAt) - serverNow : null;
   const perfectIvs = chain ? chainPerfectIvs(ctx, chain.chain) : 0;
-  // Espèces et formes rencontrées (une silhouette tant que l'espèce n'a pas été vue).
+  // Espèces et formes rencontrées : en couleur une fois capturées, en gris si seulement vues,
+  // une silhouette tant que l'espèce n'a pas été vue.
   const species = [
     ...new Map(
       zone.encounters
@@ -341,6 +346,7 @@ function ZoneCard({
             formId={formId}
             size={40}
             silhouette={!seen.has(id)}
+            className={seen.has(id) && !caught.has(id) ? 'opacity-50 grayscale' : ''}
             alt={seen.has(id) ? ctx.species(id, formId)?.nameFr : '?'}
           />
         ))}

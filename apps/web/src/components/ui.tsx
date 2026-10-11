@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { pokemonSprite, pokemonSpriteUrl } from '@poke/data';
-import type { SpriteKind } from '@poke/data';
-import { TYPE_COLORS, typeLabel } from '../lib/labels';
+import { STAT_NAMES, pokemonSprite, pokemonSpriteUrl } from '@poke/data';
+import type { SpriteKind, Stats } from '@poke/data';
+import { MAX_IV } from '@poke/game-core';
+import { STAT_LABELS, TYPE_COLORS, typeLabel } from '../lib/labels';
 
 export function PokemonSprite({
   speciesId,
@@ -211,6 +212,31 @@ export function CancelButton({
       <button className="btn-ghost" disabled={pending} onClick={() => setConfirming(false)}>
         Non
       </button>
+    </span>
+  );
+}
+
+/** IV d'un Pokémon dans une bulle, au survol (ou au toucher) de son contenu. */
+export function IvHover({ ivs, children }: { ivs: Stats | undefined; children: ReactNode }) {
+  if (!ivs) return children;
+  const total = STAT_NAMES.reduce((sum, s) => sum + ivs[s], 0);
+  return (
+    <span className="group/iv relative inline-block" tabIndex={0}>
+      {children}
+      <span className="invisible absolute top-full left-1/2 z-20 w-36 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2 text-left text-[11px] shadow-lg group-hover/iv:visible group-focus/iv:visible dark:border-slate-700 dark:bg-slate-900">
+        {STAT_NAMES.map((s) => (
+          <span key={s} className="flex justify-between gap-2">
+            <span className="text-slate-500">{STAT_LABELS[s]}</span>
+            <span className={ivs[s] === MAX_IV ? 'font-bold text-amber-600' : ''}>{ivs[s]}</span>
+          </span>
+        ))}
+        <span className="mt-1 flex justify-between gap-2 border-t border-slate-200 pt-1 font-medium dark:border-slate-700">
+          <span>Total</span>
+          <span>
+            {total} / {MAX_IV * 6}
+          </span>
+        </span>
+      </span>
     </span>
   );
 }
