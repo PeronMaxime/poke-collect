@@ -153,12 +153,7 @@ function DexView({ ctx }: { ctx: GameContext }) {
 
   return (
     <div className="space-y-4">
-      <RegionTabs
-        ctx={ctx}
-        progress={playerProgress}
-        selected={region.id}
-        onSelect={setRegionId}
-      />
+      <RegionTabs ctx={ctx} progress={playerProgress} selected={region.id} onSelect={setRegionId} />
       <div className="card p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Pokédex de {region.name}</h2>

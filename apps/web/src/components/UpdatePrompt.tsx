@@ -44,8 +44,8 @@ export function UpdatePrompt() {
       <div className="text-4xl">⚠️</div>
       <h2 className="mt-2 text-lg font-bold">Nouvelle version disponible</h2>
       <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">
-        Dexpedition a été mis à jour. Recharge la page pour profiter des nouveautés et éviter
-        les erreurs liées à l’ancienne version.
+        Dexpedition a été mis à jour. Recharge la page pour profiter des nouveautés et éviter les
+        erreurs liées à l’ancienne version.
       </p>
       <div className="mt-4 flex justify-center gap-2">
         <button type="button" className="btn-ghost" onClick={() => setOutdated(false)}>
