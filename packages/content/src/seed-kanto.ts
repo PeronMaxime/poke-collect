@@ -11,6 +11,7 @@ import type {
   UnlockCondition,
   Zone,
 } from './schemas';
+import { defaultLegendaryExpedition } from './schemas';
 
 /**
  * Kanto : le parcours des 8 arènes, la Ligue, les zones spéciales et les quêtes légendaires.
@@ -1184,10 +1185,12 @@ const reward = (r: Partial<ProgressReward>): ProgressReward => ({
   ...r,
 });
 /** Pokémon offert par une quête : au moins 3 IV parfaits, comme dans les jeux récents. */
-const legendary = (speciesId: number, level: number): QuestPokemon => ({
+/** Légendaire offert : 3 IV parfaits ; expédition légendaire de PE minimale `minPower`. */
+const legendary = (speciesId: number, level: number, minPower: number): QuestPokemon => ({
   speciesId,
   level,
   perfectIvs: 3,
+  expedition: defaultLegendaryExpedition(speciesId, null, minPower),
 });
 const step = (name: string, description: string, condition: QuestCondition): QuestStep => ({
   name,
@@ -1242,7 +1245,7 @@ export const kantoQuests: Quest[] = [
     ],
     rewards: {
       ...reward({ currency: 10_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] }),
-      pokemon: [legendary(144, 50)],
+      pokemon: [legendary(144, 50, 2600)],
     },
   },
   {
@@ -1270,7 +1273,7 @@ export const kantoQuests: Quest[] = [
     ],
     rewards: {
       ...reward({ currency: 10_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] }),
-      pokemon: [legendary(145, 50)],
+      pokemon: [legendary(145, 50, 1800)],
     },
   },
   {
@@ -1293,7 +1296,7 @@ export const kantoQuests: Quest[] = [
     ],
     rewards: {
       ...reward({ currency: 10_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] }),
-      pokemon: [legendary(146, 50)],
+      pokemon: [legendary(146, 50, 3000)],
     },
   },
   {
@@ -1330,7 +1333,7 @@ export const kantoQuests: Quest[] = [
     ],
     rewards: {
       ...reward({ currency: 50_000, items: [{ itemId: 'gold-bottle-cap', quantity: 1 }] }),
-      pokemon: [legendary(150, 70)],
+      pokemon: [legendary(150, 70, 4500)],
     },
   },
   {
@@ -1358,7 +1361,7 @@ export const kantoQuests: Quest[] = [
     ],
     rewards: {
       ...reward({ items: [{ itemId: 'ability-patch', quantity: 1 }] }),
-      pokemon: [legendary(151, 30)],
+      pokemon: [legendary(151, 30, 3600)],
     },
   },
 ];

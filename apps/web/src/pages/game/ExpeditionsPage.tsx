@@ -23,6 +23,7 @@ import {
   useExpeditions,
   usePlayerProgress,
   usePokedex,
+  usePokedexForms,
   usePokemon,
 } from '../../lib/game';
 import {
@@ -35,17 +36,18 @@ import {
 import { LaunchExpeditionDialog } from './LaunchExpeditionDialog';
 import { LootReveal } from './LootReveal';
 import { RegionStarterCard } from './RegionStarterCard';
-import { RegionTabs, currentRegionTab } from './RegionTabs';
+import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 
 export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto }) {
   const queryClient = useQueryClient();
   const expeditions = useExpeditions();
   const pokedex = usePokedex();
+  const pokedexForms = usePokedexForms();
   const pokemon = usePokemon();
   const now = useNow();
   const [launchZone, setLaunchZone] = useState<Zone | null>(null);
   const [reveal, setReveal] = useState<ClaimExpeditionResponse | null>(null);
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [selectedRegion, setSelectedRegion] = useSavedRegionTab('expeditions');
 
   const claim = useMutation({
     mutationFn: (id: string) =>
@@ -67,6 +69,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   const progress = usePlayerProgress();
   const seen = new Set(pokedex.data?.filter((d) => d.seen).map((d) => d.speciesId));
   const caught = new Set(pokedex.data?.filter((d) => d.caught).map((d) => d.speciesId));
+  const caughtForms = new Set(pokedexForms.data?.map((f) => f.formId));
   // Décalage entre l'horloge du serveur et celle du navigateur, pour des comptes à rebours justes.
   const offset = expeditions.data
     ? Date.parse(expeditions.data.serverTime) - expeditions.dataUpdatedAt
@@ -172,6 +175,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
                   zone={zone}
                   seen={seen}
                   caught={caught}
+                  caughtForms={caughtForms}
                   unlocked={unlocked}
                   canLaunch={freeSlots > 0}
                   chain={chains.get(zone.id)}
@@ -225,12 +229,18 @@ function ActiveExpedition({
   const start = Date.parse(expedition.startedAt);
   const end = Date.parse(expedition.endsAt);
   const done = serverNow >= end;
-  const zone = ctx.zone(expedition.zoneId);
+  const zone = expedition.zoneId ? ctx.zone(expedition.zoneId) : undefined;
+  const quest = expedition.questId ? ctx.quest(expedition.questId) : undefined;
   return (
     <div className={`card p-4 ${done ? 'ring-2 ring-brand-500/50' : ''}`}>
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="font-semibold">{zone?.name ?? expedition.zoneId}</p>
+          {expedition.questId && (
+            <p className="text-xs font-medium text-amber-600">✦ Expédition légendaire</p>
+          )}
+          <p className="font-semibold">
+            {zone?.name ?? quest?.name ?? expedition.zoneId ?? expedition.questId}
+          </p>
           <p className="text-xs text-slate-500">
             {formatDuration(expedition.durationMinutes)}
             {expedition.shinyChain > 0 && (
@@ -277,6 +287,7 @@ function ZoneCard({
   zone,
   seen,
   caught,
+  caughtForms,
   unlocked,
   canLaunch,
   chain,
@@ -287,6 +298,8 @@ function ZoneCard({
   zone: Zone;
   seen: Set<number>;
   caught: Set<number>;
+  /** Formes (régionales, Méga…) capturées : distinctes de l'espèce de base. */
+  caughtForms: Set<number>;
   unlocked: boolean;
   canLaunch: boolean;
   chain: ShinyChainDto | undefined;
@@ -346,7 +359,11 @@ function ZoneCard({
             formId={formId}
             size={40}
             silhouette={!seen.has(id)}
-            className={seen.has(id) && !caught.has(id) ? 'opacity-50 grayscale' : ''}
+            className={
+              seen.has(id) && !(formId != null ? caughtForms.has(formId) : caught.has(id))
+                ? 'opacity-50 grayscale'
+                : ''
+            }
             alt={seen.has(id) ? ctx.species(id, formId)?.nameFr : '?'}
           />
         ))}

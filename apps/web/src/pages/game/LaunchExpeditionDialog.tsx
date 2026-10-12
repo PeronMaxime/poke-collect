@@ -7,24 +7,15 @@ import {
   checkTeam,
   encounterCount,
   encounterProbabilities,
-  isRegionalSpecies,
   lootProbabilities,
   nextChainPerfectIvThreshold,
-  pokemonPower,
   shinyProbability,
 } from '@poke/game-core';
 import type { CaptureFilter, ExpeditionError, GameContext } from '@poke/game-core';
-import type { ExpeditionDto, PokemonDto, StartExpeditionInput } from '@poke/shared';
-import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
-import { Modal, PokemonSprite, ShinyStar, TypeBadge, useNow } from '../../components/ui';
+import type { ExpeditionDto, StartExpeditionInput } from '@poke/shared';
+import { Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import {
-  PLAYER_STATE_KEYS,
-  isUsable,
-  useInventory,
-  usePokemon,
-  useShinyCharm,
-} from '../../lib/game';
+import { PLAYER_STATE_KEYS, useInventory, useShinyCharm } from '../../lib/game';
 import {
   GAME_ERRORS,
   formatDuration,
@@ -33,6 +24,9 @@ import {
   itemName,
   typeLabel,
 } from '../../lib/labels';
+import { TeamPicker, pillClass, useTeamPicker } from './TeamPicker';
+
+export { pillClass };
 
 /** Les objets rares (1 %, menthes…) ne doivent pas s'afficher « 0 % ». */
 function formatChance(p: number): string {
@@ -40,30 +34,15 @@ function formatChance(p: number): string {
   return pct < 1 ? '< 1 %' : `${Math.round(pct)} %`;
 }
 
-const SORTS = {
-  power: 'PE',
-  affinity: 'Affinité',
-  level: 'Niveau',
-  tag: 'Étiquette',
-} as const;
-type Sort = keyof typeof SORTS;
-
 const SHINY_MODES = {
   any: 'Indifférent',
   always: 'Toujours tenter',
   only: 'Uniquement',
 } as const;
 
-export const pillClass = (active: boolean) =>
-  `rounded-full px-2 py-0.5 ${
-    active
-      ? 'bg-brand-500 text-white'
-      : 'bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700'
-  }`;
-
 const NO_FILTER: CaptureFilter = { speciesIds: [], minPerfectIvs: 0, shiny: 'any' };
 
-function errorText(e: ExpeditionError): string {
+export function teamErrorText(e: ExpeditionError): string {
   switch (e.code) {
     case 'DURATION_NOT_ALLOWED':
       return 'Durée non disponible pour cette zone.';
@@ -98,10 +77,10 @@ export function LaunchExpeditionDialog({
   const charm = useShinyCharm(ctx);
   const perfectIvs = chainPerfectIvs(ctx, chain);
   const nextIvThreshold = nextChainPerfectIvThreshold(ctx, chain);
-  const pokemon = usePokemon();
   const inventory = useInventory();
   const [duration, setDuration] = useState(zone.durationsMinutes[0]!);
-  const [team, setTeam] = useState<string[]>([]);
+  const picker = useTeamPicker(ctx, zone);
+  const { team, members } = picker;
   const owned = new Map(inventory.data?.map((i) => [i.itemId, i.quantity]));
   // Du multiplicateur le plus faible au plus fort : la Ball par défaut reste la plus courante.
   const balls = ctx.content.items
@@ -123,8 +102,6 @@ export function LaunchExpeditionDialog({
   const [berryId, setBerryId] = useState<string | null>(null);
   // null = autant que possible (une par rencontre, dans la limite du stock).
   const [ballCount, setBallCount] = useState<number | null>(null);
-  const [sort, setSort] = useState<Sort>('power');
-  const tagFilter = useTagFilter();
   // null = tenter de capturer toutes les rencontres.
   const [captureFilter, setCaptureFilter] = useState<CaptureFilter | null>(null);
   const selectedBall = ballId === undefined ? (balls[0]?.id ?? null) : ballId;
@@ -141,31 +118,7 @@ export function LaunchExpeditionDialog({
     },
   });
 
-  const now = useNow(10_000);
-  const region = ctx.region(zone.regionId);
-  const available = (pokemon.data ?? [])
-    .filter((p) => isUsable(p, now) && isRegionalSpecies(ctx, zone.regionId, p.speciesId))
-    // Les membres déjà choisis restent visibles, quel que soit le filtre.
-    .filter((p) => tagFilter.matches(p) || team.includes(p.id))
-    .map((p) => {
-      const species = ctx.species(p.speciesId, p.formId)!;
-      return {
-        p,
-        species,
-        power: pokemonPower(species, p),
-        affinity: species.types.some((t) => zone.affinityTypes.includes(t)),
-      };
-    })
-    .sort(
-      (a, b) =>
-        (sort === 'affinity' ? Number(b.affinity) - Number(a.affinity) : 0) ||
-        (sort === 'level' ? b.p.level - a.p.level : 0) ||
-        (sort === 'tag' ? tagFilter.compare(a.p, b.p) : 0) ||
-        b.power - a.power,
-    );
-  const members = team.flatMap((id) => available.find((a) => a.p.id === id)?.p ?? []);
   const check = checkTeam(ctx, zone, duration, members);
-  const { maxTeamSize } = ctx.balance.expeditions;
   const encounters = encounterCount(ctx, duration);
   const maxBalls = selectedBall ? Math.min(encounters, owned.get(selectedBall) ?? 0) : 0;
   const ballsTaken = Math.min(ballCount ?? maxBalls, maxBalls);
@@ -180,12 +133,6 @@ export function LaunchExpeditionDialog({
     captureFilter.speciesIds.length === 0 ||
     captureFilter.speciesIds.includes(speciesId);
   const loot = lootProbabilities(ctx, zone, duration).sort((a, b) => b.probability - a.probability);
-
-  function toggle(p: PokemonDto) {
-    setTeam((t) =>
-      t.includes(p.id) ? t.filter((id) => id !== p.id) : t.length < maxTeamSize ? [...t, p.id] : t,
-    );
-  }
 
   return (
     <Modal open onClose={onClose} wide>
@@ -218,79 +165,7 @@ export function LaunchExpeditionDialog({
           ` Prochain IV parfait garanti à ${nextIvThreshold} maillon${nextIvThreshold > 1 ? 's' : ''}.`}
       </p>
 
-      <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">
-          Équipe ({team.length} / {maxTeamSize})
-        </h3>
-        <div className="flex items-center gap-1 text-xs">
-          <span className="text-slate-500">Trier par</span>
-          {(Object.keys(SORTS) as Sort[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setSort(key)}
-              className={pillClass(sort === key)}
-            >
-              {SORTS[key]}
-            </button>
-          ))}
-          <TagFilterSelect
-            tags={tagFilter.tags}
-            value={tagFilter.filter}
-            onChange={tagFilter.setFilter}
-            className="ml-1 py-0.5 text-xs"
-          />
-        </div>
-        <span
-          className={`text-sm font-medium ${check.power >= zone.minPower ? 'text-emerald-600' : 'text-red-600'}`}
-        >
-          PE {check.power} / {zone.minPower}
-        </span>
-      </div>
-      <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto p-1 sm:grid-cols-5">
-        {available.map(({ p, species, power, affinity }) => {
-          const selected = team.includes(p.id);
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => toggle(p)}
-              title={affinity ? 'Affinité avec la zone' : undefined}
-              className={`relative flex flex-col items-center rounded-xl border p-1 text-xs transition ${
-                selected
-                  ? 'border-brand-500 bg-brand-500/10'
-                  : affinity
-                    ? 'border-emerald-400 hover:bg-slate-100 dark:border-emerald-500 dark:hover:bg-slate-800'
-                    : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
-              } ${affinity ? 'shadow-[0_0_8px_2px_rgba(52,211,153,0.65)]' : ''}`}
-            >
-              <PokemonSprite
-                speciesId={p.speciesId}
-                formId={p.formId}
-                shiny={p.isShiny}
-                size={56}
-              />
-              <span className="truncate">
-                {species.nameFr} {p.isShiny && <ShinyStar />}
-              </span>
-              <span className="text-slate-500">
-                N.{p.level} · PE {power}
-              </span>
-              <PokemonTagBadges pokemon={p} tags={tagFilter.tags} />
-            </button>
-          );
-        })}
-        {available.length === 0 && (
-          <p className="col-span-full text-sm text-slate-500">
-            {tagFilter.filter === 'all'
-              ? `Aucun Pokémon de ${region?.name} disponible : ils sont occupés, K.O., ou pas encore capturés.`
-              : `Aucun Pokémon de ${region?.name} disponible avec cette étiquette.`}
-          </p>
-        )}
-      </div>
-      <p className="mt-1 text-xs text-slate-500">
-        Seuls les Pokémon du Pokédex de {region?.name} peuvent explorer ses zones.
-      </p>
+      <TeamPicker ctx={ctx} zone={zone} picker={picker} power={check.power} />
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div>
@@ -522,7 +397,7 @@ export function LaunchExpeditionDialog({
       {team.length > 0 && check.errors.length > 0 && (
         <ul className="mt-4 space-y-1 text-sm text-red-600">
           {check.errors.map((e) => (
-            <li key={e.code}>{errorText(e)}</li>
+            <li key={e.code}>{teamErrorText(e)}</li>
           ))}
         </ul>
       )}

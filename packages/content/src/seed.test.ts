@@ -1,6 +1,7 @@
 import { species } from '@poke/data';
 import { describe, expect, it } from 'vitest';
 import { contentIssues, findUsages, gameContentSchema } from './integrity';
+import { defaultLegendaryExpedition } from './schemas';
 import { seedContent } from './seed';
 import { formIdOf } from './seed-expansion';
 
@@ -371,7 +372,12 @@ describe('cohérence du contenu', () => {
       memberCount: 2,
       minMemberPower: 0,
     };
-    artikodin!.rewards.pokemon.push({ speciesId: 9999, level: 50, perfectIvs: 3 });
+    artikodin!.rewards.pokemon.push({
+      speciesId: 9999,
+      level: 50,
+      perfectIvs: 3,
+      expedition: { durationMinutes: 240, minPower: 0, requiredTypes: [], affinityTypes: ['feu'] },
+    });
     electhor!.unlock = { type: 'questStepsDone', questId: 'sulfura', count: 4 };
     bad.items.find((i) => i.id === 'adamant-mint')!.effects = [{ type: 'mint', nature: 'grognon' }];
     const messages = contentIssues(bad)
@@ -384,6 +390,7 @@ describe('cohérence du contenu', () => {
         'artikodin: Étape 3 : zone « atlantide » inconnue',
         'artikodin: Étape 3 : type « glace » inconnu',
         'artikodin: Récompense : espèce 9999 inconnue',
+        'artikodin: Type « feu » inconnu',
         'electhor: Condition de déblocage : 4 étape(s) requise(s), la quête « L’oiseau de feu » en a 3',
         'adamant-mint: Aromate : nature « grognon » inconnue',
       ]),
@@ -401,5 +408,19 @@ describe('cohérence du contenu', () => {
       'Quête « Le gardien des mers »',
       'Quête « L’oiseau arc-en-ciel »',
     ]);
+  });
+});
+
+describe('expéditions légendaires', () => {
+  it('ont par défaut les faiblesses du Pokémon en affinité', () => {
+    const artikodin = seedContent.quests.find((q) => q.id === 'artikodin')!;
+    // Glace / Vol : faible au Feu, à l'Acier, à la Roche (×4) et à l'Électrik.
+    expect([...artikodin.rewards.pokemon[0]!.expedition.affinityTypes].sort()).toEqual(
+      ['electric', 'fire', 'rock', 'steel'].sort(),
+    );
+    expect(defaultLegendaryExpedition(150)).toMatchObject({
+      durationMinutes: 240,
+      affinityTypes: ['bug', 'ghost', 'dark'],
+    });
   });
 });

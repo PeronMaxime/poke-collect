@@ -1,33 +1,15 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { playerProfiles, questProgress } from '@poke/db';
 import type { Db } from '@poke/db';
-import {
-  NEW_QUEST,
-  advanceQuest,
-  createRng,
-  generateQuestPokemon,
-  playerSlots,
-  questStatus,
-  questStepsDone,
-  shinyProbability,
-} from '@poke/game-core';
+import { NEW_QUEST, advanceQuest, playerSlots, questStatus, questStepsDone } from '@poke/game-core';
 import type { GameContext, PlayerSlots, QuestEvent } from '@poke/game-core';
 import type { QuestReward } from '@poke/content';
 import type { QuestProgressDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
-import { newSeed, requireStartedProfile } from './expeditions';
-import {
-  addItems,
-  baseProgress,
-  claimedRewards,
-  insertPokemon,
-  questRecords,
-  questRows,
-  recordPokedex,
-  shinyCharm,
-} from './store';
-import type { PokemonRow, QuestProgressRow } from './store';
+import { requireStartedProfile } from './expeditions';
+import { addItems, baseProgress, claimedRewards, questRecords, questRows } from './store';
+import type { QuestProgressRow } from './store';
 
 /**
  * Quêtes : l'avancement se calcule paresseusement (étapes « état ») et s'enregistre à chaque
@@ -95,6 +77,7 @@ export function toQuestProgressDto(
     stepStartedAt: row.stepStartedAt.toISOString(),
     completedAt: row.completedAt?.toISOString() ?? null,
     claimedAt: row.claimedAt?.toISOString() ?? null,
+    pokemonCaught: row.pokemonCaught,
   };
 }
 
@@ -117,7 +100,7 @@ export async function questsState(
 
 /**
  * Réclame la récompense d'une quête terminée (une seule fois) : argent, objets, emplacements et
- * bonus permanents, Pokémon offerts (IV parfaits garantis, taux shiny avec le Charme Chroma).
+ * bonus permanents. Les Pokémon se capturent ensuite en expédition légendaire.
  */
 export async function claimQuest(
   db: Db,
@@ -125,13 +108,7 @@ export async function claimQuest(
   userId: string,
   questId: string,
   now: Date,
-): Promise<{
-  rewards: QuestReward;
-  pokemon: PokemonRow[];
-  newSpeciesIds: number[];
-  currency: number;
-  slots: PlayerSlots;
-}> {
+): Promise<{ rewards: QuestReward; currency: number; slots: PlayerSlots }> {
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
   const quest = ctx.quest(questId);
@@ -163,20 +140,7 @@ export async function claimQuest(
       .where(eq(playerProfiles.userId, userId))
       .returning({ currency: playerProfiles.currency });
 
-    const rng = createRng(newSeed());
-    const shiny = shinyProbability(ctx, { charm: await shinyCharm(tx, ctx, userId) });
-    const generated = rewards.pokemon.map((p) => generateQuestPokemon(ctx, rng, p, shiny));
-    const pokemon = await insertPokemon(tx, userId, generated, {
-      origin: 'quest',
-      originRegion: quest.regionId,
-      at: now,
-    });
-    const newSpeciesIds = await recordPokedex(tx, userId, {
-      seen: generated.map((p) => p.speciesId),
-      caught: generated,
-      at: now,
-    });
     const slots = playerSlots(ctx, await claimedRewards(tx, userId));
-    return { rewards, pokemon, newSpeciesIds, currency: profile?.currency ?? 0, slots };
+    return { rewards, currency: profile?.currency ?? 0, slots };
   });
 }

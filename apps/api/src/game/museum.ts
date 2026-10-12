@@ -140,11 +140,11 @@ export async function reviveFossils(db: Db, content: ContentCache, userId: strin
         .where(eq(fossilRevivals.id, fossil.id));
       revived.push(row!);
     }
-    const newSpeciesIds = await recordPokedex(tx, userId, {
+    const newInDex = await recordPokedex(tx, userId, {
       seen: revived.map((p) => p.speciesId),
       caught: revived,
       at: now,
     });
-    return { revived, newSpeciesIds };
+    return { revived, ...newInDex };
   });
 }

@@ -2,33 +2,51 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
 import type { Quest } from '@poke/content';
-import { STAT_NAMES } from '@poke/data';
-import { MAX_IV, isActionCondition, isUnlocked } from '@poke/game-core';
+import { isActionCondition, isUnlocked } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { ClaimQuestResponse, QuestProgressDto } from '@poke/shared';
-import { Modal, PokemonSprite, ProgressBar, ShinySparkles, ShinyStar } from '../../components/ui';
+import type { ClaimQuestResponse, ExpeditionDto, QuestProgressDto } from '@poke/shared';
+import { Modal, PokemonSprite, ProgressBar, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, usePlayerProgress, useQuests } from '../../lib/game';
+import { PLAYER_STATE_KEYS, useExpeditions, usePlayerProgress, useQuests } from '../../lib/game';
 import {
   errorText,
-  natureLabel,
+  formatCountdown,
+  formatDuration,
   questConditionText,
   speciesName,
   unlockConditionText,
 } from '../../lib/labels';
 import { RewardList } from './ProgressionViews';
-import { RegionTabs, currentRegionTab } from './RegionTabs';
+import { QuestExpeditionDialog } from './QuestExpeditionDialog';
+import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 
 /** Onglet des quêtes rattachées à aucune région. */
 const OTHER_TAB = { id: '__autres', label: 'Autres' };
 
-/** Quêtes (légendaires) : étapes à valider dans l'ordre, puis récompense à réclamer. */
+/** Expédition légendaire d'une quête dont le Pokémon reste à capturer. */
+interface Hunt {
+  /** Expédition en cours (une seule à la fois par quête). */
+  running: ExpeditionDto | undefined;
+  /** Temps restant de l'expédition en cours (ms). */
+  endsIn: number;
+  durationMinutes: number;
+  canLaunch: boolean;
+  onLaunch: () => void;
+}
+
+/**
+ * Quêtes (légendaires) : étapes à valider dans l'ordre, puis récompense à réclamer ; le légendaire
+ * se capture ensuite en expédition légendaire, lancée d'ici uniquement.
+ */
 export function QuestsPage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const quests = useQuests();
   const progress = usePlayerProgress();
   const [reveal, setReveal] = useState<ClaimQuestResponse | null>(null);
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
+  const [selectedRegion, setSelectedRegion] = useSavedRegionTab('quests');
+  const expeditions = useExpeditions();
+  const now = useNow();
+  const [huntQuest, setHuntQuest] = useState<Quest | null>(null);
   const claim = useMutation({
     mutationFn: (questId: string) =>
       api<ClaimQuestResponse>(`/api/quests/${questId}/claim`, { method: 'POST' }),
@@ -44,9 +62,34 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
     return <p className="text-slate-500">Aucune quête pour le moment.</p>;
   }
   const byId = new Map(quests.data?.quests.map((q) => [q.questId, q]));
-  // Quêtes à réclamer d'abord, puis en cours, verrouillées, et terminées en dernier.
+  // Décalage entre l'horloge du serveur et celle du navigateur, pour les comptes à rebours.
+  const offset = expeditions.data
+    ? Date.parse(expeditions.data.serverTime) - expeditions.dataUpdatedAt
+    : 0;
+  const active = expeditions.data?.active ?? [];
+  const freeSlot = active.length < (expeditions.data?.slots ?? 0);
+  /** Pokémon à capturer en expédition légendaire : récompense réclamée, pas encore capturé. */
+  const targetOf = (q: Quest) => {
+    const state = byId.get(q.id);
+    return state?.status === 'claimed' ? q.rewards.pokemon[state.pokemonCaught] : undefined;
+  };
+  const huntOf = (q: Quest): Hunt | null => {
+    const target = targetOf(q);
+    if (!target) return null;
+    const running = active.find((e) => e.questId === q.id);
+    return {
+      running,
+      endsIn: running ? Date.parse(running.endsAt) - (now + offset) : 0,
+      durationMinutes: target.expedition.durationMinutes,
+      canLaunch: freeSlot,
+      onLaunch: () => setHuntQuest(q),
+    };
+  };
+  // Quêtes à réclamer d'abord, légendaires à capturer, en cours, verrouillées, terminées.
   const rank = (q: Quest) =>
-    ({ completed: 0, active: 1, locked: 2, claimed: 3 })[byId.get(q.id)?.status ?? 'locked'];
+    targetOf(q)
+      ? 1
+      : { completed: 0, active: 2, locked: 3, claimed: 4 }[byId.get(q.id)?.status ?? 'locked'];
   const sorted = [...ctx.quests].sort((a, b) => rank(a) - rank(b) || a.order - b.order);
   const tabOf = (q: Quest) => q.regionId ?? OTHER_TAB.id;
   const extra = ctx.quests.some((q) => q.regionId === null) ? [OTHER_TAB] : [];
@@ -55,14 +98,20 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
   const toClaim = (id: string) =>
     ctx.quests.some((q) => tabOf(q) === id && byId.get(q.id)?.status === 'completed')
       ? 'Récompense à réclamer'
-      : null;
+      : ctx.quests.some(
+            (q) => tabOf(q) === id && targetOf(q) && !active.some((e) => e.questId === q.id),
+          )
+        ? 'Légendaire à capturer'
+        : null;
+  const huntTarget = huntQuest && targetOf(huntQuest);
 
   return (
     <div className="space-y-4">
       <p className="text-sm text-slate-500">
         Les légendaires ne se rencontrent pas en expédition : chaque quête les met à ta portée. Les
         étapes se valident dans l’ordre ; captures et expéditions ne comptent qu’à partir du début
-        de l’étape.
+        de l’étape. Une fois la récompense réclamée, pars à la recherche du légendaire lors d’une
+        expédition légendaire, où une seule Ball sera lancée.
       </p>
       <RegionTabs
         ctx={ctx}
@@ -90,10 +139,19 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
             }
             claiming={claim.isPending && claim.variables === quest.id}
             onClaim={() => claim.mutate(quest.id)}
+            hunt={huntOf(quest)}
           />
         ))}
       </div>
       <QuestReveal ctx={ctx} data={reveal} onClose={() => setReveal(null)} />
+      {huntQuest && huntTarget && (
+        <QuestExpeditionDialog
+          ctx={ctx}
+          quest={huntQuest}
+          target={huntTarget}
+          onClose={() => setHuntQuest(null)}
+        />
+      )}
     </div>
   );
 }
@@ -105,6 +163,7 @@ function QuestCard({
   unlockText,
   claiming,
   onClaim,
+  hunt,
 }: {
   ctx: GameContext;
   quest: Quest;
@@ -112,6 +171,7 @@ function QuestCard({
   unlockText: string | null;
   claiming: boolean;
   onClaim: () => void;
+  hunt: Hunt | null;
 }) {
   const status = state?.status ?? 'locked';
   const featured = quest.rewards.pokemon[0];
@@ -120,7 +180,7 @@ function QuestCard({
   return (
     <div
       className={`card flex flex-col gap-3 p-4 ${status === 'locked' ? 'opacity-60' : ''} ${
-        status === 'completed' ? 'ring-2 ring-amber-400' : ''
+        status === 'completed' || (hunt && !hunt.running) ? 'ring-2 ring-amber-400' : ''
       }`}
     >
       <div className="flex items-start gap-3">
@@ -134,7 +194,7 @@ function QuestCard({
                 formId={featured.formId}
                 kind="artwork"
                 size={72}
-                silhouette={status !== 'claimed'}
+                silhouette={status !== 'claimed' || !!hunt}
               />
             )
           )}
@@ -142,7 +202,12 @@ function QuestCard({
         <div className="min-w-0 flex-1">
           <h3 className="font-semibold">{quest.name}</h3>
           <p className="text-xs text-slate-500">{quest.description}</p>
-          {status === 'claimed' && <p className="mt-1 text-xs text-emerald-600">✓ Terminée</p>}
+          {status === 'claimed' &&
+            (hunt ? (
+              <p className="mt-1 text-xs font-medium text-amber-600">✦ Légendaire à capturer</p>
+            ) : (
+              <p className="mt-1 text-xs text-emerald-600">✓ Terminée</p>
+            ))}
           {status === 'locked' && <p className="mt-1 text-xs">🔒 {unlockText ?? 'Verrouillée'}</p>}
         </div>
       </div>
@@ -208,12 +273,31 @@ function QuestCard({
             {claiming ? '…' : 'Réclamer la récompense'}
           </button>
         )}
+        {hunt &&
+          (hunt.running ? (
+            <p className="rounded-lg bg-brand-500/10 px-2 py-1.5 text-center text-sm">
+              Expédition légendaire{' '}
+              {hunt.endsIn > 0
+                ? `en cours · ${formatCountdown(hunt.endsIn)}`
+                : 'terminée : récupère-la dans l’onglet Expéditions'}
+            </p>
+          ) : (
+            <button
+              className="btn-primary w-full"
+              disabled={!hunt.canLaunch}
+              onClick={hunt.onLaunch}
+            >
+              {hunt.canLaunch
+                ? `Partir à sa recherche (${formatDuration(hunt.durationMinutes)})`
+                : 'Aucun emplacement d’expédition libre'}
+            </button>
+          ))}
       </div>
     </div>
   );
 }
 
-/** Révélation du Pokémon offert : silhouette, éclair, puis le légendaire et ses IV. */
+/** Récompense réclamée : les légendaires attendent leur expédition légendaire. */
 function QuestReveal({
   ctx,
   data,
@@ -229,81 +313,35 @@ function QuestReveal({
       {data && (
         <div className="text-center">
           <h2 className="text-xl font-bold">Quête terminée !</h2>
-          <div className="mt-4 flex flex-wrap justify-center gap-6">
-            {data.pokemon.map((p, i) => {
-              const perfect = STAT_NAMES.filter((s) => p.ivs[s] === MAX_IV).length;
-              const delay = reduced ? 0 : 0.4 + i * 0.8;
-              return (
-                <div key={p.id} className="flex flex-col items-center">
-                  <div className="relative grid size-48 place-items-center">
-                    {!reduced && (
-                      <motion.div
-                        className="absolute inset-0 rounded-full bg-amber-300/60 blur-2xl"
-                        initial={{ opacity: 0, scale: 0.2 }}
-                        animate={{ opacity: [0, 1, 0.3], scale: [0.2, 1.3, 1] }}
-                        transition={{ delay, duration: 1.2 }}
-                      />
-                    )}
-                    {!reduced && (
-                      <motion.div
-                        className="absolute"
-                        initial={{ opacity: 1 }}
-                        animate={{ opacity: 0 }}
-                        transition={{ delay: delay + 0.4, duration: 0.4 }}
-                      >
-                        <PokemonSprite
-                          speciesId={p.speciesId}
-                          formId={p.formId}
-                          kind="artwork"
-                          size={170}
-                          silhouette
-                        />
-                      </motion.div>
-                    )}
-                    <motion.div
-                      className="relative"
-                      initial={reduced ? false : { opacity: 0, scale: 0.6 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{
-                        delay: delay + 0.5,
-                        type: 'spring',
-                        stiffness: 200,
-                        damping: 14,
-                      }}
-                    >
-                      {p.isShiny && <ShinySparkles delay={delay + 0.5} loop radius={110} />}
-                      <PokemonSprite
-                        speciesId={p.speciesId}
-                        formId={p.formId}
-                        shiny={p.isShiny}
-                        kind="artwork"
-                        size={170}
-                      />
-                    </motion.div>
-                  </div>
+          {data.rewards.pokemon.length > 0 && (
+            <>
+              <div className="mt-4 flex flex-wrap justify-center gap-4">
+                {data.rewards.pokemon.map((p, i) => (
                   <motion.div
-                    initial={reduced ? false : { opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: delay + 0.9 }}
-                    className="text-sm"
+                    key={i}
+                    initial={reduced ? false : { opacity: 0, scale: 0.6 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    transition={{ delay: reduced ? 0 : 0.3 + i * 0.3, type: 'spring' }}
                   >
-                    <p className="text-lg font-semibold">
-                      {speciesName(ctx, p.speciesId, p.formId)} {p.isShiny && <ShinyStar />}
-                    </p>
-                    <p className="text-slate-500">
-                      Niveau {p.level} · {natureLabel(p.nature)}
-                    </p>
-                    <p className="font-semibold text-amber-600">{perfect} IV parfaits</p>
-                    {data.newSpeciesIds.includes(p.speciesId) && (
-                      <span className="mt-1 inline-block rounded-full bg-brand-500 px-2 text-xs font-bold text-white">
-                        Nouveau au Pokédex !
-                      </span>
-                    )}
+                    <PokemonSprite
+                      speciesId={p.speciesId}
+                      formId={p.formId}
+                      kind="artwork"
+                      size={140}
+                      silhouette
+                    />
                   </motion.div>
-                </div>
-              );
-            })}
-          </div>
+                ))}
+              </div>
+              <p className="mt-3 text-sm text-slate-500">
+                {data.rewards.pokemon
+                  .map((p) => speciesName(ctx, p.speciesId, p.formId))
+                  .join(', ')}{' '}
+                t’attend : pars à sa recherche avec une expédition légendaire. Une seule Ball sera
+                lancée, prépare bien ton équipe !
+              </p>
+            </>
+          )}
           <div className="mt-4 flex justify-center">
             <RewardList ctx={ctx} rewards={data.rewards} />
           </div>

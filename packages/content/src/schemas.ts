@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { pokemonTypes, typeWeaknesses } from '@poke/data';
 
 /**
  * Schémas du contenu configurable (édité dans le panneau d'admin, stocké en base).
@@ -668,12 +669,29 @@ export const questStepSchema = z.object({
 });
 export type QuestStep = z.infer<typeof questStepSchema>;
 
+/**
+ * Expédition légendaire : une fois la récompense réclamée, le Pokémon se capture lors d'une
+ * expédition dédiée (lancée depuis les quêtes) où une seule Ball est lancée. Les membres de
+ * l'équipe du type d'affinité (par défaut, les faiblesses du Pokémon) augmentent la capture.
+ */
+export const legendaryExpeditionSchema = z.object({
+  durationMinutes: z
+    .int()
+    .positive()
+    .max(7 * 24 * 60),
+  minPower: z.int().min(0),
+  requiredTypes: z.array(z.object({ type: z.string().min(1), count: z.int().min(1).max(6) })),
+  affinityTypes: z.array(z.string().min(1)),
+});
+export type LegendaryExpedition = z.infer<typeof legendaryExpeditionSchema>;
+
 /** Pokémon offert (légendaire…) : IV aléatoires, dont au moins `perfectIvs` à 31. */
 export const questPokemonSchema = z.object({
   speciesId: z.int().positive(),
   formId: formIdSchema,
   level: z.int().min(1).max(100),
   perfectIvs: z.int().min(0).max(6),
+  expedition: legendaryExpeditionSchema,
 });
 export type QuestPokemon = z.infer<typeof questPokemonSchema>;
 
@@ -724,4 +742,21 @@ export type GameContentData = z.infer<typeof gameContentStructureSchema>;
 /** Contenu chargé depuis une version publiée (ou un brouillon en test). */
 export interface GameContent extends GameContentData {
   versionId: number;
+}
+
+/** Durée par défaut d'une expédition légendaire. */
+export const DEFAULT_LEGENDARY_EXPEDITION_MINUTES = 240;
+
+/** Expédition légendaire par défaut : 4 h, les faiblesses du Pokémon en affinité. */
+export function defaultLegendaryExpedition(
+  speciesId: number,
+  formId?: number | null,
+  minPower = 0,
+): LegendaryExpedition {
+  return {
+    durationMinutes: DEFAULT_LEGENDARY_EXPEDITION_MINUTES,
+    minPower,
+    requiredTypes: [],
+    affinityTypes: typeWeaknesses(pokemonTypes(speciesId, formId)),
+  };
 }

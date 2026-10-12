@@ -272,10 +272,10 @@ describe('transfert et Bonbons de lignée', () => {
       ids: [a.id, b.id],
     });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    // 1 Bonbon chacun + 10 pour le shiny, tous dans la lignée de Bulbizarre.
-    expect(res.body).toEqual({ transferred: 2, gained: [{ lineageId: 1, quantity: 12 }] });
+    // 2 Bonbons chacun (évolués) + 10 pour le shiny, tous dans la lignée de Bulbizarre.
+    expect(res.body).toEqual({ transferred: 2, gained: [{ lineageId: 1, quantity: 14 }] });
     expect((await call<CandyDto[]>('GET', '/api/candies')).body).toEqual([
-      { lineageId: 1, quantity: 12 },
+      { lineageId: 1, quantity: 14 },
     ]);
 
     const fed = await call<PokemonDto>('POST', `/api/pokemon/${starter.id}/candies`, {
@@ -284,7 +284,7 @@ describe('transfert et Bonbons de lignée', () => {
     expect(fed.status, JSON.stringify(fed.body)).toBe(200);
     expect(fed.body.xp).toBe(starter.xp + 1000);
     expect(fed.body.level).toBeGreaterThan(starter.level);
-    const tooMany = await call('POST', `/api/pokemon/${starter.id}/candies`, { count: 11 });
+    const tooMany = await call('POST', `/api/pokemon/${starter.id}/candies`, { count: 13 });
     expect(tooMany.body).toMatchObject({ error: 'NOT_ENOUGH_CANDIES' });
 
     const last = await call('POST', '/api/pokemon/transfer', { ids: [starter.id] });

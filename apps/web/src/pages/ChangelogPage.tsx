@@ -17,6 +17,58 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '12 octobre 2026',
+    title: 'Expéditions légendaires et classement',
+    changes: [
+      {
+        section: 'Quêtes',
+        items: [
+          'Les légendaires ne sont plus offerts directement : une fois la récompense de quête réclamée, pars à leur recherche avec une expédition légendaire, lancée depuis l’onglet Quêtes.',
+          'Une seule Ball est lancée : choisis bien ta Ball, ta baie et une équipe en affinité (les faiblesses du légendaire). La chance de capture est affichée avant le départ.',
+          'En cas d’échec, le légendaire s’enfuit et tu peux retenter autant de fois que nécessaire.',
+        ],
+      },
+      {
+        section: 'Classement',
+        items: [
+          'Nouvel onglet « Classement » : espèces capturées, fortune, badges et chromatiques.',
+          'Les 50 meilleurs dresseurs sont affichés, et ton rang apparaît même si tu n’en fais pas partie.',
+        ],
+      },
+      {
+        section: 'PC',
+        items: [
+          'Nouveau filtre « Peut évoluer » : seuls les Pokémon pouvant évoluer vers une espèce ou forme absente du Pokédex sont affichés.',
+          'Le tri choisi est conservé d’une visite à l’autre.',
+          '« Sélectionner les doublons » ne tient compte que des Pokémon affichés (recherche et filtres en cours).',
+          'Avertissement avant de transférer le dernier exemplaire d’une espèce.',
+          'Un Pokémon évolué rapporte deux fois plus de Bonbons au transfert.',
+        ],
+      },
+      {
+        section: 'Expéditions et combats',
+        items: [
+          'Recherche par nom et filtre par type dans le choix de l’équipe.',
+          'Au retour d’expédition, mets en favori ou étiquette un Pokémon capturé sans passer par le PC.',
+          'Les Pokémon qui se sont enfuis sont mis en évidence en rouge.',
+          'Les formes régionales déjà capturées apparaissent en couleur sur les cartes de zone.',
+          'Les dresseurs sont rangés par onglet de région.',
+        ],
+      },
+      {
+        section: 'Confort',
+        items: [
+          'Le sexe des Pokémon est affiché à l’éclosion, à la Pension et au retour d’expédition.',
+          'Survole un Pokémon dans la Pension pour voir ses IV.',
+          '« Nouveau au Pokédex ! » s’affiche aussi pour les nouvelles formes (régionales, Méga…).',
+          'Le Pokédex a des onglets de région, et l’onglet choisi est retenu dans le Pokédex, les Expéditions, les Combats et les Quêtes.',
+          'Quand une nouvelle version du jeu est en ligne, un message propose de recharger la page.',
+          'Correction de quelques bugs.',
+        ],
+      },
+    ],
+  },
+  {
     date: '11 octobre 2026',
     title: 'PC plus pratique et IV en un coup d’œil',
     changes: [

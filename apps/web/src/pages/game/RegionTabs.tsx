@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Region } from '@poke/content';
 import { isUnlocked } from '@poke/game-core';
 import type { GameContext, PlayerProgress } from '@poke/game-core';
@@ -95,4 +96,15 @@ export function currentRegionTab(
   const ids = [...unlocked.map((r) => r.id), ...extra.map((t) => t.id)];
   if (selected && ids.includes(selected)) return selected;
   return unlocked.at(-1)?.id ?? ids[0] ?? '';
+}
+
+/** Onglet choisi par le joueur, conservé d'une visite à l'autre (une clé par section). */
+export function useSavedRegionTab(section: string) {
+  const key = `region-tab:${section}`;
+  const [selected, setSelected] = useState<string | null>(() => localStorage.getItem(key));
+  const select = (id: string) => {
+    setSelected(id);
+    localStorage.setItem(key, id);
+  };
+  return [selected, select] as const;
 }

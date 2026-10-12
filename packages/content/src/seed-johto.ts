@@ -12,6 +12,7 @@ import type {
   UnlockCondition,
   Zone,
 } from './schemas';
+import { defaultLegendaryExpedition } from './schemas';
 
 /**
  * Johto : le parcours des 8 arènes, la Ligue, les zones spéciales et les quêtes légendaires, sur
@@ -1272,10 +1273,12 @@ const reward = (r: Partial<ProgressReward>): ProgressReward => ({
   ...r,
 });
 /** Pokémon offert par une quête : au moins 3 IV parfaits, comme dans les jeux récents. */
-const legendary = (speciesId: number, level: number): QuestPokemon => ({
+/** Légendaire offert : 3 IV parfaits ; expédition légendaire de PE minimale `minPower`. */
+const legendary = (speciesId: number, level: number, minPower: number): QuestPokemon => ({
   speciesId,
   level,
   perfectIvs: 3,
+  expedition: defaultLegendaryExpedition(speciesId, null, minPower),
 });
 const step = (name: string, description: string, condition: QuestCondition): QuestStep => ({
   name,
@@ -1328,7 +1331,7 @@ export const johtoQuests: Quest[] = [
         questExpedition('tour-cendree', 'electric', 2, 350),
       ),
     ],
-    rewards: { ...BEAST_REWARD, pokemon: [legendary(243, 50)] },
+    rewards: { ...BEAST_REWARD, pokemon: [legendary(243, 50, 850)] },
   }),
   quest({
     id: 'entei',
@@ -1345,7 +1348,7 @@ export const johtoQuests: Quest[] = [
         questExpedition('tour-cendree', 'fire', 2, 450),
       ),
     ],
-    rewards: { ...BEAST_REWARD, pokemon: [legendary(244, 50)] },
+    rewards: { ...BEAST_REWARD, pokemon: [legendary(244, 50, 850)] },
   }),
   quest({
     id: 'suicune',
@@ -1362,7 +1365,7 @@ export const johtoQuests: Quest[] = [
         questExpedition('lac-colere', 'water', 2, 500),
       ),
     ],
-    rewards: { ...BEAST_REWARD, pokemon: [legendary(245, 50)] },
+    rewards: { ...BEAST_REWARD, pokemon: [legendary(245, 50, 2400)] },
   }),
   quest({
     id: 'lugia',
@@ -1386,7 +1389,7 @@ export const johtoQuests: Quest[] = [
     ],
     rewards: {
       ...reward({ currency: 40_000, items: [{ itemId: 'gold-bottle-cap', quantity: 1 }] }),
-      pokemon: [legendary(249, 70)],
+      pokemon: [legendary(249, 70, 3000)],
     },
   }),
   quest({
@@ -1415,7 +1418,7 @@ export const johtoQuests: Quest[] = [
     ],
     rewards: {
       ...reward({ currency: 50_000, items: [{ itemId: 'gold-bottle-cap', quantity: 1 }] }),
-      pokemon: [legendary(250, 70)],
+      pokemon: [legendary(250, 70, 4000)],
     },
   }),
   quest({
@@ -1439,7 +1442,7 @@ export const johtoQuests: Quest[] = [
     ],
     rewards: {
       ...reward({ items: [{ itemId: 'ability-patch', quantity: 1 }] }),
-      pokemon: [legendary(251, 30)],
+      pokemon: [legendary(251, 30, 3600)],
     },
   }),
 ];

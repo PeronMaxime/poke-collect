@@ -1,5 +1,5 @@
 import type { ItemStack, Trainer, TrainerPokemon } from '@poke/content';
-import { STAT_NAMES, types as typeData } from '@poke/data';
+import { STAT_NAMES, typeEffectiveness } from '@poke/data';
 import type { Stats } from '@poke/data';
 import type { GameContext } from './context';
 import { addStacks, applyTeamXp, defeatXp, missingTypes, rollLoot } from './expedition';
@@ -14,26 +14,7 @@ import { createRng } from './rng';
 
 // --- Table des types ---------------------------------------------------------------------
 
-const typeChart = new Map(
-  typeData.map((t) => [
-    t.name,
-    {
-      double: new Set(t.doubleDamageTo),
-      half: new Set(t.halfDamageTo),
-      none: new Set(t.noDamageTo),
-    },
-  ]),
-);
-
-/** Multiplicateur d'une attaque d'un type contre un défenseur (produit sur ses types). */
-export function typeEffectiveness(attackType: string, defenderTypes: readonly string[]): number {
-  const chart = typeChart.get(attackType);
-  if (!chart) return 1;
-  return defenderTypes.reduce(
-    (m, t) => m * (chart.none.has(t) ? 0 : chart.double.has(t) ? 2 : chart.half.has(t) ? 0.5 : 1),
-    1,
-  );
-}
+export { typeEffectiveness };
 
 /**
  * Efficacité moyenne d'une équipe contre une autre, en log2 : chaque attaquant utilise son

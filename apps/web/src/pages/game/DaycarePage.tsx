@@ -9,7 +9,15 @@ import type {
   HatchEggsResponse,
   PokemonDto,
 } from '@poke/shared';
-import { Egg, PokemonSprite, ProgressBar, ShinyStar, useNow } from '../../components/ui';
+import {
+  Egg,
+  GenderSymbol,
+  IvHover,
+  PokemonSprite,
+  ProgressBar,
+  ShinyStar,
+  useNow,
+} from '../../components/ui';
 import { api } from '../../lib/api';
 import { PLAYER_STATE_KEYS, serverOffset, useDaycare, usePokemon } from '../../lib/game';
 import {
@@ -188,14 +196,17 @@ function PensionCard({
           <div key={i} className="flex flex-col items-center text-xs">
             {p ? (
               <>
-                <PokemonSprite
-                  speciesId={p.speciesId}
-                  formId={p.formId}
-                  shiny={p.isShiny}
-                  size={64}
-                />
+                <IvHover ivs={p.ivs}>
+                  <PokemonSprite
+                    speciesId={p.speciesId}
+                    formId={p.formId}
+                    shiny={p.isShiny}
+                    size={64}
+                  />
+                </IvHover>
                 <span className="font-medium">
-                  {speciesName(ctx, p.speciesId, p.formId)} {p.isShiny && <ShinyStar />}
+                  {speciesName(ctx, p.speciesId, p.formId)} <GenderSymbol gender={p.gender} />{' '}
+                  {p.isShiny && <ShinyStar />}
                 </span>
                 <span className="text-slate-500">N.{p.level}</span>
               </>

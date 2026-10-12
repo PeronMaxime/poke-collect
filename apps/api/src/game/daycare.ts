@@ -352,12 +352,12 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
       await tx.update(eggs).set({ hatchedPokemonId: row!.id }).where(eq(eggs.id, egg.id));
       hatched.push(row!);
     }
-    const newSpeciesIds = await recordPokedex(tx, userId, {
+    const newInDex = await recordPokedex(tx, userId, {
       seen: hatched.map((p) => p.speciesId),
       caught: hatched,
       at: now,
     });
-    return { hatched, newSpeciesIds };
+    return { hatched, ...newInDex };
   });
 }
 

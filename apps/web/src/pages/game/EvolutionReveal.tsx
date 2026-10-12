@@ -3,6 +3,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import type { GameContext } from '@poke/game-core';
 import type { EvolveResponse } from '@poke/shared';
 import { PokemonSprite, ShinyStar } from '../../components/ui';
+import { newInDexTracker } from '../../lib/game';
 import { itemName, speciesName } from '../../lib/labels';
 
 const MORPH_SECONDS = 2.4;
@@ -105,7 +106,7 @@ export function EvolutionReveal({
         <h2 className="text-xl font-bold">
           {from} a évolué en {to} ! {pokemon.isShiny && <ShinyStar />}
         </h2>
-        {data.newSpeciesIds.includes(pokemon.speciesId) && (
+        {newInDexTracker(data)(pokemon) && (
           <p>
             <span className="rounded-full bg-brand-500 px-2 py-0.5 text-xs font-bold text-white">
               Nouveau au Pokédex !

@@ -18,6 +18,7 @@ import { PLAYER_STATE_KEYS, isUsable, usePokemon } from '../../lib/game';
 import { errorText, formatDuration, formatMoney, typeLabel } from '../../lib/labels';
 import { TrainerSprite } from './BattlesPage';
 import { pillClass } from './LaunchExpeditionDialog';
+import { NameSearch, TypeFilterSelect, nameMatcher } from './TeamPicker';
 
 const SORTS = {
   power: 'PE',
@@ -90,6 +91,8 @@ export function LaunchBattleDialog({
   const now = useNow(10_000);
   const [team, setTeam] = useState<string[]>([]);
   const [sort, setSort] = useState<Sort>('power');
+  const [search, setSearch] = useState('');
+  const [type, setType] = useState('all');
   const tagFilter = useTagFilter();
 
   const start = useMutation({
@@ -104,11 +107,21 @@ export function LaunchBattleDialog({
   });
 
   const region = ctx.region(trainer.regionId);
+  const matchesName = nameMatcher(search);
   const available = (pokemon.data ?? [])
     .filter((p) => isUsable(p, now) && isRegionalSpecies(ctx, trainer.regionId, p.speciesId))
-    // Les membres déjà choisis restent visibles, quel que soit le filtre.
-    .filter((p) => tagFilter.matches(p) || team.includes(p.id))
-    .map((p) => ({ p, power: pokemonPower(ctx.species(p.speciesId, p.formId)!, p) }))
+    .map((p) => {
+      const species = ctx.species(p.speciesId, p.formId)!;
+      return { p, species, power: pokemonPower(species, p) };
+    })
+    // Les membres déjà choisis restent visibles, quels que soient les filtres.
+    .filter(
+      ({ p, species }) =>
+        (tagFilter.matches(p) &&
+          matchesName(species.nameFr) &&
+          (type === 'all' || species.types.includes(type))) ||
+        team.includes(p.id),
+    )
     .sort(
       (a, b) =>
         (sort === 'level' ? b.p.level - a.p.level : 0) ||
@@ -156,7 +169,7 @@ export function LaunchBattleDialog({
         <h3 className="text-sm font-semibold">
           Ton équipe ({team.length} / {maxSize})
         </h3>
-        <div className="flex items-center gap-1 text-xs">
+        <div className="flex flex-wrap items-center gap-1 text-xs">
           <span className="text-slate-500">Trier par</span>
           {(Object.keys(SORTS) as Sort[]).map((key) => (
             <button
@@ -174,13 +187,14 @@ export function LaunchBattleDialog({
             onChange={tagFilter.setFilter}
             className="ml-1 py-0.5 text-xs"
           />
+          <TypeFilterSelect value={type} onChange={setType} />
+          <NameSearch value={search} onChange={setSearch} />
         </div>
         <span className="text-sm text-slate-500">PE {estimate.playerPower}</span>
       </div>
       <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5">
-        {available.map(({ p, power }) => {
+        {available.map(({ p, species, power }) => {
           const selected = team.includes(p.id);
-          const species = ctx.species(p.speciesId, p.formId);
           return (
             <button
               key={p.id}
@@ -199,7 +213,7 @@ export function LaunchBattleDialog({
                 size={56}
               />
               <span className="truncate">
-                {species?.nameFr} {p.isShiny && <ShinyStar />}
+                {species.nameFr} {p.isShiny && <ShinyStar />}
               </span>
               <span className="text-slate-500">
                 N.{p.level} · PE {power}
@@ -210,9 +224,9 @@ export function LaunchBattleDialog({
         })}
         {available.length === 0 && (
           <p className="col-span-full text-sm text-slate-500">
-            {tagFilter.filter === 'all'
+            {tagFilter.filter === 'all' && type === 'all' && !search.trim()
               ? `Aucun Pokémon de ${region?.name} disponible : ils sont occupés, K.O., ou pas encore capturés.`
-              : `Aucun Pokémon de ${region?.name} disponible avec cette étiquette.`}
+              : `Aucun Pokémon de ${region?.name} disponible avec ces filtres.`}
           </p>
         )}
       </div>

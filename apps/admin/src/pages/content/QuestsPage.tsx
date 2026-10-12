@@ -1,5 +1,5 @@
 import { questSchema, unlockParts } from '@poke/content';
-import type { Quest, QuestCondition, QuestPokemon, QuestStep } from '@poke/content';
+import type { Quest, QuestCondition, QuestStep } from '@poke/content';
 import { types } from '@poke/data';
 import type { GameContext } from '@poke/game-core';
 import { EntityPage } from '../../components/EntityPage';
@@ -14,8 +14,9 @@ import {
 } from '../../components/forms/fields';
 import type { FieldErrors } from '../../components/forms/fields';
 import { emptyReward, rewardSummary, RewardEditor } from '../../components/forms/RewardEditor';
-import { FormSelect, SpeciesSelect, Sprite, UnlockEditor } from '../../components/forms/pickers';
+import { SpeciesSelect, Sprite, UnlockEditor } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
+import { PokemonRewardsEditor } from './QuestPokemonEditor';
 
 /** Quêtes : étapes ordonnées (conditions déclaratives) et récompenses, dont les légendaires. */
 
@@ -29,7 +30,7 @@ export function QuestsPage() {
   return (
     <EntityPage<Quest>
       title="Quêtes"
-      description="Chaînes de quêtes : condition d’apparition, étapes validées dans l’ordre, récompenses (Pokémon offerts avec IV parfaits garantis)."
+      description="Chaînes de quêtes : condition d’apparition, étapes validées dans l’ordre, récompenses ; les Pokémon (IV parfaits garantis) se capturent ensuite en expédition légendaire."
       collection="quests"
       entityKind="quest"
       schema={questSchema}
@@ -272,7 +273,7 @@ function QuestForm({
         )}
       </Section>
 
-      <Section title="Pokémon offerts">
+      <Section title="Pokémon à capturer (expéditions légendaires)">
         <PokemonRewardsEditor
           ctx={ctx}
           value={q.rewards.pokemon}
@@ -489,93 +490,6 @@ function TypeOrAny({
         </option>
       ))}
     </select>
-  );
-}
-
-/** Pokémon offerts : espèce, niveau, IV parfaits garantis. */
-function PokemonRewardsEditor({
-  ctx,
-  value,
-  onChange,
-  errors,
-  disabled,
-}: {
-  ctx: GameContext;
-  value: QuestPokemon[];
-  onChange: (v: QuestPokemon[]) => void;
-  errors: FieldErrors;
-  disabled: boolean;
-}) {
-  const update = (i: number, patch: Partial<QuestPokemon>) =>
-    onChange(value.map((p, j) => (j === i ? { ...p, ...patch } : p)));
-  return (
-    <div className="space-y-2">
-      <p className="text-xs text-slate-500">
-        IV aléatoires, dont au moins le nombre indiqué à 31 (3 pour un légendaire, comme dans les
-        jeux récents). Le taux shiny habituel s’applique (Charme Chroma compris).
-      </p>
-      {value.map((p, i) => (
-        <div key={i} className="flex flex-wrap items-center gap-2">
-          <div className="w-64">
-            <SpeciesSelect
-              ctx={ctx}
-              value={p.speciesId}
-              onChange={(speciesId) => update(i, { speciesId, formId: null })}
-              disabled={disabled}
-            />
-            <FormSelect
-              speciesId={p.speciesId}
-              value={p.formId}
-              disabled={disabled}
-              onChange={(formId) => update(i, { formId })}
-            />
-          </div>
-          <NumberInput
-            className="w-28"
-            value={p.level}
-            min={1}
-            max={100}
-            unit="niveau"
-            disabled={disabled}
-            onChange={(level) => update(i, { level })}
-          />
-          <NumberInput
-            className="w-36"
-            value={p.perfectIvs}
-            min={0}
-            max={6}
-            unit="IV parfaits"
-            disabled={disabled}
-            onChange={(perfectIvs) => update(i, { perfectIvs })}
-          />
-          {!disabled && (
-            <button
-              type="button"
-              className="text-slate-400 hover:text-red-600"
-              onClick={() => onChange(value.filter((_, j) => j !== i))}
-            >
-              ✕
-            </button>
-          )}
-          {(errors.get(`rewards.pokemon.${i}.level`) ??
-            errors.get(`rewards.pokemon.${i}.perfectIvs`)) && (
-            <span className="text-xs text-red-600">
-              {errors.get(`rewards.pokemon.${i}.level`) ??
-                errors.get(`rewards.pokemon.${i}.perfectIvs`)}
-            </span>
-          )}
-        </div>
-      ))}
-      {!disabled && value.length < 6 && (
-        <button
-          type="button"
-          className="btn-ghost py-1 text-xs"
-          onClick={() => onChange([...value, { speciesId: 150, level: 70, perfectIvs: 3 }])}
-        >
-          + Pokémon
-        </button>
-      )}
-    </div>
   );
 }
 

@@ -157,6 +157,8 @@ export interface EvolveResponse {
   consumedItemId: string | null;
   /** Espèces obtenues pour la première fois. */
   newSpeciesIds: number[];
+  /** Formes (régionales, Méga…) obtenues pour la première fois. */
+  newFormIds: number[];
 }
 
 // --- Progression : paliers du Pokédex et collections -----------------------------------
@@ -211,6 +213,31 @@ export interface TrainerCardResponse {
   moneySpent: number;
 }
 
+// --- Classement ---------------------------------------------------------------------------
+
+/** Classements entre joueurs : espèces capturées, argent, badges, espèces chromatiques. */
+export const leaderboardKindSchema = z.enum(['species', 'money', 'badges', 'shiny']);
+export type LeaderboardKind = z.infer<typeof leaderboardKindSchema>;
+
+export interface LeaderboardEntryDto {
+  /** Rang (ex æquo : même rang, le suivant saute d'autant). */
+  rank: number;
+  trainerName: string;
+  starterSpeciesId: number | null;
+  value: number;
+  isMe: boolean;
+}
+
+export interface LeaderboardResponse {
+  kind: LeaderboardKind;
+  /** Premiers du classement. */
+  entries: LeaderboardEntryDto[];
+  /** Place du joueur, même hors des premiers (null sans starter choisi). */
+  me: LeaderboardEntryDto | null;
+  /** Dresseurs classés. */
+  total: number;
+}
+
 // --- Quêtes -------------------------------------------------------------------------------
 
 /** Avancement d'une quête visible (débloquée ou commencée) ; les quêtes absentes sont verrouillées. */
@@ -224,6 +251,8 @@ export interface QuestProgressDto {
   stepStartedAt: string;
   completedAt: string | null;
   claimedAt: string | null;
+  /** Pokémon de la récompense déjà capturés en expédition légendaire. */
+  pokemonCaught: number;
 }
 
 export interface QuestsResponse {
@@ -232,11 +261,8 @@ export interface QuestsResponse {
 
 export interface ClaimQuestResponse {
   questId: string;
+  /** Les Pokémon de la récompense se capturent ensuite en expédition légendaire. */
   rewards: QuestReward;
-  /** Pokémon offerts (légendaires…). */
-  pokemon: PokemonDto[];
-  /** Espèces obtenues pour la première fois. */
-  newSpeciesIds: number[];
   currency: number;
   slots: PlayerSlots;
 }
@@ -261,8 +287,10 @@ export interface UseItemResponse {
 
 // --- Transfert et Bonbons de lignée ---------------------------------------------------
 
+/** Pokémon transférables par requête : au-delà, le client découpe en lots. */
+export const TRANSFER_BATCH_MAX = 1000;
 export const transferPokemonInputSchema = z.object({
-  ids: z.array(z.uuid()).min(1).max(200),
+  ids: z.array(z.uuid()).min(1).max(TRANSFER_BATCH_MAX),
 });
 export type TransferPokemonInput = z.infer<typeof transferPokemonInputSchema>;
 
@@ -334,6 +362,8 @@ export interface HatchEggsResponse {
   hatched: PokemonDto[];
   /** Espèces obtenues pour la première fois. */
   newSpeciesIds: number[];
+  /** Formes (régionales, Méga…) obtenues pour la première fois. */
+  newFormIds: number[];
 }
 
 export interface DaycareErrorBody {
@@ -367,6 +397,8 @@ export interface ReviveFossilsResponse {
   revived: PokemonDto[];
   /** Espèces obtenues pour la première fois. */
   newSpeciesIds: number[];
+  /** Formes (régionales, Méga…) obtenues pour la première fois. */
+  newFormIds: number[];
 }
 
 // --- Expéditions --------------------------------------------------------------------
@@ -391,16 +423,29 @@ export const startExpeditionInputSchema = z.object({
 });
 export type StartExpeditionInput = z.infer<typeof startExpeditionInputSchema>;
 
+/** Expédition légendaire d'une quête réclamée : une seule Ball (obligatoire), baie optionnelle. */
+export const startQuestExpeditionInputSchema = z.object({
+  team: z.array(z.uuid()).min(1).max(6),
+  ballItemId: slugSchema,
+  berryItemId: slugSchema.nullable(),
+});
+export type StartQuestExpeditionInput = z.infer<typeof startQuestExpeditionInputSchema>;
+
 /** Résultat stocké : chaque Pokémon capturé reçoit son identifiant en base. */
 export interface StoredExpeditionResult extends ExpeditionResult {
   encounters: (ExpeditionResult['encounters'][number] & { pokemonId?: string })[];
   /** Espèces capturées pour la première fois. */
   newSpeciesIds: number[];
+  /** Formes capturées pour la première fois (absent des expéditions anciennes). */
+  newFormIds?: number[];
 }
 
 export interface ExpeditionDto {
   id: string;
-  zoneId: string;
+  /** Zone explorée ; null pour une expédition légendaire. */
+  zoneId: string | null;
+  /** Expédition légendaire de cette quête ; null = expédition normale. */
+  questId: string | null;
   slotIndex: number;
   team: string[];
   durationMinutes: number;

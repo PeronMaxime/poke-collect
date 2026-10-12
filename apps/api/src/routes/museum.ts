@@ -49,7 +49,7 @@ export async function museumRoutes(app: FastifyInstance, { db, content, hooks, n
   });
 
   app.post('/api/museum/revive', async (request): Promise<ReviveFossilsResponse> => {
-    const { revived, newSpeciesIds } = await reviveFossils(db, content, request.user!.id, now());
-    return { revived: revived.map((r) => toPokemonDto(r)), newSpeciesIds };
+    const { revived, ...newInDex } = await reviveFossils(db, content, request.user!.id, now());
+    return { revived: revived.map((r) => toPokemonDto(r)), ...newInDex };
   });
 }
