@@ -79,6 +79,7 @@ export function toExpeditionDto(row: ExpeditionRow): ExpeditionDto {
   return {
     id: row.id,
     zoneId: row.zoneId,
+    questId: row.questId,
     slotIndex: row.slotIndex,
     team: row.team,
     durationMinutes: row.durationMinutes,
@@ -303,9 +304,15 @@ export async function itemQuantity(db: Db, ownerId: string, itemId: string): Pro
   return row?.quantity ?? 0;
 }
 
+/** Nouveautés du Pokédex après une capture, une éclosion, une évolution… */
+export interface NewInDex {
+  newSpeciesIds: number[];
+  newFormIds: number[];
+}
+
 /**
  * Met à jour le Pokédex : espèces vues, Pokémon capturés (espèce, forme, shiny).
- * Retourne les espèces capturées pour la première fois.
+ * Retourne les espèces et les formes capturées pour la première fois.
  */
 export async function recordPokedex(
   db: Db,
@@ -319,11 +326,11 @@ export async function recordPokedex(
     caught: readonly Pick<PokemonInstance, 'speciesId' | 'formId' | 'isShiny'>[];
     at: Date;
   },
-): Promise<number[]> {
+): Promise<NewInDex> {
   const caughtSet = new Set(caught.map((p) => p.speciesId));
   const shinySet = new Set(caught.filter((p) => p.isShiny).map((p) => p.speciesId));
   const all = new Set([...seen, ...caughtSet]);
-  if (all.size === 0) return [];
+  if (all.size === 0) return { newSpeciesIds: [], newFormIds: [] };
 
   const before = await db
     .select({ speciesId: pokedex.speciesId })
@@ -366,6 +373,19 @@ export async function recordPokedex(
     if (p.formId != null)
       formsShiny.set(p.formId, (formsShiny.get(p.formId) ?? false) || p.isShiny);
   }
+  const formsBefore =
+    formsShiny.size === 0
+      ? []
+      : await db
+          .select({ formId: pokedexForms.formId })
+          .from(pokedexForms)
+          .where(
+            and(
+              eq(pokedexForms.ownerId, ownerId),
+              inArray(pokedexForms.formId, [...formsShiny.keys()]),
+            ),
+          );
+  const formsAlreadyCaught = new Set(formsBefore.map((r) => r.formId));
   for (const [formId, isShiny] of formsShiny) {
     await db
       .insert(pokedexForms)
@@ -375,7 +395,10 @@ export async function recordPokedex(
         set: { caughtShiny: sql`${pokedexForms.caughtShiny} or excluded.caught_shiny` },
       });
   }
-  return [...caughtSet].filter((id) => !alreadyCaught.has(id));
+  return {
+    newSpeciesIds: [...caughtSet].filter((id) => !alreadyCaught.has(id)),
+    newFormIds: [...formsShiny.keys()].filter((id) => !formsAlreadyCaught.has(id)),
+  };
 }
 
 /** Pokédex normal et shiny (paliers du Pokédex). */

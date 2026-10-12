@@ -1,0 +1,115 @@
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { eq } from 'drizzle-orm';
+import { seedContent } from '@poke/content';
+import {
+  createDb,
+  ensureSeedContent,
+  playerProfiles,
+  pokedex,
+  trainerProgress,
+  users,
+} from '@poke/db';
+import type { LeaderboardResponse } from '@poke/shared';
+import { buildApp } from './app';
+import { loadEnv } from './env';
+
+const handle = createDb({ pgliteDataDir: 'memory://' });
+const env = loadEnv({ NODE_ENV: 'test' });
+let app: Awaited<ReturnType<typeof buildApp>>['app'];
+
+beforeAll(async () => {
+  await handle.migrate();
+  await ensureSeedContent(handle.db, seedContent);
+  ({ app } = await buildApp({ db: handle.db, env }));
+});
+afterAll(async () => {
+  await app.close();
+  await handle.close();
+});
+
+async function newPlayer(email: string, trainerName: string, starterId: number | null) {
+  const res = await app.inject({
+    method: 'POST',
+    url: '/api/auth/sign-up/email',
+    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
+    payload: { email, password: 'motdepasse-solide', name: trainerName },
+  });
+  expect(res.statusCode, res.body).toBe(200);
+  const cookies = res.headers['set-cookie'];
+  const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
+  const cookie = list.map((c) => c.split(';')[0]).join('; ');
+  const [user] = await handle.db.select().from(users).where(eq(users.email, email));
+  const call = async <T>(method: 'GET' | 'POST', url: string, payload?: unknown) => {
+    const r = await app.inject({
+      method,
+      url,
+      headers: { cookie },
+      ...(payload !== undefined && { payload: payload as object }),
+    });
+    return { status: r.statusCode, body: (r.body ? r.json() : null) as T };
+  };
+  expect((await call('POST', '/api/profile', { trainerName })).status).toBe(201);
+  if (starterId !== null) {
+    expect((await call('POST', '/api/starter', { speciesId: starterId })).status).toBe(201);
+  }
+  return { call, userId: user!.id };
+}
+
+describe('Classement', () => {
+  it('classe les dresseurs par espèces, argent, badges et chromatiques', async () => {
+    const red = await newPlayer('red@example.com', 'Red', 1);
+    const blue = await newPlayer('blue@example.com', 'Blue', 4);
+    const green = await newPlayer('green@example.com', 'Green', 7);
+    // Sans starter : absent des classements.
+    const newbie = await newPlayer('new@example.com', 'Nouveau', null);
+
+    await handle.db.insert(pokedex).values([
+      { ownerId: blue.userId, speciesId: 16, seen: true, caught: true, caughtShiny: true },
+      { ownerId: blue.userId, speciesId: 19, seen: true, caught: true },
+      { ownerId: blue.userId, speciesId: 10, seen: true, caught: false },
+      { ownerId: green.userId, speciesId: 16, seen: true, caught: true },
+    ]);
+    await handle.db
+      .update(playerProfiles)
+      .set({ currency: 5000 })
+      .where(eq(playerProfiles.userId, red.userId));
+    const [gym, other] = [
+      seedContent.trainers.find((t) => t.badge)!,
+      seedContent.trainers.find((t) => !t.badge)!,
+    ];
+    await handle.db.insert(trainerProgress).values([
+      { ownerId: green.userId, trainerId: gym.id, wins: 2 },
+      { ownerId: blue.userId, trainerId: gym.id, wins: 0, losses: 3 },
+      { ownerId: blue.userId, trainerId: other.id, wins: 1 },
+    ]);
+
+    const species = await red.call<LeaderboardResponse>('GET', '/api/leaderboard/species');
+    expect(species.status).toBe(200);
+    expect(species.body.total).toBe(3);
+    // Starter compris : Blue 3 espèces (starter + 2), Green 2 ; Red 1.
+    expect(species.body.entries.map((e) => [e.rank, e.trainerName, e.value])).toEqual([
+      [1, 'Blue', 3],
+      [2, 'Green', 2],
+      [3, 'Red', 1],
+    ]);
+    expect(species.body.me).toMatchObject({ rank: 3, trainerName: 'Red', isMe: true });
+
+    const money = await blue.call<LeaderboardResponse>('GET', '/api/leaderboard/money');
+    expect(money.body.entries[0]).toMatchObject({ trainerName: 'Red', value: 5000 });
+
+    const badges = await blue.call<LeaderboardResponse>('GET', '/api/leaderboard/badges');
+    expect(badges.body.entries.map((e) => [e.rank, e.trainerName, e.value])).toEqual([
+      [1, 'Green', 1],
+      [2, 'Blue', 0],
+      [2, 'Red', 0],
+    ]);
+
+    const shiny = await green.call<LeaderboardResponse>('GET', '/api/leaderboard/shiny');
+    expect(shiny.body.entries[0]).toMatchObject({ rank: 1, trainerName: 'Blue', value: 1 });
+    expect(shiny.body.me).toMatchObject({ rank: 2, value: 0 });
+
+    const none = await newbie.call<LeaderboardResponse>('GET', '/api/leaderboard/species');
+    expect(none.body.me).toBeNull();
+    expect((await red.call('GET', '/api/leaderboard/unknown')).status).toBe(400);
+  });
+});

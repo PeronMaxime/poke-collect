@@ -202,8 +202,13 @@ describe('durées', () => {
 
 describe('transfert et Bonbons', () => {
   it('donne des Bonbons, avec un bonus pour les shiny', () => {
-    expect(transferCandies(ctx, { isShiny: false })).toBe(1);
-    expect(transferCandies(ctx, { isShiny: true })).toBe(11);
+    expect(transferCandies(ctx, { speciesId: 129, isShiny: false })).toBe(1);
+    expect(transferCandies(ctx, { speciesId: 129, isShiny: true })).toBe(11);
+  });
+
+  it('double les Bonbons de base pour un Pokémon évolué', () => {
+    expect(transferCandies(ctx, { speciesId: 130, isShiny: false })).toBe(2);
+    expect(transferCandies(ctx, { speciesId: 130, isShiny: true })).toBe(12);
   });
 
   it('convertit les Bonbons en XP, plafonnée au niveau maximal', () => {

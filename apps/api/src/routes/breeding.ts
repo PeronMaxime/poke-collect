@@ -87,8 +87,8 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
   });
 
   app.post('/api/eggs/hatch', async (request): Promise<HatchEggsResponse> => {
-    const { hatched, newSpeciesIds } = await hatchEggs(db, content, request.user!.id, now());
-    return { hatched: hatched.map((r) => toPokemonDto(r)), newSpeciesIds };
+    const { hatched, ...newInDex } = await hatchEggs(db, content, request.user!.id, now());
+    return { hatched: hatched.map((r) => toPokemonDto(r)), ...newInDex };
   });
 
   app.post('/api/pokemon/transfer', async (request): Promise<TransferPokemonResponse> => {

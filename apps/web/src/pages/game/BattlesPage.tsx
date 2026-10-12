@@ -24,6 +24,7 @@ import {
 } from '../../lib/labels';
 import { BattleReveal } from './BattleReveal';
 import { LaunchBattleDialog } from './LaunchBattleDialog';
+import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 
 /** Portrait d'un dresseur (sprite, ou initiale à défaut). */
 export function TrainerSprite({ trainer, size = 64 }: { trainer: Trainer; size?: number }) {
@@ -75,6 +76,7 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
   const now = useNow();
   const [launch, setLaunch] = useState<Trainer | null>(null);
   const [reveal, setReveal] = useState<ClaimBattleResponse | null>(null);
+  const [selectedRegion, setSelectedRegion] = useSavedRegionTab('battles');
 
   const claim = useMutation({
     mutationFn: (id: string) =>
@@ -99,6 +101,9 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
   const freeSlots = slots - active.length;
   const records = new Map(battles.data?.records.map((r) => [r.trainerId, r]));
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
+  const regionId = currentRegionTab(ctx, progress, selectedRegion);
+  const region = ctx.regions.find((r) => r.id === regionId);
+  const trainers = ctx.trainers.filter((t) => t.regionId === regionId);
 
   return (
     <div className="space-y-8">
@@ -138,12 +143,21 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
         {cancel.error && <p className="mt-2 text-sm text-red-600">{errorText(cancel.error)}</p>}
       </section>
 
-      {ctx.regions.map((region) => {
-        const trainers = ctx.trainers.filter((t) => t.regionId === region.id);
-        if (trainers.length === 0) return null;
-        return (
-          <section key={region.id}>
-            <h2 className="mb-3 text-lg font-semibold">Dresseurs de {region.name}</h2>
+      <section className="space-y-3">
+        <RegionTabs
+          ctx={ctx}
+          progress={progress}
+          selected={regionId}
+          onSelect={setSelectedRegion}
+        />
+        {region && (
+          <>
+            <h2 className="text-lg font-semibold">Dresseurs de {region.name}</h2>
+            {trainers.length === 0 && (
+              <p className="text-sm text-slate-500">
+                Aucun dresseur dans cette région pour le moment.
+              </p>
+            )}
             <div className="grid gap-3 md:grid-cols-2">
               {trainers.map((trainer) => (
                 <TrainerCard
@@ -159,9 +173,9 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
                 />
               ))}
             </div>
-          </section>
-        );
-      })}
+          </>
+        )}
+      </section>
 
       {launch && <LaunchBattleDialog ctx={ctx} trainer={launch} onClose={() => setLaunch(null)} />}
       <BattleReveal ctx={ctx} data={reveal} onClose={() => setReveal(null)} />

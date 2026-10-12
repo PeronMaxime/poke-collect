@@ -1,10 +1,17 @@
 import type { Quest, QuestActionCondition, QuestCondition, QuestPokemon } from '@poke/content';
 import type { GameContext } from './context';
+import { applyTeamXp, captureProbability, countAffinity, defeatXp } from './expedition';
+import type { ExpeditionResult, ExpeditionSite, TeamMember } from './expedition';
 import { generatePokemon, pokemonPower, withPerfectIvs } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import { isUnlocked } from './progress';
 import type { PlayerProgress } from './progress';
+import { NO_BONUSES } from './progression';
+import type { PlayerBonuses } from './progression';
+import { createRng } from './rng';
 import type { Rng } from './rng';
+import { shinyProbability } from './shiny';
+import type { ShinyFactors } from './shiny';
 
 /**
  * Quêtes : étapes ordonnées validées l'une après l'autre. Une étape « état » (Pokédex, dresseur
@@ -161,4 +168,82 @@ export function generateQuestPokemon(
     formId: reward.formId,
   });
   return { ...pokemon, ivs: withPerfectIvs(rng, pokemon.ivs, reward.perfectIvs) };
+}
+
+// --- Expédition légendaire -------------------------------------------------------------------
+
+/**
+ * Le Pokémon d'une quête ne s'offre pas : une fois la récompense réclamée, une expédition
+ * légendaire (lancée depuis les quêtes, elle occupe un emplacement) le rencontre et lance une
+ * seule Ball. En cas d'échec, il s'enfuit et l'on peut retenter.
+ */
+export function legendarySite(quest: Quest, target: QuestPokemon): ExpeditionSite {
+  const { expedition } = target;
+  return {
+    regionId: quest.regionId,
+    minPower: expedition.minPower,
+    requiredTypes: expedition.requiredTypes,
+    affinityTypes: expedition.affinityTypes,
+    durationsMinutes: [expedition.durationMinutes],
+  };
+}
+
+export interface QuestExpeditionInput {
+  /** Pokémon visé (récompense de la quête) et son expédition (affinités). */
+  target: QuestPokemon;
+  seed: number;
+  team: readonly TeamMember[];
+  ballItemId: string;
+  berryItemId: string | null;
+  bonuses?: PlayerBonuses;
+  /** Charme Chroma uniquement : pas de chaîne de zone pour un légendaire. */
+  shiny?: ShinyFactors;
+}
+
+/**
+ * Rencontre du légendaire, au format d'un résultat d'expédition (une rencontre, une Ball) :
+ * même formule de capture qu'en expédition (Ball, baie, affinité de l'équipe, bonus permanents).
+ */
+export function resolveQuestExpedition(
+  ctx: GameContext,
+  input: QuestExpeditionInput,
+): ExpeditionResult {
+  const rng = createRng(input.seed);
+  const { target } = input;
+  const species = ctx.species(target.speciesId, target.formId)!;
+  const shinyChance = shinyProbability(ctx, input.shiny);
+  const wild = generateQuestPokemon(ctx, rng, target, shinyChance);
+  const bonuses = input.bonuses ?? NO_BONUSES;
+  const berry = input.berryItemId ? ctx.itemEffect(input.berryItemId, 'captureBoost') : undefined;
+  const captureChance = captureProbability(ctx, {
+    captureRate: species.captureRate,
+    ballMultiplier: ctx.itemEffect(input.ballItemId, 'ball')?.catchMultiplier ?? 1,
+    boostMultiplier: berry?.multiplier ?? 1,
+    affinityCount: countAffinity(ctx, target.expedition, input.team),
+    bonusMultiplier: bonuses.capture,
+  });
+  const captured = rng.chance(captureChance);
+  const xpPerMember = Math.floor(
+    defeatXp(species, target.level) * ctx.balance.xp.multiplier * bonuses.xp,
+  );
+  return {
+    encounters: [
+      {
+        speciesId: species.id,
+        formId: species.form?.id ?? null,
+        level: target.level,
+        isShiny: wild.isShiny,
+        outcome: captured ? 'captured' : 'escaped',
+        captureChance,
+        ...(captured && { pokemon: wild }),
+      },
+    ],
+    loot: [],
+    team: applyTeamXp(ctx, input.team, xpPerMember, ctx.balance.xp.happinessPerExpedition),
+    xpPerMember,
+    pity: {},
+    ballsUsed: 1,
+    berriesUsed: berry ? 1 : 0,
+    shinyChance,
+  };
 }

@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { STAT_NAMES, pokemonSprite, pokemonSpriteUrl } from '@poke/data';
 import type { SpriteKind, Stats } from '@poke/data';
 import { MAX_IV } from '@poke/game-core';
+import type { Gender } from '@poke/game-core';
 import { STAT_LABELS, TYPE_COLORS, typeLabel } from '../lib/labels';
 
 export function PokemonSprite({
@@ -115,6 +116,21 @@ export function ShinySparkles({
           </motion.span>
         );
       })}
+    </span>
+  );
+}
+
+/** Symbole ♂ / ♀ coloré ; rien pour un Pokémon asexué. */
+export function GenderSymbol({ gender }: { gender: Gender }) {
+  if (gender === 'genderless') return null;
+  const male = gender === 'male';
+  return (
+    <span
+      className={male ? 'text-sky-500' : 'text-pink-500'}
+      title={male ? 'Mâle' : 'Femelle'}
+      aria-label={male ? 'Mâle' : 'Femelle'}
+    >
+      {male ? '♂' : '♀'}
     </span>
   );
 }

@@ -19,6 +19,8 @@ import type {
   DaycareResponse,
   ExpeditionsResponse,
   InventoryEntryDto,
+  LeaderboardKind,
+  LeaderboardResponse,
   MuseumResponse,
   PokedexEntryDto,
   PokedexFormEntryDto,
@@ -132,6 +134,14 @@ export const useTrainerCard = () =>
     queryFn: () => api<TrainerCardResponse>('/api/trainer-card'),
   });
 
+/** Classement entre joueurs (rafraîchi au plus toutes les minutes). */
+export const useLeaderboard = (kind: LeaderboardKind) =>
+  useQuery({
+    queryKey: ['leaderboard', kind],
+    queryFn: () => api<LeaderboardResponse>(`/api/leaderboard/${kind}`),
+    staleTime: 60_000,
+  });
+
 /**
  * Avancement du joueur pour les déblocages (Pokédex, dresseurs battus, œufs éclos, étapes de
  * quête validées).
@@ -218,6 +228,43 @@ export function useEvolutionChecker(ctx: GameContext | undefined) {
     const env = { itemQuantity: (id: string) => stock.get(id) ?? 0, hour };
     return (p: PokemonDto): EvolutionCheck[] => (ctx ? pokemonEvolutions(ctx, p, env) : []);
   }, [ctx, inventory.data, hour]);
+}
+
+/**
+ * Le Pokémon peut-il évoluer maintenant vers une espèce ou forme qui manque encore au Pokédex ?
+ * (pastille « Évol. » du PC et compteur de l'onglet).
+ */
+export function useNewEvolutionChecker(ctx: GameContext | undefined) {
+  const evolutionsOf = useEvolutionChecker(ctx);
+  const { caughtSpeciesIds } = useDexCatches();
+  const forms = usePokedexForms();
+  return useMemo(() => {
+    const caughtFormIds = new Set(forms.data?.map((f) => f.formId));
+    return (p: PokemonDto) =>
+      evolutionsOf(p).some(
+        ({ option, method }) =>
+          method &&
+          (option.toFormId === null
+            ? !caughtSpeciesIds.has(option.toSpeciesId)
+            : !caughtFormIds.has(option.toFormId)),
+      );
+  }, [evolutionsOf, caughtSpeciesIds, forms.data]);
+}
+
+/**
+ * Repère, au fil d'une liste de Pokémon obtenus, le premier de chaque espèce ou forme (régionale,
+ * Méga…) nouvelle au Pokédex, pour n'afficher « Nouveau ! » qu'une fois.
+ */
+export function newInDexTracker(dex: { newSpeciesIds: number[]; newFormIds?: number[] }) {
+  const species = new Set(dex.newSpeciesIds);
+  const forms = new Set(dex.newFormIds ?? []);
+  return (p: { speciesId: number; formId?: number | null }) => {
+    if (p.formId != null && forms.delete(p.formId)) {
+      species.delete(p.speciesId);
+      return true;
+    }
+    return species.delete(p.speciesId);
+  };
 }
 
 export const useCandies = () =>

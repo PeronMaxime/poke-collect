@@ -1,4 +1,16 @@
-import { and, count, countDistinct, eq, gt, isNotNull, max, min, sql, sum } from 'drizzle-orm';
+import {
+  and,
+  count,
+  countDistinct,
+  eq,
+  gt,
+  isNotNull,
+  isNull,
+  max,
+  min,
+  sql,
+  sum,
+} from 'drizzle-orm';
 import {
   expeditions,
   playerProfiles,
@@ -156,7 +168,13 @@ export async function telemetry(
           ),
       })
       .from(expeditions)
-      .where(and(isNotNull(expeditions.claimedAt), gt(expeditions.claimedAt, since)))
+      .where(
+        and(
+          isNotNull(expeditions.claimedAt),
+          gt(expeditions.claimedAt, since),
+          isNull(expeditions.questId), // expéditions légendaires : hors statistiques de zone
+        ),
+      )
       .groupBy(expeditions.zoneId),
     db
       .select({ ownerId: pokedex.ownerId, caught: count() })
@@ -208,7 +226,7 @@ export async function telemetry(
   const regionOfZone = new Map(ctx.zones.map((z) => [z.id, z.regionId]));
   const regionFirsts = new Map<string, Map<string, Date>>();
   for (const row of zoneFirsts) {
-    const regionId = regionOfZone.get(row.zoneId);
+    const regionId = row.zoneId ? regionOfZone.get(row.zoneId) : undefined;
     if (!regionId || !row.at) continue;
     const byOwner = regionFirsts.get(regionId) ?? new Map<string, Date>();
     const current = byOwner.get(row.ownerId);

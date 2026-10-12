@@ -182,7 +182,7 @@ export function teamPower(ctx: GameContext, team: readonly PokemonInstance[]): n
 
 export function countAffinity(
   ctx: GameContext,
-  zone: Zone,
+  zone: Pick<ExpeditionSite, 'affinityTypes'>,
   team: readonly Pick<PokemonInstance, 'speciesId' | 'formId'>[],
 ): number {
   const affinity = new Set(zone.affinityTypes);
@@ -201,9 +201,21 @@ export function missingTypes(
     .filter((r) => r.count > 0);
 }
 
+/**
+ * Règles d'accès d'un lieu d'expédition : une zone, ou le repaire d'un légendaire de quête
+ * (région de la quête, null = toutes les régions ; une seule durée).
+ */
+export interface ExpeditionSite {
+  regionId: string | null;
+  minPower: number;
+  requiredTypes: readonly { type: string; count: number }[];
+  affinityTypes: readonly string[];
+  durationsMinutes: readonly number[];
+}
+
 export function checkTeam(
   ctx: GameContext,
-  zone: Zone,
+  zone: ExpeditionSite,
   durationMinutes: number,
   team: readonly TeamMember[],
 ): TeamCheck {
@@ -215,8 +227,8 @@ export function checkTeam(
   if (team.length > maxTeamSize) errors.push({ code: 'TEAM_TOO_LARGE', max: maxTeamSize });
   if (new Set(team.map((m) => m.id)).size !== team.length)
     errors.push({ code: 'DUPLICATE_MEMBER' });
-  const outside = outOfRegionSpecies(ctx, zone.regionId, team);
-  if (outside.length > 0)
+  const outside = zone.regionId ? outOfRegionSpecies(ctx, zone.regionId, team) : [];
+  if (zone.regionId && outside.length > 0)
     errors.push({ code: 'WRONG_REGION', regionId: zone.regionId, speciesIds: outside });
 
   const power = teamPower(ctx, team);

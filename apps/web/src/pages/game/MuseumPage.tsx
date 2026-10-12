@@ -155,7 +155,7 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
 
       <HatchReveal
         ctx={ctx}
-        data={revived && { hatched: revived.revived, newSpeciesIds: revived.newSpeciesIds }}
+        data={revived && { ...revived, hatched: revived.revived }}
         onClose={() => setRevived(null)}
         title={(n) => `${n} fossile${n > 1 ? 's' : ''} restauré${n > 1 ? 's' : ''} !`}
         cover={<FossilStone />}

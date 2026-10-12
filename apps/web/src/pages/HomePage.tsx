@@ -11,10 +11,10 @@ import {
   useClaimedRewards,
   useDaycare,
   useDexCatches,
-  useEvolutionChecker,
   useExpeditions,
   useGameContext,
   useMuseum,
+  useNewEvolutionChecker,
   usePokemon,
   useQuests,
   useShop,
@@ -24,6 +24,7 @@ import { BattlesPage } from './game/BattlesPage';
 import { DaycarePage } from './game/DaycarePage';
 import { ExpeditionsPage } from './game/ExpeditionsPage';
 import { InventoryPage } from './game/InventoryPage';
+import { LeaderboardPage } from './game/LeaderboardPage';
 import { MuseumPage } from './game/MuseumPage';
 import { PcPage } from './game/PcPage';
 import { PokedexPage } from './game/PokedexPage';
@@ -45,6 +46,7 @@ const TABS = [
   { id: 'pokedex', label: 'Pokédex' },
   { id: 'bag', label: 'Sac' },
   { id: 'trainer', label: 'Fiche Dresseur' },
+  { id: 'leaderboard', label: 'Classement' },
 ] as const;
 type TabId = (typeof TABS)[number]['id'];
 
@@ -68,7 +70,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const quests = useQuests();
   const pokemon = usePokemon();
   const claimed = useClaimedRewards();
-  const evolutionsOf = useEvolutionChecker(ctx);
+  const hasNewEvolution = useNewEvolutionChecker(ctx);
 
   useEffect(() => {
     const onHash = () => setTab(tabFromHash());
@@ -81,11 +83,11 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const battlesDone = battles.data?.active.filter((b) => Date.parse(b.endsAt) <= now).length ?? 0;
   const dexCatches = useDexCatches();
   const caught = dexCatches.caughtSpeciesIds.size;
-  // Paliers et collections à réclamer, Pokémon disponibles prêts à évoluer.
+  // Paliers et collections à réclamer, Pokémon disponibles prêts à évoluer vers une espèce
+  // ou forme qui manque encore au Pokédex (même règle que la pastille « Évol. » du PC).
   const rewardsReady = ctx ? claimableRewardCount(ctx, dexCatches, claimed) : 0;
   const evolutionsReady =
-    pokemon.data?.filter((p) => isUsable(p, now) && evolutionsOf(p).some((e) => e.method)).length ??
-    0;
+    pokemon.data?.filter((p) => isUsable(p, now) && hasNewEvolution(p)).length ?? 0;
   const questsReady = quests.data?.quests.filter((q) => q.status === 'completed').length ?? 0;
   // Articles débloqués pas encore vus (évalués par le serveur à chaque chargement de la boutique).
   const shopNew = shop.data?.entries.filter((e) => e.isNew).length ?? 0;
@@ -155,12 +157,12 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
       </header>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      <nav className="sticky top-0 z-10 -mx-4 mb-6 flex gap-1 overflow-x-auto overflow-y-hidden border-b lg:flex-wrap lg:overflow-visible border-slate-200 bg-slate-50/90 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
+      <nav className="sticky top-0 z-10 -mx-4 mb-6 flex gap-0.5 overflow-x-auto overflow-y-hidden border-b border-slate-200 bg-slate-50/90 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
         {TABS.map((t) => (
           <a
             key={t.id}
             href={`#${t.id}`}
-            className={`relative shrink-0 px-4 py-3 text-sm font-medium transition ${
+            className={`relative shrink-0 px-2.5 py-3 text-sm font-medium transition ${
               tab === t.id
                 ? 'text-brand-600 dark:text-brand-500'
                 : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
@@ -238,9 +240,10 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
           {tab === 'quests' && <QuestsPage ctx={ctx} />}
           {tab === 'shop' && <ShopPage ctx={ctx} />}
           {tab === 'pc' && <PcPage ctx={ctx} />}
-          {tab === 'pokedex' && <PokedexPage ctx={ctx} profile={profile} />}
+          {tab === 'pokedex' && <PokedexPage ctx={ctx} />}
           {tab === 'bag' && <InventoryPage ctx={ctx} />}
           {tab === 'trainer' && <TrainerCardPage ctx={ctx} profile={profile} />}
+          {tab === 'leaderboard' && <LeaderboardPage />}
         </ErrorBoundary>
       )}
 

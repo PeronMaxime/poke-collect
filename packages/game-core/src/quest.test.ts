@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { captureProbability, checkTeam, countAffinity } from './expedition';
 import { MAX_IV, pokemonPower } from './pokemon';
 import type { PlayerProgress } from './progress';
 import { isZoneUnlocked } from './progress';
@@ -8,8 +9,10 @@ import {
   eventProgress,
   generateQuestPokemon,
   NEW_QUEST,
+  legendarySite,
   questStatus,
   questStepsDone,
+  resolveQuestExpedition,
 } from './quest';
 import type { QuestEvent } from './quest';
 import { createRng } from './rng';
@@ -130,7 +133,7 @@ describe('récompenses de quête', () => {
       const p = generateQuestPokemon(
         ctx,
         createRng(seed),
-        { speciesId: 150, level: 70, perfectIvs: 3 },
+        { ...quest('mewtwo').rewards.pokemon[0]!, level: 70, perfectIvs: 3 },
         0,
       );
       expect(p.speciesId).toBe(150);
@@ -148,6 +151,73 @@ describe('récompenses de quête', () => {
     const before = playerSlots(custom, base).expeditions;
     expect(playerSlots(custom, { ...base, questIds: new Set(['artikodin']) }).expeditions).toBe(
       before + 1,
+    );
+  });
+});
+
+describe('expédition légendaire', () => {
+  const artikodin = quest('artikodin');
+  const target = artikodin.rewards.pokemon[0]!;
+  const site = legendarySite(artikodin, target);
+  const team = [member('a', 59, 50), member('b', 19, 50)]; // Arcanin (Feu), Rattata
+  const input = { target, seed: 7, team, ballItemId: 'ultra-ball', berryItemId: null };
+
+  it('règles du repaire : région de la quête, PE minimale, durée et affinités configurées', () => {
+    expect(site).toMatchObject({
+      regionId: 'kanto',
+      minPower: target.expedition.minPower,
+      durationsMinutes: [240],
+    });
+    expect(countAffinity(ctx, site, team)).toBe(1); // le Feu, faiblesse d'Artikodin
+    expect(checkTeam(ctx, site, 240, [member('c', 152, 50)]).errors).toContainEqual(
+      expect.objectContaining({ code: 'WRONG_REGION' }), // Germignon : Pokédex de Johto
+    );
+    expect(
+      checkTeam(ctx, { ...site, regionId: null }, 240, [member('c', 152, 100)]).errors,
+    ).not.toContainEqual(expect.objectContaining({ code: 'WRONG_REGION' }));
+  });
+
+  it('une seule rencontre, une seule Ball, avec la formule de capture des expéditions', () => {
+    const result = resolveQuestExpedition(ctx, input);
+    expect(result.encounters).toHaveLength(1);
+    expect(result).toMatchObject({ ballsUsed: 1, berriesUsed: 0, loot: [] });
+    const [encounter] = result.encounters;
+    expect(encounter).toMatchObject({ speciesId: 144, level: target.level });
+    expect(encounter!.captureChance).toBeCloseTo(
+      captureProbability(ctx, {
+        captureRate: ctx.species(144)!.captureRate,
+        ballMultiplier: ctx.itemEffect('ultra-ball', 'ball')!.catchMultiplier,
+        affinityCount: 1,
+      }),
+    );
+    expect(result.team.every((m) => m.xpGained > 0)).toBe(true);
+    // Déterministe : même seed, même issue.
+    expect(resolveQuestExpedition(ctx, input)).toEqual(result);
+  });
+
+  it('capturé : IV parfaits garantis ; échappé : aucun Pokémon', () => {
+    const outcomes = Array.from(
+      { length: 300 },
+      (_, seed) => resolveQuestExpedition(ctx, { ...input, seed }).encounters[0]!,
+    );
+    const caught = outcomes.filter((e) => e.outcome === 'captured');
+    expect(caught.length).toBeGreaterThan(0);
+    expect(caught.length).toBeLessThan(outcomes.length);
+    for (const e of caught) {
+      expect(
+        Object.values(e.pokemon!.ivs).filter((iv) => iv === MAX_IV).length,
+      ).toBeGreaterThanOrEqual(target.perfectIvs);
+    }
+    expect(outcomes.filter((e) => e.outcome === 'escaped').every((e) => !e.pokemon)).toBe(true);
+  });
+
+  it('la baie augmente la chance de capture et est consommée', () => {
+    const berry = ctx.content.items.find((i) => ctx.itemEffect(i.id, 'captureBoost'))!;
+    const without = resolveQuestExpedition(ctx, input);
+    const withBerry = resolveQuestExpedition(ctx, { ...input, berryItemId: berry.id });
+    expect(withBerry.berriesUsed).toBe(1);
+    expect(withBerry.encounters[0]!.captureChance).toBeGreaterThan(
+      without.encounters[0]!.captureChance,
     );
   });
 });

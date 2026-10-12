@@ -49,6 +49,7 @@ export async function evolve(
   fromFormId: number | null;
   consumedItemId: string | null;
   newSpeciesIds: number[];
+  newFormIds: number[];
 }> {
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
@@ -102,7 +103,7 @@ export async function evolve(
       .returning();
     if (!updated) throw new GameError(409, 'POKEMON_CHANGED');
 
-    const newSpeciesIds = await recordPokedex(tx, userId, {
+    const newInDex = await recordPokedex(tx, userId, {
       seen: [evolved.speciesId],
       caught: [updated],
       at: now,
@@ -112,7 +113,7 @@ export async function evolve(
       fromSpeciesId: row.speciesId,
       fromFormId: row.formId,
       consumedItemId,
-      newSpeciesIds,
+      ...newInDex,
     };
   });
 }

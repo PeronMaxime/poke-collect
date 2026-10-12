@@ -4,7 +4,7 @@ import { eggGroups } from '@poke/data';
 import { checkBreedingPair, hatchMinutes, inheritanceRules, isBreedable } from '@poke/game-core';
 import type { BreedingError, GameContext } from '@poke/game-core';
 import type { DaycareDto, DepositDaycareInput, PokemonDto } from '@poke/shared';
-import { Modal, PokemonSprite, ShinyStar, useNow } from '../../components/ui';
+import { IvHover, Modal, PokemonSprite, ShinyStar, useNow } from '../../components/ui';
 import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { api } from '../../lib/api';
 import { PLAYER_STATE_KEYS, isUsable, useInventory, usePokemon } from '../../lib/game';
@@ -144,12 +144,14 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
             className="flex items-center gap-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800"
           >
             {p ? (
-              <PokemonSprite
-                speciesId={p.speciesId}
-                formId={p.formId}
-                shiny={p.isShiny}
-                size={56}
-              />
+              <IvHover ivs={p.ivs}>
+                <PokemonSprite
+                  speciesId={p.speciesId}
+                  formId={p.formId}
+                  shiny={p.isShiny}
+                  size={56}
+                />
+              </IvHover>
             ) : (
               <div className="grid h-14 w-14 place-items-center rounded-full bg-slate-100 text-slate-400 dark:bg-slate-800">
                 ?
@@ -276,12 +278,14 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
                   : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
               }`}
             >
-              <PokemonSprite
-                speciesId={p.speciesId}
-                formId={p.formId}
-                shiny={p.isShiny}
-                size={56}
-              />
+              <IvHover ivs={p.ivs}>
+                <PokemonSprite
+                  speciesId={p.speciesId}
+                  formId={p.formId}
+                  shiny={p.isShiny}
+                  size={56}
+                />
+              </IvHover>
               <span className="truncate">
                 {speciesName(ctx, p.speciesId, p.formId)} {GENDER_LABELS[p.gender]}{' '}
                 {p.isShiny && <ShinyStar />}

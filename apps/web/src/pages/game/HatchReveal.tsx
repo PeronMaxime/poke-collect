@@ -6,10 +6,18 @@ import { STAT_NAMES } from '@poke/data';
 import { MAX_IV } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { HatchEggsResponse, PokemonDto } from '@poke/shared';
-import { Egg, IvHover, Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
+import {
+  Egg,
+  GenderSymbol,
+  IvHover,
+  Modal,
+  PokemonSprite,
+  ShinySparkles,
+  ShinyStar,
+} from '../../components/ui';
 import { TagPicker } from '../../components/tags';
 import { api } from '../../lib/api';
-import { keys, usePokemon } from '../../lib/game';
+import { keys, newInDexTracker, usePokemon } from '../../lib/game';
 import { errorText, natureLabel, speciesName } from '../../lib/labels';
 
 const STEP = 0.5; // secondes entre deux éclosions
@@ -58,11 +66,9 @@ function HatchContent({
   const reduced = useReducedMotion();
   const [skipped, setSkipped] = useState(false);
   const instant = reduced || skipped;
-  // « Nouveau ! » sur le premier Pokémon de chaque nouvelle espèce seulement.
-  const newSpecies = new Set(data.newSpeciesIds);
-  const firstNew = new Set(
-    data.hatched.filter((p) => newSpecies.delete(p.speciesId)).map((p) => p.id),
-  );
+  // « Nouveau ! » sur le premier Pokémon de chaque nouvelle espèce ou forme seulement.
+  const isFirstNew = newInDexTracker(data);
+  const firstNew = new Set(data.hatched.filter(isFirstNew).map((p) => p.id));
   const delay = (i: number) => (instant ? 0 : 0.6 + i * STEP);
   // État à jour (favori, étiquettes) une fois le PC rechargé ; sinon celui de l'éclosion.
   const pokemon = usePokemon();
@@ -128,7 +134,8 @@ function HatchContent({
                   </IvHover>
                 </span>
                 <span className="font-medium">
-                  {speciesName(ctx, p.speciesId, p.formId)} {p.isShiny && <ShinyStar />}
+                  {speciesName(ctx, p.speciesId, p.formId)} <GenderSymbol gender={p.gender} />{' '}
+                  {p.isShiny && <ShinyStar />}
                 </span>
                 <span className="text-slate-500">{natureLabel(p.nature)}</span>
                 <span className={perfect >= 3 ? 'font-semibold text-amber-600' : 'text-slate-500'}>
@@ -151,8 +158,8 @@ function HatchContent({
   );
 }
 
-/** Favori et étiquettes directement depuis l'éclosion, sans passer par le PC. */
-function NewbornActions({ pokemon: p }: { pokemon: PokemonDto }) {
+/** Favori et étiquettes directement depuis l'éclosion ou l'expédition, sans passer par le PC. */
+export function NewbornActions({ pokemon: p }: { pokemon: PokemonDto }) {
   const queryClient = useQueryClient();
   const toggleLock = useMutation({
     mutationFn: () =>

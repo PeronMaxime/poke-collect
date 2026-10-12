@@ -358,16 +358,32 @@ describe('Pokédex des formes', () => {
       ],
       at,
     });
-    expect(first.sort((a, b) => a - b)).toEqual([3, 19]);
-    await recordPokedex(handle.db, user!.id, {
+    expect(first.newSpeciesIds.sort((a, b) => a - b)).toEqual([3, 19]);
+    expect(first.newFormIds.sort((a, b) => a - b)).toEqual([10091, 10195]);
+    const again = await recordPokedex(handle.db, user!.id, {
       seen: [],
       caught: [{ speciesId: 19, formId: 10091, isShiny: true }],
       at: new Date('2026-10-09T12:00:00Z'),
     });
+    expect(again).toEqual({ newSpeciesIds: [], newFormIds: [] });
+    // Raichu d’Alola (10100) alors que Raichu est déjà au Pokédex : seule la forme est nouvelle.
+    await recordPokedex(handle.db, user!.id, {
+      seen: [26],
+      caught: [{ speciesId: 26, formId: null, isShiny: false }],
+      at,
+    });
+    expect(
+      await recordPokedex(handle.db, user!.id, {
+        seen: [26],
+        caught: [{ speciesId: 26, formId: 10100, isShiny: false }],
+        at,
+      }),
+    ).toEqual({ newSpeciesIds: [], newFormIds: [10100] });
 
     const forms = await call<PokedexFormEntryDto[]>('GET', '/api/pokedex/forms');
     expect(forms.body).toEqual([
       { formId: 10091, caughtShiny: true, firstCaughtAt: at.toISOString() },
+      { formId: 10100, caughtShiny: false, firstCaughtAt: at.toISOString() },
       { formId: 10195, caughtShiny: false, firstCaughtAt: at.toISOString() },
     ]);
     const dex = await call<PokedexEntryDto[]>('GET', '/api/pokedex');

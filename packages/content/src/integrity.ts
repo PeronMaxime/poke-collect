@@ -504,6 +504,23 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     checkUnlock('quest', quest.id, quest.unlock);
     quest.steps.forEach((step, i) => checkQuestCondition(quest.id, i, step.condition));
     checkQuestReward(quest.id, quest.rewards);
+    for (const { expedition } of quest.rewards.pokemon) {
+      for (const t of [
+        ...expedition.affinityTypes,
+        ...expedition.requiredTypes.map((r) => r.type),
+      ]) {
+        if (!KNOWN_TYPES.has(t)) add('error', 'quest', quest.id, `Type « ${t} » inconnu`);
+      }
+      const requiredCount = expedition.requiredTypes.reduce((sum, r) => sum + r.count, 0);
+      if (requiredCount > balance.expeditions.maxTeamSize) {
+        add(
+          'error',
+          'quest',
+          quest.id,
+          'Expédition légendaire : plus de Pokémon requis que la taille d’équipe maximale',
+        );
+      }
+    }
   }
 
   const rewards = [...content.dexMilestones, ...content.collections, ...content.quests].map(

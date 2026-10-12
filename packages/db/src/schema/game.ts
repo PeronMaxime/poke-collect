@@ -198,7 +198,10 @@ export const expeditions = pgTable(
   {
     id: uuid('id').primaryKey().defaultRandom(),
     ownerId: ownerId(),
-    zoneId: text('zone_id').notNull(),
+    /** Zone explorée ; null pour une expédition légendaire. */
+    zoneId: text('zone_id'),
+    /** Expédition légendaire de cette quête ; null = expédition normale. */
+    questId: text('quest_id'),
     slotIndex: smallint('slot_index').notNull(),
     team: jsonb('team').$type<string[]>().notNull(),
     durationMinutes: integer('duration_minutes').notNull(),
@@ -413,6 +416,8 @@ export const questProgress = pgTable(
     completedAt: timestamp('completed_at', { withTimezone: true }),
     /** Récompense réclamée. */
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    /** Pokémon de la récompense déjà capturés (expéditions légendaires), dans l'ordre. */
+    pokemonCaught: smallint('pokemon_caught').notNull().default(0),
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.questId] })],
 );

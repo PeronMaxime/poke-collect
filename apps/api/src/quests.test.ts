@@ -56,7 +56,19 @@ content.quests.push({
     battleSlots: 0,
     daycareSlots: 0,
     bonuses: [],
-    pokemon: [{ speciesId: 150, level: 70, perfectIvs: 3 }],
+    pokemon: [
+      {
+        speciesId: 150,
+        level: 70,
+        perfectIvs: 3,
+        expedition: {
+          durationMinutes: 60,
+          minPower: 0,
+          requiredTypes: [],
+          affinityTypes: ['water'],
+        },
+      },
+    ],
   },
 });
 // Quête désactivée : jamais visible, même si sa condition est remplie.
@@ -172,20 +184,69 @@ describe('quêtes', () => {
     expect(await quest()).toMatchObject({ status: 'completed', step: 2 });
   });
 
-  it('donne la récompense une seule fois, avec un légendaire aux IV garantis', async () => {
+  const legendaryRun = { team: [] as string[], ballItemId: 'poke-ball', berryItemId: null };
+
+  it('donne la récompense une seule fois, sans le Pokémon (à capturer en expédition)', async () => {
+    legendaryRun.team = [starter.id];
+    const early = await call<{ error: string }>(
+      'POST',
+      '/api/quests/quete-test/expedition',
+      legendaryRun,
+    );
+    expect(early.body.error).toBe('QUEST_NOT_CLAIMED');
+
     const before = await call<{ profile: { currency: number } }>('GET', '/api/me');
     const claimed = await call<ClaimQuestResponse>('POST', '/api/quests/quete-test/claim');
     expect(claimed.status, JSON.stringify(claimed.body)).toBe(200);
-    const [mewtwo] = claimed.body.pokemon;
-    expect(mewtwo).toMatchObject({ speciesId: 150, level: 70, origin: 'quest' });
-    expect(Object.values(mewtwo!.ivs).filter((iv) => iv === 31).length).toBeGreaterThanOrEqual(3);
+    expect(claimed.body).not.toHaveProperty('pokemon');
     expect(claimed.body.currency).toBe(before.body.profile.currency + 500);
     expect(claimed.body.slots.expeditions).toBe(seedContent.balance.expeditions.initialSlots + 1);
-    expect(claimed.body.newSpeciesIds).toEqual([150]);
-    expect(await quest()).toMatchObject({ status: 'claimed' });
+    expect(await quest()).toMatchObject({ status: 'claimed', pokemonCaught: 0 });
 
     const again = await call<{ error: string }>('POST', '/api/quests/quete-test/claim');
     expect(again.body.error).toBe('ALREADY_CLAIMED');
+  });
+
+  it('expédition légendaire configurée : une Ball, un emplacement, le légendaire aux IV garantis', async () => {
+    const started = await call<ExpeditionDto>(
+      'POST',
+      '/api/quests/quete-test/expedition',
+      legendaryRun,
+    );
+    expect(started.status, JSON.stringify(started.body)).toBe(201);
+    expect(started.body).toMatchObject({
+      questId: 'quete-test',
+      zoneId: null,
+      durationMinutes: 60,
+      ballItemId: 'poke-ball',
+      balls: 1,
+    });
+    const twice = await call<{ error: string }>(
+      'POST',
+      '/api/quests/quete-test/expedition',
+      legendaryRun,
+    );
+    expect(twice.body.error).toBe('QUEST_EXPEDITION_RUNNING');
+
+    advance(60);
+    const claimed = await call<ClaimExpeditionResponse>(
+      'POST',
+      `/api/expeditions/${started.body.id}/claim`,
+    );
+    expect(claimed.status, JSON.stringify(claimed.body)).toBe(200);
+    const [mewtwo] = claimed.body.captured;
+    expect(mewtwo).toMatchObject({ speciesId: 150, level: 70, origin: 'quest' });
+    expect(Object.values(mewtwo!.ivs).filter((iv) => iv === 31).length).toBeGreaterThanOrEqual(3);
+    expect(claimed.body.expedition.result).toMatchObject({ ballsUsed: 1, newSpeciesIds: [150] });
+    expect(claimed.body.expedition.result!.encounters).toHaveLength(1);
+    expect(await quest()).toMatchObject({ pokemonCaught: 1 });
+
+    const done = await call<{ error: string }>(
+      'POST',
+      '/api/quests/quete-test/expedition',
+      legendaryRun,
+    );
+    expect(done.body.error).toBe('QUEST_POKEMON_CAUGHT');
   });
 
   it('refuse une quête verrouillée ou inconnue', async () => {

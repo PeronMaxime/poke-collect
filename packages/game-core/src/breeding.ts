@@ -243,9 +243,14 @@ export function lineageId(ctx: GameContext, speciesId: number): number | undefin
   return ctx.species(speciesId)?.evolutionChainId;
 }
 
-export function transferCandies(ctx: GameContext, pokemon: Pick<PokemonInstance, 'isShiny'>) {
+export function transferCandies(
+  ctx: GameContext,
+  pokemon: Pick<PokemonInstance, 'speciesId' | 'isShiny'>,
+) {
   const { candiesPerPokemon, shinyBonusCandies } = ctx.balance.transfer;
-  return candiesPerPokemon + (pokemon.isShiny ? shinyBonusCandies : 0);
+  // Un Pokémon évolué rapporte le double des Bonbons de base.
+  const evolved = ctx.species(pokemon.speciesId)?.evolvesFromSpeciesId != null;
+  return candiesPerPokemon * (evolved ? 2 : 1) + (pokemon.isShiny ? shinyBonusCandies : 0);
 }
 
 /** Bonbons nécessaires pour monter `pokemon` au niveau maximal (0 si déjà au max). */

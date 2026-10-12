@@ -26,6 +26,7 @@ import type {
   UseItemInput,
   UseItemResponse,
 } from '@poke/shared';
+import { TRANSFER_BATCH_MAX } from '@poke/shared';
 import {
   Modal,
   PokemonSprite,
@@ -48,11 +49,10 @@ import {
   isUsable,
   keys,
   useCandies,
-  useDexCatches,
   useEvolutionChecker,
   useInventory,
+  useNewEvolutionChecker,
   usePlayerProgress,
-  usePokedexForms,
   usePokemon,
   useTags,
   utcOffsetMinutes,
@@ -83,6 +83,14 @@ const SORTS: Record<Sort, string> = {
   dex: 'N° Pokédex',
   tag: 'Étiquette',
 };
+
+/** Dernier tri choisi, conservé d'une visite à l'autre. */
+const SORT_KEY = 'pc-sort';
+
+function savedSort(): Sort {
+  const saved = localStorage.getItem(SORT_KEY);
+  return saved && Object.hasOwn(SORTS, saved) ? (saved as Sort) : 'dex';
+}
 
 const ORIGIN_LABELS: Record<PokemonDto['origin'], string> = {
   starter: 'Starter',
@@ -149,23 +157,15 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   const pokemon = usePokemon();
   const now = useNow();
   const evolutionsOf = useEvolutionChecker(ctx);
-  const { caughtSpeciesIds } = useDexCatches();
-  const caughtFormIds = new Set(usePokedexForms().data?.map((f) => f.formId));
   // Pastille « Évol. » : seulement si l'évolution possible manque encore au Pokédex.
-  const hasNewEvolution = (p: PokemonDto) =>
-    evolutionsOf(p).some(
-      ({ option, method }) =>
-        method &&
-        (option.toFormId === null
-          ? !caughtSpeciesIds.has(option.toSpeciesId)
-          : !caughtFormIds.has(option.toFormId)),
-    );
+  const hasNewEvolution = useNewEvolutionChecker(ctx);
   const progress = usePlayerProgress();
   const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<Sort>('dex');
+  const [sort, setSort] = useState<Sort>(savedSort);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [onlyShiny, setOnlyShiny] = useState(false);
+  const [onlyEvolvable, setOnlyEvolvable] = useState(false);
   const tagFilter = useTagFilter();
   const [tagsOpen, setTagsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -173,16 +173,43 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   const [toTransfer, setToTransfer] = useState<Set<string>>(new Set());
   // Doublons proposés dont certains ont des IV parfaits : le joueur choisit de les garder ou non.
   const [pendingDuplicates, setPendingDuplicates] = useState<PokemonDto[] | null>(null);
+  // Transfert demandé alors qu'il retirerait le dernier exemplaire d'une espèce : à confirmer.
+  const [confirmingLast, setConfirmingLast] = useState(false);
   const [transferResult, setTransferResult] = useState<TransferPokemonResponse | null>(null);
   const queryClient = useQueryClient();
   const transfer = useMutation({
-    mutationFn: (ids: string[]) =>
-      api<TransferPokemonResponse>('/api/pokemon/transfer', { method: 'POST', json: { ids } }),
+    mutationFn: async (ids: string[]) => {
+      // Par lots : l'API plafonne le nombre de Pokémon par requête.
+      let transferred = 0;
+      const gained = new Map<number, number>();
+      for (let i = 0; i < ids.length; i += TRANSFER_BATCH_MAX) {
+        const res = await api<TransferPokemonResponse>('/api/pokemon/transfer', {
+          method: 'POST',
+          json: { ids: ids.slice(i, i + TRANSFER_BATCH_MAX) },
+        });
+        transferred += res.transferred;
+        for (const g of res.gained)
+          gained.set(g.lineageId, (gained.get(g.lineageId) ?? 0) + g.quantity);
+      }
+      return {
+        transferred,
+        gained: [...gained].map(([lineageId, quantity]) => ({ lineageId, quantity })),
+      } satisfies TransferPokemonResponse;
+    },
     onSuccess: (data) => {
       setTransferResult(data);
       setToTransfer(new Set());
       setPendingDuplicates(null);
+      setConfirmingLast(false);
       setTransferMode(false);
+      return Promise.all(
+        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      );
+    },
+    // Les lots déjà passés sont transférés : on resynchronise le PC.
+    onError: () => {
+      setToTransfer(new Set());
+      setConfirmingLast(false);
       return Promise.all(
         PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       );
@@ -193,16 +220,17 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
     p,
     species: ctx.species(p.speciesId, p.formId),
     power: pokemonPower(ctx.species(p.speciesId, p.formId)!, p),
+    canEvolve: hasNewEvolution(p),
   }));
   const tab = currentRegionTab(ctx, progress, selectedRegion ?? ALL_TAB.id, [ALL_TAB]);
   const needle = search.trim().toLowerCase();
   const inTab = list.filter(
     ({ p }) => tab === ALL_TAB.id || isRegionalSpecies(ctx, tab, p.speciesId),
   );
-  const tabPokemon = inTab.map(({ p }) => p);
   const filtered = inTab
     .filter(({ species }) => !needle || species?.nameFr.toLowerCase().includes(needle))
     .filter(({ p }) => (!onlyFavorites || p.locked) && (!onlyShiny || p.isShiny))
+    .filter(({ canEvolve }) => !onlyEvolvable || canEvolve)
     .filter(({ p }) => tagFilter.matches(p))
     .sort((a, b) => {
       switch (sort) {
@@ -241,10 +269,28 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   const transferList = (pokemon.data ?? []).filter((p) => toTransfer.has(p.id));
   const candiesGained = transferList.reduce((sum, p) => sum + transferCandies(ctx, p), 0);
   const perfectDuplicates = pendingDuplicates?.filter(hasPerfectIv) ?? [];
+  // Derniers exemplaires : espèces (et formes) dont tous les Pokémon possédés seraient transférés.
+  const speciesKey = (p: PokemonDto) => `${p.speciesId}:${p.formId ?? ''}`;
+  const keptKeys = new Set(
+    (pokemon.data ?? []).filter((p) => !toTransfer.has(p.id)).map(speciesKey),
+  );
+  const lastCopies = transferList.filter(
+    (p, i) =>
+      !keptKeys.has(speciesKey(p)) &&
+      transferList.findIndex((q) => speciesKey(q) === speciesKey(p)) === i,
+  );
+
+  function requestTransfer() {
+    if (lastCopies.length > 0) setConfirmingLast(true);
+    else transfer.mutate([...toTransfer]);
+  }
 
   function selectDuplicates() {
-    const ids = new Set(duplicates(ctx, tabPokemon));
-    const found = tabPokemon.filter((p) => ids.has(p.id));
+    // Seulement parmi les Pokémon affichés (onglet, recherche et filtres en cours).
+    const shown = filtered.map(({ p }) => p);
+    const ids = new Set(duplicates(ctx, shown));
+    const found = shown.filter((p) => ids.has(p.id));
+    setConfirmingLast(false);
     if (found.some(hasPerfectIv)) setPendingDuplicates(found);
     else setToTransfer(ids);
   }
@@ -253,10 +299,12 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
     const kept = (pendingDuplicates ?? []).filter((p) => includePerfect || !hasPerfectIv(p));
     setToTransfer(new Set(kept.map((p) => p.id)));
     setPendingDuplicates(null);
+    setConfirmingLast(false);
   }
 
   function toggleTransfer(p: PokemonDto) {
     if (!canTransfer(p)) return;
+    setConfirmingLast(false);
     setToTransfer((cur) => {
       const next = new Set(cur);
       if (next.has(p.id)) next.delete(p.id);
@@ -288,7 +336,11 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
         <select
           className="input w-auto"
           value={sort}
-          onChange={(e) => setSort(e.target.value as Sort)}
+          onChange={(e) => {
+            const next = e.target.value as Sort;
+            setSort(next);
+            localStorage.setItem(SORT_KEY, next);
+          }}
         >
           {Object.entries(SORTS).map(([value, label]) => (
             <option key={value} value={value}>
@@ -312,6 +364,17 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
           />
           Shiny
         </label>
+        <label
+          className="flex items-center gap-1 text-sm"
+          title="Évolution possible vers une espèce ou forme absente du Pokédex"
+        >
+          <input
+            type="checkbox"
+            checked={onlyEvolvable}
+            onChange={(e) => setOnlyEvolvable(e.target.checked)}
+          />
+          Peut évoluer
+        </label>
         <TagFilterSelect
           tags={tagFilter.tags}
           value={tagFilter.filter}
@@ -329,6 +392,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
             setTransferMode(!transferMode);
             setToTransfer(new Set());
             setPendingDuplicates(null);
+            setConfirmingLast(false);
             setTransferResult(null);
           }}
         >
@@ -350,10 +414,33 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
           <button
             className="btn-danger"
             disabled={toTransfer.size === 0 || transfer.isPending}
-            onClick={() => transfer.mutate([...toTransfer])}
+            onClick={requestTransfer}
           >
             Transférer ({toTransfer.size})
           </button>
+          {confirmingLast && lastCopies.length > 0 && (
+            <div className="flex w-full flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+              <span className="flex-1">
+                ⚠ Tu transfères ton dernier exemplaire de :{' '}
+                {lastCopies
+                  .slice(0, 5)
+                  .map((p) => speciesName(ctx, p.speciesId, p.formId))
+                  .join(', ')}
+                {lastCopies.length > 5 && ` et ${lastCopies.length - 5} autre(s)`}. Ils resteront
+                au Pokédex mais tu n'en auras plus aucun.
+              </span>
+              <button
+                className="btn-danger py-1"
+                disabled={transfer.isPending}
+                onClick={() => transfer.mutate([...toTransfer])}
+              >
+                Transférer quand même
+              </button>
+              <button className="btn-ghost py-1" onClick={() => setConfirmingLast(false)}>
+                Annuler
+              </button>
+            </div>
+          )}
           {pendingDuplicates && (
             <div className="flex w-full flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
               <span className="flex-1">
@@ -390,7 +477,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
       )}
 
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-        {filtered.map(({ p, species, power }) => (
+        {filtered.map(({ p, species, power, canEvolve }) => (
           <button
             key={p.id}
             type="button"
@@ -407,7 +494,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
                 </span>
               )}
               <KoBadge koUntil={p.koUntil} now={now} />
-              {hasNewEvolution(p) && (
+              {canEvolve && (
                 <span
                   className="rounded bg-emerald-100 px-1 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
                   title="Peut évoluer"

@@ -3,6 +3,7 @@ import { createRoot } from 'react-dom/client';
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { App } from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { UpdatePrompt } from './components/UpdatePrompt';
 import { logError } from './lib/log';
 import { registerServiceWorker } from './lib/pwa';
 import './index.css';
@@ -31,6 +32,7 @@ createRoot(document.getElementById('root')!, {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <App />
+        <UpdatePrompt />
       </ErrorBoundary>
     </QueryClientProvider>
   </StrictMode>,

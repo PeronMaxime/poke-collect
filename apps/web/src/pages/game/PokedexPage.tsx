@@ -2,17 +2,18 @@ import { useState } from 'react';
 import { DEX_FORM_SECTIONS, speciesForms } from '@poke/data';
 import { collectionState, dexProgress, milestoneState } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { PlayerProfileDto } from '@poke/shared';
 import { PokemonSprite, ProgressBar, ShinyStar, TypeBadge } from '../../components/ui';
 import {
   useClaimedRewards,
   useDexCatches,
   usePokedex,
   usePokedexForms,
+  usePlayerProgress,
   useShinyCharm,
 } from '../../lib/game';
 import { formatShinyRate } from '../../lib/labels';
 import { CollectionsView, MilestonesView } from './ProgressionViews';
+import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 
 type Filter = 'all' | 'caught' | 'missing';
 
@@ -39,7 +40,7 @@ const VIEWS = [
 type View = (typeof VIEWS)[number]['id'];
 
 /** Pokédex, paliers de récompenses et collections thématiques. */
-export function PokedexPage({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto }) {
+export function PokedexPage({ ctx }: { ctx: GameContext }) {
   const claimed = useClaimedRewards();
   const [view, setView] = useState<View>('dex');
   const progress = useDexCatches();
@@ -71,7 +72,7 @@ export function PokedexPage({ ctx, profile }: { ctx: GameContext; profile: Playe
           </button>
         ))}
       </nav>
-      {view === 'dex' && <DexView ctx={ctx} profile={profile} />}
+      {view === 'dex' && <DexView ctx={ctx} />}
       {view === 'milestones' && <MilestonesView ctx={ctx} progress={progress} />}
       {view === 'collections' && <CollectionsView ctx={ctx} progress={progress} />}
     </div>
@@ -79,18 +80,19 @@ export function PokedexPage({ ctx, profile }: { ctx: GameContext; profile: Playe
 }
 
 /** Pokédex normal, ou Pokédex shiny (espèces capturées en version shiny). */
-function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto }) {
+function DexView({ ctx }: { ctx: GameContext }) {
   const pokedex = usePokedex();
   const catches = useDexCatches();
   const charm = useShinyCharm(ctx);
-  const [regionId, setRegionId] = useState(profile.regionUnlocked);
+  const [savedRegion, setRegionId] = useSavedRegionTab('pokedex');
   const [filter, setFilter] = useState<Filter>('all');
   const [shiny, setShiny] = useState(false);
   const [selected, setSelected] = useState<DexSlot | null>(null);
   const formsDex = usePokedexForms();
   const entries = new Map(pokedex.data?.map((e) => [e.speciesId, e]));
   const formEntries = new Map(formsDex.data?.map((e) => [e.formId, e]));
-  const region = ctx.region(regionId) ?? ctx.regions[0];
+  const playerProgress = usePlayerProgress();
+  const region = ctx.region(currentRegionTab(ctx, playerProgress, savedRegion));
   if (!region) return <p className="text-slate-500">Aucune région configurée.</p>;
 
   const progress = dexProgress(ctx, region.id, catches, shiny);
@@ -151,23 +153,15 @@ function DexView({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto
 
   return (
     <div className="space-y-4">
+      <RegionTabs
+        ctx={ctx}
+        progress={playerProgress}
+        selected={region.id}
+        onSelect={setRegionId}
+      />
       <div className="card p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          {ctx.regions.length > 1 ? (
-            <select
-              className="input w-auto"
-              value={region.id}
-              onChange={(e) => setRegionId(e.target.value)}
-            >
-              {ctx.regions.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.name}
-                </option>
-              ))}
-            </select>
-          ) : (
-            <h2 className="text-lg font-semibold">Pokédex de {region.name}</h2>
-          )}
+          <h2 className="text-lg font-semibold">Pokédex de {region.name}</h2>
           <p className="text-sm text-slate-500">
             {shiny ? 'Shiny' : `Vus : ${seenCount} · Capturés`} : {progress.caught} /{' '}
             {progress.total} ({progress.percent.toFixed(1)} %)
