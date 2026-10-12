@@ -426,8 +426,8 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
                   .slice(0, 5)
                   .map((p) => speciesName(ctx, p.speciesId, p.formId))
                   .join(', ')}
-                {lastCopies.length > 5 && ` et ${lastCopies.length - 5} autre(s)`}. Ils resteront
-                au Pokédex mais tu n'en auras plus aucun.
+                {lastCopies.length > 5 && ` et ${lastCopies.length - 5} autre(s)`}. Ils resteront au
+                Pokédex mais tu n'en auras plus aucun.
               </span>
               <button
                 className="btn-danger py-1"
