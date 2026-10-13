@@ -29,6 +29,7 @@ const OUTCOME_LABELS = {
   escaped: 'S’est échappé…',
   noBall: 'Observé',
   ignored: 'Ignoré',
+  fled: 'Tu as pris la fuite',
 } as const;
 
 /** Ouverture animée du résultat d'une expédition : rencontres une à une, puis butin et XP. */
@@ -130,7 +131,9 @@ function RevealContent({
         >
           {captured > 0
             ? `${speciesName(ctx, result.encounters[0].speciesId, result.encounters[0].formId)} a été capturé !`
-            : `${speciesName(ctx, result.encounters[0].speciesId, result.encounters[0].formId)} s’est enfui… Tu peux retenter une expédition légendaire depuis les Quêtes.`}
+            : result.encounters[0].outcome === 'fled'
+              ? 'Tu as pris la fuite. Relance l’expédition légendaire depuis les Quêtes pour allonger la chaîne shiny.'
+              : `${speciesName(ctx, result.encounters[0].speciesId, result.encounters[0].formId)} s’est enfui… Tu peux retenter une expédition légendaire depuis les Quêtes.`}
         </motion.p>
       )}
 

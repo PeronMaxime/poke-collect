@@ -185,7 +185,7 @@ export async function purchase(
       .returning({ currency: playerProfiles.currency });
     if (!debited) throw new GameError(409, 'NOT_ENOUGH_MONEY');
 
-    await addItems(tx, userId, [check.stack]);
+    await addItems(tx, userId, [check.stack, ...(check.gift ? [check.gift] : [])]);
     await tx.insert(shopPurchases).values({
       ownerId: userId,
       shopEntryId: entry.id,
@@ -211,6 +211,7 @@ export async function purchase(
       lots: input.lots,
       quantity: check.stack.quantity,
       totalPrice: check.totalPrice,
+      gift: check.gift,
       currency: debited.currency,
       inventoryQuantity: await itemQuantity(tx, userId, entry.itemId),
     };

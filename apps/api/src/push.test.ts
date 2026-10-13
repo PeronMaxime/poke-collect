@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
-import { createDb, ensureSeedContent, pushSubscriptions, users } from '@poke/db';
+import { createDb, ensureSeedContent, pokemon, pushSubscriptions, users } from '@poke/db';
 import type {
   AdminPlayerDetailResponse,
   AdminPlayerDto,
+  AdminSpeciesStatsDto,
   ExpeditionDto,
   PokemonDto,
   PushConfigResponse,
@@ -228,5 +229,46 @@ describe('joueurs (admin)', () => {
     expect(detail.body.badges[0]?.badges.every((b) => !b.earned)).toBe(true);
 
     expect((await admin.call('GET', '/api/admin/players/inconnu')).status).toBe(404);
+  });
+
+  it('compte les captures depuis le début, transférés et évolués compris', async () => {
+    const admin = await newPlayer('chen-especes@example.com', 'Platane');
+    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, admin.userId));
+    const stats = async () =>
+      new Map(
+        (await admin.call<AdminSpeciesStatsDto[]>('GET', '/api/admin/species-stats')).body.map(
+          (s) => [s.speciesId, s],
+        ),
+      );
+    const before = await stats();
+    const player = await newPlayer('sacha-especes@example.com', 'Regis');
+    const counts = async (id: number) => {
+      const s = (await stats()).get(id);
+      const b = before.get(id);
+      return {
+        captured: (s?.captured ?? 0) - (b?.captured ?? 0),
+        owned: (s?.owned ?? 0) - (b?.owned ?? 0),
+        transferred: (s?.transferred ?? 0) - (b?.transferred ?? 0),
+      };
+    };
+    expect(await counts(1)).toEqual({ captured: 1, owned: 1, transferred: 0 });
+
+    // Le starter évolue : toujours capturé en Bulbizarre, possédé en Herbizarre.
+    await handle.db.update(pokemon).set({ speciesId: 2 }).where(eq(pokemon.ownerId, player.userId));
+    expect(await counts(1)).toEqual({ captured: 1, owned: 0, transferred: 0 });
+    expect(await counts(2)).toEqual({ captured: 0, owned: 1, transferred: 0 });
+
+    // Puis il est transféré (un autre Pokémon reste au joueur) : la capture reste comptée, le
+    // transfert l'est dans son espèce actuelle.
+    const [starterRow] = await handle.db
+      .select()
+      .from(pokemon)
+      .where(eq(pokemon.ownerId, player.userId));
+    const { id: _id, ...copy } = starterRow!;
+    await handle.db.insert(pokemon).values({ ...copy, speciesId: 4 });
+    const transfer = await player.call('POST', '/api/pokemon/transfer', { ids: [starterRow!.id] });
+    expect(transfer.status).toBe(200);
+    expect(await counts(1)).toEqual({ captured: 1, owned: 0, transferred: 0 });
+    expect(await counts(2)).toEqual({ captured: 0, owned: 0, transferred: 1 });
   });
 });

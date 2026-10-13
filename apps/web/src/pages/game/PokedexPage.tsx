@@ -99,9 +99,11 @@ function DexView({ ctx }: { ctx: GameContext }) {
   const seenCount = region.speciesIds.filter((id) => entries.get(id)?.seen).length;
   const slotState = ({ speciesId, formId }: DexSlot): SlotState => {
     const entry = entries.get(speciesId);
+    // Pokédex shiny : la case ne se dévoile qu'une fois la version shiny rencontrée.
+    const seen = (shiny ? entry?.seenShiny : entry?.seen) ?? false;
     if (formId === null) {
       return {
-        seen: entry?.seen ?? false,
+        seen,
         caught: (shiny ? entry?.caughtShiny : entry?.caught) ?? false,
         caughtAt: entry?.firstCaughtAt ?? null,
         caughtShiny: entry?.caughtShiny ?? false,
@@ -110,7 +112,7 @@ function DexView({ ctx }: { ctx: GameContext }) {
     // Une forme est connue dès que son espèce a été vue.
     const formEntry = formEntries.get(formId);
     return {
-      seen: !!formEntry || (entry?.seen ?? false),
+      seen: (shiny ? !!formEntry?.caughtShiny : !!formEntry) || seen,
       caught: shiny ? !!formEntry?.caughtShiny : !!formEntry,
       caughtAt: formEntry?.firstCaughtAt ?? null,
       caughtShiny: formEntry?.caughtShiny ?? false,

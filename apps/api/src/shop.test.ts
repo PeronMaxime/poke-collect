@@ -141,11 +141,14 @@ describe('boutique', () => {
       lots: 2,
       quantity: 20,
       totalPrice: 3600,
+      // Une Honor Ball offerte par tranche de 10 Poké Balls achetées d'un coup.
+      gift: { itemId: 'premier-ball', quantity: 2 },
       currency: 1400,
       inventoryQuantity: 40,
     });
     const inventory = await call<InventoryEntryDto[]>('GET', '/api/inventory');
     expect(inventory.body).toContainEqual({ itemId: 'poke-ball', quantity: 40 });
+    expect(inventory.body).toContainEqual({ itemId: 'premier-ball', quantity: 2 });
     const rows = await handle.db
       .select()
       .from(shopPurchases)

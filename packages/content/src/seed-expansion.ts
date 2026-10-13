@@ -802,5 +802,6 @@ export const expansionShopEntries: ShopEntry[] = expansionItems.map((item, i) =>
     availableFrom: null,
     availableUntil: null,
     enabled: true,
+    gift: null,
   };
 });

@@ -40,6 +40,8 @@ export const playerProfiles = pgTable(
     regionStarters: jsonb('region_starters').$type<Record<string, number>>().notNull().default({}),
     currency: bigint('currency', { mode: 'number' }).notNull().default(0),
     settings: jsonb('settings').$type<Record<string, unknown>>().notNull().default({}),
+    /** Zones d'expédition mises en favori (affichées en tête de la page Expéditions). */
+    favoriteZoneIds: text('favorite_zone_ids').array().notNull().default([]),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('player_profiles_trainer_name_lower').on(sql`lower(${t.trainerName})`)],
@@ -376,10 +378,24 @@ export const pokedex = pgTable(
     seen: boolean('seen').notNull().default(false),
     caught: boolean('caught').notNull().default(false),
     caughtShiny: boolean('caught_shiny').notNull().default(false),
+    /** Version shiny rencontrée (capturée ou non) : la case du Pokédex shiny se dévoile. */
+    seenShiny: boolean('seen_shiny').notNull().default(false),
     firstCaughtAt: timestamp('first_caught_at', { withTimezone: true }),
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.speciesId] })],
 );
+
+/**
+ * Pokémon obtenus depuis le début, tous joueurs confondus (captures, starters, œufs, quêtes,
+ * fossiles), dans l'espèce d'obtention : les transferts et évolutions ne les décomptent pas.
+ * `transferred` compte les transferts dans l'espèce du Pokémon au moment du transfert.
+ */
+export const speciesCaptures = pgTable('species_captures', {
+  speciesId: integer('species_id').primaryKey(),
+  captured: integer('captured').notNull().default(0),
+  shiny: integer('shiny').notNull().default(0),
+  transferred: integer('transferred').notNull().default(0),
+});
 
 /** Formes capturées (régionales, Méga, Gigamax…), pour les sections de formes du Pokédex. */
 export const pokedexForms = pgTable(

@@ -204,6 +204,27 @@
       "when": 1791820602698,
       "tag": "0028_expedition_legendaire_config",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1791902707373,
+      "tag": "0029_favoris_shiny_vus_cadeaux",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1791905590608,
+      "tag": "0030_compteur_captures",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1791905916103,
+      "tag": "0031_compteur_transferts",
+      "breakpoints": true
     }
   ]
 }

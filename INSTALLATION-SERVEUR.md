@@ -163,16 +163,37 @@ nano .env
 
 À remplir (le modèle explique chaque ligne) :
 
-| Variable                                 | Valeur                                                  |
-| ---------------------------------------- | ------------------------------------------------------- |
-| `SITE_DOMAIN`                            | `mondomaine.fr`                                         |
-| `ADMIN_DOMAIN`                           | `admin.mondomaine.fr`                                   |
-| `ACME_EMAIL`                             | ton adresse (prévenue en cas de souci de certificat)    |
-| `POSTGRES_PASSWORD`                      | résultat de `openssl rand -hex 32`                      |
-| `BETTER_AUTH_SECRET`                     | un **autre** résultat de `openssl rand -hex 32`         |
-| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | voir ci-dessous                                         |
-| `VAPID_SUBJECT`                          | `mailto:` + ton adresse                                 |
-| `SMTP_URL` / `MAIL_FROM`                 | quand le service d'e-mails est prêt (vide en attendant) |
+| Variable                                 | Valeur                                                   |
+| ---------------------------------------- | -------------------------------------------------------- |
+| `SITE_DOMAIN`                            | `mondomaine.fr`                                          |
+| `ADMIN_DOMAIN`                           | `admin.mondomaine.fr`                                    |
+| `ACME_EMAIL`                             | ton adresse (prévenue en cas de souci de certificat)     |
+| `POSTGRES_PASSWORD`                      | résultat de `openssl rand -hex 32`                       |
+| `BETTER_AUTH_SECRET`                     | un **autre** résultat de `openssl rand -hex 32`          |
+| `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | voir ci-dessous                                          |
+| `VAPID_SUBJECT`                          | `mailto:` + ton adresse                                  |
+| `SMTP_URL` / `MAIL_FROM`                 | boîte e-mail OVH, voir ci-dessous (vide : pas d'e-mails) |
+
+E-mails (« Mot de passe oublié ? ») via la boîte e-mail OVH du domaine. L'identifiant est
+l'adresse complète, et `MAIL_FROM` doit être **la même adresse** (sinon OVH refuse l'envoi) :
+
+```env
+SMTP_URL=smtps://contact%40mondomaine.fr:MOTDEPASSE@ssl0.ovh.net:465
+MAIL_FROM=Dexpedition <contact@mondomaine.fr>
+```
+
+Dans l'URL, le `@` de l'adresse s'écrit `%40` ; dans le mot de passe, encoder aussi `@` → `%40`,
+`:` → `%3A`, `/` → `%2F`. Pas de DNS à ajouter : OVH gère déjà le SPF du domaine. Après une
+modification du `.env` sur un serveur déjà lancé, recréer l'API pour qu'elle le relise
+(`restart` ne suffit pas) :
+
+```bash
+docker compose -f docker-compose.prod.yml up -d api
+```
+
+Test : se déconnecter, « Mot de passe oublié ? », saisir son adresse (penser aux spams). Si rien
+n'arrive : `docker compose -f docker-compose.prod.yml logs api --tail 50` (une erreur
+d'authentification vient presque toujours de l'encodage de `SMTP_URL`).
 
 Clés VAPID des notifications (pas besoin d'installer Node sur le serveur) :
 

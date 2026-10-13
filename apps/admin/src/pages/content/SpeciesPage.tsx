@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { RARITIES, speciesOverrideSchema } from '@poke/content';
 import type { Item, Quest, SpeciesOverride, Zone } from '@poke/content';
 import {
@@ -11,11 +12,13 @@ import {
   speciesForms,
 } from '@poke/data';
 import type { FormKind, PokemonForm } from '@poke/data';
+import type { AdminSpeciesStatsDto } from '@poke/shared';
 import { IssueList, VersionBanner } from '../../components/EntityPage';
 import { Field, NullableTextInput, Toggle, validate } from '../../components/forms/fields';
 import { Sprite, TypeBadge, typeLabel } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
 import { errorMessage, useDeleteEntity, useSaveEntity, useWorkingVersion } from '../../lib/content';
+import { api } from '../../lib/api';
 import { RARITY_LABELS } from './ItemsPage';
 
 const habitatNames = new Map(habitats.map((h) => [h.name, h.nameFr]));
@@ -272,6 +275,11 @@ function SpeciesView() {
   const [onlyOverridden, setOnlyOverridden] = useState(false);
   const [onlyUnlocated, setOnlyUnlocated] = useState(false);
   const [selected, setSelected] = useState<number | null>(null);
+  const speciesStats = useQuery({
+    queryKey: ['admin-species-stats'],
+    queryFn: () => api<AdminSpeciesStatsDto[]>('/api/admin/species-stats'),
+  });
+  const stats = new Map(speciesStats.data?.map((s) => [s.speciesId, s]));
 
   if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
   if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
@@ -346,7 +354,28 @@ function SpeciesView() {
               <th className="px-3 py-2">Types</th>
               <th className="px-3 py-2">Habitat</th>
               <th className="px-3 py-2">Localisation</th>
-              <th className="px-3 py-2 text-right">Capture</th>
+              <th className="px-3 py-2 text-right">Taux capture</th>
+              <th
+                className="px-3 py-2 text-right"
+                title="Pokémon obtenus dans cette espèce depuis le début (captures, starters, œufs… ; transférés et évolués compris)"
+              >
+                Capturé
+              </th>
+              <th className="px-3 py-2 text-right" title="Dont shiny">
+                Capturé shiny
+              </th>
+              <th
+                className="px-3 py-2 text-right"
+                title="Pokémon actuellement dans les PC des joueurs, dans leur espèce actuelle"
+              >
+                Possédé
+              </th>
+              <th
+                className="px-3 py-2 text-right"
+                title="Pokémon transférés depuis le début, dans leur espèce au moment du transfert"
+              >
+                Transféré
+              </th>
               <th className="px-3 py-2 text-right">Stats</th>
               <th className="px-3 py-2">Surcharge</th>
             </tr>
@@ -395,6 +424,27 @@ function SpeciesView() {
                     <LocationCell w={w} speciesId={s.id} location={locations.get(s.id)} />
                   </td>
                   <td className="px-3 py-1 text-right font-mono">{s.captureRate}</td>
+                  <td
+                    className="px-3 py-1 text-right font-mono"
+                    title={
+                      stats.get(s.id)
+                        ? `Capturé par ${stats.get(s.id)!.trainers} dresseur(s)`
+                        : undefined
+                    }
+                  >
+                    {stats.get(s.id)?.captured ?? 0}
+                  </td>
+                  <td className="px-3 py-1 text-right font-mono">
+                    {stats.get(s.id)?.capturedShiny ? (
+                      <span className="text-amber-500">{stats.get(s.id)!.capturedShiny} ★</span>
+                    ) : (
+                      0
+                    )}
+                  </td>
+                  <td className="px-3 py-1 text-right font-mono">{stats.get(s.id)?.owned ?? 0}</td>
+                  <td className="px-3 py-1 text-right font-mono">
+                    {stats.get(s.id)?.transferred ?? 0}
+                  </td>
                   <td className="px-3 py-1 text-right font-mono">
                     {STAT_NAMES.reduce((sum, st) => sum + s.baseStats[st], 0)}
                   </td>

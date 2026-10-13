@@ -1,67 +1,46 @@
-import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Quest, QuestPokemon } from '@poke/content';
-import { captureProbability, checkTeam, legendarySite, shinyProbability } from '@poke/game-core';
+import { chainMultiplier, checkTeam, legendarySite, shinyProbability } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { ExpeditionDto, StartQuestExpeditionInput } from '@poke/shared';
 import { Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, useInventory, useShinyCharm } from '../../lib/game';
+import { PLAYER_STATE_KEYS, useShinyCharm } from '../../lib/game';
 import {
   GAME_ERRORS,
   formatDuration,
+  formatMultiplier,
   formatShinyRate,
-  itemIcon,
-  itemName,
   speciesName,
 } from '../../lib/labels';
 import { teamErrorText } from './LaunchExpeditionDialog';
 import { TeamPicker, useTeamPicker } from './TeamPicker';
 
 /**
- * Expédition légendaire (lancée depuis les quêtes) : une seule Ball lancée. Les membres de
- * l'équipe en affinité (par défaut, les faiblesses du légendaire) et la baie font la différence.
+ * Expédition légendaire (lancée depuis les quêtes) : l'équipe seulement. La Ball et la baie se
+ * choisissent au retour, une fois le légendaire découvert ; les membres de l'équipe en affinité
+ * (par défaut, les faiblesses du légendaire) augmentent la chance de capture.
  */
 export function QuestExpeditionDialog({
   ctx,
   quest,
   target,
+  chain,
   onClose,
 }: {
   ctx: GameContext;
   quest: Quest;
   /** Pokémon visé : le prochain de la récompense pas encore capturé. */
   target: QuestPokemon;
+  /** Maillon de la chaîne de la quête qu'aurait l'expédition lancée maintenant. */
+  chain: number;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
   const charm = useShinyCharm(ctx);
-  const inventory = useInventory();
   const zone = legendarySite(quest, target);
   const { durationMinutes } = target.expedition;
   const picker = useTeamPicker(ctx, zone);
-  const owned = new Map(inventory.data?.map((i) => [i.itemId, i.quantity]));
-  // De la Ball la plus forte à la plus faible : un légendaire mérite la meilleure.
-  const balls = ctx.content.items
-    .filter((i) => ctx.itemEffect(i.id, 'ball') && (owned.get(i.id) ?? 0) > 0)
-    .sort(
-      (a, b) =>
-        ctx.itemEffect(b.id, 'ball')!.catchMultiplier -
-        ctx.itemEffect(a.id, 'ball')!.catchMultiplier,
-    );
-  const berries = ctx.content.items
-    .filter((i) => ctx.itemEffect(i.id, 'captureBoost') && (owned.get(i.id) ?? 0) > 0)
-    .sort(
-      (a, b) =>
-        ctx.itemEffect(b.id, 'captureBoost')!.multiplier -
-        ctx.itemEffect(a.id, 'captureBoost')!.multiplier,
-    );
-  // undefined = choix par défaut (meilleure Ball, meilleure baie possédées).
-  const [ballId, setBallId] = useState<string | undefined>(undefined);
-  const [berryId, setBerryId] = useState<string | null | undefined>(undefined);
-  const selectedBall = ballId ?? balls[0]?.id ?? null;
-  const selectedBerry = berryId === undefined ? (berries[0]?.id ?? null) : berryId;
-
   const start = useMutation({
     mutationFn: (input: StartQuestExpeditionInput) =>
       api<ExpeditionDto>(`/api/quests/${quest.id}/expedition`, { method: 'POST', json: input }),
@@ -73,19 +52,8 @@ export function QuestExpeditionDialog({
     },
   });
 
-  const species = ctx.species(target.speciesId, target.formId)!;
   const check = checkTeam(ctx, zone, durationMinutes, picker.members);
   const { errors } = check;
-  const ball = selectedBall ? ctx.itemEffect(selectedBall, 'ball') : undefined;
-  const boost = selectedBerry ? ctx.itemEffect(selectedBerry, 'captureBoost') : undefined;
-  const chance = ball
-    ? captureProbability(ctx, {
-        captureRate: species.captureRate,
-        ballMultiplier: ball.catchMultiplier,
-        boostMultiplier: boost?.multiplier,
-        affinityCount: check.affinityCount,
-      })
-    : 0;
   const name = speciesName(ctx, target.speciesId, target.formId);
 
   return (
@@ -102,9 +70,10 @@ export function QuestExpeditionDialog({
           <h2 className="text-xl font-bold">Expédition légendaire : {quest.name}</h2>
           <p className="text-sm text-slate-500">
             Pars à la recherche de {name} (N.{target.level}). L’expédition dure{' '}
-            {formatDuration(durationMinutes)} et <strong>une seule Ball sera lancée</strong> : en
-            cas d’échec, il s’enfuit et tu pourras retenter. Prépare une équipe en affinité et une
-            baie.
+            {formatDuration(durationMinutes)}. Au retour, tu découvres s’il est shiny, puis tu
+            choisis ta Ball et ta baie (<strong>une seule Ball lancée</strong>) ou tu prends la
+            fuite (sans XP pour l’équipe). Relancer de suite allonge la chaîne shiny. Une équipe en
+            affinité augmente la chance de capture.
           </p>
         </div>
       </div>
@@ -123,46 +92,17 @@ export function QuestExpeditionDialog({
 
       <TeamPicker ctx={ctx} zone={zone} picker={picker} power={check.power} />
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
-        <div>
-          <h3 className="text-sm font-semibold">Ball</h3>
-          {balls.length > 0 ? (
-            <select
-              className="input mt-2"
-              value={selectedBall ?? ''}
-              onChange={(e) => setBallId(e.target.value)}
-            >
-              {balls.map((b) => (
-                <option key={b.id} value={b.id}>
-                  {b.name} (× {owned.get(b.id)})
-                </option>
-              ))}
-            </select>
-          ) : (
-            <p className="mt-2 text-sm text-red-600">Tu n’as aucune Ball.</p>
-          )}
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold">Baie (optionnelle)</h3>
-          <select
-            className="input mt-2"
-            value={selectedBerry ?? ''}
-            onChange={(e) => setBerryId(e.target.value || null)}
-          >
-            <option value="">Aucune</option>
-            {berries.map((b) => (
-              <option key={b.id} value={b.id}>
-                {b.name} (× {owned.get(b.id)})
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-
       <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
-        Chance de capture : <strong>{(chance * 100).toFixed(1)} %</strong>
-        {check.affinityCount > 0 && ` (${check.affinityCount} Pokémon en affinité)`} · taux shiny{' '}
-        {formatShinyRate(shinyProbability(ctx, { charm }))}
+        {check.affinityCount > 0
+          ? `${check.affinityCount} Pokémon en affinité`
+          : 'Aucun Pokémon en affinité'}{' '}
+        · taux shiny {formatShinyRate(shinyProbability(ctx, { chain, charm }))}
+        {chain > 0 && (
+          <>
+            {' '}
+            · ✦ chaîne {chain} ({formatMultiplier(chainMultiplier(ctx, chain))})
+          </>
+        )}
       </p>
 
       {picker.team.length > 0 && errors.length > 0 && (
@@ -181,29 +121,13 @@ export function QuestExpeditionDialog({
       )}
 
       <div className="mt-6 flex items-center justify-end gap-2">
-        {selectedBall && (
-          <img
-            src={itemIcon(ctx, selectedBall)}
-            alt={itemName(ctx, selectedBall)}
-            className="h-8"
-          />
-        )}
         <button className="btn-ghost" onClick={onClose}>
           Annuler
         </button>
         <button
           className="btn-primary"
-          disabled={
-            picker.team.length === 0 || errors.length > 0 || !selectedBall || start.isPending
-          }
-          onClick={() =>
-            selectedBall &&
-            start.mutate({
-              team: picker.team,
-              ballItemId: selectedBall,
-              berryItemId: selectedBerry,
-            })
-          }
+          disabled={picker.team.length === 0 || errors.length > 0 || start.isPending}
+          onClick={() => start.mutate({ team: picker.team })}
         >
           Partir ({formatDuration(durationMinutes)})
         </button>

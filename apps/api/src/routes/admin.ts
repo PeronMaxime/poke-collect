@@ -26,6 +26,7 @@ import {
 import type {
   AdminPlayerDetailResponse,
   AdminPlayerDto,
+  AdminSpeciesStatsDto,
   AuditLogEntryDto,
   ContentVersionDetailDto,
   ContentVersionDto,
@@ -33,7 +34,7 @@ import type {
   TelemetryResponse,
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
-import { listPlayers, playerDetail } from '../game/admin-players';
+import { listPlayers, playerDetail, speciesStats } from '../game/admin-players';
 import { telemetry } from '../game/telemetry';
 import type { sessionHooks } from '../plugins/session';
 
@@ -303,6 +304,10 @@ export async function adminRoutes(
   });
 
   app.get('/api/admin/players', async (): Promise<AdminPlayerDto[]> => listPlayers(db));
+
+  app.get('/api/admin/species-stats', async (): Promise<AdminSpeciesStatsDto[]> =>
+    speciesStats(db),
+  );
 
   app.get('/api/admin/players/:userId', async (request, reply) => {
     const { userId } = z.object({ userId: z.string().min(1).max(64) }).parse(request.params);

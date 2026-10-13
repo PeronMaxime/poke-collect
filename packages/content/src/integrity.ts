@@ -461,6 +461,9 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     if (!shopCategoryIds.has(entry.categoryId)) {
       report('error', `Catégorie « ${entry.categoryId} » inconnue`);
     }
+    if (entry.gift && !itemIds.has(entry.gift.itemId)) {
+      report('error', `Objet offert « ${entry.gift.itemId} » inconnu`);
+    }
     if (entry.price === 0) report('warning', 'Article gratuit');
     if (entry.enabled && entry.availableUntil && Date.parse(entry.availableUntil) < Date.now()) {
       report('warning', 'Date de fin dépassée : l’article n’est plus proposé');
@@ -595,6 +598,7 @@ export function findUsages(
       }
       for (const e of content.shopEntries) {
         if (e.itemId === id) usages.push(`Article de boutique « ${e.id} »`);
+        if (e.gift?.itemId === id) usages.push(`Cadeau de l’article « ${e.id} »`);
       }
       if (content.balance.evolution.tradeItemId === id) {
         usages.push('Équilibrage : objet qui remplace l’échange');

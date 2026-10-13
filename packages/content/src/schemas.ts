@@ -484,6 +484,14 @@ export const purchaseLimitSchema = z.object({
 });
 export type PurchaseLimit = z.infer<typeof purchaseLimitSchema>;
 
+/** Objet offert avec un achat : `quantity` objets tous les `every` objets achetés d'un coup. */
+export const shopGiftSchema = z.object({
+  itemId: slugSchema,
+  every: z.int().min(1).max(999),
+  quantity: z.int().min(1).max(99),
+});
+export type ShopGift = z.infer<typeof shopGiftSchema>;
+
 export const shopEntrySchema = z
   .object({
     id: slugSchema,
@@ -504,6 +512,8 @@ export const shopEntrySchema = z
     availableFrom: z.iso.datetime({ offset: true }).nullable(),
     availableUntil: z.iso.datetime({ offset: true }).nullable(),
     enabled: z.boolean(),
+    /** Objet offert selon la quantité achetée (ex. une Honor Ball par 10 Poké Balls) ; null = aucun. */
+    gift: shopGiftSchema.nullable(),
   })
   .refine(
     (e) =>

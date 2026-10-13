@@ -12,6 +12,7 @@ import {
   legendarySite,
   questStatus,
   questStepsDone,
+  questEncounter,
   resolveQuestExpedition,
 } from './quest';
 import type { QuestEvent } from './quest';
@@ -219,5 +220,22 @@ describe('expédition légendaire', () => {
     expect(withBerry.encounters[0]!.captureChance).toBeGreaterThan(
       without.encounters[0]!.captureChance,
     );
+  });
+
+  it('fuir : le même légendaire vu, ni Ball ni XP pour l’équipe', () => {
+    const fled = resolveQuestExpedition(ctx, { ...input, ballItemId: null });
+    expect(fled).toMatchObject({ ballsUsed: 0, berriesUsed: 0, xpPerMember: 0, team: [] });
+    expect(fled.encounters[0]).toMatchObject({ outcome: 'fled', speciesId: 144 });
+    expect(fled.encounters[0]!.pokemon).toBeUndefined();
+    expect(fled.encounters[0]!.isShiny).toBe(questEncounter(ctx, input).pokemon.isShiny);
+  });
+
+  it('la chaîne ne touche qu’au taux shiny : les IV parfaits restent ceux de la récompense', () => {
+    for (let seed = 0; seed < 50; seed++) {
+      const base = questEncounter(ctx, { target, seed });
+      const chained = questEncounter(ctx, { target, seed, shiny: { chain: 999 } });
+      expect(chained.shinyChance).toBeGreaterThan(base.shinyChance);
+      expect(chained.pokemon.ivs).toEqual(base.pokemon.ivs);
+    }
   });
 });

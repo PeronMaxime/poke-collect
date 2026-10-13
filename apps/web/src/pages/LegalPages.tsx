@@ -210,8 +210,8 @@ function Privacy() {
           le contenu des notifications que tu as activées ;
         </li>
         <li>
-          le prestataire d’envoi d’e-mails reçoit ton adresse lorsque tu demandes un lien de
-          réinitialisation du mot de passe.
+          le service de messagerie d’OVH SAS envoie l’e-mail, et reçoit donc ton adresse, lorsque tu
+          demandes un lien de réinitialisation du mot de passe.
         </li>
       </ul>
 

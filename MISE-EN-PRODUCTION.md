@@ -13,7 +13,8 @@ https://admin.dexpedition.fr).
 - [ ] **Supervision** : moniteur UptimeRobot sur `https://dexpedition.fr/api/health`
       (voir [INSTALLATION-SERVEUR.md](INSTALLATION-SERVEUR.md) étape 11)
 - [ ] Tester sur téléphone : expédition, installation PWA, notifications push
-- [ ] Service d'envoi d'e-mails pour « Mot de passe oublié ? » (`SMTP_URL`, SPF, DKIM)
+- [ ] E-mails « Mot de passe oublié ? » : remplir `SMTP_URL` et `MAIL_FROM` avec la boîte
+      e-mail OVH, puis tester (voir [INSTALLATION-SERVEUR.md](INSTALLATION-SERVEUR.md) étape 6)
 - [ ] Adresse **contact@dexpedition.fr** (publiée dans les pages légales) : redirection e-mail
       chez le registrar vers une boîte lue ; coordonnées complètes de l'éditeur données à OVH
 
@@ -28,6 +29,7 @@ https://admin.dexpedition.fr).
 | Déploiement                | **Docker Compose** sur le VPS : Caddy + API + Postgres                                                 |
 | Base de données            | **Postgres 17** en production (via `DATABASE_URL`) ; PGlite reste pour le développement                |
 | Lancement                  | **Bêta fermée** d'abord, ouverture ensuite                                                             |
+| E-mails                    | **Boîte e-mail OVH** du domaine, en SMTP (`ssl0.ovh.net:465`) : SPF déjà géré par OVH                  |
 | Connexion Google / Discord | Facultative pour la bêta : e-mail + mot de passe suffit ; à ajouter plus tard sans toucher au code     |
 
 Pourquoi pas Vercel : l'API est un processus qui tourne en continu (tournée des notifications
@@ -41,8 +43,7 @@ restauration, changement DNS : ≈ 30 min de coupure).
 
 ### Questions encore ouvertes
 
-1. Service d'envoi d'e-mails (Resend, Brevo…) pour la réinitialisation du mot de passe.
-2. Où stocker les sauvegardes hors du VPS (OVH Object Storage, Backblaze B2…).
+1. Où stocker les sauvegardes hors du VPS (OVH Object Storage, Backblaze B2…).
 
 ---
 
@@ -117,7 +118,8 @@ Contraintes qui découlent du code actuel :
       demandé, données du jeu supprimées en cascade ; refusée pour un compte admin
 - [x] Secrets de production documentés dans `.env.production.example` (génération :
       `openssl rand -hex 32`, `npx web-push generate-vapid-keys`)
-- [ ] Choisir le service d'envoi d'e-mails, déclarer le domaine (SPF, DKIM) et remplir `SMTP_URL`
+- [x] Service d'envoi d'e-mails : la boîte e-mail OVH du domaine (SMTP `ssl0.ovh.net:465`)
+- [ ] Remplir `SMTP_URL` et `MAIL_FROM` sur le serveur, puis tester « Mot de passe oublié ? »
 - [x] Remplir le `.env` du serveur (phase 3)
 - [x] Premier compte admin : inscription dans le jeu, puis sur le serveur
       `docker compose -f docker-compose.prod.yml exec api pnpm admin:promote <email>`

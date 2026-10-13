@@ -17,6 +17,54 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '13 octobre 2026',
+    title: 'Chasse aux légendaires shiny et expéditions favorites',
+    changes: [
+      {
+        section: 'Expéditions légendaires',
+        items: [
+          'La Ball et la baie se choisissent au retour de l’expédition, une fois le légendaire découvert : tu vois tout de suite s’il est shiny.',
+          'Pas shiny ? Prends la fuite (ton équipe ne gagne alors pas d’XP) et relance l’expédition depuis les Quêtes : la chaîne shiny fonctionne aussi pour les légendaires et augmente tes chances à chaque relance.',
+          'Un légendaire a toujours 3 IV parfaits, quelle que soit la chaîne.',
+          'La chaîne en cours et le délai pour relancer sont affichés sur la carte de la quête.',
+        ],
+      },
+      {
+        section: 'Expéditions',
+        items: [
+          'Mets tes zones préférées en favori avec l’étoile : elles apparaissent en tête de page, dans une section « Favoris ».',
+          'Survole une expédition en cours pour voir son résumé : équipe, Balls, baies et filtres de capture.',
+        ],
+      },
+      {
+        section: 'PC',
+        items: [
+          'Ajoute ou retire un favori directement depuis la liste, avec le cœur de chaque Pokémon.',
+          'Nouveau filtre par type.',
+          'Bouton « Max » pour donner autant de Bonbons que possible, avec un aperçu de l’XP gagnée et du niveau atteint.',
+          'À l’évolution, le Pokémon évolué apparaît comme dans le Pokédex : en ombre s’il n’a jamais été vu, grisé s’il a été vu, en couleur s’il a déjà été capturé.',
+          'Transfère un Pokémon dès son éclosion, sa restauration au Musée ou sa capture, sans passer par le PC.',
+        ],
+      },
+      {
+        section: 'Pokédex',
+        items: [
+          'Pokédex shiny : un Pokémon reste en ombre tant que tu n’as pas croisé sa version shiny.',
+        ],
+      },
+      {
+        section: 'Boutique',
+        items: [
+          'Une Honor Ball offerte toutes les 10 Poké Balls achetées d’un coup (2 pour 20, etc.).',
+        ],
+      },
+      {
+        section: 'Carte de dresseur',
+        items: ['Nouvelle statistique « Shiny ratés » : les shiny rencontrés mais pas capturés.'],
+      },
+    ],
+  },
+  {
     date: '12 octobre 2026',
     title: 'Expéditions légendaires et classement',
     changes: [

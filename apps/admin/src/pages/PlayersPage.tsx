@@ -317,6 +317,7 @@ function PlayerCardDialog({ userId, onClose }: { userId: string; onClose: () => 
         { label: 'Pokémon capturés', value: card.captures },
         { label: 'Pokémon possédés', value: card.pokemonOwned },
         { label: 'Chromatiques possédés', value: card.shiniesOwned },
+        { label: 'Shiny ratés', value: card.shiniesMissed },
         { label: 'Expéditions terminées', value: card.expeditionsCompleted },
         { label: 'Combats gagnés', value: card.battlesWon },
         { label: 'Combats perdus', value: card.battlesLost },
