@@ -120,6 +120,8 @@ export interface PokedexEntryDto {
   seen: boolean;
   caught: boolean;
   caughtShiny: boolean;
+  /** Version shiny déjà rencontrée (capturée ou non). */
+  seenShiny: boolean;
   firstCaughtAt: string | null;
 }
 
@@ -201,6 +203,8 @@ export interface TrainerCardResponse {
   /** Pokémon actuellement possédés, dont chromatiques. */
   pokemonOwned: number;
   shiniesOwned: number;
+  /** Pokémon chromatiques rencontrés en expédition mais pas capturés. */
+  shiniesMissed: number;
   expeditionsCompleted: number;
   battlesWon: number;
   battlesLost: number;
@@ -423,13 +427,35 @@ export const startExpeditionInputSchema = z.object({
 });
 export type StartExpeditionInput = z.infer<typeof startExpeditionInputSchema>;
 
-/** Expédition légendaire d'une quête réclamée : une seule Ball (obligatoire), baie optionnelle. */
+/** Expédition légendaire d'une quête réclamée : l'équipe seulement, la Ball se choisit au retour. */
 export const startQuestExpeditionInputSchema = z.object({
   team: z.array(z.uuid()).min(1).max(6),
-  ballItemId: slugSchema,
-  berryItemId: slugSchema.nullable(),
 });
 export type StartQuestExpeditionInput = z.infer<typeof startQuestExpeditionInputSchema>;
+
+/**
+ * Décision au retour d'une expédition légendaire : une Ball (et une baie) à lancer, ou la fuite
+ * (`ballItemId` null). Ignorée pour une expédition normale.
+ */
+export const claimExpeditionInputSchema = z.object({
+  ballItemId: slugSchema.nullable(),
+  berryItemId: slugSchema.nullable(),
+});
+export type ClaimExpeditionInput = z.infer<typeof claimExpeditionInputSchema>;
+
+/** Légendaire rencontré au retour, avant de lancer la Ball ou de fuir. */
+export interface LegendaryEncounterDto {
+  expeditionId: string;
+  questId: string;
+  speciesId: number;
+  formId: number | null;
+  level: number;
+  gender: PokemonDto['gender'];
+  isShiny: boolean;
+  shinyChance: number;
+  /** Maillon de la chaîne de la quête au départ. */
+  shinyChain: number;
+}
 
 /** Résultat stocké : chaque Pokémon capturé reçoit son identifiant en base. */
 export interface StoredExpeditionResult extends ExpeditionResult {
@@ -478,7 +504,21 @@ export interface ExpeditionsResponse {
   active: ExpeditionDto[];
   /** Chaînes de zone actives (les zones absentes repartent de 0). */
   chains: ShinyChainDto[];
+  /** Chaînes des expéditions légendaires, par quête (relancer pour viser un shiny). */
+  questChains: QuestChainDto[];
+  /** Zones mises en favori, dans l'ordre où elles ont été ajoutées. */
+  favoriteZoneIds: string[];
 }
+
+/** Chaîne d'une expédition légendaire : comme une chaîne de zone, propre à la quête. */
+export interface QuestChainDto {
+  questId: string;
+  chain: number;
+  expiresAt: string | null;
+}
+
+export const favoriteZoneInputSchema = z.object({ favorite: z.boolean() });
+export type FavoriteZoneInput = z.infer<typeof favoriteZoneInputSchema>;
 
 export interface ClaimExpeditionResponse {
   expedition: ExpeditionDto;
@@ -579,6 +619,8 @@ export interface PurchaseResponse {
   /** Objets reçus (lots × taille du lot). */
   quantity: number;
   totalPrice: number;
+  /** Objets offerts avec l'achat (ex. Honor Balls) ; null = aucun. */
+  gift: { itemId: string; quantity: number } | null;
   /** Solde après l'achat. */
   currency: number;
   /** Quantité de l'objet dans le sac après l'achat. */
@@ -753,6 +795,21 @@ export interface TelemetryResponse {
 export const ONLINE_WINDOW_MS = 3 * 60_000;
 /** Actif : vu au cours des 7 derniers jours. */
 export const ACTIVE_WINDOW_MS = 7 * 24 * 3_600_000;
+
+/** Pokémon d'une espèce chez les joueurs (toutes formes confondues). */
+export interface AdminSpeciesStatsDto {
+  speciesId: number;
+  /** Obtenus dans cette espèce depuis le début (captures, starters, œufs… ; transférés compris). */
+  captured: number;
+  /** Dont shiny. */
+  capturedShiny: number;
+  /** Actuellement dans les PC, dans leur espèce actuelle (hors transférés). */
+  owned: number;
+  /** Transférés depuis le début, dans leur espèce au moment du transfert. */
+  transferred: number;
+  /** Joueurs qui l'ont déjà capturé (Pokédex). */
+  trainers: number;
+}
 
 export interface AdminPlayerDto {
   id: string;

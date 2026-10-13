@@ -174,8 +174,9 @@ export function generateQuestPokemon(
 
 /**
  * Le Pokémon d'une quête ne s'offre pas : une fois la récompense réclamée, une expédition
- * légendaire (lancée depuis les quêtes, elle occupe un emplacement) le rencontre et lance une
- * seule Ball. En cas d'échec, il s'enfuit et l'on peut retenter.
+ * légendaire (lancée depuis les quêtes, elle occupe un emplacement) le rencontre. Au retour, le
+ * joueur le découvre (shiny ou non) puis lance une seule Ball, avec une baie, ou prend la fuite.
+ * En cas d'échec ou de fuite, on peut retenter : la relance allonge la chaîne shiny de la quête.
  */
 export function legendarySite(quest: Quest, target: QuestPokemon): ExpeditionSite {
   const { expedition } = target;
@@ -188,16 +189,35 @@ export function legendarySite(quest: Quest, target: QuestPokemon): ExpeditionSit
   };
 }
 
-export interface QuestExpeditionInput {
+export interface QuestEncounterInput {
   /** Pokémon visé (récompense de la quête) et son expédition (affinités). */
   target: QuestPokemon;
   seed: number;
+  /** Chaîne de la quête (figée au départ) et Charme Chroma. */
+  shiny?: ShinyFactors;
+}
+
+export interface QuestExpeditionInput extends QuestEncounterInput {
   team: readonly TeamMember[];
-  ballItemId: string;
+  /** Ball lancée ; null = le joueur prend la fuite. */
+  ballItemId: string | null;
   berryItemId: string | null;
   bonuses?: PlayerBonuses;
-  /** Charme Chroma uniquement : pas de chaîne de zone pour un légendaire. */
-  shiny?: ShinyFactors;
+}
+
+/**
+ * Légendaire rencontré au retour de l'expédition, avant la décision du joueur : ne dépend que du
+ * seed, de la chaîne et du Charme (pas de la Ball), donc identique à ce que donnera la capture.
+ * La chaîne ne joue que sur le taux shiny : les IV parfaits sont ceux de la récompense, toujours.
+ */
+export function questEncounter(
+  ctx: GameContext,
+  input: QuestEncounterInput,
+): { pokemon: PokemonInstance; shinyChance: number; rng: Rng } {
+  const rng = createRng(input.seed);
+  const shinyChance = shinyProbability(ctx, input.shiny);
+  const pokemon = generateQuestPokemon(ctx, rng, input.target, shinyChance);
+  return { pokemon, shinyChance, rng };
 }
 
 /**
@@ -208,24 +228,27 @@ export function resolveQuestExpedition(
   ctx: GameContext,
   input: QuestExpeditionInput,
 ): ExpeditionResult {
-  const rng = createRng(input.seed);
   const { target } = input;
   const species = ctx.species(target.speciesId, target.formId)!;
-  const shinyChance = shinyProbability(ctx, input.shiny);
-  const wild = generateQuestPokemon(ctx, rng, target, shinyChance);
+  const { pokemon: wild, shinyChance, rng } = questEncounter(ctx, input);
   const bonuses = input.bonuses ?? NO_BONUSES;
-  const berry = input.berryItemId ? ctx.itemEffect(input.berryItemId, 'captureBoost') : undefined;
-  const captureChance = captureProbability(ctx, {
-    captureRate: species.captureRate,
-    ballMultiplier: ctx.itemEffect(input.ballItemId, 'ball')?.catchMultiplier ?? 1,
-    boostMultiplier: berry?.multiplier ?? 1,
-    affinityCount: countAffinity(ctx, target.expedition, input.team),
-    bonusMultiplier: bonuses.capture,
-  });
-  const captured = rng.chance(captureChance);
-  const xpPerMember = Math.floor(
-    defeatXp(species, target.level) * ctx.balance.xp.multiplier * bonuses.xp,
-  );
+  const fled = input.ballItemId === null;
+  const berry =
+    !fled && input.berryItemId ? ctx.itemEffect(input.berryItemId, 'captureBoost') : undefined;
+  const captureChance = fled
+    ? 0
+    : captureProbability(ctx, {
+        captureRate: species.captureRate,
+        ballMultiplier: ctx.itemEffect(input.ballItemId!, 'ball')?.catchMultiplier ?? 1,
+        boostMultiplier: berry?.multiplier ?? 1,
+        affinityCount: countAffinity(ctx, target.expedition, input.team),
+        bonusMultiplier: bonuses.capture,
+      });
+  const captured = !fled && rng.chance(captureChance);
+  // Fuir ne rapporte rien : ni XP ni bonheur pour l'équipe.
+  const xpPerMember = fled
+    ? 0
+    : Math.floor(defeatXp(species, target.level) * ctx.balance.xp.multiplier * bonuses.xp);
   return {
     encounters: [
       {
@@ -233,16 +256,18 @@ export function resolveQuestExpedition(
         formId: species.form?.id ?? null,
         level: target.level,
         isShiny: wild.isShiny,
-        outcome: captured ? 'captured' : 'escaped',
+        outcome: fled ? 'fled' : captured ? 'captured' : 'escaped',
         captureChance,
         ...(captured && { pokemon: wild }),
       },
     ],
     loot: [],
-    team: applyTeamXp(ctx, input.team, xpPerMember, ctx.balance.xp.happinessPerExpedition),
+    team: fled
+      ? []
+      : applyTeamXp(ctx, input.team, xpPerMember, ctx.balance.xp.happinessPerExpedition),
     xpPerMember,
     pity: {},
-    ballsUsed: 1,
+    ballsUsed: fled ? 0 : 1,
     berriesUsed: berry ? 1 : 0,
     shinyChance,
   };

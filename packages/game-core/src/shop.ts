@@ -93,14 +93,23 @@ export function shopEntryStatus(
   return { state: limit.remainingLots === 0 ? 'soldOut' : 'available', ...limit };
 }
 
-/** Prix et objets reçus pour `lots` lots (le prix vient toujours du contenu publié). */
+/** Objets offerts pour `quantity` objets achetés d'un coup (ex. 1 Honor Ball par 10 Poké Balls). */
+export function purchaseGift(entry: Pick<ShopEntry, 'gift'>, quantity: number): ItemStack | null {
+  const { gift } = entry;
+  const count = gift ? Math.floor(quantity / gift.every) * gift.quantity : 0;
+  return gift && count > 0 ? { itemId: gift.itemId, quantity: count } : null;
+}
+
+/** Prix, objets reçus et cadeau pour `lots` lots (le prix vient toujours du contenu publié). */
 export function purchaseQuote(
   entry: ShopEntry,
   lots: number,
-): { totalPrice: number; stack: ItemStack } {
+): { totalPrice: number; stack: ItemStack; gift: ItemStack | null } {
+  const quantity = entry.lotSize * lots;
   return {
     totalPrice: entry.price * lots,
-    stack: { itemId: entry.itemId, quantity: entry.lotSize * lots },
+    stack: { itemId: entry.itemId, quantity },
+    gift: purchaseGift(entry, quantity),
   };
 }
 
@@ -115,7 +124,7 @@ export function maxPurchasableLots(
 }
 
 export type PurchaseCheck =
-  | { ok: true; totalPrice: number; stack: ItemStack }
+  | { ok: true; totalPrice: number; stack: ItemStack; gift: ItemStack | null }
   | { ok: false; error: 'NOT_ON_SALE' | 'ENTRY_LOCKED' }
   | { ok: false; error: 'LIMIT_REACHED'; remainingLots: number; nextLotsAt: Date | null }
   | { ok: false; error: 'NOT_ENOUGH_MONEY'; totalPrice: number };

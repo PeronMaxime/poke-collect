@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import { STAT_NAMES } from '@poke/data';
 import { MAX_IV } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { HatchEggsResponse, PokemonDto } from '@poke/shared';
+import type { HatchEggsResponse, PokemonDto, TransferPokemonResponse } from '@poke/shared';
 import {
   Egg,
   GenderSymbol,
@@ -17,7 +17,7 @@ import {
 } from '../../components/ui';
 import { TagPicker } from '../../components/tags';
 import { api } from '../../lib/api';
-import { keys, newInDexTracker, usePokemon } from '../../lib/game';
+import { PLAYER_STATE_KEYS, keys, newInDexTracker, usePokemon } from '../../lib/game';
 import { errorText, natureLabel, speciesName } from '../../lib/labels';
 
 const STEP = 0.5; // secondes entre deux éclosions
@@ -158,7 +158,10 @@ function HatchContent({
   );
 }
 
-/** Favori et étiquettes directement depuis l'éclosion ou l'expédition, sans passer par le PC. */
+/**
+ * Favori, étiquettes et transfert directement depuis l'éclosion, le Musée ou l'expédition, sans
+ * passer par le PC.
+ */
 export function NewbornActions({ pokemon: p }: { pokemon: PokemonDto }) {
   const queryClient = useQueryClient();
   const toggleLock = useMutation({
@@ -166,6 +169,24 @@ export function NewbornActions({ pokemon: p }: { pokemon: PokemonDto }) {
       api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { locked: !p.locked } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.pokemon }),
   });
+  const [confirming, setConfirming] = useState(false);
+  const transfer = useMutation({
+    mutationFn: () =>
+      api<TransferPokemonResponse>('/api/pokemon/transfer', {
+        method: 'POST',
+        json: { ids: [p.id] },
+      }),
+    onSuccess: () =>
+      Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+  });
+  if (transfer.data) {
+    const candies = transfer.data.gained.reduce((sum, g) => sum + g.quantity, 0);
+    return (
+      <p className="mt-1 text-slate-500">
+        Transféré · +{candies} Bonbon{candies > 1 ? 's' : ''}
+      </p>
+    );
+  }
   return (
     <>
       <button
@@ -181,6 +202,40 @@ export function NewbornActions({ pokemon: p }: { pokemon: PokemonDto }) {
       </button>
       {toggleLock.error && <p className="text-red-600">{errorText(toggleLock.error)}</p>}
       <TagPicker pokemon={p} compact />
+      {confirming ? (
+        <span className="mt-1 flex items-center gap-1">
+          <button
+            type="button"
+            className="rounded-full bg-red-600 px-2 py-0.5 font-semibold text-white hover:bg-red-700"
+            disabled={transfer.isPending}
+            onClick={() => transfer.mutate()}
+          >
+            Confirmer
+          </button>
+          <button
+            type="button"
+            className="rounded-full px-2 py-0.5 text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+            onClick={() => setConfirming(false)}
+          >
+            Annuler
+          </button>
+        </span>
+      ) : (
+        <button
+          type="button"
+          className="mt-1 rounded-full px-2 py-0.5 text-slate-500 transition hover:bg-red-50 hover:text-red-600 disabled:opacity-40 dark:hover:bg-red-950/40"
+          disabled={p.locked || p.busy}
+          title={
+            p.locked
+              ? 'Retire-le des favoris pour pouvoir le transférer'
+              : 'Transférer contre des Bonbons de lignée'
+          }
+          onClick={() => setConfirming(true)}
+        >
+          Transférer
+        </button>
+      )}
+      {transfer.error && <p className="text-red-600">{errorText(transfer.error)}</p>}
     </>
   );
 }

@@ -20,17 +20,19 @@ type Sort = keyof typeof SORTS;
 const NON_POKEMON_TYPES = new Set(['stellar', 'unknown', 'shadow']);
 const POKEMON_TYPES = types.filter((t) => !NON_POKEMON_TYPES.has(t.name));
 
-/** Filtre par type des sélecteurs d'équipe : `all` ou le nom d'un type. */
+/** Filtre par type (sélecteurs d'équipe, PC) : `all` ou le nom d'un type. */
 export function TypeFilterSelect({
   value,
   onChange,
+  className = 'ml-1 py-0.5 text-xs',
 }: {
   value: string;
   onChange: (value: string) => void;
+  className?: string;
 }) {
   return (
     <select
-      className="input ml-1 w-auto py-0.5 text-xs"
+      className={`input w-auto ${className}`}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       aria-label="Filtrer par type"

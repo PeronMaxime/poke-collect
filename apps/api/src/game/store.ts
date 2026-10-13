@@ -9,6 +9,7 @@ import {
   pokemon,
   questProgress,
   rewardClaims,
+  speciesCaptures,
   trainerBattles,
   trainerProgress,
 } from '@poke/db';
@@ -104,6 +105,23 @@ export async function insertPokemon(
   { origin, originRegion, at }: { origin: PokemonOrigin; originRegion: string | null; at: Date },
 ): Promise<PokemonRow[]> {
   if (list.length === 0) return [];
+  const captures = new Map<number, { captured: number; shiny: number }>();
+  for (const p of list) {
+    const c = captures.get(p.speciesId) ?? { captured: 0, shiny: 0 };
+    c.captured++;
+    if (p.isShiny) c.shiny++;
+    captures.set(p.speciesId, c);
+  }
+  await db
+    .insert(speciesCaptures)
+    .values([...captures].map(([speciesId, c]) => ({ speciesId, ...c })))
+    .onConflictDoUpdate({
+      target: speciesCaptures.speciesId,
+      set: {
+        captured: sql`${speciesCaptures.captured} + excluded.captured`,
+        shiny: sql`${speciesCaptures.shiny} + excluded.shiny`,
+      },
+    });
   return db
     .insert(pokemon)
     .values(
@@ -319,17 +337,21 @@ export async function recordPokedex(
   ownerId: string,
   {
     seen,
+    seenShiny = [],
     caught,
     at,
   }: {
     seen: Iterable<number>;
+    /** Espèces rencontrées en version shiny (capturées ou non). */
+    seenShiny?: Iterable<number>;
     caught: readonly Pick<PokemonInstance, 'speciesId' | 'formId' | 'isShiny'>[];
     at: Date;
   },
 ): Promise<NewInDex> {
   const caughtSet = new Set(caught.map((p) => p.speciesId));
   const shinySet = new Set(caught.filter((p) => p.isShiny).map((p) => p.speciesId));
-  const all = new Set([...seen, ...caughtSet]);
+  const seenShinySet = new Set([...seenShiny, ...shinySet]);
+  const all = new Set([...seen, ...seenShinySet, ...caughtSet]);
   if (all.size === 0) return { newSpeciesIds: [], newFormIds: [] };
 
   const before = await db
@@ -355,6 +377,7 @@ export async function recordPokedex(
         seen: true,
         caught: isCaught,
         caughtShiny: isShiny,
+        seenShiny: seenShinySet.has(speciesId),
         firstCaughtAt: isCaught ? at : null,
       })
       .onConflictDoUpdate({
@@ -363,6 +386,7 @@ export async function recordPokedex(
           seen: true,
           caught: sql`${pokedex.caught} or excluded.caught`,
           caughtShiny: sql`${pokedex.caughtShiny} or excluded.caught_shiny`,
+          seenShiny: sql`${pokedex.seenShiny} or excluded.seen_shiny`,
           firstCaughtAt: sql`coalesce(${pokedex.firstCaughtAt}, excluded.first_caught_at)`,
         },
       });

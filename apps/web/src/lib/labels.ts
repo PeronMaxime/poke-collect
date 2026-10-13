@@ -282,6 +282,8 @@ export const GAME_ERRORS: Record<string, string> = {
   QUEST_NOT_CLAIMED: 'Réclame d’abord la récompense de la quête.',
   QUEST_POKEMON_CAUGHT: 'Le légendaire de cette quête est déjà capturé.',
   QUEST_EXPEDITION_RUNNING: 'Une expédition légendaire est déjà en cours pour cette quête.',
+  DECISION_REQUIRED: 'Choisis une Ball ou prends la fuite.',
+  NOT_A_LEGENDARY_EXPEDITION: 'Ce n’est pas une expédition légendaire en attente.',
   QUEST_HAS_NO_LAIR: 'Cette quête n’a pas de repaire à explorer.',
   NO_EFFECT: 'Cet objet n’aurait aucun effet sur ce Pokémon.',
   CHOICE_REQUIRED: 'Choisis d’abord la statistique ou le talent.',

@@ -10,6 +10,7 @@ import {
   legendarySite,
   playerBonuses,
   playerSlots,
+  questEncounter,
   resolveExpedition,
   resolveQuestExpedition,
   zoneChainStatus,
@@ -21,6 +22,8 @@ import type {
   ZoneChainStatus,
 } from '@poke/game-core';
 import type {
+  ClaimExpeditionInput,
+  LegendaryEncounterDto,
   StartExpeditionInput,
   StartQuestExpeditionInput,
   StoredExpeditionResult,
@@ -73,21 +76,26 @@ export async function requireStartedProfile(db: Db, userId: string) {
   return profile;
 }
 
+/** Clé de chaîne d'une expédition légendaire : chaque quête a sa propre chaîne. */
+export const questChainKey = (questId: string) => `quest:${questId}`;
+
 /**
- * Chaînes de zone du joueur (bonus shiny) : expéditions en cours, ou récupérées depuis moins
- * que le délai de relance. Une zone absente repart de 0.
+ * Chaînes du joueur (bonus shiny) : par zone, et par quête pour les expéditions légendaires
+ * (clé `questChainKey`). Expéditions en cours, ou récupérées depuis moins que le délai de
+ * relance ; une chaîne absente repart de 0.
  */
 export async function shinyChains(
   db: Db,
   ctx: GameContext,
   userId: string,
   now: Date,
-  zoneId?: string,
+  only?: { zoneId: string } | { questId: string },
 ): Promise<Map<string, ZoneChainStatus>> {
   const since = new Date(now.getTime() - ctx.balance.shiny.chainWindowMinutes * 60_000);
   const rows = await db
     .select({
       zoneId: expeditions.zoneId,
+      questId: expeditions.questId,
       chain: expeditions.shinyChain,
       claimedAt: expeditions.claimedAt,
     })
@@ -95,14 +103,15 @@ export async function shinyChains(
     .where(
       and(
         eq(expeditions.ownerId, userId),
-        isNull(expeditions.questId), // les expéditions légendaires n'entrent pas dans les chaînes
-        zoneId ? eq(expeditions.zoneId, zoneId) : undefined,
+        only && 'zoneId' in only ? eq(expeditions.zoneId, only.zoneId) : undefined,
+        only && 'questId' in only ? eq(expeditions.questId, only.questId) : undefined,
         or(isNull(expeditions.claimedAt), gte(expeditions.claimedAt, since)),
       ),
     );
   const byZone = new Map<string, typeof rows>();
   for (const r of rows) {
-    if (r.zoneId) byZone.set(r.zoneId, [...(byZone.get(r.zoneId) ?? []), r]);
+    const key = r.questId ? questChainKey(r.questId) : r.zoneId;
+    if (key) byZone.set(key, [...(byZone.get(key) ?? []), r]);
   }
   const chains = new Map<string, ZoneChainStatus>();
   for (const [id, runs] of byZone) {
@@ -182,7 +191,8 @@ export async function startExpedition(
     };
     const balls = await reserve(input.ballItemId, input.ballCount);
     const berries = await reserve(input.berryItemId);
-    const chain = (await shinyChains(tx, ctx, userId, now, zone.id)).get(zone.id)?.chain ?? 0;
+    const chain =
+      (await shinyChains(tx, ctx, userId, now, { zoneId: zone.id })).get(zone.id)?.chain ?? 0;
 
     const [row] = await tx
       .insert(expeditions)
@@ -211,8 +221,9 @@ export async function startExpedition(
 /**
  * Lance l'expédition légendaire d'une quête réclamée (depuis les quêtes uniquement) vers le
  * prochain Pokémon de la récompense pas encore capturé, selon sa configuration (durée, PE
- * minimale, types requis, région de la quête) : un emplacement d'expédition, une seule Ball et
- * une baie au plus. Une seule à la fois par quête.
+ * minimale, types requis, région de la quête) : un emplacement d'expédition, et le maillon de la
+ * chaîne de la quête. La Ball et la baie se choisissent au retour, une fois le légendaire vu.
+ * Une seule à la fois par quête.
  */
 export async function startQuestExpedition(
   db: Db,
@@ -226,10 +237,6 @@ export async function startQuestExpedition(
   await requireStartedProfile(db, userId);
   const quest = ctx.quest(questId);
   if (!quest) throw new GameError(404, 'QUEST_NOT_FOUND');
-  if (!ctx.itemEffect(input.ballItemId, 'ball')) throw new GameError(400, 'NOT_A_BALL');
-  if (input.berryItemId && !ctx.itemEffect(input.berryItemId, 'captureBoost')) {
-    throw new GameError(400, 'NOT_A_BERRY');
-  }
 
   return db.transaction(async (tx) => {
     const [progress] = await tx
@@ -256,12 +263,8 @@ export async function startQuestExpedition(
     const team = await availableTeam(tx, userId, input.team, now);
     const { errors } = checkTeam(ctx, legendarySite(quest, target), durationMinutes, team);
     if (errors.length > 0) throw new GameError(400, 'TEAM_INVALID', { errors });
-
-    for (const itemId of [input.ballItemId, input.berryItemId]) {
-      if (itemId && !(await takeItems(tx, userId, itemId, 1))) {
-        throw new GameError(409, 'NOT_ENOUGH_ITEMS');
-      }
-    }
+    const key = questChainKey(quest.id);
+    const chain = (await shinyChains(tx, ctx, userId, now, { questId: quest.id })).get(key);
 
     const [row] = await tx
       .insert(expeditions)
@@ -271,14 +274,15 @@ export async function startQuestExpedition(
         slotIndex,
         team: input.team,
         durationMinutes,
-        ballItemId: input.ballItemId,
-        balls: 1,
-        berryItemId: input.berryItemId,
-        berries: input.berryItemId ? 1 : 0,
+        ballItemId: null,
+        balls: 0,
+        berryItemId: null,
+        berries: 0,
         contentVersionId: ctx.content.versionId,
         startedAt: now,
         endsAt: new Date(now.getTime() + durationMinutes * 60_000),
         seed: newSeed(),
+        shinyChain: chain?.chain ?? 0,
       })
       .returning();
     return row!;
@@ -323,16 +327,19 @@ export async function cancelExpedition(
 }
 
 /**
- * Réclame une expédition terminée : calcule le résultat (seed + contenu de la version de
- * départ) puis l'applique en une transaction. Une expédition ne se réclame qu'une fois.
+ * Expédition légendaire en attente de décision : lancée sans Ball (les anciennes réservaient
+ * leur Ball au départ et se résolvent seules).
  */
-export async function claimExpedition(
+const awaitsDecision = (row: ExpeditionRow) => !!row.questId && row.balls === 0;
+
+/** Expédition terminée et pas encore réclamée du joueur, avec son contenu de départ. */
+async function finishedExpedition(
   db: Db,
   content: ContentCache,
   userId: string,
   expeditionId: string,
   now: Date,
-): Promise<{ expedition: ExpeditionRow; captured: PokemonRow[] }> {
+) {
   const [found] = await db
     .select()
     .from(expeditions)
@@ -340,12 +347,82 @@ export async function claimExpedition(
   if (!found) throw new GameError(404, 'EXPEDITION_NOT_FOUND');
   if (found.claimedAt) throw new GameError(409, 'ALREADY_CLAIMED');
   if (now < found.endsAt) throw new GameError(409, 'NOT_FINISHED', { endsAt: found.endsAt });
+  return { found, ctx: await content.version(found.contentVersionId) };
+}
 
-  const ctx = await content.version(found.contentVersionId);
+/** Pokémon visé par une expédition légendaire : le prochain de la récompense pas encore capturé. */
+async function legendaryTarget(db: Db, ctx: GameContext, userId: string, questId: string) {
+  const [questRow] = await db
+    .select()
+    .from(questProgress)
+    .where(and(eq(questProgress.ownerId, userId), eq(questProgress.questId, questId)));
+  const target = questRow && ctx.quest(questId)?.rewards.pokemon[questRow.pokemonCaught];
+  return { questRow, target };
+}
+
+/**
+ * Légendaire rencontré au retour d'une expédition légendaire, avant la décision : le joueur voit
+ * s'il est shiny, puis lance sa Ball ou prend la fuite (et relance pour allonger la chaîne).
+ */
+export async function legendaryEncounter(
+  db: Db,
+  content: ContentCache,
+  userId: string,
+  expeditionId: string,
+  now: Date,
+): Promise<LegendaryEncounterDto> {
+  const { found, ctx } = await finishedExpedition(db, content, userId, expeditionId, now);
+  if (!awaitsDecision(found)) throw new GameError(409, 'NOT_A_LEGENDARY_EXPEDITION');
+  const { target } = await legendaryTarget(db, ctx, userId, found.questId!);
+  if (!target) throw new GameError(409, 'QUEST_POKEMON_CAUGHT');
+  const charm = await shinyCharm(db, ctx, userId);
+  const { pokemon: wild, shinyChance } = questEncounter(ctx, {
+    target,
+    seed: found.seed,
+    shiny: { chain: found.shinyChain, charm },
+  });
+  return {
+    expeditionId: found.id,
+    questId: found.questId!,
+    speciesId: wild.speciesId,
+    formId: wild.formId ?? null,
+    level: wild.level,
+    gender: wild.gender,
+    isShiny: wild.isShiny,
+    shinyChance,
+    shinyChain: found.shinyChain,
+  };
+}
+
+/**
+ * Réclame une expédition terminée : calcule le résultat (seed + contenu de la version de
+ * départ) puis l'applique en une transaction. Une expédition ne se réclame qu'une fois.
+ * Une expédition légendaire exige la décision du joueur : la Ball (et la baie) à lancer, ou la
+ * fuite (`ballItemId` null).
+ */
+export async function claimExpedition(
+  db: Db,
+  content: ContentCache,
+  userId: string,
+  expeditionId: string,
+  now: Date,
+  decision?: ClaimExpeditionInput,
+): Promise<{ expedition: ExpeditionRow; captured: PokemonRow[] }> {
+  const { found, ctx } = await finishedExpedition(db, content, userId, expeditionId, now);
   // Expédition légendaire : pas de zone, la quête (de la version de départ) la décrit.
   const quest = found.questId ? ctx.quest(found.questId) : undefined;
   const zone = found.zoneId ? ctx.zone(found.zoneId) : undefined;
   if (!found.questId && !zone) throw new GameError(500, 'ZONE_MISSING_IN_VERSION');
+  const deciding = awaitsDecision(found);
+  if (deciding) {
+    if (!decision) throw new GameError(400, 'DECISION_REQUIRED');
+    if (decision.ballItemId && !ctx.itemEffect(decision.ballItemId, 'ball')) {
+      throw new GameError(400, 'NOT_A_BALL');
+    }
+    if (decision.berryItemId && !ctx.itemEffect(decision.berryItemId, 'captureBoost')) {
+      throw new GameError(400, 'NOT_A_BERRY');
+    }
+  }
   // Les quêtes suivent le contenu publié, pas la version de départ de l'expédition.
   const current = await content.get();
 
@@ -357,6 +434,24 @@ export async function claimExpedition(
       .where(and(eq(expeditions.id, found.id), isNull(expeditions.claimedAt)))
       .returning();
     if (!locked) throw new GameError(409, 'ALREADY_CLAIMED');
+
+    // Balls et baies engagées : réservées au départ, ou prises maintenant (légendaire, sauf fuite).
+    let { ballItemId, balls, berryItemId, berries } = found;
+    if (deciding && decision?.ballItemId) {
+      ballItemId = decision.ballItemId;
+      berryItemId = decision.berryItemId;
+      balls = 1;
+      berries = berryItemId ? 1 : 0;
+      for (const itemId of [ballItemId, berryItemId]) {
+        if (itemId && !(await takeItems(tx, userId, itemId, 1))) {
+          throw new GameError(409, 'NOT_ENOUGH_ITEMS');
+        }
+      }
+      await tx
+        .update(expeditions)
+        .set({ ballItemId, balls, berryItemId, berries })
+        .where(eq(expeditions.id, found.id));
+    }
 
     const teamRows = found.team.length
       ? await tx
@@ -371,21 +466,19 @@ export async function claimExpedition(
     let questRow: QuestProgressRow | undefined;
     if (found.questId) {
       // Expédition légendaire : le prochain Pokémon de la récompense pas encore capturé.
-      [questRow] = await tx
-        .select()
-        .from(questProgress)
-        .where(and(eq(questProgress.ownerId, userId), eq(questProgress.questId, found.questId)));
-      const target = questRow && quest?.rewards.pokemon[questRow.pokemonCaught];
+      const legendary = await legendaryTarget(tx, ctx, userId, found.questId);
+      questRow = legendary.questRow;
+      const { target } = legendary;
       result =
-        target && found.ballItemId
+        target && (deciding || ballItemId)
           ? resolveQuestExpedition(ctx, {
               target,
               seed: found.seed,
               team,
-              ballItemId: found.ballItemId,
-              berryItemId: found.berryItemId,
+              ballItemId,
+              berryItemId,
               bonuses,
-              shiny: { charm },
+              shiny: { chain: found.shinyChain, charm },
             })
           : EMPTY_RESULT; // plus rien à capturer (quête modifiée) : Ball et baie rendues
     } else if (zone) {
@@ -431,6 +524,7 @@ export async function claimExpedition(
     }
     const newInDex = await recordPokedex(tx, userId, {
       seen: result.encounters.map((e) => e.speciesId),
+      seenShiny: result.encounters.filter((e) => e.isShiny).map((e) => e.speciesId),
       caught: captured,
       at: now,
     });
@@ -448,12 +542,8 @@ export async function claimExpedition(
     // Butin + Balls et baies réservées mais non utilisées.
     await addItems(tx, userId, [
       ...result.loot,
-      ...(found.ballItemId
-        ? [{ itemId: found.ballItemId, quantity: found.balls - result.ballsUsed }]
-        : []),
-      ...(found.berryItemId
-        ? [{ itemId: found.berryItemId, quantity: found.berries - result.berriesUsed }]
-        : []),
+      ...(ballItemId ? [{ itemId: ballItemId, quantity: balls - result.ballsUsed }] : []),
+      ...(berryItemId ? [{ itemId: berryItemId, quantity: berries - result.berriesUsed }] : []),
     ]);
 
     for (const m of result.team) {

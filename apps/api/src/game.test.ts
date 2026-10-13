@@ -170,6 +170,24 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
     expect(again).toMatchObject({ status: 404, body: { error: 'EXPEDITION_NOT_FOUND' } });
   });
 
+  it('met des zones en favori, dans l’ordre d’ajout', async () => {
+    const fav = (zoneId: string, favorite: boolean) =>
+      call<{ favoriteZoneIds: string[] }>('PUT', `/api/expeditions/favorites/${zoneId}`, {
+        favorite,
+      });
+    expect((await fav('route-1', true)).body.favoriteZoneIds).toEqual(['route-1']);
+    expect((await fav('foret-de-jade', true)).body.favoriteZoneIds).toEqual([
+      'route-1',
+      'foret-de-jade',
+    ]);
+    expect((await fav('route-1', true)).body.favoriteZoneIds).toEqual(['foret-de-jade', 'route-1']);
+    expect((await fav('zone-inconnue', true)).status).toBe(404);
+    await fav('foret-de-jade', false);
+    const list = await call<ExpeditionsResponse>('GET', '/api/expeditions');
+    expect(list.body.favoriteZoneIds).toEqual(['route-1']);
+    await fav('route-1', false);
+  });
+
   let expedition: ExpeditionDto;
 
   it('lance une expédition et réserve les Balls et baies', async () => {
@@ -255,6 +273,7 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
     expect(card.body).toMatchObject({
       captures: capturedIds.length,
       pokemonOwned: 1 + capturedIds.length,
+      shiniesMissed: result.encounters.filter((e) => e.isShiny && e.outcome !== 'captured').length,
       expeditionsCompleted: 1,
       battlesWon: 0,
       eggsHatched: 0,
@@ -387,7 +406,32 @@ describe('Pokédex des formes', () => {
       { formId: 10195, caughtShiny: false, firstCaughtAt: at.toISOString() },
     ]);
     const dex = await call<PokedexEntryDto[]>('GET', '/api/pokedex');
-    expect(dex.body.find((d) => d.speciesId === 19)).toMatchObject({ caughtShiny: true });
+    expect(dex.body.find((d) => d.speciesId === 19)).toMatchObject({
+      caughtShiny: true,
+      seenShiny: true,
+    });
+  });
+
+  it('dévoile la case du Pokédex shiny dès qu’un shiny est rencontré, même non capturé', async () => {
+    const call = client(await signUp('ludvina@example.com'));
+    expect((await call('POST', '/api/profile', { trainerName: 'Ludvina' })).status).toBe(201);
+    const [user] = await handle.db
+      .select()
+      .from(users)
+      .where(eq(users.email, 'ludvina@example.com'));
+    const at = new Date('2026-10-13T12:00:00Z');
+    await recordPokedex(handle.db, user!.id, { seen: [16, 19], seenShiny: [19], caught: [], at });
+    await recordPokedex(handle.db, user!.id, { seen: [19], caught: [], at });
+    const dex = await call<PokedexEntryDto[]>('GET', '/api/pokedex');
+    expect(dex.body.find((d) => d.speciesId === 16)).toMatchObject({
+      seen: true,
+      seenShiny: false,
+    });
+    expect(dex.body.find((d) => d.speciesId === 19)).toMatchObject({
+      seen: true,
+      seenShiny: true,
+      caughtShiny: false,
+    });
   });
 });
 

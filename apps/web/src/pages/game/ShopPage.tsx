@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'motion/react';
 import type { ShopEntry } from '@poke/content';
-import { maxPurchasableLots } from '@poke/game-core';
+import { maxPurchasableLots, purchaseGift } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { PurchaseResponse, SellResponse, ShopEntryStatusDto } from '@poke/shared';
 import { Modal, useNow } from '../../components/ui';
@@ -189,6 +189,7 @@ function ShopEntryCard({
   const locked = status.state === 'locked';
   const max = maxPurchasableLots(entry, status, currency);
   const chosen = Math.min(Math.max(1, lots), Math.max(1, max));
+  const gift = purchaseGift(entry, entry.lotSize * chosen);
   const limit = entry.purchaseLimit;
 
   return (
@@ -235,6 +236,13 @@ function ShopEntryCard({
             </p>
           )}
           {item?.description && <p className="mt-1 text-xs text-slate-500">{item.description}</p>}
+          {entry.gift && (
+            <p className="mt-1 flex items-center gap-1 text-xs font-medium text-emerald-600 dark:text-emerald-400">
+              <img src={itemIcon(ctx, entry.gift.itemId)} alt="" className="h-5 w-5" />
+              {entry.gift.quantity} {itemName(ctx, entry.gift.itemId)} offerte
+              {entry.gift.quantity > 1 && 's'} tous les {entry.gift.every} achetés d’un coup
+            </p>
+          )}
         </div>
       </div>
 
@@ -278,6 +286,11 @@ function ShopEntryCard({
                   : `Acheter · ${formatMoney(entry.price * chosen)}`}
             </button>
           </div>
+        )}
+        {!locked && status.state !== 'soldOut' && gift && (
+          <p className="mt-1 text-center text-xs text-emerald-600 dark:text-emerald-400">
+            🎁 + {gift.quantity} {itemName(ctx, gift.itemId)} en cadeau
+          </p>
         )}
       </div>
     </li>
@@ -539,6 +552,11 @@ function PurchaseReceipt({
             animate={{ opacity: 1 }}
             transition={{ delay: 0.45 }}
           >
+            {receipt.gift && (
+              <span className="block font-semibold text-emerald-600 dark:text-emerald-400">
+                🎁 + {receipt.gift.quantity} {itemName(ctx, receipt.gift.itemId)} en cadeau !
+              </span>
+            )}
             − {formatMoney(receipt.totalPrice)} · solde {formatMoney(receipt.currency)} · tu en as{' '}
             {receipt.inventoryQuantity} dans ton sac
           </motion.p>

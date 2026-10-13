@@ -1,5 +1,5 @@
 import { and, asc, count, eq, inArray, lte, sql } from 'drizzle-orm';
-import { candies, daycareSlots, eggs, pokemon } from '@poke/db';
+import { candies, daycareSlots, eggs, pokemon, speciesCaptures } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
   applyCandies,
@@ -410,6 +410,15 @@ export async function transferPokemon(
     }
     await tx.delete(pokemon).where(and(eq(pokemon.ownerId, userId), inArray(pokemon.id, unique)));
     await addCandies(tx, userId, gained);
+    const transferred = new Map<number, number>();
+    for (const r of rows) transferred.set(r.speciesId, (transferred.get(r.speciesId) ?? 0) + 1);
+    await tx
+      .insert(speciesCaptures)
+      .values([...transferred].map(([speciesId, n]) => ({ speciesId, transferred: n })))
+      .onConflictDoUpdate({
+        target: speciesCaptures.speciesId,
+        set: { transferred: sql`${speciesCaptures.transferred} + excluded.transferred` },
+      });
     return {
       transferred: rows.length,
       gained: [...gained].map(([lineage, quantity]) => ({ lineageId: lineage, quantity })),

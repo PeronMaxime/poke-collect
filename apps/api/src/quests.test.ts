@@ -6,6 +6,9 @@ import type {
   ClaimExpeditionResponse,
   ClaimQuestResponse,
   ExpeditionDto,
+  ExpeditionsResponse,
+  InventoryEntryDto,
+  LegendaryEncounterDto,
   PokemonDto,
   QuestsResponse,
   UseItemResponse,
@@ -136,6 +139,10 @@ describe('quêtes', () => {
     (await call<QuestsResponse>('GET', '/api/quests')).body.quests.find(
       (q) => q.questId === 'quete-test',
     );
+  const ballCount = async () =>
+    (await call<InventoryEntryDto[]>('GET', '/api/inventory')).body.find(
+      (i) => i.itemId === 'poke-ball',
+    )?.quantity ?? 0;
 
   async function run(zoneId: string) {
     const started = await call<ExpeditionDto>('POST', '/api/expeditions', {
@@ -184,7 +191,7 @@ describe('quêtes', () => {
     expect(await quest()).toMatchObject({ status: 'completed', step: 2 });
   });
 
-  const legendaryRun = { team: [] as string[], ballItemId: 'poke-ball', berryItemId: null };
+  const legendaryRun = { team: [] as string[] };
 
   it('donne la récompense une seule fois, sans le Pokémon (à capturer en expédition)', async () => {
     legendaryRun.team = [starter.id];
@@ -207,7 +214,7 @@ describe('quêtes', () => {
     expect(again.body.error).toBe('ALREADY_CLAIMED');
   });
 
-  it('expédition légendaire configurée : une Ball, un emplacement, le légendaire aux IV garantis', async () => {
+  it('expédition légendaire : rencontre au retour, fuite, relance en chaîne puis une seule Ball', async () => {
     const started = await call<ExpeditionDto>(
       'POST',
       '/api/quests/quete-test/expedition',
@@ -218,8 +225,9 @@ describe('quêtes', () => {
       questId: 'quete-test',
       zoneId: null,
       durationMinutes: 60,
-      ballItemId: 'poke-ball',
-      balls: 1,
+      ballItemId: null,
+      balls: 0,
+      shinyChain: 0,
     });
     const twice = await call<{ error: string }>(
       'POST',
@@ -227,13 +235,55 @@ describe('quêtes', () => {
       legendaryRun,
     );
     expect(twice.body.error).toBe('QUEST_EXPEDITION_RUNNING');
+    const early = await call<{ error: string }>(
+      'GET',
+      `/api/expeditions/${started.body.id}/encounter`,
+    );
+    expect(early.body.error).toBe('NOT_FINISHED');
 
     advance(60);
-    const claimed = await call<ClaimExpeditionResponse>(
+    const encounter = await call<LegendaryEncounterDto>(
+      'GET',
+      `/api/expeditions/${started.body.id}/encounter`,
+    );
+    expect(encounter.body).toMatchObject({ speciesId: 150, level: 70, shinyChain: 0 });
+    const undecided = await call<{ error: string }>(
       'POST',
       `/api/expeditions/${started.body.id}/claim`,
     );
+    expect(undecided.body.error).toBe('DECISION_REQUIRED');
+    const balls = await ballCount();
+    const fled = await call<ClaimExpeditionResponse>(
+      'POST',
+      `/api/expeditions/${started.body.id}/claim`,
+      { ballItemId: null, berryItemId: null },
+    );
+    expect(fled.status, JSON.stringify(fled.body)).toBe(200);
+    expect(fled.body.captured).toEqual([]);
+    expect(fled.body.expedition.result).toMatchObject({ team: [], xpPerMember: 0, ballsUsed: 0 });
+    expect(fled.body.expedition.result!.encounters).toMatchObject([
+      { speciesId: 150, outcome: 'fled', isShiny: encounter.body.isShiny },
+    ]);
+    expect(await ballCount()).toBe(balls);
+    expect(await quest()).toMatchObject({ pokemonCaught: 0 });
+
+    // Relancée dans le délai : la chaîne de la quête prend un maillon.
+    const chains = await call<ExpeditionsResponse>('GET', '/api/expeditions');
+    expect(chains.body.questChains).toMatchObject([{ questId: 'quete-test', chain: 1 }]);
+    const again = await call<ExpeditionDto>(
+      'POST',
+      '/api/quests/quete-test/expedition',
+      legendaryRun,
+    );
+    expect(again.body).toMatchObject({ shinyChain: 1 });
+    advance(60);
+    const claimed = await call<ClaimExpeditionResponse>(
+      'POST',
+      `/api/expeditions/${again.body.id}/claim`,
+      { ballItemId: 'poke-ball', berryItemId: null },
+    );
     expect(claimed.status, JSON.stringify(claimed.body)).toBe(200);
+    expect(await ballCount()).toBe(balls - 1);
     const [mewtwo] = claimed.body.captured;
     expect(mewtwo).toMatchObject({ speciesId: 150, level: 70, origin: 'quest' });
     expect(Object.values(mewtwo!.ivs).filter((iv) => iv === 31).length).toBeGreaterThanOrEqual(3);

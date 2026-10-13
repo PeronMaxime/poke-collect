@@ -22,6 +22,11 @@ export async function trainerCard(db: Db, ownerId: string): Promise<TrainerCardR
             select count(*) from jsonb_array_elements(${expeditions.result}->'encounters') as e
             where e->>'outcome' = 'captured'
           )), 0)`.mapWith(Number),
+          // Shiny croisés mais repartis (fuite, ignorés, plus de Ball…).
+          missedShinies: sql<number>`coalesce(sum((
+            select count(*) from jsonb_array_elements(${expeditions.result}->'encounters') as e
+            where (e->>'isShiny')::boolean and e->>'outcome' <> 'captured'
+          )), 0)`.mapWith(Number),
         })
         .from(expeditions)
         .where(and(eq(expeditions.ownerId, ownerId), isNotNull(expeditions.result))),
@@ -67,6 +72,7 @@ export async function trainerCard(db: Db, ownerId: string): Promise<TrainerCardR
     captures: captures[0]?.n ?? 0,
     pokemonOwned: owned[0]?.n ?? 0,
     shiniesOwned: owned[0]?.shiny ?? 0,
+    shiniesMissed: captures[0]?.missedShinies ?? 0,
     expeditionsCompleted: claimedExpeditions[0]?.n ?? 0,
     battlesWon: battles[0]?.wins ?? 0,
     battlesLost: battles[0]?.losses ?? 0,

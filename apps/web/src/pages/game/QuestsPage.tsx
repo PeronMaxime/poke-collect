@@ -2,9 +2,14 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
 import type { Quest } from '@poke/content';
-import { isActionCondition, isUnlocked } from '@poke/game-core';
+import { chainMultiplier, isActionCondition, isUnlocked } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { ClaimQuestResponse, ExpeditionDto, QuestProgressDto } from '@poke/shared';
+import type {
+  ClaimQuestResponse,
+  ExpeditionDto,
+  QuestChainDto,
+  QuestProgressDto,
+} from '@poke/shared';
 import { Modal, PokemonSprite, ProgressBar, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
 import { PLAYER_STATE_KEYS, useExpeditions, usePlayerProgress, useQuests } from '../../lib/game';
@@ -12,6 +17,7 @@ import {
   errorText,
   formatCountdown,
   formatDuration,
+  formatMultiplier,
   questConditionText,
   speciesName,
   unlockConditionText,
@@ -30,6 +36,10 @@ interface Hunt {
   /** Temps restant de l'expédition en cours (ms). */
   endsIn: number;
   durationMinutes: number;
+  /** Chaîne shiny de la quête (expéditions légendaires relancées de suite). */
+  chain: QuestChainDto | undefined;
+  /** Temps restant pour relancer avant que la chaîne retombe à 0 (ms) ; null = sans délai. */
+  chainExpiresIn: number | null;
   canLaunch: boolean;
   onLaunch: () => void;
 }
@@ -77,10 +87,13 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
     const target = targetOf(q);
     if (!target) return null;
     const running = active.find((e) => e.questId === q.id);
+    const chain = expeditions.data?.questChains.find((c) => c.questId === q.id);
     return {
       running,
       endsIn: running ? Date.parse(running.endsAt) - (now + offset) : 0,
       durationMinutes: target.expedition.durationMinutes,
+      chain,
+      chainExpiresIn: chain?.expiresAt ? Date.parse(chain.expiresAt) - (now + offset) : null,
       canLaunch: freeSlot,
       onLaunch: () => setHuntQuest(q),
     };
@@ -111,7 +124,8 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
         Les légendaires ne se rencontrent pas en expédition : chaque quête les met à ta portée. Les
         étapes se valident dans l’ordre ; captures et expéditions ne comptent qu’à partir du début
         de l’étape. Une fois la récompense réclamée, pars à la recherche du légendaire lors d’une
-        expédition légendaire, où une seule Ball sera lancée.
+        expédition légendaire : au retour, tu vois s’il est shiny avant de lancer ta Ball (une
+        seule) ou de fuir. Relancer de suite allonge la chaîne shiny.
       </p>
       <RegionTabs
         ctx={ctx}
@@ -149,6 +163,7 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
           ctx={ctx}
           quest={huntQuest}
           target={huntTarget}
+          chain={expeditions.data?.questChains.find((c) => c.questId === huntQuest.id)?.chain ?? 0}
           onClose={() => setHuntQuest(null)}
         />
       )}
@@ -279,7 +294,7 @@ function QuestCard({
               Expédition légendaire{' '}
               {hunt.endsIn > 0
                 ? `en cours · ${formatCountdown(hunt.endsIn)}`
-                : 'terminée : récupère-la dans l’onglet Expéditions'}
+                : 'terminée : découvre le légendaire dans l’onglet Expéditions'}
             </p>
           ) : (
             <button
@@ -292,6 +307,17 @@ function QuestCard({
                 : 'Aucun emplacement d’expédition libre'}
             </button>
           ))}
+        {hunt?.chain && (hunt.chainExpiresIn === null || hunt.chainExpiresIn > 0) && (
+          <p
+            className="rounded-lg bg-amber-50 px-2 py-1 text-center text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+            title="Relance l’expédition légendaire avant la fin du délai pour allonger la chaîne."
+          >
+            ✦ Chaîne {hunt.chain.chain} : shiny{' '}
+            {formatMultiplier(chainMultiplier(ctx, hunt.chain.chain))}
+            {hunt.chainExpiresIn !== null &&
+              ` · à relancer sous ${formatCountdown(hunt.chainExpiresIn)}`}
+          </p>
+        )}
       </div>
     </div>
   );

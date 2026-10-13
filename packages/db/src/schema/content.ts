@@ -21,6 +21,7 @@ import type {
   LootEntry,
   ProgressReward,
   PurchaseLimit,
+  ShopGift,
   QuestReward,
   QuestStep,
   Trainer,
@@ -217,6 +218,7 @@ export const shopEntries = pgTable(
     availableFrom: text('available_from'),
     availableUntil: text('available_until'),
     enabled: boolean('enabled').notNull(),
+    gift: jsonb('gift').$type<ShopGift>(),
   },
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
 );

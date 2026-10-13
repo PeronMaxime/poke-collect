@@ -5,6 +5,7 @@ import {
   checkPurchase,
   maxPurchasableLots,
   purchaseLimitStatus,
+  purchaseGift,
   purchaseQuote,
   shopEntryStatus,
 } from './shop';
@@ -117,7 +118,15 @@ describe('achat', () => {
     expect(purchaseQuote(entry('poke-ball-x10'), 3)).toEqual({
       totalPrice: 5400,
       stack: { itemId: 'poke-ball', quantity: 30 },
+      gift: { itemId: 'premier-ball', quantity: 3 },
     });
+  });
+
+  it('offre une Honor Ball par tranche de 10 Poké Balls achetées d’un coup', () => {
+    expect(purchaseGift(entry('poke-ball'), 9)).toBeNull();
+    expect(purchaseGift(entry('poke-ball'), 10)).toEqual({ itemId: 'premier-ball', quantity: 1 });
+    expect(purchaseGift(entry('poke-ball'), 25)).toEqual({ itemId: 'premier-ball', quantity: 2 });
+    expect(purchaseGift(entry('great-ball'), 50)).toBeNull();
   });
 
   it('vérifie apparition, limite et solde', () => {
@@ -126,6 +135,7 @@ describe('achat', () => {
       ok: true,
       totalPrice: 1000,
       stack: { itemId: 'poke-ball', quantity: 5 },
+      gift: null,
     });
     expect(checkPurchase(ctx, { ...base, entry: entry('poke-ball'), lots: 6 })).toMatchObject({
       ok: false,

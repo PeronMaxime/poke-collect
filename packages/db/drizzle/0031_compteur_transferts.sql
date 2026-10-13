@@ -1,0 +1,1 @@
+ALTER TABLE "species_captures" ADD COLUMN "transferred" integer DEFAULT 0 NOT NULL;

@@ -318,7 +318,8 @@ export interface ExpeditionInput {
 }
 
 /** `ignored` : écarté par le filtre de capture. */
-export type EncounterOutcome = 'captured' | 'escaped' | 'noBall' | 'ignored';
+/** `fled` : le joueur a pris la fuite (expédition légendaire). */
+export type EncounterOutcome = 'captured' | 'escaped' | 'noBall' | 'ignored' | 'fled';
 
 export interface EncounterResult {
   speciesId: number;

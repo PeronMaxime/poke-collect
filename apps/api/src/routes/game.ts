@@ -1,14 +1,28 @@
 import type { FastifyInstance } from 'fastify';
-import { and, asc, desc, eq, gt, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
-import { expeditions, inventory, pokedex, pokedexForms, pokemon, pokemonTags } from '@poke/db';
+import {
+  expeditions,
+  inventory,
+  playerProfiles,
+  pokedex,
+  pokedexForms,
+  pokemon,
+  pokemonTags,
+} from '@poke/db';
 import type { Db } from '@poke/db';
-import { startExpeditionInputSchema, updatePokemonInputSchema } from '@poke/shared';
+import {
+  claimExpeditionInputSchema,
+  favoriteZoneInputSchema,
+  startExpeditionInputSchema,
+  updatePokemonInputSchema,
+} from '@poke/shared';
 import type {
   ClaimExpeditionResponse,
   ExpeditionDto,
   ExpeditionsResponse,
   InventoryEntryDto,
+  LegendaryEncounterDto,
   PokedexEntryDto,
   PokedexFormEntryDto,
   PokemonDto,
@@ -18,6 +32,8 @@ import {
   cancelExpedition,
   claimExpedition,
   expeditionSlots,
+  legendaryEncounter,
+  questChainKey,
   requireStartedProfile,
   shinyChains,
   startExpedition,
@@ -111,7 +127,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     const ctx = await content.get();
     const userId = request.user!.id;
     const at = now();
-    const [rows, claimed, chains] = await Promise.all([
+    const [rows, claimed, chains, [profile]] = await Promise.all([
       db
         .select()
         .from(expeditions)
@@ -119,17 +135,48 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
         .orderBy(asc(expeditions.slotIndex)),
       claimedRewards(db, userId),
       shinyChains(db, ctx, userId, at),
+      db
+        .select({ favoriteZoneIds: playerProfiles.favoriteZoneIds })
+        .from(playerProfiles)
+        .where(eq(playerProfiles.userId, userId)),
     ]);
+    const chainDto = (s: { chain: number; expiresAt: Date | null }) => ({
+      chain: s.chain,
+      expiresAt: s.expiresAt?.toISOString() ?? null,
+    });
     return {
       slots: expeditionSlots(ctx, claimed),
       serverTime: at.toISOString(),
       active: rows.map(toExpeditionDto),
-      chains: [...chains].map(([zoneId, s]) => ({
-        zoneId,
-        chain: s.chain,
-        expiresAt: s.expiresAt?.toISOString() ?? null,
-      })),
+      chains: ctx.zones.flatMap((z) => {
+        const s = chains.get(z.id);
+        return s ? [{ zoneId: z.id, ...chainDto(s) }] : [];
+      }),
+      questChains: ctx.quests.flatMap((q) => {
+        const s = chains.get(questChainKey(q.id));
+        return s ? [{ questId: q.id, ...chainDto(s) }] : [];
+      }),
+      favoriteZoneIds: profile?.favoriteZoneIds ?? [],
     };
+  });
+
+  /** Met une zone en favori (ou l'en retire) : elle s'affiche en tête de la page Expéditions. */
+  app.put('/api/expeditions/favorites/:zoneId', async (request, reply) => {
+    const { zoneId } = z.object({ zoneId: z.string().min(1).max(100) }).parse(request.params);
+    const { favorite } = favoriteZoneInputSchema.parse(request.body);
+    const ctx = await content.get();
+    if (favorite && !ctx.zone(zoneId)) return reply.code(404).send({ error: 'ZONE_NOT_FOUND' });
+    const [updated] = await db
+      .update(playerProfiles)
+      .set({
+        favoriteZoneIds: favorite
+          ? sql`array_append(array_remove(${playerProfiles.favoriteZoneIds}, ${zoneId}), ${zoneId})`
+          : sql`array_remove(${playerProfiles.favoriteZoneIds}, ${zoneId})`,
+      })
+      .where(eq(playerProfiles.userId, request.user!.id))
+      .returning({ favoriteZoneIds: playerProfiles.favoriteZoneIds });
+    if (!updated) return reply.code(409).send({ error: 'NO_PROFILE' });
+    return updated;
   });
 
   /** Dernières expéditions réclamées (historique). */
@@ -155,11 +202,25 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     return reply.code(204).send();
   });
 
+  /** Légendaire rencontré au retour d'une expédition légendaire, avant la Ball ou la fuite. */
+  app.get('/api/expeditions/:id/encounter', async (request): Promise<LegendaryEncounterDto> => {
+    const { id } = uuidParams.parse(request.params);
+    return legendaryEncounter(db, content, request.user!.id, id, now());
+  });
+
   app.post('/api/expeditions/:id/claim', async (request): Promise<ClaimExpeditionResponse> => {
     const { id } = uuidParams.parse(request.params);
+    const decision = request.body ? claimExpeditionInputSchema.parse(request.body) : undefined;
     const userId = request.user!.id;
     await requireStartedProfile(db, userId);
-    const { expedition, captured } = await claimExpedition(db, content, userId, id, now());
+    const { expedition, captured } = await claimExpedition(
+      db,
+      content,
+      userId,
+      id,
+      now(),
+      decision,
+    );
     return {
       expedition: toExpeditionDto(expedition),
       captured: captured.map((r) => toPokemonDto(r)),

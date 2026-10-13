@@ -5,6 +5,7 @@ import type { StatName } from '@poke/data';
 import {
   MAX_IV,
   MAX_LEVEL,
+  applyCandies,
   candiesToMaxLevel,
   computeStats,
   expeditionPower,
@@ -53,6 +54,8 @@ import {
   useInventory,
   useNewEvolutionChecker,
   usePlayerProgress,
+  usePokedex,
+  usePokedexForms,
   usePokemon,
   useTags,
   utcOffsetMinutes,
@@ -73,6 +76,7 @@ import {
 } from '../../lib/labels';
 import { EvolutionReveal } from './EvolutionReveal';
 import { RegionTabs, currentRegionTab } from './RegionTabs';
+import { TypeFilterSelect } from './TeamPicker';
 
 type Sort = 'recent' | 'level' | 'power' | 'dex' | 'tag';
 
@@ -166,6 +170,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [onlyShiny, setOnlyShiny] = useState(false);
   const [onlyEvolvable, setOnlyEvolvable] = useState(false);
+  const [type, setType] = useState('all');
   const tagFilter = useTagFilter();
   const [tagsOpen, setTagsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -231,6 +236,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
     .filter(({ species }) => !needle || species?.nameFr.toLowerCase().includes(needle))
     .filter(({ p }) => (!onlyFavorites || p.locked) && (!onlyShiny || p.isShiny))
     .filter(({ canEvolve }) => !onlyEvolvable || canEvolve)
+    .filter(({ species }) => type === 'all' || !!species?.types.includes(type))
     .filter(({ p }) => tagFilter.matches(p))
     .sort((a, b) => {
       switch (sort) {
@@ -348,6 +354,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
             </option>
           ))}
         </select>
+        <TypeFilterSelect value={type} onChange={setType} className="" />
         <label className="flex items-center gap-1 text-sm">
           <input
             type="checkbox"
@@ -478,15 +485,26 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
 
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
         {filtered.map(({ p, species, power, canEvolve }) => (
-          <button
+          <div
             key={p.id}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() => (transferMode ? toggleTransfer(p) : setSelectedId(p.id))}
-            className={`card relative flex flex-col items-center p-2 text-xs transition hover:-translate-y-0.5 ${
+            onKeyDown={(e) => {
+              if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
+              e.preventDefault();
+              if (transferMode) toggleTransfer(p);
+              else setSelectedId(p.id);
+            }}
+            className={`card relative flex cursor-pointer flex-col items-center p-2 text-xs transition hover:-translate-y-0.5 ${
               transferMode && toTransfer.has(p.id) ? 'ring-2 ring-red-500' : ''
             } ${transferMode && !canTransfer(p) ? 'opacity-40' : ''}`}
           >
-            {p.locked && <span className="absolute top-1.5 left-2 text-amber-500">♥</span>}
+            {transferMode ? (
+              p.locked && <span className="absolute top-1.5 left-2 text-amber-500">♥</span>
+            ) : (
+              <FavoriteToggle pokemon={p} />
+            )}
             <span className="absolute top-1.5 right-2 flex flex-col items-end gap-0.5">
               {p.activity && (
                 <span className="rounded bg-sky-100 px-1 text-[10px] text-sky-700 dark:bg-sky-950 dark:text-sky-300">
@@ -518,7 +536,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
               N.{p.level} · PE {power}
             </span>
             <PokemonTagBadges pokemon={p} tags={tagFilter.tags} className="mt-0.5 gap-0.5" />
-          </button>
+          </div>
         ))}
       </div>
       {filtered.length === 0 && !pokemon.isPending && (
@@ -592,6 +610,41 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   );
 }
 
+/** Cœur de la grille du PC : ajoute ou retire des favoris sans ouvrir la fiche. */
+function FavoriteToggle({ pokemon: p }: { pokemon: PokemonDto }) {
+  const queryClient = useQueryClient();
+  const toggle = useMutation({
+    mutationFn: () =>
+      api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { locked: !p.locked } }),
+    onSuccess: (updated) => {
+      queryClient.setQueryData<PokemonDto[]>(keys.pokemon, (list) =>
+        list?.map((q) => (q.id === updated.id ? updated : q)),
+      );
+    },
+  });
+  // Affichage optimiste : le cœur change dès le clic.
+  const locked = toggle.isPending ? !p.locked : p.locked;
+  return (
+    <button
+      type="button"
+      className={`absolute top-0.5 left-0.5 rounded-full px-1.5 py-0.5 text-sm leading-none transition hover:scale-125 ${
+        locked ? 'text-amber-500' : 'text-slate-300 hover:text-amber-400 dark:text-slate-600'
+      }`}
+      disabled={toggle.isPending}
+      onClick={(e) => {
+        e.stopPropagation();
+        toggle.mutate();
+      }}
+      onKeyDown={(e) => e.stopPropagation()}
+      title={locked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+      aria-label={locked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+      aria-pressed={locked}
+    >
+      {locked ? '♥' : '♡'}
+    </button>
+  );
+}
+
 function KoDetail({ koUntil }: { koUntil: string | null }) {
   const now = useNow();
   if (!isKnockedOut(koUntil, now)) return null;
@@ -647,6 +700,9 @@ function PokemonDetail({
   const ownedCandies = candies.data?.find((c) => c.lineageId === lineage)?.quantity ?? 0;
   const usefulCandies = Math.min(ownedCandies, candiesToMaxLevel(ctx, p));
   const [candyCount, setCandyCount] = useState(1);
+  const candiesToGive = Math.min(candyCount, usefulCandies);
+  // Aperçu : XP gagnée et niveau atteint avec les Bonbons choisis.
+  const fed = applyCandies(ctx, p, candiesToGive);
   const feed = useMutation({
     mutationFn: (count: number) =>
       api<PokemonDto>(`/api/pokemon/${p.id}/candies`, { method: 'POST', json: { count } }),
@@ -723,23 +779,40 @@ function PokemonDetail({
             </p>
             <p className="text-slate-500">{ctx.balance.transfer.xpPerCandy} XP par Bonbon.</p>
             {usefulCandies > 0 && (
-              <div className="mt-2 flex items-center gap-1">
-                <input
-                  type="number"
-                  className="input w-20 py-1"
-                  min={1}
-                  max={usefulCandies}
-                  value={Math.min(candyCount, usefulCandies)}
-                  onChange={(e) => setCandyCount(Math.max(1, Number(e.target.value) || 1))}
-                />
-                <button
-                  className="btn-ghost py-1"
-                  disabled={feed.isPending}
-                  onClick={() => feed.mutate(Math.min(candyCount, usefulCandies))}
-                >
-                  Donner
-                </button>
-              </div>
+              <>
+                <div className="mt-2 flex items-center gap-1">
+                  <input
+                    type="number"
+                    className="input min-w-0 flex-1 px-2 py-1"
+                    min={1}
+                    max={usefulCandies}
+                    value={candiesToGive}
+                    onChange={(e) => setCandyCount(Math.max(1, Number(e.target.value) || 1))}
+                  />
+                  <button
+                    className="btn-ghost shrink-0 px-2 py-1"
+                    disabled={candiesToGive === usefulCandies}
+                    onClick={() => setCandyCount(usefulCandies)}
+                    title="Autant de Bonbons que possible (jusqu’au niveau maximal)"
+                  >
+                    Max
+                  </button>
+                  <button
+                    className="btn-ghost shrink-0 px-2 py-1"
+                    disabled={feed.isPending}
+                    onClick={() => feed.mutate(candiesToGive)}
+                  >
+                    Donner
+                  </button>
+                </div>
+                <p className="mt-1 text-slate-500">
+                  +{fed.xp - p.xp} XP →{' '}
+                  <span className={fed.level > p.level ? 'font-semibold text-emerald-600' : ''}>
+                    niveau {fed.level}
+                  </span>
+                  {fed.level >= MAX_LEVEL && ' (max)'}
+                </p>
+              </>
             )}
             {feed.error && <p className="mt-1 text-red-600">{errorText(feed.error)}</p>}
           </div>
@@ -913,64 +986,86 @@ function EvolutionPanel({
   onEvolve: (option: EvolutionOption) => void;
 }) {
   const now = useNow();
+  const pokedex = usePokedex();
+  const pokedexForms = usePokedexForms();
   if (evolutions.length === 0) return null;
   const usable = isUsable(p, now);
+  // Même état qu'au Pokédex (shiny pour un Pokémon shiny) : silhouette tant que l'évolution n'a
+  // pas été vue, grisée si vue, en couleur une fois capturée.
+  const dexState = (speciesId: number, formId: number | null) => {
+    const entry = pokedex.data?.find((e) => e.speciesId === speciesId);
+    const form = formId != null ? pokedexForms.data?.find((f) => f.formId === formId) : undefined;
+    const seen = (p.isShiny ? entry?.seenShiny : entry?.seen) ?? false;
+    const caught =
+      formId != null
+        ? !!form && (!p.isShiny || form.caughtShiny)
+        : ((p.isShiny ? entry?.caughtShiny : entry?.caught) ?? false);
+    return { seen: seen || caught, caught };
+  };
 
   return (
     <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
       <p className="mb-2 font-medium">Évolution</p>
       <ul className="space-y-2">
-        {evolutions.map(({ option, method, methods }) => (
-          <li
-            key={`${option.toSpeciesId}:${option.toFormId ?? ''}`}
-            className="flex items-center gap-3"
-          >
-            <PokemonSprite
-              speciesId={option.toSpeciesId}
-              formId={option.toFormId}
-              shiny={p.isShiny}
-              size={48}
-              silhouette={!method}
-            />
-            <div className="min-w-0 flex-1 text-xs">
-              <p className="text-sm font-medium">
-                {speciesName(ctx, option.toSpeciesId, option.toFormId)}
-              </p>
-              {methods.length === 0 && (
-                <p className="text-slate-500">Pas encore possible dans le jeu.</p>
-              )}
-              {methods.map(({ method: m, missing }, i) => (
-                <p
-                  key={i}
-                  className={`flex flex-wrap items-center gap-1 ${
-                    missing.length === 0 ? 'text-emerald-600' : 'text-slate-500'
-                  }`}
-                >
-                  {m.itemId && <img src={itemIcon(ctx, m.itemId)} alt="" width={18} height={18} />}
-                  <span>
-                    {i > 0 && 'ou '}
-                    {evolutionMethodText(ctx, m)}
-                  </span>
-                  {missing.length > 0 && (
-                    <span className="text-slate-400">
-                      — manque : {missing.map((r) => requirementText(ctx, r)).join(', ')}
-                    </span>
-                  )}
+        {evolutions.map(({ option, method, methods }) => {
+          const dex = dexState(option.toSpeciesId, option.toFormId);
+          return (
+            <li
+              key={`${option.toSpeciesId}:${option.toFormId ?? ''}`}
+              className="flex items-center gap-3"
+            >
+              <PokemonSprite
+                speciesId={option.toSpeciesId}
+                formId={option.toFormId}
+                shiny={p.isShiny && dex.caught}
+                size={48}
+                silhouette={!dex.seen}
+                className={dex.seen && !dex.caught ? 'opacity-50 grayscale' : ''}
+              />
+              <div className="min-w-0 flex-1 text-xs">
+                <p className="text-sm font-medium">
+                  {speciesName(ctx, option.toSpeciesId, option.toFormId)}
                 </p>
-              ))}
-            </div>
-            {method && (
-              <button
-                className="btn-primary shrink-0 py-1"
-                disabled={pending || !usable}
-                title={usable ? undefined : 'Le Pokémon doit être disponible (ni occupé, ni K.O.)'}
-                onClick={() => onEvolve(option)}
-              >
-                Faire évoluer
-              </button>
-            )}
-          </li>
-        ))}
+                {methods.length === 0 && (
+                  <p className="text-slate-500">Pas encore possible dans le jeu.</p>
+                )}
+                {methods.map(({ method: m, missing }, i) => (
+                  <p
+                    key={i}
+                    className={`flex flex-wrap items-center gap-1 ${
+                      missing.length === 0 ? 'text-emerald-600' : 'text-slate-500'
+                    }`}
+                  >
+                    {m.itemId && (
+                      <img src={itemIcon(ctx, m.itemId)} alt="" width={18} height={18} />
+                    )}
+                    <span>
+                      {i > 0 && 'ou '}
+                      {evolutionMethodText(ctx, m)}
+                    </span>
+                    {missing.length > 0 && (
+                      <span className="text-slate-400">
+                        — manque : {missing.map((r) => requirementText(ctx, r)).join(', ')}
+                      </span>
+                    )}
+                  </p>
+                ))}
+              </div>
+              {method && (
+                <button
+                  className="btn-primary shrink-0 py-1"
+                  disabled={pending || !usable}
+                  title={
+                    usable ? undefined : 'Le Pokémon doit être disponible (ni occupé, ni K.O.)'
+                  }
+                  onClick={() => onEvolve(option)}
+                >
+                  Faire évoluer
+                </button>
+              )}
+            </li>
+          );
+        })}
       </ul>
       {!!error && <p className="mt-2 text-xs text-red-600">{errorText(error)}</p>}
     </div>

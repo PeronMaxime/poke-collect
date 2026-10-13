@@ -1806,6 +1806,21 @@
       ]
     },
     {
+      "id": "premier-ball",
+      "name": "Honor Ball",
+      "description": "Une Ball commémorative, offerte pour l’achat de 10 Poké Balls d’un coup.",
+      "icon": null,
+      "category": "ball",
+      "rarity": "uncommon",
+      "sellPrice": 150,
+      "effects": [
+        {
+          "type": "ball",
+          "catchMultiplier": 1
+        }
+      ]
+    },
+    {
       "id": "prism-scale",
       "name": "Bel’Écaille",
       "description": "Une écaille étrange qui fait évoluer une certaine espèce de Pokémon. Elle a une couleur arc-en-ciel.",
@@ -12313,7 +12328,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "bottle-cap",
@@ -12333,7 +12349,8 @@
       },
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "everstone",
@@ -12350,7 +12367,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "moon-stone",
@@ -12368,7 +12386,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "poke-ball",
@@ -12384,7 +12403,12 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": {
+        "itemId": "premier-ball",
+        "every": 10,
+        "quantity": 1
+      }
     },
     {
       "id": "gold-bottle-cap",
@@ -12404,7 +12428,8 @@
       },
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "water-stone",
@@ -12422,7 +12447,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "razz-berry-x5",
@@ -12438,7 +12464,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "poke-ball-x10",
@@ -12454,7 +12481,12 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": {
+        "itemId": "premier-ball",
+        "every": 10,
+        "quantity": 1
+      }
     },
     {
       "id": "destiny-knot",
@@ -12474,7 +12506,8 @@
       },
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "thunder-stone",
@@ -12492,7 +12525,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "adamant-mint",
@@ -12509,7 +12543,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "great-ball",
@@ -12526,7 +12561,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "ultra-ball",
@@ -12543,7 +12579,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "modest-mint",
@@ -12560,7 +12597,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "fire-stone",
@@ -12578,7 +12616,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "leaf-stone",
@@ -12596,7 +12635,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "jolly-mint",
@@ -12613,7 +12653,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "timid-mint",
@@ -12630,7 +12671,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "linking-cord",
@@ -12647,7 +12689,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "bold-mint",
@@ -12664,7 +12707,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "calm-mint",
@@ -12681,7 +12725,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "ability-capsule",
@@ -12698,7 +12743,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "ability-patch",
@@ -12718,7 +12764,8 @@
       },
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "auspicious-armor",
@@ -12735,7 +12782,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "berry-sweet",
@@ -12752,7 +12800,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "black-augurite",
@@ -12769,7 +12818,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "chipped-pot",
@@ -12786,7 +12836,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "clover-sweet",
@@ -12803,7 +12854,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "cracked-pot",
@@ -12820,7 +12872,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "dawn-stone",
@@ -12837,7 +12890,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "deep-sea-scale",
@@ -12854,7 +12908,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "deep-sea-tooth",
@@ -12871,7 +12926,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "dragon-scale",
@@ -12888,7 +12944,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "dubious-disc",
@@ -12905,7 +12962,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "dusk-stone",
@@ -12922,7 +12980,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "electirizer",
@@ -12939,7 +12998,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "flower-sweet",
@@ -12956,7 +13016,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "galarica-cuff",
@@ -12973,7 +13034,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "galarica-wreath",
@@ -12990,7 +13052,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "ice-stone",
@@ -13007,7 +13070,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "kings-rock",
@@ -13024,7 +13088,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "love-sweet",
@@ -13041,7 +13106,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "magmarizer",
@@ -13058,7 +13124,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "malicious-armor",
@@ -13075,7 +13142,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "masterpiece-teacup",
@@ -13092,7 +13160,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "metal-alloy",
@@ -13109,7 +13178,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "metal-coat",
@@ -13126,7 +13196,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "oval-stone",
@@ -13143,7 +13214,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "peat-block",
@@ -13160,7 +13232,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "prism-scale",
@@ -13177,7 +13250,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "protector",
@@ -13194,7 +13268,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "razor-claw",
@@ -13211,7 +13286,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "razor-fang",
@@ -13228,7 +13304,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "reaper-cloth",
@@ -13245,7 +13322,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "ribbon-sweet",
@@ -13262,7 +13340,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "sachet",
@@ -13279,7 +13358,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "scroll-of-darkness",
@@ -13296,7 +13376,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "scroll-of-waters",
@@ -13313,7 +13394,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "shiny-stone",
@@ -13330,7 +13412,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "star-sweet",
@@ -13347,7 +13430,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "strawberry-sweet",
@@ -13364,7 +13448,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "sun-stone",
@@ -13381,7 +13466,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "sweet-apple",
@@ -13398,7 +13484,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "syrupy-apple",
@@ -13415,7 +13502,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "tart-apple",
@@ -13432,7 +13520,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "unremarkable-teacup",
@@ -13449,7 +13538,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "up-grade",
@@ -13466,7 +13556,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     },
     {
       "id": "whipped-dream",
@@ -13483,7 +13574,8 @@
       "purchaseLimit": null,
       "availableFrom": null,
       "availableUntil": null,
-      "enabled": true
+      "enabled": true,
+      "gift": null
     }
   ],
   "evolutionOverrides": [

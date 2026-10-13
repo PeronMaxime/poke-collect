@@ -1,9 +1,9 @@
 import { asc, count, eq, sql } from 'drizzle-orm';
-import { playerProfiles, pokedex, sessions, users } from '@poke/db';
+import { playerProfiles, pokedex, pokemon, sessions, speciesCaptures, users } from '@poke/db';
 import type { Db } from '@poke/db';
 import { isUnlocked } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { AdminPlayerDetailResponse, AdminPlayerDto } from '@poke/shared';
+import type { AdminPlayerDetailResponse, AdminPlayerDto, AdminSpeciesStatsDto } from '@poke/shared';
 import { toDto } from '../routes/player';
 import { trainerCard } from './stats';
 import { playerProgress } from './store';
@@ -111,4 +111,46 @@ export async function playerDetail(
     shinySpeciesCaught: dex?.shiny ?? 0,
     badges,
   };
+}
+
+/**
+ * Pokémon de chaque espèce obtenus depuis le début (espèce d'obtention, transférés compris),
+ * possédés actuellement (espèce actuelle), transférés, et joueurs qui l'ont capturée.
+ */
+export async function speciesStats(db: Db): Promise<AdminSpeciesStatsDto[]> {
+  const [captured, owned, dex] = await Promise.all([
+    db.select().from(speciesCaptures),
+    db
+      .select({ speciesId: pokemon.speciesId, owned: count() })
+      .from(pokemon)
+      .groupBy(pokemon.speciesId),
+    db
+      .select({ speciesId: pokedex.speciesId, trainers: count() })
+      .from(pokedex)
+      .where(eq(pokedex.caught, true))
+      .groupBy(pokedex.speciesId),
+  ]);
+  const stats = new Map<number, AdminSpeciesStatsDto>();
+  const entry = (speciesId: number) =>
+    stats.get(speciesId) ??
+    stats
+      .set(speciesId, {
+        speciesId,
+        captured: 0,
+        capturedShiny: 0,
+        owned: 0,
+        transferred: 0,
+        trainers: 0,
+      })
+      .get(speciesId)!;
+  for (const r of captured) {
+    Object.assign(entry(r.speciesId), {
+      captured: r.captured,
+      capturedShiny: r.shiny,
+      transferred: r.transferred,
+    });
+  }
+  for (const r of owned) entry(r.speciesId).owned = r.owned;
+  for (const r of dex) entry(r.speciesId).trainers = r.trainers;
+  return [...stats.values()].sort((a, b) => a.speciesId - b.speciesId);
 }

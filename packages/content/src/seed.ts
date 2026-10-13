@@ -74,13 +74,17 @@ const article = (
   availableFrom: null,
   availableUntil: null,
   enabled: true,
+  gift: null,
   ...extra,
 });
 
+/** Une Honor Ball offerte toutes les 10 Poké Balls achetées d'un coup (comme dans les jeux). */
+const pokeBallGift = { itemId: 'premier-ball', every: 10, quantity: 1 };
+
 /** Prix : PLAN.md, section 7. Super / Hyper Balls débloquées par les badges Roche et Cascade. */
 const shopEntries: ShopEntry[] = [
-  article('poke-ball', 'poke-ball', 'balls', 0, 200),
-  article('poke-ball-x10', 'poke-ball', 'balls', 1, 1800, { lotSize: 10 }),
+  article('poke-ball', 'poke-ball', 'balls', 0, 200, { gift: pokeBallGift }),
+  article('poke-ball-x10', 'poke-ball', 'balls', 1, 1800, { lotSize: 10, gift: pokeBallGift }),
   article('great-ball', 'great-ball', 'balls', 2, 600, {
     unlock: { type: 'trainerDefeated', trainerId: 'pierre' },
   }),
@@ -443,6 +447,15 @@ export const seedContent: GameContentData = {
       category: 'ball',
       rarity: 'rare',
       effects: [{ type: 'ball', catchMultiplier: 2 }],
+    },
+    {
+      id: 'premier-ball',
+      name: 'Honor Ball',
+      description: 'Une Ball commémorative, offerte pour l’achat de 10 Poké Balls d’un coup.',
+      icon: null,
+      category: 'ball',
+      rarity: 'uncommon',
+      effects: [{ type: 'ball', catchMultiplier: 1 }],
     },
     {
       id: 'razz-berry',

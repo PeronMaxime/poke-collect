@@ -128,6 +128,7 @@ function EntriesView() {
         availableFrom: null,
         availableUntil: null,
         enabled: true,
+        gift: null,
       })}
       duplicate={(e) => ({ ...structuredClone(e), id: `${e.id}-copie` })}
       renderForm={(p) => <EntryForm {...p} />}
@@ -294,6 +295,51 @@ function EntryForm({
         )}
         {[...errors].some(([p]) => p.startsWith('purchaseLimit')) && (
           <p className="text-xs text-red-600">Limite invalide.</p>
+        )}
+      </Section>
+
+      <Section title="Cadeau">
+        <Toggle
+          checked={e.gift !== null}
+          onChange={(on) =>
+            set(
+              'gift',
+              on ? { itemId: e.itemId, every: Math.max(1, e.lotSize), quantity: 1 } : null,
+            )
+          }
+          label="Offrir un objet selon la quantité achetée d’un coup"
+          disabled={disabled}
+        />
+        {e.gift && (
+          <div className="flex flex-wrap items-center gap-2 text-sm">
+            <NumberInput
+              className="w-24"
+              value={e.gift.quantity}
+              min={1}
+              onChange={(quantity) => set('gift', { ...e.gift!, quantity })}
+              disabled={disabled}
+            />
+            <div className="min-w-48 flex-1">
+              <ItemSelect
+                ctx={ctx}
+                value={e.gift.itemId}
+                onChange={(itemId) => itemId && set('gift', { ...e.gift!, itemId })}
+                disabled={disabled}
+              />
+            </div>
+            <span>tous les</span>
+            <NumberInput
+              className="w-36"
+              value={e.gift.every}
+              min={1}
+              unit="objet(s) achetés"
+              onChange={(every) => set('gift', { ...e.gift!, every })}
+              disabled={disabled}
+            />
+          </div>
+        )}
+        {[...errors].some(([p]) => p.startsWith('gift')) && (
+          <p className="text-xs text-red-600">Cadeau invalide.</p>
         )}
       </Section>
 
