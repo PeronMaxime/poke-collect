@@ -6,6 +6,7 @@ import { AdminGate } from './components/AdminGate';
 import { Layout } from './components/Layout';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { DashboardPage } from './pages/DashboardPage';
+import { ExpeditionSimulatorPage } from './pages/ExpeditionSimulatorPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { PlayersPage } from './pages/PlayersPage';
 import { TelemetryPage } from './pages/TelemetryPage';
@@ -40,6 +41,7 @@ const router = createBrowserRouter([
           { path: 'regions', element: <RegionsPage /> },
           { path: 'species', element: <SpeciesPage /> },
           { path: 'zones', element: <ZonesPage /> },
+          { path: 'expedition-simulator', element: <ExpeditionSimulatorPage /> },
           { path: 'trainers', element: <TrainersPage /> },
           { path: 'items', element: <ItemsPage /> },
           { path: 'loot-tables', element: <LootTablesPage /> },

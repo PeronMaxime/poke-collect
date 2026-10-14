@@ -1,4 +1,6 @@
 @import 'tailwindcss';
+/* Écrans du jeu réutilisés par le simulateur d'expédition. */
+@source '../../web/src';
 
 @theme {
   --font-sans: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;

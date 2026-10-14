@@ -172,6 +172,19 @@ describe('resolveExpedition', () => {
     expect(Object.keys(result.pity)).toEqual(['19']);
   });
 
+  it('shiny « toujours » : aucun shiny ignoré, même hors des autres critères', () => {
+    const result = resolveExpedition(ctx, {
+      ...input,
+      balls: { itemId: 'poke-ball', quantity: 30 },
+      shiny: { charm: 1e9 }, // toutes les rencontres sont shiny
+      captureFilter: { speciesIds: [19], minPerfectIvs: 6, shiny: 'always', newOnly: true },
+      caught: { speciesIds: new Set([16, 19]), formIds: new Set() },
+    });
+    expect(result.encounters.every((e) => e.isShiny)).toBe(true);
+    expect(result.encounters.some((e) => e.outcome === 'ignored')).toBe(false);
+    expect(result.ballsUsed).toBe(result.encounters.length);
+  });
+
   it('nouveaux Pokémon : tente jusqu’à la première capture, puis ignore l’espèce', () => {
     const result = resolveExpedition(ctx, {
       ...input,

@@ -232,14 +232,14 @@ export function CancelButton({
   );
 }
 
-/** IV d'un Pokémon dans une bulle, au survol (ou au toucher) de son contenu. */
+/** IV d'un Pokémon dans une bulle, au survol de son contenu (au toucher sur mobile, au clavier via le focus). */
 export function IvHover({ ivs, children }: { ivs: Stats | undefined; children: ReactNode }) {
   if (!ivs) return children;
   const total = STAT_NAMES.reduce((sum, s) => sum + ivs[s], 0);
   return (
     <span className="group/iv relative inline-block" tabIndex={0}>
       {children}
-      <span className="invisible absolute top-full left-1/2 z-20 w-36 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2 text-left text-[11px] shadow-lg group-hover/iv:visible group-focus/iv:visible dark:border-slate-700 dark:bg-slate-900">
+      <span className="invisible absolute top-full left-1/2 z-20 w-36 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2 text-left text-[11px] shadow-lg group-hover/iv:visible group-focus-visible/iv:visible pointer-coarse:group-focus/iv:visible dark:border-slate-700 dark:bg-slate-900">
         {STAT_NAMES.map((s) => (
           <span key={s} className="flex justify-between gap-2">
             <span className="text-slate-500">{STAT_LABELS[s]}</span>

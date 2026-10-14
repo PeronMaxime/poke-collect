@@ -71,7 +71,11 @@ export type TagFilter = 'all' | 'none' | (string & {});
 
 /** Filtre d'étiquette (revient à « toutes » si l'étiquette choisie a été supprimée). */
 export function useTagFilter() {
-  const tags = useTags().data ?? [];
+  return useTagFilterOver(useTags().data ?? []);
+}
+
+/** Filtre sur une liste d'étiquettes donnée (étiquettes fictives du simulateur de l'admin). */
+export function useTagFilterOver(tags: readonly PokemonTagDto[]) {
   const [selected, setFilter] = useState<TagFilter>('all');
   const filter =
     selected === 'all' || selected === 'none' || tags.some((t) => t.id === selected)
@@ -138,6 +142,39 @@ export function TagPicker({
       api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { tagIds } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.pokemon }),
   });
+  // Les étiquettes supprimées entre-temps ne sont pas renvoyées.
+  const current = tags.filter((t) => p.tagIds.includes(t.id)).map((t) => t.id);
+  return (
+    <TagToggleList
+      tags={tags}
+      current={current}
+      compact={compact}
+      pending={assign.isPending}
+      error={assign.error}
+      onToggle={(id) =>
+        assign.mutate(current.includes(id) ? current.filter((c) => c !== id) : [...current, id])
+      }
+    />
+  );
+}
+
+/** Étiquettes à activer ou retirer, sans accès au serveur (simulateur de l'admin). */
+export function TagToggleList({
+  tags,
+  current,
+  compact = false,
+  pending = false,
+  error,
+  onToggle,
+}: {
+  tags: readonly PokemonTagDto[];
+  /** Étiquettes actives. */
+  current: readonly string[];
+  compact?: boolean;
+  pending?: boolean;
+  error?: unknown;
+  onToggle: (tagId: string) => void;
+}) {
   if (tags.length === 0) {
     if (compact) return null;
     return (
@@ -146,11 +183,6 @@ export function TagPicker({
       </p>
     );
   }
-  // Les étiquettes supprimées entre-temps ne sont pas renvoyées.
-  const current = tags.filter((t) => p.tagIds.includes(t.id)).map((t) => t.id);
-  const toggle = (id: string) =>
-    assign.mutate(current.includes(id) ? current.filter((c) => c !== id) : [...current, id]);
-
   return (
     <div className={compact ? 'mt-1 w-full' : 'mt-3 w-full text-left'}>
       {!compact && (
@@ -163,8 +195,8 @@ export function TagPicker({
             <button
               key={t.id}
               type="button"
-              disabled={assign.isPending}
-              onClick={() => toggle(t.id)}
+              disabled={pending}
+              onClick={() => onToggle(t.id)}
               aria-pressed={active}
               className={`rounded transition ${
                 active
@@ -177,7 +209,7 @@ export function TagPicker({
           );
         })}
       </div>
-      {assign.error && <p className="mt-1 text-xs text-red-600">{errorText(assign.error)}</p>}
+      {!!error && <p className="mt-1 text-xs text-red-600">{errorText(error)}</p>}
     </div>
   );
 }

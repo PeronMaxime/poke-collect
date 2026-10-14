@@ -1,4 +1,4 @@
-import { Fragment, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Zone } from '@poke/content';
 import {
@@ -44,6 +44,14 @@ import { LootReveal } from './LootReveal';
 import { RegionStarterCard } from './RegionStarterCard';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 
+/** Lien vers une zone (`#expeditions/<zone>`), depuis le Pokédex. */
+export const zoneLink = (zoneId: string) => `#expeditions/${zoneId}`;
+
+function zoneFromHash(): string | null {
+  const [tab, zoneId] = window.location.hash.slice(1).split('/');
+  return tab === 'expeditions' && zoneId ? decodeURIComponent(zoneId) : null;
+}
+
 export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: PlayerProfileDto }) {
   const queryClient = useQueryClient();
   const expeditions = useExpeditions();
@@ -55,6 +63,8 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   const [reveal, setReveal] = useState<ClaimExpeditionResponse | null>(null);
   const [encounter, setEncounter] = useState<ExpeditionDto | null>(null);
   const [selectedRegion, setSelectedRegion] = useSavedRegionTab('expeditions');
+  const [linkedZoneId, setLinkedZoneId] = useState(zoneFromHash);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const claim = useMutation({
     mutationFn: (id: string) =>
@@ -108,6 +118,33 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   }
   const favoriteZones = [...favoriteIds].flatMap((id) => ctx.zone(id) ?? []);
 
+  // Arrivée par un lien de zone : l'ancre est consommée, puis le lancement s'ouvre (une fois les
+  // emplacements connus) s'il en reste un de libre.
+  useEffect(() => {
+    const consume = () => {
+      const zoneId = zoneFromHash();
+      if (zoneId) history.replaceState(null, '', '#expeditions');
+      return zoneId;
+    };
+    consume();
+    const onHash = () => setLinkedZoneId(consume());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  if (linkedZoneId && expeditions.data) {
+    setLinkedZoneId(null);
+    const zone = ctx.zone(linkedZoneId);
+    if (zone) {
+      setSelectedRegion(zone.regionId);
+      setNotice(
+        freeSlots > 0
+          ? null
+          : `Aucun emplacement libre pour partir vers ${zone.name} : récupère ou annule une expédition en cours.`,
+      );
+      if (freeSlots > 0) setLaunchZone(zone);
+    }
+  }
+
   // Région suivante débloquée : son starter, à choisir une fois.
   const needsStarter = (id: string) => {
     const r = ctx.region(id);
@@ -157,6 +194,14 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
             {active.length} / {slots} emplacements
           </span>
         </div>
+        {notice && (
+          <p className="mb-3 flex items-start justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+            {notice}
+            <button onClick={() => setNotice(null)} aria-label="Fermer">
+              ✕
+            </button>
+          </p>
+        )}
         <div className="grid gap-3 sm:grid-cols-2">
           {Array.from({ length: slots }, (_, slot) => {
             const exp = active.find((e) => e.slotIndex === slot);
@@ -417,7 +462,7 @@ function ExpeditionSummary({
   );
 }
 
-function ZoneCard({
+export function ZoneCard({
   ctx,
   zone,
   seen,

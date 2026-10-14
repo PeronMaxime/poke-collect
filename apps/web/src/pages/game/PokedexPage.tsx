@@ -1,6 +1,12 @@
 import { useState } from 'react';
 import { DEX_FORM_SECTIONS, speciesForms } from '@poke/data';
-import { collectionState, dexProgress, milestoneState } from '@poke/game-core';
+import {
+  collectionState,
+  dexProgress,
+  isUnlocked,
+  isZoneUnlocked,
+  milestoneState,
+} from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import { PokemonSprite, ProgressBar, ShinyStar, TypeBadge } from '../../components/ui';
 import {
@@ -11,7 +17,8 @@ import {
   usePlayerProgress,
   useShinyCharm,
 } from '../../lib/game';
-import { formatShinyRate } from '../../lib/labels';
+import { formatShinyRate, unlockConditionText } from '../../lib/labels';
+import { zoneLink } from './ExpeditionsPage';
 import { CollectionsView, MilestonesView } from './ProgressionViews';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 
@@ -137,6 +144,19 @@ function DexView({ ctx }: { ctx: GameContext }) {
   }).filter((section) => section.total > 0);
   const detail = selected ? ctx.species(selected.speciesId, selected.formId) : undefined;
   const detailState = selected ? slotState(selected) : undefined;
+  // Zones où l'espèce (ou cette forme précise) se rencontre ; celles des régions encore
+  // verrouillées restent cachées, comme sur la page des expéditions.
+  const allDetailZones = selected
+    ? ctx.zones.filter((z) =>
+        z.encounters.some(
+          (e) => e.speciesId === selected.speciesId && (e.formId ?? null) === selected.formId,
+        ),
+      )
+    : [];
+  const detailZones = allDetailZones.filter((z) => {
+    const zoneRegion = ctx.region(z.regionId);
+    return !!zoneRegion && isUnlocked(ctx, zoneRegion.unlock, playerProgress);
+  });
 
   const grid = (list: DexSlot[]) => (
     <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
@@ -250,6 +270,37 @@ function DexView({ ctx }: { ctx: GameContext }) {
                   ? 'Vu, pas encore capturé'
                   : 'Forme pas encore capturée'}
               {detailState.caughtShiny && ' · version shiny obtenue ★'}
+            </p>
+            <p className="mt-1">
+              <span className="text-slate-500">Expéditions : </span>
+              {detailZones.length === 0
+                ? allDetailZones.length > 0
+                  ? 'dans une région pas encore débloquée'
+                  : 'aucune'
+                : detailZones.map((zone, i) => {
+                    const unlocked = isZoneUnlocked(ctx, zone, playerProgress);
+                    return (
+                      <span key={zone.id}>
+                        {i > 0 && ', '}
+                        {unlocked ? (
+                          <a
+                            href={zoneLink(zone.id)}
+                            className="font-medium text-brand-600 hover:underline dark:text-brand-500"
+                            title="Envoyer une équipe dans cette zone"
+                          >
+                            {zone.name}
+                          </a>
+                        ) : (
+                          <span
+                            className="text-slate-400"
+                            title={unlockConditionText(ctx, zone.unlock) ?? 'Zone verrouillée'}
+                          >
+                            🔒 {zone.name}
+                          </span>
+                        )}
+                      </span>
+                    );
+                  })}
             </p>
           </div>
           <button

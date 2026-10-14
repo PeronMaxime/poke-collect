@@ -51,7 +51,8 @@ const TABS = [
 type TabId = (typeof TABS)[number]['id'];
 
 function tabFromHash(): TabId {
-  const hash = window.location.hash.slice(1);
+  // `#expeditions/<zone>` : l'onglet, suivi d'une cible propre à la page.
+  const hash = window.location.hash.slice(1).split('/')[0];
   return TABS.some((t) => t.id === hash) ? (hash as TabId) : 'expeditions';
 }
 
