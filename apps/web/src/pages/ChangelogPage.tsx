@@ -17,6 +17,43 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '14 octobre 2026',
+    title: 'Relance express et Pokédex relié aux expéditions',
+    changes: [
+      {
+        section: 'Expéditions',
+        items: [
+          'Quand tu filtres les captures, l’option shiny « Toujours tenter » est désormais choisie par défaut : un shiny est tenté même s’il ne correspond pas à tes autres critères (espèces, IV, nouveaux Pokémon).',
+          'Nouveau bouton « Relancer » dans le récapitulatif d’une expédition : elle repart aussitôt avec la même équipe, la même durée, les mêmes Balls, baie et filtres. Pratique pour faire grimper une chaîne. Un avertissement s’affiche s’il ne te reste pas assez de Balls ou de baies.',
+          'Au choix de l’équipe, les types requis par la zone s’affichent : un clic sur l’un d’eux n’affiche que les Pokémon de ce type.',
+          '« Tout afficher » dévoile bien tout le récapitulatif d’un coup et t’amène directement au butin et aux boutons. Même correction pour les combats et les éclosions.',
+        ],
+      },
+      {
+        section: 'Pokédex',
+        items: [
+          'La fiche d’un Pokémon vu ou capturé indique les expéditions où il se trouve. Un clic sur l’une d’elles ouvre directement l’envoi d’une équipe, si un emplacement est libre.',
+        ],
+      },
+      {
+        section: 'Boutique',
+        items: [
+          'Chaque article indique entre parenthèses, à côté de son nom, combien tu en as déjà dans ton sac.',
+        ],
+      },
+      {
+        section: 'Incubateur',
+        items: [
+          'Nouveau bouton « Tout transférer » à l’éclosion des œufs pour transférer d’un coup tous les Pokémon éclos (favoris exclus, après confirmation).',
+        ],
+      },
+      {
+        section: 'PC',
+        items: ['La bulle des IV ne reste plus affichée après un clic sur un Pokémon.'],
+      },
+    ],
+  },
+  {
     date: '13 octobre 2026',
     title: 'Chasse aux légendaires shiny et expéditions favorites',
     changes: [

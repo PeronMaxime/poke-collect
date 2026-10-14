@@ -49,6 +49,12 @@ export const SECTIONS: AdminSection[] = [
     phase: 1,
   },
   {
+    path: '/expedition-simulator',
+    label: 'Simulateur d’expédition',
+    description: 'Expédition instantanée avec les écrans du jeu, sur la version de travail.',
+    phase: 1,
+  },
+  {
     path: '/trainers',
     label: 'Dresseurs',
     description: 'Équipe, PE, conditions, récompenses, badges, rejouabilité.',

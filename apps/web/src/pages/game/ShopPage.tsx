@@ -41,6 +41,7 @@ const formatDay = (iso: string) =>
 export function ShopPage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const shop = useShop();
+  const inventory = useInventory();
   const now = useNow(30_000);
   const [category, setCategory] = useState<string | null>(null);
   const [receipt, setReceipt] = useState<PurchaseResponse | null>(null);
@@ -82,6 +83,7 @@ export function ShopPage({ ctx }: { ctx: GameContext }) {
   if (!shop.data) return <p className="text-sm text-red-600">{errorText(shop.error)}</p>;
 
   const serverNow = now + serverOffset(shop.data, shop.dataUpdatedAt);
+  const owned = new Map((inventory.data ?? []).map((i) => [i.itemId, i.quantity]));
   const statuses = shop.data.entries.flatMap((status) => {
     const entry = ctx.shopEntry(status.entryId);
     return entry ? [{ entry, status }] : [];
@@ -150,6 +152,7 @@ export function ShopPage({ ctx }: { ctx: GameContext }) {
                 entry={entry}
                 status={status}
                 isNew={highlight.has(entry.id)}
+                owned={owned.get(entry.itemId) ?? 0}
                 currency={shop.data.currency}
                 serverNow={serverNow}
                 buying={buy.isPending && buy.variables?.entryId === entry.id}
@@ -170,6 +173,7 @@ function ShopEntryCard({
   entry,
   status,
   isNew,
+  owned,
   currency,
   serverNow,
   buying,
@@ -179,6 +183,7 @@ function ShopEntryCard({
   entry: ShopEntry;
   status: ShopEntryStatusDto;
   isNew: boolean;
+  owned: number;
   currency: number;
   serverNow: number;
   buying: boolean;
@@ -220,6 +225,9 @@ function ShopEntryCard({
               {item?.name ?? entry.itemId}
               {entry.lotSize > 1 && (
                 <span className="ml-1 text-sm font-normal text-slate-500">× {entry.lotSize}</span>
+              )}
+              {owned > 0 && (
+                <span className="ml-1 text-xs font-normal text-slate-500">(sac : {owned})</span>
               )}
             </span>
             <span className="shrink-0 font-semibold">{formatMoney(entry.price)}</span>

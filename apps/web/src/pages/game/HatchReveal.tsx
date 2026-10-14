@@ -73,6 +73,27 @@ function HatchContent({
   // État à jour (favori, étiquettes) une fois le PC rechargé ; sinon celui de l'éclosion.
   const pokemon = usePokemon();
   const current = new Map(pokemon.data?.map((p) => [p.id, p]));
+  const queryClient = useQueryClient();
+  // Pokémon transférés depuis cette fenêtre, un par un ou tous d'un coup.
+  const [transferred, setTransferred] = useState<ReadonlySet<string>>(new Set());
+  const markTransferred = (ids: string[]) => setTransferred((cur) => new Set([...cur, ...ids]));
+  const [confirmingAll, setConfirmingAll] = useState(false);
+  const transferable = data.hatched
+    .map((p) => current.get(p.id) ?? p)
+    .filter((p) => !transferred.has(p.id) && !p.locked && !p.busy);
+  const shinyCount = transferable.filter((p) => p.isShiny).length;
+  const transferAll = useMutation({
+    mutationFn: (ids: string[]) =>
+      api<TransferPokemonResponse>('/api/pokemon/transfer', { method: 'POST', json: { ids } }),
+    onSuccess: (_, ids) => {
+      markTransferred(ids);
+      setConfirmingAll(false);
+      return Promise.all(
+        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      );
+    },
+  });
+  const allCandies = transferAll.data?.gained.reduce((sum, g) => sum + g.quantity, 0) ?? 0;
 
   return (
     <div>
@@ -112,6 +133,8 @@ function HatchContent({
                 </motion.div>
               )}
               <motion.div
+                // Remonté au clic sur « Tout afficher » : l'animation en cours garde sinon son délai.
+                key={String(instant)}
                 className="flex flex-col items-center"
                 initial={instant ? false : { opacity: 0, scale: 0.4 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -142,14 +165,59 @@ function HatchContent({
                   IV {total} / {MAX_IV * 6}
                   {perfect > 0 && ` · ${perfect} × 31`}
                 </span>
-                <NewbornActions pokemon={current.get(p.id) ?? p} />
+                <NewbornActions
+                  pokemon={current.get(p.id) ?? p}
+                  transferred={transferred.has(p.id)}
+                  onTransferred={() => markTransferred([p.id])}
+                />
               </motion.div>
             </div>
           );
         })}
       </div>
 
-      <div className="mt-6 text-right">
+      {transferAll.error && (
+        <p className="mt-4 text-right text-sm text-red-600">{errorText(transferAll.error)}</p>
+      )}
+      <div className="mt-6 flex flex-wrap items-center justify-end gap-2">
+        {transferAll.data && !confirmingAll && (
+          <span className="text-sm text-slate-500">
+            {transferAll.data.transferred} transféré{transferAll.data.transferred > 1 ? 's' : ''} ·
+            +{allCandies} Bonbon{allCandies > 1 ? 's' : ''}
+          </span>
+        )}
+        {confirmingAll && transferable.length > 0 ? (
+          <span className="flex flex-wrap items-center justify-end gap-2 text-sm">
+            <span className="text-slate-600 dark:text-slate-300">
+              Transférer {transferable.length} Pokémon (favoris exclus)
+              {shinyCount > 0 && (
+                <strong className="text-amber-600"> dont {shinyCount} shiny</strong>
+              )}{' '}
+              ?
+            </span>
+            <button
+              className="btn-danger"
+              disabled={transferAll.isPending}
+              onClick={() => transferAll.mutate(transferable.map((p) => p.id))}
+            >
+              Confirmer
+            </button>
+            <button className="btn-ghost" onClick={() => setConfirmingAll(false)}>
+              Annuler
+            </button>
+          </span>
+        ) : (
+          data.hatched.length > 1 && (
+            <button
+              className="btn-ghost"
+              disabled={transferable.length === 0 || transferAll.isPending}
+              title="Transférer tous les Pokémon éclos contre des Bonbons de lignée (favoris exclus)"
+              onClick={() => setConfirmingAll(true)}
+            >
+              Tout transférer
+            </button>
+          )
+        )}
         <button className="btn-primary" onClick={onClose}>
           Continuer
         </button>
@@ -162,22 +230,34 @@ function HatchContent({
  * Favori, étiquettes et transfert directement depuis l'éclosion, le Musée ou l'expédition, sans
  * passer par le PC.
  */
-export function NewbornActions({ pokemon: p }: { pokemon: PokemonDto }) {
+export function NewbornActions({
+  pokemon: p,
+  transferred = false,
+  onTransferred,
+}: {
+  pokemon: PokemonDto;
+  /** Déjà transféré par un transfert groupé du parent. */
+  transferred?: boolean;
+  onTransferred?: () => void;
+}) {
   const queryClient = useQueryClient();
   const toggleLock = useMutation({
     mutationFn: () =>
       api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { locked: !p.locked } }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.pokemon }),
   });
-  const [confirming, setConfirming] = useState(false);
   const transfer = useMutation({
     mutationFn: () =>
       api<TransferPokemonResponse>('/api/pokemon/transfer', {
         method: 'POST',
         json: { ids: [p.id] },
       }),
-    onSuccess: () =>
-      Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+    onSuccess: () => {
+      onTransferred?.();
+      return Promise.all(
+        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      );
+    },
   });
   if (transfer.data) {
     const candies = transfer.data.gained.reduce((sum, g) => sum + g.quantity, 0);
@@ -187,6 +267,45 @@ export function NewbornActions({ pokemon: p }: { pokemon: PokemonDto }) {
       </p>
     );
   }
+  if (transferred) return <p className="mt-1 text-slate-500">Transféré</p>;
+  return (
+    <NewbornActionsView
+      pokemon={p}
+      tags={<TagPicker pokemon={p} compact />}
+      lockPending={toggleLock.isPending}
+      lockError={toggleLock.error}
+      onToggleLock={() => toggleLock.mutate()}
+      transferPending={transfer.isPending}
+      transferError={transfer.error}
+      onTransfer={() => transfer.mutate()}
+    />
+  );
+}
+
+/**
+ * Boutons Favori, étiquettes et Transférer, sans accès au serveur : le simulateur d'expédition de
+ * l'admin affiche le même rendu, sans effet.
+ */
+export function NewbornActionsView({
+  pokemon: p,
+  tags,
+  lockPending = false,
+  lockError,
+  onToggleLock,
+  transferPending = false,
+  transferError,
+  onTransfer,
+}: {
+  pokemon: Pick<PokemonDto, 'locked' | 'busy'>;
+  tags: ReactNode;
+  lockPending?: boolean;
+  lockError?: unknown;
+  onToggleLock: () => void;
+  transferPending?: boolean;
+  transferError?: unknown;
+  onTransfer: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
   return (
     <>
       <button
@@ -194,21 +313,21 @@ export function NewbornActions({ pokemon: p }: { pokemon: PokemonDto }) {
         className={`mt-1 rounded-full px-2 py-0.5 transition hover:bg-slate-100 dark:hover:bg-slate-800 ${
           p.locked ? 'text-amber-500' : 'text-slate-500'
         }`}
-        disabled={toggleLock.isPending}
-        onClick={() => toggleLock.mutate()}
+        disabled={lockPending}
+        onClick={onToggleLock}
         title={p.locked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
       >
         {p.locked ? '♥ Favori' : '♡ Favori'}
       </button>
-      {toggleLock.error && <p className="text-red-600">{errorText(toggleLock.error)}</p>}
-      <TagPicker pokemon={p} compact />
+      {!!lockError && <p className="text-red-600">{errorText(lockError)}</p>}
+      {tags}
       {confirming ? (
         <span className="mt-1 flex items-center gap-1">
           <button
             type="button"
             className="rounded-full bg-red-600 px-2 py-0.5 font-semibold text-white hover:bg-red-700"
-            disabled={transfer.isPending}
-            onClick={() => transfer.mutate()}
+            disabled={transferPending}
+            onClick={onTransfer}
           >
             Confirmer
           </button>
@@ -235,7 +354,7 @@ export function NewbornActions({ pokemon: p }: { pokemon: PokemonDto }) {
           Transférer
         </button>
       )}
-      {transfer.error && <p className="text-red-600">{errorText(transfer.error)}</p>}
+      {!!transferError && <p className="text-red-600">{errorText(transferError)}</p>}
     </>
   );
 }

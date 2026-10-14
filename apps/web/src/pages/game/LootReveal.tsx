@@ -1,7 +1,9 @@
-import { useState } from 'react';
+import { Fragment, useEffect, useRef, useState } from 'react';
+import type { ReactNode } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
-import type { GameContext } from '@poke/game-core';
-import type { ClaimExpeditionResponse } from '@poke/shared';
+import type { GameContext, PokemonInstance } from '@poke/game-core';
+import type { ClaimExpeditionResponse, ExpeditionDto, StartExpeditionInput } from '@poke/shared';
 import {
   GenderSymbol,
   IvHover,
@@ -10,8 +12,9 @@ import {
   ShinySparkles,
   ShinyStar,
 } from '../../components/ui';
-import { newInDexTracker, usePokemon } from '../../lib/game';
-import { formatShinyRate, itemIcon, itemName, speciesName } from '../../lib/labels';
+import { ApiError, api } from '../../lib/api';
+import { PLAYER_STATE_KEYS, newInDexTracker, useInventory, usePokemon } from '../../lib/game';
+import { GAME_ERRORS, formatShinyRate, itemIcon, itemName, speciesName } from '../../lib/labels';
 import { NewbornActions } from './HatchReveal';
 
 // Secondes entre deux rencontres : on accélère quand il y en a beaucoup, pour que
@@ -58,14 +61,147 @@ function RevealContent({
   data: ClaimExpeditionResponse;
   onClose: () => void;
 }) {
-  const reduced = useReducedMotion();
   const pokemon = usePokemon();
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
   const capturedById = new Map(data.captured.map((p) => [p.id, p]));
+  const queryClient = useQueryClient();
+  // Relance : repartir dans la même zone avec les mêmes réglages (équipe, durée, Balls, baie et
+  // filtre), pour enchaîner les maillons. Le serveur plafonne Balls et baies au stock restant.
+  const relaunch = useMutation({
+    mutationFn: (e: ExpeditionDto) => {
+      const input: StartExpeditionInput = {
+        zoneId: e.zoneId!,
+        durationMinutes: e.durationMinutes,
+        team: e.team,
+        ballItemId: e.ballItemId,
+        ...(e.ballItemId && e.balls > 0
+          ? { ballCount: e.balls, captureFilter: e.captureFilter }
+          : {}),
+        berryItemId: e.berryItemId,
+      };
+      return api<ExpeditionDto>('/api/expeditions', { method: 'POST', json: input });
+    },
+    onSuccess: () => {
+      onClose();
+      return Promise.all(
+        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      );
+    },
+  });
+  // Stock rafraîchi après la récupération (Balls et baies non utilisées rendues) : on attend la
+  // fin du rechargement pour ne pas avertir à tort.
+  const inventory = useInventory();
+  const { ballItemId, balls, berryItemId, berries } = data.expedition;
+  const shortage = (itemId: string | null, needed: number) => {
+    if (!itemId || needed === 0 || !inventory.data || inventory.isFetching) return null;
+    const owned = inventory.data.find((i) => i.itemId === itemId)?.quantity ?? 0;
+    return owned < needed ? { itemId, owned, needed } : null;
+  };
+  const ballsShort = shortage(ballItemId, balls);
+  const berriesShort = shortage(berryItemId, berries);
+  const { zoneId } = data.expedition;
+
+  return (
+    <ExpeditionRevealView
+      ctx={ctx}
+      expedition={data.expedition}
+      pokemon={(id) => pokemonById.get(id) ?? capturedById.get(id)}
+      renderNewborn={(id) => {
+        const p = pokemonById.get(id) ?? capturedById.get(id);
+        return capturedById.has(id) && p && <NewbornActions pokemon={p} />;
+      }}
+      footer={
+        <>
+          {zoneId && (ballsShort || berriesShort) && (
+            <div className="mt-4 space-y-1 text-right text-sm text-amber-700 dark:text-amber-400">
+              {ballsShort && (
+                <p>
+                  Stock de {itemName(ctx, ballsShort.itemId)} insuffisant pour relancer à
+                  l’identique :{' '}
+                  {ballsShort.owned === 0
+                    ? 'il n’en reste aucune, l’expédition partirait sans capture (observation seulement).'
+                    : `${ballsShort.owned} / ${ballsShort.needed} seraient emportées.`}
+                </p>
+              )}
+              {berriesShort && (
+                <p>
+                  Stock de {itemName(ctx, berriesShort.itemId)} insuffisant pour relancer à
+                  l’identique :{' '}
+                  {berriesShort.owned === 0
+                    ? 'il n’en reste aucune, l’expédition partirait sans baie.'
+                    : `${berriesShort.owned} / ${berriesShort.needed} seraient emportées.`}
+                </p>
+              )}
+            </div>
+          )}
+          {relaunch.error && (
+            <p className="mt-4 text-right text-sm text-red-600">
+              Relance impossible :{' '}
+              {relaunch.error instanceof ApiError
+                ? (GAME_ERRORS[relaunch.error.code] ?? relaunch.error.code)
+                : 'erreur inconnue'}
+            </p>
+          )}
+          <div className="mt-6 flex justify-end gap-2">
+            {zoneId && (
+              <button
+                className="btn-ghost"
+                disabled={relaunch.isPending}
+                onClick={() => relaunch.mutate(data.expedition)}
+                title="Repartir avec la même équipe, la même durée, les mêmes Balls, baie et filtres"
+              >
+                {relaunch.isPending
+                  ? 'Relance…'
+                  : ballsShort || berriesShort
+                    ? '↻ Relancer quand même'
+                    : '↻ Relancer'}
+              </button>
+            )}
+            <button className="btn-primary" onClick={onClose}>
+              Continuer
+            </button>
+          </div>
+        </>
+      }
+    />
+  );
+}
+
+/** Pokémon affiché dans le résultat : membre de l'équipe ou Pokémon capturé. */
+export type RevealPokemon = Pick<
+  PokemonInstance,
+  'speciesId' | 'formId' | 'isShiny' | 'gender' | 'ivs'
+>;
+
+/**
+ * Résultat d'une expédition, rencontres une à une puis butin et XP. Sans accès aux données du
+ * joueur : le jeu et le simulateur de l'admin le partagent.
+ */
+export function ExpeditionRevealView({
+  ctx,
+  expedition,
+  pokemon,
+  renderNewborn,
+  footer,
+}: {
+  ctx: GameContext;
+  expedition: Pick<ExpeditionDto, 'zoneId' | 'questId' | 'shinyChain' | 'result'>;
+  /** Pokémon par identifiant (équipe, captures). */
+  pokemon: (id: string) => RevealPokemon | undefined;
+  /** Actions sous un Pokémon capturé (surnom, étiquettes…). */
+  renderNewborn?: (pokemonId: string) => ReactNode;
+  footer: ReactNode;
+}) {
+  const reduced = useReducedMotion();
   const [skipped, setSkipped] = useState(false);
   const instant = reduced || skipped;
-  const result = data.expedition.result!;
-  const { zoneId, questId } = data.expedition;
+  // « Tout afficher » mène directement en bas du récap (butin, XP, boutons).
+  const bottom = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (skipped) bottom.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+  }, [skipped]);
+  const result = expedition.result!;
+  const { zoneId, questId } = expedition;
   const place = (zoneId && ctx.zone(zoneId)?.name) ?? (questId && ctx.quest(questId)?.name);
   const captured = result.encounters.filter((e) => e.outcome === 'captured').length;
   const shinies = result.encounters.filter((e) => e.isShiny).length;
@@ -92,7 +228,7 @@ function RevealContent({
               <>
                 {' '}
                 · taux shiny {formatShinyRate(result.shinyChance)}
-                {data.expedition.shinyChain > 0 && ` (chaîne ${data.expedition.shinyChain})`}
+                {expedition.shinyChain > 0 && ` (chaîne ${expedition.shinyChain})`}
               </>
             )}
           </p>
@@ -107,190 +243,182 @@ function RevealContent({
         )}
       </div>
 
-      {shinies > 0 && (
-        <motion.p
-          className="mt-3 rounded-xl bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-200 px-3 py-2 text-center font-bold text-amber-900 dark:from-amber-900 dark:via-amber-800 dark:to-amber-900 dark:text-amber-100"
-          initial={instant ? false : { opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: [0.8, 1.08, 1] }}
-          transition={{ delay: delay(firstShiny) + 0.2, duration: 0.5 }}
-        >
-          ✨ {shinies > 1 ? `${shinies} Pokémon shiny !` : 'Un Pokémon shiny !'} ✨
-        </motion.p>
-      )}
+      {/* Remonté au clic sur « Tout afficher » : les animations en cours gardent sinon leur délai. */}
+      <Fragment key={String(instant)}>
+        {shinies > 0 && (
+          <motion.p
+            className="mt-3 rounded-xl bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-200 px-3 py-2 text-center font-bold text-amber-900 dark:from-amber-900 dark:via-amber-800 dark:to-amber-900 dark:text-amber-100"
+            initial={instant ? false : { opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: [0.8, 1.08, 1] }}
+            transition={{ delay: delay(firstShiny) + 0.2, duration: 0.5 }}
+          >
+            ✨ {shinies > 1 ? `${shinies} Pokémon shiny !` : 'Un Pokémon shiny !'} ✨
+          </motion.p>
+        )}
 
-      {data.expedition.questId && result.encounters[0] && (
-        <motion.p
-          className={`mt-3 rounded-xl px-3 py-2 text-center text-sm ${
-            captured > 0
-              ? 'bg-emerald-50 font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
-              : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
-          }`}
-          initial={instant ? false : { opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: after }}
-        >
-          {captured > 0
-            ? `${speciesName(ctx, result.encounters[0].speciesId, result.encounters[0].formId)} a été capturé !`
-            : result.encounters[0].outcome === 'fled'
-              ? 'Tu as pris la fuite. Relance l’expédition légendaire depuis les Quêtes pour allonger la chaîne shiny.'
-              : `${speciesName(ctx, result.encounters[0].speciesId, result.encounters[0].formId)} s’est enfui… Tu peux retenter une expédition légendaire depuis les Quêtes.`}
-        </motion.p>
-      )}
+        {questId && result.encounters[0] && (
+          <motion.p
+            className={`mt-3 rounded-xl px-3 py-2 text-center text-sm ${
+              captured > 0
+                ? 'bg-emerald-50 font-semibold text-emerald-800 dark:bg-emerald-950/40 dark:text-emerald-300'
+                : 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-300'
+            }`}
+            initial={instant ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: after }}
+          >
+            {captured > 0
+              ? `${speciesName(ctx, result.encounters[0].speciesId, result.encounters[0].formId)} a été capturé !`
+              : result.encounters[0].outcome === 'fled'
+                ? 'Tu as pris la fuite. Relance l’expédition légendaire depuis les Quêtes pour allonger la chaîne shiny.'
+                : `${speciesName(ctx, result.encounters[0].speciesId, result.encounters[0].formId)} s’est enfui… Tu peux retenter une expédition légendaire depuis les Quêtes.`}
+          </motion.p>
+        )}
 
-      <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
-        {result.encounters.map((e, i) => {
-          const isNew = firstNew.has(i);
-          const captive = e.pokemonId
-            ? (pokemonById.get(e.pokemonId) ?? capturedById.get(e.pokemonId))
-            : e.pokemon;
-          return (
-            <motion.div
-              key={i}
-              className={`relative flex flex-col items-center rounded-xl border p-2 text-center text-xs ${
-                e.isShiny
-                  ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40'
-                  : e.outcome === 'captured'
-                    ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40'
-                    : e.outcome === 'escaped'
-                      ? 'border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/40'
-                      : 'border-slate-200 dark:border-slate-800'
-              }`}
-              initial={instant ? false : { opacity: 0, scale: 0.6, rotate: -8 }}
-              animate={{ opacity: 1, scale: 1, rotate: 0 }}
-              transition={{ delay: delay(i), type: 'spring', stiffness: 260, damping: 18 }}
-            >
-              {isNew && (
-                <span className="absolute -top-2 rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white">
-                  Nouveau !
-                </span>
-              )}
+        <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
+          {result.encounters.map((e, i) => {
+            const isNew = firstNew.has(i);
+            const captive = e.pokemonId ? pokemon(e.pokemonId) : e.pokemon;
+            return (
               <motion.div
-                initial={instant ? false : { y: -6 }}
-                animate={
-                  e.isShiny && !instant
-                    ? { y: 0, filter: ['brightness(1)', 'brightness(1.8)', 'brightness(1)'] }
-                    : { y: 0 }
-                }
-                transition={{ delay: delay(i) + 0.15, duration: 0.6 }}
-                className="relative"
+                key={i}
+                className={`relative flex flex-col items-center rounded-xl border p-2 text-center text-xs ${
+                  e.isShiny
+                    ? 'border-amber-400 bg-amber-50 dark:bg-amber-950/40'
+                    : e.outcome === 'captured'
+                      ? 'border-emerald-300 bg-emerald-50 dark:border-emerald-900 dark:bg-emerald-950/40'
+                      : e.outcome === 'escaped'
+                        ? 'border-red-300 bg-red-50 dark:border-red-900 dark:bg-red-950/40'
+                        : 'border-slate-200 dark:border-slate-800'
+                }`}
+                initial={instant ? false : { opacity: 0, scale: 0.6, rotate: -8 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                transition={{ delay: delay(i), type: 'spring', stiffness: 260, damping: 18 }}
               >
-                {e.isShiny && <ShinySparkles delay={delay(i) + 0.15} loop />}
-                <IvHover
-                  ivs={
-                    (e.pokemonId ? capturedById.get(e.pokemonId)?.ivs : undefined) ?? e.pokemon?.ivs
+                {isNew && (
+                  <span className="absolute -top-2 rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white">
+                    Nouveau !
+                  </span>
+                )}
+                <motion.div
+                  initial={instant ? false : { y: -6 }}
+                  animate={
+                    e.isShiny && !instant
+                      ? { y: 0, filter: ['brightness(1)', 'brightness(1.8)', 'brightness(1)'] }
+                      : { y: 0 }
+                  }
+                  transition={{ delay: delay(i) + 0.15, duration: 0.6 }}
+                  className="relative"
+                >
+                  {e.isShiny && <ShinySparkles delay={delay(i) + 0.15} loop />}
+                  <IvHover
+                    ivs={(e.pokemonId ? pokemon(e.pokemonId)?.ivs : undefined) ?? e.pokemon?.ivs}
+                  >
+                    <PokemonSprite
+                      speciesId={e.speciesId}
+                      formId={e.formId}
+                      shiny={e.isShiny}
+                      size={64}
+                      className={e.outcome === 'ignored' ? 'opacity-50 grayscale' : ''}
+                    />
+                  </IvHover>
+                </motion.div>
+                <span className="font-medium">
+                  {speciesName(ctx, e.speciesId, e.formId)}{' '}
+                  {captive && <GenderSymbol gender={captive.gender} />} {e.isShiny && <ShinyStar />}
+                </span>
+                <span className="text-slate-500">N.{e.level}</span>
+                <span
+                  className={
+                    e.outcome === 'captured'
+                      ? 'font-semibold text-emerald-600 dark:text-emerald-400'
+                      : e.outcome === 'escaped'
+                        ? 'font-semibold text-red-600 dark:text-red-400'
+                        : 'text-slate-500'
                   }
                 >
-                  <PokemonSprite
-                    speciesId={e.speciesId}
-                    formId={e.formId}
-                    shiny={e.isShiny}
-                    size={64}
-                    className={e.outcome === 'ignored' ? 'opacity-50 grayscale' : ''}
-                  />
-                </IvHover>
+                  {OUTCOME_LABELS[e.outcome]}
+                </span>
+                {e.pokemonId && renderNewborn?.(e.pokemonId)}
               </motion.div>
-              <span className="font-medium">
-                {speciesName(ctx, e.speciesId, e.formId)}{' '}
-                {captive && <GenderSymbol gender={captive.gender} />} {e.isShiny && <ShinyStar />}
-              </span>
-              <span className="text-slate-500">N.{e.level}</span>
-              <span
-                className={
-                  e.outcome === 'captured'
-                    ? 'font-semibold text-emerald-600 dark:text-emerald-400'
-                    : e.outcome === 'escaped'
-                      ? 'font-semibold text-red-600 dark:text-red-400'
-                      : 'text-slate-500'
-                }
-              >
-                {OUTCOME_LABELS[e.outcome]}
-              </span>
-              {e.pokemonId && capturedById.has(e.pokemonId) && (
-                <NewbornActions
-                  pokemon={pokemonById.get(e.pokemonId) ?? capturedById.get(e.pokemonId)!}
-                />
-              )}
-            </motion.div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
 
-      <motion.div
-        initial={instant ? false : { opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: after }}
-        className="mt-5 grid gap-4 sm:grid-cols-2"
-      >
-        <div>
-          <h3 className="text-sm font-semibold">Butin</h3>
-          {result.loot.length === 0 ? (
-            <p className="mt-1 text-sm text-slate-500">Rien cette fois-ci.</p>
-          ) : (
-            <ul className="mt-2 space-y-1">
-              {result.loot.map((l, i) => (
-                <motion.li
-                  key={l.itemId}
-                  className="flex items-center gap-2 text-sm"
-                  initial={instant ? false : { opacity: 0, x: -10 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: after + 0.1 * (i + 1) }}
-                >
-                  <img src={itemIcon(ctx, l.itemId)} alt="" className="h-7 w-7" />
-                  {itemName(ctx, l.itemId)}
-                  <span className="font-semibold">× {l.quantity}</span>
-                </motion.li>
-              ))}
+        <motion.div
+          initial={instant ? false : { opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: after }}
+          className="mt-5 grid gap-4 sm:grid-cols-2"
+        >
+          <div>
+            <h3 className="text-sm font-semibold">Butin</h3>
+            {result.loot.length === 0 ? (
+              <p className="mt-1 text-sm text-slate-500">Rien cette fois-ci.</p>
+            ) : (
+              <ul className="mt-2 space-y-1">
+                {result.loot.map((l, i) => (
+                  <motion.li
+                    key={l.itemId}
+                    className="flex items-center gap-2 text-sm"
+                    initial={instant ? false : { opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: after + 0.1 * (i + 1) }}
+                  >
+                    <img src={itemIcon(ctx, l.itemId)} alt="" className="h-7 w-7" />
+                    {itemName(ctx, l.itemId)}
+                    <span className="font-semibold">× {l.quantity}</span>
+                  </motion.li>
+                ))}
+              </ul>
+            )}
+            {result.ballsUsed > 0 && (
+              <p className="mt-2 text-xs text-slate-500">
+                {result.ballsUsed} Ball{result.ballsUsed > 1 ? 's' : ''} utilisée
+                {result.ballsUsed > 1 ? 's' : ''}
+                {result.berriesUsed > 0 && `, ${result.berriesUsed} baie(s)`}.
+              </p>
+            )}
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold">Équipe</h3>
+            <ul className="mt-2 space-y-1 text-sm">
+              {result.team.map((m) => {
+                const p = pokemon(m.id);
+                return (
+                  p && (
+                    <li key={m.id} className="flex items-center gap-2">
+                      <PokemonSprite
+                        speciesId={p.speciesId}
+                        formId={p.formId}
+                        shiny={p.isShiny}
+                        size={32}
+                      />
+                      <span className="flex-1 truncate">
+                        {speciesName(ctx, p.speciesId, p.formId)}
+                      </span>
+                      <span className="text-slate-500">+{m.xpGained} XP</span>
+                      {m.levelAfter > m.levelBefore && (
+                        <motion.span
+                          className="rounded-full bg-emerald-100 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
+                          initial={instant ? false : { scale: 0 }}
+                          animate={{ scale: [0, 1.3, 1] }}
+                          transition={{ delay: after + 0.3 }}
+                        >
+                          Niveau {m.levelAfter} !
+                        </motion.span>
+                      )}
+                    </li>
+                  )
+                );
+              })}
             </ul>
-          )}
-          {result.ballsUsed > 0 && (
-            <p className="mt-2 text-xs text-slate-500">
-              {result.ballsUsed} Ball{result.ballsUsed > 1 ? 's' : ''} utilisée
-              {result.ballsUsed > 1 ? 's' : ''}
-              {result.berriesUsed > 0 && `, ${result.berriesUsed} baie(s)`}.
-            </p>
-          )}
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold">Équipe</h3>
-          <ul className="mt-2 space-y-1 text-sm">
-            {result.team.map((m) => {
-              const p = pokemonById.get(m.id);
-              return (
-                p && (
-                  <li key={m.id} className="flex items-center gap-2">
-                    <PokemonSprite
-                      speciesId={p.speciesId}
-                      formId={p.formId}
-                      shiny={p.isShiny}
-                      size={32}
-                    />
-                    <span className="flex-1 truncate">
-                      {speciesName(ctx, p.speciesId, p.formId)}
-                    </span>
-                    <span className="text-slate-500">+{m.xpGained} XP</span>
-                    {m.levelAfter > m.levelBefore && (
-                      <motion.span
-                        className="rounded-full bg-emerald-100 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                        initial={instant ? false : { scale: 0 }}
-                        animate={{ scale: [0, 1.3, 1] }}
-                        transition={{ delay: after + 0.3 }}
-                      >
-                        Niveau {m.levelAfter} !
-                      </motion.span>
-                    )}
-                  </li>
-                )
-              );
-            })}
-          </ul>
-        </div>
-      </motion.div>
+          </div>
+        </motion.div>
+      </Fragment>
 
-      <div className="mt-6 text-right">
-        <button className="btn-primary" onClick={onClose}>
-          Continuer
-        </button>
-      </div>
+      {footer}
+      <div ref={bottom} />
     </div>
   );
 }

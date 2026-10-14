@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Zone } from '@poke/content';
 import {
@@ -11,7 +12,7 @@ import {
   nextChainPerfectIvThreshold,
   shinyProbability,
 } from '@poke/game-core';
-import type { CaptureFilter, ExpeditionError, GameContext } from '@poke/game-core';
+import type { CaptureFilter, ExpeditionError, GameContext, TeamMember } from '@poke/game-core';
 import type { ExpeditionDto, StartExpeditionInput } from '@poke/shared';
 import { Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
@@ -40,7 +41,8 @@ const SHINY_MODES = {
   only: 'Uniquement',
 } as const;
 
-const NO_FILTER: CaptureFilter = { speciesIds: [], minPerfectIvs: 0, shiny: 'any' };
+// Les shiny restent tentés par défaut : un filtre ne doit pas en faire manquer un par mégarde.
+const NO_FILTER: CaptureFilter = { speciesIds: [], minPerfectIvs: 0, shiny: 'always' };
 
 export function teamErrorText(e: ExpeditionError): string {
   switch (e.code) {
@@ -75,23 +77,106 @@ export function LaunchExpeditionDialog({
 }) {
   const queryClient = useQueryClient();
   const charm = useShinyCharm(ctx);
+  const inventory = useInventory();
+  const picker = useTeamPicker(ctx, zone);
+  const owned = new Map(inventory.data?.map((i) => [i.itemId, i.quantity]));
+
+  const start = useMutation({
+    mutationFn: (input: StartExpeditionInput) =>
+      api<ExpeditionDto>('/api/expeditions', { method: 'POST', json: input }),
+    onSuccess: () => {
+      // Fermer avant le rechargement : l'équipe envoyée devient « occupée » et sortirait de la liste.
+      onClose();
+      return Promise.all(
+        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      );
+    },
+  });
+
+  return (
+    <Modal open onClose={onClose} wide>
+      <LaunchExpeditionForm
+        ctx={ctx}
+        zone={zone}
+        chain={chain}
+        charm={charm}
+        owned={(itemId) => owned.get(itemId) ?? 0}
+        team={picker.team}
+        members={picker.members}
+        renderTeam={(power) => <TeamPicker ctx={ctx} zone={zone} picker={picker} power={power} />}
+        pending={start.isPending}
+        error={
+          start.error &&
+          (start.error instanceof ApiError
+            ? (GAME_ERRORS[start.error.code] ?? start.error.code)
+            : 'Erreur inconnue')
+        }
+        onCancel={onClose}
+        onSubmit={(input) => start.mutate(input)}
+      />
+    </Modal>
+  );
+}
+
+/**
+ * Réglages d'une expédition (durée, équipe, Balls, baie, filtre de capture) et aperçu des
+ * rencontres et du butin. Sans accès aux données du joueur : le jeu et le simulateur de
+ * l'admin le partagent.
+ */
+export function LaunchExpeditionForm({
+  ctx,
+  zone,
+  chain,
+  charm,
+  owned,
+  unlimitedItems = false,
+  team,
+  members,
+  renderTeam,
+  extra,
+  pending,
+  error,
+  submitLabel,
+  onCancel,
+  onSubmit,
+}: {
+  ctx: GameContext;
+  zone: Zone;
+  /** Maillon de la chaîne de zone qu'aurait cette expédition. */
+  chain: number;
+  /** Multiplicateur du Charme Chroma (1 = aucun). */
+  charm: number;
+  /** Quantité possédée d'un objet. */
+  owned: (itemId: string) => number;
+  /** Stock illimité (simulateur) : les quantités ne sont pas affichées. */
+  unlimitedItems?: boolean;
+  team: string[];
+  members: TeamMember[];
+  /** Choix de l'équipe, selon sa PE. */
+  renderTeam: (power: number) => ReactNode;
+  /** Réglages supplémentaires, sous la durée. */
+  extra?: ReactNode;
+  pending: boolean;
+  error: ReactNode;
+  /** Libellé du bouton de départ (par défaut « Partir (durée) »). */
+  submitLabel?: (durationMinutes: number) => string;
+  onCancel: () => void;
+  onSubmit: (input: StartExpeditionInput) => void;
+}) {
   const perfectIvs = chainPerfectIvs(ctx, chain);
   const nextIvThreshold = nextChainPerfectIvThreshold(ctx, chain);
-  const inventory = useInventory();
   const [duration, setDuration] = useState(zone.durationsMinutes[0]!);
-  const picker = useTeamPicker(ctx, zone);
-  const { team, members } = picker;
-  const owned = new Map(inventory.data?.map((i) => [i.itemId, i.quantity]));
+  const ownedLabel = (itemId: string) => (unlimitedItems ? '' : ` (× ${owned(itemId)})`);
   // Du multiplicateur le plus faible au plus fort : la Ball par défaut reste la plus courante.
   const balls = ctx.content.items
-    .filter((i) => ctx.itemEffect(i.id, 'ball') && (owned.get(i.id) ?? 0) > 0)
+    .filter((i) => ctx.itemEffect(i.id, 'ball') && owned(i.id) > 0)
     .sort(
       (a, b) =>
         ctx.itemEffect(a.id, 'ball')!.catchMultiplier -
         ctx.itemEffect(b.id, 'ball')!.catchMultiplier,
     );
   const berries = ctx.content.items
-    .filter((i) => ctx.itemEffect(i.id, 'captureBoost') && (owned.get(i.id) ?? 0) > 0)
+    .filter((i) => ctx.itemEffect(i.id, 'captureBoost') && owned(i.id) > 0)
     .sort(
       (a, b) =>
         ctx.itemEffect(a.id, 'captureBoost')!.multiplier -
@@ -106,21 +191,9 @@ export function LaunchExpeditionDialog({
   const [captureFilter, setCaptureFilter] = useState<CaptureFilter | null>(null);
   const selectedBall = ballId === undefined ? (balls[0]?.id ?? null) : ballId;
 
-  const start = useMutation({
-    mutationFn: (input: StartExpeditionInput) =>
-      api<ExpeditionDto>('/api/expeditions', { method: 'POST', json: input }),
-    onSuccess: () => {
-      // Fermer avant le rechargement : l'équipe envoyée devient « occupée » et sortirait de la liste.
-      onClose();
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
-    },
-  });
-
   const check = checkTeam(ctx, zone, duration, members);
   const encounters = encounterCount(ctx, duration);
-  const maxBalls = selectedBall ? Math.min(encounters, owned.get(selectedBall) ?? 0) : 0;
+  const maxBalls = selectedBall ? Math.min(encounters, owned(selectedBall)) : 0;
   const ballsTaken = Math.min(ballCount ?? maxBalls, maxBalls);
   const ballEffect = selectedBall ? ctx.itemEffect(selectedBall, 'ball') : undefined;
   const boost = berryId ? ctx.itemEffect(berryId, 'captureBoost')?.multiplier : undefined;
@@ -135,7 +208,7 @@ export function LaunchExpeditionDialog({
   const loot = lootProbabilities(ctx, zone, duration).sort((a, b) => b.probability - a.probability);
 
   return (
-    <Modal open onClose={onClose} wide>
+    <>
       <h2 className="text-xl font-bold">{zone.name}</h2>
       <p className="text-sm text-slate-500">{zone.description}</p>
 
@@ -164,8 +237,9 @@ export function LaunchExpeditionDialog({
         {nextIvThreshold !== null &&
           ` Prochain IV parfait garanti à ${nextIvThreshold} maillon${nextIvThreshold > 1 ? 's' : ''}.`}
       </p>
+      {extra}
 
-      <TeamPicker ctx={ctx} zone={zone} picker={picker} power={check.power} />
+      {renderTeam(check.power)}
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div>
@@ -180,7 +254,8 @@ export function LaunchExpeditionDialog({
           >
             {balls.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.name} (× {owned.get(b.id)})
+                {b.name}
+                {ownedLabel(b.id)}
               </option>
             ))}
             <option value="">Aucune (observer seulement)</option>
@@ -225,7 +300,8 @@ export function LaunchExpeditionDialog({
             <option value="">Aucune</option>
             {berries.map((b) => (
               <option key={b.id} value={b.id}>
-                {b.name} (× {owned.get(b.id)})
+                {b.name}
+                {ownedLabel(b.id)}
               </option>
             ))}
           </select>
@@ -401,13 +477,7 @@ export function LaunchExpeditionDialog({
           ))}
         </ul>
       )}
-      {start.error && (
-        <p className="mt-4 text-sm text-red-600">
-          {start.error instanceof ApiError
-            ? (GAME_ERRORS[start.error.code] ?? start.error.code)
-            : 'Erreur inconnue'}
-        </p>
-      )}
+      {error && <p className="mt-4 text-sm text-red-600">{error}</p>}
 
       <div className="mt-6 flex items-center justify-end gap-2">
         {selectedBall && (
@@ -417,14 +487,14 @@ export function LaunchExpeditionDialog({
             className="h-8"
           />
         )}
-        <button className="btn-ghost" onClick={onClose}>
+        <button className="btn-ghost" onClick={onCancel}>
           Annuler
         </button>
         <button
           className="btn-primary"
-          disabled={check.errors.length > 0 || start.isPending}
+          disabled={check.errors.length > 0 || pending}
           onClick={() =>
-            start.mutate({
+            onSubmit({
               zoneId: zone.id,
               durationMinutes: duration,
               team,
@@ -434,9 +504,9 @@ export function LaunchExpeditionDialog({
             })
           }
         >
-          Partir ({formatDuration(duration)})
+          {submitLabel ? submitLabel(duration) : `Partir (${formatDuration(duration)})`}
         </button>
       </div>
-    </Modal>
+    </>
   );
 }

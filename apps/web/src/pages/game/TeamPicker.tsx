@@ -2,10 +2,10 @@ import { useState } from 'react';
 import { types } from '@poke/data';
 import { isRegionalSpecies, pokemonPower } from '@poke/game-core';
 import type { ExpeditionSite, GameContext } from '@poke/game-core';
-import type { PokemonDto } from '@poke/shared';
-import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
-import { PokemonSprite, ShinyStar, useNow } from '../../components/ui';
-import { isUsable, usePokemon } from '../../lib/game';
+import type { PokemonDto, PokemonTagDto } from '@poke/shared';
+import { PokemonTagBadges, TagFilterSelect, useTagFilterOver } from '../../components/tags';
+import { PokemonSprite, ShinyStar, TypeBadge, useNow } from '../../components/ui';
+import { isUsable, usePokemon, useTags } from '../../lib/game';
 import { typeLabel } from '../../lib/labels';
 
 const SORTS = {
@@ -89,15 +89,24 @@ export const pillClass = (active: boolean) =>
  * Renvoie les membres choisis (dans l'ordre de sélection) pour valider l'équipe.
  */
 export function useTeamPicker(ctx: GameContext, zone: ExpeditionSite) {
-  const pokemon = usePokemon();
+  return useTeamPickerOver(ctx, zone, usePokemon().data ?? [], useTags().data ?? []);
+}
+
+/** Même choix d'équipe, sur des Pokémon et étiquettes donnés (PC fictif du simulateur de l'admin). */
+export function useTeamPickerOver(
+  ctx: GameContext,
+  zone: ExpeditionSite,
+  pokemon: readonly PokemonDto[],
+  tags: readonly PokemonTagDto[],
+) {
   const [team, setTeam] = useState<string[]>([]);
   const [sort, setSort] = useState<Sort>('power');
   const [search, setSearch] = useState('');
   const [type, setType] = useState('all');
-  const tagFilter = useTagFilter();
+  const tagFilter = useTagFilterOver(tags);
   const now = useNow(10_000);
   const matchesName = nameMatcher(search);
-  const available = (pokemon.data ?? [])
+  const available = pokemon
     .filter(
       (p) =>
         isUsable(p, now) && (!zone.regionId || isRegionalSpecies(ctx, zone.regionId, p.speciesId)),
@@ -193,6 +202,30 @@ export function TeamPicker({
           <TypeFilterSelect value={type} onChange={setType} />
           <NameSearch value={search} onChange={setSearch} />
         </div>
+        {zone.requiredTypes.length > 0 && (
+          <div className="flex w-full flex-wrap items-center gap-1 text-xs">
+            <span className="text-slate-500">Types requis :</span>
+            {zone.requiredTypes.map((r) => (
+              <button
+                key={r.type}
+                type="button"
+                onClick={() => setType(type === r.type ? 'all' : r.type)}
+                title={
+                  type === r.type
+                    ? 'Retirer le filtre'
+                    : `N'afficher que les Pokémon de type ${typeLabel(r.type)}`
+                }
+                className={`rounded-full transition ${
+                  type === r.type
+                    ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900'
+                    : 'opacity-70 hover:opacity-100'
+                }`}
+              >
+                <TypeBadge type={r.type} />
+              </button>
+            ))}
+          </div>
+        )}
         <span
           className={`text-sm font-medium ${power >= zone.minPower ? 'text-emerald-600' : 'text-red-600'}`}
         >
