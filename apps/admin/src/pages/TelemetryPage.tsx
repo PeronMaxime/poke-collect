@@ -10,6 +10,7 @@ const KIND_LABELS: Record<TelemetryStepKind, string> = {
   expedition: 'Départ',
   region: 'Région',
   trainer: 'Dresseur',
+  dungeon: 'Donjon',
   reward: 'Récompense',
   quest: 'Quête',
 };
@@ -58,7 +59,7 @@ const durationTitle = (d: DurationStats) =>
 
 /**
  * Télémétrie d'équilibrage : parcours des joueurs (temps de complétion depuis l'inscription) et
- * goulets (dresseurs, étapes de quête, zones), pour régler le contenu dans les autres sections.
+ * goulets (dresseurs, donjons, étapes de quête, zones) et possession des Méga-Gemmes, pour régler le contenu dans les autres sections.
  */
 export function TelemetryPage() {
   const [days, setDays] = useState<number>(30);
@@ -75,7 +76,8 @@ export function TelemetryPage() {
           <h1 className="text-2xl font-bold">Télémétrie</h1>
           <p className="text-sm text-slate-500">
             Temps de complétion et goulets, déduits des parties en cours (contenu publié). Combats,
-            expéditions et économie : sur la période choisie ; parcours : depuis l’inscription.
+            donjons, expéditions et économie : sur la période choisie ; parcours : depuis
+            l’inscription.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -245,6 +247,102 @@ export function TelemetryPage() {
                       </td>
                     </tr>
                   ))}
+                </tbody>
+              </table>
+            </section>
+          </div>
+
+          <div className="grid gap-6 lg:grid-cols-2">
+            <section className="card overflow-x-auto p-0">
+              <h2 className="px-4 pt-4 font-semibold">Donjons ({t.days} j)</h2>
+              <p className="px-4 text-xs text-slate-500">
+                Tentatives récupérées sur la période (échecs : défaites et temps écoulé). « Bloqués
+                » : joueurs qui ont échoué sans jamais réussir le donjon.
+              </p>
+              <table className="mt-2 w-full text-sm">
+                <thead className="text-left text-xs text-slate-500">
+                  <tr>
+                    <th className="px-4 py-2 font-normal">Donjon</th>
+                    <th className="px-4 py-2 text-right font-normal">Tentatives</th>
+                    <th className="px-4 py-2 font-normal">Réussite</th>
+                    <th className="px-4 py-2 text-right font-normal">Fuites</th>
+                    <th className="px-4 py-2 text-right font-normal">Gemmes</th>
+                    <th className="px-4 py-2 text-right font-normal">Bloqués</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...t.dungeons]
+                    .sort((a, b) => b.stuckPlayers - a.stuckPlayers || b.runs - a.runs)
+                    .map((d) => (
+                      <tr
+                        key={d.dungeonId}
+                        className="border-t border-slate-100 dark:border-slate-800"
+                      >
+                        <td className="px-4 py-1.5">
+                          {d.label}
+                          <span className="ml-2 text-xs text-slate-500">{d.difficulty}</span>
+                        </td>
+                        <td
+                          className="px-4 py-1.5 text-right font-mono"
+                          title={`${d.players} joueur(s)`}
+                        >
+                          {fmt(d.runs)}
+                        </td>
+                        <td className="px-4 py-1.5">
+                          <Meter
+                            value={percent(d.wins, d.runs)}
+                            title={`${d.wins} réussite(s) · ${d.losses} échec(s)`}
+                          />
+                        </td>
+                        <td className="px-4 py-1.5 text-right font-mono">{fmt(d.fled)}</td>
+                        <td className="px-4 py-1.5 text-right font-mono">{fmt(d.gems)}</td>
+                        <td
+                          className={`px-4 py-1.5 text-right font-mono ${d.stuckPlayers > 0 ? 'font-semibold text-amber-700 dark:text-amber-400' : ''}`}
+                        >
+                          {d.stuckPlayers > 0 ? `⚠ ${fmt(d.stuckPlayers)}` : '0'}
+                        </td>
+                      </tr>
+                    ))}
+                </tbody>
+              </table>
+            </section>
+
+            <section className="card overflow-x-auto p-0">
+              <h2 className="px-4 pt-4 font-semibold">Méga-Gemmes</h2>
+              <p className="px-4 text-xs text-slate-500">
+                Possession actuelle : joueurs qui en détiennent au moins une, exemplaires dans les
+                sacs et tenus par un Pokémon Méga-Évolué ; obtenues : total depuis le lancement.
+              </p>
+              <table className="mt-2 w-full text-sm">
+                <thead className="text-left text-xs text-slate-500">
+                  <tr>
+                    <th className="px-4 py-2 font-normal">Gemme</th>
+                    <th className="px-4 py-2 font-normal">Possédée par</th>
+                    <th className="px-4 py-2 text-right font-normal">Sacs</th>
+                    <th className="px-4 py-2 text-right font-normal">Tenues</th>
+                    <th className="px-4 py-2 text-right font-normal">Obtenues</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...t.megaStones]
+                    .sort((a, b) => b.owners - a.owners || b.dropped - a.dropped)
+                    .map((g) => (
+                      <tr
+                        key={g.itemId}
+                        className="border-t border-slate-100 dark:border-slate-800"
+                      >
+                        <td className="px-4 py-1.5">{g.label}</td>
+                        <td className="px-4 py-1.5">
+                          <Meter
+                            value={percent(g.owners, t.players.withStarter)}
+                            title={`${g.owners} joueur(s)`}
+                          />
+                        </td>
+                        <td className="px-4 py-1.5 text-right font-mono">{fmt(g.inBags)}</td>
+                        <td className="px-4 py-1.5 text-right font-mono">{fmt(g.held)}</td>
+                        <td className="px-4 py-1.5 text-right font-mono">{fmt(g.dropped)}</td>
+                      </tr>
+                    ))}
                 </tbody>
               </table>
             </section>
