@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
 import {
   createDb,
+  dungeonProgress,
   ensureSeedContent,
   inventory,
   pokemon,
@@ -223,6 +224,17 @@ describe('joueurs (admin)', () => {
     const player = await newPlayer('sacha-joueurs@example.com', 'Sacha');
     advance(5);
     expect((await player.call('POST', '/api/presence')).status).toBe(204);
+    // Un donjon réussi, une gemme dans le sac (×2) et une autre tenue par un Pokémon.
+    await handle.db
+      .insert(dungeonProgress)
+      .values({ ownerId: player.userId, dungeonId: seedContent.dungeons[0]!.id, wins: 1 });
+    await handle.db
+      .insert(inventory)
+      .values({ ownerId: player.userId, itemId: 'charizardite-x', quantity: 2 });
+    await handle.db
+      .update(pokemon)
+      .set({ megaStone: 'venusaurite' })
+      .where(eq(pokemon.ownerId, player.userId));
 
     const list = await admin.call<AdminPlayerDto[]>('GET', '/api/admin/players');
     expect(list.status).toBe(200);
@@ -243,7 +255,11 @@ describe('joueurs (admin)', () => {
     expect(detail.status).toBe(200);
     expect(detail.body.profile?.trainerName).toBe('Sacha');
     expect(detail.body.speciesCaught).toBe(1);
-    expect(detail.body.card?.pokemonOwned).toBe(1);
+    expect(detail.body.card).toMatchObject({
+      pokemonOwned: 1,
+      dungeonsCleared: 1,
+      megaStonesOwned: 2,
+    });
     expect(detail.body.badges[0]?.regionId).toBe(seedContent.regions[0]!.id);
     expect(detail.body.badges[0]?.badges.every((b) => !b.earned)).toBe(true);
 

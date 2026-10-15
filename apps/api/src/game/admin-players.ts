@@ -85,7 +85,7 @@ export async function playerDetail(
   }
 
   const [card, progress, [dex]] = await Promise.all([
-    trainerCard(db, userId),
+    trainerCard(db, ctx, userId),
     playerProgress(db, ctx, userId),
     db
       .select({

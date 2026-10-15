@@ -122,7 +122,7 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
   /** Quêtes visibles (débloquées ou commencées), avancement à jour. */
   /** Fiche Dresseur : statistiques cumulées. */
   app.get('/api/trainer-card', async (request): Promise<TrainerCardResponse> =>
-    trainerCard(db, request.user!.id),
+    trainerCard(db, await content.get(), request.user!.id),
   );
 
   app.get('/api/quests', async (request): Promise<QuestsResponse> => ({
