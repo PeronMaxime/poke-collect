@@ -10,15 +10,18 @@ const MORPH_SECONDS = 2.4;
 
 /**
  * Évolution animée : l'ancien Pokémon pulse en silhouette lumineuse, alterne avec sa nouvelle
- * forme de plus en plus vite, puis la nouvelle espèce apparaît.
+ * forme de plus en plus vite, puis la nouvelle espèce apparaît. Sert aussi à la Méga-Évolution.
  */
 export function EvolutionReveal({
   ctx,
   data,
+  mega = false,
   onDone,
 }: {
   ctx: GameContext;
   data: EvolveResponse;
+  /** Méga-Évolution (l'objet est tenu, pas consommé). */
+  mega?: boolean;
   onDone: () => void;
 }) {
   const reduced = useReducedMotion();
@@ -40,7 +43,7 @@ export function EvolutionReveal({
   return (
     <div className="flex flex-col items-center py-4 text-center">
       <p className="text-sm text-slate-500">
-        {done ? 'Félicitations !' : `Quoi ? ${from} évolue !`}
+        {done ? 'Félicitations !' : `Quoi ? ${from} ${mega ? 'méga-évolue' : 'évolue'} !`}
       </p>
       <div className="relative my-4 grid h-52 w-52 place-items-center">
         <motion.div
@@ -104,7 +107,7 @@ export function EvolutionReveal({
         className="space-y-1"
       >
         <h2 className="text-xl font-bold">
-          {from} a évolué en {to} ! {pokemon.isShiny && <ShinyStar />}
+          {from} a {mega ? 'méga-évolué' : 'évolué'} en {to} ! {pokemon.isShiny && <ShinyStar />}
         </h2>
         {newInDexTracker(data)(pokemon) && (
           <p>
@@ -114,7 +117,9 @@ export function EvolutionReveal({
           </p>
         )}
         {data.consumedItemId && (
-          <p className="text-xs text-slate-500">{itemName(ctx, data.consumedItemId)} utilisé(e).</p>
+          <p className="text-xs text-slate-500">
+            {itemName(ctx, data.consumedItemId)} {mega ? `tenue par ${to}` : 'utilisé(e)'}.
+          </p>
         )}
       </motion.div>
       <div className="mt-6 flex gap-2">

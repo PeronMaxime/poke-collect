@@ -54,6 +54,8 @@ export function teamErrorText(e: ExpeditionError): string {
       return `Au plus ${e.max} Pokémon.`;
     case 'DUPLICATE_MEMBER':
       return 'Un Pokémon est sélectionné deux fois.';
+    case 'TOO_MANY_MEGAS':
+      return 'Un seul Pokémon Méga-Évolué par équipe.';
     case 'WRONG_REGION':
       return 'Seuls les Pokémon du Pokédex de la région peuvent explorer cette zone.';
     case 'POWER_TOO_LOW':

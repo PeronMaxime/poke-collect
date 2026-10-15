@@ -142,6 +142,8 @@ export async function depositDaycare(
     const b = byId.get(input.parentBId);
     if (!a || !b) throw new GameError(404, 'POKEMON_NOT_FOUND');
     await assertAvailable(tx, userId, [a, b], now);
+    // Un Pokémon Méga-Évolué transmettrait sa forme Méga à l'œuf.
+    if (a.megaStone || b.megaStone) throw new GameError(409, 'POKEMON_MEGA');
 
     const check = checkBreedingPair(ctx, a, b);
     if (!check.ok) throw new GameError(400, 'INCOMPATIBLE_PARENTS', { errors: check.errors });
@@ -410,6 +412,12 @@ export async function transferPokemon(
     }
     await tx.delete(pokemon).where(and(eq(pokemon.ownerId, userId), inArray(pokemon.id, unique)));
     await addCandies(tx, userId, gained);
+    // Les Méga-Gemmes tenues reviennent dans le sac.
+    await addItems(
+      tx,
+      userId,
+      rows.flatMap((r) => (r.megaStone ? [{ itemId: r.megaStone, quantity: 1 }] : [])),
+    );
     const transferred = new Map<number, number>();
     for (const r of rows) transferred.set(r.speciesId, (transferred.get(r.speciesId) ?? 0) + 1);
     await tx

@@ -61,6 +61,13 @@ export const SECTIONS: AdminSection[] = [
     phase: 3,
   },
   {
+    path: '/dungeons',
+    label: 'Donjons',
+    description:
+      'Méga-Évolutions : lignée, adversaires, boss, temps imparti, Méga-Gemme ; réglages de combat.',
+    phase: 8,
+  },
+  {
     path: '/items',
     label: 'Objets',
     description: 'Catalogue PokéAPI et objets maison, effets.',
@@ -89,6 +96,12 @@ export const SECTIONS: AdminSection[] = [
     label: 'Progression',
     description: 'Paliers du Pokédex et collections thématiques.',
     phase: 5,
+  },
+  {
+    path: '/menu',
+    label: 'Menu du jeu',
+    description: 'Ordre des onglets et groupes du menu, par glisser-déposer.',
+    phase: 0,
   },
   {
     path: '/telemetry',

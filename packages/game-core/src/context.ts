@@ -1,5 +1,6 @@
 import type {
   BalanceSettings,
+  Dungeon,
   GameContent,
   Item,
   ItemEffect,
@@ -46,6 +47,9 @@ export interface GameContext {
   readonly shopEntries: readonly ShopEntry[];
   /** Quêtes triées selon leur ordre. */
   readonly quests: readonly Quest[];
+  /** Donjons triés par région puis par ordre. */
+  readonly dungeons: readonly Dungeon[];
+  dungeon(id: string): Dungeon | undefined;
   quest(id: string): Quest | undefined;
   region(id: string): Region | undefined;
   zone(id: string): Zone | undefined;
@@ -90,6 +94,8 @@ export function createGameContext(content: GameContent): GameContext {
   const speciesCache = new Map<string, GameSpecies>();
   const quests = [...content.quests].sort(byRegionThenOrder);
   const questsById = new Map(quests.map((q) => [q.id, q]));
+  const dungeons = [...content.dungeons].sort(byRegionThenOrder);
+  const dungeonsById = new Map(dungeons.map((d) => [d.id, d]));
 
   return {
     content,
@@ -100,7 +106,9 @@ export function createGameContext(content: GameContent): GameContext {
     shopCategories,
     shopEntries,
     quests,
+    dungeons,
     quest: (id) => questsById.get(id),
+    dungeon: (id) => dungeonsById.get(id),
     region: (id) => regionsById.get(id),
     zone: (id) => zonesById.get(id),
     trainer: (id) => trainersById.get(id),
@@ -144,8 +152,8 @@ export function createGameContext(content: GameContent): GameContext {
 }
 
 /**
- * Contenu vu par les joueurs : sans les régions, zones, dresseurs et quêtes désactivés (ni ce
- * qui dépend d'une région désactivée : ses zones, dresseurs, quêtes et paliers de Pokédex, et
+ * Contenu vu par les joueurs : sans les régions, zones, dresseurs, quêtes et donjons désactivés (ni
+ * ce qui dépend d'une région désactivée : ses zones, dresseurs, quêtes, donjons, paliers, et
  * les collections qui demandent une de ses espèces).
  */
 export function playableContent(content: GameContent): GameContent {
@@ -159,6 +167,7 @@ export function playableContent(content: GameContent): GameContent {
     zones: content.zones.filter((z) => z.enabled && regionOk(z.regionId)),
     trainers: content.trainers.filter((t) => t.enabled && regionOk(t.regionId)),
     quests: content.quests.filter((q) => q.enabled && regionOk(q.regionId)),
+    dungeons: content.dungeons.filter((d) => d.enabled && regionOk(d.regionId)),
     dexMilestones: content.dexMilestones.filter((m) => regionOk(m.regionId)),
     collections: content.collections.filter((c) => c.speciesIds.every((id) => speciesIds.has(id))),
   };

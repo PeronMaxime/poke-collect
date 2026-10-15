@@ -1,12 +1,22 @@
-import { asc, count, eq, sql } from 'drizzle-orm';
+import { and, asc, count, eq, inArray, sql } from 'drizzle-orm';
 import { playerProfiles, pokedex, pokemon, sessions, speciesCaptures, users } from '@poke/db';
 import type { Db } from '@poke/db';
-import { isUnlocked } from '@poke/game-core';
+import { STAT_NAMES } from '@poke/data';
+import { createRng, generatePokemon, isUnlocked } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { AdminPlayerDetailResponse, AdminPlayerDto, AdminSpeciesStatsDto } from '@poke/shared';
+import type {
+  AdminPlayerDetailResponse,
+  AdminPlayerDto,
+  AdminSpeciesStatsDto,
+  AdminTestPokemonDeleteResponse,
+  AdminTestPokemonInput,
+  AdminTestPokemonResponse,
+} from '@poke/shared';
 import { toDto } from '../routes/player';
+import { GameError } from './errors';
+import { newSeed, requireStartedProfile } from './expeditions';
 import { trainerCard } from './stats';
-import { playerProgress } from './store';
+import { playerProgress, pokemonActivities, recordPokedex } from './store';
 
 /**
  * Dernière activité connue : présence enregistrée à chaque requête, complétée par la dernière
@@ -153,4 +163,125 @@ export async function speciesStats(db: Db): Promise<AdminSpeciesStatsDto[]> {
   for (const r of owned) entry(r.speciesId).owned = r.owned;
   for (const r of dex) entry(r.speciesId).trainers = r.trainers;
   return [...stats.values()].sort((a, b) => a.speciesId - b.speciesId);
+}
+
+/** Pokémon de chaque type gardés dans le panel du lot de test. */
+const TEST_PANEL_PER_TYPE = 2;
+
+const baseStatTotal = (s: { baseStats: Record<string, number> }) =>
+  Object.values(s.baseStats).reduce((a, b) => a + b, 0);
+
+/** Espèces du lot de test : lignées des donjons de la région, puis les plus fortes par type. */
+export function testPokemonSpecies(
+  ctx: GameContext,
+  regionId: string,
+  legendaries: boolean,
+): number[] {
+  const region = ctx.region(regionId);
+  if (!region) return [];
+  const ids = new Set<number>();
+  for (const d of ctx.dungeons) {
+    if (d.regionId === regionId) for (const id of d.familySpeciesIds) ids.add(id);
+  }
+  const regional = region.speciesIds
+    .map((id) => ctx.species(id))
+    .filter((s) => s !== undefined)
+    .filter((s) => !s.isBaby && (legendaries || (!s.isLegendary && !s.isMythical)))
+    .sort((a, b) => baseStatTotal(b) - baseStatTotal(a) || a.id - b.id);
+  const types = new Set(regional.flatMap((s) => s.types));
+  for (const type of types) {
+    for (const s of regional.filter((s) => s.types.includes(type)).slice(0, TEST_PANEL_PER_TYPE)) {
+      ids.add(s.id);
+    }
+  }
+  if (legendaries) {
+    for (const s of regional) if (s.isLegendary || s.isMythical) ids.add(s.id);
+  }
+  return [...ids].sort((a, b) => a - b);
+}
+
+/**
+ * Donne un lot de Pokémon de test à un administrateur (origine `admin`) et les inscrit au
+ * Pokédex, ce qui rend visibles les donjons de la région. Les statistiques de capture globales
+ * ne sont pas touchées. Lève `NOT_FOUND`, `NOT_ADMIN`, `NO_PROFILE` ou `REGION_NOT_FOUND`.
+ */
+export async function giveTestPokemon(
+  db: Db,
+  ctx: GameContext,
+  userId: string,
+  input: AdminTestPokemonInput,
+  now: Date,
+): Promise<AdminTestPokemonResponse> {
+  const [user] = await db.select({ role: users.role }).from(users).where(eq(users.id, userId));
+  if (!user) throw new GameError(404, 'NOT_FOUND');
+  if (user.role !== 'admin') throw new GameError(403, 'NOT_ADMIN');
+  await requireStartedProfile(db, userId);
+  if (!ctx.region(input.regionId)) throw new GameError(404, 'REGION_NOT_FOUND');
+
+  const speciesIds = testPokemonSpecies(ctx, input.regionId, input.legendaries);
+  const rng = createRng(newSeed());
+  const list = speciesIds.map((speciesId) => {
+    const p = generatePokemon(ctx, rng, speciesId, input.level, { shinyProbability: 0 });
+    if (!input.perfectIvs) return p;
+    const ivs = Object.fromEntries(STAT_NAMES.map((s) => [s, 31])) as typeof p.ivs;
+    return { ...p, ivs };
+  });
+  await db.transaction(async (tx) => {
+    await tx.insert(pokemon).values(
+      list.map((p) => ({
+        ownerId: userId,
+        speciesId: p.speciesId,
+        formId: p.formId ?? null,
+        level: p.level,
+        xp: p.xp,
+        ivHp: p.ivs.hp,
+        ivAtk: p.ivs.attack,
+        ivDef: p.ivs.defense,
+        ivSpa: p.ivs['special-attack'],
+        ivSpd: p.ivs['special-defense'],
+        ivSpe: p.ivs.speed,
+        nature: p.nature,
+        ability: p.ability,
+        isShiny: p.isShiny,
+        gender: p.gender,
+        happiness: p.happiness,
+        origin: 'admin' as const,
+        originRegion: input.regionId,
+        caughtAt: now,
+      })),
+    );
+    await recordPokedex(tx, userId, { seen: speciesIds, caught: list, at: now });
+  });
+  return { added: list.length, speciesIds };
+}
+
+/**
+ * Supprime les Pokémon du lot de test (origine `admin`) d'un administrateur, sauf ceux occupés
+ * (expédition, combat, donjon, pension). Le Pokédex est laissé tel quel. Lève `NOT_FOUND`,
+ * `NOT_ADMIN` ou `LAST_POKEMON` (il ne resterait aucun Pokémon au joueur).
+ */
+export async function deleteTestPokemon(
+  db: Db,
+  userId: string,
+): Promise<AdminTestPokemonDeleteResponse> {
+  const [user] = await db.select({ role: users.role }).from(users).where(eq(users.id, userId));
+  if (!user) throw new GameError(404, 'NOT_FOUND');
+  if (user.role !== 'admin') throw new GameError(403, 'NOT_ADMIN');
+  return db.transaction(async (tx) => {
+    const rows = await tx
+      .select({ id: pokemon.id })
+      .from(pokemon)
+      .where(and(eq(pokemon.ownerId, userId), eq(pokemon.origin, 'admin')));
+    const activities = await pokemonActivities(tx, userId);
+    const ids = rows.map((r) => r.id).filter((id) => !activities.has(id));
+    const [{ value: owned } = { value: 0 }] = await tx
+      .select({ value: count() })
+      .from(pokemon)
+      .where(eq(pokemon.ownerId, userId));
+    if (ids.length > 0 && owned - ids.length < 1) throw new GameError(409, 'LAST_POKEMON');
+    if (ids.length > 0) {
+      await tx.delete(pokemon).where(and(eq(pokemon.ownerId, userId), inArray(pokemon.id, ids)));
+    }
+    return { deleted: ids.length, busy: rows.length - ids.length };
+  });
 }

@@ -38,6 +38,7 @@ import {
   shinyChains,
   startExpedition,
 } from '../game/expeditions';
+import { settleFinishedDungeonRun } from '../game/dungeons';
 import { claimedRewards, pokemonActivities, toExpeditionDto, toPokemonDto } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
@@ -56,6 +57,8 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
 
   app.get('/api/pokemon', async (request): Promise<PokemonDto[]> => {
     const userId = request.user!.id;
+    // Donjon terminé pendant l'absence du joueur : son équipe redevient disponible.
+    await settleFinishedDungeonRun(db, content, userId, now());
     const [rows, busy] = await Promise.all([
       db
         .select()

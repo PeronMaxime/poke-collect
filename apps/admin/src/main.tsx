@@ -11,9 +11,11 @@ import { PlaceholderPage } from './pages/PlaceholderPage';
 import { PlayersPage } from './pages/PlayersPage';
 import { TelemetryPage } from './pages/TelemetryPage';
 import { BalancePage } from './pages/content/BalancePage';
+import { DungeonsPage } from './pages/content/DungeonsPage';
 import { EvolutionsPage } from './pages/content/EvolutionsPage';
 import { ItemsPage } from './pages/content/ItemsPage';
 import { LootTablesPage } from './pages/content/LootTablesPage';
+import { MenuPage } from './pages/content/MenuPage';
 import { ProgressionPage } from './pages/content/ProgressionPage';
 import { QuestsPage } from './pages/content/QuestsPage';
 import { RegionsPage } from './pages/content/RegionsPage';
@@ -43,6 +45,7 @@ const router = createBrowserRouter([
           { path: 'zones', element: <ZonesPage /> },
           { path: 'expedition-simulator', element: <ExpeditionSimulatorPage /> },
           { path: 'trainers', element: <TrainersPage /> },
+          { path: 'dungeons', element: <DungeonsPage /> },
           { path: 'items', element: <ItemsPage /> },
           { path: 'loot-tables', element: <LootTablesPage /> },
           { path: 'shop', element: <ShopPage /> },
@@ -51,6 +54,7 @@ const router = createBrowserRouter([
           { path: 'quests', element: <QuestsPage /> },
           { path: 'telemetry', element: <TelemetryPage /> },
           { path: 'players', element: <PlayersPage /> },
+          { path: 'menu', element: <MenuPage /> },
           ...SECTIONS.filter((s) => s.phase > CURRENT_PHASE).map((section) => ({
             path: section.path.slice(1),
             element: <PlaceholderPage section={section} />,

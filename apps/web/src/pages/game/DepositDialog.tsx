@@ -75,7 +75,8 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
   const [sort, setSort] = useState<Sort>('dex');
 
   const breedable = (pokemon.data ?? []).filter(
-    (p) => isUsable(p, now) && isBreedable(ctx.species(p.speciesId, p.formId)!),
+    // Un Pokémon Méga-Évolué n'entre pas en pension (il transmettrait sa forme Méga).
+    (p) => isUsable(p, now) && !p.megaStone && isBreedable(ctx.species(p.speciesId, p.formId)!),
   );
   const byId = new Map(breedable.map((p) => [p.id, p]));
   const [a, b] = parents.map((id) => (id ? byId.get(id) : undefined));

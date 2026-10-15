@@ -33,6 +33,7 @@ export type ContentEntityKind =
   | 'lootTable'
   | 'zone'
   | 'trainer'
+  | 'dungeon'
   | 'shopCategory'
   | 'shopEntry'
   | 'evolutionOverride'
@@ -49,6 +50,8 @@ export interface ContentIssue {
 
 const KNOWN_TYPES = new Set(typeData.map((t) => t.name));
 const KNOWN_NATURES = new Set(natures.map((n) => n.name));
+/** Types techniques des données, sans Pokémon (Stellaire, ???, Obscur). */
+export const NON_POKEMON_TYPES: ReadonlySet<string> = new Set(['stellar', 'unknown', 'shadow']);
 
 function duplicates(ids: readonly (string | number)[]): Set<string | number> {
   const seen = new Set<string | number>();
@@ -107,6 +110,8 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     add('error', 'collection', id, 'Identifiant de collection en double');
   for (const id of duplicates(content.quests.map((q) => q.id)))
     add('error', 'quest', id, 'Identifiant de quête en double');
+  for (const id of duplicates(content.dungeons.map((d) => d.id)))
+    add('error', 'dungeon', id, 'Identifiant de donjon en double');
 
   const checkUnlockPart = (entity: ContentEntityKind, id: string, unlock: BaseUnlockCondition) => {
     if (unlock.type === 'regionDexPercent' && !regionIds.has(unlock.regionId)) {
@@ -236,6 +241,26 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   if (balance.battles.minWinChance > balance.battles.maxWinChance) {
     add('error', 'balance', null, 'Combats : probabilité de victoire minimale > maximale');
   }
+  if (balance.dungeons.minAttackIntervalMs > balance.dungeons.maxAttackIntervalMs) {
+    add('error', 'balance', null, 'Donjons : délai minimal entre deux attaques > maximal');
+  }
+  if (balance.dungeons.baseAttackIntervalMs > balance.dungeons.maxAttackIntervalMs) {
+    add('error', 'balance', null, 'Donjons : délai de référence > délai à Vitesse 0');
+  }
+  for (const t of Object.keys(balance.dungeons.attacks)) {
+    if (!KNOWN_TYPES.has(t)) add('error', 'balance', null, `Donjons : type « ${t} » inconnu`);
+  }
+  const missingAttacks = typeData
+    .filter((t) => !NON_POKEMON_TYPES.has(t.name) && !balance.dungeons.attacks[t.name])
+    .map((t) => t.nameFr);
+  if (missingAttacks.length > 0) {
+    add(
+      'warning',
+      'balance',
+      null,
+      `Donjons : aucune attaque pour ${missingAttacks.join(', ')} (attaque par défaut)`,
+    );
+  }
   for (const stack of balance.newPlayer.startingInventory) {
     if (!itemIds.has(stack.itemId)) {
       add('error', 'balance', null, `Inventaire de départ : objet « ${stack.itemId} » inconnu`);
@@ -308,6 +333,9 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
         const form = formError(effect);
         if (form) add('error', 'item', item.id, `Fossile : ${form}`);
       }
+      if (effect.type === 'megaEvolution' && getForm(effect.formId)?.kind !== 'mega') {
+        add('error', 'item', item.id, `Méga-Gemme : ${effect.formId} n'est pas une forme Méga`);
+      }
     }
     // Revendre plus cher qu'on achète ferait de l'argent à l'infini.
     const unitPrice = lowestUnitPrice(content.shopEntries, item.id);
@@ -331,7 +359,8 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     if (table.entries.length === 0) add('warning', 'lootTable', table.id, 'Table vide');
     const used =
       content.zones.some((z) => z.lootTableId === table.id) ||
-      content.trainers.some((t) => t.lootTableId === table.id);
+      content.trainers.some((t) => t.lootTableId === table.id) ||
+      content.dungeons.some((d) => d.lootTableId === table.id);
     if (!used) {
       add('warning', 'lootTable', table.id, 'Table utilisée nulle part');
     }
@@ -446,6 +475,51 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
       report('warning', 'Aucune récompense de victoire');
     }
     checkUnlock('trainer', trainer.id, trainer.unlock);
+  }
+
+  // Donjons
+  for (const dungeon of content.dungeons) {
+    const report = (severity: ContentIssue['severity'], message: string) =>
+      add(severity, 'dungeon', dungeon.id, message);
+    if (!regionIds.has(dungeon.regionId))
+      report('error', `Région « ${dungeon.regionId} » inconnue`);
+    if (dungeon.lootTableId && !lootTableIds.has(dungeon.lootTableId)) {
+      report('error', `Table de butin « ${dungeon.lootTableId} » inconnue`);
+    }
+    if (dungeon.lootTableId && dungeon.lootRolls === 0) {
+      report('warning', 'Table de butin choisie mais aucun tirage');
+    }
+    if (dungeon.gemItemId && !itemIds.has(dungeon.gemItemId)) {
+      report('error', `Méga-Gemme « ${dungeon.gemItemId} » inconnue`);
+    }
+    if (dungeon.gemItemId && dungeon.gemChance === 0) {
+      report('warning', 'Méga-Gemme choisie mais probabilité nulle');
+    }
+    for (const [label, member] of [
+      ...dungeon.opponents.map((m, i) => [`Adversaire ${i + 1}`, m] as const),
+      ['Boss', dungeon.boss] as const,
+    ]) {
+      if (!getSpecies(member.speciesId)) {
+        report('error', `${label} : espèce ${member.speciesId} inconnue`);
+      }
+      const formIssue = formError(member);
+      if (formIssue) report('error', `${label} : ${formIssue}`);
+      if (member.nature && !KNOWN_NATURES.has(member.nature)) {
+        report('error', `${label} : nature « ${member.nature} » inconnue`);
+      }
+    }
+    const unknownFamily = dungeon.familySpeciesIds.filter((id) => !getSpecies(id));
+    if (unknownFamily.length > 0) {
+      report('error', `Lignée : espèces inconnues : ${unknownFamily.join(', ')}`);
+    }
+    if (!dungeon.familySpeciesIds.includes(dungeon.boss.speciesId)) {
+      report('warning', 'L’espèce du boss ne fait pas partie de la lignée à capturer');
+    }
+    const region = content.regions.find((r) => r.id === dungeon.regionId);
+    if (region && !region.speciesIds.includes(dungeon.boss.speciesId)) {
+      report('warning', 'L’espèce du boss n’appartient pas au Pokédex de la région');
+    }
+    checkUnlock('dungeon', dungeon.id, dungeon.unlock);
   }
 
   // Boutique
@@ -571,6 +645,7 @@ const unlockables = (content: GameContentData): { unlock: QuestCondition; name: 
     ...content.regions,
     ...content.zones,
     ...content.trainers,
+    ...content.dungeons,
     ...content.shopEntries.map((e) => ({
       unlock: e.unlock,
       name: `Article ${content.items.find((i) => i.id === e.itemId)?.name ?? e.itemId} (${e.id})`,
@@ -615,6 +690,9 @@ export function findUsages(
       for (const q of content.quests) {
         if (q.rewards.items.some((s) => s.itemId === id)) usages.push(`Quête « ${q.name} »`);
       }
+      for (const d of content.dungeons) {
+        if (d.gemItemId === id) usages.push(`Donjon « ${d.name} »`);
+      }
       break;
     case 'shopCategory':
       for (const e of content.shopEntries) {
@@ -627,6 +705,9 @@ export function findUsages(
       }
       for (const t of content.trainers) {
         if (t.lootTableId === id) usages.push(`Dresseur « ${t.name} »`);
+      }
+      for (const d of content.dungeons) {
+        if (d.lootTableId === id) usages.push(`Donjon « ${d.name} »`);
       }
       break;
     case 'region': {
@@ -641,6 +722,9 @@ export function findUsages(
       }
       for (const q of content.quests) {
         if (q.regionId === id) usages.push(`Quête « ${q.name} »`);
+      }
+      for (const d of content.dungeons) {
+        if (d.regionId === id) usages.push(`Donjon « ${d.name} »`);
       }
       const unlocks = unlockables(content).filter(
         (e) => e.unlock.type === 'regionDexPercent' && e.unlock.regionId === id,
@@ -679,6 +763,7 @@ export function findUsages(
     case 'evolutionOverride':
     case 'dexMilestone':
     case 'collection':
+    case 'dungeon':
     case 'balance':
       break;
   }

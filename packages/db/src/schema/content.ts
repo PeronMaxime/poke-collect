@@ -15,6 +15,7 @@ import {
 import type {
   BalanceSettings,
   BattleRules,
+  DungeonDifficulty,
   Encounter,
   EvolutionMethod,
   ItemEffect,
@@ -189,6 +190,34 @@ export const trainers = pgTable(
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
 );
 
+export const dungeons = pgTable(
+  'dungeons',
+  {
+    contentVersionId: versionId(),
+    id: text('id').notNull(),
+    regionId: text('region_id').notNull(),
+    order: integer('order').notNull(),
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    difficulty: text('difficulty').$type<DungeonDifficulty>().notNull().default('easy'),
+    boss: jsonb('boss').$type<TrainerPokemon>().notNull(),
+    bossHpMultiplier: doublePrecision('boss_hp_multiplier').notNull(),
+    familySpeciesIds: jsonb('family_species_ids').$type<number[]>().notNull(),
+    opponents: jsonb('opponents').$type<TrainerPokemon[]>().notNull(),
+    timeLimitSeconds: integer('time_limit_seconds').notNull(),
+    cooldownMinutes: integer('cooldown_minutes'),
+    koMinutes: integer('ko_minutes'),
+    money: integer('money').notNull(),
+    lootTableId: text('loot_table_id'),
+    lootRolls: integer('loot_rolls').notNull(),
+    gemItemId: text('gem_item_id'),
+    gemChance: doublePrecision('gem_chance').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+    unlock: jsonb('unlock').$type<UnlockCondition>().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
+);
+
 export const shopCategories = pgTable(
   'shop_categories',
   {
@@ -301,4 +330,5 @@ export const versionedContentTables = [
   dexMilestones,
   collections,
   quests,
+  dungeons,
 ] as const;

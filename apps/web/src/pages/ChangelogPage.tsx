@@ -17,6 +17,53 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '15 octobre 2026',
+    title: 'Donjons, Méga-Évolutions et équipes enregistrées',
+    changes: [
+      {
+        section: 'Donjons',
+        items: [
+          'Nouvel onglet « Donjons » : chaque Pokémon capable de méga-évoluer a son donjon, rangé par région. Un donjon apparaît dès que tu captures un membre de sa lignée, et s’ouvre quand tu as capturé toute la lignée (par exemple Salamèche, Reptincel et Dracaufeu).',
+          'Dans un donjon, tu combats en temps réel une suite de Pokémon de la lignée, jusqu’au boss : la Méga-Évolution elle-même. Un seul Pokémon de chaque camp combat à la fois, et chacun attaque à son rythme selon sa Vitesse. Les faiblesses et résistances comptent.',
+          'Avant d’entrer, choisis ton équipe, son ordre d’entrée et l’attaque de chaque Pokémon : un de ses types, en physique ou en spécial. Ton choix est retenu pour la prochaine fois.',
+          'Pendant le combat, clique sur un Pokémon de ton équipe pour l’envoyer au combat. Quand ton Pokémon est K.O., le suivant prend le relais. Le combat s’affiche dans sa propre fenêtre : ferme-la pour revenir à la liste, il continue de tourner (même si tu quittes la page) et un bouton en haut de la liste permet de le réafficher, puis d’en voir le résultat une fois terminé.',
+          'Bats le boss avant la fin du temps imparti pour gagner des Poké Dollars, avec une chance sur dix de remporter sa Méga-Gemme. Chaque adversaire vaincu rapporte de l’XP à toute l’équipe, même en cas de défaite. Le bouton « Fuir » arrête tout, sans récompense.',
+          'Chaque donjon a sa difficulté, affichée sur sa fiche : Facile pour un Pokémon seul dans sa lignée, Difficile pour un Pokémon évolué, Très difficile pour un starter, Extrême pour un légendaire. Le boss t’attend au niveau 50, 65, 80 ou 95 selon la difficulté : prépare ton équipe en conséquence !',
+          'Les Pokémon mis K.O. dans un donjon doivent se reposer, et un donjon se referme un moment après chaque tentative.',
+        ],
+      },
+      {
+        section: 'Méga-Évolution',
+        items: [
+          'Au PC, la fiche d’un Pokémon capable de méga-évoluer affiche ses Méga-Évolutions et la Méga-Gemme requise. Si tu l’as dans ton sac, le bouton « Méga-Évoluer » lui fait tenir la gemme et le transforme : nouvelles statistiques, nouveaux types, nouveau talent.',
+          'Ta première Méga-Évolution d’une espèce l’ajoute au Pokédex, et elle y reste même si ton Pokémon redevient normal.',
+          'Pour le rendre normal, retire-lui sa Méga-Gemme au même endroit : elle revient dans ton sac. Avec plusieurs exemplaires d’une gemme, tu peux méga-évoluer plusieurs Pokémon de la même espèce.',
+          'Un seul Pokémon méga-évolué par équipe, en expédition, en combat comme en donjon : dès que tu en choisis un, les autres sont grisés.',
+          'Un Pokémon méga-évolué ne peut ni évoluer ni aller à la pension. Si tu le transfères, sa Méga-Gemme revient dans ton sac.',
+        ],
+      },
+      {
+        section: 'Sac',
+        items: ['Nouvelle catégorie « Méga-Gemmes » pour ranger les gemmes remportées.'],
+      },
+      {
+        section: 'Équipes',
+        items: [
+          'Nouvel onglet « Équipe Pkmn » : compose et enregistre tes équipes à partir de ton PC, avec tous ses filtres (région, type, étiquettes, favoris, shiny…). Touche un Pokémon pour l’ajouter à l’équipe en cours, et règle son ordre de passage.',
+          'Un même Pokémon ne peut faire partie que d’une seule équipe à la fois : ceux déjà rangés ailleurs sont grisés, avec le nom de leur équipe.',
+          'Au départ d’une expédition, d’un combat ou d’un donjon, choisis une équipe enregistrée d’un clic. Seuls ses membres disponibles partent : ceux qui sont occupés, K.O. ou hors du Pokédex de la région restent au PC.',
+        ],
+      },
+      {
+        section: 'Menu',
+        items: [
+          'Sur ordinateur, les onglets passent dans une barre latérale à gauche, rangés par groupes.',
+          'Sur mobile, le menu s’ouvre avec le bouton ☰ en haut de l’écran. Un point sur ce bouton te signale qu’une action t’attend (expédition terminée, récompense à réclamer…). Ton nom de dresseur et tes Poké Dollars restent toujours visibles.',
+        ],
+      },
+    ],
+  },
+  {
     date: '14 octobre 2026',
     title: 'Relance express et Pokédex relié aux expéditions',
     changes: [

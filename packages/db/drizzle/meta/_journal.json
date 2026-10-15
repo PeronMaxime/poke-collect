@@ -225,6 +225,83 @@
       "when": 1791905916103,
       "tag": "0031_compteur_transferts",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1791991132505,
+      "tag": "0032_donjons",
+      "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1791991140188,
+      "tag": "0033_donjons_contenu",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1791999251693,
+      "tag": "0034_donjons_difficulte",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1791999585384,
+      "tag": "0035_donjons_difficulte_contenu",
+      "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "7",
+      "when": 1792007404750,
+      "tag": "0036_donjons_difficulte_info",
+      "breakpoints": true
+    },
+    {
+      "idx": 37,
+      "version": "7",
+      "when": 1792017606275,
+      "tag": "0037_donjons_iv",
+      "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "7",
+      "when": 1792017860642,
+      "tag": "0038_origine_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 39,
+      "version": "7",
+      "when": 1792017920642,
+      "tag": "0039_donjons_rythme_lineaire",
+      "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1792022199578,
+      "tag": "0040_mega_gemme",
+      "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1792022259578,
+      "tag": "0041_mega_gemme_effet",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1792063869756,
+      "tag": "0042_equipes_pokemon",
+      "breakpoints": true
     }
   ]
 }

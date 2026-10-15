@@ -19,6 +19,7 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
   breeding: 'Élevage',
   endgame: 'Objets rares',
   fossil: 'Fossiles',
+  megaStone: 'Méga-Gemmes',
   misc: 'Divers',
 };
 

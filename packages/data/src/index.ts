@@ -46,6 +46,19 @@ export function getSpecies(idOrName: number | string): Species | undefined {
   return typeof idOrName === 'number' ? speciesById.get(idOrName) : speciesByName.get(idOrName);
 }
 
+/**
+ * Lignée directe d'une espèce : ses pré-évolutions (bébé compris), de la première à elle-même.
+ * Les autres branches de la chaîne n'en font pas partie (Gardevoir : Tarsal, Kirlia, Gardevoir).
+ */
+export function directLineage(speciesId: number): number[] {
+  const line: number[] = [];
+  for (let s = getSpecies(speciesId); s && !line.includes(s.id);) {
+    line.unshift(s.id);
+    s = s.evolvesFromSpeciesId === null ? undefined : getSpecies(s.evolvesFromSpeciesId);
+  }
+  return line;
+}
+
 const formsById = new Map(forms.map((f) => [f.id, f]));
 
 export function getForm(id: number): PokemonForm | undefined {

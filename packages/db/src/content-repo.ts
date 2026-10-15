@@ -3,6 +3,7 @@ import {
   collectionSchema,
   contentIssues,
   dexMilestoneSchema,
+  dungeonSchema,
   evolutionOverrideSchema,
   findUsages,
   gameContentSchema,
@@ -22,6 +23,7 @@ import type {
   Collection,
   ContentIssue,
   DexMilestone,
+  Dungeon,
   EvolutionOverride,
   GameContent,
   GameContentData,
@@ -42,6 +44,7 @@ import {
   collections,
   contentVersions,
   dexMilestones,
+  dungeons,
   evolutionOverrides,
   items,
   lootTables,
@@ -112,6 +115,7 @@ const entityDefs = {
   lootTable: { table: lootTables, key: 'id', schema: lootTableSchema, order: lootTables.id },
   zone: { table: zones, key: 'id', schema: zoneSchema, order: zones.order },
   trainer: { table: trainers, key: 'id', schema: trainerSchema, order: trainers.order },
+  dungeon: { table: dungeons, key: 'id', schema: dungeonSchema, order: dungeons.order },
   shopCategory: {
     table: shopCategories,
     key: 'id',
@@ -144,6 +148,7 @@ export interface ContentEntityMap {
   lootTable: LootTable;
   zone: Zone;
   trainer: Trainer;
+  dungeon: Dungeon;
   shopCategory: ShopCategory;
   shopEntry: ShopEntry;
   evolutionOverride: EvolutionOverride;
@@ -160,6 +165,7 @@ const collectionOf = {
   lootTable: 'lootTables',
   zone: 'zones',
   trainer: 'trainers',
+  dungeon: 'dungeons',
   shopCategory: 'shopCategories',
   shopEntry: 'shopEntries',
   evolutionOverride: 'evolutionOverrides',
@@ -175,6 +181,7 @@ export const contentEntitySchemas: { [K in ContentEntityType]: z.ZodType<Content
   lootTable: lootTableSchema,
   zone: zoneSchema,
   trainer: trainerSchema,
+  dungeon: dungeonSchema,
   shopCategory: shopCategorySchema,
   shopEntry: shopEntrySchema,
   evolutionOverride: evolutionOverrideSchema,

@@ -1,9 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { MeResponse, PlayerProfileDto } from '@poke/shared';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useNow } from '../components/ui';
 import { authClient } from '../lib/auth-client';
+import { MENU_TABS, normalizeMenuGroups } from '@poke/content';
+import type { MenuTabId as TabId } from '@poke/content';
 import { claimableRewardCount, eggsLaid } from '@poke/game-core';
 import {
   isUsable,
@@ -11,6 +13,7 @@ import {
   useClaimedRewards,
   useDaycare,
   useDexCatches,
+  useDungeons,
   useExpeditions,
   useGameContext,
   useMuseum,
@@ -22,6 +25,7 @@ import {
 import { formatMoney } from '../lib/labels';
 import { BattlesPage } from './game/BattlesPage';
 import { DaycarePage } from './game/DaycarePage';
+import { DungeonsPage } from './game/DungeonsPage';
 import { ExpeditionsPage } from './game/ExpeditionsPage';
 import { InventoryPage } from './game/InventoryPage';
 import { LeaderboardPage } from './game/LeaderboardPage';
@@ -30,30 +34,21 @@ import { PcPage } from './game/PcPage';
 import { PokedexPage } from './game/PokedexPage';
 import { QuestsPage } from './game/QuestsPage';
 import { ShopPage } from './game/ShopPage';
+import { TeamsPage } from './game/TeamsPage';
 import { TrainerCardPage } from './game/TrainerCardPage';
 import { CHANGELOG_PATH, hasUnseenChangelog } from './ChangelogPage';
 import { FanDisclaimer, LegalLinks, navigate } from './LegalPages';
 import { SettingsDialog } from './SettingsDialog';
 
-const TABS = [
-  { id: 'expeditions', label: 'Expéditions' },
-  { id: 'battles', label: 'Combats' },
-  { id: 'daycare', label: 'Pension' },
-  { id: 'museum', label: 'Musée' },
-  { id: 'quests', label: 'Quêtes' },
-  { id: 'shop', label: 'Boutique' },
-  { id: 'pc', label: 'PC' },
-  { id: 'pokedex', label: 'Pokédex' },
-  { id: 'bag', label: 'Sac' },
-  { id: 'trainer', label: 'Fiche Dresseur' },
-  { id: 'leaderboard', label: 'Classement' },
-] as const;
-type TabId = (typeof TABS)[number]['id'];
+const TAB_LABELS = Object.fromEntries(MENU_TABS.map((t) => [t.id, t.label])) as Record<
+  TabId,
+  string
+>;
 
 function tabFromHash(): TabId {
   // `#expeditions/<zone>` : l'onglet, suivi d'une cible propre à la page.
-  const hash = window.location.hash.slice(1).split('/')[0];
-  return TABS.some((t) => t.id === hash) ? (hash as TabId) : 'expeditions';
+  const hash = window.location.hash.slice(1).split('/')[0] ?? '';
+  return hash in TAB_LABELS ? (hash as TabId) : 'expeditions';
 }
 
 /** Coquille du jeu : en-tête, onglets (synchronisés avec l'ancre de l'URL) et pied de page. */
@@ -62,11 +57,15 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const ctx = useGameContext();
   const [tab, setTab] = useState<TabId>(tabFromHash);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  // Groupes d'onglets réglés dans l'admin (Menu du jeu), séparés par un trait.
+  const menuGroups = useMemo(() => normalizeMenuGroups(ctx?.content.balance.menu?.groups), [ctx]);
   const [unseenChangelog] = useState(hasUnseenChangelog);
   const expeditions = useExpeditions();
   const daycare = useDaycare();
   const museum = useMuseum();
   const battles = useBattles();
+  const dungeons = useDungeons();
   const shop = useShop();
   const quests = useQuests();
   const pokemon = usePokemon();
@@ -74,10 +73,20 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const hasNewEvolution = useNewEvolutionChecker(ctx);
 
   useEffect(() => {
-    const onHash = () => setTab(tabFromHash());
+    const onHash = () => {
+      setTab(tabFromHash());
+      setMenuOpen(false);
+    };
     window.addEventListener('hashchange', onHash);
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
 
   const now = useNow(5000);
   const finished = expeditions.data?.active.filter((e) => Date.parse(e.endsAt) <= now).length ?? 0;
@@ -103,6 +112,151 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const fossilsReady =
     museum.data?.revivals.filter((r) => Date.parse(r.readyAt) <= now).length ?? 0;
 
+  // Une action attend le joueur quelque part : point sur le bouton du menu mobile.
+  const pending =
+    finished +
+      battlesDone +
+      daycareReady +
+      fossilsReady +
+      questsReady +
+      shopNew +
+      rewardsReady +
+      evolutionsReady >
+      0 ||
+    !!dungeons.data?.active ||
+    unseenChangelog;
+
+  /** Liens des onglets, partagés par la barre latérale et le menu mobile. */
+  function tabLinks() {
+    return menuGroups.map((group, i) => (
+      <div
+        key={i}
+        className={`flex flex-col gap-0.5 ${i > 0 ? 'mt-2 border-t border-slate-200 pt-2 dark:border-slate-800' : ''}`}
+      >
+        {group.map((id) => (
+          <a
+            key={id}
+            href={`#${id}`}
+            onClick={() => setMenuOpen(false)}
+            className={`relative flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition md:py-2 ${
+              tab === id
+                ? 'bg-brand-500/10 text-brand-600 dark:text-brand-500'
+                : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-900 dark:hover:bg-slate-800/60 dark:hover:text-slate-100'
+            }`}
+          >
+            {TAB_LABELS[id]}
+            {tabBadges(id)}
+            {tab === id && (
+              <span className="absolute inset-y-2 left-0 w-0.5 rounded bg-brand-500" />
+            )}
+          </a>
+        ))}
+      </div>
+    ));
+  }
+
+  /** Pastilles d'un onglet (compteurs, objets à réclamer…). */
+  function tabBadges(id: TabId) {
+    return (
+      <span className="ml-auto flex items-center">
+        {id === 'expeditions' && finished > 0 && (
+          <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
+            {finished}
+          </span>
+        )}
+        {id === 'battles' && battlesDone > 0 && (
+          <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
+            {battlesDone}
+          </span>
+        )}
+        {id === 'dungeons' && dungeons.data?.active && (
+          <span
+            className="ml-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-brand-500"
+            title="Donjon en cours"
+          />
+        )}
+        {id === 'daycare' && daycareReady > 0 && (
+          <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
+            {daycareReady}
+          </span>
+        )}
+        {id === 'museum' && fossilsReady > 0 && (
+          <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
+            {fossilsReady}
+          </span>
+        )}
+        {id === 'quests' && questsReady > 0 && (
+          <span
+            className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950"
+            title="Récompenses de quête à réclamer"
+          >
+            {questsReady}
+          </span>
+        )}
+        {id === 'shop' && shopNew > 0 && (
+          <span className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950">
+            {shopNew}
+          </span>
+        )}
+        {id === 'pokedex' && ctx && <span className="ml-1.5 text-xs text-slate-400">{caught}</span>}
+        {id === 'pokedex' && rewardsReady > 0 && (
+          <span
+            className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950"
+            title="Récompenses à réclamer"
+          >
+            {rewardsReady}
+          </span>
+        )}
+        {id === 'pc' && evolutionsReady > 0 && (
+          <span
+            className="ml-1.5 rounded-full bg-emerald-500 px-1.5 text-xs text-white"
+            title="Pokémon prêts à évoluer"
+          >
+            {evolutionsReady}
+          </span>
+        )}
+      </span>
+    );
+  }
+
+  /** Liens du compte : en-tête sur ordinateur, bas du menu burger sur mobile. */
+  function accountLinks(className: string) {
+    return (
+      <>
+        {me.user.role === 'admin' && (
+          <a className={className} href={import.meta.env.VITE_ADMIN_URL ?? 'http://localhost:5174'}>
+            Admin
+          </a>
+        )}
+        <a
+          className={`${className} relative`}
+          href={CHANGELOG_PATH}
+          onClick={(e) => navigate(e, CHANGELOG_PATH)}
+        >
+          Nouveautés
+          {unseenChangelog && (
+            <span
+              className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-slate-50 dark:ring-slate-950"
+              title="Nouvelle mise à jour"
+            />
+          )}
+        </a>
+        <button
+          className={className}
+          onClick={() => {
+            setMenuOpen(false);
+            setSettingsOpen(true);
+          }}
+        >
+          Réglages
+        </button>
+        <button className={className} onClick={signOut}>
+          Déconnexion
+        </button>
+      </>
+    );
+  }
+
   async function signOut() {
     await authClient.signOut();
     // `clear()` retirerait aussi `['me']` du cache sans prévenir son observateur (App) :
@@ -112,8 +266,8 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   }
 
   return (
-    <div className="mx-auto max-w-5xl px-4 pb-10">
-      <header className="flex flex-wrap items-center justify-between gap-3 py-5">
+    <div className="mx-auto max-w-6xl px-4 pb-10">
+      <header className="hidden flex-wrap items-center justify-between gap-3 py-5 md:flex">
         <div className="flex items-end gap-4">
           <div>
             <p className="text-xs text-slate-500">Dresseur</p>
@@ -126,127 +280,103 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
             {formatMoney(profile.currency)}
           </p>
         </div>
-        <div className="flex items-center gap-2">
-          {me.user.role === 'admin' && (
-            <a
-              className="btn-ghost"
-              href={import.meta.env.VITE_ADMIN_URL ?? 'http://localhost:5174'}
-            >
-              Admin
-            </a>
-          )}
-          <a
-            className="btn-ghost relative"
-            href={CHANGELOG_PATH}
-            onClick={(e) => navigate(e, CHANGELOG_PATH)}
-          >
-            Nouveautés
-            {unseenChangelog && (
-              <span
-                className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-slate-50 dark:ring-slate-950"
-                title="Nouvelle mise à jour"
-              />
-            )}
-          </a>
-          <button className="btn-ghost" onClick={() => setSettingsOpen(true)}>
-            Réglages
-          </button>
-          <button className="btn-ghost" onClick={signOut}>
-            Se déconnecter
-          </button>
-        </div>
+        <div className="flex items-center gap-2">{accountLinks('btn-ghost')}</div>
       </header>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
 
-      <nav className="sticky top-0 z-10 -mx-4 mb-6 flex gap-0.5 overflow-x-auto overflow-y-hidden border-b border-slate-200 bg-slate-50/90 px-4 backdrop-blur dark:border-slate-800 dark:bg-slate-950/90">
-        {TABS.map((t) => (
-          <a
-            key={t.id}
-            href={`#${t.id}`}
-            className={`relative shrink-0 px-2.5 py-3 text-sm font-medium transition ${
-              tab === t.id
-                ? 'text-brand-600 dark:text-brand-500'
-                : 'text-slate-500 hover:text-slate-900 dark:hover:text-slate-100'
-            }`}
+      <div className="md:flex md:items-start md:gap-6">
+        {/* Mobile : barre avec bouton burger, menu en tiroir depuis la gauche. */}
+        <div className="sticky top-0 z-10 -mx-4 mb-6 flex items-center gap-2 border-b border-slate-200 bg-slate-50/90 px-2 py-2 backdrop-blur md:hidden dark:border-slate-800 dark:bg-slate-950/90">
+          <button
+            className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
+            onClick={() => setMenuOpen(true)}
+            aria-label="Ouvrir le menu"
+            aria-expanded={menuOpen}
           >
-            {t.label}
-            {t.id === 'expeditions' && finished > 0 && (
-              <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
-                {finished}
-              </span>
+            <svg
+              viewBox="0 0 24 24"
+              className="h-6 w-6"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+            >
+              <path d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            {pending && (
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-slate-50 dark:ring-slate-950" />
             )}
-            {t.id === 'battles' && battlesDone > 0 && (
-              <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
-                {battlesDone}
-              </span>
-            )}
-            {t.id === 'daycare' && daycareReady > 0 && (
-              <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
-                {daycareReady}
-              </span>
-            )}
-            {t.id === 'museum' && fossilsReady > 0 && (
-              <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
-                {fossilsReady}
-              </span>
-            )}
-            {t.id === 'quests' && questsReady > 0 && (
-              <span
-                className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950"
-                title="Récompenses de quête à réclamer"
-              >
-                {questsReady}
-              </span>
-            )}
-            {t.id === 'shop' && shopNew > 0 && (
-              <span className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950">
-                {shopNew}
-              </span>
-            )}
-            {t.id === 'pokedex' && ctx && (
-              <span className="ml-1.5 text-xs text-slate-400">{caught}</span>
-            )}
-            {t.id === 'pokedex' && rewardsReady > 0 && (
-              <span
-                className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950"
-                title="Récompenses à réclamer"
-              >
-                {rewardsReady}
-              </span>
-            )}
-            {t.id === 'pc' && evolutionsReady > 0 && (
-              <span
-                className="ml-1.5 rounded-full bg-emerald-500 px-1.5 text-xs text-white"
-                title="Pokémon prêts à évoluer"
-              >
-                {evolutionsReady}
-              </span>
-            )}
-            {tab === t.id && (
-              <span className="absolute inset-x-2 bottom-0 h-0.5 rounded bg-brand-500" />
-            )}
-          </a>
-        ))}
-      </nav>
+          </button>
+          <span className="min-w-0 flex-1 truncate font-semibold">{TAB_LABELS[tab]}</span>
+          <span
+            className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-sm font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+            title="Poké Dollars"
+          >
+            {formatMoney(profile.currency)}
+          </span>
+          <span className="max-w-[35%] shrink-0 truncate font-bold">{profile.trainerName}</span>
+        </div>
+        {menuOpen && (
+          <div className="fixed inset-0 z-40 md:hidden">
+            <div className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
+            <nav className="absolute inset-y-0 left-0 flex w-64 max-w-[80vw] flex-col gap-0.5 overflow-y-auto bg-slate-50 p-3 shadow-xl dark:bg-slate-950">
+              <div className="mb-2 flex items-center justify-between px-3 py-1">
+                <span className="text-sm font-semibold text-slate-400">Menu</span>
+                <button
+                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800"
+                  onClick={() => setMenuOpen(false)}
+                  aria-label="Fermer le menu"
+                >
+                  <svg
+                    viewBox="0 0 24 24"
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                  >
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              </div>
+              {tabLinks()}
+              <div className="mt-2 flex flex-col gap-0.5 border-t border-slate-200 pt-2 dark:border-slate-800">
+                {accountLinks(
+                  'rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-500 hover:bg-slate-200/60 hover:text-slate-900 dark:hover:bg-slate-800/60 dark:hover:text-slate-100',
+                )}
+              </div>
+            </nav>
+          </div>
+        )}
 
-      {!ctx ? (
-        <p className="text-slate-500">Chargement…</p>
-      ) : (
-        // Une erreur dans un onglet n'emporte pas la navigation ; changer d'onglet la réinitialise.
-        <ErrorBoundary key={tab}>
-          {tab === 'expeditions' && <ExpeditionsPage ctx={ctx} profile={profile} />}
-          {tab === 'battles' && <BattlesPage ctx={ctx} />}
-          {tab === 'daycare' && <DaycarePage ctx={ctx} />}
-          {tab === 'museum' && <MuseumPage ctx={ctx} />}
-          {tab === 'quests' && <QuestsPage ctx={ctx} />}
-          {tab === 'shop' && <ShopPage ctx={ctx} />}
-          {tab === 'pc' && <PcPage ctx={ctx} />}
-          {tab === 'pokedex' && <PokedexPage ctx={ctx} />}
-          {tab === 'bag' && <InventoryPage ctx={ctx} />}
-          {tab === 'trainer' && <TrainerCardPage ctx={ctx} profile={profile} />}
-          {tab === 'leaderboard' && <LeaderboardPage />}
-        </ErrorBoundary>
-      )}
+        {/* Bureau : barre latérale fixe à gauche. */}
+        <nav className="sticky top-4 hidden w-48 shrink-0 flex-col gap-0.5 md:flex">
+          {tabLinks()}
+        </nav>
+
+        <main className="min-w-0 flex-1">
+          {!ctx ? (
+            <p className="text-slate-500">Chargement…</p>
+          ) : (
+            // Une erreur dans un onglet n'emporte pas la navigation ; changer d'onglet la réinitialise.
+            <ErrorBoundary key={tab}>
+              {tab === 'expeditions' && <ExpeditionsPage ctx={ctx} profile={profile} />}
+              {tab === 'battles' && <BattlesPage ctx={ctx} />}
+              {tab === 'dungeons' && <DungeonsPage ctx={ctx} />}
+              {tab === 'daycare' && <DaycarePage ctx={ctx} />}
+              {tab === 'museum' && <MuseumPage ctx={ctx} />}
+              {tab === 'quests' && <QuestsPage ctx={ctx} />}
+              {tab === 'shop' && <ShopPage ctx={ctx} />}
+              {tab === 'pc' && <PcPage ctx={ctx} />}
+              {tab === 'teams' && <TeamsPage ctx={ctx} />}
+              {tab === 'pokedex' && <PokedexPage ctx={ctx} />}
+              {tab === 'bag' && <InventoryPage ctx={ctx} />}
+              {tab === 'trainer' && <TrainerCardPage ctx={ctx} profile={profile} />}
+              {tab === 'leaderboard' && <LeaderboardPage />}
+            </ErrorBoundary>
+          )}
+        </main>
+      </div>
 
       <footer className="mt-12 space-y-2 text-center text-xs text-slate-400">
         <p>

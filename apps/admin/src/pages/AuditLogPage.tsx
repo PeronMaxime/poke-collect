@@ -11,6 +11,8 @@ const ACTION_LABELS: Record<string, string> = {
   'content.import': 'Import de contenu',
   'user.promote': 'Attribution du rôle admin',
   'user.revoke': 'Retrait du rôle admin',
+  'player.test_pokemon': 'Lot de Pokémon de test',
+  'player.test_pokemon_delete': 'Suppression du lot de Pokémon de test',
 };
 
 const ENTITY_LABELS: Record<string, string> = {
