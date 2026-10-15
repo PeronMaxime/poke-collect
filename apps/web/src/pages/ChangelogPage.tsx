@@ -17,8 +17,8 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
-    date: '14 octobre 2026',
-    title: 'Les Donjons et les Méga-Évolutions',
+    date: '15 octobre 2026',
+    title: 'Donjons, Méga-Évolutions et équipes enregistrées',
     changes: [
       {
         section: 'Donjons',
