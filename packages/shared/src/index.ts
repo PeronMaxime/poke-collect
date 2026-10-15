@@ -8,6 +8,12 @@ import type {
   BattleResult,
   BreedingError,
   CaptureFilter,
+  DungeonCommand,
+  DungeonMove,
+  DungeonOutcome,
+  DungeonResult,
+  DungeonSetup,
+  DungeonTeamError,
   ExpeditionError,
   ExpeditionResult,
   Gender,
@@ -17,7 +23,7 @@ import type {
   RewardKind,
   ShopEntryState,
 } from '@poke/game-core';
-import { MAX_LOTS_PER_PURCHASE } from '@poke/game-core';
+import { MAX_LOTS_PER_PURCHASE, MOVE_CATEGORIES } from '@poke/game-core';
 
 /** Schémas et types de l'API, partagés entre `apps/api`, `apps/web` et `apps/admin`. */
 
@@ -54,7 +60,7 @@ export type ChooseStarterInput = z.infer<typeof chooseStarterInputSchema>;
 
 // --- Pokémon, Pokédex, inventaire -------------------------------------------------
 
-export type PokemonOrigin = 'starter' | 'capture' | 'egg' | 'quest' | 'fossil';
+export type PokemonOrigin = 'starter' | 'capture' | 'egg' | 'quest' | 'fossil' | 'admin';
 
 export interface PokemonDto {
   id: string;
@@ -82,9 +88,13 @@ export interface PokemonDto {
   koUntil: string | null;
   /** Étiquettes du joueur (identifiants de `PokemonTagDto`). */
   tagIds: string[];
+  /** Attaque enregistrée pour les donjons ; null = choix par défaut. */
+  dungeonMove: DungeonMove | null;
+  /** Méga-Gemme tenue : le Pokémon est Méga-Évolué (`formId` = sa forme Méga). */
+  megaStone: string | null;
 }
 
-export type PokemonActivity = 'expedition' | 'battle' | 'daycare';
+export type PokemonActivity = 'expedition' | 'battle' | 'daycare' | 'dungeon';
 
 // --- Étiquettes (tags) -----------------------------------------------------------------
 
@@ -113,6 +123,34 @@ export interface PokemonTagDto {
   label: string;
   /** Couleur de fond, `#rrggbb`. */
   color: string;
+}
+
+export const TEAM_NAME_MAX = 20;
+export const MAX_TEAMS = 30;
+/** Taille maximale d'une équipe enregistrée (celle d'une équipe d'expédition, de combat ou de donjon). */
+export const TEAM_MAX_SIZE = 6;
+
+export const teamInputSchema = z.object({
+  name: z
+    .string()
+    .trim()
+    .min(1, 'Nom obligatoire')
+    .max(TEAM_NAME_MAX, `Au plus ${TEAM_NAME_MAX} caractères`),
+  pokemonIds: z
+    .array(z.uuid())
+    .max(TEAM_MAX_SIZE)
+    .refine((ids) => new Set(ids).size === ids.length, 'Pokémon en double'),
+});
+export type TeamInput = z.infer<typeof teamInputSchema>;
+
+/**
+ * Équipe enregistrée (page « Équipe Pkmn ») : un Pokémon n'appartient qu'à une équipe à la fois.
+ * Les Pokémon transférés depuis sont déjà retirés de `pokemonIds`.
+ */
+export interface PokemonTeamDto {
+  id: string;
+  name: string;
+  pokemonIds: string[];
 }
 
 export interface PokedexEntryDto {
@@ -281,6 +319,10 @@ export const useItemInputSchema = z.object({
   ability: z.string().min(1).max(64).optional(),
 });
 export type UseItemInput = z.infer<typeof useItemInputSchema>;
+
+/** Méga-Évolution : Méga-Gemme du sac donnée à tenir au Pokémon. */
+export const megaEvolveInputSchema = z.object({ itemId: slugSchema });
+export type MegaEvolveInput = z.infer<typeof megaEvolveInputSchema>;
 
 export interface UseItemResponse {
   pokemon: PokemonDto;
@@ -585,6 +627,83 @@ export interface BattleTeamErrorBody {
   errors: BattleError[];
 }
 
+// --- Donjons ----------------------------------------------------------------------------
+
+export const dungeonMoveSchema = z.object({
+  type: z.string().min(1).max(32),
+  category: z.enum(MOVE_CATEGORIES),
+});
+
+/** Équipe dans l'ordre (le premier entre en combat), avec l'attaque de chacun. */
+export const startDungeonInputSchema = z
+  .object({
+    dungeonId: slugSchema,
+    team: z.array(z.uuid()).min(1).max(6),
+    moves: z.array(dungeonMoveSchema).min(1).max(6),
+  })
+  .refine((i) => i.moves.length === i.team.length, {
+    message: 'Une attaque par Pokémon',
+    path: ['moves'],
+  });
+export type StartDungeonInput = z.infer<typeof startDungeonInputSchema>;
+
+/** Envoi d'un Pokémon au combat, `atMs` après le départ (horloge du joueur, recalée par le serveur). */
+export const switchDungeonInputSchema = z.object({
+  member: z.int().min(0).max(5),
+  atMs: z.int().min(0),
+});
+export type SwitchDungeonInput = z.infer<typeof switchDungeonInputSchema>;
+
+export interface StoredDungeonResult extends DungeonResult {
+  /** Fin du K.O. des Pokémon mis K.O. (null : aucun). */
+  koUntil: string | null;
+}
+
+export interface DungeonRunDto {
+  id: string;
+  dungeonId: string;
+  team: string[];
+  setup: DungeonSetup;
+  commands: DungeonCommand[];
+  fledAtMs: number | null;
+  contentVersionId: number;
+  startedAt: string;
+  endsAt: string;
+  claimedAt: string | null;
+  outcome: DungeonOutcome | null;
+  result: StoredDungeonResult | null;
+}
+
+/** Bilan du joueur dans un donjon. */
+export interface DungeonRecordDto {
+  dungeonId: string;
+  wins: number;
+  losses: number;
+  gems: number;
+  firstWinAt: string | null;
+  lastEndedAt: string | null;
+}
+
+export interface DungeonsResponse {
+  serverTime: string;
+  /** Tentative en cours (ou terminée, pas encore réclamée). */
+  active: DungeonRunDto | null;
+  /** Dernière tentative réclamée (résultat à montrer s'il n'a pas été vu). */
+  last: DungeonRunDto | null;
+  records: DungeonRecordDto[];
+}
+
+export interface ClaimDungeonResponse {
+  run: DungeonRunDto;
+  /** Poké Dollars après la tentative. */
+  currency: number;
+}
+
+export interface DungeonTeamErrorBody {
+  error: 'TEAM_INVALID';
+  errors: DungeonTeamError[];
+}
+
 // --- Boutique --------------------------------------------------------------------------
 
 /** État d'un article visible par le joueur (les articles cachés ne sont pas renvoyés). */
@@ -846,6 +965,31 @@ export interface AdminPlayerDetailResponse {
   speciesCaught: number;
   shinySpeciesCaught: number;
   badges: AdminPlayerRegionBadges[];
+}
+
+/**
+ * Lot de Pokémon de test (comptes administrateurs seulement) : les lignées des donjons de la
+ * région et les plus forts Pokémon de chaque type de son Pokédex régional.
+ */
+export const adminTestPokemonInputSchema = z.object({
+  regionId: slugSchema,
+  level: z.int().min(1).max(100),
+  /** 6 IV à 31 ; sinon tirés au hasard. */
+  perfectIvs: z.boolean(),
+  /** Ajoute les légendaires et fabuleux du Pokédex régional. */
+  legendaries: z.boolean(),
+});
+export type AdminTestPokemonInput = z.infer<typeof adminTestPokemonInputSchema>;
+
+export interface AdminTestPokemonResponse {
+  added: number;
+  speciesIds: number[];
+}
+
+/** Suppression du lot de test : les Pokémon occupés (expédition, donjon…) sont gardés. */
+export interface AdminTestPokemonDeleteResponse {
+  deleted: number;
+  busy: number;
 }
 
 // --- Notifications push (PWA) -------------------------------------------------------------

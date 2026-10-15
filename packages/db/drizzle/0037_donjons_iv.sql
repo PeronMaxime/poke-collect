@@ -1,0 +1,5 @@
+-- Donjons : IV des adversaires et du boss selon la difficulté (facile 10, difficile 18, très
+-- difficile 25, extrême 31) — uniquement là où l'admin n'a pas déjà fixé un IV.
+UPDATE "dungeons" SET "boss" = jsonb_set("boss", '{iv}', to_jsonb(CASE "difficulty" WHEN 'easy' THEN 10 WHEN 'hard' THEN 18 WHEN 'veryHard' THEN 25 WHEN 'extreme' THEN 31 END)) WHERE "difficulty" IN ('easy', 'hard', 'veryHard', 'extreme') AND jsonb_typeof("boss" -> 'iv') IS DISTINCT FROM 'number';
+--> statement-breakpoint
+UPDATE "dungeons" SET "opponents" = (SELECT jsonb_agg(CASE WHEN jsonb_typeof(e -> 'iv') = 'number' THEN e ELSE jsonb_set(e, '{iv}', to_jsonb(CASE "difficulty" WHEN 'easy' THEN 10 WHEN 'hard' THEN 18 WHEN 'veryHard' THEN 25 WHEN 'extreme' THEN 31 END)) END ORDER BY n) FROM jsonb_array_elements("opponents") WITH ORDINALITY AS t(e, n)) WHERE "difficulty" IN ('easy', 'hard', 'veryHard', 'extreme') AND jsonb_array_length("opponents") > 0 AND EXISTS (SELECT 1 FROM jsonb_array_elements("opponents") AS o(e) WHERE jsonb_typeof(e -> 'iv') IS DISTINCT FROM 'number');

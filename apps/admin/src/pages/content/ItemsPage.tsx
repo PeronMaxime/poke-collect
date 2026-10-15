@@ -6,7 +6,7 @@ import {
   suggestedSellPrice,
 } from '@poke/content';
 import type { Item, ItemCategory, ItemEffect, Rarity } from '@poke/content';
-import { items as pokeApiItems, natures } from '@poke/data';
+import { forms, items as pokeApiItems, natures } from '@poke/data';
 import { EntityPage } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
 import {
@@ -27,6 +27,7 @@ export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   breeding: 'Élevage',
   endgame: 'Endgame',
   fossil: 'Fossile',
+  megaStone: 'Méga-Gemme',
   misc: 'Divers',
 };
 
@@ -37,6 +38,11 @@ export const RARITY_LABELS: Record<Rarity, string> = {
   epic: 'Épique',
   legendary: 'Légendaire',
 };
+
+/** Formes Méga, par numéro d'espèce (effet Méga-Évolution). */
+const MEGA_FORMS = forms
+  .filter((f) => f.kind === 'mega')
+  .sort((a, b) => a.speciesId - b.speciesId || a.id - b.id);
 
 /** Types d'effets disponibles : en ajouter un nouveau demande du code (game-core). */
 const EFFECTS: Record<
@@ -87,6 +93,11 @@ const EFFECTS: Record<
     label: 'Fossile',
     help: 'Déposé au Musée (consommé) : devient le Pokémon choisi, au niveau donné, après la durée de restauration.',
     create: () => ({ type: 'fossil', speciesId: 138, formId: null, level: 10, minutes: 120 }),
+  },
+  megaEvolution: {
+    label: 'Méga-Évolution',
+    help: 'Méga-Gemme : au PC, un Pokémon de l’espèce (forme normale) la tient et passe dans la forme Méga choisie. Retirée du sac, rendue quand il redevient normal.',
+    create: () => ({ type: 'megaEvolution', formId: MEGA_FORMS[0]!.id }),
   },
 };
 
@@ -422,6 +433,16 @@ function ItemForm({
                     />
                   </Field>
                 </>
+              )}
+              {effect.type === 'megaEvolution' && (
+                <Field label="Forme Méga" error={errors.get(`effects.${i}.formId`)}>
+                  <SelectInput
+                    value={String(effect.formId)}
+                    disabled={disabled}
+                    onChange={(v) => update({ ...effect, formId: Number(v) })}
+                    options={MEGA_FORMS.map((f) => ({ value: String(f.id), label: f.nameFr }))}
+                  />
+                </Field>
               )}
               {editable && (
                 <button

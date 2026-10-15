@@ -11,6 +11,7 @@ import { isUnlocked, outOfRegionSpecies } from './progress';
 import { NO_BONUSES } from './progression';
 import type { PlayerBonuses } from './progression';
 import { createRng } from './rng';
+import { MAX_MEGAS_PER_TEAM, megaCount } from './mega';
 
 // --- Table des types ---------------------------------------------------------------------
 
@@ -133,6 +134,8 @@ export type BattleError =
   | { code: 'TEAM_TOO_LARGE'; max: number }
   | { code: 'TEAM_SIZE'; required: number }
   | { code: 'DUPLICATE_MEMBER' }
+  /** Plus d'un Pokémon Méga-Évolué. */
+  | { code: 'TOO_MANY_MEGAS'; max: number }
   /** Espèces hors du Pokédex de la région du dresseur. */
   | { code: 'WRONG_REGION'; regionId: string; speciesIds: number[] }
   | { code: 'LEVEL_TOO_HIGH'; maxLevel: number }
@@ -155,6 +158,9 @@ export function checkBattleTeam(
   }
   if (new Set(team.map((m) => m.id)).size !== team.length) {
     errors.push({ code: 'DUPLICATE_MEMBER' });
+  }
+  if (megaCount(team) > MAX_MEGAS_PER_TEAM) {
+    errors.push({ code: 'TOO_MANY_MEGAS', max: MAX_MEGAS_PER_TEAM });
   }
   const outside = outOfRegionSpecies(ctx, trainer.regionId, team);
   if (outside.length > 0) {

@@ -6,6 +6,8 @@ import type {
   AdminPlayerDetailResponse,
   AdminPlayerDto,
   AdminSpeciesStatsDto,
+  AdminTestPokemonDeleteResponse,
+  AdminTestPokemonResponse,
   ExpeditionDto,
   PokemonDto,
   PushConfigResponse,
@@ -229,6 +231,55 @@ describe('joueurs (admin)', () => {
     expect(detail.body.badges[0]?.badges.every((b) => !b.earned)).toBe(true);
 
     expect((await admin.call('GET', '/api/admin/players/inconnu')).status).toBe(404);
+  });
+
+  it('donne un lot de Pokémon de test aux comptes admin seulement', async () => {
+    const admin = await newPlayer('chen-lot@example.com', 'Sorbier');
+    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, admin.userId));
+    const player = await newPlayer('sacha-lot@example.com', 'Pierre');
+    const regionId = seedContent.regions[0]!.id;
+    const body = { regionId, level: 60, perfectIvs: true, legendaries: false };
+
+    const refused = await admin.call(
+      'POST',
+      `/api/admin/players/${player.userId}/test-pokemon`,
+      body,
+    );
+    expect(refused.status).toBe(403);
+
+    const res = await admin.call<AdminTestPokemonResponse>(
+      'POST',
+      `/api/admin/players/${admin.userId}/test-pokemon`,
+      body,
+    );
+    expect(res.status).toBe(200);
+    expect(res.body.added).toBe(res.body.speciesIds.length);
+    const families = seedContent.dungeons
+      .filter((d) => d.regionId === regionId)
+      .flatMap((d) => d.familySpeciesIds);
+    expect(families.every((id) => res.body.speciesIds.includes(id))).toBe(true);
+
+    const rows = await handle.db.select().from(pokemon).where(eq(pokemon.ownerId, admin.userId));
+    const lot = rows.filter((r) => r.origin === 'admin');
+    expect(lot).toHaveLength(res.body.added);
+    expect(lot.every((r) => r.level === 60 && r.ivAtk === 31 && r.ivSpe === 31)).toBe(true);
+
+    const detail = await admin.call<AdminPlayerDetailResponse>(
+      'GET',
+      `/api/admin/players/${admin.userId}`,
+    );
+    expect(detail.body.speciesCaught).toBe(new Set([1, ...res.body.speciesIds]).size);
+
+    expect(
+      (await admin.call('DELETE', `/api/admin/players/${player.userId}/test-pokemon`)).status,
+    ).toBe(403);
+    const removed = await admin.call<AdminTestPokemonDeleteResponse>(
+      'DELETE',
+      `/api/admin/players/${admin.userId}/test-pokemon`,
+    );
+    expect(removed.body).toEqual({ deleted: res.body.added, busy: 0 });
+    const left = await handle.db.select().from(pokemon).where(eq(pokemon.ownerId, admin.userId));
+    expect(left.map((r) => r.origin)).toEqual(['starter']);
   });
 
   it('compte les captures depuis le début, transférés et évolués compris', async () => {

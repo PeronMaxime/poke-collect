@@ -1,0 +1,1 @@
+ALTER TYPE "public"."pokemon_origin" ADD VALUE 'admin';

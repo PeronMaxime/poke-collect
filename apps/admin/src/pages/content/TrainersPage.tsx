@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import type { ReactNode } from 'react';
 import { trainerSchema } from '@poke/content';
 import type { BattleRules, Trainer, TrainerPokemon } from '@poke/content';
 import { natures } from '@poke/data';
@@ -463,27 +464,43 @@ function TrainerForm({
   );
 }
 
-function TeamEditor({
+/**
+ * Équipe de Pokémon fixée par l'admin (dresseurs, adversaires de donjon) : espèce, forme, niveau,
+ * IV, nature, et une colonne calculée (PE par défaut).
+ */
+export function TeamEditor({
   working,
   team,
   onChange,
   errors,
   disabled,
+  errorPath = 'team',
+  minSize = 1,
+  maxSize = 6,
+  defaultIv = working.ctx.balance.battles.defaultTrainerIv,
+  column = { label: 'PE', value: (m) => trainerMemberPower(working.ctx, m) },
 }: {
   working: WorkingVersion;
   team: TrainerPokemon[];
   onChange: (v: TrainerPokemon[]) => void;
   errors: ReadonlyMap<string, string>;
   disabled: boolean;
+  /** Chemin des erreurs de validation (`team`, `opponents`…). */
+  errorPath?: string;
+  minSize?: number;
+  maxSize?: number;
+  /** IV appliqués quand la case est vide. */
+  defaultIv?: number;
+  /** Colonne calculée, à droite. */
+  column?: { label: string; value: (m: TrainerPokemon) => ReactNode };
 }) {
   const { ctx } = working;
   const update = (i: number, patch: Partial<TrainerPokemon>) =>
     onChange(team.map((m, j) => (j === i ? { ...m, ...patch } : m)));
-  const defaultIv = ctx.balance.battles.defaultTrainerIv;
 
   return (
     <div className="space-y-2">
-      {errors.get('team') && <p className="text-xs text-red-600">{errors.get('team')}</p>}
+      {errors.get(errorPath) && <p className="text-xs text-red-600">{errors.get(errorPath)}</p>}
       <div className="overflow-x-auto">
         <table className="w-full min-w-[600px] text-sm">
           <thead className="text-left text-xs text-slate-500">
@@ -492,7 +509,7 @@ function TeamEditor({
               <th className="py-1 font-normal">Niveau</th>
               <th className="py-1 font-normal">IV (×6)</th>
               <th className="py-1 font-normal">Nature</th>
-              <th className="py-1 text-right font-normal">PE</th>
+              <th className="py-1 text-right font-normal">{column.label}</th>
               <th />
             </tr>
           </thead>
@@ -512,7 +529,7 @@ function TeamEditor({
                     disabled={disabled}
                     onChange={(formId) => update(i, { formId })}
                   />
-                  {errorsUnder(errors, `team.${i}`).map((msg) => (
+                  {errorsUnder(errors, `${errorPath}.${i}`).map((msg) => (
                     <p key={msg} className="text-xs text-red-600">
                       {msg}
                     </p>
@@ -552,9 +569,9 @@ function TeamEditor({
                     ))}
                   </select>
                 </td>
-                <td className="py-2 text-right font-mono">{trainerMemberPower(ctx, m)}</td>
+                <td className="py-2 text-right font-mono">{column.value(m)}</td>
                 <td className="py-2 pl-2">
-                  {!disabled && team.length > 1 && (
+                  {!disabled && team.length > minSize && (
                     <button
                       type="button"
                       className="text-slate-400 hover:text-red-600"
@@ -569,7 +586,7 @@ function TeamEditor({
           </tbody>
         </table>
       </div>
-      {!disabled && team.length < 6 && (
+      {!disabled && team.length < maxSize && (
         <button
           type="button"
           className="btn-ghost py-1 text-xs"
@@ -580,7 +597,7 @@ function TeamEditor({
       )}
       <div className="flex flex-wrap gap-1">
         {team.map((m, i) => (
-          <Sprite key={i} id={m.speciesId} size={48} />
+          <Sprite key={i} id={m.speciesId} formId={m.formId} size={48} />
         ))}
       </div>
     </div>

@@ -11,9 +11,9 @@ import {
   expeditionPower,
   getNature,
   isKnockedOut,
-  isRegionalSpecies,
   itemUseOptions,
   lineageId,
+  megaOptions,
   pokemonPower,
   transferCandies,
   xpForLevel,
@@ -21,7 +21,7 @@ import {
 import type { EvolutionCheck, EvolutionOption, GameContext } from '@poke/game-core';
 import type {
   EvolveResponse,
-  PokemonActivity,
+  MegaEvolveInput,
   PokemonDto,
   TransferPokemonResponse,
   UseItemInput,
@@ -37,13 +37,7 @@ import {
   TypeBadge,
   useNow,
 } from '../../components/ui';
-import {
-  PokemonTagBadges,
-  TagFilterSelect,
-  TagManagerDialog,
-  TagPicker,
-  useTagFilter,
-} from '../../components/tags';
+import { PokemonTagBadges, TagManagerDialog, TagPicker } from '../../components/tags';
 import { api } from '../../lib/api';
 import {
   PLAYER_STATE_KEYS,
@@ -52,8 +46,6 @@ import {
   useCandies,
   useEvolutionChecker,
   useInventory,
-  useNewEvolutionChecker,
-  usePlayerProgress,
   usePokedex,
   usePokedexForms,
   usePokemon,
@@ -75,26 +67,7 @@ import {
   speciesName,
 } from '../../lib/labels';
 import { EvolutionReveal } from './EvolutionReveal';
-import { RegionTabs, currentRegionTab } from './RegionTabs';
-import { TypeFilterSelect } from './TeamPicker';
-
-type Sort = 'recent' | 'level' | 'power' | 'dex' | 'tag';
-
-const SORTS: Record<Sort, string> = {
-  recent: 'Plus récents',
-  level: 'Niveau',
-  power: 'PE',
-  dex: 'N° Pokédex',
-  tag: 'Étiquette',
-};
-
-/** Dernier tri choisi, conservé d'une visite à l'autre. */
-const SORT_KEY = 'pc-sort';
-
-function savedSort(): Sort {
-  const saved = localStorage.getItem(SORT_KEY);
-  return saved && Object.hasOwn(SORTS, saved) ? (saved as Sort) : 'dex';
-}
+import { GENDER_LABELS, PcFilterBar, PcPokemonCard, usePcBrowser } from './PcBrowser';
 
 const ORIGIN_LABELS: Record<PokemonDto['origin'], string> = {
   starter: 'Starter',
@@ -102,31 +75,8 @@ const ORIGIN_LABELS: Record<PokemonDto['origin'], string> = {
   egg: 'Éclos',
   quest: 'Récompense de quête',
   fossil: 'Fossile restauré',
+  admin: 'Lot de test',
 };
-
-/** Onglet de tout le PC, avant les onglets de région (Pokédex régional de chaque espèce). */
-const ALL_TAB = { id: '__tous', label: 'Tous' };
-
-const GENDER_LABELS = { male: '♂', female: '♀', genderless: '' } as const;
-
-const ACTIVITY_LABELS: Record<PokemonActivity, string> = {
-  expedition: 'En route',
-  battle: 'Combat',
-  daycare: 'Pension',
-};
-
-/** Pastille « K.O. » avec le temps de repos restant. */
-export function KoBadge({ koUntil, now }: { koUntil: string | null; now: number }) {
-  if (!isKnockedOut(koUntil, now)) return null;
-  return (
-    <span
-      className="rounded bg-red-100 px-1 font-mono text-[10px] text-red-700 dark:bg-red-950 dark:text-red-300"
-      title="K.O. après une défaite : indisponible jusqu’à la fin du repos"
-    >
-      K.O. {formatCountdown(Date.parse(koUntil!) - now)}
-    </span>
-  );
-}
 
 const canTransfer = (p: PokemonDto) => !p.locked && !p.busy;
 
@@ -152,7 +102,8 @@ function duplicates(ctx: GameContext, list: readonly PokemonDto[]): string[] {
       pokemonPower(species, y) > pokemonPower(species, x) ? y : x,
     );
     for (const p of group)
-      if (p !== best && canTransfer(p) && !p.isShiny && p.tagIds.length === 0) ids.push(p.id);
+      if (p !== best && canTransfer(p) && !p.isShiny && !p.megaStone && p.tagIds.length === 0)
+        ids.push(p.id);
   }
   return ids;
 }
@@ -161,17 +112,8 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   const pokemon = usePokemon();
   const now = useNow();
   const evolutionsOf = useEvolutionChecker(ctx);
-  // Pastille « Évol. » : seulement si l'évolution possible manque encore au Pokédex.
-  const hasNewEvolution = useNewEvolutionChecker(ctx);
-  const progress = usePlayerProgress();
-  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
-  const [search, setSearch] = useState('');
-  const [sort, setSort] = useState<Sort>(savedSort);
-  const [onlyFavorites, setOnlyFavorites] = useState(false);
-  const [onlyShiny, setOnlyShiny] = useState(false);
-  const [onlyEvolvable, setOnlyEvolvable] = useState(false);
-  const [type, setType] = useState('all');
-  const tagFilter = useTagFilter();
+  const browser = usePcBrowser(ctx, pokemon.data ?? []);
+  const { filtered, tagFilter } = browser;
   const [tagsOpen, setTagsOpen] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [transferMode, setTransferMode] = useState(false);
@@ -221,37 +163,6 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
     },
   });
 
-  const list = (pokemon.data ?? []).map((p) => ({
-    p,
-    species: ctx.species(p.speciesId, p.formId),
-    power: pokemonPower(ctx.species(p.speciesId, p.formId)!, p),
-    canEvolve: hasNewEvolution(p),
-  }));
-  const tab = currentRegionTab(ctx, progress, selectedRegion ?? ALL_TAB.id, [ALL_TAB]);
-  const needle = search.trim().toLowerCase();
-  const inTab = list.filter(
-    ({ p }) => tab === ALL_TAB.id || isRegionalSpecies(ctx, tab, p.speciesId),
-  );
-  const filtered = inTab
-    .filter(({ species }) => !needle || species?.nameFr.toLowerCase().includes(needle))
-    .filter(({ p }) => (!onlyFavorites || p.locked) && (!onlyShiny || p.isShiny))
-    .filter(({ canEvolve }) => !onlyEvolvable || canEvolve)
-    .filter(({ species }) => type === 'all' || !!species?.types.includes(type))
-    .filter(({ p }) => tagFilter.matches(p))
-    .sort((a, b) => {
-      switch (sort) {
-        case 'recent':
-          return Date.parse(b.p.caughtAt) - Date.parse(a.p.caughtAt);
-        case 'level':
-          return b.p.level - a.p.level;
-        case 'power':
-          return b.power - a.power;
-        case 'dex':
-          return a.p.speciesId - b.p.speciesId || b.power - a.power;
-        case 'tag':
-          return tagFilter.compare(a.p, b.p) || b.power - a.power;
-      }
-    });
   const selected = pokemon.data?.find((p) => p.id === selectedId);
   // Navigation dans la fiche : suit l'ordre et les filtres de la grille affichée.
   const selectedIndex = filtered.findIndex(({ p }) => p.id === selectedId);
@@ -321,75 +232,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
 
   return (
     <div>
-      {ctx.regions.length > 1 && (
-        <div className="mb-4">
-          <RegionTabs
-            ctx={ctx}
-            progress={progress}
-            selected={tab}
-            onSelect={setSelectedRegion}
-            leading={[ALL_TAB]}
-          />
-        </div>
-      )}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <input
-          className="input max-w-56"
-          placeholder="Rechercher…"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-        />
-        <select
-          className="input w-auto"
-          value={sort}
-          onChange={(e) => {
-            const next = e.target.value as Sort;
-            setSort(next);
-            localStorage.setItem(SORT_KEY, next);
-          }}
-        >
-          {Object.entries(SORTS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
-          ))}
-        </select>
-        <TypeFilterSelect value={type} onChange={setType} className="" />
-        <label className="flex items-center gap-1 text-sm">
-          <input
-            type="checkbox"
-            checked={onlyFavorites}
-            onChange={(e) => setOnlyFavorites(e.target.checked)}
-          />
-          Favoris
-        </label>
-        <label className="flex items-center gap-1 text-sm">
-          <input
-            type="checkbox"
-            checked={onlyShiny}
-            onChange={(e) => setOnlyShiny(e.target.checked)}
-          />
-          Shiny
-        </label>
-        <label
-          className="flex items-center gap-1 text-sm"
-          title="Évolution possible vers une espèce ou forme absente du Pokédex"
-        >
-          <input
-            type="checkbox"
-            checked={onlyEvolvable}
-            onChange={(e) => setOnlyEvolvable(e.target.checked)}
-          />
-          Peut évoluer
-        </label>
-        <TagFilterSelect
-          tags={tagFilter.tags}
-          value={tagFilter.filter}
-          onChange={tagFilter.setFilter}
-        />
-        <span className="ml-auto text-sm text-slate-500">
-          {tab === ALL_TAB.id ? list.length : `${filtered.length} / ${list.length}`} Pokémon
-        </span>
+      <PcFilterBar ctx={ctx} browser={browser}>
         <button className="btn-ghost" onClick={() => setTagsOpen(true)}>
           Étiquettes
         </button>
@@ -405,7 +248,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
         >
           {transferMode ? 'Terminer' : 'Transférer…'}
         </button>
-      </div>
+      </PcFilterBar>
 
       {transferMode && (
         <div className="card mb-4 flex flex-wrap items-center gap-2 p-3 text-sm">
@@ -484,60 +327,28 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
       )}
 
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-        {filtered.map(({ p, species, power, canEvolve }) => (
-          <div
-            key={p.id}
-            role="button"
-            tabIndex={0}
-            onClick={() => (transferMode ? toggleTransfer(p) : setSelectedId(p.id))}
-            onKeyDown={(e) => {
-              if (e.target !== e.currentTarget || (e.key !== 'Enter' && e.key !== ' ')) return;
-              e.preventDefault();
-              if (transferMode) toggleTransfer(p);
-              else setSelectedId(p.id);
-            }}
-            className={`card relative flex cursor-pointer flex-col items-center p-2 text-xs transition hover:-translate-y-0.5 ${
-              transferMode && toTransfer.has(p.id) ? 'ring-2 ring-red-500' : ''
-            } ${transferMode && !canTransfer(p) ? 'opacity-40' : ''}`}
-          >
-            {transferMode ? (
-              p.locked && <span className="absolute top-1.5 left-2 text-amber-500">♥</span>
-            ) : (
-              <FavoriteToggle pokemon={p} />
-            )}
-            <span className="absolute top-1.5 right-2 flex flex-col items-end gap-0.5">
-              {p.activity && (
-                <span className="rounded bg-sky-100 px-1 text-[10px] text-sky-700 dark:bg-sky-950 dark:text-sky-300">
-                  {ACTIVITY_LABELS[p.activity]}
-                </span>
-              )}
-              <KoBadge koUntil={p.koUntil} now={now} />
-              {canEvolve && (
-                <span
-                  className="rounded bg-emerald-100 px-1 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
-                  title="Peut évoluer"
-                >
-                  Évol. ↑
-                </span>
-              )}
-            </span>
-            <PokemonSprite speciesId={p.speciesId} formId={p.formId} shiny={p.isShiny} size={72} />
-            <span className="truncate font-medium">
-              {species?.nameFr}
-              {p.gender !== 'genderless' && (
-                <span className={p.gender === 'male' ? 'text-sky-500' : 'text-pink-500'}>
-                  {' '}
-                  {GENDER_LABELS[p.gender]}
-                </span>
-              )}{' '}
-              {p.isShiny && <ShinyStar />}
-            </span>
-            <span className="text-slate-500">
-              N.{p.level} · PE {power}
-            </span>
-            <PokemonTagBadges pokemon={p} tags={tagFilter.tags} className="mt-0.5 gap-0.5" />
-          </div>
-        ))}
+        {filtered.map((entry) => {
+          const { p } = entry;
+          return (
+            <PcPokemonCard
+              key={p.id}
+              entry={entry}
+              tags={tagFilter.tags}
+              now={now}
+              onSelect={() => (transferMode ? toggleTransfer(p) : setSelectedId(p.id))}
+              topLeft={
+                transferMode ? (
+                  p.locked && <span className="absolute top-1.5 left-2 text-amber-500">♥</span>
+                ) : (
+                  <FavoriteToggle pokemon={p} />
+                )
+              }
+              className={`${transferMode && toTransfer.has(p.id) ? 'ring-2 ring-red-500' : ''} ${
+                transferMode && !canTransfer(p) ? 'opacity-40' : ''
+              }`}
+            />
+          );
+        })}
       </div>
       {filtered.length === 0 && !pokemon.isPending && (
         <p className="text-sm text-slate-500">Aucun Pokémon ne correspond.</p>
@@ -669,6 +480,22 @@ function PokemonDetail({
   const queryClient = useQueryClient();
   const tags = useTags().data ?? [];
   const [reveal, setReveal] = useState<EvolveResponse | null>(null);
+  const [revealMega, setRevealMega] = useState(false);
+  const refreshPlayerState = () =>
+    Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+  const megaEvolve = useMutation({
+    mutationFn: (input: MegaEvolveInput) =>
+      api<EvolveResponse>(`/api/pokemon/${p.id}/mega`, { method: 'POST', json: input }),
+    onSuccess: (data) => {
+      setRevealMega(true);
+      setReveal(data);
+      return refreshPlayerState();
+    },
+  });
+  const megaRevert = useMutation({
+    mutationFn: () => api<PokemonDto>(`/api/pokemon/${p.id}/mega`, { method: 'DELETE' }),
+    onSuccess: refreshPlayerState,
+  });
   const evolve = useMutation({
     mutationFn: ({ toSpeciesId, toFormId }: Pick<EvolutionOption, 'toSpeciesId' | 'toFormId'>) =>
       api<EvolveResponse>(`/api/pokemon/${p.id}/evolve`, {
@@ -676,10 +503,9 @@ function PokemonDetail({
         json: { toSpeciesId, toFormId, utcOffsetMinutes: utcOffsetMinutes() },
       }),
     onSuccess: (data) => {
+      setRevealMega(false);
       setReveal(data);
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return refreshPlayerState();
     },
   });
   const species = ctx.species(p.speciesId, p.formId)!;
@@ -728,7 +554,9 @@ function PokemonDetail({
   });
 
   if (reveal) {
-    return <EvolutionReveal ctx={ctx} data={reveal} onDone={() => setReveal(null)} />;
+    return (
+      <EvolutionReveal ctx={ctx} data={reveal} mega={revealMega} onDone={() => setReveal(null)} />
+    );
   }
 
   return (
@@ -867,6 +695,14 @@ function PokemonDetail({
           error={evolve.error}
           onEvolve={(option) => evolve.mutate(option)}
         />
+        <MegaPanel
+          ctx={ctx}
+          pokemon={p}
+          pending={megaEvolve.isPending || megaRevert.isPending}
+          error={megaEvolve.error ?? megaRevert.error}
+          onMega={(itemId) => megaEvolve.mutate({ itemId })}
+          onRevert={() => megaRevert.mutate()}
+        />
         <ItemUsePanel ctx={ctx} pokemon={p} />
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
           <dt className="text-slate-500">Nature</dt>
@@ -886,9 +722,20 @@ function PokemonDetail({
           </dd>
           <dt className="text-slate-500">Talent</dt>
           <dd>
-            {abilityLabel(p.ability)}
-            {species.abilities.find((a) => a.name === p.ability)?.isHidden && (
-              <span className="ml-1 text-xs text-violet-600">(caché)</span>
+            {p.megaStone && species.abilities[0] ? (
+              <>
+                {abilityLabel(species.abilities[0].name)}
+                <span className="block text-xs text-slate-500">
+                  Méga-Évolution · d’origine {abilityLabel(p.ability)}
+                </span>
+              </>
+            ) : (
+              <>
+                {abilityLabel(p.ability)}
+                {species.abilities.find((a) => a.name === p.ability)?.isHidden && (
+                  <span className="ml-1 text-xs text-violet-600">(caché)</span>
+                )}
+              </>
             )}
           </dd>
           <dt className="text-slate-500">Puissance (PE)</dt>
@@ -1073,6 +920,112 @@ function EvolutionPanel({
 }
 
 /**
+ * Méga-Évolution : les formes Méga de l'espèce et leur Méga-Gemme. Avec la gemme dans le sac, le
+ * Pokémon (forme normale) Méga-Évolue en la tenant ; la lui retirer le rend normal et rend la gemme.
+ */
+function MegaPanel({
+  ctx,
+  pokemon: p,
+  pending,
+  error,
+  onMega,
+  onRevert,
+}: {
+  ctx: GameContext;
+  pokemon: PokemonDto;
+  pending: boolean;
+  error: unknown;
+  onMega: (itemId: string) => void;
+  onRevert: () => void;
+}) {
+  const inventory = useInventory();
+  const pokedexForms = usePokedexForms();
+  const options = megaOptions(ctx, p.speciesId);
+  if (!p.megaStone && (p.formId !== null || options.length === 0)) return null;
+  const busyTitle = p.busy ? 'Le Pokémon doit être disponible (ni en activité)' : undefined;
+  const owned = (itemId: string) => inventory.data?.find((i) => i.itemId === itemId)?.quantity ?? 0;
+  // Donjon qui laisse la gemme (indice pour l'obtenir).
+  const dungeonOf = (itemId: string) => ctx.dungeons.find((d) => d.gemItemId === itemId);
+
+  return (
+    <div className="rounded-xl border border-violet-200 p-3 dark:border-violet-900">
+      <p className="mb-2 font-medium">Méga-Évolution</p>
+      {p.megaStone ? (
+        <div className="flex flex-wrap items-center gap-3 text-xs">
+          <img src={itemIcon(ctx, p.megaStone)} alt="" width={32} height={32} />
+          <div className="min-w-32 flex-1">
+            <p className="text-sm font-medium">Tient : {itemName(ctx, p.megaStone)}</p>
+            <p className="text-slate-500">
+              En la retirant, il retrouve sa forme normale et la gemme revient dans ton sac.
+            </p>
+          </div>
+          <button
+            className="btn-ghost shrink-0 py-1"
+            disabled={pending || p.busy}
+            title={busyTitle}
+            onClick={onRevert}
+          >
+            Retirer la Méga-Gemme
+          </button>
+        </div>
+      ) : (
+        <ul className="space-y-2">
+          {options.flatMap(({ form, itemIds }) =>
+            itemIds.map((itemId) => {
+              const dexForm = pokedexForms.data?.find((f) => f.formId === form.id);
+              const caught = !!dexForm && (!p.isShiny || dexForm.caughtShiny);
+              const quantity = owned(itemId);
+              const dungeon = dungeonOf(itemId);
+              return (
+                <li key={`${form.id}:${itemId}`} className="flex items-center gap-3">
+                  <PokemonSprite
+                    speciesId={p.speciesId}
+                    formId={form.id}
+                    shiny={p.isShiny && caught}
+                    size={48}
+                    className={caught ? '' : 'opacity-50 grayscale'}
+                  />
+                  <div className="min-w-0 flex-1 text-xs">
+                    <p className="text-sm font-medium">{form.nameFr}</p>
+                    <p
+                      className={`flex flex-wrap items-center gap-1 ${
+                        quantity > 0 ? 'text-emerald-600' : 'text-slate-500'
+                      }`}
+                    >
+                      <img src={itemIcon(ctx, itemId)} alt="" width={18} height={18} />
+                      <span>
+                        {itemName(ctx, itemId)}
+                        {quantity > 0 && ` × ${quantity}`}
+                      </span>
+                      {quantity === 0 && (
+                        <span className="text-slate-400">
+                          — à obtenir{dungeon && ` au donjon ${dungeon.name}`}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  {quantity > 0 && (
+                    <button
+                      className="btn-primary shrink-0 py-1"
+                      disabled={pending || p.busy}
+                      title={busyTitle}
+                      onClick={() => onMega(itemId)}
+                    >
+                      Méga-Évoluer
+                    </button>
+                  )}
+                </li>
+              );
+            }),
+          )}
+        </ul>
+      )}
+      {!!error && <p className="mt-2 text-xs text-red-600">{errorText(error)}</p>}
+    </div>
+  );
+}
+
+/**
  * Objets endgame du sac utilisables sur ce Pokémon (Capsules, Aromates, Pilule / Patch Talent) :
  * le serveur vérifie de nouveau et consomme l'objet.
  */
@@ -1093,7 +1046,12 @@ function ItemUsePanel({ ctx, pokemon: p }: { ctx: GameContext; pokemon: PokemonD
       );
     },
   });
-  const target = { ...p, originalNature: p.originalNature ?? p.nature };
+  // Un Pokémon Méga-Évolué garde le talent de sa forme normale.
+  const target = {
+    ...p,
+    formId: p.megaStone ? null : p.formId,
+    originalNature: p.originalNature ?? p.nature,
+  };
   const items = (inventory.data ?? [])
     .filter((i) => i.quantity > 0)
     .flatMap((i) => {

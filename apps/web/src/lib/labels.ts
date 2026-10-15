@@ -1,4 +1,12 @@
-import { abilities, evolutionChains, getSpecies, itemSpriteUrl, natures, types } from '@poke/data';
+import {
+  abilities,
+  evolutionChains,
+  getForm,
+  getSpecies,
+  itemSpriteUrl,
+  natures,
+  types,
+} from '@poke/data';
 import type { StatName } from '@poke/data';
 import type {
   EvolutionMethod,
@@ -93,6 +101,8 @@ export function effectText(effect: ItemEffect): string {
       return effect.hidden ? 'Sur un Pokémon : talent caché' : 'Sur un Pokémon : autre talent';
     case 'fossil':
       return `Musée : ${getSpecies(effect.speciesId)?.nameFr ?? `#${effect.speciesId}`} en ${formatDuration(effect.minutes)}`;
+    case 'megaEvolution':
+      return `Au PC : Méga-Évolution en ${getForm(effect.formId)?.nameFr ?? `forme ${effect.formId}`}`;
   }
 }
 
@@ -236,7 +246,7 @@ export function formatCountdown(ms: number): string {
 
 export const GAME_ERRORS: Record<string, string> = {
   NO_FREE_SLOT: 'Tous tes emplacements sont occupés.',
-  POKEMON_BUSY: 'Un de ces Pokémon est déjà occupé (expédition, combat ou pension).',
+  POKEMON_BUSY: 'Un de ces Pokémon est déjà occupé (expédition, combat, donjon ou pension).',
   ZONE_LOCKED: 'Cette zone n’est pas encore débloquée.',
   TEAM_INVALID: 'L’équipe ne remplit pas les conditions de la zone.',
   NOT_FINISHED: 'L’expédition n’est pas encore terminée.',
@@ -274,6 +284,11 @@ export const GAME_ERRORS: Record<string, string> = {
   EVOLUTION_NOT_FOUND: 'Ce Pokémon ne peut pas évoluer ainsi.',
   EVOLUTION_NOT_READY: 'Les conditions d’évolution ne sont pas remplies.',
   POKEMON_CHANGED: 'Ce Pokémon a changé entre-temps, réessaie.',
+  POKEMON_MEGA: 'Retire d’abord sa Méga-Gemme à ce Pokémon (au PC).',
+  ALREADY_MEGA: 'Ce Pokémon est déjà Méga-Évolué.',
+  NOT_MEGA: 'Ce Pokémon n’est pas Méga-Évolué.',
+  NOT_A_MEGA_STONE: 'Cet objet n’est pas une Méga-Gemme.',
+  WRONG_MEGA_STONE: 'Cette Méga-Gemme ne convient pas à ce Pokémon.',
   POKEMON_NOT_FOUND: 'Ce Pokémon n’existe plus.',
   REWARD_NOT_FOUND: 'Cette récompense n’existe plus.',
   REWARD_LOCKED: 'Cette récompense n’est pas encore débloquée.',
@@ -295,6 +310,18 @@ export const GAME_ERRORS: Record<string, string> = {
   FOSSIL_ALREADY_REVIVED: 'Ce fossile est déjà restauré : récupère le Pokémon.',
   TAG_NOT_FOUND: 'Cette étiquette n’existe plus.',
   TOO_MANY_TAGS: 'Tu as atteint le nombre maximal d’étiquettes.',
+  TEAM_NOT_FOUND: 'Cette équipe n’existe plus.',
+  TOO_MANY_MEGAS: 'Un seul Pokémon Méga-Évolué par équipe.',
+  TOO_MANY_TEAMS: 'Tu as atteint le nombre maximal d’équipes.',
+  POKEMON_IN_OTHER_TEAM: 'Un de ces Pokémon fait déjà partie d’une autre équipe.',
+  DUNGEON_NOT_FOUND: 'Ce donjon n’existe plus.',
+  DUNGEON_LOCKED: 'Ce donjon n’est pas encore ouvert.',
+  DUNGEON_COOLDOWN: 'Ce donjon se referme pour l’instant : reviens plus tard.',
+  DUNGEON_BUSY: 'Tu explores déjà un donjon.',
+  DUNGEON_FINISHED: 'Le combat est déjà terminé.',
+  DUNGEON_RUN_NOT_FOUND: 'Cette tentative n’existe plus.',
+  MEMBER_KO: 'Ce Pokémon est K.O.',
+  MEMBER_ACTIVE: 'Ce Pokémon est déjà au combat.',
 };
 
 export function formatMoney(amount: number): string {

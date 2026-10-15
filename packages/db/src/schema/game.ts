@@ -16,7 +16,13 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core';
 import { users } from './auth';
-import type { CaptureFilter, DaycareParent } from '@poke/game-core';
+import type {
+  CaptureFilter,
+  DaycareParent,
+  DungeonCommand,
+  DungeonMove,
+  DungeonSetup,
+} from '@poke/game-core';
 import { contentVersions } from './content';
 
 /** État des joueurs (première ébauche, PLAN.md section 4.4). */
@@ -61,12 +67,35 @@ export const pokemonTags = pgTable(
   (t) => [index('pokemon_tags_owner').on(t.ownerId)],
 );
 
+/**
+ * Équipes enregistrées par le joueur (page « Équipe Pkmn »), réutilisables en expédition, en combat
+ * et en donjon. Un Pokémon n'appartient qu'à une équipe à la fois (vérifié par l'API) ; les
+ * identifiants de Pokémon transférés sont ignorés à la lecture.
+ */
+export const pokemonTeams = pgTable(
+  'pokemon_teams',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: ownerId(),
+    name: text('name').notNull(),
+    /** Membres dans l'ordre (l'ordre de passage en donjon). */
+    pokemonIds: uuid('pokemon_ids')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [index('pokemon_teams_owner').on(t.ownerId)],
+);
+
 export const pokemonOrigin = pgEnum('pokemon_origin', [
   'starter',
   'capture',
   'egg',
   'quest',
   'fossil',
+  /** Lot de test donné depuis l'administration. */
+  'admin',
 ]);
 
 export const pokemon = pgTable(
@@ -101,6 +130,13 @@ export const pokemon = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::uuid[]`),
+    /** Attaque choisie pour les donjons (type et catégorie) ; null = choix par défaut. */
+    dungeonMove: jsonb('dungeon_move').$type<DungeonMove>(),
+    /**
+     * Méga-Gemme tenue (objet retiré du sac) : le Pokémon est dans la forme Méga de l'effet
+     * `megaEvolution` (`form_id`) ; null = forme normale.
+     */
+    megaStone: text('mega_stone'),
   },
   (t) => [index('pokemon_owner_species').on(t.ownerId, t.speciesId)],
 );
@@ -276,6 +312,57 @@ export const trainerBattles = pgTable(
       .on(t.ownerId, t.trainerId)
       .where(sql`${t.claimedAt} is null`),
   ],
+);
+
+/**
+ * Tentatives de donjon : combat en temps réel, simulé de façon déterministe à partir de
+ * `setup` (équipe et adversaires figés au départ), du seed et des changements de Pokémon du
+ * joueur (`commands`). Le résultat s'applique à la réclamation, une fois le combat terminé.
+ */
+export const dungeonRuns = pgTable(
+  'dungeon_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: ownerId(),
+    dungeonId: text('dungeon_id').notNull(),
+    team: jsonb('team').$type<string[]>().notNull(),
+    setup: jsonb('setup').$type<DungeonSetup>().notNull(),
+    commands: jsonb('commands').$type<DungeonCommand[]>().notNull().default([]),
+    contentVersionId: integer('content_version_id')
+      .notNull()
+      .references(() => contentVersions.id),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Fin au plus tard (temps imparti). */
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    /** Fuite : millisecondes écoulées depuis le départ. */
+    fledAtMs: integer('fled_at_ms'),
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    outcome: text('outcome', { enum: ['win', 'loss', 'timeout', 'fled'] }),
+    result: jsonb('result'),
+  },
+  (t) => [
+    index('dungeon_runs_owner_claimed').on(t.ownerId, t.claimedAt),
+    // Un seul donjon en cours à la fois.
+    uniqueIndex('dungeon_runs_owner_active')
+      .on(t.ownerId)
+      .where(sql`${t.claimedAt} is null`),
+  ],
+);
+
+/** Bilan du joueur dans chaque donjon (temps de recharge, gemmes obtenues). */
+export const dungeonProgress = pgTable(
+  'dungeon_progress',
+  {
+    ownerId: ownerId(),
+    dungeonId: text('dungeon_id').notNull(),
+    wins: integer('wins').notNull().default(0),
+    losses: integer('losses').notNull().default(0),
+    gems: integer('gems').notNull().default(0),
+    firstWinAt: timestamp('first_win_at', { withTimezone: true }),
+    /** Fin de la dernière tentative (début du temps de recharge). */
+    lastEndedAt: timestamp('last_ended_at', { withTimezone: true }),
+  },
+  (t) => [primaryKey({ columns: [t.ownerId, t.dungeonId] })],
 );
 
 /** Bilan du joueur contre chaque dresseur (déblocages, badges, temps de recharge). */

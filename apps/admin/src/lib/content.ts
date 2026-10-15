@@ -14,6 +14,7 @@ export type EntityCollection =
   | 'loot-tables'
   | 'zones'
   | 'trainers'
+  | 'dungeons'
   | 'shop-categories'
   | 'shop-entries'
   | 'evolutions'

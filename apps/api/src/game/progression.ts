@@ -1,9 +1,10 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, isNull, sql } from 'drizzle-orm';
 import { playerProfiles, pokemon, rewardClaims } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
   applyItemToPokemon,
   checkEvolution,
+  checkMegaEvolution,
   collectionProgress,
   evolutionOptions,
   evolvePokemon,
@@ -11,9 +12,9 @@ import {
   localHour,
   playerSlots,
 } from '@poke/game-core';
-import type { PlayerSlots } from '@poke/game-core';
+import type { GameContext, PlayerSlots } from '@poke/game-core';
 import type { ProgressReward } from '@poke/content';
-import type { ClaimRewardInput, EvolveInput, UseItemInput } from '@poke/shared';
+import type { ClaimRewardInput, EvolveInput, MegaEvolveInput, UseItemInput } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
 import { requireStartedProfile } from './expeditions';
@@ -61,6 +62,7 @@ export async function evolve(
       .where(and(eq(pokemon.id, pokemonId), eq(pokemon.ownerId, userId)));
     if (!row) throw new GameError(404, 'POKEMON_NOT_FOUND');
     await assertAvailable(tx, userId, [row], now);
+    if (row.megaStone) throw new GameError(409, 'POKEMON_MEGA');
 
     const option = evolutionOptions(ctx, row.speciesId, row.formId).find(
       (o) =>
@@ -196,9 +198,10 @@ export async function useItemOnPokemon(
     if (!row) throw new GameError(404, 'POKEMON_NOT_FOUND');
     if ((await pokemonActivities(tx, userId)).has(row.id)) throw new GameError(409, 'POKEMON_BUSY');
 
+    // Un Pokémon Méga-Évolué garde le talent de sa forme normale.
     const result = applyItemToPokemon(
       ctx,
-      { ...toInstance(row), originalNature: row.nature },
+      { ...toInstance(row), formId: row.megaStone ? null : row.formId, originalNature: row.nature },
       input.itemId,
       { stat: input.stat, ability: input.ability },
     );
@@ -223,5 +226,88 @@ export async function useItemOnPokemon(
       .where(eq(pokemon.id, row.id))
       .returning();
     return { row: updated!, remaining: await itemQuantity(tx, userId, input.itemId) };
+  });
+}
+
+/** Attaque de donjon enregistrée, oubliée si la nouvelle forme n'a plus son type. */
+function keptDungeonMove(ctx: GameContext, row: PokemonRow, formId: number | null) {
+  const types = ctx.species(row.speciesId, formId)?.types ?? [];
+  return row.dungeonMove && types.includes(row.dungeonMove.type) ? row.dungeonMove : null;
+}
+
+/**
+ * Méga-Évolution : le Pokémon (forme normale, pas en activité) prend une Méga-Gemme du sac et
+ * passe dans la forme Méga, enregistrée au Pokédex (elle y reste s'il redevient normal).
+ */
+export async function megaEvolve(
+  db: Db,
+  content: ContentCache,
+  userId: string,
+  pokemonId: string,
+  input: MegaEvolveInput,
+  now: Date,
+): Promise<{ row: PokemonRow; newSpeciesIds: number[]; newFormIds: number[] }> {
+  const ctx = await content.get();
+  await requireStartedProfile(db, userId);
+
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(pokemon)
+      .where(and(eq(pokemon.id, pokemonId), eq(pokemon.ownerId, userId)));
+    if (!row) throw new GameError(404, 'POKEMON_NOT_FOUND');
+    if ((await pokemonActivities(tx, userId)).has(row.id)) throw new GameError(409, 'POKEMON_BUSY');
+    const check = checkMegaEvolution(ctx, row, input.itemId);
+    if ('error' in check) throw new GameError(400, check.error);
+    if (!(await takeItems(tx, userId, input.itemId, 1))) throw new GameError(409, 'ITEM_MISSING');
+
+    // Verrou optimiste : une seule Méga-Évolution passe si deux demandes arrivent en même temps.
+    const [updated] = await tx
+      .update(pokemon)
+      .set({
+        formId: check.form.id,
+        megaStone: input.itemId,
+        dungeonMove: keptDungeonMove(ctx, row, check.form.id),
+      })
+      .where(and(eq(pokemon.id, row.id), isNull(pokemon.megaStone), isNull(pokemon.formId)))
+      .returning();
+    if (!updated) throw new GameError(409, 'POKEMON_CHANGED');
+
+    const newInDex = await recordPokedex(tx, userId, {
+      seen: [updated.speciesId],
+      caught: [updated],
+      at: now,
+    });
+    return { row: updated, ...newInDex };
+  });
+}
+
+/** Retire la Méga-Gemme : le Pokémon retrouve sa forme normale et la gemme revient au sac. */
+export async function megaRevert(
+  db: Db,
+  content: ContentCache,
+  userId: string,
+  pokemonId: string,
+): Promise<PokemonRow> {
+  const ctx = await content.get();
+  await requireStartedProfile(db, userId);
+
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .select()
+      .from(pokemon)
+      .where(and(eq(pokemon.id, pokemonId), eq(pokemon.ownerId, userId)));
+    if (!row) throw new GameError(404, 'POKEMON_NOT_FOUND');
+    if ((await pokemonActivities(tx, userId)).has(row.id)) throw new GameError(409, 'POKEMON_BUSY');
+    if (!row.megaStone) throw new GameError(409, 'NOT_MEGA');
+
+    const [updated] = await tx
+      .update(pokemon)
+      .set({ formId: null, megaStone: null, dungeonMove: keptDungeonMove(ctx, row, null) })
+      .where(and(eq(pokemon.id, row.id), eq(pokemon.megaStone, row.megaStone)))
+      .returning();
+    if (!updated) throw new GameError(409, 'POKEMON_CHANGED');
+    await addItems(tx, userId, [{ itemId: row.megaStone, quantity: 1 }]);
+    return updated;
   });
 }

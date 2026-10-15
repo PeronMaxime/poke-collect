@@ -37,6 +37,127 @@ export const itemStackSchema = z.object({
 });
 export type ItemStack = z.infer<typeof itemStackSchema>;
 
+/** Attaque utilisée en donjon par les Pokémon d'un type (une seule attaque par type). */
+export const dungeonAttackSchema = z.object({
+  name: nameSchema,
+  power: z.int().min(1).max(250),
+});
+export type DungeonAttack = z.infer<typeof dungeonAttackSchema>;
+
+/** Niveaux de difficulté des donjons, du plus simple au plus dur. */
+export const DUNGEON_DIFFICULTIES = ['easy', 'hard', 'veryHard', 'extreme'] as const;
+export const dungeonDifficultySchema = z.enum(DUNGEON_DIFFICULTIES);
+export type DungeonDifficulty = z.infer<typeof dungeonDifficultySchema>;
+
+/**
+ * Niveau de difficulté : une simple information pour le joueur (les niveaux, le temps et la
+ * récompense se règlent sur chaque donjon).
+ */
+export const dungeonDifficultySettingsSchema = z.object({
+  name: nameSchema,
+});
+export type DungeonDifficultySettings = z.infer<typeof dungeonDifficultySettingsSchema>;
+
+/** Réglages des combats de donjon (temps réel). */
+export const dungeonSettingsSchema = z.object({
+  maxTeamSize: z.int().min(1).max(6),
+  /**
+   * Délai entre deux attaques = délai de référence × vitesse de référence / Vitesse du Pokémon,
+   * borné par le minimum et le maximum.
+   */
+  baseAttackIntervalMs: z.int().min(100).max(60_000),
+  referenceSpeed: z.int().min(1).max(1000),
+  minAttackIntervalMs: z.int().min(100).max(60_000),
+  maxAttackIntervalMs: z.int().min(100).max(60_000),
+  /**
+   * Dégâts = ((2 × niveau / 5 + 2) × puissance × Att / Déf / 50 + 2) × bonus de type (STAB)
+   * × efficacité × aléa (entre `minDamageRoll` et 1) × multiplicateur.
+   */
+  damageMultiplier: z.number().positive().max(100),
+  stabMultiplier: z.number().min(1).max(5),
+  minDamageRoll: probabilitySchema,
+  /** IV des adversaires quand l'admin n'en fixe pas. */
+  defaultOpponentIv: z.int().min(0).max(31),
+  /** Nom affiché de chaque niveau de difficulté. */
+  difficulties: z.object({
+    easy: dungeonDifficultySettingsSchema,
+    hard: dungeonDifficultySettingsSchema,
+    veryHard: dungeonDifficultySettingsSchema,
+    extreme: dungeonDifficultySettingsSchema,
+  }),
+  /** Temps de recharge d'un donjon après chaque tentative (surchargeable par donjon). */
+  cooldownMinutes: z.int().min(0),
+  /** Durée de K.O. des Pokémon mis K.O. dans un donjon (surchargeable par donjon). */
+  koMinutes: z.int().min(0),
+  /** XP par membre = Σ (XP de base × niveau / 7) des adversaires vaincus × multiplicateur. */
+  xpMultiplier: z.number().min(0),
+  happinessOnWin: z.int().min(-255).max(255),
+  happinessOnLoss: z.int().min(-255).max(255),
+  /** Attaque de chaque type (clé : type PokéAPI, ex. `fire`). */
+  attacks: z.record(z.string().min(1), dungeonAttackSchema),
+});
+export type DungeonSettings = z.infer<typeof dungeonSettingsSchema>;
+
+// --- Menu du jeu ---------------------------------------------------------------
+
+/** Onglets du jeu (l'identifiant est aussi l'ancre de l'URL : `#pc`). */
+export const MENU_TABS = [
+  { id: 'expeditions', label: 'Expéditions' },
+  { id: 'battles', label: 'Combats' },
+  { id: 'dungeons', label: 'Donjons' },
+  { id: 'quests', label: 'Quêtes' },
+  { id: 'daycare', label: 'Pension' },
+  { id: 'museum', label: 'Musée' },
+  { id: 'pc', label: 'PC' },
+  { id: 'teams', label: 'Équipe Pkmn' },
+  { id: 'pokedex', label: 'Pokédex' },
+  { id: 'shop', label: 'Boutique' },
+  { id: 'bag', label: 'Sac' },
+  { id: 'trainer', label: 'Fiche Dresseur' },
+  { id: 'leaderboard', label: 'Classement' },
+] as const;
+export type MenuTabId = (typeof MENU_TABS)[number]['id'];
+
+/** Groupes du menu quand l'admin n'en a pas défini. */
+export const DEFAULT_MENU_GROUPS: MenuTabId[][] = [
+  ['expeditions', 'battles', 'dungeons', 'quests'],
+  ['daycare', 'museum'],
+  ['pc', 'teams', 'pokedex', 'shop', 'bag'],
+  ['trainer', 'leaderboard'],
+];
+
+/**
+ * Groupes d'onglets du menu, séparés par un trait (sans titre). Identifiants libres : un onglet
+ * retiré du code est ignoré, un onglet absent est ajouté à la fin (voir `normalizeMenuGroups`).
+ */
+export const menuSettingsSchema = z.object({
+  groups: z.array(z.array(z.string())),
+});
+export type MenuSettings = z.infer<typeof menuSettingsSchema>;
+
+/** Groupes prêts à afficher : onglets inconnus et doublons retirés, oubliés ajoutés, vides retirés. */
+export function normalizeMenuGroups(groups: readonly (readonly string[])[] | undefined) {
+  const known = new Set<string>(MENU_TABS.map((t) => t.id));
+  const seen = new Set<string>();
+  const result = (groups ?? DEFAULT_MENU_GROUPS).map((g) =>
+    g.filter((id) => known.has(id) && !seen.has(id) && seen.add(id)),
+  ) as MenuTabId[][];
+  // Onglet oublié (souvent ajouté au jeu après le réglage de l'admin) : placé après son voisin
+  // dans les groupes par défaut s'il est affiché, sinon dans un groupe final.
+  const missing: MenuTabId[] = [];
+  for (const id of MENU_TABS.map((t) => t.id).filter((id) => !seen.has(id))) {
+    const defaults = DEFAULT_MENU_GROUPS.find((g) => g.includes(id)) ?? [];
+    const before = defaults.slice(0, defaults.indexOf(id)).reverse();
+    const anchor = before.find((other) => seen.has(other));
+    const group = anchor && result.find((g) => g.includes(anchor));
+    if (group) group.splice(group.indexOf(anchor) + 1, 0, id);
+    else missing.push(id);
+    seen.add(id);
+  }
+  if (missing.length) result.push(missing);
+  return result.filter((g) => g.length > 0);
+}
+
 export const balanceSettingsSchema = z.object({
   expeditions: z.object({
     initialSlots: z.int().min(1).max(6),
@@ -154,6 +275,7 @@ export const balanceSettingsSchema = z.object({
     happinessOnWin: z.int().min(-255).max(255),
     happinessOnLoss: z.int().min(-255).max(255),
   }),
+  dungeons: dungeonSettingsSchema,
   evolution: z.object({
     /** Objet qui remplace l'échange (Câble Link) ; null = évolutions par échange impossibles. */
     tradeItemId: slugSchema.nullable(),
@@ -166,6 +288,8 @@ export const balanceSettingsSchema = z.object({
     startingCurrency: z.int().min(0),
     startingInventory: z.array(itemStackSchema),
   }),
+  /** Menu du jeu ; absent = `DEFAULT_MENU_GROUPS`. */
+  menu: menuSettingsSchema.optional(),
 });
 export type BalanceSettings = z.infer<typeof balanceSettingsSchema>;
 
@@ -256,6 +380,7 @@ export const ITEM_CATEGORIES = [
   'breeding',
   'endgame',
   'fossil',
+  'megaStone',
   'misc',
 ] as const;
 export const itemCategorySchema = z.enum(ITEM_CATEGORIES);
@@ -293,6 +418,11 @@ export const itemEffectSchema = z.discriminatedUnion('type', [
     level: z.int().min(1).max(100),
     minutes: z.int().min(1).max(10_080),
   }),
+  /**
+   * Méga-Gemme : tenue par un Pokémon de l'espèce, le fait passer dans sa forme Méga (`formId`).
+   * Retirée de l'inventaire à la Méga-Évolution, rendue quand le Pokémon redevient normal.
+   */
+  z.object({ type: z.literal('megaEvolution'), formId: z.int().positive() }),
 ]);
 export type ItemEffect = z.infer<typeof itemEffectSchema>;
 export type ItemEffectType = ItemEffect['type'];
@@ -461,6 +591,48 @@ export const trainerSchema = z.object({
   unlock: unlockConditionSchema,
 });
 export type Trainer = z.infer<typeof trainerSchema>;
+
+// --- Donjons ------------------------------------------------------------------------------
+
+/**
+ * Donjon : combats en temps réel contre une suite de Pokémon, jusqu'au boss (une Méga-Évolution).
+ * Visible dès qu'une espèce de la lignée est capturée, ouvert quand toute la lignée l'est.
+ */
+export const dungeonSchema = z.object({
+  id: slugSchema,
+  regionId: slugSchema,
+  order: z.int().min(0),
+  name: nameSchema,
+  description: z.string().max(500),
+  /** Difficulté affichée au joueur (aucun effet sur le combat). */
+  difficulty: dungeonDifficultySchema.default('easy'),
+  /** Boss final : en général la forme Méga de l'espèce du donjon. */
+  boss: trainerPokemonSchema,
+  /** PV du boss multipliés (1 = normaux). */
+  bossHpMultiplier: z.number().min(0.1).max(20),
+  /** Espèces à avoir toutes capturées pour entrer (la lignée du boss). */
+  familySpeciesIds: z.array(z.int().positive()).min(1, 'Au moins une espèce').max(10),
+  /** Adversaires affrontés dans l'ordre, avant le boss. */
+  opponents: z.array(trainerPokemonSchema).max(30),
+  /** Temps imparti pour vaincre le boss. */
+  timeLimitSeconds: z.int().min(10).max(3600),
+  /** Temps de recharge après une tentative ; null = valeur de l'équilibrage. */
+  cooldownMinutes: z.int().min(0).nullable(),
+  /** Durée de K.O. des Pokémon mis K.O. ; null = valeur de l'équilibrage. */
+  koMinutes: z.int().min(0).nullable(),
+  /** Poké Dollars gagnés en cas de victoire. */
+  money: z.int().min(0),
+  lootTableId: slugSchema.nullable(),
+  lootRolls: z.int().min(0).max(20),
+  /** Méga-Gemme que le boss peut laisser (null = aucune), avec sa probabilité. */
+  gemItemId: slugSchema.nullable(),
+  gemChance: probabilitySchema,
+  /** Désactivé : caché aux joueurs, plus aucune tentative ne peut être lancée. */
+  enabled: z.boolean().default(true),
+  /** Condition supplémentaire (en plus de la lignée capturée). */
+  unlock: unlockConditionSchema,
+});
+export type Dungeon = z.infer<typeof dungeonSchema>;
 
 // --- Boutique ---------------------------------------------------------------------------
 
@@ -740,6 +912,7 @@ export const gameContentStructureSchema = z.object({
   lootTables: z.array(lootTableSchema),
   zones: z.array(zoneSchema),
   trainers: z.array(trainerSchema),
+  dungeons: z.array(dungeonSchema),
   shopCategories: z.array(shopCategorySchema),
   shopEntries: z.array(shopEntrySchema),
   evolutionOverrides: z.array(evolutionOverrideSchema),

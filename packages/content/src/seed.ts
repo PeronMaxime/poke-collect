@@ -1,5 +1,6 @@
 import type {
   Collection,
+  Region,
   DexMilestone,
   EvolutionMethod,
   EvolutionOverride,
@@ -19,6 +20,7 @@ import {
   expansionTrainers,
   expansionZones,
 } from './seed-expansion';
+import { dungeonSettings, megaStoneItems, seedDungeons } from './seed-dungeons';
 import { johtoQuests, johtoRegion, johtoTrainers, johtoZones } from './seed-johto';
 import { kantoQuests, kantoTrainers, kantoZones } from './seed-kanto';
 
@@ -337,6 +339,21 @@ const collections: Collection[] = [
   },
 ];
 
+const regions: Region[] = [
+  {
+    id: 'kanto',
+    order: 0,
+    name: 'Kanto',
+    image: null,
+    speciesIds: Array.from({ length: 151 }, (_, i) => i + 1),
+    starterSpeciesIds: [1, 4, 7],
+    enabled: true,
+    unlock: { type: 'always' },
+  },
+  johtoRegion,
+  ...expansionRegions,
+];
+
 export const seedContent: GameContentData = {
   balance: {
     expeditions: {
@@ -395,6 +412,7 @@ export const seedContent: GameContentData = {
       happinessOnWin: 3,
       happinessOnLoss: -2,
     },
+    dungeons: dungeonSettings,
     evolution: { tradeItemId: 'linking-cord', dayStartHour: 6, nightStartHour: 20 },
     newPlayer: {
       starterLevel: 5,
@@ -405,20 +423,7 @@ export const seedContent: GameContentData = {
       ],
     },
   },
-  regions: [
-    {
-      id: 'kanto',
-      order: 0,
-      name: 'Kanto',
-      image: null,
-      speciesIds: Array.from({ length: 151 }, (_, i) => i + 1),
-      starterSpeciesIds: [1, 4, 7],
-      enabled: true,
-      unlock: { type: 'always' },
-    },
-    johtoRegion,
-    ...expansionRegions,
-  ],
+  regions,
   speciesOverrides: [],
   items: withSellPrices([
     {
@@ -550,6 +555,7 @@ export const seedContent: GameContentData = {
     },
     ...endgameItems(),
     ...fossilItems(),
+    ...megaStoneItems(regions),
     ...expansionItems,
   ]),
   lootTables: [
@@ -619,6 +625,7 @@ export const seedContent: GameContentData = {
   ],
   zones: [...kantoZones, ...johtoZones, ...expansionZones],
   trainers: [...kantoTrainers, ...johtoTrainers, ...expansionTrainers],
+  dungeons: seedDungeons(regions),
   shopCategories,
   shopEntries: [...shopEntries, ...expansionShopEntries],
   evolutionOverrides,

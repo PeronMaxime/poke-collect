@@ -82,6 +82,110 @@
       "happinessOnWin": 3,
       "happinessOnLoss": -2
     },
+    "dungeons": {
+      "maxTeamSize": 6,
+      "baseAttackIntervalMs": 2000,
+      "referenceSpeed": 150,
+      "minAttackIntervalMs": 500,
+      "maxAttackIntervalMs": 3000,
+      "damageMultiplier": 0.5,
+      "stabMultiplier": 1.5,
+      "minDamageRoll": 0.85,
+      "defaultOpponentIv": 15,
+      "difficulties": {
+        "easy": {
+          "name": "Facile"
+        },
+        "hard": {
+          "name": "Difficile"
+        },
+        "veryHard": {
+          "name": "Très difficile"
+        },
+        "extreme": {
+          "name": "Extrême"
+        }
+      },
+      "cooldownMinutes": 60,
+      "koMinutes": 30,
+      "xpMultiplier": 1,
+      "happinessOnWin": 3,
+      "happinessOnLoss": -2,
+      "attacks": {
+        "bug": {
+          "name": "Plaie-Croix",
+          "power": 80
+        },
+        "ice": {
+          "name": "Laser Glace",
+          "power": 80
+        },
+        "dark": {
+          "name": "Mâchouille",
+          "power": 80
+        },
+        "fire": {
+          "name": "Lance-Flammes",
+          "power": 80
+        },
+        "rock": {
+          "name": "Éboulement",
+          "power": 80
+        },
+        "fairy": {
+          "name": "Pouvoir Lunaire",
+          "power": 80
+        },
+        "ghost": {
+          "name": "Ball’Ombre",
+          "power": 80
+        },
+        "grass": {
+          "name": "Éco-Sphère",
+          "power": 80
+        },
+        "steel": {
+          "name": "Luminocanon",
+          "power": 80
+        },
+        "water": {
+          "name": "Surf",
+          "power": 80
+        },
+        "dragon": {
+          "name": "Dracogriffe",
+          "power": 80
+        },
+        "flying": {
+          "name": "Lame d’Air",
+          "power": 80
+        },
+        "ground": {
+          "name": "Séisme",
+          "power": 80
+        },
+        "normal": {
+          "name": "Plaquage",
+          "power": 80
+        },
+        "poison": {
+          "name": "Bomb-Beurk",
+          "power": 80
+        },
+        "psychic": {
+          "name": "Psyko",
+          "power": 80
+        },
+        "electric": {
+          "name": "Tonnerre",
+          "power": 80
+        },
+        "fighting": {
+          "name": "Casse-Brique",
+          "power": 80
+        }
+      }
+    },
     "evolution": {
       "tradeItemId": "linking-cord",
       "dayStartHour": 6,
@@ -1251,6 +1355,51 @@
       ]
     },
     {
+      "id": "abomasite",
+      "name": "Blizzarite",
+      "description": "Une Méga-Gemme, laissée par Méga-Blizzaroi au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10060
+        }
+      ]
+    },
+    {
+      "id": "absolite",
+      "name": "Absolite",
+      "description": "Une Méga-Gemme, laissée par Méga-Absol au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10057
+        }
+      ]
+    },
+    {
+      "id": "absolite-z",
+      "name": "Absolite Z",
+      "description": "Une Méga-Gemme, laissée par Méga-Absol Z au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10307
+        }
+      ]
+    },
+    {
       "id": "adamant-mint",
       "name": "Aromate Rigide",
       "description": "Utilisé sur un Pokémon : sa nature effective devient Rigide.",
@@ -1262,6 +1411,81 @@
         {
           "type": "mint",
           "nature": "adamant"
+        }
+      ]
+    },
+    {
+      "id": "aerodactylite",
+      "name": "Ptéraïte",
+      "description": "Une Méga-Gemme, laissée par Méga-Ptéra au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10042
+        }
+      ]
+    },
+    {
+      "id": "aggronite",
+      "name": "Galekingite",
+      "description": "Une Méga-Gemme, laissée par Méga-Galeking au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10053
+        }
+      ]
+    },
+    {
+      "id": "alakazite",
+      "name": "Alakazamite",
+      "description": "Une Méga-Gemme, laissée par Méga-Alakazam au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10037
+        }
+      ]
+    },
+    {
+      "id": "altarianite",
+      "name": "Altarite",
+      "description": "Une Méga-Gemme, laissée par Méga-Altaria au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10067
+        }
+      ]
+    },
+    {
+      "id": "ampharosite",
+      "name": "Pharampite",
+      "description": "Une Méga-Gemme, laissée par Méga-Pharamp au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10045
         }
       ]
     },
@@ -1294,6 +1518,36 @@
       "effects": []
     },
     {
+      "id": "banettite",
+      "name": "Branettite",
+      "description": "Une Méga-Gemme, laissée par Méga-Branette au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10056
+        }
+      ]
+    },
+    {
+      "id": "beedrillite",
+      "name": "Dardargnite",
+      "description": "Une Méga-Gemme, laissée par Méga-Dardargnan au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10090
+        }
+      ]
+    },
+    {
       "id": "berry-sweet",
       "name": "Baie en Sucre",
       "description": "Un bonbon en forme de Baie. Quand on le donne à un Crèmy, il danse de bonheur.",
@@ -1312,6 +1566,36 @@
       "rarity": "epic",
       "sellPrice": 3000,
       "effects": []
+    },
+    {
+      "id": "blastoisinite",
+      "name": "Tortankite",
+      "description": "Une Méga-Gemme, laissée par Méga-Tortank au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10036
+        }
+      ]
+    },
+    {
+      "id": "blazikenite",
+      "name": "Braségalite",
+      "description": "Une Méga-Gemme, laissée par Méga-Braségali au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10050
+        }
+      ]
     },
     {
       "id": "bold-mint",
@@ -1359,6 +1643,66 @@
       ]
     },
     {
+      "id": "cameruptite",
+      "name": "Caméruptite",
+      "description": "Une Méga-Gemme, laissée par Méga-Camérupt au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10087
+        }
+      ]
+    },
+    {
+      "id": "charizardite-x",
+      "name": "Dracaufite X",
+      "description": "Une Méga-Gemme, laissée par Méga-Dracaufeu X au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10034
+        }
+      ]
+    },
+    {
+      "id": "charizardite-y",
+      "name": "Dracaufite Y",
+      "description": "Une Méga-Gemme, laissée par Méga-Dracaufeu Y au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10035
+        }
+      ]
+    },
+    {
+      "id": "chimechite",
+      "name": "Éokite",
+      "description": "Une Méga-Gemme, laissée par Méga-Éoko au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10306
+        }
+      ]
+    },
+    {
       "id": "chipped-pot",
       "name": "Théière Ébréchée",
       "description": "Un récipient mystérieux pouvant faire évoluer un certain Pokémon. Il est ébréché, mais on y fait du bon thé.",
@@ -1383,6 +1727,21 @@
           "formId": null,
           "level": 10,
           "minutes": 180
+        }
+      ]
+    },
+    {
+      "id": "clefablite",
+      "name": "Mélodelfite",
+      "description": "Une Méga-Gemme, laissée par Méga-Mélodelfe au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10278
         }
       ]
     },
@@ -1480,6 +1839,21 @@
       "effects": []
     },
     {
+      "id": "dragoninite",
+      "name": "Dracolossite",
+      "description": "Une Méga-Gemme, laissée par Méga-Dracolosse au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10281
+        }
+      ]
+    },
+    {
       "id": "dubious-disc",
       "name": "CD Douteux",
       "description": "Un appareil transparent rempli de données douteuses. Son fabricant n’est pas connu.",
@@ -1525,6 +1899,21 @@
       ]
     },
     {
+      "id": "feraligite",
+      "name": "Aligatueurite",
+      "description": "Une Méga-Gemme, laissée par Méga-Aligatueur au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10283
+        }
+      ]
+    },
+    {
       "id": "fire-stone",
       "name": "Pierre Feu",
       "description": "Fait évoluer Goupix, Caninos et Évoli.",
@@ -1545,6 +1934,21 @@
       "effects": []
     },
     {
+      "id": "froslassite",
+      "name": "Momartikite",
+      "description": "Une Méga-Gemme, laissée par Méga-Momartik au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10285
+        }
+      ]
+    },
+    {
       "id": "galarica-cuff",
       "name": "Bracelet Galanoa",
       "description": "Un bracelet confectionné à partir de Branches Galanoa. Les Ramoloss de Galar adorent en porter.",
@@ -1563,6 +1967,96 @@
       "rarity": "epic",
       "sellPrice": 3000,
       "effects": []
+    },
+    {
+      "id": "galladite",
+      "name": "Gallamite",
+      "description": "Une Méga-Gemme, laissée par Méga-Gallame au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10068
+        }
+      ]
+    },
+    {
+      "id": "garchompite",
+      "name": "Carchacrokite",
+      "description": "Une Méga-Gemme, laissée par Méga-Carchacrok au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10058
+        }
+      ]
+    },
+    {
+      "id": "garchompite-z",
+      "name": "Carchacrokite Z",
+      "description": "Une Méga-Gemme, laissée par Méga-Carchacrok Z au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10309
+        }
+      ]
+    },
+    {
+      "id": "gardevoirite",
+      "name": "Gardevoirite",
+      "description": "Une Méga-Gemme, laissée par Méga-Gardevoir au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10051
+        }
+      ]
+    },
+    {
+      "id": "gengarite",
+      "name": "Ectoplasmite",
+      "description": "Une Méga-Gemme, laissée par Méga-Ectoplasma au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10038
+        }
+      ]
+    },
+    {
+      "id": "glalitite",
+      "name": "Oniglalite",
+      "description": "Une Méga-Gemme, laissée par Méga-Oniglali au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10074
+        }
+      ]
     },
     {
       "id": "gold-bottle-cap",
@@ -1595,6 +2089,21 @@
       ]
     },
     {
+      "id": "gyaradosite",
+      "name": "Léviatorite",
+      "description": "Une Méga-Gemme, laissée par Méga-Léviator au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10041
+        }
+      ]
+    },
+    {
       "id": "helix-fossil",
       "name": "Fossile Nautile",
       "description": "Un fossile ancien. Le Musée peut en faire renaître un Amonita.",
@@ -1609,6 +2118,36 @@
           "formId": null,
           "level": 10,
           "minutes": 120
+        }
+      ]
+    },
+    {
+      "id": "heracronite",
+      "name": "Scarhinoïte",
+      "description": "Une Méga-Gemme, laissée par Méga-Scarhino au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10047
+        }
+      ]
+    },
+    {
+      "id": "houndoominite",
+      "name": "Démolossite",
+      "description": "Une Méga-Gemme, laissée par Méga-Démolosse au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10048
         }
       ]
     },
@@ -1634,6 +2173,21 @@
         {
           "type": "mint",
           "nature": "jolly"
+        }
+      ]
+    },
+    {
+      "id": "kangaskhanite",
+      "name": "Kangourexite",
+      "description": "Une Méga-Gemme, laissée par Méga-Kangourex au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10039
         }
       ]
     },
@@ -1668,6 +2222,21 @@
       "effects": []
     },
     {
+      "id": "lopunnite",
+      "name": "Lockpinite",
+      "description": "Une Méga-Gemme, laissée par Méga-Lockpin au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10088
+        }
+      ]
+    },
+    {
       "id": "love-sweet",
       "name": "Cœur en Sucre",
       "description": "Un bonbon en forme de cœur. Quand on le donne à un Crèmy, il danse de bonheur.",
@@ -1676,6 +2245,36 @@
       "rarity": "epic",
       "sellPrice": 3000,
       "effects": []
+    },
+    {
+      "id": "lucarionite",
+      "name": "Lucarite",
+      "description": "Une Méga-Gemme, laissée par Méga-Lucario au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10059
+        }
+      ]
+    },
+    {
+      "id": "lucarionite-z",
+      "name": "Lucarite Z",
+      "description": "Une Méga-Gemme, laissée par Méga-Lucario Z au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10310
+        }
+      ]
     },
     {
       "id": "magmarizer",
@@ -1698,6 +2297,21 @@
       "effects": []
     },
     {
+      "id": "manectite",
+      "name": "Élecsprintite",
+      "description": "Une Méga-Gemme, laissée par Méga-Élecsprint au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10055
+        }
+      ]
+    },
+    {
       "id": "masterpiece-teacup",
       "name": "Bol Exceptionnel",
       "description": "",
@@ -1706,6 +2320,66 @@
       "rarity": "epic",
       "sellPrice": 3000,
       "effects": []
+    },
+    {
+      "id": "mawilite",
+      "name": "Mysdibulite",
+      "description": "Une Méga-Gemme, laissée par Méga-Mysdibule au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10052
+        }
+      ]
+    },
+    {
+      "id": "medichamite",
+      "name": "Charminite",
+      "description": "Une Méga-Gemme, laissée par Méga-Charmina au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10054
+        }
+      ]
+    },
+    {
+      "id": "meganiumite",
+      "name": "Méganiumite",
+      "description": "Une Méga-Gemme, laissée par Méga-Méganium au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10282
+        }
+      ]
+    },
+    {
+      "id": "metagrossite",
+      "name": "Métalossite",
+      "description": "Une Méga-Gemme, laissée par Méga-Métalosse au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10076
+        }
+      ]
     },
     {
       "id": "metal-alloy",
@@ -1726,6 +2400,36 @@
       "rarity": "epic",
       "sellPrice": 3000,
       "effects": []
+    },
+    {
+      "id": "mewtwonite-x",
+      "name": "Mewtwoïte X",
+      "description": "Une Méga-Gemme, laissée par Méga-Mewtwo X au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10043
+        }
+      ]
+    },
+    {
+      "id": "mewtwonite-y",
+      "name": "Mewtwoïte Y",
+      "description": "Une Méga-Gemme, laissée par Méga-Mewtwo Y au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10044
+        }
+      ]
     },
     {
       "id": "modest-mint",
@@ -1791,6 +2495,36 @@
       "effects": []
     },
     {
+      "id": "pidgeotite",
+      "name": "Roucarnagite",
+      "description": "Une Méga-Gemme, laissée par Méga-Roucarnage au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10073
+        }
+      ]
+    },
+    {
+      "id": "pinsirite",
+      "name": "Scarabruite",
+      "description": "Une Méga-Gemme, laissée par Méga-Scarabrute au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10040
+        }
+      ]
+    },
+    {
       "id": "poke-ball",
       "name": "Poké Ball",
       "description": "La Ball de base.",
@@ -1839,6 +2573,36 @@
       "rarity": "epic",
       "sellPrice": 3000,
       "effects": []
+    },
+    {
+      "id": "raichunite-x",
+      "name": "Raichunite X",
+      "description": "Une Méga-Gemme, laissée par Méga-Raichu X au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10304
+        }
+      ]
+    },
+    {
+      "id": "raichunite-y",
+      "name": "Raichunite Y",
+      "description": "Une Méga-Gemme, laissée par Méga-Raichu Y au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10305
+        }
+      ]
     },
     {
       "id": "razor-claw",
@@ -1914,6 +2678,21 @@
       ]
     },
     {
+      "id": "sablenite",
+      "name": "Ténéfixite",
+      "description": "Une Méga-Gemme, laissée par Méga-Ténéfix au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10066
+        }
+      ]
+    },
+    {
       "id": "sachet",
       "name": "Sachet Senteur",
       "description": "Un sachet d’herbes et d’épices, au parfum trop marqué pour beaucoup, mais néanmoins apprécié d’un certain Pokémon.",
@@ -1922,6 +2701,51 @@
       "rarity": "epic",
       "sellPrice": 3000,
       "effects": []
+    },
+    {
+      "id": "salamencite",
+      "name": "Drattakite",
+      "description": "Une Méga-Gemme, laissée par Méga-Drattak au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10089
+        }
+      ]
+    },
+    {
+      "id": "sceptilite",
+      "name": "Jungkite",
+      "description": "Une Méga-Gemme, laissée par Méga-Jungko au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10065
+        }
+      ]
+    },
+    {
+      "id": "scizorite",
+      "name": "Cizayoxite",
+      "description": "Une Méga-Gemme, laissée par Méga-Cizayox au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10046
+        }
+      ]
     },
     {
       "id": "scroll-of-darkness",
@@ -1942,6 +2766,21 @@
       "rarity": "epic",
       "sellPrice": 3000,
       "effects": []
+    },
+    {
+      "id": "sharpedonite",
+      "name": "Sharpedite",
+      "description": "Une Méga-Gemme, laissée par Méga-Sharpedo au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10070
+        }
+      ]
     },
     {
       "id": "shiny-charm",
@@ -1969,6 +2808,21 @@
       "effects": []
     },
     {
+      "id": "skarmorite",
+      "name": "Airmurite",
+      "description": "Une Méga-Gemme, laissée par Méga-Airmure au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10284
+        }
+      ]
+    },
+    {
       "id": "skull-fossil",
       "name": "Fossile Crâne",
       "description": "Un fossile ancien. Le Musée peut en faire renaître un Kranidos.",
@@ -1987,6 +2841,21 @@
       ]
     },
     {
+      "id": "slowbronite",
+      "name": "Flagadossite",
+      "description": "Une Méga-Gemme, laissée par Méga-Flagadoss au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10071
+        }
+      ]
+    },
+    {
       "id": "star-sweet",
       "name": "Étoile en Sucre",
       "description": "Un bonbon en forme d’étoile. Quand on le donne à un Crèmy, il danse de bonheur.",
@@ -1995,6 +2864,51 @@
       "rarity": "epic",
       "sellPrice": 3000,
       "effects": []
+    },
+    {
+      "id": "staraptite",
+      "name": "Étouraptorite",
+      "description": "Une Méga-Gemme, laissée par Méga-Étouraptor au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10308
+        }
+      ]
+    },
+    {
+      "id": "starminite",
+      "name": "Starossite",
+      "description": "Une Méga-Gemme, laissée par Méga-Staross au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10280
+        }
+      ]
+    },
+    {
+      "id": "steelixite",
+      "name": "Steelixite",
+      "description": "Une Méga-Gemme, laissée par Méga-Steelix au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10072
+        }
+      ]
     },
     {
       "id": "strawberry-sweet",
@@ -2015,6 +2929,21 @@
       "rarity": "rare",
       "sellPrice": 1500,
       "effects": []
+    },
+    {
+      "id": "swampertite",
+      "name": "Laggronite",
+      "description": "Une Méga-Gemme, laissée par Méga-Laggron au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10064
+        }
+      ]
     },
     {
       "id": "sweet-apple",
@@ -2072,6 +3001,21 @@
       ]
     },
     {
+      "id": "tyranitarite",
+      "name": "Tyranocivite",
+      "description": "Une Méga-Gemme, laissée par Méga-Tyranocif au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10049
+        }
+      ]
+    },
+    {
       "id": "ultra-ball",
       "name": "Hyper Ball",
       "description": "Plus efficace qu’une Super Ball.",
@@ -2105,6 +3049,36 @@
       "rarity": "epic",
       "sellPrice": 3000,
       "effects": []
+    },
+    {
+      "id": "venusaurite",
+      "name": "Florizarrite",
+      "description": "Une Méga-Gemme, laissée par Méga-Florizarre au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10033
+        }
+      ]
+    },
+    {
+      "id": "victreebelite",
+      "name": "Empiflorite",
+      "description": "Une Méga-Gemme, laissée par Méga-Empiflor au fond de son donjon.",
+      "icon": null,
+      "category": "megaStone",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "megaEvolution",
+          "formId": 10279
+        }
+      ]
     },
     {
       "id": "water-stone",
@@ -12278,6 +13252,4013 @@
         "type": "regionDexPercent",
         "regionId": "kanto",
         "percent": 50
+      }
+    }
+  ],
+  "dungeons": [
+    {
+      "id": "mega-florizarre",
+      "regionId": "kanto",
+      "order": 0,
+      "name": "Méga-Florizarre",
+      "description": "Affronte la lignée de Florizarre jusqu’à Méga-Florizarre.",
+      "difficulty": "veryHard",
+      "boss": {
+        "speciesId": 3,
+        "formId": 10033,
+        "level": 80,
+        "iv": 25,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        1,
+        2,
+        3
+      ],
+      "opponents": [
+        {
+          "speciesId": 1,
+          "formId": null,
+          "level": 65,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 1,
+          "formId": null,
+          "level": 68,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 2,
+          "formId": null,
+          "level": 71,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 2,
+          "formId": null,
+          "level": 74,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 3,
+          "formId": null,
+          "level": 77,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 8000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "venusaurite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-etouraptor",
+      "regionId": "sinnoh",
+      "order": 0,
+      "name": "Méga-Étouraptor",
+      "description": "Affronte la lignée de Étouraptor jusqu’à Méga-Étouraptor.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 398,
+        "formId": 10308,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        396,
+        397,
+        398
+      ],
+      "opponents": [
+        {
+          "speciesId": 396,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 396,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 397,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 397,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 398,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "staraptite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-jungko",
+      "regionId": "hoenn",
+      "order": 0,
+      "name": "Méga-Jungko",
+      "description": "Affronte la lignée de Jungko jusqu’à Méga-Jungko.",
+      "difficulty": "veryHard",
+      "boss": {
+        "speciesId": 254,
+        "formId": 10065,
+        "level": 80,
+        "iv": 25,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        252,
+        253,
+        254
+      ],
+      "opponents": [
+        {
+          "speciesId": 252,
+          "formId": null,
+          "level": 65,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 252,
+          "formId": null,
+          "level": 68,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 253,
+          "formId": null,
+          "level": 71,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 253,
+          "formId": null,
+          "level": 74,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 254,
+          "formId": null,
+          "level": 77,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 8000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "sceptilite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-meganium",
+      "regionId": "johto",
+      "order": 0,
+      "name": "Méga-Méganium",
+      "description": "Affronte la lignée de Méganium jusqu’à Méga-Méganium.",
+      "difficulty": "veryHard",
+      "boss": {
+        "speciesId": 154,
+        "formId": 10282,
+        "level": 80,
+        "iv": 25,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        152,
+        153,
+        154
+      ],
+      "opponents": [
+        {
+          "speciesId": 152,
+          "formId": null,
+          "level": 65,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 152,
+          "formId": null,
+          "level": 68,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 153,
+          "formId": null,
+          "level": 71,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 153,
+          "formId": null,
+          "level": 74,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 154,
+          "formId": null,
+          "level": 77,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 8000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "meganiumite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-dracaufeu-x",
+      "regionId": "kanto",
+      "order": 1,
+      "name": "Méga-Dracaufeu X",
+      "description": "Affronte la lignée de Dracaufeu jusqu’à Méga-Dracaufeu X.",
+      "difficulty": "veryHard",
+      "boss": {
+        "speciesId": 6,
+        "formId": 10034,
+        "level": 80,
+        "iv": 25,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        4,
+        5,
+        6
+      ],
+      "opponents": [
+        {
+          "speciesId": 4,
+          "formId": null,
+          "level": 65,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 4,
+          "formId": null,
+          "level": 68,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 5,
+          "formId": null,
+          "level": 71,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 5,
+          "formId": null,
+          "level": 74,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 6,
+          "formId": null,
+          "level": 77,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 8000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "charizardite-x",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-brasegali",
+      "regionId": "hoenn",
+      "order": 1,
+      "name": "Méga-Braségali",
+      "description": "Affronte la lignée de Braségali jusqu’à Méga-Braségali.",
+      "difficulty": "veryHard",
+      "boss": {
+        "speciesId": 257,
+        "formId": 10050,
+        "level": 80,
+        "iv": 25,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        255,
+        256,
+        257
+      ],
+      "opponents": [
+        {
+          "speciesId": 255,
+          "formId": null,
+          "level": 65,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 255,
+          "formId": null,
+          "level": 68,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 256,
+          "formId": null,
+          "level": 71,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 256,
+          "formId": null,
+          "level": 74,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 257,
+          "formId": null,
+          "level": 77,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 8000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "blazikenite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-lockpin",
+      "regionId": "sinnoh",
+      "order": 1,
+      "name": "Méga-Lockpin",
+      "description": "Affronte la lignée de Lockpin jusqu’à Méga-Lockpin.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 428,
+        "formId": 10088,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        427,
+        428
+      ],
+      "opponents": [
+        {
+          "speciesId": 427,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 427,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 427,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 428,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 428,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "lopunnite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-aligatueur",
+      "regionId": "johto",
+      "order": 1,
+      "name": "Méga-Aligatueur",
+      "description": "Affronte la lignée de Aligatueur jusqu’à Méga-Aligatueur.",
+      "difficulty": "veryHard",
+      "boss": {
+        "speciesId": 160,
+        "formId": 10283,
+        "level": 80,
+        "iv": 25,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        158,
+        159,
+        160
+      ],
+      "opponents": [
+        {
+          "speciesId": 158,
+          "formId": null,
+          "level": 65,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 158,
+          "formId": null,
+          "level": 68,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 159,
+          "formId": null,
+          "level": 71,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 159,
+          "formId": null,
+          "level": 74,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 160,
+          "formId": null,
+          "level": 77,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 8000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "feraligite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-pharamp",
+      "regionId": "johto",
+      "order": 2,
+      "name": "Méga-Pharamp",
+      "description": "Affronte la lignée de Pharamp jusqu’à Méga-Pharamp.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 181,
+        "formId": 10045,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        179,
+        180,
+        181
+      ],
+      "opponents": [
+        {
+          "speciesId": 179,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 179,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 180,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 180,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 181,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "ampharosite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-laggron",
+      "regionId": "hoenn",
+      "order": 2,
+      "name": "Méga-Laggron",
+      "description": "Affronte la lignée de Laggron jusqu’à Méga-Laggron.",
+      "difficulty": "veryHard",
+      "boss": {
+        "speciesId": 260,
+        "formId": 10064,
+        "level": 80,
+        "iv": 25,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        258,
+        259,
+        260
+      ],
+      "opponents": [
+        {
+          "speciesId": 258,
+          "formId": null,
+          "level": 65,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 258,
+          "formId": null,
+          "level": 68,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 259,
+          "formId": null,
+          "level": 71,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 259,
+          "formId": null,
+          "level": 74,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 260,
+          "formId": null,
+          "level": 77,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 8000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "swampertite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-dracaufeu-y",
+      "regionId": "kanto",
+      "order": 2,
+      "name": "Méga-Dracaufeu Y",
+      "description": "Affronte la lignée de Dracaufeu jusqu’à Méga-Dracaufeu Y.",
+      "difficulty": "veryHard",
+      "boss": {
+        "speciesId": 6,
+        "formId": 10035,
+        "level": 80,
+        "iv": 25,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        4,
+        5,
+        6
+      ],
+      "opponents": [
+        {
+          "speciesId": 4,
+          "formId": null,
+          "level": 65,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 4,
+          "formId": null,
+          "level": 68,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 5,
+          "formId": null,
+          "level": 71,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 5,
+          "formId": null,
+          "level": 74,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 6,
+          "formId": null,
+          "level": 77,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 8000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "charizardite-y",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-carchacrok",
+      "regionId": "sinnoh",
+      "order": 2,
+      "name": "Méga-Carchacrok",
+      "description": "Affronte la lignée de Carchacrok jusqu’à Méga-Carchacrok.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 445,
+        "formId": 10058,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        443,
+        444,
+        445
+      ],
+      "opponents": [
+        {
+          "speciesId": 443,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 443,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 444,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 444,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 445,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "garchompite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-steelix",
+      "regionId": "johto",
+      "order": 3,
+      "name": "Méga-Steelix",
+      "description": "Affronte la lignée de Steelix jusqu’à Méga-Steelix.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 208,
+        "formId": 10072,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        95,
+        208
+      ],
+      "opponents": [
+        {
+          "speciesId": 95,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 95,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 95,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 208,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 208,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "steelixite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-carchacrok-z",
+      "regionId": "sinnoh",
+      "order": 3,
+      "name": "Méga-Carchacrok Z",
+      "description": "Affronte la lignée de Carchacrok jusqu’à Méga-Carchacrok Z.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 445,
+        "formId": 10309,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        443,
+        444,
+        445
+      ],
+      "opponents": [
+        {
+          "speciesId": 443,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 443,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 444,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 444,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 445,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "garchompite-z",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-gardevoir",
+      "regionId": "hoenn",
+      "order": 3,
+      "name": "Méga-Gardevoir",
+      "description": "Affronte la lignée de Gardevoir jusqu’à Méga-Gardevoir.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 282,
+        "formId": 10051,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        280,
+        281,
+        282
+      ],
+      "opponents": [
+        {
+          "speciesId": 280,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 280,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 281,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 281,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 282,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "gardevoirite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-tortank",
+      "regionId": "kanto",
+      "order": 3,
+      "name": "Méga-Tortank",
+      "description": "Affronte la lignée de Tortank jusqu’à Méga-Tortank.",
+      "difficulty": "veryHard",
+      "boss": {
+        "speciesId": 9,
+        "formId": 10036,
+        "level": 80,
+        "iv": 25,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        7,
+        8,
+        9
+      ],
+      "opponents": [
+        {
+          "speciesId": 7,
+          "formId": null,
+          "level": 65,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 7,
+          "formId": null,
+          "level": 68,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 8,
+          "formId": null,
+          "level": 71,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 8,
+          "formId": null,
+          "level": 74,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 9,
+          "formId": null,
+          "level": 77,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 8000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "blastoisinite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-cizayox",
+      "regionId": "johto",
+      "order": 4,
+      "name": "Méga-Cizayox",
+      "description": "Affronte la lignée de Cizayox jusqu’à Méga-Cizayox.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 212,
+        "formId": 10046,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        123,
+        212
+      ],
+      "opponents": [
+        {
+          "speciesId": 123,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 123,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 123,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 212,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 212,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "scizorite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-dardargnan",
+      "regionId": "kanto",
+      "order": 4,
+      "name": "Méga-Dardargnan",
+      "description": "Affronte la lignée de Dardargnan jusqu’à Méga-Dardargnan.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 15,
+        "formId": 10090,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        13,
+        14,
+        15
+      ],
+      "opponents": [
+        {
+          "speciesId": 13,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 13,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 14,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 14,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 15,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "beedrillite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-lucario",
+      "regionId": "sinnoh",
+      "order": 4,
+      "name": "Méga-Lucario",
+      "description": "Affronte la lignée de Lucario jusqu’à Méga-Lucario.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 448,
+        "formId": 10059,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        447,
+        448
+      ],
+      "opponents": [
+        {
+          "speciesId": 447,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 447,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 447,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 448,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 448,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "lucarionite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-tenefix",
+      "regionId": "hoenn",
+      "order": 4,
+      "name": "Méga-Ténéfix",
+      "description": "Affronte la lignée de Ténéfix jusqu’à Méga-Ténéfix.",
+      "difficulty": "easy",
+      "boss": {
+        "speciesId": 302,
+        "formId": 10066,
+        "level": 50,
+        "iv": 10,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        302
+      ],
+      "opponents": [
+        {
+          "speciesId": 302,
+          "formId": null,
+          "level": 35,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 302,
+          "formId": null,
+          "level": 38,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 302,
+          "formId": null,
+          "level": 41,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 302,
+          "formId": null,
+          "level": 44,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 302,
+          "formId": null,
+          "level": 47,
+          "iv": 10,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 5000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "sablenite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-mysdibule",
+      "regionId": "hoenn",
+      "order": 5,
+      "name": "Méga-Mysdibule",
+      "description": "Affronte la lignée de Mysdibule jusqu’à Méga-Mysdibule.",
+      "difficulty": "easy",
+      "boss": {
+        "speciesId": 303,
+        "formId": 10052,
+        "level": 50,
+        "iv": 10,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        303
+      ],
+      "opponents": [
+        {
+          "speciesId": 303,
+          "formId": null,
+          "level": 35,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 303,
+          "formId": null,
+          "level": 38,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 303,
+          "formId": null,
+          "level": 41,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 303,
+          "formId": null,
+          "level": 44,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 303,
+          "formId": null,
+          "level": 47,
+          "iv": 10,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 5000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "mawilite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-scarhino",
+      "regionId": "johto",
+      "order": 5,
+      "name": "Méga-Scarhino",
+      "description": "Affronte la lignée de Scarhino jusqu’à Méga-Scarhino.",
+      "difficulty": "easy",
+      "boss": {
+        "speciesId": 214,
+        "formId": 10047,
+        "level": 50,
+        "iv": 10,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        214
+      ],
+      "opponents": [
+        {
+          "speciesId": 214,
+          "formId": null,
+          "level": 35,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 214,
+          "formId": null,
+          "level": 38,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 214,
+          "formId": null,
+          "level": 41,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 214,
+          "formId": null,
+          "level": 44,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 214,
+          "formId": null,
+          "level": 47,
+          "iv": 10,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 5000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "heracronite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-lucario-z",
+      "regionId": "sinnoh",
+      "order": 5,
+      "name": "Méga-Lucario Z",
+      "description": "Affronte la lignée de Lucario jusqu’à Méga-Lucario Z.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 448,
+        "formId": 10310,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        447,
+        448
+      ],
+      "opponents": [
+        {
+          "speciesId": 447,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 447,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 447,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 448,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 448,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "lucarionite-z",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-roucarnage",
+      "regionId": "kanto",
+      "order": 5,
+      "name": "Méga-Roucarnage",
+      "description": "Affronte la lignée de Roucarnage jusqu’à Méga-Roucarnage.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 18,
+        "formId": 10073,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        16,
+        17,
+        18
+      ],
+      "opponents": [
+        {
+          "speciesId": 16,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 16,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 17,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 17,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 18,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "pidgeotite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-airmure",
+      "regionId": "johto",
+      "order": 6,
+      "name": "Méga-Airmure",
+      "description": "Affronte la lignée de Airmure jusqu’à Méga-Airmure.",
+      "difficulty": "easy",
+      "boss": {
+        "speciesId": 227,
+        "formId": 10284,
+        "level": 50,
+        "iv": 10,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        227
+      ],
+      "opponents": [
+        {
+          "speciesId": 227,
+          "formId": null,
+          "level": 35,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 227,
+          "formId": null,
+          "level": 38,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 227,
+          "formId": null,
+          "level": 41,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 227,
+          "formId": null,
+          "level": 44,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 227,
+          "formId": null,
+          "level": 47,
+          "iv": 10,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 5000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "skarmorite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-blizzaroi",
+      "regionId": "sinnoh",
+      "order": 6,
+      "name": "Méga-Blizzaroi",
+      "description": "Affronte la lignée de Blizzaroi jusqu’à Méga-Blizzaroi.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 460,
+        "formId": 10060,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        459,
+        460
+      ],
+      "opponents": [
+        {
+          "speciesId": 459,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 459,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 459,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 460,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 460,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "abomasite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-raichu-x",
+      "regionId": "kanto",
+      "order": 6,
+      "name": "Méga-Raichu X",
+      "description": "Affronte la lignée de Raichu jusqu’à Méga-Raichu X.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 26,
+        "formId": 10304,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        172,
+        25,
+        26
+      ],
+      "opponents": [
+        {
+          "speciesId": 172,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 172,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 25,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 25,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 26,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "raichunite-x",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-galeking",
+      "regionId": "hoenn",
+      "order": 6,
+      "name": "Méga-Galeking",
+      "description": "Affronte la lignée de Galeking jusqu’à Méga-Galeking.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 306,
+        "formId": 10053,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        304,
+        305,
+        306
+      ],
+      "opponents": [
+        {
+          "speciesId": 304,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 304,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 305,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 305,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 306,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "aggronite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-demolosse",
+      "regionId": "johto",
+      "order": 7,
+      "name": "Méga-Démolosse",
+      "description": "Affronte la lignée de Démolosse jusqu’à Méga-Démolosse.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 229,
+        "formId": 10048,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        228,
+        229
+      ],
+      "opponents": [
+        {
+          "speciesId": 228,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 228,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 228,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 229,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 229,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "houndoominite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-gallame",
+      "regionId": "sinnoh",
+      "order": 7,
+      "name": "Méga-Gallame",
+      "description": "Affronte la lignée de Gallame jusqu’à Méga-Gallame.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 475,
+        "formId": 10068,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        280,
+        281,
+        475
+      ],
+      "opponents": [
+        {
+          "speciesId": 280,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 280,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 281,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 281,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 475,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "galladite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-charmina",
+      "regionId": "hoenn",
+      "order": 7,
+      "name": "Méga-Charmina",
+      "description": "Affronte la lignée de Charmina jusqu’à Méga-Charmina.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 308,
+        "formId": 10054,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        307,
+        308
+      ],
+      "opponents": [
+        {
+          "speciesId": 307,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 307,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 307,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 308,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 308,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "medichamite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-raichu-y",
+      "regionId": "kanto",
+      "order": 7,
+      "name": "Méga-Raichu Y",
+      "description": "Affronte la lignée de Raichu jusqu’à Méga-Raichu Y.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 26,
+        "formId": 10305,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        172,
+        25,
+        26
+      ],
+      "opponents": [
+        {
+          "speciesId": 172,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 172,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 25,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 25,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 26,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "raichunite-y",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-momartik",
+      "regionId": "sinnoh",
+      "order": 8,
+      "name": "Méga-Momartik",
+      "description": "Affronte la lignée de Momartik jusqu’à Méga-Momartik.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 478,
+        "formId": 10285,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        361,
+        478
+      ],
+      "opponents": [
+        {
+          "speciesId": 361,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 361,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 361,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 478,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 478,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "froslassite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-elecsprint",
+      "regionId": "hoenn",
+      "order": 8,
+      "name": "Méga-Élecsprint",
+      "description": "Affronte la lignée de Élecsprint jusqu’à Méga-Élecsprint.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 310,
+        "formId": 10055,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        309,
+        310
+      ],
+      "opponents": [
+        {
+          "speciesId": 309,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 309,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 309,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 310,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 310,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "manectite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-melodelfe",
+      "regionId": "kanto",
+      "order": 8,
+      "name": "Méga-Mélodelfe",
+      "description": "Affronte la lignée de Mélodelfe jusqu’à Méga-Mélodelfe.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 36,
+        "formId": 10278,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        173,
+        35,
+        36
+      ],
+      "opponents": [
+        {
+          "speciesId": 173,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 173,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 35,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 35,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 36,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "clefablite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-tyranocif",
+      "regionId": "johto",
+      "order": 8,
+      "name": "Méga-Tyranocif",
+      "description": "Affronte la lignée de Tyranocif jusqu’à Méga-Tyranocif.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 248,
+        "formId": 10049,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        246,
+        247,
+        248
+      ],
+      "opponents": [
+        {
+          "speciesId": 246,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 246,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 247,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 247,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 248,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "tyranitarite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-alakazam",
+      "regionId": "kanto",
+      "order": 9,
+      "name": "Méga-Alakazam",
+      "description": "Affronte la lignée de Alakazam jusqu’à Méga-Alakazam.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 65,
+        "formId": 10037,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        63,
+        64,
+        65
+      ],
+      "opponents": [
+        {
+          "speciesId": 63,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 63,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 64,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 64,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 65,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "alakazite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-sharpedo",
+      "regionId": "hoenn",
+      "order": 9,
+      "name": "Méga-Sharpedo",
+      "description": "Affronte la lignée de Sharpedo jusqu’à Méga-Sharpedo.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 319,
+        "formId": 10070,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        318,
+        319
+      ],
+      "opponents": [
+        {
+          "speciesId": 318,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 318,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 318,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 319,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 319,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "sharpedonite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-empiflor",
+      "regionId": "kanto",
+      "order": 10,
+      "name": "Méga-Empiflor",
+      "description": "Affronte la lignée de Empiflor jusqu’à Méga-Empiflor.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 71,
+        "formId": 10279,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        69,
+        70,
+        71
+      ],
+      "opponents": [
+        {
+          "speciesId": 69,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 69,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 70,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 70,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 71,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "victreebelite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-camerupt",
+      "regionId": "hoenn",
+      "order": 10,
+      "name": "Méga-Camérupt",
+      "description": "Affronte la lignée de Camérupt jusqu’à Méga-Camérupt.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 323,
+        "formId": 10087,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        322,
+        323
+      ],
+      "opponents": [
+        {
+          "speciesId": 322,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 322,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 322,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 323,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 323,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "cameruptite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-altaria",
+      "regionId": "hoenn",
+      "order": 11,
+      "name": "Méga-Altaria",
+      "description": "Affronte la lignée de Altaria jusqu’à Méga-Altaria.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 334,
+        "formId": 10067,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        333,
+        334
+      ],
+      "opponents": [
+        {
+          "speciesId": 333,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 333,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 333,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 334,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 334,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "altarianite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-flagadoss",
+      "regionId": "kanto",
+      "order": 11,
+      "name": "Méga-Flagadoss",
+      "description": "Affronte la lignée de Flagadoss jusqu’à Méga-Flagadoss.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 80,
+        "formId": 10071,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        79,
+        80
+      ],
+      "opponents": [
+        {
+          "speciesId": 79,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 79,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 79,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 80,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 80,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "slowbronite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-ectoplasma",
+      "regionId": "kanto",
+      "order": 12,
+      "name": "Méga-Ectoplasma",
+      "description": "Affronte la lignée de Ectoplasma jusqu’à Méga-Ectoplasma.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 94,
+        "formId": 10038,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        92,
+        93,
+        94
+      ],
+      "opponents": [
+        {
+          "speciesId": 92,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 92,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 93,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 93,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 94,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "gengarite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-branette",
+      "regionId": "hoenn",
+      "order": 12,
+      "name": "Méga-Branette",
+      "description": "Affronte la lignée de Branette jusqu’à Méga-Branette.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 354,
+        "formId": 10056,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        353,
+        354
+      ],
+      "opponents": [
+        {
+          "speciesId": 353,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 353,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 353,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 354,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 354,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "banettite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-eoko",
+      "regionId": "hoenn",
+      "order": 13,
+      "name": "Méga-Éoko",
+      "description": "Affronte la lignée de Éoko jusqu’à Méga-Éoko.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 358,
+        "formId": 10306,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        433,
+        358
+      ],
+      "opponents": [
+        {
+          "speciesId": 433,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 433,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 433,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 358,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 358,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "chimechite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-kangourex",
+      "regionId": "kanto",
+      "order": 13,
+      "name": "Méga-Kangourex",
+      "description": "Affronte la lignée de Kangourex jusqu’à Méga-Kangourex.",
+      "difficulty": "easy",
+      "boss": {
+        "speciesId": 115,
+        "formId": 10039,
+        "level": 50,
+        "iv": 10,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        115
+      ],
+      "opponents": [
+        {
+          "speciesId": 115,
+          "formId": null,
+          "level": 35,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 115,
+          "formId": null,
+          "level": 38,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 115,
+          "formId": null,
+          "level": 41,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 115,
+          "formId": null,
+          "level": 44,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 115,
+          "formId": null,
+          "level": 47,
+          "iv": 10,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 5000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "kangaskhanite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-absol",
+      "regionId": "hoenn",
+      "order": 14,
+      "name": "Méga-Absol",
+      "description": "Affronte la lignée de Absol jusqu’à Méga-Absol.",
+      "difficulty": "easy",
+      "boss": {
+        "speciesId": 359,
+        "formId": 10057,
+        "level": 50,
+        "iv": 10,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        359
+      ],
+      "opponents": [
+        {
+          "speciesId": 359,
+          "formId": null,
+          "level": 35,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 359,
+          "formId": null,
+          "level": 38,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 359,
+          "formId": null,
+          "level": 41,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 359,
+          "formId": null,
+          "level": 44,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 359,
+          "formId": null,
+          "level": 47,
+          "iv": 10,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 5000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "absolite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-staross",
+      "regionId": "kanto",
+      "order": 14,
+      "name": "Méga-Staross",
+      "description": "Affronte la lignée de Staross jusqu’à Méga-Staross.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 121,
+        "formId": 10280,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        120,
+        121
+      ],
+      "opponents": [
+        {
+          "speciesId": 120,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 120,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 120,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 121,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 121,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "starminite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-absol-z",
+      "regionId": "hoenn",
+      "order": 15,
+      "name": "Méga-Absol Z",
+      "description": "Affronte la lignée de Absol jusqu’à Méga-Absol Z.",
+      "difficulty": "easy",
+      "boss": {
+        "speciesId": 359,
+        "formId": 10307,
+        "level": 50,
+        "iv": 10,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        359
+      ],
+      "opponents": [
+        {
+          "speciesId": 359,
+          "formId": null,
+          "level": 35,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 359,
+          "formId": null,
+          "level": 38,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 359,
+          "formId": null,
+          "level": 41,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 359,
+          "formId": null,
+          "level": 44,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 359,
+          "formId": null,
+          "level": 47,
+          "iv": 10,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 5000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "absolite-z",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-scarabrute",
+      "regionId": "kanto",
+      "order": 15,
+      "name": "Méga-Scarabrute",
+      "description": "Affronte la lignée de Scarabrute jusqu’à Méga-Scarabrute.",
+      "difficulty": "easy",
+      "boss": {
+        "speciesId": 127,
+        "formId": 10040,
+        "level": 50,
+        "iv": 10,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        127
+      ],
+      "opponents": [
+        {
+          "speciesId": 127,
+          "formId": null,
+          "level": 35,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 127,
+          "formId": null,
+          "level": 38,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 127,
+          "formId": null,
+          "level": 41,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 127,
+          "formId": null,
+          "level": 44,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 127,
+          "formId": null,
+          "level": 47,
+          "iv": 10,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 5000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "pinsirite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-oniglali",
+      "regionId": "hoenn",
+      "order": 16,
+      "name": "Méga-Oniglali",
+      "description": "Affronte la lignée de Oniglali jusqu’à Méga-Oniglali.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 362,
+        "formId": 10074,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        361,
+        362
+      ],
+      "opponents": [
+        {
+          "speciesId": 361,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 361,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 361,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 362,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 362,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "glalitite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-leviator",
+      "regionId": "kanto",
+      "order": 16,
+      "name": "Méga-Léviator",
+      "description": "Affronte la lignée de Léviator jusqu’à Méga-Léviator.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 130,
+        "formId": 10041,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        129,
+        130
+      ],
+      "opponents": [
+        {
+          "speciesId": 129,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 129,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 129,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 130,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 130,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "gyaradosite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-drattak",
+      "regionId": "hoenn",
+      "order": 17,
+      "name": "Méga-Drattak",
+      "description": "Affronte la lignée de Drattak jusqu’à Méga-Drattak.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 373,
+        "formId": 10089,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        371,
+        372,
+        373
+      ],
+      "opponents": [
+        {
+          "speciesId": 371,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 371,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 372,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 372,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 373,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "salamencite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-ptera",
+      "regionId": "kanto",
+      "order": 17,
+      "name": "Méga-Ptéra",
+      "description": "Affronte la lignée de Ptéra jusqu’à Méga-Ptéra.",
+      "difficulty": "easy",
+      "boss": {
+        "speciesId": 142,
+        "formId": 10042,
+        "level": 50,
+        "iv": 10,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        142
+      ],
+      "opponents": [
+        {
+          "speciesId": 142,
+          "formId": null,
+          "level": 35,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 142,
+          "formId": null,
+          "level": 38,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 142,
+          "formId": null,
+          "level": 41,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 142,
+          "formId": null,
+          "level": 44,
+          "iv": 10,
+          "nature": null
+        },
+        {
+          "speciesId": 142,
+          "formId": null,
+          "level": 47,
+          "iv": 10,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 5000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "aerodactylite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-metalosse",
+      "regionId": "hoenn",
+      "order": 18,
+      "name": "Méga-Métalosse",
+      "description": "Affronte la lignée de Métalosse jusqu’à Méga-Métalosse.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 376,
+        "formId": 10076,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        374,
+        375,
+        376
+      ],
+      "opponents": [
+        {
+          "speciesId": 374,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 374,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 375,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 375,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 376,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "metagrossite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-dracolosse",
+      "regionId": "kanto",
+      "order": 18,
+      "name": "Méga-Dracolosse",
+      "description": "Affronte la lignée de Dracolosse jusqu’à Méga-Dracolosse.",
+      "difficulty": "hard",
+      "boss": {
+        "speciesId": 149,
+        "formId": 10281,
+        "level": 65,
+        "iv": 18,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.5,
+      "familySpeciesIds": [
+        147,
+        148,
+        149
+      ],
+      "opponents": [
+        {
+          "speciesId": 147,
+          "formId": null,
+          "level": 50,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 147,
+          "formId": null,
+          "level": 53,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 148,
+          "formId": null,
+          "level": 56,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 148,
+          "formId": null,
+          "level": 59,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 149,
+          "formId": null,
+          "level": 62,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 6500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "dragoninite",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-mewtwo-x",
+      "regionId": "kanto",
+      "order": 19,
+      "name": "Méga-Mewtwo X",
+      "description": "Affronte la lignée de Mewtwo jusqu’à Méga-Mewtwo X.",
+      "difficulty": "extreme",
+      "boss": {
+        "speciesId": 150,
+        "formId": 10043,
+        "level": 95,
+        "iv": 31,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.25,
+      "familySpeciesIds": [
+        150
+      ],
+      "opponents": [
+        {
+          "speciesId": 150,
+          "formId": null,
+          "level": 80,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 150,
+          "formId": null,
+          "level": 84,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 150,
+          "formId": null,
+          "level": 88,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 150,
+          "formId": null,
+          "level": 92,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 300,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 9500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "mewtwonite-x",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      }
+    },
+    {
+      "id": "mega-mewtwo-y",
+      "regionId": "kanto",
+      "order": 20,
+      "name": "Méga-Mewtwo Y",
+      "description": "Affronte la lignée de Mewtwo jusqu’à Méga-Mewtwo Y.",
+      "difficulty": "extreme",
+      "boss": {
+        "speciesId": 150,
+        "formId": 10044,
+        "level": 95,
+        "iv": 31,
+        "nature": null
+      },
+      "bossHpMultiplier": 1.25,
+      "familySpeciesIds": [
+        150
+      ],
+      "opponents": [
+        {
+          "speciesId": 150,
+          "formId": null,
+          "level": 80,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 150,
+          "formId": null,
+          "level": 84,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 150,
+          "formId": null,
+          "level": 88,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 150,
+          "formId": null,
+          "level": 92,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 300,
+      "cooldownMinutes": null,
+      "koMinutes": null,
+      "money": 9500,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "gemItemId": "mewtwonite-y",
+      "gemChance": 0.1,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
       }
     }
   ],

@@ -1,0 +1,1 @@
+ALTER TABLE "dungeons" ADD COLUMN "difficulty" text DEFAULT 'easy' NOT NULL;

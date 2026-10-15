@@ -19,6 +19,7 @@ import {
 } from '@poke/db';
 import type { ContentEntityType, ContentErrorCode, Db } from '@poke/db';
 import {
+  adminTestPokemonInputSchema,
   createDraftInputSchema,
   importContentInputSchema,
   telemetryQuerySchema,
@@ -27,6 +28,8 @@ import type {
   AdminPlayerDetailResponse,
   AdminPlayerDto,
   AdminSpeciesStatsDto,
+  AdminTestPokemonDeleteResponse,
+  AdminTestPokemonResponse,
   AuditLogEntryDto,
   ContentVersionDetailDto,
   ContentVersionDto,
@@ -34,7 +37,13 @@ import type {
   TelemetryResponse,
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
-import { listPlayers, playerDetail, speciesStats } from '../game/admin-players';
+import {
+  deleteTestPokemon,
+  giveTestPokemon,
+  listPlayers,
+  playerDetail,
+  speciesStats,
+} from '../game/admin-players';
 import { telemetry } from '../game/telemetry';
 import type { sessionHooks } from '../plugins/session';
 
@@ -70,6 +79,7 @@ const ENTITY_ROUTES: Record<string, { type: ContentEntityType; audit: string }> 
   'loot-tables': { type: 'lootTable', audit: 'loot_table' },
   zones: { type: 'zone', audit: 'zone' },
   trainers: { type: 'trainer', audit: 'trainer' },
+  dungeons: { type: 'dungeon', audit: 'dungeon' },
   'shop-categories': { type: 'shopCategory', audit: 'shop_category' },
   'shop-entries': { type: 'shopEntry', audit: 'shop_entry' },
   evolutions: { type: 'evolutionOverride', audit: 'evolution_override' },
@@ -318,6 +328,41 @@ export async function adminRoutes(
     );
     if (!detail) return reply.code(404).send({ error: 'NOT_FOUND' });
     return detail;
+  });
+
+  /** Lot de Pokémon de test, pour un compte administrateur seulement. */
+  app.post('/api/admin/players/:userId/test-pokemon', async (request) => {
+    const { userId } = z.object({ userId: z.string().min(1).max(64) }).parse(request.params);
+    const input = adminTestPokemonInputSchema.parse(request.body);
+    const result: AdminTestPokemonResponse = await giveTestPokemon(
+      db,
+      await content.get(),
+      userId,
+      input,
+      now(),
+    );
+    await logAdminAction(db, {
+      adminId: request.user!.id,
+      action: 'player.test_pokemon',
+      entity: 'user',
+      entityId: userId,
+      after: { ...input, added: result.added },
+    });
+    return result;
+  });
+
+  /** Supprime le lot de test du compte (Pokémon occupés gardés). */
+  app.delete('/api/admin/players/:userId/test-pokemon', async (request) => {
+    const { userId } = z.object({ userId: z.string().min(1).max(64) }).parse(request.params);
+    const result: AdminTestPokemonDeleteResponse = await deleteTestPokemon(db, userId);
+    await logAdminAction(db, {
+      adminId: request.user!.id,
+      action: 'player.test_pokemon_delete',
+      entity: 'user',
+      entityId: userId,
+      after: result,
+    });
+    return result;
   });
 
   app.get('/api/admin/audit-log', async (request): Promise<Paginated<AuditLogEntryDto>> => {

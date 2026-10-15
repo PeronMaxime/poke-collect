@@ -16,6 +16,7 @@ import type {
 import type {
   BattlesResponse,
   CandyDto,
+  DungeonsResponse,
   DaycareResponse,
   ExpeditionsResponse,
   InventoryEntryDto,
@@ -26,6 +27,7 @@ import type {
   PokedexFormEntryDto,
   PokemonDto,
   PokemonTagDto,
+  PokemonTeamDto,
   ProgressionResponse,
   PublicContentDto,
   QuestsResponse,
@@ -39,6 +41,7 @@ export const keys = {
   content: ['content'],
   pokemon: ['pokemon'],
   tags: ['tags'],
+  teams: ['teams'],
   pokedex: ['pokedex'],
   inventory: ['inventory'],
   expeditions: ['expeditions'],
@@ -46,6 +49,7 @@ export const keys = {
   museum: ['museum'],
   candies: ['candies'],
   battles: ['battles'],
+  dungeons: ['dungeons'],
   shop: ['shop'],
   progression: ['progression'],
   quests: ['quests'],
@@ -56,6 +60,7 @@ export const keys = {
 
 export const PLAYER_STATE_KEYS = [
   keys.pokemon,
+  keys.teams,
   keys.pokedex,
   keys.inventory,
   keys.expeditions,
@@ -63,6 +68,7 @@ export const PLAYER_STATE_KEYS = [
   keys.museum,
   keys.candies,
   keys.battles,
+  keys.dungeons,
   keys.shop,
   keys.progression,
   keys.quests,
@@ -89,6 +95,10 @@ export const usePokemon = () =>
 /** Étiquettes du joueur, dans leur ordre de création. */
 export const useTags = () =>
   useQuery({ queryKey: keys.tags, queryFn: () => api<PokemonTagDto[]>('/api/tags') });
+
+/** Équipes enregistrées du joueur (page « Équipe Pkmn »), dans leur ordre de création. */
+export const useTeams = () =>
+  useQuery({ queryKey: keys.teams, queryFn: () => api<PokemonTeamDto[]>('/api/teams') });
 
 export const usePokedex = () =>
   useQuery({ queryKey: keys.pokedex, queryFn: () => api<PokedexEntryDto[]>('/api/pokedex') });
@@ -119,6 +129,10 @@ export const useMuseum = () =>
 
 export const useBattles = () =>
   useQuery({ queryKey: keys.battles, queryFn: () => api<BattlesResponse>('/api/battles') });
+
+/** Donjon en cours, dernière tentative et bilan de chaque donjon. */
+export const useDungeons = () =>
+  useQuery({ queryKey: keys.dungeons, queryFn: () => api<DungeonsResponse>('/api/dungeons') });
 
 export const useShop = () =>
   useQuery({ queryKey: keys.shop, queryFn: () => api<ShopResponse>('/api/shop') });

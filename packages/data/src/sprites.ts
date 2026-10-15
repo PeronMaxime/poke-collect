@@ -21,6 +21,9 @@ export function pokemonSpriteUrl(
     : `${SPRITE_BASE_URL}/pokemon/${shinyPath}${sprite}.png`;
 }
 
+/** À incrémenter quand des sprites d'objets sont retouchés : contourne le cache des navigateurs. */
+const ITEM_SPRITES_VERSION = 2;
+
 export function itemSpriteUrl(itemName: string): string {
-  return `${SPRITE_BASE_URL}/items/${itemName}.png`;
+  return `${SPRITE_BASE_URL}/items/${itemName}.png?v=${ITEM_SPRITES_VERSION}`;
 }

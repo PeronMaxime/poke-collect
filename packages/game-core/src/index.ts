@@ -14,3 +14,5 @@ export * from './quest';
 export * from './endgame';
 export * from './forms';
 export * from './museum';
+export * from './dungeon';
+export * from './mega';

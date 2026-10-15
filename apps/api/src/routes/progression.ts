@@ -8,6 +8,7 @@ import { playerBonuses, playerSlots } from '@poke/game-core';
 import {
   claimRewardInputSchema,
   evolveInputSchema,
+  megaEvolveInputSchema,
   startQuestExpeditionInputSchema,
   useItemInputSchema,
 } from '@poke/shared';
@@ -15,6 +16,7 @@ import type {
   ClaimQuestResponse,
   ClaimRewardResponse,
   EvolveResponse,
+  PokemonDto,
   ProgressionResponse,
   QuestsResponse,
   TrainerCardResponse,
@@ -22,7 +24,7 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { startQuestExpedition } from '../game/expeditions';
-import { claimReward, evolve, useItemOnPokemon } from '../game/progression';
+import { claimReward, evolve, megaEvolve, megaRevert, useItemOnPokemon } from '../game/progression';
 import { claimQuest, questsState } from '../game/quests';
 import { trainerCard } from '../game/stats';
 import { claimedRewards, pokemonActivities, toExpeditionDto, toPokemonDto } from '../game/store';
@@ -56,6 +58,28 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
       newSpeciesIds: result.newSpeciesIds,
       newFormIds: result.newFormIds,
     };
+  });
+
+  /** Méga-Évolution : le Pokémon tient la Méga-Gemme choisie. */
+  app.post('/api/pokemon/:id/mega', async (request): Promise<EvolveResponse> => {
+    const { id } = uuidParams.parse(request.params);
+    const input = megaEvolveInputSchema.parse(request.body);
+    const userId = request.user!.id;
+    const result = await megaEvolve(db, content, userId, id, input, now());
+    return {
+      pokemon: toPokemonDto(result.row),
+      fromSpeciesId: result.row.speciesId,
+      fromFormId: null,
+      consumedItemId: input.itemId,
+      newSpeciesIds: result.newSpeciesIds,
+      newFormIds: result.newFormIds,
+    };
+  });
+
+  /** Retour à la forme normale : la Méga-Gemme revient dans le sac. */
+  app.delete('/api/pokemon/:id/mega', async (request): Promise<PokemonDto> => {
+    const { id } = uuidParams.parse(request.params);
+    return toPokemonDto(await megaRevert(db, content, request.user!.id, id));
   });
 
   /** Récompenses réclamées, emplacements débloqués et bonus permanents. */

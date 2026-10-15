@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { balanceSettingsSchema } from '@poke/content';
-import type { BalanceSettings } from '@poke/content';
+import { NON_POKEMON_TYPES, balanceSettingsSchema } from '@poke/content';
+import type { BalanceSettings, DungeonSettings } from '@poke/content';
+import { types } from '@poke/data';
 import {
+  attackIntervalMs,
   createGameContext,
   encounterCount,
   hatchMinutes,
@@ -10,8 +12,16 @@ import {
 } from '@poke/game-core';
 import { IssueList, VersionBanner } from '../../components/EntityPage';
 import { WinCurveChart } from '../../components/WinCurveChart';
-import { Field, NumberInput, Section, validate } from '../../components/forms/fields';
-import { ItemSelect } from '../../components/forms/pickers';
+import {
+  Field,
+  NumberInput,
+  Section,
+  TextInput,
+  errorsUnder,
+  validate,
+} from '../../components/forms/fields';
+import type { FieldErrors } from '../../components/forms/fields';
+import { ItemSelect, TypeBadge, typeLabel } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
 import { errorMessage, useSaveBalance, useWorkingVersion } from '../../lib/content';
 
@@ -961,6 +971,14 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
           </div>
         </Field>
       </Section>
+
+      <DungeonSettingsSections
+        s={b.dungeons}
+        set={set('dungeons')}
+        errors={errors}
+        disabled={disabled}
+        preview={preview?.balance.dungeons ?? null}
+      />
     </div>
   );
 }
@@ -1007,5 +1025,275 @@ function ShinyRatesPreview({ ctx }: { ctx: ReturnType<typeof createGameContext> 
         </p>
       )}
     </div>
+  );
+}
+
+const POKEMON_TYPES = types.filter((t) => !NON_POKEMON_TYPES.has(t.name));
+
+/** Réglages communs à tous les donjons ; les tentatives en cours gardent ceux de leur départ. */
+function DungeonSettingsSections({
+  s,
+  set,
+  errors,
+  disabled,
+  preview,
+}: {
+  s: DungeonSettings;
+  set: <K extends keyof DungeonSettings>(key: K) => (v: DungeonSettings[K]) => void;
+  errors: FieldErrors;
+  disabled: boolean;
+  preview: DungeonSettings | null;
+}) {
+  const err = (path: string) => errors.get(`dungeons.${path}`);
+  return (
+    <>
+      <Section title="Donjons : équipe et conséquences">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Taille d’équipe maximale" error={err('maxTeamSize')}>
+            <NumberInput
+              value={s.maxTeamSize}
+              min={1}
+              max={6}
+              unit="Pokémon"
+              onChange={set('maxTeamSize')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Temps de recharge"
+            hint="Après chaque tentative (surchargeable par donjon)."
+            error={err('cooldownMinutes')}
+          >
+            <NumberInput
+              value={s.cooldownMinutes}
+              min={0}
+              unit="min"
+              onChange={set('cooldownMinutes')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Durée de K.O."
+            hint="Pokémon mis K.O. (surchargeable par donjon)."
+            error={err('koMinutes')}
+          >
+            <NumberInput
+              value={s.koMinutes}
+              min={0}
+              unit="min"
+              onChange={set('koMinutes')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Multiplicateur d’XP"
+            hint="XP des adversaires vaincus, pour chaque membre."
+            error={err('xpMultiplier')}
+          >
+            <NumberInput
+              value={s.xpMultiplier}
+              min={0}
+              step={0.1}
+              unit="×"
+              onChange={set('xpMultiplier')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field label="Bonheur (victoire)" error={err('happinessOnWin')}>
+            <NumberInput
+              value={s.happinessOnWin}
+              min={-255}
+              max={255}
+              onChange={set('happinessOnWin')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field label="Bonheur (défaite)" error={err('happinessOnLoss')}>
+            <NumberInput
+              value={s.happinessOnLoss}
+              min={-255}
+              max={255}
+              onChange={set('happinessOnLoss')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="IV des adversaires"
+            hint="Quand le donjon n’en fixe pas."
+            error={err('defaultOpponentIv')}
+          >
+            <NumberInput
+              value={s.defaultOpponentIv}
+              min={0}
+              max={31}
+              onChange={set('defaultOpponentIv')}
+              disabled={disabled}
+            />
+          </Field>
+        </div>
+      </Section>
+
+      <Section title="Donjons : rythme des attaques">
+        <p className="text-xs text-slate-500">
+          Délai linéaire selon la Vitesse : le délai à Vitesse 0 diminue d’un même nombre de
+          millisecondes par point de Vitesse, pour atteindre le délai de référence à la Vitesse de
+          référence, et continue au-delà sans limite jusqu’au plancher technique.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-4">
+          <Field label="Délai à Vitesse 0" error={err('maxAttackIntervalMs')}>
+            <NumberInput
+              value={s.maxAttackIntervalMs}
+              min={100}
+              step={100}
+              unit="ms"
+              onChange={set('maxAttackIntervalMs')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field label="Délai de référence" error={err('baseAttackIntervalMs')}>
+            <NumberInput
+              value={s.baseAttackIntervalMs}
+              min={100}
+              step={100}
+              unit="ms"
+              onChange={set('baseAttackIntervalMs')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field label="Vitesse de référence" error={err('referenceSpeed')}>
+            <NumberInput
+              value={s.referenceSpeed}
+              min={1}
+              onChange={set('referenceSpeed')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Plancher technique"
+            hint="Délai le plus court possible."
+            error={err('minAttackIntervalMs')}
+          >
+            <NumberInput
+              value={s.minAttackIntervalMs}
+              min={100}
+              step={100}
+              unit="ms"
+              onChange={set('minAttackIntervalMs')}
+              disabled={disabled}
+            />
+          </Field>
+        </div>
+        {preview && (
+          <p className="text-xs text-slate-500">
+            {Math.round(preview.maxAttackIntervalMs - preview.baseAttackIntervalMs)} ms gagnées tous
+            les {preview.referenceSpeed} points de Vitesse. Aperçu :{' '}
+            {[0, 50, 100, 150, 200, 300, 400]
+              .map(
+                (speed) =>
+                  `Vitesse ${speed} → ${(attackIntervalMs(preview, speed) / 1000).toFixed(2)} s`,
+              )
+              .join(' · ')}
+          </p>
+        )}
+      </Section>
+
+      <Section title="Donjons : dégâts">
+        <p className="text-xs text-slate-500">
+          Dégâts = ((2 × niveau / 5 + 2) × puissance × Att / Déf / 50 + 2) × bonus de même type ×
+          efficacité × aléa × multiplicateur. Attaque physique : Attaque contre Défense ; spéciale :
+          Atq. Spé. contre Déf. Spé.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Multiplicateur de dégâts" error={err('damageMultiplier')}>
+            <NumberInput
+              value={s.damageMultiplier}
+              min={0.01}
+              step={0.05}
+              unit="×"
+              onChange={set('damageMultiplier')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Bonus de même type (STAB)"
+            hint="Attaque d’un des types de l’attaquant."
+            error={err('stabMultiplier')}
+          >
+            <NumberInput
+              value={s.stabMultiplier}
+              min={1}
+              max={5}
+              step={0.1}
+              unit="×"
+              onChange={set('stabMultiplier')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Aléa minimum"
+            hint="Les dégâts varient entre ce pourcentage et 100 %."
+            error={err('minDamageRoll')}
+          >
+            <NumberInput
+              value={s.minDamageRoll}
+              scale={100}
+              min={0}
+              max={100}
+              unit="%"
+              onChange={set('minDamageRoll')}
+              disabled={disabled}
+            />
+          </Field>
+        </div>
+      </Section>
+
+      <Section title="Donjons : attaque de chaque type">
+        <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+          {POKEMON_TYPES.map((t) => {
+            const attack = s.attacks[t.name];
+            const update = (patch: Partial<{ name: string; power: number }>) =>
+              set('attacks')({
+                ...s.attacks,
+                [t.name]: {
+                  name: attack?.name ?? `Attaque ${t.nameFr}`,
+                  power: attack?.power ?? 60,
+                  ...patch,
+                },
+              });
+            return (
+              <div key={t.name} className="flex items-center gap-2">
+                <span className="w-20 shrink-0">
+                  <TypeBadge type={t.name} />
+                </span>
+                <TextInput
+                  value={attack?.name ?? ''}
+                  onChange={(name) => update({ name })}
+                  disabled={disabled}
+                />
+                <NumberInput
+                  className="w-28 shrink-0"
+                  value={attack?.power ?? 60}
+                  min={1}
+                  max={250}
+                  unit="puiss."
+                  onChange={(power) => update({ power })}
+                  disabled={disabled}
+                />
+              </div>
+            );
+          })}
+        </div>
+        {errorsUnder(errors, 'dungeons.attacks').map((msg) => (
+          <p key={msg} className="text-xs text-red-600">
+            {msg}
+          </p>
+        ))}
+        <p className="text-xs text-slate-500">
+          Un Pokémon attaque avec le type choisi par le joueur ; les adversaires prennent leur type
+          le plus efficace contre le Pokémon en face. Sans réglage, un type utilise « Attaque{' '}
+          {typeLabel('normal')} » de puissance 60.
+        </p>
+      </Section>
+    </>
   );
 }

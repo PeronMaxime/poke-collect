@@ -17,6 +17,7 @@ const ISSUE_SECTIONS: Record<ContentEntityKind, { path: string; label: string }>
   lootTable: { path: '/loot-tables', label: 'Tables de butin' },
   zone: { path: '/zones', label: 'Zones' },
   trainer: { path: '/trainers', label: 'Dresseurs' },
+  dungeon: { path: '/dungeons', label: 'Donjons' },
   shopCategory: { path: '/shop', label: 'Boutique (catégories)' },
   shopEntry: { path: '/shop', label: 'Boutique (articles)' },
   evolutionOverride: { path: '/evolutions', label: 'Évolutions' },

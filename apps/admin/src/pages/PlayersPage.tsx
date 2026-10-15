@@ -1,9 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ACTIVE_WINDOW_MS, ONLINE_WINDOW_MS } from '@poke/shared';
-import type { AdminPlayerDetailResponse, AdminPlayerDto } from '@poke/shared';
+import type {
+  AdminPlayerDetailResponse,
+  AdminPlayerDto,
+  AdminTestPokemonDeleteResponse,
+  AdminTestPokemonInput,
+  AdminTestPokemonResponse,
+} from '@poke/shared';
 import { Sprite } from '../components/forms/pickers';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
+import { useWorkingVersion } from '../lib/content';
 import { formatDate } from '../lib/format';
 
 type Presence = 'online' | 'active' | 'inactive';
@@ -443,9 +450,165 @@ function PlayerCardDialog({ userId, onClose }: { userId: string; onClose: () => 
                 </div>
               </section>
             )}
+
+            {d.player.role === 'admin' && d.profile && <TestPokemonSection userId={userId} />}
           </>
         )}
       </div>
     </div>
+  );
+}
+
+const TEST_ERRORS: Record<string, string> = {
+  NOT_ADMIN: 'Réservé aux comptes administrateurs.',
+  NO_PROFILE: 'Le profil de dresseur n’est pas encore créé.',
+  REGION_NOT_FOUND: 'Région absente du contenu publié.',
+  LAST_POKEMON: 'Il ne resterait aucun Pokémon au joueur.',
+};
+
+/**
+ * Lot de Pokémon de test (comptes admin seulement) : lignées des donjons de la région et les deux
+ * plus forts Pokémon de chaque type de son Pokédex régional, inscrits au Pokédex.
+ */
+function TestPokemonSection({ userId }: { userId: string }) {
+  const working = useWorkingVersion();
+  const regions = working.data?.ctx.regions ?? [];
+  const queryClient = useQueryClient();
+  const [form, setForm] = useState<AdminTestPokemonInput>({
+    regionId: '',
+    level: 70,
+    perfectIvs: true,
+    legendaries: false,
+  });
+  const regionId = form.regionId || regions[0]?.id || '';
+  const url = `/api/admin/players/${encodeURIComponent(userId)}/test-pokemon`;
+  const refresh = () =>
+    Promise.all(
+      [['admin-player', userId], ['audit-log']].map((queryKey) =>
+        queryClient.invalidateQueries({ queryKey }),
+      ),
+    );
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  /** Seul le résultat de la dernière action est affiché. */
+  const [last, setLast] = useState<'give' | 'remove'>('give');
+  const give = useMutation({
+    mutationFn: () =>
+      api<AdminTestPokemonResponse>(url, { method: 'POST', json: { ...form, regionId } }),
+    onMutate: () => setLast('give'),
+    onSuccess: refresh,
+  });
+  const remove = useMutation({
+    mutationFn: () => api<AdminTestPokemonDeleteResponse>(url, { method: 'DELETE' }),
+    onMutate: () => setLast('remove'),
+    onSettled: () => setConfirmDelete(false),
+    onSuccess: refresh,
+  });
+  const action = last === 'give' ? give : remove;
+  const failure = action.error;
+  const error =
+    failure instanceof ApiError
+      ? (TEST_ERRORS[failure.code] ?? failure.code)
+      : failure && 'Erreur inattendue.';
+
+  return (
+    <section className="rounded-xl border border-dashed border-brand-500/40 p-4">
+      <h3 className="font-semibold">Lot de Pokémon de test</h3>
+      <p className="mb-3 text-sm text-slate-500">
+        Compte admin uniquement. Ajoute au PC les lignées des donjons de la région et les deux plus
+        forts Pokémon de chaque type de son Pokédex régional (origine « Lot de test »), et les
+        inscrit au Pokédex pour rendre les donjons visibles.
+      </p>
+      <div className="flex flex-wrap items-end gap-3 text-sm">
+        <label className="space-y-1">
+          <span className="block text-xs text-slate-500">Région</span>
+          <select
+            className="input"
+            value={regionId}
+            onChange={(e) => setForm({ ...form, regionId: e.target.value })}
+          >
+            {regions.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="space-y-1">
+          <span className="block text-xs text-slate-500">Niveau</span>
+          <input
+            className="input w-20"
+            type="number"
+            min={1}
+            max={100}
+            value={form.level}
+            onChange={(e) =>
+              setForm({ ...form, level: Math.min(100, Math.max(1, Number(e.target.value) || 1)) })
+            }
+          />
+        </label>
+        <label className="flex items-center gap-2 py-2">
+          <input
+            type="checkbox"
+            checked={form.perfectIvs}
+            onChange={(e) => setForm({ ...form, perfectIvs: e.target.checked })}
+          />
+          IV parfaits
+        </label>
+        <label className="flex items-center gap-2 py-2">
+          <input
+            type="checkbox"
+            checked={form.legendaries}
+            onChange={(e) => setForm({ ...form, legendaries: e.target.checked })}
+          />
+          Légendaires et fabuleux
+        </label>
+        <button
+          className="btn-primary"
+          disabled={!regionId || give.isPending}
+          onClick={() => give.mutate()}
+        >
+          {give.isPending ? 'Ajout…' : 'Ajouter le lot'}
+        </button>
+        {confirmDelete ? (
+          <span className="flex items-center gap-2">
+            <button
+              className="btn-danger"
+              disabled={remove.isPending}
+              onClick={() => remove.mutate()}
+            >
+              {remove.isPending ? 'Suppression…' : 'Confirmer la suppression'}
+            </button>
+            <button className="btn-ghost" onClick={() => setConfirmDelete(false)}>
+              Annuler
+            </button>
+          </span>
+        ) : (
+          <button className="btn-ghost text-red-600" onClick={() => setConfirmDelete(true)}>
+            Supprimer tout le lot de test
+          </button>
+        )}
+      </div>
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {last === 'remove' && remove.data && (
+        <p className="mt-2 text-sm text-green-700 dark:text-green-400">
+          {fmt(remove.data.deleted)} Pokémon du lot supprimés
+          {remove.data.busy > 0 &&
+            ` ; ${fmt(remove.data.busy)} gardés car occupés (expédition, donjon…)`}
+          . Le Pokédex n’est pas modifié.
+        </p>
+      )}
+      {last === 'give' && give.data && (
+        <div className="mt-3">
+          <p className="text-sm text-green-700 dark:text-green-400">
+            {fmt(give.data.added)} Pokémon ajoutés.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {give.data.speciesIds.map((id) => (
+              <Sprite key={id} id={id} size={32} />
+            ))}
+          </div>
+        </div>
+      )}
+    </section>
   );
 }

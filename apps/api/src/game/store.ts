@@ -1,6 +1,7 @@
 import { and, count, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import {
   daycareSlots,
+  dungeonRuns,
   eggs,
   expeditions,
   inventory,
@@ -73,6 +74,8 @@ export function toPokemonDto(row: PokemonRow, activity: PokemonActivity | null =
     activity,
     koUntil: row.koUntil?.toISOString() ?? null,
     tagIds: row.tagIds,
+    dungeonMove: row.dungeonMove,
+    megaStone: row.megaStone,
   };
 }
 
@@ -151,14 +154,14 @@ export async function insertPokemon(
 }
 
 /**
- * Pokémon occupés (expédition ou combat non réclamé, pension) et leur activité. Un Pokémon
+ * Pokémon occupés (expédition, combat ou donjon non réclamé, pension) et leur activité. Un Pokémon
  * occupé ne peut pas être engagé ailleurs, ni transféré.
  */
 export async function pokemonActivities(
   db: Db,
   ownerId: string,
 ): Promise<Map<string, PokemonActivity>> {
-  const [running, battles, pensions] = await Promise.all([
+  const [running, battles, pensions, runs] = await Promise.all([
     db
       .select({ team: expeditions.team })
       .from(expeditions)
@@ -171,10 +174,15 @@ export async function pokemonActivities(
       .select({ a: daycareSlots.parentAId, b: daycareSlots.parentBId })
       .from(daycareSlots)
       .where(eq(daycareSlots.ownerId, ownerId)),
+    db
+      .select({ team: dungeonRuns.team })
+      .from(dungeonRuns)
+      .where(and(eq(dungeonRuns.ownerId, ownerId), isNull(dungeonRuns.claimedAt))),
   ]);
   const activities = new Map<string, PokemonActivity>();
   for (const r of running) for (const id of r.team) activities.set(id, 'expedition');
   for (const b of battles) for (const id of b.team) activities.set(id, 'battle');
+  for (const r of runs) for (const id of r.team) activities.set(id, 'dungeon');
   for (const p of pensions) {
     for (const id of [p.a, p.b]) if (id) activities.set(id, 'daycare');
   }

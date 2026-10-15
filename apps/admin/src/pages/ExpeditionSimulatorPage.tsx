@@ -54,6 +54,7 @@ function virtualPokemon(
     id: `sim-${seed}`,
     formId: p.formId ?? null,
     originalNature: null,
+    megaStone: null,
     origin: 'capture',
     originRegion: regionId,
     caughtAt: new Date().toISOString(),
@@ -62,6 +63,7 @@ function virtualPokemon(
     activity: null,
     koUntil: null,
     tagIds,
+    dungeonMove: null,
   };
 }
 

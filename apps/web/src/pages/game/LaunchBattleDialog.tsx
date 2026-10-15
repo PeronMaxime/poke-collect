@@ -14,11 +14,18 @@ import type { BattleDto, PokemonDto, StartBattleInput } from '@poke/shared';
 import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { Modal, PokemonSprite, ShinyStar, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, isUsable, usePokemon } from '../../lib/game';
+import { PLAYER_STATE_KEYS, isUsable, usePokemon, useTeams } from '../../lib/game';
 import { errorText, formatDuration, formatMoney, typeLabel } from '../../lib/labels';
 import { TrainerSprite } from './BattlesPage';
 import { pillClass } from './LaunchExpeditionDialog';
-import { NameSearch, TypeFilterSelect, nameMatcher } from './TeamPicker';
+import {
+  MEGA_LOCKED_TITLE,
+  NameSearch,
+  SavedTeamsBar,
+  TypeFilterSelect,
+  megaLocked,
+  nameMatcher,
+} from './TeamPicker';
 
 const SORTS = {
   power: 'PE',
@@ -37,6 +44,8 @@ function ruleText(e: BattleError): string {
       return `Ce dresseur exige exactement ${e.required} Pokémon.`;
     case 'DUPLICATE_MEMBER':
       return 'Un Pokémon est sélectionné deux fois.';
+    case 'TOO_MANY_MEGAS':
+      return 'Un seul Pokémon Méga-Évolué par équipe.';
     case 'WRONG_REGION':
       return 'Seuls les Pokémon du Pokédex de la région peuvent affronter ce dresseur.';
     case 'LEVEL_TOO_HIGH':
@@ -88,6 +97,7 @@ export function LaunchBattleDialog({
 }) {
   const queryClient = useQueryClient();
   const pokemon = usePokemon();
+  const teams = useTeams();
   const now = useNow(10_000);
   const [team, setTeam] = useState<string[]>([]);
   const [sort, setSort] = useState<Sort>('power');
@@ -108,8 +118,10 @@ export function LaunchBattleDialog({
 
   const region = ctx.region(trainer.regionId);
   const matchesName = nameMatcher(search);
-  const available = (pokemon.data ?? [])
-    .filter((p) => isUsable(p, now) && isRegionalSpecies(ctx, trainer.regionId, p.speciesId))
+  const usablePokemon = (pokemon.data ?? []).filter(
+    (p) => isUsable(p, now) && isRegionalSpecies(ctx, trainer.regionId, p.speciesId),
+  );
+  const available = usablePokemon
     .map((p) => {
       const species = ctx.species(p.speciesId, p.formId)!;
       return { p, species, power: pokemonPower(species, p) };
@@ -137,6 +149,7 @@ export function LaunchBattleDialog({
   const duration = battleDurationMinutes(ctx, trainer);
 
   function toggle(p: PokemonDto) {
+    if (megaLocked(p, members)) return;
     setTeam((t) =>
       t.includes(p.id) ? t.filter((id) => id !== p.id) : t.length < maxSize ? [...t, p.id] : t,
     );
@@ -165,6 +178,15 @@ export function LaunchBattleDialog({
         </div>
       </div>
 
+      <SavedTeamsBar
+        ctx={ctx}
+        teams={teams.data ?? []}
+        pokemon={pokemon.data ?? []}
+        usable={new Set(usablePokemon.map((p) => p.id))}
+        maxSize={maxSize}
+        current={team}
+        onPick={setTeam}
+      />
       <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2">
         <h3 className="text-sm font-semibold">
           Ton équipe ({team.length} / {maxSize})
@@ -195,12 +217,15 @@ export function LaunchBattleDialog({
       <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5">
         {available.map(({ p, species, power }) => {
           const selected = team.includes(p.id);
+          const locked = megaLocked(p, members);
           return (
             <button
               key={p.id}
               type="button"
               onClick={() => toggle(p)}
-              className={`flex flex-col items-center rounded-xl border p-1 text-xs transition ${
+              disabled={locked}
+              title={locked ? MEGA_LOCKED_TITLE : undefined}
+              className={`flex flex-col items-center rounded-xl border p-1 text-xs transition disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale ${
                 selected
                   ? 'border-brand-500 bg-brand-500/10'
                   : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
