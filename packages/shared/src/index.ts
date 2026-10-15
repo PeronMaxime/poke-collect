@@ -253,6 +253,10 @@ export interface TrainerCardResponse {
   questsCompleted: number;
   /** Poké Dollars dépensés en boutique. */
   moneySpent: number;
+  /** Donjons différents réussis au moins une fois. */
+  dungeonsCleared: number;
+  /** Méga-Gemmes différentes possédées (sac ou tenues par un Pokémon). */
+  megaStonesOwned: number;
 }
 
 // --- Classement ---------------------------------------------------------------------------
@@ -840,7 +844,8 @@ export interface DurationStats {
   p90Hours: number | null;
 }
 
-export type TelemetryStepKind = 'expedition' | 'region' | 'trainer' | 'reward' | 'quest';
+export type TelemetryStepKind =
+  'expedition' | 'region' | 'trainer' | 'dungeon' | 'reward' | 'quest';
 
 /** Étape de progression : combien de joueurs l'ont atteinte, en combien de temps (inscription). */
 export interface TelemetryStep extends DurationStats {
@@ -872,6 +877,36 @@ export interface TelemetryZone {
   captures: number;
 }
 
+export interface TelemetryDungeon {
+  dungeonId: string;
+  label: string;
+  /** Nom du niveau de difficulté (réglages d'équilibrage). */
+  difficulty: string;
+  /** Tentatives récupérées sur la période, par issue. */
+  runs: number;
+  players: number;
+  wins: number;
+  /** Défaites et temps écoulés. */
+  losses: number;
+  fled: number;
+  /** Méga-Gemmes obtenues sur la période. */
+  gems: number;
+  /** Joueurs qui ont échoué sans jamais gagner (goulet potentiel). */
+  stuckPlayers: number;
+}
+
+/** Possession d'une Méga-Gemme : dans les sacs et tenue par un Pokémon (Méga-Évolué). */
+export interface TelemetryMegaStone {
+  itemId: string;
+  label: string;
+  /** Joueurs qui en possèdent au moins une (sac ou tenue). */
+  owners: number;
+  inBags: number;
+  held: number;
+  /** Total obtenu dans les donjons depuis le lancement. */
+  dropped: number;
+}
+
 export interface TelemetryQuest {
   questId: string;
   label: string;
@@ -888,7 +923,7 @@ export interface TelemetryResponse {
     total: number;
     withStarter: number;
     new7d: number;
-    /** Joueurs ayant lancé une action (expédition, combat, achat) récemment. */
+    /** Joueurs ayant lancé une action (expédition, combat, donjon, achat) récemment. */
     active1d: number;
     active7d: number;
   };
@@ -896,11 +931,13 @@ export interface TelemetryResponse {
   steps: TelemetryStep[];
   trainers: TelemetryTrainer[];
   zones: TelemetryZone[];
+  dungeons: TelemetryDungeon[];
+  megaStones: TelemetryMegaStone[];
   quests: TelemetryQuest[];
   /** Joueurs par tranche de Pokédex national capturé (en %). */
   dexDistribution: { label: string; players: number }[];
   economy: {
-    /** Poké Dollars gagnés en combat sur la période. */
+    /** Poké Dollars gagnés en combat (dresseurs et donjons) sur la période. */
     earned: number;
     /** Poké Dollars dépensés en boutique sur la période. */
     spent: number;

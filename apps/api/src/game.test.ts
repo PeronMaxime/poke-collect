@@ -278,6 +278,8 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
       battlesWon: 0,
       eggsHatched: 0,
       moneySpent: 0,
+      dungeonsCleared: 0,
+      megaStonesOwned: 0,
     });
   });
 

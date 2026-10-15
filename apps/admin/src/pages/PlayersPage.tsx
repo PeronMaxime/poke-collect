@@ -329,6 +329,8 @@ function PlayerCardDialog({ userId, onClose }: { userId: string; onClose: () => 
         { label: 'Combats gagnés', value: card.battlesWon },
         { label: 'Combats perdus', value: card.battlesLost },
         { label: 'Dresseurs battus', value: card.trainersDefeated },
+        { label: 'Donjons réussis', value: card.dungeonsCleared },
+        { label: 'Méga-Gemmes différentes', value: card.megaStonesOwned },
         { label: 'Œufs éclos', value: card.eggsHatched },
         { label: 'Fossiles restaurés', value: card.fossilsRevived },
         { label: 'Quêtes accomplies', value: card.questsCompleted },
