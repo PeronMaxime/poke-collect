@@ -9,7 +9,7 @@ import type {
 import { STAT_NAMES, typeEffectiveness, types as typeData } from '@poke/data';
 import type { Stats } from '@poke/data';
 import type { GameContext, GameSpecies } from './context';
-import { addStacks, applyTeamXp, defeatXp, rollLoot } from './expedition';
+import { addStacks, applyTeamXp, defeatedXp, rollLoot } from './expedition';
 import type { TeamMember, TeamMemberResult } from './expedition';
 import { computeStats } from './pokemon';
 import type { PokemonInstance } from './pokemon';
@@ -603,6 +603,16 @@ export interface DungeonRunInput {
   bonuses?: PlayerBonuses;
 }
 
+/** XP gagnée par chaque membre si tous les adversaires du donjon sont vaincus. */
+export function dungeonMaxXp(
+  ctx: GameContext,
+  dungeon: Dungeon,
+  bonuses: PlayerBonuses = NO_BONUSES,
+): number {
+  const baseXp = defeatedXp(ctx, [...dungeon.opponents, dungeon.boss]);
+  return Math.floor(baseXp * ctx.balance.dungeons.xpMultiplier * bonuses.xp);
+}
+
 /**
  * Résultat d'une tentative terminée : XP des adversaires vaincus (rien en cas de fuite), K.O.,
  * et en cas de victoire argent, butin et chance de Méga-Gemme (tirages : gemme, puis butin).
@@ -616,10 +626,7 @@ export function resolveDungeonRun(ctx: GameContext, input: DungeonRunInput): Dun
   const fled = outcome === 'fled';
   const bonuses = input.bonuses ?? NO_BONUSES;
 
-  const baseXp = setup.enemies.slice(0, state.defeated).reduce((sum, enemy) => {
-    const species = ctx.species(enemy.speciesId, enemy.formId);
-    return sum + (species ? defeatXp(species, enemy.level) : 0);
-  }, 0);
+  const baseXp = defeatedXp(ctx, setup.enemies.slice(0, state.defeated));
   const xpPerMember = fled ? 0 : Math.floor(baseXp * rules.xpMultiplier * bonuses.xp);
   const happiness = fled ? 0 : win ? rules.happinessOnWin : rules.happinessOnLoss;
 

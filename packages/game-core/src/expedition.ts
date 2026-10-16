@@ -343,6 +343,43 @@ export function defeatXp(species: { baseExperience: number | null }, level: numb
   return ((species.baseExperience ?? 50) * level) / 7;
 }
 
+/** XP totale (non arrondie) d'adversaires vaincus, avant multiplicateur. */
+export function defeatedXp(
+  ctx: GameContext,
+  enemies: readonly { speciesId: number; formId?: number | null; level: number }[],
+): number {
+  return enemies.reduce((sum, e) => {
+    const species = ctx.species(e.speciesId, e.formId);
+    return sum + (species ? defeatXp(species, e.level) : 0);
+  }, 0);
+}
+
+/**
+ * XP moyenne que rapportera une expédition à chaque membre (pour l'affichage) : espérance sur
+ * les rencontres et leurs niveaux, sans tenir compte de la pitié qui évolue en cours de route.
+ */
+export function expectedExpeditionXp(
+  ctx: GameContext,
+  zone: Zone,
+  durationMinutes: number,
+  bonuses: PlayerBonuses = NO_BONUSES,
+): number {
+  const entries = weightedEncounters(ctx, zone);
+  const total = entries.reduce((sum, e) => sum + e.weight, 0);
+  if (total === 0) return 0;
+  const multiplier = ctx.balance.xp.multiplier * bonuses.xp;
+  const perEncounter = entries.reduce((sum, { value: e, weight }) => {
+    const species = ctx.species(e.speciesId, e.formId);
+    if (!species) return sum;
+    let xp = 0;
+    for (let level = e.minLevel; level <= e.maxLevel; level++) {
+      xp += Math.floor(defeatXp(species, level) * multiplier);
+    }
+    return sum + ((weight / total) * xp) / (e.maxLevel - e.minLevel + 1);
+  }, 0);
+  return Math.round(perEncounter * encounterCount(ctx, durationMinutes));
+}
+
 export interface TeamMemberResult {
   id: string;
   xpGained: number;

@@ -100,6 +100,10 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   const seen = new Set(pokedex.data?.filter((d) => d.seen).map((d) => d.speciesId));
   const caught = new Set(pokedex.data?.filter((d) => d.caught).map((d) => d.speciesId));
   const caughtForms = new Set(pokedexForms.data?.map((f) => f.formId));
+  const caughtShiny = new Set(pokedex.data?.filter((d) => d.caughtShiny).map((d) => d.speciesId));
+  const caughtShinyForms = new Set(
+    pokedexForms.data?.filter((f) => f.caughtShiny).map((f) => f.formId),
+  );
   // Décalage entre l'horloge du serveur et celle du navigateur, pour des comptes à rebours justes.
   const offset = expeditions.data
     ? Date.parse(expeditions.data.serverTime) - expeditions.dataUpdatedAt
@@ -175,6 +179,8 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
       seen={seen}
       caught={caught}
       caughtForms={caughtForms}
+      caughtShiny={caughtShiny}
+      caughtShinyForms={caughtShinyForms}
       unlocked={unlocked}
       canLaunch={freeSlots > 0}
       chain={chains.get(zone.id)}
@@ -468,6 +474,8 @@ export function ZoneCard({
   seen,
   caught,
   caughtForms,
+  caughtShiny,
+  caughtShinyForms,
   unlocked,
   canLaunch,
   chain,
@@ -482,6 +490,9 @@ export function ZoneCard({
   caught: Set<number>;
   /** Formes (régionales, Méga…) capturées : distinctes de l'espèce de base. */
   caughtForms: Set<number>;
+  /** Espèces et formes dont la version shiny est capturée : affichées en shiny, avec un halo. */
+  caughtShiny: Set<number>;
+  caughtShinyForms: Set<number>;
   unlocked: boolean;
   canLaunch: boolean;
   chain: ShinyChainDto | undefined;
@@ -552,21 +563,35 @@ export function ZoneCard({
         ))}
       </div>
       <div className="mt-3 flex flex-wrap gap-1">
-        {species.map(({ speciesId: id, formId }) => (
-          <PokemonSprite
-            key={`${id}:${formId ?? ''}`}
-            speciesId={id}
-            formId={formId}
-            size={40}
-            silhouette={!seen.has(id)}
-            className={
-              seen.has(id) && !(formId != null ? caughtForms.has(formId) : caught.has(id))
-                ? 'opacity-50 grayscale'
-                : ''
-            }
-            alt={seen.has(id) ? ctx.species(id, formId)?.nameFr : '?'}
-          />
-        ))}
+        {species.map(({ speciesId: id, formId }) => {
+          const shiny = formId != null ? caughtShinyForms.has(formId) : caughtShiny.has(id);
+          const sprite = (
+            <PokemonSprite
+              speciesId={id}
+              formId={formId}
+              size={40}
+              shiny={shiny}
+              silhouette={!seen.has(id)}
+              className={
+                !shiny &&
+                seen.has(id) &&
+                !(formId != null ? caughtForms.has(formId) : caught.has(id))
+                  ? 'opacity-50 grayscale'
+                  : ''
+              }
+              alt={seen.has(id) ? ctx.species(id, formId)?.nameFr : '?'}
+            />
+          );
+          const key = `${id}:${formId ?? ''}`;
+          return shiny ? (
+            <span key={key} className="relative flex" title="Shiny capturé">
+              {sprite}
+              <ShinySparkles />
+            </span>
+          ) : (
+            <Fragment key={key}>{sprite}</Fragment>
+          );
+        })}
       </div>
       <div className="mt-auto pt-3">
         {unlocked ? (
@@ -580,5 +605,16 @@ export function ZoneCard({
         )}
       </div>
     </div>
+  );
+}
+
+/** Trois petites étoiles autour d'un sprite : version shiny capturée. */
+function ShinySparkles() {
+  return (
+    <span aria-hidden className="pointer-events-none absolute inset-0 text-amber-400">
+      <span className="absolute top-1 left-1.5 text-[8px] leading-none">✦</span>
+      <span className="absolute top-2.5 right-1.5 text-[6px] leading-none">✦</span>
+      <span className="absolute bottom-1.5 left-2 text-[6px] leading-none">✦</span>
+    </span>
   );
 }

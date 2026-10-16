@@ -4,6 +4,7 @@ import type { Trainer } from '@poke/content';
 import {
   battleDurationMinutes,
   battleKoMinutes,
+  battleXp,
   checkBattleTeam,
   estimateBattle,
   isRegionalSpecies,
@@ -25,7 +26,9 @@ import {
   TypeFilterSelect,
   megaLocked,
   nameMatcher,
+  selectionRank,
 } from './TeamPicker';
+import { XpPreview, formatXp, usePlayerBonuses } from './XpPreview';
 
 const SORTS = {
   power: 'PE',
@@ -104,6 +107,7 @@ export function LaunchBattleDialog({
   const [search, setSearch] = useState('');
   const [type, setType] = useState('all');
   const tagFilter = useTagFilter();
+  const bonuses = usePlayerBonuses(ctx);
 
   const start = useMutation({
     mutationFn: (input: StartBattleInput) =>
@@ -134,8 +138,10 @@ export function LaunchBattleDialog({
           (type === 'all' || species.types.includes(type))) ||
         team.includes(p.id),
     )
+    // Les membres choisis passent en tête (dans l'ordre de sélection), quel que soit le tri.
     .sort(
       (a, b) =>
+        selectionRank(team, a.p.id) - selectionRank(team, b.p.id) ||
         (sort === 'level' ? b.p.level - a.p.level : 0) ||
         (sort === 'tag' ? tagFilter.compare(a.p, b.p) : 0) ||
         b.power - a.power,
@@ -147,6 +153,7 @@ export function LaunchBattleDialog({
   const advantage = advantageText(estimate.advantage);
   const ko = battleKoMinutes(ctx, trainer);
   const duration = battleDurationMinutes(ctx, trainer);
+  const xp = battleXp(ctx, trainer, bonuses);
 
   function toggle(p: PokemonDto) {
     if (megaLocked(p, members)) return;
@@ -276,6 +283,12 @@ export function LaunchBattleDialog({
           : ' aucune XP'}
         .
       </p>
+      <XpPreview ctx={ctx} members={members} xp={xp.win}>
+        {formatXp(xp.win)} par Pokémon en cas de victoire
+        {xp.loss > 0 && (
+          <span className="text-slate-500"> ({formatXp(xp.loss)} en cas de défaite)</span>
+        )}
+      </XpPreview>
 
       {team.length > 0 && errors.length > 0 && (
         <ul className="mt-4 space-y-1 text-sm text-red-600">

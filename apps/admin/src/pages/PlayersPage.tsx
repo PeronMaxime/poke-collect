@@ -517,8 +517,8 @@ function TestPokemonSection({ userId }: { userId: string }) {
       <h3 className="font-semibold">Lot de Pokémon de test</h3>
       <p className="mb-3 text-sm text-slate-500">
         Compte admin uniquement. Ajoute au PC les lignées des donjons de la région et les deux plus
-        forts Pokémon de chaque type de son Pokédex régional (origine « Lot de test »), et les
-        inscrit au Pokédex pour rendre les donjons visibles.
+        forts Pokémon de chaque type de son Pokédex régional (origine « Lot de test »), un sur deux
+        en shiny, et les inscrit au Pokédex pour rendre les donjons visibles.
       </p>
       <div className="flex flex-wrap items-end gap-3 text-sm">
         <label className="space-y-1">

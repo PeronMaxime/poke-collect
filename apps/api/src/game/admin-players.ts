@@ -220,8 +220,9 @@ export async function giveTestPokemon(
 
   const speciesIds = testPokemonSpecies(ctx, input.regionId, input.legendaries);
   const rng = createRng(newSeed());
-  const list = speciesIds.map((speciesId) => {
-    const p = generatePokemon(ctx, rng, speciesId, input.level, { shinyProbability: 0 });
+  // Un Pokémon sur deux en shiny : de quoi voir les deux versions côte à côte.
+  const list = speciesIds.map((speciesId, i) => {
+    const p = generatePokemon(ctx, rng, speciesId, input.level, { shinyProbability: i % 2 });
     if (!input.perfectIvs) return p;
     const ivs = Object.fromEntries(STAT_NAMES.map((s) => [s, 31])) as typeof p.ivs;
     return { ...p, ivs };
