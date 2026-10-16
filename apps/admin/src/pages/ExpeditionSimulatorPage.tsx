@@ -38,6 +38,8 @@ const TEST_TAGS: PokemonTagDto[] = [
 ];
 
 const randomSeed = () => Math.floor(Math.random() * (MAX_SEED + 1));
+/** Simulateur : aucun shiny capturé, les espèces gardent leur sprite normal. */
+const NONE = new Set<number>();
 
 /** Pokémon fictif du PC simulé : la graine (dans son identifiant) fixe ses IV, nature et talent. */
 function virtualPokemon(
@@ -142,6 +144,8 @@ export function ExpeditionSimulatorPage() {
       seen={seen}
       caught={seen}
       caughtForms={caughtForms}
+      caughtShiny={NONE}
+      caughtShinyForms={NONE}
       unlocked
       canLaunch={z.durationsMinutes.length > 0}
       chain={chainDto(z.id)}

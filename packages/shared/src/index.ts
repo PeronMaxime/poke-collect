@@ -253,7 +253,7 @@ export interface TrainerCardResponse {
   questsCompleted: number;
   /** Poké Dollars dépensés en boutique. */
   moneySpent: number;
-  /** Donjons différents réussis au moins une fois. */
+  /** Donjons réussis au total (toutes victoires confondues). */
   dungeonsCleared: number;
   /** Méga-Gemmes différentes possédées (sac ou tenues par un Pokémon). */
   megaStonesOwned: number;

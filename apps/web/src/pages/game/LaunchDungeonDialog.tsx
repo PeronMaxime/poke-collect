@@ -1,19 +1,28 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Dungeon } from '@poke/content';
-import { typeEffectiveness, typeWeaknesses } from '@poke/data';
+import { STAT_NAMES, typeEffectiveness, typeWeaknesses, types } from '@poke/data';
 import {
   checkDungeonTeam,
   computeStats,
   dungeonAttack,
   dungeonCooldownMinutes,
+  dungeonEnemies,
   dungeonKoMinutes,
+  dungeonMaxXp,
   effectiveDungeonMove,
   pokemonPower,
 } from '@poke/game-core';
 import type { DungeonMove, DungeonTeamError, ExpeditionSite, GameContext } from '@poke/game-core';
 import type { DungeonRunDto, PokemonDto, StartDungeonInput } from '@poke/shared';
-import { Modal, PokemonSprite, ShinyStar, TypeBadge } from '../../components/ui';
+import {
+  HoverBubble,
+  Modal,
+  PokemonSprite,
+  ShinyStar,
+  StatLines,
+  TypeBadge,
+} from '../../components/ui';
 import { api } from '../../lib/api';
 import { PLAYER_STATE_KEYS } from '../../lib/game';
 import {
@@ -27,6 +36,7 @@ import {
 } from '../../lib/labels';
 import { DungeonDifficultyBadge } from './DungeonDifficultyBadge';
 import { TeamPicker, pillClass, useTeamPicker } from './TeamPicker';
+import { XpPreview, formatXp, usePlayerBonuses } from './XpPreview';
 
 function ruleText(e: DungeonTeamError): string {
   switch (e.code) {
@@ -55,6 +65,75 @@ function effectivenessLabel(e: number): string {
 const effectivenessClass = (e: number) =>
   e > 1 ? 'text-emerald-600' : e < 1 ? 'text-red-600' : 'text-slate-500';
 
+/** Types techniques des données, qui ne sont pas des types d'attaque. */
+const NON_POKEMON_TYPES = new Set(['stellar', 'unknown', 'shadow']);
+
+/** Types d'attaque regroupés par efficacité contre le boss (×4, ×2, ×½, ×¼, ×0). */
+function matchups(bossTypes: readonly string[]) {
+  const byFactor = new Map<number, string[]>();
+  for (const { name } of types) {
+    const e = typeEffectiveness(name, bossTypes);
+    if (e !== 1 && !NON_POKEMON_TYPES.has(name)) {
+      byFactor.set(e, [...(byFactor.get(e) ?? []), name]);
+    }
+  }
+  return [...byFactor.entries()].sort(([a], [b]) => b - a);
+}
+
+/** Fiche du boss au survol : statistiques, faiblesses et résistances, attaque. */
+function BossInfo({ ctx, dungeon }: { ctx: GameContext; dungeon: Dungeon }) {
+  const boss = dungeonEnemies(ctx, dungeon).at(-1);
+  if (!boss) return null;
+  const stats = { ...boss.stats, hp: boss.maxHp };
+  const total = STAT_NAMES.reduce((sum, s) => sum + stats[s], 0);
+  const special = boss.category === 'special';
+  return (
+    <span className="grid gap-2">
+      <span>
+        <span className="mb-0.5 block font-semibold">Statistiques</span>
+        <StatLines values={stats} total={total} />
+        {dungeon.bossHpMultiplier !== 1 && (
+          <span className="block text-[10px] text-slate-500">
+            PV ×{dungeon.bossHpMultiplier} (boss)
+          </span>
+        )}
+      </span>
+      <span>
+        <span className="mb-0.5 block font-semibold">Faiblesses et résistances</span>
+        {matchups(boss.types).map(([e, list]) => (
+          <span key={e} className="mb-0.5 flex items-start gap-1">
+            <span className={`w-6 shrink-0 font-semibold ${effectivenessClass(e)}`}>
+              {effectivenessLabel(e)}
+            </span>
+            <span className="flex flex-wrap gap-0.5">
+              {list.map((t) => (
+                <TypeBadge key={t} type={t} />
+              ))}
+            </span>
+          </span>
+        ))}
+      </span>
+      <span>
+        <span className="mb-0.5 block font-semibold">Attaque</span>
+        <span className="block">
+          {special ? 'Spéciale' : 'Physique'} ({STAT_LABELS[special ? 'special-attack' : 'attack']}{' '}
+          {stats[special ? 'special-attack' : 'attack']})
+        </span>
+        <span className="mt-0.5 flex flex-wrap items-center gap-0.5">
+          {boss.types.map((t) => (
+            <TypeBadge key={t} type={t} />
+          ))}
+        </span>
+        <span className="block text-[10px] text-slate-500">
+          {boss.types.length > 1
+            ? 'Choisit le plus efficace de ses types contre le Pokémon en face.'
+            : 'Attaque toujours de son type.'}
+        </span>
+      </span>
+    </span>
+  );
+}
+
 export function LaunchDungeonDialog({
   ctx,
   dungeon,
@@ -78,6 +157,8 @@ export function LaunchDungeonDialog({
   const picker = useTeamPicker(ctx, site);
   const [moves, setMoves] = useState<Record<string, DungeonMove>>({});
   const maxTeamSize = ctx.balance.dungeons.maxTeamSize;
+  const maxXp = dungeonMaxXp(ctx, dungeon, usePlayerBonuses(ctx));
+  const bossInfo = <BossInfo ctx={ctx} dungeon={dungeon} />;
 
   const start = useMutation({
     mutationFn: (input: StartDungeonInput) =>
@@ -115,12 +196,14 @@ export function LaunchDungeonDialog({
   return (
     <Modal open onClose={onClose} wide>
       <div className="flex flex-wrap items-center gap-3">
-        <PokemonSprite
-          speciesId={dungeon.boss.speciesId}
-          formId={dungeon.boss.formId}
-          size={88}
-          kind="artwork"
-        />
+        <HoverBubble width={232} height={420} content={bossInfo}>
+          <PokemonSprite
+            speciesId={dungeon.boss.speciesId}
+            formId={dungeon.boss.formId}
+            size={88}
+            kind="artwork"
+          />
+        </HoverBubble>
         <div className="min-w-0 flex-1">
           <p className="text-sm text-slate-500">Donjon</p>
           <h2 className="text-xl font-bold">{dungeon.name}</h2>
@@ -142,18 +225,30 @@ export function LaunchDungeonDialog({
               N.{m.level}
             </span>
           ))}
-          <span className="flex flex-col items-center text-[10px] font-semibold text-amber-600">
+          <HoverBubble
+            className="flex flex-col items-center text-[10px] font-semibold text-amber-600"
+            width={232}
+            height={420}
+            content={bossInfo}
+          >
             <PokemonSprite
               speciesId={dungeon.boss.speciesId}
               formId={dungeon.boss.formId}
               size={40}
             />
             👑 N.{dungeon.boss.level}
-          </span>
+          </HoverBubble>
         </div>
       </div>
 
-      <TeamPicker ctx={ctx} zone={site} picker={picker} power={power} maxTeamSize={maxTeamSize} />
+      <TeamPicker
+        ctx={ctx}
+        zone={site}
+        picker={picker}
+        power={power}
+        maxTeamSize={maxTeamSize}
+        statSort
+      />
       <p className="mt-1 text-xs text-slate-500">
         Encadrés en vert : un de leurs types est efficace contre {boss?.nameFr ?? 'le boss'}.
       </p>
@@ -271,7 +366,10 @@ export function LaunchDungeonDialog({
             </span>
           )}
         </p>
-        <p className="text-xs text-slate-500">
+        <XpPreview ctx={ctx} members={members} xp={maxXp}>
+          jusqu’à {formatXp(maxXp)} par Pokémon si tous les adversaires sont vaincus
+        </XpPreview>
+        <p className="mt-2 text-xs text-slate-500">
           Chaque adversaire vaincu rapporte de l’XP à toute l’équipe, même en cas de défaite (pas en
           cas de fuite). Les Pokémon mis K.O. se reposent{' '}
           {formatDuration(dungeonKoMinutes(ctx, dungeon))}. Après chaque tentative, le donjon se

@@ -85,9 +85,9 @@ export async function trainerCard(
       .from(shopPurchases)
       .where(eq(shopPurchases.ownerId, ownerId)),
     db
-      .select({ n: count() })
+      .select({ n: sum(dungeonProgress.wins).mapWith(Number) })
       .from(dungeonProgress)
-      .where(and(eq(dungeonProgress.ownerId, ownerId), gt(dungeonProgress.wins, 0))),
+      .where(eq(dungeonProgress.ownerId, ownerId)),
     // Méga-Gemmes : dans le sac, ou tenues par un Pokémon Méga-Évolué.
     gemIds.length
       ? db

@@ -230,17 +230,29 @@ export function DungeonCombat({
   const queryClient = useQueryClient();
   const { setup } = run;
   const startedAt = Date.parse(run.startedAt);
-  // Changement demandé, en attente de la réponse du serveur (affiché tout de suite).
-  const [pending, setPending] = useState<{ atMs: number; member: number } | null>(null);
+  // Changement demandé, en attente de la réponse du serveur (affiché tout de suite). `base` :
+  // nombre de commandes connues à la demande, pour l'oublier dès que le cache contient la réponse.
+  const [pending, setPending] = useState<{ atMs: number; member: number; base: number } | null>(
+    null,
+  );
   const [confirmFlee, setConfirmFlee] = useState(false);
   const [finished, setFinished] = useState(false);
   const now = useFrameNow(!finished, visible);
   const elapsed = Math.max(0, Math.min(now + offsetMs - startedAt, setup.timeLimitMs));
   const displayMs = Math.max(0, elapsed - TRAVEL_MS);
+  const awaiting = pending !== null && run.commands.length === pending.base;
   const commands = useMemo(
-    () => (pending ? [...run.commands, pending] : run.commands),
-    [run.commands, pending],
+    () =>
+      pending && awaiting
+        ? [...run.commands, { atMs: pending.atMs, member: pending.member }]
+        : run.commands,
+    [run.commands, pending, awaiting],
   );
+  // Le cache contient la réponse : le changement en attente n'a plus lieu d'être. Il n'est pas
+  // effacé dès la réponse, sinon il disparaîtrait une image avant que le cache ne soit diffusé.
+  useEffect(() => {
+    if (pending && !awaiting) setPending(null);
+  }, [pending, awaiting]);
 
   const live = simulateDungeon(setup, commands, run.fledAtMs, elapsed);
   const shown = simulateDungeon(setup, commands, run.fledAtMs, displayMs).state;
@@ -260,10 +272,7 @@ export function DungeonCombat({
   const switchMember = useMutation({
     mutationFn: (input: { member: number; atMs: number }) =>
       api<DungeonRunDto>(`/api/dungeons/${run.id}/switch`, { method: 'POST', json: input }),
-    onSuccess: (next) => {
-      updateRun(next);
-      setPending(null);
-    },
+    onSuccess: (next) => updateRun(next),
     onError: () => setPending(null),
   });
 
@@ -324,10 +333,12 @@ export function DungeonCombat({
   const timeLeft = setup.timeLimitMs - displayMs;
 
   function send(member: number) {
-    if (outcome !== null || pending || member === live.state.active) return;
-    if (live.state.hp[member] === 0) return;
-    const atMs = Math.round(elapsed);
-    setPending({ atMs, member });
+    if (outcome !== null || pending || member === shown.active) return;
+    if (shown.hp[member] === 0) return;
+    // Daté à l'instant affiché (pas à l'instant réel, en avance de `TRAVEL_MS`) : le Pokémon
+    // entre aussitôt, et le joueur agit sur ce qu'il voit. Le serveur tolère ce léger retard.
+    const atMs = Math.round(displayMs);
+    setPending({ atMs, member, base: run.commands.length });
     switchMember.mutate({ member, atMs });
   }
 
@@ -469,7 +480,7 @@ export function DungeonCombat({
       <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {setup.team.map((f, i) => {
           const hp = shown.hp[i] ?? 0;
-          const isActive = (pending?.member ?? shown.active) === i;
+          const isActive = shown.active === i;
           const ko = hp === 0;
           const attack = f.attackType ? dungeonAttack(setup.settings, f.attackType) : null;
           return (

@@ -17,6 +17,53 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '16 octobre 2026',
+    title: 'Aperçu de l’XP, fiche du boss et filtre des doublons',
+    changes: [
+      {
+        section: 'XP',
+        items: [
+          'Avant de lancer une expédition, un combat ou un donjon, l’XP que gagnera chaque Pokémon s’affiche, avec le niveau qu’il atteindra : une moyenne pour les expéditions, la victoire et la défaite pour les combats, le maximum (tous les adversaires vaincus) pour les donjons.',
+        ],
+      },
+      {
+        section: 'Donjons',
+        items: [
+          'Nouvel onglet « Tous » qui regroupe les donjons de toutes tes régions. Les donjons sont désormais toujours rangés du plus facile au plus difficile.',
+          'Survole le boss (ou touche-le sur mobile) pour voir sa fiche : statistiques, faiblesses et résistances, et l’attaque qu’il utilise.',
+          'Au choix de l’équipe, trie tes Pokémon par statistique (Attaque, Vitesse…) et survole-les pour voir toutes leurs statistiques.',
+          'Quand tu envoies un Pokémon au combat, il entre aussitôt, sans petit temps de latence.',
+        ],
+      },
+      {
+        section: 'Équipes',
+        items: [
+          'Au choix de l’équipe, les Pokémon sélectionnés restent en tête de la liste, dans leur ordre de passage, quel que soit le tri.',
+        ],
+      },
+      {
+        section: 'Expéditions',
+        items: [
+          'Sur la fiche d’une zone, les Pokémon dont tu as capturé la version shiny s’affichent en shiny, avec quelques étoiles.',
+          'Lors de la rencontre d’un légendaire, la chance de capture affichée tient bien compte des types de ton équipe.',
+        ],
+      },
+      {
+        section: 'PC',
+        items: [
+          'Nouveau bouton ⚙ à côté de « Sélectionner les doublons » pour régler le filtre : garder le meilleur de chaque Pokémon ou de chaque lignée, nombre d’IV parfaits à partir duquel un doublon est gardé, et étiquettes dont les Pokémon peuvent être proposés. Tes réglages sont retenus.',
+        ],
+      },
+      {
+        section: 'Accueil et fiche dresseur',
+        items: [
+          'Sur l’accueil, les expéditions et les combats indiquent combien d’emplacements sont occupés.',
+          'Sur la fiche dresseur, « Donjons réussis » compte désormais toutes tes victoires en donjon, et non plus seulement les donjons différents.',
+        ],
+      },
+    ],
+  },
+  {
     date: '15 octobre 2026',
     title: 'Donjons, Méga-Évolutions et équipes enregistrées',
     changes: [

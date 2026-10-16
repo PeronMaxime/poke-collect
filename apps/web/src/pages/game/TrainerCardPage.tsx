@@ -28,7 +28,7 @@ export function TrainerCardPage({ ctx, profile }: { ctx: GameContext; profile: P
     { label: 'Combats gagnés', value: s?.battlesWon },
     { label: 'Combats perdus', value: s?.battlesLost },
     { label: 'Dresseurs battus', value: s?.trainersDefeated, hint: 'Différents' },
-    { label: 'Donjons réussis', value: s?.dungeonsCleared, hint: 'Différents' },
+    { label: 'Donjons réussis', value: s?.dungeonsCleared },
     { label: 'Méga-Gemmes', value: s?.megaStonesOwned, hint: 'Différentes possédées' },
     { label: 'Œufs éclos', value: s?.eggsHatched },
     { label: 'Fossiles restaurés', value: s?.fossilsRevived },

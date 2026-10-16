@@ -227,7 +227,7 @@ describe('joueurs (admin)', () => {
     // Un donjon réussi, une gemme dans le sac (×2) et une autre tenue par un Pokémon.
     await handle.db
       .insert(dungeonProgress)
-      .values({ ownerId: player.userId, dungeonId: seedContent.dungeons[0]!.id, wins: 1 });
+      .values({ ownerId: player.userId, dungeonId: seedContent.dungeons[0]!.id, wins: 3 });
     await handle.db
       .insert(inventory)
       .values({ ownerId: player.userId, itemId: 'charizardite-x', quantity: 2 });
@@ -257,7 +257,7 @@ describe('joueurs (admin)', () => {
     expect(detail.body.speciesCaught).toBe(1);
     expect(detail.body.card).toMatchObject({
       pokemonOwned: 1,
-      dungeonsCleared: 1,
+      dungeonsCleared: 3,
       megaStonesOwned: 2,
     });
     expect(detail.body.badges[0]?.regionId).toBe(seedContent.regions[0]!.id);
