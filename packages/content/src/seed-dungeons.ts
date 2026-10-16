@@ -37,6 +37,7 @@ export const dungeonSettings: DungeonSettings = {
   xpMultiplier: 1,
   happinessOnWin: 3,
   happinessOnLoss: -2,
+  enemyAbilities: false,
   attacks: {
     normal: { name: 'Plaquage', power: 80 },
     fire: { name: 'Lance-Flammes', power: 80 },

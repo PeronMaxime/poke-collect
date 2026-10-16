@@ -13,6 +13,7 @@ const ISSUE_SECTIONS: Record<ContentEntityKind, { path: string; label: string }>
   balance: { path: '/balance', label: 'Équilibrage' },
   region: { path: '/regions', label: 'Régions' },
   speciesOverride: { path: '/species', label: 'Espèces' },
+  ability: { path: '/abilities', label: 'Talents' },
   item: { path: '/items', label: 'Objets' },
   lootTable: { path: '/loot-tables', label: 'Tables de butin' },
   zone: { path: '/zones', label: 'Zones' },

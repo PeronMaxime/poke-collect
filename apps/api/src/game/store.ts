@@ -1,5 +1,6 @@
 import { and, count, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import {
+  assistants,
   daycareSlots,
   dungeonRuns,
   eggs,
@@ -161,7 +162,7 @@ export async function pokemonActivities(
   db: Db,
   ownerId: string,
 ): Promise<Map<string, PokemonActivity>> {
-  const [running, battles, pensions, runs] = await Promise.all([
+  const [running, battles, pensions, runs, helpers] = await Promise.all([
     db
       .select({ team: expeditions.team })
       .from(expeditions)
@@ -178,6 +179,7 @@ export async function pokemonActivities(
       .select({ team: dungeonRuns.team })
       .from(dungeonRuns)
       .where(and(eq(dungeonRuns.ownerId, ownerId), isNull(dungeonRuns.claimedAt))),
+    db.select({ id: assistants.pokemonId }).from(assistants).where(eq(assistants.ownerId, ownerId)),
   ]);
   const activities = new Map<string, PokemonActivity>();
   for (const r of running) for (const id of r.team) activities.set(id, 'expedition');
@@ -186,6 +188,7 @@ export async function pokemonActivities(
   for (const p of pensions) {
     for (const id of [p.a, p.b]) if (id) activities.set(id, 'daycare');
   }
+  for (const h of helpers) activities.set(h.id, 'assistant');
   return activities;
 }
 

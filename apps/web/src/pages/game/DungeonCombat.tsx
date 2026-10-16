@@ -2,13 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Dungeon } from '@poke/content';
 import { TYPE_COLORS } from '@poke/data';
-import { dungeonAttack, simulateDungeon } from '@poke/game-core';
+import { STATUS_LABELS, WEATHER_LABELS, dungeonAttack, simulateDungeon } from '@poke/game-core';
+import type { Status } from '@poke/content';
 import type { DungeonEvent, DungeonFighter, GameContext } from '@poke/game-core';
 import type { ClaimDungeonResponse, DungeonRunDto, DungeonsResponse } from '@poke/shared';
 import { PokemonSprite, ShinyStar, TypeBadge } from '../../components/ui';
 import { api } from '../../lib/api';
 import { PLAYER_STATE_KEYS, keys } from '../../lib/game';
-import { errorText, formatCountdown } from '../../lib/labels';
+import { abilityLabel, errorText, formatCountdown } from '../../lib/labels';
 
 /**
  * Combat d'un donjon, en temps réel. L'état vient de la même simulation que le serveur
@@ -21,6 +22,8 @@ import { errorText, formatCountdown } from '../../lib/labels';
 const TRAVEL_MS = 380;
 /** Durée d'affichage des dégâts et de l'efficacité après l'impact. */
 const POPUP_MS = 900;
+/** Durée d'affichage du nom d'un talent qui se déclenche. */
+const ABILITY_POPUP_MS = 1600;
 
 /** Symbole de chaque type, au cœur du projectile. */
 const TYPE_GLYPHS: Record<string, string> = {
@@ -101,6 +104,22 @@ export function HpBar({
   );
 }
 
+const STATUS_BADGES: Record<Status, string> = {
+  paralysis: 'PAR',
+  burn: 'BRÛ',
+  poison: 'PSN',
+  sleep: 'SOM',
+  freeze: 'GEL',
+};
+const STATUS_COLORS: Record<Status, string> = {
+  paralysis: 'bg-yellow-400 text-slate-900',
+  burn: 'bg-orange-500 text-white',
+  poison: 'bg-purple-500 text-white',
+  sleep: 'bg-slate-400 text-white',
+  freeze: 'bg-cyan-400 text-slate-900',
+};
+const WEATHER_ICONS = { sun: '☀️', rain: '🌧️', sand: '🌪️', hail: '🌨️' } as const;
+
 /** Encadré de nom, niveau et PV d'un combattant. */
 function FighterCard({
   name,
@@ -108,18 +127,28 @@ function FighterCard({
   hp,
   maxHp,
   shiny,
+  status,
 }: {
   name: string;
   level: number;
   hp: number;
   maxHp: number;
   shiny?: boolean;
+  status?: Status | null;
 }) {
   return (
     <div className="w-40 rounded-lg bg-white/85 px-2 py-1 text-xs shadow dark:bg-slate-900/85">
       <div className="flex items-baseline justify-between gap-1">
         <span className="truncate font-semibold">
           {name} {shiny && <ShinyStar />}
+          {status && (
+            <span
+              title={STATUS_LABELS[status]}
+              className={`ml-1 rounded px-1 text-[9px] font-bold ${STATUS_COLORS[status]}`}
+            >
+              {STATUS_BADGES[status]}
+            </span>
+          )}
         </span>
         <span className="shrink-0 text-slate-500">N.{level}</span>
       </div>
@@ -188,6 +217,72 @@ function DamagePopup({ event, age }: { event: DungeonEvent & { kind: 'attack' };
           {text}
         </span>
       )}
+    </span>
+  );
+}
+
+const ABILITY_EFFECT_TEXTS: Record<DungeonAbilityEvent['effect'], (amount: number) => string> = {
+  immunity: (n) => (n > 0 ? `Absorbé ! +${n} PV` : 'Sans effet !'),
+  sturdy: () => 'Tient bon !',
+  regenerator: (n) => `+${n} PV`,
+  moxie: (n) => `Attaque +${n} %`,
+  intimidate: (n) => `Attaque adverse −${n} %`,
+  contactDamage: (n) => `L’attaquant perd ${n} PV`,
+  aftermath: (n) => `L’attaquant perd ${n} PV`,
+  naturalCure: () => 'Statut guéri',
+};
+
+type DungeonAbilityEvent = DungeonEvent & { kind: 'ability' };
+type DungeonStatusEvent = DungeonEvent & { kind: 'status' };
+
+/** Statut infligé, sommeil, réveil ou dégâts de statut et de météo, au-dessus du Pokémon. */
+function statusText(e: DungeonStatusEvent): string {
+  const label = e.status ? STATUS_LABELS[e.status] : 'Météo';
+  switch (e.change) {
+    case 'inflicted':
+      return `${label} !`;
+    case 'skipped':
+      return e.status === 'freeze' ? 'Gelé…' : 'Dort…';
+    case 'cured':
+      return e.status === 'freeze' ? 'Dégèle !' : 'Se réveille !';
+    case 'damage':
+      return `${label} −${e.amount}`;
+  }
+}
+
+function StatusPopup({ event, age }: { event: DungeonStatusEvent; age: number }) {
+  const onEnemy = event.side === 'enemy';
+  const t = age / ABILITY_POPUP_MS;
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute -translate-x-1/2 rounded-lg bg-white/85 px-2 py-0.5 text-center text-[11px] font-semibold whitespace-nowrap text-amber-700 shadow dark:bg-slate-900/85 dark:text-amber-300"
+      style={{
+        left: onEnemy ? '76%' : '22%',
+        top: `calc(${onEnemy ? 28 : 52}% - ${t * 16}px)`,
+        opacity: 1 - t * t,
+      }}
+    >
+      {statusText(event)}
+    </span>
+  );
+}
+
+/** Talent qui se déclenche : son nom et son effet, au-dessus du Pokémon qui l'a. */
+function AbilityPopup({ event, age }: { event: DungeonAbilityEvent; age: number }) {
+  const onEnemy = event.side === 'enemy';
+  const t = age / ABILITY_POPUP_MS;
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute -translate-x-1/2 rounded-lg bg-white/85 px-2 py-0.5 text-center text-[11px] font-semibold whitespace-nowrap text-violet-700 shadow dark:bg-slate-900/85 dark:text-violet-300"
+      style={{
+        left: onEnemy ? '76%' : '22%',
+        top: `calc(${onEnemy ? 22 : 46}% - ${t * 16}px)`,
+        opacity: 1 - t * t,
+      }}
+    >
+      {abilityLabel(event.ability)} · {ABILITY_EFFECT_TEXTS[event.effect](event.amount)}
     </span>
   );
 }
@@ -318,6 +413,14 @@ export function DungeonCombat({
     (e): e is DungeonEvent & { kind: 'attack' } =>
       e.kind === 'attack' && e.atMs <= displayMs && e.atMs > displayMs - POPUP_MS,
   );
+  const statusPopups = live.events.filter(
+    (e): e is DungeonStatusEvent =>
+      e.kind === 'status' && e.atMs <= displayMs && e.atMs > displayMs - ABILITY_POPUP_MS,
+  );
+  const abilityPopups = live.events.filter(
+    (e): e is DungeonAbilityEvent =>
+      e.kind === 'ability' && e.atMs <= displayMs && e.atMs > displayMs - ABILITY_POPUP_MS,
+  );
   const hit = (side: 'player' | 'enemy') =>
     popups.some((e) => e.side !== side && displayMs - e.atMs < 220 && e.damage > 0);
   const remaining = setup.enemies.slice(shown.enemyIndex + 1);
@@ -394,6 +497,11 @@ export function DungeonCombat({
         >
           ⏱ {formatCountdown(timeLeft)}
         </span>
+        {setup.weather && (
+          <span className="absolute top-2 right-2 rounded-full bg-white/85 px-2 py-0.5 text-sm font-semibold shadow dark:bg-slate-900/85">
+            {WEATHER_ICONS[setup.weather]} {WEATHER_LABELS[setup.weather]}
+          </span>
+        )}
 
         {/* Adversaire, à droite. */}
         <div className="absolute top-12 left-3 sm:left-6">
@@ -402,6 +510,7 @@ export function DungeonCombat({
             level={enemy.level}
             hp={shown.enemyHp}
             maxHp={enemy.maxHp}
+            status={shown.enemyStatus}
           />
         </div>
         <div
@@ -427,6 +536,7 @@ export function DungeonCombat({
             hp={playerHp}
             maxHp={player.maxHp}
             shiny={player.isShiny}
+            status={shown.statuses[shown.active]}
           />
         </div>
         <div
@@ -452,6 +562,12 @@ export function DungeonCombat({
             event={e}
             progress={1 - (e.atMs - displayMs) / TRAVEL_MS}
           />
+        ))}
+        {statusPopups.map((e, i) => (
+          <StatusPopup key={`s-${e.side}-${e.atMs}-${i}`} event={e} age={displayMs - e.atMs} />
+        ))}
+        {abilityPopups.map((e, i) => (
+          <AbilityPopup key={`a-${e.side}-${e.atMs}-${i}`} event={e} age={displayMs - e.atMs} />
         ))}
         {popups.map((e) => (
           <DamagePopup key={`${e.side}-${e.atMs}`} event={e} age={displayMs - e.atMs} />

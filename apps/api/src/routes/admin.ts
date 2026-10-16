@@ -75,6 +75,7 @@ const STATUS_BY_CODE: Record<ContentErrorCode, number> = {
 const ENTITY_ROUTES: Record<string, { type: ContentEntityType; audit: string }> = {
   regions: { type: 'region', audit: 'region' },
   species: { type: 'speciesOverride', audit: 'species_override' },
+  abilities: { type: 'ability', audit: 'ability' },
   items: { type: 'item', audit: 'item' },
   'loot-tables': { type: 'lootTable', audit: 'loot_table' },
   zones: { type: 'zone', audit: 'zone' },

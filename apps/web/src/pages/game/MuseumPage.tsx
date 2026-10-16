@@ -14,6 +14,7 @@ import {
   itemName,
   speciesName,
 } from '../../lib/labels';
+import { AssistantCard } from './AssistantCard';
 import { HatchReveal } from './HatchReveal';
 
 /** Musée : les fossiles trouvés en expédition y redeviennent des Pokémon, après un délai. */
@@ -83,6 +84,9 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
           Confie un fossile aux scientifiques du Musée : après quelques heures, il redevient un
           Pokémon.
         </p>
+        <div className="mb-3">
+          <AssistantCard ctx={ctx} post="museum" />
+        </div>
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           {Array.from({ length: slots }, (_, i) => {
             const revival = revivals[i];

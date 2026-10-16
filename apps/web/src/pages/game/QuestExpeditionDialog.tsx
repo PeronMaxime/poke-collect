@@ -5,7 +5,7 @@ import type { GameContext } from '@poke/game-core';
 import type { ExpeditionDto, StartQuestExpeditionInput } from '@poke/shared';
 import { Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, useShinyCharm } from '../../lib/game';
+import { PLAYER_STATE_KEYS, useShinyCharm, utcOffsetMinutes } from '../../lib/game';
 import {
   GAME_ERRORS,
   formatDuration,
@@ -43,7 +43,10 @@ export function QuestExpeditionDialog({
   const picker = useTeamPicker(ctx, zone);
   const start = useMutation({
     mutationFn: (input: StartQuestExpeditionInput) =>
-      api<ExpeditionDto>(`/api/quests/${quest.id}/expedition`, { method: 'POST', json: input }),
+      api<ExpeditionDto>(`/api/quests/${quest.id}/expedition`, {
+        method: 'POST',
+        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
+      }),
     onSuccess: () => {
       onClose();
       return Promise.all(

@@ -17,6 +17,7 @@ import {
   NumberInput,
   Section,
   TextInput,
+  Toggle,
   errorsUnder,
   validate,
 } from '../../components/forms/fields';
@@ -1245,6 +1246,12 @@ function DungeonSettingsSections({
             />
           </Field>
         </div>
+        <Toggle
+          checked={s.enemyAbilities}
+          onChange={set('enemyAbilities')}
+          disabled={disabled}
+          label="Talents des adversaires : chacun a le premier talent de son espèce (le boss, celui de sa forme Méga), avec l’effet réglé dans la section Talents"
+        />
       </Section>
 
       <Section title="Donjons : attaque de chaque type">

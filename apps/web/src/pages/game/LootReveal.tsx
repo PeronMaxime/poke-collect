@@ -13,7 +13,13 @@ import {
   ShinyStar,
 } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, newInDexTracker, useInventory, usePokemon } from '../../lib/game';
+import {
+  PLAYER_STATE_KEYS,
+  newInDexTracker,
+  useInventory,
+  usePokemon,
+  utcOffsetMinutes,
+} from '../../lib/game';
 import { GAME_ERRORS, formatShinyRate, itemIcon, itemName, speciesName } from '../../lib/labels';
 import { NewbornActions } from './HatchReveal';
 
@@ -79,7 +85,10 @@ function RevealContent({
           : {}),
         berryItemId: e.berryItemId,
       };
-      return api<ExpeditionDto>('/api/expeditions', { method: 'POST', json: input });
+      return api<ExpeditionDto>('/api/expeditions', {
+        method: 'POST',
+        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
+      });
     },
     onSuccess: () => {
       onClose();

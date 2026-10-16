@@ -5,7 +5,7 @@ import {
   isMegaForm,
   isRegionalSpecies,
   megaCount,
-  pokemonPower,
+  memberPower,
 } from '@poke/game-core';
 import type { ExpeditionSite, GameContext } from '@poke/game-core';
 import type { PokemonDto, PokemonTagDto, PokemonTeamDto } from '@poke/shared';
@@ -241,7 +241,7 @@ export function useTeamPickerOver(
       return {
         p,
         species,
-        power: pokemonPower(species, p),
+        power: memberPower(ctx, p),
         affinity: species.types.some((t) => zone.affinityTypes.includes(t)),
       };
     })

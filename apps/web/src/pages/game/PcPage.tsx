@@ -5,16 +5,18 @@ import type { StatName } from '@poke/data';
 import {
   MAX_IV,
   MAX_LEVEL,
+  abilityEffectSummary,
   applyCandies,
   candiesToMaxLevel,
   computeStats,
+  effectiveAbility,
   expeditionPower,
   getNature,
   isKnockedOut,
   itemUseOptions,
   lineageId,
   megaOptions,
-  pokemonPower,
+  memberPower,
   transferCandies,
   xpForLevel,
 } from '@poke/game-core';
@@ -97,10 +99,7 @@ function duplicates(ctx: GameContext, list: readonly PokemonDto[]): string[] {
   const ids: string[] = [];
   for (const group of bySpecies.values()) {
     if (group.length < 2) continue;
-    const species = ctx.species(group[0]!.speciesId, group[0]!.formId)!;
-    const best = group.reduce((x, y) =>
-      pokemonPower(species, y) > pokemonPower(species, x) ? y : x,
-    );
+    const best = group.reduce((x, y) => (memberPower(ctx, y) > memberPower(ctx, x) ? y : x));
     for (const p of group)
       if (p !== best && canTransfer(p) && !p.isShiny && !p.megaStone && p.tagIds.length === 0)
         ids.push(p.id);
@@ -510,6 +509,7 @@ function PokemonDetail({
   });
   const species = ctx.species(p.speciesId, p.formId)!;
   const stats = computeStats(species, p);
+  const abilitySummary = abilityEffectSummary(ctx, effectiveAbility(ctx, p));
   const nature = getNature(p.nature);
   const levelXp = xpForLevel(species.growthRate, p.level);
   const nextXp = xpForLevel(species.growthRate, Math.min(MAX_LEVEL, p.level + 1));
@@ -737,9 +737,14 @@ function PokemonDetail({
                 )}
               </>
             )}
+            {abilitySummary && (
+              <span className="block text-xs text-emerald-700 dark:text-emerald-400">
+                {abilitySummary}
+              </span>
+            )}
           </dd>
           <dt className="text-slate-500">Puissance (PE)</dt>
-          <dd className="font-semibold">{expeditionPower(stats)}</dd>
+          <dd className="font-semibold">{memberPower(ctx, p)}</dd>
           <dt className="text-slate-500">Bonheur</dt>
           <dd>{p.happiness} / 255</dd>
           <dt className="text-slate-500">Origine</dt>

@@ -105,8 +105,9 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const daycareReady =
     (daycare.data?.eggs.filter((e) => Date.parse(e.hatchAt) <= now).length ?? 0) +
     (ctx && daycare.data
-      ? daycare.data.pensions.filter((p) => eggsLaid(ctx, new Date(p.startedAt), new Date(now)) > 0)
-          .length
+      ? daycare.data.pensions.filter(
+          (p) => eggsLaid(ctx, new Date(p.startedAt), new Date(now), p.eggMinutes) > 0,
+        ).length
       : 0);
 
   const fossilsReady =

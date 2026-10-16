@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Dungeon } from '@poke/content';
 import { typeEffectiveness, typeWeaknesses } from '@poke/data';
 import {
+  WEATHER_LABELS,
   checkDungeonTeam,
   computeStats,
   dungeonAttack,
@@ -15,7 +16,7 @@ import type { DungeonMove, DungeonTeamError, ExpeditionSite, GameContext } from 
 import type { DungeonRunDto, PokemonDto, StartDungeonInput } from '@poke/shared';
 import { Modal, PokemonSprite, ShinyStar, TypeBadge } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS } from '../../lib/game';
+import { PLAYER_STATE_KEYS, utcOffsetMinutes } from '../../lib/game';
 import {
   STAT_LABELS,
   errorText,
@@ -81,7 +82,10 @@ export function LaunchDungeonDialog({
 
   const start = useMutation({
     mutationFn: (input: StartDungeonInput) =>
-      api<DungeonRunDto>('/api/dungeons', { method: 'POST', json: input }),
+      api<DungeonRunDto>('/api/dungeons', {
+        method: 'POST',
+        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
+      }),
     onSuccess: () => {
       onClose();
       return Promise.all(
@@ -128,6 +132,7 @@ export function LaunchDungeonDialog({
             <DungeonDifficultyBadge ctx={ctx} dungeon={dungeon} />
             {dungeon.opponents.length + 1} combats ·{' '}
             {formatDuration(Math.ceil(dungeon.timeLimitSeconds / 60))} pour vaincre le boss
+            {dungeon.weather && ` · Météo : ${WEATHER_LABELS[dungeon.weather]}`}
           </p>
           <div className="mt-1 flex flex-wrap gap-1">
             {bossTypes.map((t) => (

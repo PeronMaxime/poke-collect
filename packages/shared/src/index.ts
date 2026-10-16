@@ -94,7 +94,18 @@ export interface PokemonDto {
   megaStone: string | null;
 }
 
-export type PokemonActivity = 'expedition' | 'battle' | 'daycare' | 'dungeon';
+export type PokemonActivity = 'expedition' | 'battle' | 'daycare' | 'dungeon' | 'assistant';
+
+// --- Assistants ------------------------------------------------------------------------
+
+/** Pokémon affecté à un bâtiment (`daycare`, `incubator`, `museum`) : son talent y agit. */
+export interface AssistantDto {
+  post: 'daycare' | 'incubator' | 'museum';
+  pokemonId: string;
+}
+
+export const assignAssistantInputSchema = z.object({ pokemonId: z.uuid() });
+export type AssignAssistantInput = z.infer<typeof assignAssistantInputSchema>;
 
 // --- Étiquettes (tags) -----------------------------------------------------------------
 
@@ -177,15 +188,18 @@ export interface InventoryEntryDto {
 
 // --- Évolutions -----------------------------------------------------------------------
 
+/** Décalage de l'heure locale du joueur par rapport à UTC, en minutes. */
+const utcOffsetSchema = z
+  .int()
+  .min(-14 * 60)
+  .max(14 * 60);
+
 export const evolveInputSchema = z.object({
   toSpeciesId: z.int().positive(),
   /** Forme d'arrivée (Raichu d'Alola) ; absente = première évolution vers l'espèce. */
   toFormId: z.int().positive().nullish(),
   /** Décalage de l'heure locale du joueur par rapport à UTC (évolutions de jour ou de nuit). */
-  utcOffsetMinutes: z
-    .int()
-    .min(-14 * 60)
-    .max(14 * 60),
+  utcOffsetMinutes: utcOffsetSchema,
 });
 export type EvolveInput = z.infer<typeof evolveInputSchema>;
 
@@ -381,6 +395,8 @@ export interface DaycareDto {
   eggSpeciesId: number | null;
   /** Forme des œufs pondus (régionale, héritée de la mère). */
   eggFormId: number | null;
+  /** Minutes entre deux œufs (talents des parents et de l'assistant compris). */
+  eggMinutes: number;
 }
 
 /** Un œuf ne révèle rien de son contenu avant l'éclosion, à part l'espèce. */
@@ -470,12 +486,15 @@ export const startExpeditionInputSchema = z.object({
   berryItemId: slugSchema.nullable(),
   /** Pokémon à tenter de capturer ; absent ou null = tous. */
   captureFilter: captureFilterSchema.nullable().optional(),
+  /** Heure locale du joueur (talents de jour ou de nuit). */
+  utcOffsetMinutes: utcOffsetSchema.optional(),
 });
 export type StartExpeditionInput = z.infer<typeof startExpeditionInputSchema>;
 
 /** Expédition légendaire d'une quête réclamée : l'équipe seulement, la Ball se choisit au retour. */
 export const startQuestExpeditionInputSchema = z.object({
   team: z.array(z.uuid()).min(1).max(6),
+  utcOffsetMinutes: utcOffsetSchema.optional(),
 });
 export type StartQuestExpeditionInput = z.infer<typeof startQuestExpeditionInputSchema>;
 
@@ -581,6 +600,8 @@ export interface ExpeditionTeamErrorBody {
 export const startBattleInputSchema = z.object({
   trainerId: slugSchema,
   team: z.array(z.uuid()).min(1).max(6),
+  /** Heure locale du joueur (talents de jour ou de nuit). */
+  utcOffsetMinutes: utcOffsetSchema.optional(),
 });
 export type StartBattleInput = z.infer<typeof startBattleInputSchema>;
 
@@ -644,6 +665,7 @@ export const startDungeonInputSchema = z
     dungeonId: slugSchema,
     team: z.array(z.uuid()).min(1).max(6),
     moves: z.array(dungeonMoveSchema).min(1).max(6),
+    utcOffsetMinutes: utcOffsetSchema.optional(),
   })
   .refine((i) => i.moves.length === i.team.length, {
     message: 'Une attaque par Pokémon',

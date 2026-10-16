@@ -302,6 +302,34 @@
       "when": 1792063869756,
       "tag": "0042_equipes_pokemon",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1792077875380,
+      "tag": "0043_talents",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1792079528792,
+      "tag": "0044_talents_modificateurs",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1792080437848,
+      "tag": "0045_assistants",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1792080812522,
+      "tag": "0046_meteo",
+      "breakpoints": true
     }
   ]
 }

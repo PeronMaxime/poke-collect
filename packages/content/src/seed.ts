@@ -425,6 +425,7 @@ export const seedContent: GameContentData = {
   },
   regions,
   speciesOverrides: [],
+  abilities: [],
   items: withSellPrices([
     {
       id: 'poke-ball',

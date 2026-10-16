@@ -2,7 +2,7 @@ import { and, eq, gt, inArray, isNull, sql } from 'drizzle-orm';
 import { playerProfiles, pokemon, trainerBattles, trainerProgress } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
-  battleDurationMinutes,
+  battleRealDurationMinutes,
   checkBattleTeam,
   playerBonuses,
   playerSlots,
@@ -18,7 +18,7 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
-import { newSeed, requireStartedProfile } from './expeditions';
+import { newSeed, requireStartedProfile, startHour } from './expeditions';
 import { addItems, assertAvailable, claimedRewards, playerProgress, toInstance } from './store';
 
 /** Combats de dresseurs : même schéma que les expéditions (lancer, attendre, réclamer). */
@@ -113,7 +113,8 @@ export async function startBattle(
 
     const byId = new Map(rows.map((r) => [r.id, r]));
     const team = input.team.map((id) => toInstance(byId.get(id)!));
-    const errors = checkBattleTeam(ctx, trainer, team);
+    const hour = startHour(now, input.utcOffsetMinutes);
+    const errors = checkBattleTeam(ctx, trainer, team, hour);
     if (errors.length > 0) throw new GameError(400, 'TEAM_INVALID', { errors });
 
     const [row] = await tx
@@ -125,8 +126,11 @@ export async function startBattle(
         team: input.team,
         contentVersionId: ctx.content.versionId,
         startedAt: now,
-        endsAt: new Date(now.getTime() + battleDurationMinutes(ctx, trainer) * 60_000),
+        endsAt: new Date(
+          now.getTime() + battleRealDurationMinutes(ctx, trainer, team, hour) * 60_000,
+        ),
         seed: newSeed(),
+        localHour: hour,
       })
       .returning();
     return row!;
@@ -207,6 +211,7 @@ export async function claimBattle(
       team,
       seed: found.seed,
       bonuses: playerBonuses(ctx, await claimedRewards(tx, userId)),
+      hour: found.localHour,
     });
     const win = result.outcome === 'win';
 
@@ -235,15 +240,20 @@ export async function claimBattle(
         },
       });
 
-    const koUntil = win ? null : new Date(now.getTime() + result.koMinutes * 60_000);
+    // Durée de K.O. propre à chaque Pokémon (talents) ; affichée : la plus longue.
+    const koUntilOf = (minutes: number) =>
+      win || minutes <= 0 ? null : new Date(now.getTime() + minutes * 60_000);
+    let koUntil: Date | null = null;
     for (const m of result.team) {
+      const until = koUntilOf(m.koMinutes ?? result.koMinutes);
+      if (until && (!koUntil || until > koUntil)) koUntil = until;
       await tx
         .update(pokemon)
         .set({
           xp: m.xpAfter,
           level: m.levelAfter,
           happiness: m.happinessAfter,
-          ...(koUntil && result.koMinutes > 0 && { koUntil }),
+          ...(until && { koUntil: until }),
         })
         .where(eq(pokemon.id, m.id));
     }
@@ -257,7 +267,7 @@ export async function claimBattle(
     const stored: StoredBattleResult = {
       ...result,
       badgeEarned,
-      koUntil: koUntil && result.koMinutes > 0 ? koUntil.toISOString() : null,
+      koUntil: koUntil ? koUntil.toISOString() : null,
     };
     const [claimed] = await tx
       .update(trainerBattles)

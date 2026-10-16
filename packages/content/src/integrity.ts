@@ -1,4 +1,10 @@
-import { getForm, getSpecies, natures, types as typeData } from '@poke/data';
+import {
+  abilities as abilityData,
+  getForm,
+  getSpecies,
+  natures,
+  types as typeData,
+} from '@poke/data';
 import { gameContentStructureSchema, lowestUnitPrice, unlockParts } from './schemas';
 import type {
   BaseUnlockCondition,
@@ -29,6 +35,7 @@ export type ContentEntityKind =
   | 'balance'
   | 'region'
   | 'speciesOverride'
+  | 'ability'
   | 'item'
   | 'lootTable'
   | 'zone'
@@ -50,6 +57,7 @@ export interface ContentIssue {
 
 const KNOWN_TYPES = new Set(typeData.map((t) => t.name));
 const KNOWN_NATURES = new Set(natures.map((n) => n.name));
+const KNOWN_ABILITIES = new Set(abilityData.map((a) => a.name));
 /** Types techniques des données, sans Pokémon (Stellaire, ???, Obscur). */
 export const NON_POKEMON_TYPES: ReadonlySet<string> = new Set(['stellar', 'unknown', 'shadow']);
 
@@ -98,6 +106,8 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     add('error', 'trainer', id, 'Identifiant de dresseur en double');
   for (const id of duplicates(content.speciesOverrides.map((o) => o.speciesId)))
     add('error', 'speciesOverride', id, 'Surcharge d’espèce en double');
+  for (const id of duplicates(content.abilities.map((a) => a.id)))
+    add('error', 'ability', id, 'Talent en double');
   for (const id of duplicates(content.shopCategories.map((c) => c.id)))
     add('error', 'shopCategory', id, 'Identifiant de catégorie de boutique en double');
   for (const id of duplicates(content.shopEntries.map((e) => e.id)))
@@ -314,6 +324,18 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   // Surcharges d'espèces
   for (const o of content.speciesOverrides) {
     if (!getSpecies(o.speciesId)) add('error', 'speciesOverride', o.speciesId, 'Espèce inconnue');
+  }
+
+  // Talents
+  for (const ability of content.abilities) {
+    if (!KNOWN_ABILITIES.has(ability.id)) add('error', 'ability', ability.id, 'Talent inconnu');
+    const usedTypes = ability.effects.flatMap((e) => [
+      ...(e.type === 'attractType' ? [e.pokemonType] : []),
+      ...e.conditions.flatMap((c) => ('types' in c ? c.types : [])),
+    ]);
+    for (const t of new Set(usedTypes)) {
+      if (!KNOWN_TYPES.has(t)) add('error', 'ability', ability.id, `Type « ${t} » inconnu`);
+    }
   }
 
   // Objets
@@ -759,6 +781,7 @@ export function findUsages(
       break;
     }
     case 'speciesOverride':
+    case 'ability':
     case 'shopEntry':
     case 'evolutionOverride':
     case 'dexMilestone':

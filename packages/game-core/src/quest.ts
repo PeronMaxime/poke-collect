@@ -1,13 +1,20 @@
 import type { Quest, QuestActionCondition, QuestCondition, QuestPokemon } from '@poke/content';
 import type { GameContext } from './context';
-import { applyTeamXp, captureProbability, countAffinity, defeatXp } from './expedition';
+import {
+  applyTeamXp,
+  captureProbability,
+  countAffinity,
+  defeatXp,
+  expeditionEnv,
+} from './expedition';
 import type { ExpeditionResult, ExpeditionSite, TeamMember } from './expedition';
-import { generatePokemon, pokemonPower, withPerfectIvs } from './pokemon';
+import { generatePokemon, withPerfectIvs } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import { isUnlocked } from './progress';
 import type { PlayerProgress } from './progress';
 import { NO_BONUSES } from './progression';
 import type { PlayerBonuses } from './progression';
+import { abilityBonuses, abilityHappiness, memberPower } from './abilities';
 import { createRng } from './rng';
 import type { Rng } from './rng';
 import { shinyProbability } from './shiny';
@@ -50,7 +57,7 @@ export function qualifyingMembers(
     const species = ctx.species(m.speciesId, m.formId);
     if (!species) return false;
     if (condition.memberType && !species.types.includes(condition.memberType)) return false;
-    return pokemonPower(species, m) >= condition.minMemberPower;
+    return memberPower(ctx, m) >= condition.minMemberPower;
   }).length;
 }
 
@@ -203,6 +210,8 @@ export interface QuestExpeditionInput extends QuestEncounterInput {
   ballItemId: string | null;
   berryItemId: string | null;
   bonuses?: PlayerBonuses;
+  /** Heure locale du joueur au départ (talents de jour ou de nuit). */
+  hour?: number | null;
 }
 
 /**
@@ -231,7 +240,8 @@ export function resolveQuestExpedition(
   const { target } = input;
   const species = ctx.species(target.speciesId, target.formId)!;
   const { pokemon: wild, shinyChance, rng } = questEncounter(ctx, input);
-  const bonuses = input.bonuses ?? NO_BONUSES;
+  const env = expeditionEnv(target.expedition, input.team, input.hour, 'quest');
+  const bonuses = abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES);
   const fled = input.ballItemId === null;
   const berry =
     !fled && input.berryItemId ? ctx.itemEffect(input.berryItemId, 'captureBoost') : undefined;
@@ -264,7 +274,12 @@ export function resolveQuestExpedition(
     loot: [],
     team: fled
       ? []
-      : applyTeamXp(ctx, input.team, xpPerMember, ctx.balance.xp.happinessPerExpedition),
+      : applyTeamXp(
+          ctx,
+          input.team,
+          xpPerMember,
+          abilityHappiness(ctx, env, ctx.balance.xp.happinessPerExpedition),
+        ),
     xpPerMember,
     pity: {},
     ballsUsed: fled ? 0 : 1,

@@ -19,7 +19,7 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
-import { newSeed, requireStartedProfile } from './expeditions';
+import { newSeed, requireStartedProfile, startHour } from './expeditions';
 import { addItems, assertAvailable, claimedRewards, playerProgress, toInstance } from './store';
 
 /**
@@ -151,7 +151,13 @@ export async function startDungeon(
     for (const m of team) {
       await tx.update(pokemon).set({ dungeonMove: m.move }).where(eq(pokemon.id, m.id));
     }
-    const setup = buildDungeonSetup(ctx, dungeon, team, newSeed());
+    const setup = buildDungeonSetup(
+      ctx,
+      dungeon,
+      team,
+      newSeed(),
+      startHour(now, input.utcOffsetMinutes),
+    );
     const [row] = await tx
       .insert(dungeonRuns)
       .values({
@@ -271,21 +277,25 @@ export async function claimDungeonRun(
       fledAtMs: found.fledAtMs,
       team,
       bonuses: playerBonuses(ctx, await claimedRewards(tx, userId)),
+      hour: found.setup.hour,
     });
     const win = result.outcome === 'win';
     const endedAt = new Date(found.startedAt.getTime() + result.endedAtMs);
-    const koUntil = new Date(endedAt.getTime() + result.koMinutes * 60_000);
     const knockedOut = new Set(result.knockedOut);
-    const applyKo = result.koMinutes > 0 && koUntil > now;
-
+    // Durée de K.O. propre à chaque Pokémon (talents) ; affichée : la plus longue.
+    let koUntil: Date | null = null;
     for (const m of result.team) {
+      const minutes = m.koMinutes ?? result.koMinutes;
+      const until = new Date(endedAt.getTime() + minutes * 60_000);
+      const ko = knockedOut.has(m.id) && minutes > 0 && until > now;
+      if (ko && (!koUntil || until > koUntil)) koUntil = until;
       await tx
         .update(pokemon)
         .set({
           xp: m.xpAfter,
           level: m.levelAfter,
           happiness: m.happinessAfter,
-          ...(applyKo && knockedOut.has(m.id) && { koUntil }),
+          ...(ko && { koUntil: until }),
         })
         .where(eq(pokemon.id, m.id));
     }
@@ -323,7 +333,7 @@ export async function claimDungeonRun(
 
     const stored: StoredDungeonResult = {
       ...result,
-      koUntil: applyKo && knockedOut.size > 0 ? koUntil.toISOString() : null,
+      koUntil: koUntil ? koUntil.toISOString() : null,
     };
     const [claimed] = await tx
       .update(dungeonRuns)

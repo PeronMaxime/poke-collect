@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { isKnockedOut, isRegionalSpecies, pokemonPower } from '@poke/game-core';
+import { isKnockedOut, isRegionalSpecies, memberPower } from '@poke/game-core';
 import type { GameContext, GameSpecies } from '@poke/game-core';
 import type { PokemonActivity, PokemonDto, PokemonTagDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar } from '../../components/ui';
@@ -43,6 +43,7 @@ const ACTIVITY_LABELS: Record<PokemonActivity, string> = {
   battle: 'Combat',
   daycare: 'Pension',
   dungeon: 'Donjon',
+  assistant: 'Assistant',
 };
 
 export interface PcEntry {
@@ -69,7 +70,7 @@ export function usePcBrowser(ctx: GameContext, pokemon: readonly PokemonDto[]) {
   const list: PcEntry[] = pokemon.map((p) => ({
     p,
     species: ctx.species(p.speciesId, p.formId),
-    power: pokemonPower(ctx.species(p.speciesId, p.formId)!, p),
+    power: memberPower(ctx, p),
     canEvolve: hasNewEvolution(p),
   }));
   const tab = currentRegionTab(ctx, progress, selectedRegion ?? ALL_TAB.id, [ALL_TAB]);

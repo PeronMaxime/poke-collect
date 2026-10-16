@@ -3,12 +3,17 @@ import type { ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Zone } from '@poke/content';
 import {
+  WEATHER_LABELS,
+  abilityMultiplier,
+  attractedTypes,
   captureProbability,
   chainPerfectIvs,
   checkTeam,
-  encounterCount,
   encounterProbabilities,
+  expeditionEnv,
+  expeditionPlan,
   lootProbabilities,
+  resolveWeather,
   nextChainPerfectIvThreshold,
   shinyProbability,
 } from '@poke/game-core';
@@ -16,7 +21,7 @@ import type { CaptureFilter, ExpeditionError, GameContext, TeamMember } from '@p
 import type { ExpeditionDto, StartExpeditionInput } from '@poke/shared';
 import { Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, useInventory, useShinyCharm } from '../../lib/game';
+import { PLAYER_STATE_KEYS, useInventory, useShinyCharm, utcOffsetMinutes } from '../../lib/game';
 import {
   GAME_ERRORS,
   formatDuration,
@@ -85,7 +90,10 @@ export function LaunchExpeditionDialog({
 
   const start = useMutation({
     mutationFn: (input: StartExpeditionInput) =>
-      api<ExpeditionDto>('/api/expeditions', { method: 'POST', json: input }),
+      api<ExpeditionDto>('/api/expeditions', {
+        method: 'POST',
+        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
+      }),
     onSuccess: () => {
       // Fermer avant le rechargement : l'équipe envoyée devient « occupée » et sortirait de la liste.
       onClose();
@@ -193,13 +201,17 @@ export function LaunchExpeditionForm({
   const [captureFilter, setCaptureFilter] = useState<CaptureFilter | null>(null);
   const selectedBall = ballId === undefined ? (balls[0]?.id ?? null) : ballId;
 
-  const check = checkTeam(ctx, zone, duration, members);
-  const encounters = encounterCount(ctx, duration);
+  // Talents de l'équipe : estimations à l'heure actuelle (celle du départ).
+  const env = expeditionEnv(zone, members, new Date().getHours());
+  const check = checkTeam(ctx, zone, duration, members, env.hour);
+  const plan = expeditionPlan(ctx, duration, env);
+  const weather = resolveWeather(ctx, env);
+  const { encounters } = plan;
   const maxBalls = selectedBall ? Math.min(encounters, owned(selectedBall)) : 0;
   const ballsTaken = Math.min(ballCount ?? maxBalls, maxBalls);
   const ballEffect = selectedBall ? ctx.itemEffect(selectedBall, 'ball') : undefined;
   const boost = berryId ? ctx.itemEffect(berryId, 'captureBoost')?.multiplier : undefined;
-  const possibleEncounters = encounterProbabilities(ctx, zone);
+  const possibleEncounters = encounterProbabilities(ctx, zone, undefined, attractedTypes(ctx, env));
   const zoneSpeciesIds = [...new Set(possibleEncounters.map((e) => e.speciesId))];
   const updateFilter = (patch: Partial<CaptureFilter>) =>
     setCaptureFilter((f) => ({ ...(f ?? NO_FILTER), ...patch }));
@@ -207,7 +219,9 @@ export function LaunchExpeditionForm({
     !captureFilter ||
     captureFilter.speciesIds.length === 0 ||
     captureFilter.speciesIds.includes(speciesId);
-  const loot = lootProbabilities(ctx, zone, duration).sort((a, b) => b.probability - a.probability);
+  const loot = lootProbabilities(ctx, zone, duration, env).sort(
+    (a, b) => b.probability - a.probability,
+  );
 
   return (
     <>
@@ -227,8 +241,17 @@ export function LaunchExpeditionForm({
         ))}
       </div>
       <p className="mt-1 text-xs text-slate-500">
+        {weather && `Météo : ${WEATHER_LABELS[weather]}. `}
+        {plan.realDurationMinutes !== duration &&
+          `Retour en ${formatDuration(plan.realDurationMinutes)} grâce aux talents. `}
         {encounters} rencontre{encounters > 1 ? 's' : ''} prévue{encounters > 1 ? 's' : ''}. Taux
-        shiny : {formatShinyRate(shinyProbability(ctx, { chain, charm }))}
+        shiny :{' '}
+        {formatShinyRate(
+          Math.min(
+            1,
+            shinyProbability(ctx, { chain, charm }) * abilityMultiplier(ctx, env, 'shinyChance'),
+          ),
+        )}
         {(chain > 0 || charm > 1) &&
           ` (${[chain > 0 && `chaîne ${chain}`, charm > 1 && 'Charme Chroma']
             .filter(Boolean)
@@ -428,6 +451,7 @@ export function LaunchExpeditionForm({
                 ballMultiplier: ballEffect.catchMultiplier,
                 boostMultiplier: boost,
                 affinityCount: check.affinityCount,
+                bonusMultiplier: abilityMultiplier(ctx, env, 'capture'),
               })
             : 0;
           return (

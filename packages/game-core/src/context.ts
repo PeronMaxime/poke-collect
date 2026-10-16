@@ -1,6 +1,7 @@
 import type {
   BalanceSettings,
   Dungeon,
+  GameAbility,
   GameContent,
   Item,
   ItemEffect,
@@ -57,6 +58,8 @@ export interface GameContext {
   shopEntry(id: string): ShopEntry | undefined;
   item(id: string): Item | undefined;
   lootTable(id: string): LootTable | undefined;
+  /** Effet en jeu d'un talent (nom PokéAPI) ; absent = aucun effet. */
+  ability(id: string): GameAbility | undefined;
   /** Espèce, éventuellement dans une forme donnée (ignorée si elle n'appartient pas à l'espèce). */
   species(id: number, formId?: number | null): GameSpecies | undefined;
   /** Premier effet du type demandé porté par l'objet. */
@@ -90,6 +93,7 @@ export function createGameContext(content: GameContent): GameContext {
   const trainersById = new Map(trainers.map((t) => [t.id, t]));
   const itemsById = new Map(content.items.map((i) => [i.id, i]));
   const lootById = new Map(content.lootTables.map((t) => [t.id, t]));
+  const abilitiesById = new Map(content.abilities.map((a) => [a.id, a]));
   const overrides = new Map(content.speciesOverrides.map((o) => [o.speciesId, o]));
   const speciesCache = new Map<string, GameSpecies>();
   const quests = [...content.quests].sort(byRegionThenOrder);
@@ -115,6 +119,7 @@ export function createGameContext(content: GameContent): GameContext {
     shopEntry: (id) => shopEntriesById.get(id),
     item: (id) => itemsById.get(id),
     lootTable: (id) => lootById.get(id),
+    ability: (id) => abilitiesById.get(id),
     species(id, formId) {
       const form = formId != null ? getForm(formId) : undefined;
       const key = form?.speciesId === id ? `${id}:${form.id}` : `${id}`;

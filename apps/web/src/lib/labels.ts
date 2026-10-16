@@ -246,7 +246,9 @@ export function formatCountdown(ms: number): string {
 
 export const GAME_ERRORS: Record<string, string> = {
   NO_FREE_SLOT: 'Tous tes emplacements sont occupés.',
-  POKEMON_BUSY: 'Un de ces Pokémon est déjà occupé (expédition, combat, donjon ou pension).',
+  POKEMON_BUSY:
+    'Un de ces Pokémon est déjà occupé (expédition, combat, donjon, pension ou assistant).',
+  NO_ASSISTANT: 'Aucun assistant à libérer.',
   ZONE_LOCKED: 'Cette zone n’est pas encore débloquée.',
   TEAM_INVALID: 'L’équipe ne remplit pas les conditions de la zone.',
   NOT_FINISHED: 'L’expédition n’est pas encore terminée.',

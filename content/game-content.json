@@ -184,7 +184,8 @@
           "name": "Casse-Brique",
           "power": 80
         }
-      }
+      },
+      "enemyAbilities": false
     },
     "evolution": {
       "tradeItemId": "linking-cord",
@@ -1323,6 +1324,7 @@
     }
   ],
   "speciesOverrides": [],
+  "abilities": [],
   "items": [
     {
       "id": "ability-capsule",

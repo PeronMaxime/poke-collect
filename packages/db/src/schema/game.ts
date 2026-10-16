@@ -17,6 +17,8 @@ import {
 } from 'drizzle-orm/pg-core';
 import { users } from './auth';
 import type {
+  AbilityHolder,
+  AssistantPost,
   CaptureFilter,
   DaycareParent,
   DungeonCommand,
@@ -88,6 +90,26 @@ export const pokemonTeams = pgTable(
   (t) => [index('pokemon_teams_owner').on(t.ownerId)],
 );
 
+/**
+ * Assistants : un Pokémon affecté à un bâtiment (Pension, couveuse, Musée) y apporte les effets
+ * de son talent. Il reste occupé tant qu'il y est affecté. Un assistant par bâtiment.
+ */
+export const assistants = pgTable(
+  'assistants',
+  {
+    ownerId: ownerId(),
+    post: text('post').$type<AssistantPost>().notNull(),
+    pokemonId: uuid('pokemon_id')
+      .notNull()
+      .references(() => pokemon.id, { onDelete: 'cascade' }),
+    assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.ownerId, t.post] }),
+    uniqueIndex('assistants_pokemon').on(t.pokemonId),
+  ],
+);
+
 export const pokemonOrigin = pgEnum('pokemon_origin', [
   'starter',
   'capture',
@@ -157,6 +179,8 @@ export const eggs = pgTable(
     parentBId: uuid('parent_b_id').references(() => pokemon.id, { onDelete: 'set null' }),
     parents: jsonb('parents').$type<[DaycareParent, DaycareParent]>().notNull(),
     motherIndex: smallint('mother_index').notNull().default(0),
+    /** Assistant de la Pension au ramassage (son talent agit à l'éclosion) ; null = aucun. */
+    helper: jsonb('helper').$type<AbilityHolder>(),
     contentVersionId: integer('content_version_id')
       .notNull()
       .references(() => contentVersions.id),
@@ -197,6 +221,8 @@ export const fossilRevivals = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     readyAt: timestamp('ready_at', { withTimezone: true }).notNull(),
     seed: bigint('seed', { mode: 'number' }).notNull(),
+    /** Assistant du Musée au dépôt (son talent agit à la restauration) ; null = aucun. */
+    helper: jsonb('helper').$type<AbilityHolder>(),
     /** Pokémon récupéré (null = encore au Musée). */
     revivedAt: timestamp('revived_at', { withTimezone: true }),
     /** Notification push « fossile restauré » envoyée. */
@@ -258,6 +284,8 @@ export const expeditions = pgTable(
     seed: bigint('seed', { mode: 'number' }).notNull(),
     /** Maillon de la chaîne de zone au départ (bonus shiny). */
     shinyChain: smallint('shiny_chain').notNull().default(0),
+    /** Heure locale du joueur au départ (talents de jour ou de nuit) ; null = inconnue. */
+    localHour: smallint('local_hour'),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
     /** Notification push « expédition terminée » envoyée. */
     notifiedAt: timestamp('notified_at', { withTimezone: true }),
@@ -293,6 +321,8 @@ export const trainerBattles = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
     seed: bigint('seed', { mode: 'number' }).notNull(),
+    /** Heure locale du joueur au départ (talents de jour ou de nuit) ; null = inconnue. */
+    localHour: smallint('local_hour'),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
     /** Notification push « combat terminé » envoyée. */
     notifiedAt: timestamp('notified_at', { withTimezone: true }),

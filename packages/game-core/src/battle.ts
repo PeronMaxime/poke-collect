@@ -10,6 +10,15 @@ import type { PlayerProgress } from './progress';
 import { isUnlocked, outOfRegionSpecies } from './progress';
 import { NO_BONUSES } from './progression';
 import type { PlayerBonuses } from './progression';
+import {
+  abilityBonuses,
+  abilityHappiness,
+  abilityMultiplier,
+  durationWithAbility,
+  scaledByAbility,
+  teamMemberPowers,
+} from './abilities';
+import type { AbilityEnv } from './abilities';
 import { createRng } from './rng';
 import { MAX_MEGAS_PER_TEAM, megaCount } from './mega';
 
@@ -81,6 +90,32 @@ export function trainerPower(ctx: GameContext, trainer: Pick<Trainer, 'team'>): 
 
 export const battleDurationMinutes = (ctx: GameContext, trainer: Trainer) =>
   trainer.durationMinutes ?? ctx.balance.battles.defaultDurationMinutes;
+
+/** Environnement des talents pour un combat contre `trainer`. */
+export function battleEnv(
+  ctx: GameContext,
+  trainer: Pick<Trainer, 'team'> & Partial<Pick<Trainer, 'zoneId'>>,
+  team: readonly PokemonInstance[],
+  hour?: number | null,
+): AbilityEnv {
+  const opponentTypes = [
+    ...new Set(trainer.team.flatMap((m) => ctx.species(m.speciesId, m.formId)?.types ?? [])),
+  ];
+  // Météo de la zone du dresseur (s'il en a une).
+  const weather = trainer.zoneId ? (ctx.zone(trainer.zoneId)?.weather ?? null) : null;
+  return { activity: 'battle', team, opponentTypes, hour, weather };
+}
+
+/** Durée réelle d'un combat, talents de l'équipe compris. */
+export function battleRealDurationMinutes(
+  ctx: GameContext,
+  trainer: Trainer,
+  team: readonly PokemonInstance[],
+  hour?: number | null,
+): number {
+  const env = battleEnv(ctx, trainer, team, hour);
+  return durationWithAbility(ctx, env, 'battleDuration', battleDurationMinutes(ctx, trainer));
+}
 export const battleCooldownMinutes = (ctx: GameContext, trainer: Trainer) =>
   trainer.cooldownMinutes ?? ctx.balance.battles.cooldownMinutes;
 export const battleKoMinutes = (ctx: GameContext, trainer: Trainer) =>
@@ -109,14 +144,17 @@ export function estimateBattle(
   ctx: GameContext,
   trainer: Trainer,
   team: readonly PokemonInstance[],
+  hour?: number | null,
 ): BattleEstimate {
-  const playerPower = team.reduce((sum, m) => {
-    const species = ctx.species(m.speciesId, m.formId);
-    return sum + (species ? pokemonPower(species, m) : 0);
-  }, 0);
-  const power = trainerPower(ctx, trainer);
+  const env = battleEnv(ctx, trainer, team, hour);
+  const playerPower = teamMemberPowers(ctx, team, env).reduce((sum, p) => sum + p, 0);
+  const power = Math.round(
+    trainerPower(ctx, trainer) * abilityMultiplier(ctx, env, 'opponentPower'),
+  );
   const advantage = typeAdvantage(ctx, team, trainer.team);
-  const effectivePower = playerPower * (1 + ctx.balance.battles.typeAdvantageWeight * advantage);
+  const weight =
+    ctx.balance.battles.typeAdvantageWeight * abilityMultiplier(ctx, env, 'typeAdvantage');
+  const effectivePower = playerPower * Math.max(0, 1 + weight * advantage);
   const ratio = power > 0 ? effectivePower / power : Infinity;
   return {
     playerPower,
@@ -147,6 +185,7 @@ export function checkBattleTeam(
   ctx: GameContext,
   trainer: Trainer,
   team: readonly TeamMember[],
+  hour?: number | null,
 ): BattleError[] {
   const errors: BattleError[] = [];
   const { rules } = trainer;
@@ -176,10 +215,10 @@ export function checkBattleTeam(
   if (used.length > 0) errors.push({ code: 'FORBIDDEN_TYPES', types: used });
   const missing = missingTypes(ctx, team, rules.requiredTypes);
   if (missing.length > 0) errors.push({ code: 'MISSING_TYPES', missing });
-  const power = team.reduce((sum, m) => {
-    const species = ctx.species(m.speciesId, m.formId);
-    return sum + (species ? pokemonPower(species, m) : 0);
-  }, 0);
+  const power = teamMemberPowers(ctx, team, battleEnv(ctx, trainer, team, hour)).reduce(
+    (sum, p) => sum + p,
+    0,
+  );
   if (power < rules.minPower)
     errors.push({ code: 'POWER_TOO_LOW', power, minPower: rules.minPower });
   return errors;
@@ -234,6 +273,8 @@ export interface BattleInput {
   seed: number;
   /** Bonus permanents du joueur (paliers, collections) ; aucun par défaut. */
   bonuses?: PlayerBonuses;
+  /** Heure locale du joueur au départ (talents de jour ou de nuit). */
+  hour?: number | null;
 }
 
 export interface BattleResult {
@@ -245,7 +286,7 @@ export interface BattleResult {
   loot: ItemStack[];
   team: TeamMemberResult[];
   xpPerMember: number;
-  /** Durée de K.O. infligée à l'équipe (0 en cas de victoire). */
+  /** Durée de K.O. de base infligée à l'équipe (0 en cas de victoire) ; voir `team[].koMinutes`. */
   koMinutes: number;
 }
 
@@ -257,15 +298,17 @@ export function resolveBattle(ctx: GameContext, input: BattleInput): BattleResul
   const { trainer, team } = input;
   const rules = ctx.balance.battles;
   const rng = createRng(input.seed);
-  const estimate = estimateBattle(ctx, trainer, team);
+  const env = battleEnv(ctx, trainer, team, input.hour);
+  const estimate = estimateBattle(ctx, trainer, team, input.hour);
   const roll = rng.next();
   const win = roll < estimate.winProbability;
+  const koMinutes = battleKoMinutes(ctx, trainer);
 
   const baseXp = trainer.team.reduce((sum, m) => {
     const species = ctx.species(m.speciesId, m.formId);
     return sum + (species ? defeatXp(species, m.level) : 0);
   }, 0);
-  const bonuses = input.bonuses ?? NO_BONUSES;
+  const bonuses = abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES);
   const xpPerMember = Math.floor(
     baseXp * rules.xpMultiplier * bonuses.xp * (win ? 1 : rules.lossXpFraction),
   );
@@ -273,7 +316,8 @@ export function resolveBattle(ctx: GameContext, input: BattleInput): BattleResul
   const loot = new Map<string, number>();
   const table = trainer.lootTableId ? ctx.lootTable(trainer.lootTableId) : undefined;
   if (win && table) {
-    for (let i = 0; i < trainer.lootRolls; i++) addStacks(loot, rollLoot(rng, table));
+    const rolls = scaledByAbility(ctx, env, 'lootRolls', trainer.lootRolls);
+    for (let i = 0; i < rolls; i++) addStacks(loot, rollLoot(rng, table));
   }
 
   return {
@@ -282,8 +326,16 @@ export function resolveBattle(ctx: GameContext, input: BattleInput): BattleResul
     roll,
     money: win ? Math.floor(trainer.money * bonuses.money) : 0,
     loot: [...loot].map(([itemId, quantity]) => ({ itemId, quantity })),
-    team: applyTeamXp(ctx, team, xpPerMember, win ? rules.happinessOnWin : rules.happinessOnLoss),
+    team: applyTeamXp(
+      ctx,
+      team,
+      xpPerMember,
+      abilityHappiness(ctx, env, win ? rules.happinessOnWin : rules.happinessOnLoss),
+    ).map((m, i) => ({
+      ...m,
+      koMinutes: win ? 0 : durationWithAbility(ctx, env, 'koDuration', koMinutes, i),
+    })),
     xpPerMember,
-    koMinutes: win ? 0 : battleKoMinutes(ctx, trainer),
+    koMinutes: win ? 0 : koMinutes,
   };
 }

@@ -14,6 +14,7 @@ import type {
   PlayerProgress,
 } from '@poke/game-core';
 import type {
+  AssistantDto,
   BattlesResponse,
   CandyDto,
   DungeonsResponse,
@@ -47,6 +48,7 @@ export const keys = {
   expeditions: ['expeditions'],
   daycare: ['daycare'],
   museum: ['museum'],
+  assistants: ['assistants'],
   candies: ['candies'],
   battles: ['battles'],
   dungeons: ['dungeons'],
@@ -66,6 +68,7 @@ export const PLAYER_STATE_KEYS = [
   keys.expeditions,
   keys.daycare,
   keys.museum,
+  keys.assistants,
   keys.candies,
   keys.battles,
   keys.dungeons,
@@ -126,6 +129,10 @@ export const useDaycare = () =>
 
 export const useMuseum = () =>
   useQuery({ queryKey: keys.museum, queryFn: () => api<MuseumResponse>('/api/museum') });
+
+/** Assistants de la Pension, de la couveuse et du Musée. */
+export const useAssistants = () =>
+  useQuery({ queryKey: keys.assistants, queryFn: () => api<AssistantDto[]>('/api/assistants') });
 
 export const useBattles = () =>
   useQuery({ queryKey: keys.battles, queryFn: () => api<BattlesResponse>('/api/battles') });

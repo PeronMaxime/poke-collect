@@ -68,6 +68,12 @@ export const SECTIONS: AdminSection[] = [
     phase: 8,
   },
   {
+    path: '/abilities',
+    label: 'Talents',
+    description: 'Talents, talents cachés, Pokémon qui les possèdent et effets.',
+    phase: 8,
+  },
+  {
     path: '/items',
     label: 'Objets',
     description: 'Catalogue PokéAPI et objets maison, effets.',

@@ -2,9 +2,12 @@ import { and, asc, count, eq, inArray, lte, sql } from 'drizzle-orm';
 import { candies, daycareSlots, eggs, pokemon, speciesCaptures } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
+  abilityHolder,
   applyCandies,
+  breedingEnv,
   candiesToMaxLevel,
   checkBreedingPair,
+  eggCycleMinutes,
   eggsLaid,
   hatchMinutes,
   lineageId,
@@ -12,9 +15,10 @@ import {
   resolveEgg,
   transferCandies,
 } from '@poke/game-core';
-import type { ClaimedRewards, DaycareParent, GameContext } from '@poke/game-core';
+import type { AbilityHolder, ClaimedRewards, DaycareParent, GameContext } from '@poke/game-core';
 import type { DaycareDto, DepositDaycareInput, EggDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
+import { assistantHolder } from './assistants';
 import { GameError, newSeed, requireStartedProfile } from './expeditions';
 import {
   addItems,
@@ -49,10 +53,21 @@ export function toEggDto(row: EggRow): EggDto {
   };
 }
 
+/** Minutes entre deux œufs d'une pension : talents des parents et de l'assistant de la Pension. */
+function slotEggMinutes(
+  ctx: GameContext,
+  parents: readonly (PokemonRow | undefined)[],
+  helper: AbilityHolder | null,
+): number {
+  const present = parents.filter((p) => p !== undefined).map((p) => abilityHolder(toInstance(p)));
+  return eggCycleMinutes(ctx, breedingEnv(present, helper));
+}
+
 export function toDaycareDto(
   ctx: GameContext,
   row: DaycareRow,
   parents: ReadonlyMap<string, PokemonRow>,
+  helper: AbilityHolder | null,
 ): DaycareDto {
   const a = row.parentAId ? parents.get(row.parentAId) : undefined;
   const b = row.parentBId ? parents.get(row.parentBId) : undefined;
@@ -66,6 +81,7 @@ export function toDaycareDto(
     startedAt: row.startedAt.toISOString(),
     eggSpeciesId: check?.ok ? check.eggSpeciesId : null,
     eggFormId: check?.ok ? check.eggFormId : null,
+    eggMinutes: slotEggMinutes(ctx, [a, b], helper),
   };
 }
 
@@ -181,20 +197,8 @@ async function collectInTx(
   userId: string,
   slot: DaycareRow,
   now: Date,
-): Promise<{ eggs: EggRow[]; lost: number }> {
-  const { eggMinutes, maxEggs } = ctx.balance.breeding;
-  const laid = eggsLaid(ctx, slot.startedAt, now);
-  const waiting = Math.min(laid, maxEggs);
-  const lost = laid - waiting;
-  if (waiting === 0) return { eggs: [], lost: 0 };
-
-  const [{ value: incubating } = { value: 0 }] = await tx
-    .select({ value: count() })
-    .from(eggs)
-    .where(and(eq(eggs.ownerId, userId), eq(eggs.hatched, false)));
-  const collected = Math.min(waiting, Math.max(0, maxEggs - incubating));
-  if (collected === 0) return { eggs: [], lost: 0 };
-
+): Promise<{ eggs: EggRow[]; lost: number; laid: number }> {
+  const { maxEggs } = ctx.balance.breeding;
   const parents = await ownedPokemon(
     tx,
     userId,
@@ -202,6 +206,20 @@ async function collectInTx(
   );
   const a = parents.find((p) => p.id === slot.parentAId);
   const b = parents.find((p) => p.id === slot.parentBId);
+  const helper = await assistantHolder(tx, userId, 'daycare');
+  const eggMinutes = slotEggMinutes(ctx, [a, b], helper);
+  const laid = eggsLaid(ctx, slot.startedAt, now, eggMinutes);
+  const waiting = Math.min(laid, maxEggs);
+  const lost = laid - waiting;
+  if (waiting === 0) return { eggs: [], lost: 0, laid };
+
+  const [{ value: incubating } = { value: 0 }] = await tx
+    .select({ value: count() })
+    .from(eggs)
+    .where(and(eq(eggs.ownerId, userId), eq(eggs.hatched, false)));
+  const collected = Math.min(waiting, Math.max(0, maxEggs - incubating));
+  if (collected === 0) return { eggs: [], lost: 0, laid };
+
   if (!a || !b) throw new GameError(409, 'PARENT_MISSING');
   const check = checkBreedingPair(ctx, a, b);
   if (!check.ok) throw new GameError(409, 'INCOMPATIBLE_PARENTS', { errors: check.errors });
@@ -225,7 +243,10 @@ async function collectInTx(
     snapshot(a, slot.heldItemAId),
     snapshot(b, slot.heldItemBId),
   ];
-  const hatchAt = new Date(now.getTime() + hatchMinutes(ctx, check.eggSpeciesId) * 60_000);
+  const incubator = await assistantHolder(tx, userId, 'incubator');
+  const hatchAt = new Date(
+    now.getTime() + hatchMinutes(ctx, check.eggSpeciesId, incubator) * 60_000,
+  );
   const created = await tx
     .insert(eggs)
     .values(
@@ -237,6 +258,7 @@ async function collectInTx(
         parentBId: b.id,
         parents: parentsSnapshot,
         motherIndex: check.motherIndex,
+        helper,
         contentVersionId: ctx.content.versionId,
         laidAt: now,
         hatchAt,
@@ -244,7 +266,7 @@ async function collectInTx(
       })),
     )
     .returning();
-  return { eggs: created, lost };
+  return { eggs: created, lost, laid };
 }
 
 async function requireSlot(db: Db, userId: string, slotIndex: number): Promise<DaycareRow> {
@@ -266,10 +288,10 @@ export async function collectEggs(
   const ctx = await content.get();
   return db.transaction(async (tx) => {
     const slot = await requireSlot(tx, userId, slotIndex);
-    if (eggsLaid(ctx, slot.startedAt, now) === 0) {
+    const result = await collectInTx(tx, ctx, userId, slot, now);
+    if (result.laid === 0) {
       throw new GameError(409, 'NO_EGG_READY');
     }
-    const result = await collectInTx(tx, ctx, userId, slot, now);
     if (result.eggs.length === 0) throw new GameError(409, 'INCUBATOR_FULL');
     return result;
   });
@@ -344,6 +366,7 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
         parents: egg.parents,
         motherIndex: egg.motherIndex === 1 ? 1 : 0,
         shinyCharm: charm,
+        helper: egg.helper,
       });
       const region = ctx.regions.find((r) => r.speciesIds.includes(child.speciesId));
       const [row] = await insertPokemon(tx, userId, [child], {

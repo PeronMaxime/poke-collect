@@ -18,6 +18,7 @@ const ACTION_LABELS: Record<string, string> = {
 const ENTITY_LABELS: Record<string, string> = {
   region: 'région',
   species_override: 'surcharge d’espèce',
+  ability: 'talent',
   item: 'objet',
   loot_table: 'table de butin',
   zone: 'zone',

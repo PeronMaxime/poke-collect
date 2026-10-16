@@ -2,19 +2,25 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Trainer } from '@poke/content';
 import {
-  battleDurationMinutes,
+  battleRealDurationMinutes,
   battleKoMinutes,
   checkBattleTeam,
   estimateBattle,
   isRegionalSpecies,
-  pokemonPower,
+  memberPower,
 } from '@poke/game-core';
 import type { BattleError, GameContext } from '@poke/game-core';
 import type { BattleDto, PokemonDto, StartBattleInput } from '@poke/shared';
 import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { Modal, PokemonSprite, ShinyStar, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, isUsable, usePokemon, useTeams } from '../../lib/game';
+import {
+  PLAYER_STATE_KEYS,
+  isUsable,
+  usePokemon,
+  useTeams,
+  utcOffsetMinutes,
+} from '../../lib/game';
 import { errorText, formatDuration, formatMoney, typeLabel } from '../../lib/labels';
 import { TrainerSprite } from './BattlesPage';
 import { pillClass } from './LaunchExpeditionDialog';
@@ -107,7 +113,10 @@ export function LaunchBattleDialog({
 
   const start = useMutation({
     mutationFn: (input: StartBattleInput) =>
-      api<BattleDto>('/api/battles', { method: 'POST', json: input }),
+      api<BattleDto>('/api/battles', {
+        method: 'POST',
+        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
+      }),
     onSuccess: () => {
       onClose();
       return Promise.all(
@@ -124,7 +133,7 @@ export function LaunchBattleDialog({
   const available = usablePokemon
     .map((p) => {
       const species = ctx.species(p.speciesId, p.formId)!;
-      return { p, species, power: pokemonPower(species, p) };
+      return { p, species, power: memberPower(ctx, p) };
     })
     // Les membres déjà choisis restent visibles, quels que soient les filtres.
     .filter(
@@ -142,11 +151,12 @@ export function LaunchBattleDialog({
     );
   const members = team.flatMap((id) => available.find((a) => a.p.id === id)?.p ?? []);
   const maxSize = trainer.rules.teamSize ?? ctx.balance.battles.maxTeamSize;
-  const errors = checkBattleTeam(ctx, trainer, members);
-  const estimate = estimateBattle(ctx, trainer, members);
+  const hour = new Date().getHours();
+  const errors = checkBattleTeam(ctx, trainer, members, hour);
+  const estimate = estimateBattle(ctx, trainer, members, hour);
   const advantage = advantageText(estimate.advantage);
   const ko = battleKoMinutes(ctx, trainer);
-  const duration = battleDurationMinutes(ctx, trainer);
+  const duration = battleRealDurationMinutes(ctx, trainer, members, hour);
 
   function toggle(p: PokemonDto) {
     if (megaLocked(p, members)) return;

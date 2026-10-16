@@ -24,6 +24,7 @@ import {
   TypeMultiSelect,
   TypeSelect,
   UnlockEditor,
+  WeatherSelect,
 } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
 
@@ -281,6 +282,19 @@ function ZoneForm({ value: z, onChange, errors, isNew, editable, working }: Enti
           errors={errors}
           disabled={disabled}
         />
+      </Section>
+
+      <Section title="Météo">
+        <Field
+          label="Météo de la zone"
+          hint="Pour les talents qui en dépendent (Chlorophylle, Glissade…) et les dresseurs de la zone."
+        >
+          <WeatherSelect
+            value={z.weather}
+            disabled={disabled}
+            onChange={(v) => set('weather', v ?? undefined)}
+          />
+        </Field>
       </Section>
 
       <Section title="Butin">
