@@ -231,7 +231,8 @@ export function DungeonCombat({
   const { setup } = run;
   const startedAt = Date.parse(run.startedAt);
   // Changement demandé, en attente de la réponse du serveur (affiché tout de suite). `base` :
-  // nombre de commandes connues à la demande, pour l'oublier dès que le cache contient la réponse.
+  // nombre de commandes connues à la demande, pour l'ignorer dès que le cache contient la réponse
+  // (pas effacé à la réponse, sinon il disparaîtrait une image avant que le cache ne soit diffusé).
   const [pending, setPending] = useState<{ atMs: number; member: number; base: number } | null>(
     null,
   );
@@ -248,12 +249,6 @@ export function DungeonCombat({
         : run.commands,
     [run.commands, pending, awaiting],
   );
-  // Le cache contient la réponse : le changement en attente n'a plus lieu d'être. Il n'est pas
-  // effacé dès la réponse, sinon il disparaîtrait une image avant que le cache ne soit diffusé.
-  useEffect(() => {
-    if (pending && !awaiting) setPending(null);
-  }, [pending, awaiting]);
-
   const live = simulateDungeon(setup, commands, run.fledAtMs, elapsed);
   const shown = simulateDungeon(setup, commands, run.fledAtMs, displayMs).state;
   const outcome = live.state.outcome;
@@ -333,7 +328,7 @@ export function DungeonCombat({
   const timeLeft = setup.timeLimitMs - displayMs;
 
   function send(member: number) {
-    if (outcome !== null || pending || member === shown.active) return;
+    if (outcome !== null || awaiting || member === shown.active) return;
     if (shown.hp[member] === 0) return;
     // Daté à l'instant affiché (pas à l'instant réel, en avance de `TRAVEL_MS`) : le Pokémon
     // entre aussitôt, et le joueur agit sur ce qu'il voit. Le serveur tolère ce léger retard.
