@@ -3,6 +3,7 @@ import type { LeaderboardEntryDto, LeaderboardKind } from '@poke/shared';
 import { PokemonSprite } from '../../components/ui';
 import { useLeaderboard } from '../../lib/game';
 import { formatMoney } from '../../lib/labels';
+import { trainerLink } from './TrainerCardPage';
 
 const BOARDS: { id: LeaderboardKind; label: string; unit: string; hint: string }[] = [
   {
@@ -131,7 +132,13 @@ function Row({ entry, format }: { entry: LeaderboardEntryDto; format: (value: nu
           {entry.starterSpeciesId !== null && (
             <PokemonSprite speciesId={entry.starterSpeciesId} size={32} />
           )}
-          <span className="truncate">{entry.trainerName}</span>
+          <a
+            href={entry.isMe ? '#trainer' : trainerLink(entry.trainerName)}
+            className="truncate hover:text-brand-600 hover:underline dark:hover:text-brand-500"
+            title="Voir sa fiche dresseur"
+          >
+            {entry.trainerName}
+          </a>
           {entry.isMe && <span className="text-xs font-normal text-slate-500">(vous)</span>}
         </span>
       </td>

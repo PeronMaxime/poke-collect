@@ -247,19 +247,36 @@ export function attackIntervalMs(
   );
 }
 
+/** Multiplicateur d'une immunité en donjon : les dégâts sont divisés par 4 au lieu d'être annulés. */
+export const DUNGEON_IMMUNITY_MULTIPLIER = 0.25;
+
+/** Efficacité d'un type en donjon : comme la table des types, mais chaque immunité vaut ×¼. */
+export function dungeonTypeEffectiveness(
+  attackType: string,
+  defenderTypes: readonly string[],
+): number {
+  return defenderTypes.reduce((m, t) => {
+    const e = typeEffectiveness(attackType, [t]);
+    return m * (e === 0 ? DUNGEON_IMMUNITY_MULTIPLIER : e);
+  }, 1);
+}
+
 /** Type d'attaque d'un combattant contre un défenseur (adversaire : le plus efficace, le premier à égalité). */
 export function attackTypeAgainst(attacker: DungeonFighter, defender: DungeonFighter): string {
   if (attacker.attackType) return attacker.attackType;
   let best = attacker.types[0] ?? 'normal';
   for (const t of attacker.types) {
-    if (typeEffectiveness(t, defender.types) > typeEffectiveness(best, defender.types)) best = t;
+    if (
+      dungeonTypeEffectiveness(t, defender.types) > dungeonTypeEffectiveness(best, defender.types)
+    )
+      best = t;
   }
   return best;
 }
 
 /**
  * Dégâts d'une attaque : ((2 × niveau / 5 + 2) × puissance × Att / Déf / 50 + 2) × STAB
- * × efficacité × aléa × multiplicateur ; au moins 1 sauf immunité.
+ * × efficacité × aléa × multiplicateur ; au moins 1 (une immunité divise les dégâts par 4).
  */
 export function attackDamage(
   settings: DungeonCombatSettings,
@@ -274,8 +291,7 @@ export function attackDamage(
   const { power } = dungeonAttack(settings, attackType);
   const base = (((2 * attacker.level) / 5 + 2) * power * (attack / defense)) / 50 + 2;
   const stab = attacker.types.includes(attackType) ? settings.stabMultiplier : 1;
-  const effectiveness = typeEffectiveness(attackType, defender.types);
-  if (effectiveness === 0) return { damage: 0, effectiveness };
+  const effectiveness = dungeonTypeEffectiveness(attackType, defender.types);
   const random = settings.minDamageRoll + (1 - settings.minDamageRoll) * roll;
   const damage = Math.floor(base * stab * effectiveness * random * settings.damageMultiplier);
   return { damage: Math.max(1, damage), effectiveness };

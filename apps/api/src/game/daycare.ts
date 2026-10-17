@@ -7,6 +7,7 @@ import {
   checkBreedingPair,
   eggsLaid,
   hatchMinutes,
+  isTransferableSpecies,
   lineageId,
   playerSlots,
   resolveEgg,
@@ -380,8 +381,8 @@ async function addCandies(db: Db, ownerId: string, gained: ReadonlyMap<number, n
 }
 
 /**
- * Transfère des Pokémon contre des Bonbons de lignée. Refusé pour un favori, un Pokémon
- * occupé, ou s'il ne restait plus aucun Pokémon au joueur.
+ * Transfère des Pokémon contre des Bonbons de lignée. Refusé pour un favori, un légendaire ou
+ * un fabuleux, un Pokémon occupé, ou s'il ne restait plus aucun Pokémon au joueur.
  */
 export async function transferPokemon(
   db: Db,
@@ -396,6 +397,9 @@ export async function transferPokemon(
     const rows = await ownedPokemon(tx, userId, unique);
     if (rows.length !== unique.length) throw new GameError(404, 'POKEMON_NOT_FOUND');
     if (rows.some((r) => r.locked)) throw new GameError(409, 'POKEMON_LOCKED');
+    if (rows.some((r) => !isTransferableSpecies(ctx, r.speciesId))) {
+      throw new GameError(409, 'POKEMON_LEGENDARY');
+    }
     const busy = await pokemonActivities(tx, userId);
     if (rows.some((r) => busy.has(r.id))) throw new GameError(409, 'POKEMON_BUSY');
     const [{ value: owned } = { value: 0 }] = await tx

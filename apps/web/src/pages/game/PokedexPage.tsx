@@ -7,7 +7,8 @@ import {
   isZoneUnlocked,
   milestoneState,
 } from '@poke/game-core';
-import type { GameContext } from '@poke/game-core';
+import type { DexCatches, GameContext, PlayerProgress } from '@poke/game-core';
+import type { PokedexEntryDto, PokedexFormEntryDto } from '@poke/shared';
 import { PokemonSprite, ProgressBar, ShinyStar, TypeBadge } from '../../components/ui';
 import {
   useClaimedRewards,
@@ -86,20 +87,54 @@ export function PokedexPage({ ctx }: { ctx: GameContext }) {
   );
 }
 
-/** Pokédex normal, ou Pokédex shiny (espèces capturées en version shiny). */
-function DexView({ ctx }: { ctx: GameContext }) {
+/** Pokédex d'un autre dresseur, affiché en lecture seule. */
+export interface ForeignDex {
+  entries: PokedexEntryDto[];
+  forms: PokedexFormEntryDto[];
+  /** Son avancement (régions débloquées). */
+  progress: PlayerProgress;
+}
+
+/**
+ * Pokédex normal, ou Pokédex shiny (espèces capturées en version shiny) ; celui d'un autre
+ * dresseur avec `foreign`.
+ */
+export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignDex }) {
   const pokedex = usePokedex();
-  const catches = useDexCatches();
+  const ownCatches = useDexCatches();
   const charm = useShinyCharm(ctx);
-  const [savedRegion, setRegionId] = useSavedRegionTab('pokedex');
+  const [savedRegion, setRegionId] = useSavedRegionTab(foreign ? 'pokedex-other' : 'pokedex');
   const [filter, setFilter] = useState<Filter>('all');
   const [shiny, setShiny] = useState(false);
   const [selected, setSelected] = useState<DexSlot | null>(null);
   const formsDex = usePokedexForms();
-  const entries = new Map(pokedex.data?.map((e) => [e.speciesId, e]));
-  const formEntries = new Map(formsDex.data?.map((e) => [e.formId, e]));
-  const playerProgress = usePlayerProgress();
-  const region = ctx.region(currentRegionTab(ctx, playerProgress, savedRegion));
+  const entryList = foreign?.entries ?? pokedex.data;
+  const entries = new Map(entryList?.map((e) => [e.speciesId, e]));
+  const formEntries = new Map((foreign?.forms ?? formsDex.data)?.map((e) => [e.formId, e]));
+  const catches: Required<DexCatches> = foreign
+    ? {
+        caughtSpeciesIds: new Set(entryList?.filter((e) => e.caught).map((e) => e.speciesId)),
+        caughtShinySpeciesIds: new Set(
+          entryList?.filter((e) => e.caughtShiny).map((e) => e.speciesId),
+        ),
+      }
+    : ownCatches;
+  const ownProgress = usePlayerProgress();
+  const playerProgress = foreign?.progress ?? ownProgress;
+  // Pokédex d'un autre dresseur : ses régions débloquées, et toute région où il a déjà vu une
+  // espèce (Pokémon reçus avant d'avoir débloqué la région, par exemple).
+  const foreignRegions = foreign
+    ? ctx.regions.filter(
+        (r) =>
+          isUnlocked(ctx, r.unlock, foreign.progress) ||
+          r.speciesIds.some((id) => entries.get(id)?.seen),
+      )
+    : undefined;
+  const region = ctx.region(
+    foreignRegions
+      ? ((foreignRegions.find((r) => r.id === savedRegion) ?? foreignRegions.at(-1))?.id ?? '')
+      : currentRegionTab(ctx, playerProgress, savedRegion),
+  );
   if (!region) return <p className="text-slate-500">Aucune région configurée.</p>;
 
   const progress = dexProgress(ctx, region.id, catches, shiny);
@@ -175,7 +210,13 @@ function DexView({ ctx }: { ctx: GameContext }) {
 
   return (
     <div className="space-y-4">
-      <RegionTabs ctx={ctx} progress={playerProgress} selected={region.id} onSelect={setRegionId} />
+      <RegionTabs
+        ctx={ctx}
+        progress={playerProgress}
+        selected={region.id}
+        onSelect={setRegionId}
+        regions={foreignRegions}
+      />
       <div className="card p-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Pokédex de {region.name}</h2>
@@ -185,7 +226,7 @@ function DexView({ ctx }: { ctx: GameContext }) {
           </p>
         </div>
         <ProgressBar className="mt-3" value={progress.percent / 100} />
-        {shiny && (
+        {shiny && !foreign && (
           <p className="mt-2 text-xs text-slate-500">
             Taux shiny de base : {formatShinyRate(1 / ctx.balance.shiny.baseRateDenominator)}
             {charm > 1 && ` · Charme Chroma : × ${charm}`}. Relancer une zone de suite allonge la
@@ -271,37 +312,40 @@ function DexView({ ctx }: { ctx: GameContext }) {
                   : 'Forme pas encore capturée'}
               {detailState.caughtShiny && ' · version shiny obtenue ★'}
             </p>
-            <p className="mt-1">
-              <span className="text-slate-500">Expéditions : </span>
-              {detailZones.length === 0
-                ? allDetailZones.length > 0
-                  ? 'dans une région pas encore débloquée'
-                  : 'aucune'
-                : detailZones.map((zone, i) => {
-                    const unlocked = isZoneUnlocked(ctx, zone, playerProgress);
-                    return (
-                      <span key={zone.id}>
-                        {i > 0 && ', '}
-                        {unlocked ? (
-                          <a
-                            href={zoneLink(zone.id)}
-                            className="font-medium text-brand-600 hover:underline dark:text-brand-500"
-                            title="Envoyer une équipe dans cette zone"
-                          >
-                            {zone.name}
-                          </a>
-                        ) : (
-                          <span
-                            className="text-slate-400"
-                            title={unlockConditionText(ctx, zone.unlock) ?? 'Zone verrouillée'}
-                          >
-                            🔒 {zone.name}
-                          </span>
-                        )}
-                      </span>
-                    );
-                  })}
-            </p>
+            {/* Zones d'expédition : seulement dans son propre Pokédex (liens de départ). */}
+            {!foreign && (
+              <p className="mt-1">
+                <span className="text-slate-500">Expéditions : </span>
+                {detailZones.length === 0
+                  ? allDetailZones.length > 0
+                    ? 'dans une région pas encore débloquée'
+                    : 'aucune'
+                  : detailZones.map((zone, i) => {
+                      const unlocked = isZoneUnlocked(ctx, zone, playerProgress);
+                      return (
+                        <span key={zone.id}>
+                          {i > 0 && ', '}
+                          {unlocked ? (
+                            <a
+                              href={zoneLink(zone.id)}
+                              className="font-medium text-brand-600 hover:underline dark:text-brand-500"
+                              title="Envoyer une équipe dans cette zone"
+                            >
+                              {zone.name}
+                            </a>
+                          ) : (
+                            <span
+                              className="text-slate-400"
+                              title={unlockConditionText(ctx, zone.unlock) ?? 'Zone verrouillée'}
+                            >
+                              🔒 {zone.name}
+                            </span>
+                          )}
+                        </span>
+                      );
+                    })}
+              </p>
+            )}
           </div>
           <button
             className="text-slate-400 hover:text-slate-600"

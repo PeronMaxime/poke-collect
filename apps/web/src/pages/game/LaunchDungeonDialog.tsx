@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Dungeon } from '@poke/content';
-import { STAT_NAMES, typeEffectiveness, typeWeaknesses, types } from '@poke/data';
+import { STAT_NAMES, typeWeaknesses, types } from '@poke/data';
 import {
   checkDungeonTeam,
   computeStats,
@@ -10,6 +10,7 @@ import {
   dungeonEnemies,
   dungeonKoMinutes,
   dungeonMaxXp,
+  dungeonTypeEffectiveness,
   effectiveDungeonMove,
   pokemonPower,
 } from '@poke/game-core';
@@ -55,10 +56,12 @@ function ruleText(e: DungeonTeamError): string {
   }
 }
 
-/** Multiplicateur lisible (×2, ×½, ×0). */
+/** Multiplicateur lisible (×2, ×½, ×¼, ×⅛…). */
 function effectivenessLabel(e: number): string {
   if (e === 0.5) return '×½';
   if (e === 0.25) return '×¼';
+  if (e === 0.125) return '×⅛';
+  if (e < 0.125) return `×1/${Math.round(1 / e)}`;
   return `×${e}`;
 }
 
@@ -68,11 +71,11 @@ const effectivenessClass = (e: number) =>
 /** Types techniques des données, qui ne sont pas des types d'attaque. */
 const NON_POKEMON_TYPES = new Set(['stellar', 'unknown', 'shadow']);
 
-/** Types d'attaque regroupés par efficacité contre le boss (×4, ×2, ×½, ×¼, ×0). */
+/** Types d'attaque regroupés par efficacité contre le boss (×4, ×2, ×½, ×¼…, une immunité comptant ×¼). */
 function matchups(bossTypes: readonly string[]) {
   const byFactor = new Map<number, string[]>();
   for (const { name } of types) {
-    const e = typeEffectiveness(name, bossTypes);
+    const e = dungeonTypeEffectiveness(name, bossTypes);
     if (e !== 1 && !NON_POKEMON_TYPES.has(name)) {
       byFactor.set(e, [...(byFactor.get(e) ?? []), name]);
     }
@@ -288,7 +291,7 @@ export function LaunchDungeonDialog({
                   </span>
                   <span className="flex flex-wrap items-center gap-1">
                     {species.types.map((t) => {
-                      const e = bossTypes.length ? typeEffectiveness(t, bossTypes) : 1;
+                      const e = bossTypes.length ? dungeonTypeEffectiveness(t, bossTypes) : 1;
                       return (
                         <button
                           key={t}

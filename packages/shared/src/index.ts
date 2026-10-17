@@ -257,6 +257,65 @@ export interface TrainerCardResponse {
   dungeonsCleared: number;
   /** Méga-Gemmes différentes possédées (sac ou tenues par un Pokémon). */
   megaStonesOwned: number;
+  /** Pokémon mis en avant, dans l'ordre choisi (les Pokémon transférés en sont retirés). */
+  featured: FeaturedPokemonDto[];
+}
+
+export const FEATURED_POKEMON_MAX = 6;
+
+export const featuredPokemonInputSchema = z.object({
+  pokemonIds: z
+    .array(z.uuid())
+    .max(FEATURED_POKEMON_MAX)
+    .refine((ids) => new Set(ids).size === ids.length, 'Pokémon en double'),
+});
+export type FeaturedPokemonInput = z.infer<typeof featuredPokemonInputSchema>;
+
+/** Pokémon du PC mis en avant sur la Fiche Dresseur (visible des autres joueurs). */
+export interface FeaturedPokemonDto {
+  id: string;
+  speciesId: number;
+  formId: number | null;
+  level: number;
+  isShiny: boolean;
+  gender: Gender;
+  nature: string;
+  ability: string;
+  ivs: Stats;
+  caughtAt: string;
+}
+
+/** Résultat de la recherche d'un dresseur par son nom. */
+export interface TrainerSearchResultDto {
+  trainerName: string;
+  starterSpeciesId: number | null;
+}
+
+export const trainerSearchQuerySchema = z.object({ q: z.string().trim().min(1).max(16) });
+
+/** Fiche Dresseur d'un joueur (la sienne ou celle d'un autre). */
+export interface TrainerProfileResponse {
+  trainerName: string;
+  starterSpeciesId: number | null;
+  createdAt: string;
+  currency: number;
+  isMe: boolean;
+  /** Avancement, pour les badges et les régions débloquées. */
+  progress: {
+    caughtSpeciesIds: number[];
+    caughtShinySpeciesIds: number[];
+    defeatedTrainerIds: string[];
+    eggsHatched: number;
+    /** Étapes validées de chaque quête commencée. */
+    questSteps: Record<string, number>;
+  };
+  card: TrainerCardResponse;
+}
+
+/** Pokédex d'un autre joueur (lecture seule). */
+export interface TrainerPokedexResponse {
+  entries: PokedexEntryDto[];
+  forms: PokedexFormEntryDto[];
 }
 
 // --- Classement ---------------------------------------------------------------------------
@@ -674,6 +733,8 @@ export interface DungeonRunDto {
   startedAt: string;
   endsAt: string;
   claimedAt: string | null;
+  /** Le joueur a fermé la fenêtre du résultat (sur n'importe quel appareil). */
+  resultSeenAt: string | null;
   outcome: DungeonOutcome | null;
   result: StoredDungeonResult | null;
 }

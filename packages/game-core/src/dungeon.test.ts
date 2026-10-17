@@ -143,7 +143,14 @@ describe('attaques', () => {
     expect(strong.effectiveness).toBe(2);
     expect(weak.effectiveness).toBe(0.5);
     expect(strong.damage).toBeGreaterThan(weak.damage * 3);
-    expect(attackDamage(s, fighter(), ghost, 'normal', 1)).toEqual({ damage: 0, effectiveness: 0 });
+    // Une immunité divise les dégâts par 4 au lieu de les annuler.
+    const immune = attackDamage(s, fighter(), ghost, 'normal', 1);
+    const neutral = attackDamage(s, fighter(), fighter(), 'normal', 1);
+    expect(immune.effectiveness).toBe(0.25);
+    expect(immune.damage).toBe(Math.max(1, Math.floor(neutral.damage / 4)));
+    expect(
+      attackDamage(s, fighter(), fighter({ types: ['ghost', 'rock'] }), 'normal', 1).effectiveness,
+    ).toBe(0.125);
     // Sans STAB, moins de dégâts.
     const noStab = attackDamage(s, fighter({ types: ['fire'] }), fighter(), 'water', 1);
     const stab = attackDamage(s, water, fighter(), 'water', 1);

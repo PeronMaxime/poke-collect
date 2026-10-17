@@ -33,6 +33,9 @@ import type {
   QuestsResponse,
   ShopResponse,
   TrainerCardResponse,
+  TrainerPokedexResponse,
+  TrainerProfileResponse,
+  TrainerSearchResultDto,
 } from '@poke/shared';
 import { api } from './api';
 
@@ -154,6 +157,31 @@ export const useLeaderboard = (kind: LeaderboardKind) =>
     queryKey: ['leaderboard', kind],
     queryFn: () => api<LeaderboardResponse>(`/api/leaderboard/${kind}`),
     staleTime: 60_000,
+  });
+
+/** Fiche Dresseur d'un joueur, retrouvé par son nom. */
+export const useTrainerProfile = (name: string) =>
+  useQuery({
+    queryKey: ['trainers', name.toLowerCase()],
+    queryFn: () => api<TrainerProfileResponse>(`/api/trainers/${encodeURIComponent(name)}`),
+    staleTime: 60_000,
+  });
+
+/** Pokédex d'un autre joueur (lecture seule). */
+export const useTrainerPokedex = (name: string) =>
+  useQuery({
+    queryKey: ['trainers', name.toLowerCase(), 'pokedex'],
+    queryFn: () => api<TrainerPokedexResponse>(`/api/trainers/${encodeURIComponent(name)}/pokedex`),
+    staleTime: 60_000,
+  });
+
+/** Dresseurs dont le nom contient la recherche. */
+export const useTrainerSearch = (query: string) =>
+  useQuery({
+    queryKey: ['trainers', 'search', query.toLowerCase()],
+    queryFn: () => api<TrainerSearchResultDto[]>(`/api/trainers?q=${encodeURIComponent(query)}`),
+    enabled: query.length > 0,
+    staleTime: 30_000,
   });
 
 /**

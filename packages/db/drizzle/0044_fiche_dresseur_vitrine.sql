@@ -1,0 +1,1 @@
+ALTER TABLE "player_profiles" ADD COLUMN "featured_pokemon_ids" uuid[] DEFAULT '{}'::uuid[] NOT NULL;

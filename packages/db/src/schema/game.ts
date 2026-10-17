@@ -48,6 +48,14 @@ export const playerProfiles = pgTable(
     settings: jsonb('settings').$type<Record<string, unknown>>().notNull().default({}),
     /** Zones d'expédition mises en favori (affichées en tête de la page Expéditions). */
     favoriteZoneIds: text('favorite_zone_ids').array().notNull().default([]),
+    /**
+     * Pokémon du PC mis en avant sur la Fiche Dresseur, dans l'ordre ; les identifiants de
+     * Pokémon transférés depuis sont ignorés à la lecture.
+     */
+    featuredPokemonIds: uuid('featured_pokemon_ids')
+      .array()
+      .notNull()
+      .default(sql`'{}'::uuid[]`),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('player_profiles_trainer_name_lower').on(sql`lower(${t.trainerName})`)],
@@ -337,6 +345,8 @@ export const dungeonRuns = pgTable(
     /** Fuite : millisecondes écoulées depuis le départ. */
     fledAtMs: integer('fled_at_ms'),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    /** Le joueur a fermé la fenêtre du résultat (sur n'importe quel appareil). */
+    resultSeenAt: timestamp('result_seen_at', { withTimezone: true }),
     outcome: text('outcome', { enum: ['win', 'loss', 'timeout', 'fled'] }),
     result: jsonb('result'),
   },

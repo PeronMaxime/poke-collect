@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { DUNGEON_DIFFICULTIES } from '@poke/content';
 import type { Dungeon } from '@poke/content';
@@ -6,7 +7,8 @@ import { dungeonStatus } from '@poke/game-core';
 import type { DungeonStatus, GameContext } from '@poke/game-core';
 import type { DungeonRecordDto, DungeonRunDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge, useNow } from '../../components/ui';
-import { serverOffset, useDungeons, usePlayerProgress } from '../../lib/game';
+import { api } from '../../lib/api';
+import { keys, serverOffset, useDungeons, usePlayerProgress } from '../../lib/game';
 import {
   formatCountdown,
   itemIcon,
@@ -20,18 +22,8 @@ import { DungeonResult } from './DungeonResult';
 import { LaunchDungeonDialog } from './LaunchDungeonDialog';
 import { RegionTabs, currentRegionTab, useSavedRegionTab, visibleRegions } from './RegionTabs';
 
-/** Dernière tentative dont le joueur a vu le résultat (une réclamée en son absence s'affiche une fois). */
-const SEEN_KEY = 'dungeon-result-seen';
 /** Au-delà, le résultat d'une tentative réclamée en l'absence du joueur n'est plus montré. */
 const RESULT_MAX_AGE_MS = 3 * 24 * 3600_000;
-
-function readSeen(): string | null {
-  try {
-    return localStorage.getItem(SEEN_KEY);
-  } catch {
-    return null;
-  }
-}
 
 /** Onglet regroupant les donjons de toutes les régions débloquées, avant les onglets de région. */
 const ALL_TAB = { id: '__tous', label: 'Tous' };
@@ -56,14 +48,6 @@ function saveHidden(id: string | null) {
   }
 }
 
-function markSeen(id: string) {
-  try {
-    localStorage.setItem(SEEN_KEY, id);
-  } catch {
-    // Stockage indisponible : le résultat pourra s'afficher de nouveau.
-  }
-}
-
 export function DungeonsPage({ ctx }: { ctx: GameContext }) {
   const dungeons = useDungeons();
   const progress = usePlayerProgress();
@@ -73,7 +57,9 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
   const [result, setResult] = useState<{ run: DungeonRunDto; currency: number | null } | null>(
     null,
   );
-  const [seen, setSeen] = useState(readSeen);
+  const queryClient = useQueryClient();
+  // Résultat fermé à l'instant, en attendant que le serveur le marque comme vu.
+  const [seen, setSeen] = useState<string | null>(null);
   const [hiddenRun, setHiddenRun] = useState(readHidden);
   // Tentative dont le combat est terminé, et celle dont le joueur a demandé le résultat.
   const [overRun, setOverRun] = useState<string | null>(null);
@@ -105,11 +91,13 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
   );
   const hiddenCount = inRegion.length - listed.length;
 
-  // Tentative réclamée en l'absence du joueur : son résultat s'affiche une fois.
+  // Tentative réclamée en l'absence du joueur (ou dont la fenêtre n'a pas été fermée) : son
+  // résultat s'affiche jusqu'à ce que le joueur le ferme, sur n'importe quel appareil.
   const unseen =
     !active &&
     !result &&
     last?.result &&
+    !last.resultSeenAt &&
     last.id !== seen &&
     last.claimedAt &&
     serverNow - Date.parse(last.claimedAt) < RESULT_MAX_AGE_MS
@@ -129,8 +117,13 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
 
   function closeResult() {
     if (shownResult) {
-      markSeen(shownResult.run.id);
-      setSeen(shownResult.run.id);
+      const id = shownResult.run.id;
+      setSeen(id);
+      api(`/api/dungeons/${id}/seen`, { method: 'POST' })
+        .then(() => queryClient.invalidateQueries({ queryKey: keys.dungeons }))
+        .catch(() => {
+          // Échec : le résultat pourra s'afficher de nouveau au prochain passage.
+        });
     }
     setResult(null);
   }
@@ -213,8 +206,6 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
               showCombat(true);
             }}
             onFinished={(data) => {
-              markSeen(data.run.id);
-              setSeen(data.run.id);
               setResult({ run: data.run, currency: data.currency });
             }}
           />

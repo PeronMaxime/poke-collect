@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { STAT_NAMES } from '@poke/data';
-import { MAX_IV, lineageId, pokemonPower } from '@poke/game-core';
+import { MAX_IV, isTransferableSpecies, lineageId, pokemonPower } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { PokemonDto } from '@poke/shared';
 import { Modal } from '../../components/ui';
@@ -58,7 +58,7 @@ export const perfectIvCount = (p: PokemonDto) =>
 
 /**
  * Doublons à transférer : pour chaque espèce (et forme) ou chaque lignée selon les réglages, on
- * garde le Pokémon de plus forte PE, les favoris, les shiny, les Méga-Évolués, les Pokémon occupés,
+ * garde le Pokémon de plus forte PE, les favoris, les légendaires et fabuleux, les shiny, les Méga-Évolués, les Pokémon occupés,
  * ceux qui ont trop d'IV parfaits et ceux qui portent une étiquette non incluse ; tous les autres
  * sont proposés.
  */
@@ -84,6 +84,7 @@ export function duplicates(
         p !== best &&
         !p.locked &&
         !p.busy &&
+        isTransferableSpecies(ctx, p.speciesId) &&
         !p.isShiny &&
         !p.megaStone &&
         perfectIvCount(p) <= settings.maxPerfectIvs &&
@@ -218,7 +219,8 @@ function SettingsForm({
       </div>
 
       <p className="text-xs text-slate-500">
-        Les favoris, les shiny, les Méga-Évolués et les Pokémon occupés ne sont jamais proposés.
+        Les favoris, les légendaires et fabuleux, les shiny, les Méga-Évolués et les Pokémon occupés
+        ne sont jamais proposés.
       </p>
 
       <div className="flex justify-end gap-2">
