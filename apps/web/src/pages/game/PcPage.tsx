@@ -11,6 +11,7 @@ import {
   expeditionPower,
   getNature,
   isKnockedOut,
+  isTransferableSpecies,
   itemUseOptions,
   lineageId,
   megaOptions,
@@ -78,7 +79,8 @@ const ORIGIN_LABELS: Record<PokemonDto['origin'], string> = {
   admin: 'Lot de test',
 };
 
-const canTransfer = (p: PokemonDto) => !p.locked && !p.busy;
+const canTransfer = (ctx: GameContext, p: PokemonDto) =>
+  !p.locked && !p.busy && isTransferableSpecies(ctx, p.speciesId);
 
 export function PcPage({ ctx }: { ctx: GameContext }) {
   const pokemon = usePokemon();
@@ -180,7 +182,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   }
 
   function toggleTransfer(p: PokemonDto) {
-    if (!canTransfer(p)) return;
+    if (!canTransfer(ctx, p)) return;
     setConfirmingLast(false);
     setToTransfer((cur) => {
       const next = new Set(cur);
@@ -212,8 +214,9 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
       {transferMode && (
         <div className="card mb-4 flex flex-wrap items-center gap-2 p-3 text-sm">
           <span className="flex-1">
-            Touche les Pokémon à transférer contre des Bonbons de lignée (favoris et Pokémon occupés
-            exclus). <strong>{toTransfer.size}</strong> sélectionné(s), +{candiesGained} Bonbon
+            Touche les Pokémon à transférer contre des Bonbons de lignée (favoris, légendaires,
+            fabuleux et Pokémon occupés exclus). <strong>{toTransfer.size}</strong> sélectionné(s),
+            +{candiesGained} Bonbon
             {candiesGained > 1 ? 's' : ''}.
           </span>
           <button className="btn-ghost" onClick={selectDuplicates}>
@@ -288,7 +291,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
                 )
               }
               className={`${transferMode && toTransfer.has(p.id) ? 'ring-2 ring-red-500' : ''} ${
-                transferMode && !canTransfer(p) ? 'opacity-40' : ''
+                transferMode && !canTransfer(ctx, p) ? 'opacity-40' : ''
               }`}
             />
           );
@@ -619,13 +622,15 @@ function PokemonDetail({
           ) : (
             <button
               className="btn-danger w-full"
-              disabled={!canTransfer(p)}
+              disabled={!canTransfer(ctx, p)}
               title={
-                p.locked
-                  ? 'Retire-le des favoris pour pouvoir le transférer'
-                  : p.busy
-                    ? 'Le Pokémon doit être disponible (ni en activité)'
-                    : undefined
+                !isTransferableSpecies(ctx, p.speciesId)
+                  ? 'Les légendaires et les fabuleux ne se transfèrent pas'
+                  : p.locked
+                    ? 'Retire-le des favoris pour pouvoir le transférer'
+                    : p.busy
+                      ? 'Le Pokémon doit être disponible (ni en activité)'
+                      : undefined
               }
               onClick={() => setConfirmTransfer(true)}
             >

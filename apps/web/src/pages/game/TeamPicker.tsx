@@ -230,6 +230,20 @@ export function selectionRank(team: readonly string[], id: string) {
   return i === -1 ? team.length : i;
 }
 
+/**
+ * Sélection à placer en tête de liste : celle du dernier changement de filtre ou de tri
+ * (`view`), pour qu'un Pokémon choisi ne saute pas en haut de la liste au clic.
+ */
+export function usePinnedSelection(team: readonly string[], view: readonly unknown[]) {
+  const key = JSON.stringify(view);
+  const [pinned, setPinned] = useState({ key, team });
+  if (pinned.key !== key) {
+    setPinned({ key, team });
+    return team;
+  }
+  return pinned.team;
+}
+
 /** Même choix d'équipe, sur des Pokémon et étiquettes donnés (PC fictif du simulateur de l'admin). */
 
 export function useTeamPickerOver(
@@ -246,6 +260,7 @@ export function useTeamPickerOver(
   const [search, setSearch] = useState('');
   const [type, setType] = useState('all');
   const tagFilter = useTagFilterOver(tags);
+  const pinned = usePinnedSelection(team, [sort, stat, search, type, tagFilter.filter]);
   const now = useNow(10_000);
   const matchesName = nameMatcher(search);
   const usablePokemon = pokemon.filter(
@@ -272,10 +287,10 @@ export function useTeamPickerOver(
           (type === 'all' || species.types.includes(type))) ||
         team.includes(p.id),
     )
-    // Les membres choisis passent en tête (dans l'ordre de sélection), quel que soit le tri.
+    // Les membres choisis passent en tête (dans l'ordre de sélection) au changement de filtre ou de tri.
     .sort(
       (a, b) =>
-        selectionRank(team, a.p.id) - selectionRank(team, b.p.id) ||
+        selectionRank(pinned, a.p.id) - selectionRank(pinned, b.p.id) ||
         (sort === 'affinity' ? Number(b.affinity) - Number(a.affinity) : 0) ||
         (sort === 'level' ? b.p.level - a.p.level : 0) ||
         (sort === 'tag' ? tagFilter.compare(a.p, b.p) : 0) ||

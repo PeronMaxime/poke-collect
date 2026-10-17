@@ -21,6 +21,7 @@ import { gameRoutes } from './routes/game';
 import { leaderboardRoutes } from './routes/leaderboard';
 import { tagRoutes } from './routes/tags';
 import { teamRoutes } from './routes/teams';
+import { trainerRoutes } from './routes/trainers';
 import { museumRoutes } from './routes/museum';
 import { playerRoutes } from './routes/player';
 import { progressionRoutes } from './routes/progression';
@@ -106,6 +107,7 @@ export async function buildApp({
   await app.register(shopRoutes, { db, content, hooks, now });
   await app.register(progressionRoutes, { db, content, hooks, now });
   await app.register(leaderboardRoutes, { db, content, hooks });
+  await app.register(trainerRoutes, { db, content, hooks });
   await app.register(pushRoutes, {
     db,
     hooks,

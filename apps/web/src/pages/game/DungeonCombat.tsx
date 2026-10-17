@@ -69,7 +69,6 @@ function useFrameNow(active: boolean, smooth: boolean): number {
 }
 
 function effectivenessText(e: number): string | null {
-  if (e === 0) return 'Aucun effet…';
   if (e > 1) return 'Super efficace !';
   if (e < 1) return 'Pas très efficace…';
   return null;

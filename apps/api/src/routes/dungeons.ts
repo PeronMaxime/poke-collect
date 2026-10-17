@@ -10,6 +10,7 @@ import {
   dungeonRecords,
   fleeDungeon,
   lastDungeonRun,
+  markDungeonResultSeen,
   settleFinishedDungeonRun,
   startDungeon,
   switchDungeonMember,
@@ -77,5 +78,12 @@ export async function dungeonRoutes(app: FastifyInstance, { db, content, hooks, 
     await requireStartedProfile(db, userId);
     const { run, currency } = await claimDungeonRun(db, content, userId, id, now());
     return { run: toDungeonRunDto(run), currency };
+  });
+
+  /** Fenêtre du résultat fermée : elle ne réapparaît pas sur un autre appareil. */
+  app.post('/api/dungeons/:id/seen', async (request, reply) => {
+    const { id } = uuidParams.parse(request.params);
+    await markDungeonResultSeen(db, request.user!.id, id, now());
+    return reply.code(204).send();
   });
 }

@@ -49,6 +49,7 @@ export function toDungeonRunDto(row: DungeonRunRow): DungeonRunDto {
     startedAt: row.startedAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
     claimedAt: row.claimedAt?.toISOString() ?? null,
+    resultSeenAt: row.resultSeenAt?.toISOString() ?? null,
     outcome: row.outcome,
     result: (row.result as StoredDungeonResult | null) ?? null,
   };
@@ -87,6 +88,21 @@ export async function lastDungeonRun(db: Db, userId: string): Promise<DungeonRun
     .orderBy(desc(dungeonRuns.claimedAt))
     .limit(1);
   return row;
+}
+
+/** Le joueur a vu le résultat d'une tentative réclamée : il ne s'affiche plus sur aucun appareil. */
+export async function markDungeonResultSeen(db: Db, userId: string, runId: string, now: Date) {
+  await db
+    .update(dungeonRuns)
+    .set({ resultSeenAt: now })
+    .where(
+      and(
+        eq(dungeonRuns.id, runId),
+        eq(dungeonRuns.ownerId, userId),
+        isNotNull(dungeonRuns.claimedAt),
+        isNull(dungeonRuns.resultSeenAt),
+      ),
+    );
 }
 
 /** Millisecondes écoulées depuis le départ, au plus le temps imparti. */

@@ -3,7 +3,7 @@ import type { ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
 import { STAT_NAMES } from '@poke/data';
-import { MAX_IV } from '@poke/game-core';
+import { MAX_IV, isTransferableSpecies } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { HatchEggsResponse, PokemonDto, TransferPokemonResponse } from '@poke/shared';
 import {
@@ -80,7 +80,10 @@ function HatchContent({
   const [confirmingAll, setConfirmingAll] = useState(false);
   const transferable = data.hatched
     .map((p) => current.get(p.id) ?? p)
-    .filter((p) => !transferred.has(p.id) && !p.locked && !p.busy);
+    .filter(
+      (p) =>
+        !transferred.has(p.id) && !p.locked && !p.busy && isTransferableSpecies(ctx, p.speciesId),
+    );
   const shinyCount = transferable.filter((p) => p.isShiny).length;
   const transferAll = useMutation({
     mutationFn: (ids: string[]) =>
@@ -124,7 +127,8 @@ function HatchContent({
             >
               {!instant && (
                 <motion.div
-                  className="absolute"
+                  // Reste en place une fois invisible : sans ça, il intercepte les clics sur Favori.
+                  className="pointer-events-none absolute"
                   initial={{ opacity: 1, rotate: 0 }}
                   animate={{ rotate: [0, -12, 12, -8, 8, 0], opacity: [1, 1, 1, 1, 1, 0] }}
                   transition={{ delay: delay(i) - 0.6, duration: 0.6 }}
@@ -166,6 +170,7 @@ function HatchContent({
                   {perfect > 0 && ` · ${perfect} × 31`}
                 </span>
                 <NewbornActions
+                  ctx={ctx}
                   pokemon={current.get(p.id) ?? p}
                   transferred={transferred.has(p.id)}
                   onTransferred={() => markTransferred([p.id])}
@@ -231,10 +236,12 @@ function HatchContent({
  * passer par le PC.
  */
 export function NewbornActions({
+  ctx,
   pokemon: p,
   transferred = false,
   onTransferred,
 }: {
+  ctx: GameContext;
   pokemon: PokemonDto;
   /** Déjà transféré par un transfert groupé du parent. */
   transferred?: boolean;
@@ -271,6 +278,7 @@ export function NewbornActions({
   return (
     <NewbornActionsView
       pokemon={p}
+      transferable={isTransferableSpecies(ctx, p.speciesId)}
       tags={<TagPicker pokemon={p} compact />}
       lockPending={toggleLock.isPending}
       lockError={toggleLock.error}
@@ -288,6 +296,7 @@ export function NewbornActions({
  */
 export function NewbornActionsView({
   pokemon: p,
+  transferable = true,
   tags,
   lockPending = false,
   lockError,
@@ -297,6 +306,8 @@ export function NewbornActionsView({
   onTransfer,
 }: {
   pokemon: Pick<PokemonDto, 'locked' | 'busy'>;
+  /** Faux pour un légendaire ou un fabuleux : pas de bouton Transférer. */
+  transferable?: boolean;
   tags: ReactNode;
   lockPending?: boolean;
   lockError?: unknown;
@@ -321,7 +332,7 @@ export function NewbornActionsView({
       </button>
       {!!lockError && <p className="text-red-600">{errorText(lockError)}</p>}
       {tags}
-      {confirming ? (
+      {!transferable ? null : confirming ? (
         <span className="mt-1 flex items-center gap-1">
           <button
             type="button"

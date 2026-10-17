@@ -290,4 +290,16 @@ describe('transfert et Bonbons de lignée', () => {
     const last = await call('POST', '/api/pokemon/transfer', { ids: [starter.id] });
     expect(last.body).toMatchObject({ error: 'LAST_POKEMON' });
   });
+
+  it('refuse de transférer un légendaire ou un fabuleux', async () => {
+    const { call, userId } = await newPlayer('red@example.com', 'Red');
+    const rattata = await give(userId, 19);
+    for (const speciesId of [150, 151]) {
+      const kept = await give(userId, speciesId);
+      const refused = await call('POST', '/api/pokemon/transfer', { ids: [rattata.id, kept.id] });
+      expect(refused).toMatchObject({ status: 409, body: { error: 'POKEMON_LEGENDARY' } });
+    }
+    const pc = await call<PokemonDto[]>('GET', '/api/pokemon');
+    expect(pc.body.map((p) => p.speciesId).sort((a, b) => a - b)).toEqual([1, 19, 150, 151]);
+  });
 });

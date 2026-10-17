@@ -27,6 +27,7 @@ import {
   megaLocked,
   nameMatcher,
   selectionRank,
+  usePinnedSelection,
 } from './TeamPicker';
 import { XpPreview, formatXp, usePlayerBonuses } from './XpPreview';
 
@@ -107,6 +108,7 @@ export function LaunchBattleDialog({
   const [search, setSearch] = useState('');
   const [type, setType] = useState('all');
   const tagFilter = useTagFilter();
+  const pinned = usePinnedSelection(team, [sort, search, type, tagFilter.filter]);
   const bonuses = usePlayerBonuses(ctx);
 
   const start = useMutation({
@@ -138,10 +140,10 @@ export function LaunchBattleDialog({
           (type === 'all' || species.types.includes(type))) ||
         team.includes(p.id),
     )
-    // Les membres choisis passent en tête (dans l'ordre de sélection), quel que soit le tri.
+    // Les membres choisis passent en tête (dans l'ordre de sélection) au changement de filtre ou de tri.
     .sort(
       (a, b) =>
-        selectionRank(team, a.p.id) - selectionRank(team, b.p.id) ||
+        selectionRank(pinned, a.p.id) - selectionRank(pinned, b.p.id) ||
         (sort === 'level' ? b.p.level - a.p.level : 0) ||
         (sort === 'tag' ? tagFilter.compare(a.p, b.p) : 0) ||
         b.power - a.power,
