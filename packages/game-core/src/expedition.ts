@@ -413,6 +413,50 @@ export function defeatXp(species: { baseExperience: number | null }, level: numb
   return ((species.baseExperience ?? 50) * level) / 7;
 }
 
+/** XP totale (non arrondie) d'adversaires vaincus, avant multiplicateur. */
+export function defeatedXp(
+  ctx: GameContext,
+  enemies: readonly { speciesId: number; formId?: number | null; level: number }[],
+): number {
+  return enemies.reduce((sum, e) => {
+    const species = ctx.species(e.speciesId, e.formId);
+    return sum + (species ? defeatXp(species, e.level) : 0);
+  }, 0);
+}
+
+/**
+ * XP moyenne que rapportera une expédition à chaque membre (pour l'affichage) : espérance sur
+ * les rencontres et leurs niveaux, sans tenir compte de la pitié qui évolue en cours de route.
+ * Avec un environnement, les talents de l'équipe sont pris en compte (rencontres, types attirés,
+ * niveaux, bonus d'XP).
+ */
+export function expectedExpeditionXp(
+  ctx: GameContext,
+  zone: Zone,
+  durationMinutes: number,
+  bonuses: PlayerBonuses = NO_BONUSES,
+  env?: AbilityEnv,
+): number {
+  const attracted = env ? attractedTypes(ctx, env) : undefined;
+  const entries = weightedEncounters(ctx, zone, undefined, attracted);
+  const total = entries.reduce((sum, e) => sum + e.weight, 0);
+  if (total === 0) return 0;
+  const xpBonus = env ? abilityBonuses(ctx, env, bonuses).xp : bonuses.xp;
+  const extraLevels = env ? Math.round(abilityModifier(ctx, env, 'wildLevel')) : 0;
+  const multiplier = ctx.balance.xp.multiplier * xpBonus;
+  const perEncounter = entries.reduce((sum, { value: e, weight }) => {
+    const species = ctx.species(e.speciesId, e.formId);
+    if (!species) return sum;
+    let xp = 0;
+    for (let level = e.minLevel; level <= e.maxLevel; level++) {
+      const wildLevel = Math.min(MAX_LEVEL, Math.max(1, level + extraLevels));
+      xp += Math.floor(defeatXp(species, wildLevel) * multiplier);
+    }
+    return sum + ((weight / total) * xp) / (e.maxLevel - e.minLevel + 1);
+  }, 0);
+  return Math.round(perEncounter * expeditionPlan(ctx, durationMinutes, env).encounters);
+}
+
 export interface TeamMemberResult {
   id: string;
   xpGained: number;

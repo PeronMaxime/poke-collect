@@ -1,6 +1,6 @@
 {
-  "id": "e26f382a-a688-4f03-a1bf-39b782ae83be",
-  "prevId": "c3c286cd-77ea-479f-8eae-0811cbb46e34",
+  "id": "4c4841e1-8b9b-43fc-9955-006820eac791",
+  "prevId": "6b046b0c-bd9e-4e54-ac1b-140ed1a41b73",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -321,65 +321,6 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.abilities": {
-      "name": "abilities",
-      "schema": "",
-      "columns": {
-        "content_version_id": {
-          "name": "content_version_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "effects": {
-          "name": "effects",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "abilities_content_version_id_content_versions_id_fk": {
-          "name": "abilities_content_version_id_content_versions_id_fk",
-          "tableFrom": "abilities",
-          "tableTo": "content_versions",
-          "columnsFrom": [
-            "content_version_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "abilities_content_version_id_id_pk": {
-          "name": "abilities_content_version_id_id_pk",
-          "columns": [
-            "content_version_id",
-            "id"
-          ]
-        }
-      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -2144,6 +2085,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "result_seen_at": {
+          "name": "result_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "outcome": {
           "name": "outcome",
           "type": "text",
@@ -2551,12 +2498,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
-        },
-        "local_hour": {
-          "name": "local_hour",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": false
         },
         "claimed_at": {
           "name": "claimed_at",
@@ -3028,6 +2969,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "'{}'"
+        },
+        "featured_pokemon_ids": {
+          "name": "featured_pokemon_ids",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::uuid[]"
         },
         "created_at": {
           "name": "created_at",
@@ -4264,12 +4212,6 @@
           "type": "bigint",
           "primaryKey": false,
           "notNull": true
-        },
-        "local_hour": {
-          "name": "local_hour",
-          "type": "smallint",
-          "primaryKey": false,
-          "notNull": false
         },
         "claimed_at": {
           "name": "claimed_at",

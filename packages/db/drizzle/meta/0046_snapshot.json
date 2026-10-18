@@ -1,6 +1,6 @@
 {
-  "id": "b65bfb69-3ed4-4cb6-82c3-cb1d565698e1",
-  "prevId": "e60243c9-1e67-4cb4-a846-e827b559aefc",
+  "id": "6b6cf98c-a5cd-43e4-bd41-45a9fc5b4479",
+  "prevId": "c341914a-cbc2-43bd-b3bb-506461606004",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -820,12 +820,6 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true
-        },
-        "weather": {
-          "name": "weather",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -1787,12 +1781,6 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": true
-        },
-        "weather": {
-          "name": "weather",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
         }
       },
       "indexes": {},
@@ -1817,95 +1805,6 @@
           "columns": [
             "content_version_id",
             "id"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.assistants": {
-      "name": "assistants",
-      "schema": "",
-      "columns": {
-        "owner_id": {
-          "name": "owner_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "post": {
-          "name": "post",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "pokemon_id": {
-          "name": "pokemon_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "assigned_at": {
-          "name": "assigned_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {
-        "assistants_pokemon": {
-          "name": "assistants_pokemon",
-          "columns": [
-            {
-              "expression": "pokemon_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": true,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "assistants_owner_id_users_id_fk": {
-          "name": "assistants_owner_id_users_id_fk",
-          "tableFrom": "assistants",
-          "tableTo": "users",
-          "columnsFrom": [
-            "owner_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        },
-        "assistants_pokemon_id_pokemon_id_fk": {
-          "name": "assistants_pokemon_id_pokemon_id_fk",
-          "tableFrom": "assistants",
-          "tableTo": "pokemon",
-          "columnsFrom": [
-            "pokemon_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "assistants_owner_id_post_pk": {
-          "name": "assistants_owner_id_post_pk",
-          "columns": [
-            "owner_id",
-            "post"
           ]
         }
       },
@@ -2256,6 +2155,12 @@
           "type": "jsonb",
           "primaryKey": false,
           "notNull": false
+        },
+        "result_seen_at": {
+          "name": "result_seen_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -2384,12 +2289,6 @@
           "primaryKey": false,
           "notNull": true,
           "default": 0
-        },
-        "helper": {
-          "name": "helper",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
         },
         "content_version_id": {
           "name": "content_version_id",
@@ -2872,12 +2771,6 @@
           "primaryKey": false,
           "notNull": true
         },
-        "helper": {
-          "name": "helper",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
         "revived_at": {
           "name": "revived_at",
           "type": "timestamp with time zone",
@@ -3148,6 +3041,13 @@
           "primaryKey": false,
           "notNull": true,
           "default": "now()"
+        },
+        "featured_pokemon_ids": {
+          "name": "featured_pokemon_ids",
+          "type": "uuid[]",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "'{}'::uuid[]"
         }
       },
       "indexes": {

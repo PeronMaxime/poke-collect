@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { STAT_NAMES, pokemonSprite, pokemonSpriteUrl } from '@poke/data';
-import type { SpriteKind, Stats } from '@poke/data';
+import type { SpriteKind, StatName, Stats } from '@poke/data';
 import { MAX_IV } from '@poke/game-core';
 import type { Gender } from '@poke/game-core';
 import { STAT_LABELS, TYPE_COLORS, typeLabel } from '../lib/labels';
@@ -232,28 +233,139 @@ export function CancelButton({
   );
 }
 
-/** IV d'un Pokémon dans une bulle, au survol de son contenu (au toucher sur mobile, au clavier via le focus). */
+/**
+ * Bulle d'information au survol de son contenu (au toucher sur mobile, au clavier via le focus).
+ * `focusable` : rend le contenu focalisable ; à désactiver quand il contient déjà un bouton.
+ */
+export function HoverBubble({
+  content,
+  children,
+  width = 144,
+  height,
+  className = 'inline-block',
+  focusable = true,
+}: {
+  content: ReactNode;
+  children: ReactNode;
+  /** Largeur de la bulle, en pixels. */
+  width?: number;
+  /** Hauteur approximative de la bulle, pour choisir dessus/dessous. */
+  height: number;
+  className?: string;
+  focusable?: boolean;
+}) {
+  const [anchor, setAnchor] = useState<DOMRect | null>(null);
+  const [hovered, setHovered] = useState(false);
+  const [focused, setFocused] = useState(false);
+  const open = (hovered || focused) && anchor !== null;
+
+  // Bulle en position fixe : tout défilement la décalerait, on la ferme.
+  useEffect(() => {
+    if (!open) return;
+    const close = () => {
+      setHovered(false);
+      setFocused(false);
+    };
+    window.addEventListener('scroll', close, true);
+    window.addEventListener('resize', close);
+    return () => {
+      window.removeEventListener('scroll', close, true);
+      window.removeEventListener('resize', close);
+    };
+  }, [open]);
+
+  const measure = (el: HTMLElement) => setAnchor(el.getBoundingClientRect());
+  const half = width / 2 + 8;
+
+  return (
+    <span
+      className={className}
+      tabIndex={focusable ? 0 : undefined}
+      onMouseEnter={(e) => {
+        measure(e.currentTarget);
+        setHovered(true);
+      }}
+      onMouseLeave={() => setHovered(false)}
+      onFocus={(e) => {
+        // Au clavier ou au toucher seulement : un clic de souris ne doit pas figer la bulle.
+        const target = e.target as HTMLElement;
+        if (!target.matches(':focus-visible') && !window.matchMedia('(pointer: coarse)').matches)
+          return;
+        measure(e.currentTarget);
+        setFocused(true);
+      }}
+      onBlur={() => setFocused(false)}
+    >
+      {children}
+      {open &&
+        createPortal(
+          // Rendue dans <body> pour passer au-dessus des modales et des listes à défilement.
+          <span
+            className="pointer-events-none fixed z-[60] -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2 text-left text-[11px] shadow-lg dark:border-slate-700 dark:bg-slate-900"
+            style={{
+              width,
+              left: Math.min(
+                Math.max(anchor.left + anchor.width / 2, half),
+                window.innerWidth - half,
+              ),
+              // Au-dessus du contenu quand la place manque en dessous.
+              ...(anchor.bottom + height > window.innerHeight
+                ? { bottom: window.innerHeight - anchor.top }
+                : { top: anchor.bottom }),
+            }}
+          >
+            {content}
+          </span>,
+          document.body,
+        )}
+    </span>
+  );
+}
+
+/** Lignes « statistique — valeur » d'une bulle, avec un total. */
+export function StatLines({
+  values,
+  highlight,
+  total,
+}: {
+  values: Stats;
+  /** Valeurs mises en avant (IV parfaits…). */
+  highlight?: (stat: StatName) => boolean;
+  total: ReactNode;
+}) {
+  return (
+    <>
+      {STAT_NAMES.map((s) => (
+        <span key={s} className="flex justify-between gap-2">
+          <span className="text-slate-500">{STAT_LABELS[s]}</span>
+          <span className={highlight?.(s) ? 'font-bold text-amber-600' : ''}>{values[s]}</span>
+        </span>
+      ))}
+      <span className="mt-1 flex justify-between gap-2 border-t border-slate-200 pt-1 font-medium dark:border-slate-700">
+        <span>Total</span>
+        <span>{total}</span>
+      </span>
+    </>
+  );
+}
+
+/** IV d'un Pokémon dans une bulle, au survol de son contenu. */
 export function IvHover({ ivs, children }: { ivs: Stats | undefined; children: ReactNode }) {
   if (!ivs) return children;
   const total = STAT_NAMES.reduce((sum, s) => sum + ivs[s], 0);
   return (
-    <span className="group/iv relative inline-block" tabIndex={0}>
+    <HoverBubble
+      height={140}
+      content={
+        <StatLines
+          values={ivs}
+          highlight={(s) => ivs[s] === MAX_IV}
+          total={`${total} / ${MAX_IV * 6}`}
+        />
+      }
+    >
       {children}
-      <span className="invisible absolute top-full left-1/2 z-20 w-36 -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2 text-left text-[11px] shadow-lg group-hover/iv:visible group-focus-visible/iv:visible pointer-coarse:group-focus/iv:visible dark:border-slate-700 dark:bg-slate-900">
-        {STAT_NAMES.map((s) => (
-          <span key={s} className="flex justify-between gap-2">
-            <span className="text-slate-500">{STAT_LABELS[s]}</span>
-            <span className={ivs[s] === MAX_IV ? 'font-bold text-amber-600' : ''}>{ivs[s]}</span>
-          </span>
-        ))}
-        <span className="mt-1 flex justify-between gap-2 border-t border-slate-200 pt-1 font-medium dark:border-slate-700">
-          <span>Total</span>
-          <span>
-            {total} / {MAX_IV * 6}
-          </span>
-        </span>
-      </span>
-    </span>
+    </HoverBubble>
   );
 }
 

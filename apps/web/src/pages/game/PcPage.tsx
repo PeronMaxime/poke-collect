@@ -13,6 +13,7 @@ import {
   expeditionPower,
   getNature,
   isKnockedOut,
+  isTransferableSpecies,
   itemUseOptions,
   lineageId,
   megaOptions,
@@ -68,6 +69,7 @@ import {
   requirementText,
   speciesName,
 } from '../../lib/labels';
+import { DuplicateSettingsDialog, duplicates, loadDuplicateSettings } from './DuplicateSettings';
 import { EvolutionReveal } from './EvolutionReveal';
 import { GENDER_LABELS, PcFilterBar, PcPokemonCard, usePcBrowser } from './PcBrowser';
 
@@ -80,32 +82,8 @@ const ORIGIN_LABELS: Record<PokemonDto['origin'], string> = {
   admin: 'Lot de test',
 };
 
-const canTransfer = (p: PokemonDto) => !p.locked && !p.busy;
-
-/** Au moins un IV au maximum : précieux pour l'élevage. */
-const hasPerfectIv = (p: PokemonDto) => STAT_NAMES.some((s) => p.ivs[s] === MAX_IV);
-
-/**
- * Doublons à transférer : pour chaque espèce (et forme), on garde le Pokémon de plus forte PE,
- * les favoris, les Pokémon étiquetés, les shiny et les Pokémon occupés ; tous les autres sont
- * proposés.
- */
-function duplicates(ctx: GameContext, list: readonly PokemonDto[]): string[] {
-  const bySpecies = new Map<string, PokemonDto[]>();
-  for (const p of list) {
-    const key = `${p.speciesId}:${p.formId ?? ''}`;
-    bySpecies.set(key, [...(bySpecies.get(key) ?? []), p]);
-  }
-  const ids: string[] = [];
-  for (const group of bySpecies.values()) {
-    if (group.length < 2) continue;
-    const best = group.reduce((x, y) => (memberPower(ctx, y) > memberPower(ctx, x) ? y : x));
-    for (const p of group)
-      if (p !== best && canTransfer(p) && !p.isShiny && !p.megaStone && p.tagIds.length === 0)
-        ids.push(p.id);
-  }
-  return ids;
-}
+const canTransfer = (ctx: GameContext, p: PokemonDto) =>
+  !p.locked && !p.busy && isTransferableSpecies(ctx, p.speciesId);
 
 export function PcPage({ ctx }: { ctx: GameContext }) {
   const pokemon = usePokemon();
@@ -117,8 +95,8 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [transferMode, setTransferMode] = useState(false);
   const [toTransfer, setToTransfer] = useState<Set<string>>(new Set());
-  // Doublons proposés dont certains ont des IV parfaits : le joueur choisit de les garder ou non.
-  const [pendingDuplicates, setPendingDuplicates] = useState<PokemonDto[] | null>(null);
+  const [duplicateSettings, setDuplicateSettings] = useState(loadDuplicateSettings);
+  const [duplicateSettingsOpen, setDuplicateSettingsOpen] = useState(false);
   // Transfert demandé alors qu'il retirerait le dernier exemplaire d'une espèce : à confirmer.
   const [confirmingLast, setConfirmingLast] = useState(false);
   const [transferResult, setTransferResult] = useState<TransferPokemonResponse | null>(null);
@@ -145,7 +123,6 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
     onSuccess: (data) => {
       setTransferResult(data);
       setToTransfer(new Set());
-      setPendingDuplicates(null);
       setConfirmingLast(false);
       setTransferMode(false);
       return Promise.all(
@@ -184,7 +161,6 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   }, [selected, previous, next]);
   const transferList = (pokemon.data ?? []).filter((p) => toTransfer.has(p.id));
   const candiesGained = transferList.reduce((sum, p) => sum + transferCandies(ctx, p), 0);
-  const perfectDuplicates = pendingDuplicates?.filter(hasPerfectIv) ?? [];
   // Derniers exemplaires : espèces (et formes) dont tous les Pokémon possédés seraient transférés.
   const speciesKey = (p: PokemonDto) => `${p.speciesId}:${p.formId ?? ''}`;
   const keptKeys = new Set(
@@ -204,22 +180,12 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   function selectDuplicates() {
     // Seulement parmi les Pokémon affichés (onglet, recherche et filtres en cours).
     const shown = filtered.map(({ p }) => p);
-    const ids = new Set(duplicates(ctx, shown));
-    const found = shown.filter((p) => ids.has(p.id));
     setConfirmingLast(false);
-    if (found.some(hasPerfectIv)) setPendingDuplicates(found);
-    else setToTransfer(ids);
-  }
-
-  function confirmDuplicates(includePerfect: boolean) {
-    const kept = (pendingDuplicates ?? []).filter((p) => includePerfect || !hasPerfectIv(p));
-    setToTransfer(new Set(kept.map((p) => p.id)));
-    setPendingDuplicates(null);
-    setConfirmingLast(false);
+    setToTransfer(new Set(duplicates(ctx, shown, duplicateSettings)));
   }
 
   function toggleTransfer(p: PokemonDto) {
-    if (!canTransfer(p)) return;
+    if (!canTransfer(ctx, p)) return;
     setConfirmingLast(false);
     setToTransfer((cur) => {
       const next = new Set(cur);
@@ -240,7 +206,6 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
           onClick={() => {
             setTransferMode(!transferMode);
             setToTransfer(new Set());
-            setPendingDuplicates(null);
             setConfirmingLast(false);
             setTransferResult(null);
           }}
@@ -252,13 +217,21 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
       {transferMode && (
         <div className="card mb-4 flex flex-wrap items-center gap-2 p-3 text-sm">
           <span className="flex-1">
-            Touche les Pokémon à transférer contre des Bonbons de lignée (favoris et Pokémon occupés
-            exclus ; les doublons ignorent aussi les Pokémon étiquetés).{' '}
-            <strong>{toTransfer.size}</strong> sélectionné(s), +{candiesGained} Bonbon
+            Touche les Pokémon à transférer contre des Bonbons de lignée (favoris, légendaires,
+            fabuleux et Pokémon occupés exclus). <strong>{toTransfer.size}</strong> sélectionné(s),
+            +{candiesGained} Bonbon
             {candiesGained > 1 ? 's' : ''}.
           </span>
           <button className="btn-ghost" onClick={selectDuplicates}>
             Sélectionner les doublons
+          </button>
+          <button
+            className="btn-ghost px-2.5"
+            onClick={() => setDuplicateSettingsOpen(true)}
+            title="Régler le filtre des doublons"
+            aria-label="Régler le filtre des doublons"
+          >
+            ⚙
           </button>
           <button
             className="btn-danger"
@@ -286,28 +259,6 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
                 Transférer quand même
               </button>
               <button className="btn-ghost py-1" onClick={() => setConfirmingLast(false)}>
-                Annuler
-              </button>
-            </div>
-          )}
-          {pendingDuplicates && (
-            <div className="flex w-full flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-              <span className="flex-1">
-                ⚠ {perfectDuplicates.length} doublon{perfectDuplicates.length > 1 ? 's ont' : ' a'}{' '}
-                au moins un IV parfait ({MAX_IV}) :{' '}
-                {perfectDuplicates
-                  .slice(0, 5)
-                  .map((p) => `${speciesName(ctx, p.speciesId, p.formId)} N.${p.level}`)
-                  .join(', ')}
-                {perfectDuplicates.length > 5 && '…'}
-              </span>
-              <button className="btn-ghost py-1" onClick={() => confirmDuplicates(false)}>
-                Les exclure
-              </button>
-              <button className="btn-danger py-1" onClick={() => confirmDuplicates(true)}>
-                Les inclure
-              </button>
-              <button className="btn-ghost py-1" onClick={() => setPendingDuplicates(null)}>
                 Annuler
               </button>
             </div>
@@ -343,7 +294,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
                 )
               }
               className={`${transferMode && toTransfer.has(p.id) ? 'ring-2 ring-red-500' : ''} ${
-                transferMode && !canTransfer(p) ? 'opacity-40' : ''
+                transferMode && !canTransfer(ctx, p) ? 'opacity-40' : ''
               }`}
             />
           );
@@ -354,6 +305,12 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
       )}
 
       <TagManagerDialog open={tagsOpen} onClose={() => setTagsOpen(false)} />
+      <DuplicateSettingsDialog
+        open={duplicateSettingsOpen}
+        settings={duplicateSettings}
+        onClose={() => setDuplicateSettingsOpen(false)}
+        onSave={setDuplicateSettings}
+      />
       {/* Taille fixe : les boutons de navigation restent au même endroit d'une fiche à l'autre. */}
       <Modal
         open={!!selected}
@@ -668,14 +625,16 @@ function PokemonDetail({
             </div>
           ) : (
             <button
-              className="btn-ghost w-full"
-              disabled={!canTransfer(p)}
+              className="btn-danger w-full"
+              disabled={!canTransfer(ctx, p)}
               title={
-                p.locked
-                  ? 'Retire-le des favoris pour pouvoir le transférer'
-                  : p.busy
-                    ? 'Le Pokémon doit être disponible (ni en activité)'
-                    : undefined
+                !isTransferableSpecies(ctx, p.speciesId)
+                  ? 'Les légendaires et les fabuleux ne se transfèrent pas'
+                  : p.locked
+                    ? 'Retire-le des favoris pour pouvoir le transférer'
+                    : p.busy
+                      ? 'Le Pokémon doit être disponible (ni en activité)'
+                      : undefined
               }
               onClick={() => setConfirmTransfer(true)}
             >

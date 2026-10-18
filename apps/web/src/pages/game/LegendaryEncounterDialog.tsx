@@ -110,9 +110,10 @@ function EncounterContent({
   });
 
   const species = ctx.species(e.speciesId, e.formId);
+  // formId absent du contenu (undefined) quand l'API renvoie null : on compare les deux à null.
   const target = ctx
     .quest(e.questId)
-    ?.rewards.pokemon.find((p) => p.speciesId === e.speciesId && p.formId === e.formId);
+    ?.rewards.pokemon.find((p) => p.speciesId === e.speciesId && (p.formId ?? null) === e.formId);
   const team = expedition.team.flatMap((id) => pokemon.data?.find((p) => p.id === id) ?? []);
   const affinityCount = target ? countAffinity(ctx, target.expedition, team) : 0;
   const ball = selectedBall ? ctx.itemEffect(selectedBall, 'ball') : undefined;

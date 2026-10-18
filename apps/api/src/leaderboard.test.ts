@@ -6,10 +6,17 @@ import {
   ensureSeedContent,
   playerProfiles,
   pokedex,
+  pokemon,
   trainerProgress,
   users,
 } from '@poke/db';
-import type { LeaderboardResponse } from '@poke/shared';
+import type {
+  FeaturedPokemonDto,
+  LeaderboardResponse,
+  TrainerPokedexResponse,
+  TrainerProfileResponse,
+  TrainerSearchResultDto,
+} from '@poke/shared';
 import { buildApp } from './app';
 import { loadEnv } from './env';
 
@@ -39,7 +46,7 @@ async function newPlayer(email: string, trainerName: string, starterId: number |
   const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
   const cookie = list.map((c) => c.split(';')[0]).join('; ');
   const [user] = await handle.db.select().from(users).where(eq(users.email, email));
-  const call = async <T>(method: 'GET' | 'POST', url: string, payload?: unknown) => {
+  const call = async <T>(method: 'GET' | 'POST' | 'PUT', url: string, payload?: unknown) => {
     const r = await app.inject({
       method,
       url,
@@ -111,5 +118,63 @@ describe('Classement', () => {
     const none = await newbie.call<LeaderboardResponse>('GET', '/api/leaderboard/species');
     expect(none.body.me).toBeNull();
     expect((await red.call('GET', '/api/leaderboard/unknown')).status).toBe(400);
+  });
+});
+
+describe('Fiches Dresseur des autres joueurs', () => {
+  it('recherche un dresseur, montre sa fiche, son Pokédex et ses Pokémon mis en avant', async () => {
+    const sacha = await newPlayer('sacha@example.com', 'Sacha', 1);
+    const ondine = await newPlayer('ondine@example.com', 'Ondine', 7);
+    await newPlayer('sans-starter@example.com', 'Sachou', null);
+
+    const search = await ondine.call<TrainerSearchResultDto[]>('GET', '/api/trainers?q=sach');
+    expect(search.status).toBe(200);
+    // Sans starter : introuvable.
+    expect(search.body).toEqual([{ trainerName: 'Sacha', starterSpeciesId: 1 }]);
+    expect((await ondine.call('GET', '/api/trainers?q=')).status).toBe(400);
+    expect((await ondine.call('GET', '/api/trainers?q=%25')).body).toEqual([]);
+
+    const [starter] = await handle.db
+      .select()
+      .from(pokemon)
+      .where(eq(pokemon.ownerId, sacha.userId));
+    const { id: _, ...copy } = starter!;
+    const [second] = await handle.db
+      .insert(pokemon)
+      .values({ ...copy, speciesId: 16, isShiny: true })
+      .returning();
+
+    const featured = await sacha.call<FeaturedPokemonDto[]>('PUT', '/api/trainer-card/featured', {
+      pokemonIds: [second!.id, starter!.id],
+    });
+    expect(featured.status).toBe(200);
+    expect(featured.body.map((p) => p.speciesId)).toEqual([16, 1]);
+    // Pas le Pokémon d'un autre joueur.
+    expect(
+      (await ondine.call('PUT', '/api/trainer-card/featured', { pokemonIds: [starter!.id] }))
+        .status,
+    ).toBe(404);
+
+    const card = await ondine.call<TrainerProfileResponse>('GET', '/api/trainers/sacha');
+    expect(card.status).toBe(200);
+    expect(card.body).toMatchObject({ trainerName: 'Sacha', starterSpeciesId: 1, isMe: false });
+    expect(card.body.progress.caughtSpeciesIds).toContain(1);
+    expect(card.body.card.featured.map((p) => [p.speciesId, p.isShiny])).toEqual([
+      [16, true],
+      [1, false],
+    ]);
+    expect((await ondine.call('GET', '/api/trainers/Personne')).status).toBe(404);
+    expect((await ondine.call('GET', '/api/trainers/Sachou')).status).toBe(404);
+
+    const dex = await ondine.call<TrainerPokedexResponse>('GET', '/api/trainers/Sacha/pokedex');
+    expect(dex.status).toBe(200);
+    expect(dex.body.entries.find((e) => e.speciesId === 1)).toMatchObject({ caught: true });
+
+    // Transféré : il quitte la vitrine.
+    expect((await sacha.call('POST', '/api/pokemon/transfer', { ids: [second!.id] })).status).toBe(
+      200,
+    );
+    const after = await ondine.call<TrainerProfileResponse>('GET', '/api/trainers/Sacha');
+    expect(after.body.card.featured.map((p) => p.speciesId)).toEqual([1]);
   });
 });

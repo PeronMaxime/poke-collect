@@ -6,6 +6,7 @@ import {
   checkTeam,
   encounterCount,
   encounterProbabilities,
+  expectedExpeditionXp,
   lootProbabilities,
   lootRollCount,
   matchesCaptureFilter,
@@ -268,6 +269,10 @@ describe('simulateZone', () => {
     const balls = sim.loot.find((l) => l.itemId === 'poke-ball')!;
     expect(balls.dropRate).toBeGreaterThan(0.85); // 2 tirages à 70 %
     expect(sim.xpPerMemberPerRun).toBeGreaterThan(0);
+    // L'XP affichée avant le départ correspond à la moyenne observée (la pitié l'écarte un peu).
+    const zone = ctx.content.zones.find((z) => z.id === 'route-1')!;
+    const expected = expectedExpeditionXp(ctx, zone, 60);
+    expect(Math.abs(expected - sim.xpPerMemberPerRun) / sim.xpPerMemberPerRun).toBeLessThan(0.1);
   });
 
   it('sans Ball, aucune capture', () => {

@@ -1,7 +1,9 @@
 import { useState } from 'react';
-import { types } from '@poke/data';
+import { STAT_NAMES, types } from '@poke/data';
+import type { StatName } from '@poke/data';
 import {
   MAX_MEGAS_PER_TEAM,
+  computeStats,
   isMegaForm,
   isRegionalSpecies,
   megaCount,
@@ -10,9 +12,16 @@ import {
 import type { ExpeditionSite, GameContext } from '@poke/game-core';
 import type { PokemonDto, PokemonTagDto, PokemonTeamDto } from '@poke/shared';
 import { PokemonTagBadges, TagFilterSelect, useTagFilterOver } from '../../components/tags';
-import { PokemonSprite, ShinyStar, TypeBadge, useNow } from '../../components/ui';
+import {
+  HoverBubble,
+  PokemonSprite,
+  ShinyStar,
+  StatLines,
+  TypeBadge,
+  useNow,
+} from '../../components/ui';
 import { isUsable, usePokemon, useTags, useTeams } from '../../lib/game';
-import { typeLabel } from '../../lib/labels';
+import { STAT_LABELS, typeLabel } from '../../lib/labels';
 
 const SORTS = {
   power: 'PE',
@@ -20,7 +29,8 @@ const SORTS = {
   level: 'Niveau',
   tag: 'Étiquette',
 } as const;
-type Sort = keyof typeof SORTS;
+/** `stat` : tri par la statistique choisie (proposé dans les donjons). */
+type Sort = keyof typeof SORTS | 'stat';
 
 /** Types de Pokémon, sans les types techniques des données (Stellaire, ???, Obscur). */
 const NON_POKEMON_TYPES = new Set(['stellar', 'unknown', 'shadow']);
@@ -214,7 +224,28 @@ export function useTeamPicker(ctx: GameContext, zone: ExpeditionSite) {
   );
 }
 
+/** Rang d'un Pokémon dans la sélection ; les non-sélectionnés viennent après. */
+export function selectionRank(team: readonly string[], id: string) {
+  const i = team.indexOf(id);
+  return i === -1 ? team.length : i;
+}
+
+/**
+ * Sélection à placer en tête de liste : celle du dernier changement de filtre ou de tri
+ * (`view`), pour qu'un Pokémon choisi ne saute pas en haut de la liste au clic.
+ */
+export function usePinnedSelection(team: readonly string[], view: readonly unknown[]) {
+  const key = JSON.stringify(view);
+  const [pinned, setPinned] = useState({ key, team });
+  if (pinned.key !== key) {
+    setPinned({ key, team });
+    return team;
+  }
+  return pinned.team;
+}
+
 /** Même choix d'équipe, sur des Pokémon et étiquettes donnés (PC fictif du simulateur de l'admin). */
+
 export function useTeamPickerOver(
   ctx: GameContext,
   zone: ExpeditionSite,
@@ -225,9 +256,11 @@ export function useTeamPickerOver(
 ) {
   const [team, setTeam] = useState<string[]>([]);
   const [sort, setSort] = useState<Sort>('power');
+  const [stat, setStat] = useState<StatName>('attack');
   const [search, setSearch] = useState('');
   const [type, setType] = useState('all');
   const tagFilter = useTagFilterOver(tags);
+  const pinned = usePinnedSelection(team, [sort, stat, search, type, tagFilter.filter]);
   const now = useNow(10_000);
   const matchesName = nameMatcher(search);
   const usablePokemon = pokemon.filter(
@@ -242,6 +275,7 @@ export function useTeamPickerOver(
         p,
         species,
         power: memberPower(ctx, p),
+        stats: computeStats(species, p),
         affinity: species.types.some((t) => zone.affinityTypes.includes(t)),
       };
     })
@@ -253,11 +287,14 @@ export function useTeamPickerOver(
           (type === 'all' || species.types.includes(type))) ||
         team.includes(p.id),
     )
+    // Les membres choisis passent en tête (dans l'ordre de sélection) au changement de filtre ou de tri.
     .sort(
       (a, b) =>
+        selectionRank(pinned, a.p.id) - selectionRank(pinned, b.p.id) ||
         (sort === 'affinity' ? Number(b.affinity) - Number(a.affinity) : 0) ||
         (sort === 'level' ? b.p.level - a.p.level : 0) ||
         (sort === 'tag' ? tagFilter.compare(a.p, b.p) : 0) ||
+        (sort === 'stat' ? b.stats[stat] - a.stats[stat] : 0) ||
         b.power - a.power,
     );
   const members = team.flatMap((id) => available.find((a) => a.p.id === id)?.p ?? []);
@@ -266,6 +303,8 @@ export function useTeamPickerOver(
     setTeam,
     sort,
     setSort,
+    stat,
+    setStat,
     search,
     setSearch,
     type,
@@ -285,6 +324,7 @@ export function TeamPicker({
   picker,
   power,
   maxTeamSize = ctx.balance.expeditions.maxTeamSize,
+  statSort = false,
 }: {
   ctx: GameContext;
   zone: ExpeditionSite;
@@ -293,12 +333,16 @@ export function TeamPicker({
   power: number;
   /** Taille maximale (par défaut, celle des expéditions). */
   maxTeamSize?: number;
+  /** Propose le tri par statistique et les statistiques au survol (donjons, où elles font le combat). */
+  statSort?: boolean;
 }) {
   const {
     team,
     setTeam,
     sort,
     setSort,
+    stat,
+    setStat,
     search,
     setSearch,
     type,
@@ -337,7 +381,7 @@ export function TeamPicker({
         </h3>
         <div className="flex flex-wrap items-center gap-1 text-xs">
           <span className="text-slate-500">Trier par</span>
-          {(Object.keys(SORTS) as Sort[]).map((key) => (
+          {(Object.keys(SORTS) as (keyof typeof SORTS)[]).map((key) => (
             <button
               key={key}
               type="button"
@@ -347,6 +391,26 @@ export function TeamPicker({
               {SORTS[key]}
             </button>
           ))}
+          {statSort && (
+            <select
+              className={`input w-auto py-0.5 text-xs ${sort === 'stat' ? 'border-brand-500 ring-1 ring-brand-500' : ''}`}
+              value={sort === 'stat' ? stat : ''}
+              onChange={(e) => {
+                setStat(e.target.value as StatName);
+                setSort('stat');
+              }}
+              aria-label="Trier par statistique"
+            >
+              <option value="" disabled>
+                Statistique…
+              </option>
+              {STAT_NAMES.map((s) => (
+                <option key={s} value={s}>
+                  {STAT_LABELS[s]}
+                </option>
+              ))}
+            </select>
+          )}
           <TagFilterSelect
             tags={tagFilter.tags}
             value={tagFilter.filter}
@@ -388,10 +452,10 @@ export function TeamPicker({
         </span>
       </div>
       <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto p-1 sm:grid-cols-5">
-        {available.map(({ p, species, power, affinity }) => {
+        {available.map(({ p, species, power, stats, affinity }) => {
           const selected = team.includes(p.id);
           const locked = megaLocked(p, members);
-          return (
+          const card = (
             <button
               key={p.id}
               type="button"
@@ -418,8 +482,26 @@ export function TeamPicker({
               <span className="text-slate-500">
                 N.{p.level} · PE {power}
               </span>
+              {sort === 'stat' && (
+                <span className="font-medium text-brand-600 dark:text-brand-400">
+                  {STAT_LABELS[stat]} {stats[stat]}
+                </span>
+              )}
               <PokemonTagBadges pokemon={p} tags={tagFilter.tags} />
             </button>
+          );
+          return statSort ? (
+            <HoverBubble
+              key={p.id}
+              className="grid"
+              focusable={false}
+              height={140}
+              content={<StatLines values={stats} total={power} />}
+            >
+              {card}
+            </HoverBubble>
+          ) : (
+            card
           );
         })}
         {available.length === 0 && (

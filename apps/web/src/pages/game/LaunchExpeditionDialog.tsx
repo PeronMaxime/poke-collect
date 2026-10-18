@@ -10,6 +10,7 @@ import {
   chainPerfectIvs,
   checkTeam,
   encounterProbabilities,
+  expectedExpeditionXp,
   expeditionEnv,
   expeditionPlan,
   lootProbabilities,
@@ -17,7 +18,13 @@ import {
   nextChainPerfectIvThreshold,
   shinyProbability,
 } from '@poke/game-core';
-import type { CaptureFilter, ExpeditionError, GameContext, TeamMember } from '@poke/game-core';
+import type {
+  CaptureFilter,
+  ExpeditionError,
+  GameContext,
+  PlayerBonuses,
+  TeamMember,
+} from '@poke/game-core';
 import type { ExpeditionDto, StartExpeditionInput } from '@poke/shared';
 import { Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
@@ -31,6 +38,7 @@ import {
   typeLabel,
 } from '../../lib/labels';
 import { TeamPicker, pillClass, useTeamPicker } from './TeamPicker';
+import { XpPreview, formatXp, usePlayerBonuses } from './XpPreview';
 
 export { pillClass };
 
@@ -86,6 +94,7 @@ export function LaunchExpeditionDialog({
   const charm = useShinyCharm(ctx);
   const inventory = useInventory();
   const picker = useTeamPicker(ctx, zone);
+  const bonuses = usePlayerBonuses(ctx);
   const owned = new Map(inventory.data?.map((i) => [i.itemId, i.quantity]));
 
   const start = useMutation({
@@ -111,6 +120,7 @@ export function LaunchExpeditionDialog({
         chain={chain}
         charm={charm}
         owned={(itemId) => owned.get(itemId) ?? 0}
+        bonuses={bonuses}
         team={picker.team}
         members={picker.members}
         renderTeam={(power) => <TeamPicker ctx={ctx} zone={zone} picker={picker} power={power} />}
@@ -140,6 +150,7 @@ export function LaunchExpeditionForm({
   charm,
   owned,
   unlimitedItems = false,
+  bonuses,
   team,
   members,
   renderTeam,
@@ -160,6 +171,8 @@ export function LaunchExpeditionForm({
   owned: (itemId: string) => number;
   /** Stock illimité (simulateur) : les quantités ne sont pas affichées. */
   unlimitedItems?: boolean;
+  /** Bonus permanents du joueur (aucun par défaut). */
+  bonuses?: PlayerBonuses;
   team: string[];
   members: TeamMember[];
   /** Choix de l'équipe, selon sa PE. */
@@ -207,6 +220,7 @@ export function LaunchExpeditionForm({
   const plan = expeditionPlan(ctx, duration, env);
   const weather = resolveWeather(ctx, env);
   const { encounters } = plan;
+  const xp = expectedExpeditionXp(ctx, zone, duration, bonuses, env);
   const maxBalls = selectedBall ? Math.min(encounters, owned(selectedBall)) : 0;
   const ballsTaken = Math.min(ballCount ?? maxBalls, maxBalls);
   const ballEffect = selectedBall ? ctx.itemEffect(selectedBall, 'ball') : undefined;
@@ -265,6 +279,10 @@ export function LaunchExpeditionForm({
       {extra}
 
       {renderTeam(check.power)}
+      <XpPreview ctx={ctx} members={members} xp={xp}>
+        ≈ {formatXp(xp)} par Pokémon
+        <span className="text-slate-500"> (moyenne, selon les rencontres)</span>
+      </XpPreview>
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2">
         <div>

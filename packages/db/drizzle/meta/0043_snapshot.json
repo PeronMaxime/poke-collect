@@ -1,5 +1,5 @@
 {
-  "id": "c3c286cd-77ea-479f-8eae-0811cbb46e34",
+  "id": "6b046b0c-bd9e-4e54-ac1b-140ed1a41b73",
   "prevId": "83991e6c-dd7d-4c1e-acaf-5c371e3c4455",
   "version": "7",
   "dialect": "postgresql",
@@ -321,65 +321,6 @@
       "indexes": {},
       "foreignKeys": {},
       "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
-    "public.abilities": {
-      "name": "abilities",
-      "schema": "",
-      "columns": {
-        "content_version_id": {
-          "name": "content_version_id",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "id": {
-          "name": "id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "effects": {
-          "name": "effects",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "abilities_content_version_id_content_versions_id_fk": {
-          "name": "abilities_content_version_id_content_versions_id_fk",
-          "tableFrom": "abilities",
-          "tableTo": "content_versions",
-          "columnsFrom": [
-            "content_version_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "abilities_content_version_id_id_pk": {
-          "name": "abilities_content_version_id_id_pk",
-          "columns": [
-            "content_version_id",
-            "id"
-          ]
-        }
-      },
       "uniqueConstraints": {},
       "policies": {},
       "checkConstraints": {},
@@ -2140,6 +2081,12 @@
         },
         "claimed_at": {
           "name": "claimed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "result_seen_at": {
+          "name": "result_seen_at",
           "type": "timestamp with time zone",
           "primaryKey": false,
           "notNull": false

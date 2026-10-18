@@ -160,9 +160,19 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   function tabBadges(id: TabId) {
     return (
       <span className="ml-auto flex items-center">
+        {id === 'expeditions' && expeditions.data && (
+          <span className="ml-1.5 text-xs text-slate-400" title="Emplacements utilisés">
+            {expeditions.data.active.length}/{expeditions.data.slots}
+          </span>
+        )}
         {id === 'expeditions' && finished > 0 && (
           <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
             {finished}
+          </span>
+        )}
+        {id === 'battles' && battles.data && (
+          <span className="ml-1.5 text-xs text-slate-400" title="Emplacements utilisés">
+            {battles.data.active.length}/{battles.data.slots}
           </span>
         )}
         {id === 'battles' && battlesDone > 0 && (

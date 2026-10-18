@@ -20,7 +20,8 @@ export interface ExtraTab {
 /**
  * Onglets par région : régions débloquées et la suivante, grisée, avec sa condition au survol.
  * `marker` signale un onglet à consulter (starter à choisir, récompense à réclamer…).
- * `leading` s'affiche avant les régions, `extra` après.
+ * `leading` s'affiche avant les régions, `extra` après. `regions` remplace les régions débloquées
+ * (sans onglet verrouillé), ex. le Pokédex d'un autre dresseur.
  */
 export function RegionTabs({
   ctx,
@@ -30,6 +31,7 @@ export function RegionTabs({
   marker,
   extra = [],
   leading = [],
+  regions,
 }: {
   ctx: GameContext;
   progress: PlayerProgress;
@@ -38,8 +40,11 @@ export function RegionTabs({
   marker?: (regionId: string) => string | null;
   extra?: ExtraTab[];
   leading?: ExtraTab[];
+  regions?: Region[];
 }) {
-  const { unlocked, next } = visibleRegions(ctx, progress);
+  const visible = visibleRegions(ctx, progress);
+  const unlocked = regions ?? visible.unlocked;
+  const next = regions ? undefined : visible.next;
   const tabs: ExtraTab[] = [
     ...leading,
     ...unlocked.map((r) => ({ id: r.id, label: r.name })),

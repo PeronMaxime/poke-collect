@@ -117,7 +117,7 @@ function RevealContent({
       pokemon={(id) => pokemonById.get(id) ?? capturedById.get(id)}
       renderNewborn={(id) => {
         const p = pokemonById.get(id) ?? capturedById.get(id);
-        return capturedById.has(id) && p && <NewbornActions pokemon={p} />;
+        return capturedById.has(id) && p && <NewbornActions ctx={ctx} pokemon={p} />;
       }}
       footer={
         <>

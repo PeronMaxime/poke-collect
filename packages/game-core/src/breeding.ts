@@ -294,6 +294,12 @@ export function lineageId(ctx: GameContext, speciesId: number): number | undefin
   return ctx.species(speciesId)?.evolutionChainId;
 }
 
+/** Les légendaires et les fabuleux ne se transfèrent pas. */
+export function isTransferableSpecies(ctx: GameContext, speciesId: number): boolean {
+  const species = ctx.species(speciesId);
+  return !species?.isLegendary && !species?.isMythical;
+}
+
 export function transferCandies(
   ctx: GameContext,
   pokemon: Pick<PokemonInstance, 'speciesId' | 'isShiny'> &

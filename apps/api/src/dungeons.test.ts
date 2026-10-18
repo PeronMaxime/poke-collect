@@ -278,5 +278,14 @@ describe('donjons', () => {
     const list = await call<DungeonsResponse>('GET', '/api/dungeons');
     expect(list.body.active).toBeNull();
     expect(list.body.last?.id).toBe(start.body.id);
+    expect(list.body.last?.resultSeenAt).toBeNull();
+  });
+
+  it('retient le résultat vu pour tous les appareils', async () => {
+    const before = await call<DungeonsResponse>('GET', '/api/dungeons');
+    const seen = await call('POST', `/api/dungeons/${before.body.last!.id}/seen`);
+    expect(seen.status).toBe(204);
+    const list = await call<DungeonsResponse>('GET', '/api/dungeons');
+    expect(list.body.last?.resultSeenAt).not.toBeNull();
   });
 });

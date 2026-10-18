@@ -5,6 +5,7 @@ import {
   expeditions,
   fossilRevivals,
   inventory,
+  playerProfiles,
   pokemon,
   questProgress,
   shopPurchases,
@@ -12,7 +13,8 @@ import {
 } from '@poke/db';
 import type { Db } from '@poke/db';
 import type { GameContext } from '@poke/game-core';
-import type { TrainerCardResponse } from '@poke/shared';
+import type { FeaturedPokemonDto, TrainerCardResponse } from '@poke/shared';
+import { toInstance } from './store';
 
 /** Statistiques de la Fiche Dresseur, recalculées à partir de l'historique du joueur. */
 export async function trainerCard(
@@ -33,6 +35,7 @@ export async function trainerCard(
     dungeons,
     bagGems,
     heldGems,
+    featured,
   ] = await Promise.all([
     // Rencontres capturées de chaque expédition réclamée (les Pokémon transférés comptent).
     db
@@ -85,9 +88,9 @@ export async function trainerCard(
       .from(shopPurchases)
       .where(eq(shopPurchases.ownerId, ownerId)),
     db
-      .select({ n: count() })
+      .select({ n: sum(dungeonProgress.wins).mapWith(Number) })
       .from(dungeonProgress)
-      .where(and(eq(dungeonProgress.ownerId, ownerId), gt(dungeonProgress.wins, 0))),
+      .where(eq(dungeonProgress.ownerId, ownerId)),
     // Méga-Gemmes : dans le sac, ou tenues par un Pokémon Méga-Évolué.
     gemIds.length
       ? db
@@ -105,6 +108,7 @@ export async function trainerCard(
       .select({ itemId: pokemon.megaStone })
       .from(pokemon)
       .where(and(eq(pokemon.ownerId, ownerId), isNotNull(pokemon.megaStone))),
+    featuredPokemon(db, ownerId),
   ]);
   return {
     captures: captures[0]?.n ?? 0,
@@ -121,5 +125,40 @@ export async function trainerCard(
     moneySpent: spent[0]?.total ?? 0,
     dungeonsCleared: dungeons[0]?.n ?? 0,
     megaStonesOwned: new Set([...bagGems, ...heldGems].map((g) => g.itemId)).size,
+    featured,
   };
+}
+
+/** Pokémon mis en avant, dans l'ordre choisi, sans ceux qui ont quitté le PC (transférés). */
+export async function featuredPokemon(db: Db, ownerId: string): Promise<FeaturedPokemonDto[]> {
+  const [profile] = await db
+    .select({ ids: playerProfiles.featuredPokemonIds })
+    .from(playerProfiles)
+    .where(eq(playerProfiles.userId, ownerId));
+  const ids = profile?.ids ?? [];
+  if (ids.length === 0) return [];
+  const rows = await db
+    .select()
+    .from(pokemon)
+    .where(and(eq(pokemon.ownerId, ownerId), inArray(pokemon.id, ids)));
+  const byId = new Map(rows.map((r) => [r.id, r]));
+  return ids.flatMap((id) => {
+    const row = byId.get(id);
+    if (!row) return [];
+    const { speciesId, formId, level, isShiny, gender, nature, ability, ivs } = toInstance(row);
+    return [
+      {
+        id,
+        speciesId,
+        formId: formId ?? null,
+        level,
+        isShiny,
+        gender,
+        nature,
+        ability,
+        ivs,
+        caughtAt: row.caughtAt.toISOString(),
+      },
+    ];
+  });
 }

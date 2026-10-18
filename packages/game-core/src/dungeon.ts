@@ -13,7 +13,7 @@ import type {
 import { STAT_NAMES, typeEffectiveness, types as typeData } from '@poke/data';
 import type { StatName, Stats } from '@poke/data';
 import type { GameContext, GameSpecies } from './context';
-import { addStacks, applyTeamXp, defeatXp, rollLoot } from './expedition';
+import { addStacks, applyTeamXp, defeatedXp, rollLoot } from './expedition';
 import type { TeamMember, TeamMemberResult } from './expedition';
 import { computeStats } from './pokemon';
 import type { PokemonInstance } from './pokemon';
@@ -496,12 +496,29 @@ export function attackIntervalMs(
   );
 }
 
+/** Multiplicateur d'une immunité en donjon : les dégâts sont divisés par 4 au lieu d'être annulés. */
+export const DUNGEON_IMMUNITY_MULTIPLIER = 0.25;
+
+/** Efficacité d'un type en donjon : comme la table des types, mais chaque immunité vaut ×¼. */
+export function dungeonTypeEffectiveness(
+  attackType: string,
+  defenderTypes: readonly string[],
+): number {
+  return defenderTypes.reduce((m, t) => {
+    const e = typeEffectiveness(attackType, [t]);
+    return m * (e === 0 ? DUNGEON_IMMUNITY_MULTIPLIER : e);
+  }, 1);
+}
+
 /** Type d'attaque d'un combattant contre un défenseur (adversaire : le plus efficace, le premier à égalité). */
 export function attackTypeAgainst(attacker: DungeonFighter, defender: DungeonFighter): string {
   if (attacker.attackType) return attacker.attackType;
   let best = attacker.types[0] ?? 'normal';
   for (const t of attacker.types) {
-    if (typeEffectiveness(t, defender.types) > typeEffectiveness(best, defender.types)) best = t;
+    if (
+      dungeonTypeEffectiveness(t, defender.types) > dungeonTypeEffectiveness(best, defender.types)
+    )
+      best = t;
   }
   return best;
 }
@@ -550,7 +567,8 @@ export function weatherDamageMultiplier(weather: Weather | null | undefined, att
 
 /**
  * Dégâts d'une attaque : ((2 × niveau / 5 + 2) × puissance × Att / Déf / 50 + 2) × STAB
- * × efficacité × aléa × multiplicateur × talents × météo × brûlure ; au moins 1 sauf immunité.
+ * × efficacité × aléa × multiplicateur × talents × météo × brûlure ; au moins 1 (une immunité
+ * de type divise les dégâts par 4).
  */
 export function attackDamage(
   settings: DungeonCombatSettings,
@@ -569,8 +587,7 @@ export function attackDamage(
   const stab = attacker.types.includes(attackType)
     ? settings.stabMultiplier * (1 + (attacker.traits?.stabPercent ?? 0) / 100)
     : 1;
-  const effectiveness = typeEffectiveness(attackType, defender.types);
-  if (effectiveness === 0) return { damage: 0, effectiveness };
+  const effectiveness = dungeonTypeEffectiveness(attackType, defender.types);
   const random = settings.minDamageRoll + (1 - settings.minDamageRoll) * roll;
   const dealt = damagePercent(
     attacker.traits,
@@ -1169,6 +1186,29 @@ export function dungeonEnv(
 }
 
 /**
+ * XP gagnée par chaque membre si tous les adversaires du donjon sont vaincus (talents de `team`
+ * compris s'il est fourni).
+ */
+export function dungeonMaxXp(
+  ctx: GameContext,
+  dungeon: Dungeon,
+  bonuses: PlayerBonuses = NO_BONUSES,
+  team?: readonly PokemonInstance[],
+  hour?: number | null,
+): number {
+  const enemies = [...dungeon.opponents, dungeon.boss];
+  const baseXp = defeatedXp(ctx, enemies);
+  let xpBonus = bonuses.xp;
+  if (team) {
+    const opponentTypes = [
+      ...new Set(enemies.flatMap((e) => ctx.species(e.speciesId, e.formId)?.types ?? [])),
+    ];
+    xpBonus = abilityBonuses(ctx, { activity: 'dungeon', team, opponentTypes, hour }, bonuses).xp;
+  }
+  return Math.floor(baseXp * ctx.balance.dungeons.xpMultiplier * xpBonus);
+}
+
+/**
  * Résultat d'une tentative terminée : XP des adversaires vaincus (rien en cas de fuite), K.O.,
  * et en cas de victoire argent, butin et chance de Méga-Gemme (tirages : gemme, puis butin).
  */
@@ -1183,10 +1223,7 @@ export function resolveDungeonRun(ctx: GameContext, input: DungeonRunInput): Dun
   const env = dungeonEnv(setup, input.team, input.hour);
   const bonuses = abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES);
 
-  const baseXp = setup.enemies.slice(0, state.defeated).reduce((sum, enemy) => {
-    const species = ctx.species(enemy.speciesId, enemy.formId);
-    return sum + (species ? defeatXp(species, enemy.level) : 0);
-  }, 0);
+  const baseXp = defeatedXp(ctx, setup.enemies.slice(0, state.defeated));
   const xpPerMember = fled ? 0 : Math.floor(baseXp * rules.xpMultiplier * bonuses.xp);
   const happiness = abilityHappiness(
     ctx,

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ReactNode } from 'react';
 import { DUNGEON_DIFFICULTIES } from '@poke/content';
 import type { Dungeon } from '@poke/content';
@@ -6,7 +7,8 @@ import { dungeonStatus } from '@poke/game-core';
 import type { DungeonStatus, GameContext } from '@poke/game-core';
 import type { DungeonRecordDto, DungeonRunDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge, useNow } from '../../components/ui';
-import { serverOffset, useDungeons, usePlayerProgress } from '../../lib/game';
+import { api } from '../../lib/api';
+import { keys, serverOffset, useDungeons, usePlayerProgress } from '../../lib/game';
 import {
   formatCountdown,
   itemIcon,
@@ -18,42 +20,13 @@ import { DungeonCombat } from './DungeonCombat';
 import { DungeonDifficultyBadge } from './DungeonDifficultyBadge';
 import { DungeonResult } from './DungeonResult';
 import { LaunchDungeonDialog } from './LaunchDungeonDialog';
-import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
-import { pillClass } from './TeamPicker';
+import { RegionTabs, currentRegionTab, useSavedRegionTab, visibleRegions } from './RegionTabs';
 
-/** Dernière tentative dont le joueur a vu le résultat (une réclamée en son absence s'affiche une fois). */
-const SEEN_KEY = 'dungeon-result-seen';
 /** Au-delà, le résultat d'une tentative réclamée en l'absence du joueur n'est plus montré. */
 const RESULT_MAX_AGE_MS = 3 * 24 * 3600_000;
 
-function readSeen(): string | null {
-  try {
-    return localStorage.getItem(SEEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-const SORTS = { order: 'Pokédex', difficulty: 'Difficulté' } as const;
-type Sort = keyof typeof SORTS;
-/** Tri choisi par le joueur, retenu d'une visite à l'autre. */
-const SORT_KEY = 'dungeon-sort';
-
-function readSort(): Sort {
-  try {
-    return localStorage.getItem(SORT_KEY) === 'difficulty' ? 'difficulty' : 'order';
-  } catch {
-    return 'order';
-  }
-}
-
-function saveSort(sort: Sort) {
-  try {
-    localStorage.setItem(SORT_KEY, sort);
-  } catch {
-    // Stockage indisponible : le tri revient à l'ordre par défaut à la prochaine visite.
-  }
-}
+/** Onglet regroupant les donjons de toutes les régions débloquées, avant les onglets de région. */
+const ALL_TAB = { id: '__tous', label: 'Tous' };
 
 /** Tentative dont le joueur a fermé la fenêtre du combat (rouverte via le bouton de la liste). */
 const HIDDEN_KEY = 'dungeon-combat-hidden';
@@ -75,14 +48,6 @@ function saveHidden(id: string | null) {
   }
 }
 
-function markSeen(id: string) {
-  try {
-    localStorage.setItem(SEEN_KEY, id);
-  } catch {
-    // Stockage indisponible : le résultat pourra s'afficher de nouveau.
-  }
-}
-
 export function DungeonsPage({ ctx }: { ctx: GameContext }) {
   const dungeons = useDungeons();
   const progress = usePlayerProgress();
@@ -92,8 +57,9 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
   const [result, setResult] = useState<{ run: DungeonRunDto; currency: number | null } | null>(
     null,
   );
-  const [seen, setSeen] = useState(readSeen);
-  const [sort, setSort] = useState(readSort);
+  const queryClient = useQueryClient();
+  // Résultat fermé à l'instant, en attendant que le serveur le marque comme vu.
+  const [seen, setSeen] = useState<string | null>(null);
   const [hiddenRun, setHiddenRun] = useState(readHidden);
   // Tentative dont le combat est terminé, et celle dont le joueur a demandé le résultat.
   const [overRun, setOverRun] = useState<string | null>(null);
@@ -104,26 +70,34 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
   const active = dungeons.data?.active ?? null;
   const last = dungeons.data?.last ?? null;
   const records = new Map(dungeons.data?.records.map((r) => [r.dungeonId, r]));
-  const regionId = currentRegionTab(ctx, progress, selectedRegion);
-  const inRegion = ctx.dungeons.filter((d) => d.regionId === regionId);
+  const regionId = currentRegionTab(ctx, progress, selectedRegion, [ALL_TAB]);
+  const isAllTab = regionId === ALL_TAB.id;
+  const unlockedRegionIds = visibleRegions(ctx, progress).unlocked.map((r) => r.id);
+  const inRegion = ctx.dungeons.filter((d) =>
+    isAllTab ? unlockedRegionIds.includes(d.regionId) : d.regionId === regionId,
+  );
   const listed = inRegion
     .map((d) => ({
       dungeon: d,
       status: dungeonStatus(ctx, d, progress, records.get(d.id), serverNow),
     }))
     .filter((d) => d.status.state !== 'hidden');
-  // Du plus facile au plus difficile, dans l'ordre habituel à difficulté égale.
-  if (sort === 'difficulty') {
-    const rank = (d: Dungeon) => DUNGEON_DIFFICULTIES.indexOf(d.difficulty);
-    listed.sort((a, b) => rank(a.dungeon) - rank(b.dungeon) || a.dungeon.order - b.dungeon.order);
-  }
+  // Du plus facile au plus difficile ; à difficulté égale, région par région puis l'ordre du Pokédex.
+  const difficultyRank = (d: Dungeon) => DUNGEON_DIFFICULTIES.indexOf(d.difficulty);
+  const regionRank = (d: Dungeon) => unlockedRegionIds.indexOf(d.regionId);
+  listed.sort(
+    ({ dungeon: a }, { dungeon: b }) =>
+      difficultyRank(a) - difficultyRank(b) || regionRank(a) - regionRank(b) || a.order - b.order,
+  );
   const hiddenCount = inRegion.length - listed.length;
 
-  // Tentative réclamée en l'absence du joueur : son résultat s'affiche une fois.
+  // Tentative réclamée en l'absence du joueur (ou dont la fenêtre n'a pas été fermée) : son
+  // résultat s'affiche jusqu'à ce que le joueur le ferme, sur n'importe quel appareil.
   const unseen =
     !active &&
     !result &&
     last?.result &&
+    !last.resultSeenAt &&
     last.id !== seen &&
     last.claimedAt &&
     serverNow - Date.parse(last.claimedAt) < RESULT_MAX_AGE_MS
@@ -143,8 +117,13 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
 
   function closeResult() {
     if (shownResult) {
-      markSeen(shownResult.run.id);
-      setSeen(shownResult.run.id);
+      const id = shownResult.run.id;
+      setSeen(id);
+      api(`/api/dungeons/${id}/seen`, { method: 'POST' })
+        .then(() => queryClient.invalidateQueries({ queryKey: keys.dungeons }))
+        .catch(() => {
+          // Échec : le résultat pourra s'afficher de nouveau au prochain passage.
+        });
     }
     setResult(null);
   }
@@ -172,6 +151,7 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
             progress={progress}
             selected={regionId}
             onSelect={setSelectedRegion}
+            leading={[ALL_TAB]}
           />
         </div>
         <p className="mb-3 text-sm text-slate-500">
@@ -179,29 +159,10 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
           entrer, puis bats ses adversaires un à un jusqu’au boss pour tenter de remporter sa
           Méga-Gemme : elle permet de méga-évoluer ton Pokémon au PC.
         </p>
-        {listed.length > 1 && (
-          <div className="mb-3 flex flex-wrap items-center gap-1 text-xs">
-            <span className="text-slate-500">Trier par</span>
-            {(Object.keys(SORTS) as Sort[]).map((key) => (
-              <button
-                key={key}
-                type="button"
-                onClick={() => {
-                  setSort(key);
-                  saveSort(key);
-                }}
-                className={pillClass(sort === key)}
-              >
-                {SORTS[key]}
-              </button>
-            ))}
-          </div>
-        )}
-
         {listed.length === 0 ? (
           <p className="rounded-2xl border-2 border-dashed border-slate-300 p-6 text-center text-sm text-slate-500 dark:border-slate-700">
-            Aucun donjon découvert dans cette région. Capture un Pokémon d’une lignée capable de
-            méga-évoluer pour révéler son donjon.
+            Aucun donjon découvert {isAllTab ? 'pour l’instant' : 'dans cette région'}. Capture un
+            Pokémon d’une lignée capable de méga-évoluer pour révéler son donjon.
           </p>
         ) : (
           <div className="grid gap-3 sm:grid-cols-2">
@@ -223,7 +184,7 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
         {hiddenCount > 0 && (
           <p className="mt-3 text-center text-xs text-slate-500">
             {hiddenCount} donjon{hiddenCount > 1 ? 's' : ''} encore caché
-            {hiddenCount > 1 ? 's' : ''} dans cette région.
+            {hiddenCount > 1 ? 's' : ''} {isAllTab ? 'dans tes régions' : 'dans cette région'}.
           </p>
         )}
       </section>
@@ -245,8 +206,6 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
               showCombat(true);
             }}
             onFinished={(data) => {
-              markSeen(data.run.id);
-              setSeen(data.run.id);
               setResult({ run: data.run, currency: data.currency });
             }}
           />

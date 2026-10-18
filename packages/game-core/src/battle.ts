@@ -2,7 +2,7 @@ import type { ItemStack, Trainer, TrainerPokemon } from '@poke/content';
 import { STAT_NAMES, typeEffectiveness } from '@poke/data';
 import type { Stats } from '@poke/data';
 import type { GameContext } from './context';
-import { addStacks, applyTeamXp, defeatXp, missingTypes, rollLoot } from './expedition';
+import { addStacks, applyTeamXp, defeatedXp, missingTypes, rollLoot } from './expedition';
 import type { TeamMember, TeamMemberResult } from './expedition';
 import { pokemonPower } from './pokemon';
 import type { PokemonInstance } from './pokemon';
@@ -290,6 +290,16 @@ export interface BattleResult {
   koMinutes: number;
 }
 
+/** XP gagnée par chaque membre de l'équipe, en cas de victoire et de défaite. */
+export function battleXp(
+  ctx: GameContext,
+  trainer: Pick<Trainer, 'team'>,
+  bonuses: PlayerBonuses = NO_BONUSES,
+): { win: number; loss: number } {
+  const xp = defeatedXp(ctx, trainer.team) * ctx.balance.battles.xpMultiplier * bonuses.xp;
+  return { win: Math.floor(xp), loss: Math.floor(xp * ctx.balance.battles.lossXpFraction) };
+}
+
 /**
  * Résout un combat de façon déterministe (seed + contenu de la version active au lancement).
  * L'ordre des tirages est figé : victoire, puis butin.
@@ -304,14 +314,9 @@ export function resolveBattle(ctx: GameContext, input: BattleInput): BattleResul
   const win = roll < estimate.winProbability;
   const koMinutes = battleKoMinutes(ctx, trainer);
 
-  const baseXp = trainer.team.reduce((sum, m) => {
-    const species = ctx.species(m.speciesId, m.formId);
-    return sum + (species ? defeatXp(species, m.level) : 0);
-  }, 0);
   const bonuses = abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES);
-  const xpPerMember = Math.floor(
-    baseXp * rules.xpMultiplier * bonuses.xp * (win ? 1 : rules.lossXpFraction),
-  );
+  const xp = battleXp(ctx, trainer, bonuses);
+  const xpPerMember = win ? xp.win : xp.loss;
 
   const loot = new Map<string, number>();
   const table = trainer.lootTableId ? ctx.lootTable(trainer.lootTableId) : undefined;
