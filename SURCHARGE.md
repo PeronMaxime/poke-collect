@@ -25,15 +25,15 @@ df -h && docker system df          # disque
 docker compose -f docker-compose.prod.yml logs --tail 200 api   # erreurs, requêtes lentes
 ```
 
-| Symptôme | Cause probable | Aller à |
-|---|---|---|
-| `api` bloqué à ~100 % de CPU | L'API n'utilise qu'un seul cœur | 1.3, 2.1 |
-| `postgres` très chargé | Requêtes lentes, index manquants | 1.4, 2.3 |
-| Mémoire pleine, swap utilisé | 4 Go trop justes | 1.1, 1.5 |
-| Lenteurs seulement pendant un déploiement | Images construites sur le VPS | 1.2 |
-| Disque plein | Sauvegardes, journaux, images | 1.6 |
-| Beaucoup de réponses 429 | Limite de requêtes trop basse | 1.7 |
-| Pic soudain venant de quelques adresses IP | Robots ou abus | 1.7 |
+| Symptôme                                   | Cause probable                   | Aller à  |
+| ------------------------------------------ | -------------------------------- | -------- |
+| `api` bloqué à ~100 % de CPU               | L'API n'utilise qu'un seul cœur  | 1.3, 2.1 |
+| `postgres` très chargé                     | Requêtes lentes, index manquants | 1.4, 2.3 |
+| Mémoire pleine, swap utilisé               | 4 Go trop justes                 | 1.1, 1.5 |
+| Lenteurs seulement pendant un déploiement  | Images construites sur le VPS    | 1.2      |
+| Disque plein                               | Sauvegardes, journaux, images    | 1.6      |
+| Beaucoup de réponses 429                   | Limite de requêtes trop basse    | 1.7      |
+| Pic soudain venant de quelques adresses IP | Robots ou abus                   | 1.7      |
 
 ---
 
@@ -72,7 +72,7 @@ Activer le journal des requêtes lentes de Postgres, en ajoutant dans `docker-co
 (service `postgres`) :
 
 ```yaml
-    command: ['postgres', '-c', 'log_min_duration_statement=200']
+command: ['postgres', '-c', 'log_min_duration_statement=200']
 ```
 
 Puis lire `docker compose ... logs postgres`. Une requête lente qui revient souvent se corrige
@@ -84,14 +84,14 @@ L'image Postgres utilise des réglages très prudents. Pour un VPS de 4 Go (à a
 change, en gros ¼ de la mémoire pour `shared_buffers`) :
 
 ```yaml
-    command:
-      - postgres
-      - -c
-      - shared_buffers=1GB
-      - -c
-      - effective_cache_size=2GB
-      - -c
-      - work_mem=16MB
+command:
+  - postgres
+  - -c
+  - shared_buffers=1GB
+  - -c
+  - effective_cache_size=2GB
+  - -c
+  - work_mem=16MB
 ```
 
 ### 1.6 Libérer le disque
@@ -127,9 +127,9 @@ Node n'utilise qu'un cœur par processus. Avec 4 vCores ou plus, lancer 2 ou 3 c
 derrière Caddy :
 
 ```yaml
-  api:
-    deploy:
-      replicas: 2
+api:
+  deploy:
+    replicas: 2
 ```
 
 Caddy répartit automatiquement entre les copies (`reverse_proxy api:3000` résout toutes les
@@ -245,11 +245,11 @@ maintenir. Kubernetes n'est utile qu'à une échelle bien supérieure.
 
 ## Résumé
 
-| Étape | Délai | Gain | Coût |
-|---|---|---|---|
-| Swap, déploiement hors pointe, réglages Postgres | < 1 h | Stabilité | Gratuit |
-| VPS supérieur + 2 processus d'API | 1 h à 1 jour | ×2 à ×3 | Quelques € par mois |
-| Cache de session, index, cache des classements | Quelques jours | ×1,5 à ×3 sur la base | Gratuit |
-| Cloudflare | 1 h | Statique et attaques gérés ailleurs | Gratuit |
-| Base séparée ou gérée | 1 jour | Tout le CPU du VPS pour l'API | 15 à 50 € par mois |
-| Plusieurs serveurs d'API + Redis + worker | Plusieurs jours | Sans limite pratique | Selon le nombre de serveurs |
+| Étape                                            | Délai           | Gain                                | Coût                        |
+| ------------------------------------------------ | --------------- | ----------------------------------- | --------------------------- |
+| Swap, déploiement hors pointe, réglages Postgres | < 1 h           | Stabilité                           | Gratuit                     |
+| VPS supérieur + 2 processus d'API                | 1 h à 1 jour    | ×2 à ×3                             | Quelques € par mois         |
+| Cache de session, index, cache des classements   | Quelques jours  | ×1,5 à ×3 sur la base               | Gratuit                     |
+| Cloudflare                                       | 1 h             | Statique et attaques gérés ailleurs | Gratuit                     |
+| Base séparée ou gérée                            | 1 jour          | Tout le CPU du VPS pour l'API       | 15 à 50 € par mois          |
+| Plusieurs serveurs d'API + Redis + worker        | Plusieurs jours | Sans limite pratique                | Selon le nombre de serveurs |
