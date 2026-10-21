@@ -167,6 +167,21 @@ describe('attaques', () => {
     );
   });
 
+  it('coup critique : dégâts multipliés, baisses d’Attaque ignorées, pas les hausses', () => {
+    const s = { ...setup([], []).settings, critMultiplier: 1.5 };
+    const hit = (context: Parameters<typeof attackDamage>[5]) =>
+      attackDamage(s, fighter(), fighter(), 'normal', 1, context).damage;
+    expect(hit({ critical: true })).toBeGreaterThan(hit({}) * 1.4);
+    // Intimidation ignorée, Impudence conservée.
+    expect(hit({ critical: true, attackMultiplier: 0.5 })).toBe(hit({ critical: true }));
+    expect(hit({ critical: true, attackMultiplier: 2 })).toBeGreaterThan(hit({ critical: true }));
+    // Tentative antérieure (sans multiplicateur) : aucun effet.
+    const { critMultiplier: _, ...old } = s;
+    expect(attackDamage(old, fighter(), fighter(), 'normal', 1, { critical: true }).damage).toBe(
+      hit({}),
+    );
+  });
+
   it('l’adversaire choisit son type le plus efficace', () => {
     const enemy = fighter({ types: ['fire', 'flying'], attackType: null });
     expect(attackTypeAgainst(enemy, fighter({ types: ['grass'] }))).toBe('fire');
@@ -185,6 +200,26 @@ describe('simulation', () => {
     expect(full.state.outcome).not.toBeNull();
     const mid = simulateDungeon(s, [], null, 5_000);
     expect(mid.events).toEqual(full.events.filter((e) => e.atMs <= 5_000));
+  });
+
+  it('tire des coups critiques selon la chance réglée', () => {
+    const tank = () => fighter({ maxHp: 1_000_000 });
+    const crits = (critChance: number | undefined) => {
+      const s = setup([tank()], [tank()]);
+      s.settings = { ...s.settings, critChance };
+      return simulateDungeon(s, [], null, 60_000).events.filter(
+        (e) => e.kind === 'attack' && e.critical,
+      ).length;
+    };
+    expect(crits(1)).toBeGreaterThan(0);
+    expect(crits(0)).toBe(0);
+    // Tentative antérieure : ni critique ni tirage, le déroulé est celui d'une chance nulle.
+    expect(crits(undefined)).toBe(0);
+    const old = setup([tank()], [tank()]);
+    old.settings = { ...old.settings, critChance: undefined };
+    const none = setup([tank()], [tank()]);
+    none.settings = { ...none.settings, critChance: 0 };
+    expect(simulateDungeon(old, [], null, 60_000)).toEqual(simulateDungeon(none, [], null, 60_000));
   });
 
   it('gagne quand le boss tombe', () => {
@@ -234,6 +269,55 @@ describe('simulation', () => {
     // Pokémon K.O. ou déjà actif : commande ignorée.
     const ignored = simulateDungeon(s, [{ atMs: 100, member: 0 }], null, 200);
     expect(ignored.events.filter((e) => e.kind === 'switch')).toEqual([]);
+  });
+
+  it('empêche un Pokémon rappelé de revenir avant le délai réglé', () => {
+    const tank = () => fighter({ maxHp: 1_000_000 });
+    const base = setup([tank(), tank()], [tank()]);
+    const s = { ...base, settings: { ...base.settings, recallCooldownMs: 5000 } };
+    const commands = [
+      { atMs: 1000, member: 1 },
+      { atMs: 3000, member: 0 },
+      { atMs: 6500, member: 0 },
+    ];
+    const { state, events } = simulateDungeon(s, commands, null, 7000);
+    expect(events.filter((e) => e.kind === 'switch').map((e) => e.atMs)).toEqual([1000, 6500]);
+    expect(state.active).toBe(0);
+    expect(state.recallReadyAt).toEqual([6000, 11_500]);
+    // Tentatives antérieures (sans délai réglé) : retour immédiat possible.
+    const old = simulateDungeon(base, commands, null, 7000);
+    expect(old.events.filter((e) => e.kind === 'switch').map((e) => e.atMs)).toEqual([1000, 3000]);
+  });
+
+  it('après un K.O., fait entrer un Pokémon non rappelé, ou le dernier debout même rappelé', () => {
+    const tank = () => fighter({ maxHp: 1_000_000 });
+    const weak = () => fighter({ maxHp: 1 });
+    const boss = fighter({ maxHp: 1_000_000, stats: { ...fighter().stats, speed: 1000 } });
+    const withCooldown = (team: DungeonFighter[]) => {
+      const base = setup(team, [boss]);
+      return { ...base, settings: { ...base.settings, recallCooldownMs: 60_000 } };
+    };
+    // Le 0 est rappelé pour le 1, qui tombe : le 2 entre plutôt que le 0.
+    const three = simulateDungeon(
+      withCooldown([tank(), weak(), tank()]),
+      [{ atMs: 1, member: 1 }],
+      null,
+      5000,
+    );
+    expect(three.events).toContainEqual(
+      expect.objectContaining({ kind: 'switch', auto: true, member: 2 }),
+    );
+    // Seul le 0 reste debout : il revient malgré le délai.
+    const two = simulateDungeon(
+      withCooldown([tank(), weak()]),
+      [{ atMs: 1, member: 1 }],
+      null,
+      5000,
+    );
+    expect(two.events).toContainEqual(
+      expect.objectContaining({ kind: 'switch', auto: true, member: 0 }),
+    );
+    expect(two.state.outcome).toBeNull();
   });
 });
 

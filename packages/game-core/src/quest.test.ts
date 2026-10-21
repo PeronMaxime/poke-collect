@@ -178,6 +178,17 @@ describe('expédition légendaire', () => {
     ).not.toContainEqual(expect.objectContaining({ code: 'WRONG_REGION' }));
   });
 
+  it('Calque : le porteur compte comme ayant le type d’affinité de la zone', () => {
+    const withTrace = testContext((c) => {
+      c.abilities = [
+        { id: 'trace', description: '', effects: [{ type: 'copyZoneAffinity', conditions: [] }] },
+      ];
+    });
+    const traced = [member('a', 59, 50), member('b', 19, 50, { ability: 'trace' })];
+    expect(countAffinity(withTrace, site, traced)).toBe(2);
+    expect(countAffinity(withTrace, { ...site, affinityTypes: [] }, traced)).toBe(0);
+  });
+
   it('une seule rencontre, une seule Ball, avec la formule de capture des expéditions', () => {
     const result = resolveQuestExpedition(ctx, input);
     expect(result.encounters).toHaveLength(1);

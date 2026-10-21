@@ -11,6 +11,7 @@ import {
   estimateBattle,
   isRegionalSpecies,
   memberPower,
+  resolveWeather,
 } from '@poke/game-core';
 import type { BattleError, GameContext } from '@poke/game-core';
 import type { BattleDto, PokemonDto, StartBattleInput } from '@poke/shared';
@@ -26,6 +27,7 @@ import {
 } from '../../lib/game';
 import { errorText, formatDuration, formatMoney, typeLabel } from '../../lib/labels';
 import { TrainerSprite } from './BattlesPage';
+import { TEAM_WEATHER_NOTE, WeatherIcon } from './WeatherIcon';
 import { pillClass } from './LaunchExpeditionDialog';
 import {
   MEGA_LOCKED_TITLE,
@@ -167,11 +169,10 @@ export function LaunchBattleDialog({
   const advantage = advantageText(estimate.advantage);
   const ko = battleKoMinutes(ctx, trainer);
   const duration = battleRealDurationMinutes(ctx, trainer, members, hour);
-  const xp = battleXp(
-    ctx,
-    trainer,
-    abilityBonuses(ctx, battleEnv(ctx, trainer, members, hour), bonuses),
-  );
+  const env = battleEnv(ctx, trainer, members, hour);
+  const weather = resolveWeather(ctx, env);
+  const zoneWeather = (trainer.zoneId && ctx.zone(trainer.zoneId)?.weather) || null;
+  const xp = battleXp(ctx, trainer, abilityBonuses(ctx, env, bonuses));
 
   function toggle(p: PokemonDto) {
     if (megaLocked(p, members)) return;
@@ -186,7 +187,16 @@ export function LaunchBattleDialog({
         <TrainerSprite trainer={trainer} size={80} />
         <div>
           <p className="text-sm text-slate-500">{trainer.trainerClass}</p>
-          <h2 className="text-xl font-bold">{trainer.name}</h2>
+          <h2 className="flex items-center gap-2 text-xl font-bold">
+            {trainer.name}
+            {(weather || zoneWeather) && (
+              <WeatherIcon
+                weather={weather ?? 'clear'}
+                activity="battle"
+                note={weather !== zoneWeather ? TEAM_WEATHER_NOTE : undefined}
+              />
+            )}
+          </h2>
           <p className="text-sm text-slate-500">
             PE {estimate.trainerPower} · {formatDuration(duration)} ·{' '}
             {trainer.money > 0 ? formatMoney(trainer.money) : 'Aucun argent'}

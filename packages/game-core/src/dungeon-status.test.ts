@@ -149,6 +149,11 @@ describe('météo des talents', () => {
       effects: [{ type: 'setWeather', weather: 'sun', conditions: [] }],
     },
     {
+      id: 'cloud-nine',
+      description: '',
+      effects: [{ type: 'setWeather', weather: 'clear', conditions: [] }],
+    },
+    {
       id: 'chlorophyll',
       description: '',
       effects: [
@@ -190,5 +195,18 @@ describe('météo des talents', () => {
     expect(buildDungeonSetup(ctx, dungeon, team, 1).weather).toBe('rain');
     const sunny = [{ ...member('a', 6, 50, { ability: 'drought' }), move: null }];
     expect(buildDungeonSetup(withAbilities, dungeon, sunny, 1).weather).toBe('sun');
+  });
+
+  it('le temps clair imposé annule la météo du lieu', () => {
+    const solo = [member('a', 3, 50, { ability: 'chlorophyll' })];
+    const calm = [member('b', 3, 50, { ability: 'cloud-nine' }), ...solo];
+    const sunny = { ...zone, weather: 'sun' as const };
+    expect(resolveWeather(withAbilities, expeditionEnv(sunny, calm))).toBeNull();
+    expect(abilityModifier(withAbilities, expeditionEnv(sunny, calm), 'expeditionDuration')).toBe(
+      0,
+    );
+    const dungeon = { ...ctx.dungeon('mega-dracaufeu-x')!, weather: 'rain' as const };
+    const team = [{ ...member('a', 6, 50, { ability: 'cloud-nine' }), move: null }];
+    expect(buildDungeonSetup(withAbilities, dungeon, team, 1).weather).toBeNull();
   });
 });

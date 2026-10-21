@@ -8,6 +8,7 @@ import { abilityEffectText } from '@poke/game-core';
 import { IssueList, VersionBanner } from '../../components/EntityPage';
 import { Field, TextInput, validate } from '../../components/forms/fields';
 import { Sprite } from '../../components/forms/pickers';
+import type { GameContext } from '@poke/game-core';
 import type { WorkingVersion } from '../../lib/content';
 import { api } from '../../lib/api';
 import {
@@ -18,6 +19,7 @@ import {
   useWorkingVersion,
 } from '../../lib/content';
 import { AbilityEffectEditor } from './AbilityEffectEditor';
+import { AbilitySummaryDialog } from './AbilitySummaryDialog';
 
 interface Holder {
   speciesId: number;
@@ -80,26 +82,17 @@ const cleanDescription = (text: string | null) => text?.replace(/\\n|\n/g, ' ') 
 
 const hasEffect = (entry: GameAbility | undefined) => !!entry && entry.effects.length > 0;
 
-export function AbilitiesPage() {
-  const working = useWorkingVersion();
-  const [search, setSearch] = useState('');
-  const [kind, setKind] = useState<KindFilter>('all');
-  const [effectFilter, setEffectFilter] = useState<EffectFilter>('all');
-  // 'game' = toutes les régions du jeu ; 'all' = tous les Pokémon ; sinon l'id d'une région.
-  const [regionFilter, setRegionFilter] = useState('game');
-  const [selected, setSelected] = useState<string | null>(null);
-  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
-  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
-  const w = working.data;
-  const { ctx } = w;
+/**
+ * Talents possédés par au moins un Pokémon de la sélection : 'game' = toutes les régions du jeu,
+ * 'all' = tous les Pokémon, sinon l'id d'une région.
+ */
+function abilityRows(ctx: GameContext, regionFilter: string) {
   const region = ctx.region(regionFilter);
   const inScope =
     regionFilter === 'all'
       ? null
       : new Set(region ? region.speciesIds : ctx.regions.flatMap((r) => r.speciesIds));
-  const needle = search.trim().toLowerCase();
-
-  const allRows = abilities
+  return abilities
     .map((ability) => ({
       ability,
       holders: (HOLDERS.get(ability.name) ?? []).filter(
@@ -109,6 +102,24 @@ export function AbilitiesPage() {
       entry: ctx.ability(ability.name),
     }))
     .filter(({ holders }) => holders.length > 0);
+}
+
+export function AbilitiesPage() {
+  const working = useWorkingVersion();
+  const [search, setSearch] = useState('');
+  const [kind, setKind] = useState<KindFilter>('all');
+  const [effectFilter, setEffectFilter] = useState<EffectFilter>('all');
+  // 'game' = toutes les régions du jeu ; 'all' = tous les Pokémon ; sinon l'id d'une région.
+  const [regionFilter, setRegionFilter] = useState('game');
+  const [selected, setSelected] = useState<string | null>(null);
+  const [summaryOpen, setSummaryOpen] = useState(false);
+  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
+  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
+  const w = working.data;
+  const { ctx } = w;
+  const needle = search.trim().toLowerCase();
+
+  const allRows = abilityRows(ctx, regionFilter);
   const withEffect = allRows.filter((r) => hasEffect(r.entry)).length;
   const rows = allRows
     .filter(({ holders }) =>
@@ -127,7 +138,12 @@ export function AbilitiesPage() {
   return (
     <div className="space-y-4">
       <div>
-        <h1 className="text-2xl font-bold">Talents</h1>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-bold">Talents</h1>
+          <button className="btn-ghost" onClick={() => setSummaryOpen(true)}>
+            Récapitulatif
+          </button>
+        </div>
         <p className="mt-1 text-slate-500">
           Talents PokéAPI et Pokémon qui les possèdent (les formes ne sont listées que si leurs
           talents diffèrent de l’espèce). Un talent peut être caché chez un Pokémon et normal chez
@@ -224,6 +240,14 @@ export function AbilitiesPage() {
           holders={selectedRow.holders}
           description={selectedRow.description}
           onClose={() => setSelected(null)}
+        />
+      )}
+      {summaryOpen && (
+        <AbilitySummaryDialog
+          ctx={ctx}
+          initialRegion={regionFilter}
+          rowsFor={(r) => abilityRows(ctx, r)}
+          onClose={() => setSummaryOpen(false)}
         />
       )}
     </div>

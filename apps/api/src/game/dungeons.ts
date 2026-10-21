@@ -221,6 +221,7 @@ export async function switchDungeonMember(
     throw new GameError(409, 'MEMBER_KO');
   }
   if (input.member === state.active) throw new GameError(409, 'MEMBER_ACTIVE');
+  if (state.recallReadyAt[input.member]! > atMs) throw new GameError(409, 'MEMBER_RECALLED');
 
   const command: DungeonCommand = { atMs, member: input.member };
   const [updated] = await db

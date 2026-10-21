@@ -3,6 +3,8 @@ import type {
   AbilityEffect,
   AbilityEffectType,
   AbilityParam,
+  DungeonStat,
+  ImposedWeather,
   Status,
   Weather,
 } from '@poke/content';
@@ -342,6 +344,15 @@ export const ABILITY_PARAMS: Record<AbilityParam, AbilityParamInfo> = {
     activities: ['transfer'],
     help: 'Bonbons de lignée reçus en transférant ce Pokémon.',
   },
+  critChance: {
+    group: 'Donjons',
+    label: 'Taux de critique',
+    kind: 'percent',
+    unit: '%',
+    selfScope: true,
+    activities: ['dungeon'],
+    help: 'Chance de coup critique en donjon, relative au taux de l’équilibrage (Super Chance : +100, soit ×2).',
+  },
   stab: {
     group: 'Donjons',
     label: 'Bonus de même type (STAB)',
@@ -382,7 +393,8 @@ export interface AbilityEnv {
   weatherResolved?: boolean;
 }
 
-export const WEATHER_LABELS: Record<Weather, string> = {
+export const WEATHER_LABELS: Record<ImposedWeather, string> = {
+  clear: 'Temps clair',
   sun: 'Soleil',
   rain: 'Pluie',
   sand: 'Tempête de sable',
@@ -397,12 +409,31 @@ export const STATUS_LABELS: Record<Status, string> = {
   freeze: 'Gel',
 };
 
+/** Statistiques modifiables en donjon (Intimidation). */
+export const DUNGEON_STAT_LABELS: Record<DungeonStat, string> = {
+  attack: 'Attaque',
+  defense: 'Défense',
+  'special-attack': 'Attaque Spéciale',
+  'special-defense': 'Défense Spéciale',
+  speed: 'Vitesse',
+};
+
+/** « l’Attaque et la Vitesse ». */
+export function dungeonStatsText(stats: readonly DungeonStat[]): string {
+  const names = stats.map(
+    (st) =>
+      `${st === 'attack' || st === 'special-attack' ? 'l’' : 'la '}${DUNGEON_STAT_LABELS[st]}`,
+  );
+  return names.length > 1
+    ? `${names.slice(0, -1).join(', ')} et ${names.at(-1)}`
+    : (names[0] ?? '');
+}
+
 /**
- * Météo de l'activité : celle imposée par le premier Pokémon de l'équipe dont le talent en
- * impose une (Sécheresse…), sinon celle du lieu.
+ * Météo imposée par le premier Pokémon de l'équipe dont le talent en impose une (Sécheresse,
+ * ou temps clair qui annule celle du lieu) ; null = aucune.
  */
-export function resolveWeather(ctx: GameContext, env: AbilityEnv): Weather | null {
-  if (env.weatherResolved) return env.weather ?? null;
+export function imposedWeather(ctx: GameContext, env: AbilityEnv): ImposedWeather | null {
   for (const [holder, member] of env.team.entries()) {
     for (const effect of ctx.ability(effectiveAbility(ctx, member))?.effects ?? []) {
       if (effect.type !== 'setWeather') continue;
@@ -413,7 +444,17 @@ export function resolveWeather(ctx: GameContext, env: AbilityEnv): Weather | nul
       if (ok) return effect.weather;
     }
   }
-  return env.weather ?? null;
+  return null;
+}
+
+/** Météo imposée, sinon celle du lieu ; null = temps clair. */
+export const weatherOrClear = (weather: ImposedWeather | null | undefined): Weather | null =>
+  weather === 'clear' ? null : (weather ?? null);
+
+/** Météo de l'activité : celle imposée par un talent de l'équipe, sinon celle du lieu. */
+export function resolveWeather(ctx: GameContext, env: AbilityEnv): Weather | null {
+  if (env.weatherResolved) return env.weather ?? null;
+  return weatherOrClear(imposedWeather(ctx, env) ?? env.weather);
 }
 
 /** Environnement dont la météo est résolue (talents compris). */
@@ -459,7 +500,10 @@ function conditionMet(
     case 'hpBelow':
     case 'fullHp':
     case 'attackType':
+    case 'attackCategory':
     case 'statused':
+    case 'superEffective':
+    case 'notVeryEffective':
       return false;
   }
 }
@@ -676,6 +720,22 @@ const natureCount = natures.length;
 export const typeNameFr = (type: string) => typeNames.get(type) ?? type;
 const typeList = (types: readonly string[]) => types.map(typeNameFr).join('/');
 
+/** Conditions sur l'état du Pokémon (donjon) : aussi évaluées en continu pour ses statistiques. */
+export const STATE_CONDITION_TYPES: ReadonlySet<AbilityCondition['type']> = new Set([
+  'hpBelow',
+  'fullHp',
+  'statused',
+]);
+
+/** Statistiques de donjon que l'état du Pokémon peut conditionner (pas les PV max). */
+export const STATE_STAT_PARAMS: ReadonlySet<AbilityParam> = new Set([
+  'attack',
+  'defense',
+  'specialAttack',
+  'specialDefense',
+  'speed',
+]);
+
 export const ABILITY_CONDITION_LABELS: Record<AbilityCondition['type'], string> = {
   zoneType: 'Zone de type',
   opponentType: 'Adversaire de type',
@@ -686,8 +746,11 @@ export const ABILITY_CONDITION_LABELS: Record<AbilityCondition['type'], string> 
   hpBelow: 'PV sous (donjon)',
   fullHp: 'PV au maximum (donjon)',
   attackType: 'Attaque de type (donjon)',
+  attackCategory: 'Attaque physique / spéciale (donjon)',
   weather: 'Météo',
   statused: 'A un statut (donjon)',
+  superEffective: 'Attaque super efficace (donjon)',
+  notVeryEffective: 'Attaque peu efficace (donjon)',
 };
 
 export function abilityConditionText(condition: AbilityCondition): string {
@@ -710,10 +773,16 @@ export function abilityConditionText(condition: AbilityCondition): string {
       return 'PV au maximum';
     case 'attackType':
       return `attaques ${typeList(condition.types)}`;
+    case 'attackCategory':
+      return condition.category === 'physical' ? 'attaques physiques' : 'attaques spéciales';
     case 'weather':
       return `par ${condition.weathers.map((w) => WEATHER_LABELS[w].toLowerCase()).join(' ou ')}`;
     case 'statused':
       return 'avec un statut';
+    case 'superEffective':
+      return 'attaques super efficaces';
+    case 'notVeryEffective':
+      return 'attaques peu efficaces';
   }
 }
 
@@ -734,7 +803,10 @@ export const ABILITY_EFFECT_LABELS: Record<AbilityEffectType, string> = {
   inflictStatus: 'Inflige un statut',
   statusImmunity: 'Immunité à des statuts',
   naturalCure: 'Guéri au rappel',
+  critImmunity: 'Immunité aux critiques',
   weatherImmunity: 'Insensible à la météo',
+  copyZoneAffinity: 'Copie l’affinité de la zone',
+  suppressAbility: 'Neutralise le talent adverse',
 };
 
 const signed = (n: number, unit: string) =>
@@ -768,6 +840,9 @@ export function abilityEffectText(effect: AbilityEffect): string {
     case 'sturdy':
       text = 'Survit à 1 PV à un coup fatal quand ses PV sont au maximum';
       break;
+    case 'critImmunity':
+      text = 'Ne subit jamais de coup critique';
+      break;
     case 'regenerator':
       text = `Récupère ${percentOf(effect.fraction)} de ses PV quand il est rappelé`;
       break;
@@ -778,7 +853,7 @@ export function abilityEffectText(effect: AbilityEffect): string {
       text = `+${effect.percent} % d’Attaque après chaque K.O. infligé`;
       break;
     case 'intimidate':
-      text = `−${effect.percent} % d’Attaque à l’adversaire en face, à son entrée`;
+      text = `À son entrée, baisse de ${effect.percent} % ${dungeonStatsText(effect.stats)} du Pokémon en face`;
       break;
     case 'contactDamage':
       text = `L’attaquant perd ${percentOf(effect.fraction)} de ses PV à chaque attaque physique`;
@@ -787,7 +862,10 @@ export function abilityEffectText(effect: AbilityEffect): string {
       text = `Mis K.O. par une attaque physique, inflige ${percentOf(effect.fraction)} des PV de l’attaquant`;
       break;
     case 'setWeather':
-      text = `Impose : ${WEATHER_LABELS[effect.weather].toLowerCase()}`;
+      text =
+        effect.weather === 'clear'
+          ? 'Annule la météo (temps clair)'
+          : `Impose : ${WEATHER_LABELS[effect.weather].toLowerCase()}`;
       break;
     case 'inflictStatus':
       text = `${percentOf(effect.chance)} de ${STATUS_LABELS[effect.status].toLowerCase()} ${
@@ -795,13 +873,21 @@ export function abilityEffectText(effect: AbilityEffect): string {
       }`;
       break;
     case 'statusImmunity':
-      text = `Insensible : ${effect.statuses.map((st) => STATUS_LABELS[st].toLowerCase()).join(', ')}`;
+      text = `Insensible : ${effect.statuses.map((st) => STATUS_LABELS[st].toLowerCase()).join(', ')}${
+        effect.scope === 'team' ? ' (équipe)' : ' (lui)'
+      }`;
       break;
     case 'naturalCure':
       text = 'Guéri de son statut quand il est rappelé';
       break;
     case 'weatherImmunity':
       text = 'Insensible aux dégâts de la tempête de sable et de la grêle';
+      break;
+    case 'copyZoneAffinity':
+      text = 'Compte comme ayant le type d’affinité de la zone (bonus de capture)';
+      break;
+    case 'suppressAbility':
+      text = 'Tant qu’il est sur le terrain, le talent du Pokémon en face ne joue plus';
       break;
   }
   const conditions = effect.conditions.map(abilityConditionText);

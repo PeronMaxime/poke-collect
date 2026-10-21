@@ -18,9 +18,11 @@ import {
   abilityHappiness,
   abilityModifier,
   abilityMultiplier,
+  activeAbilityEffects,
   applyWildAbilities,
   attractedTypes,
   durationWithAbility,
+  effectiveAbility,
   memberPower,
   scaledByAbility,
   teamMemberPowers,
@@ -216,11 +218,31 @@ export function teamPower(
 
 export function countAffinity(
   ctx: GameContext,
-  zone: Pick<ExpeditionSite, 'affinityTypes'>,
-  team: readonly Pick<PokemonInstance, 'speciesId' | 'formId'>[],
+  zone: Pick<ExpeditionSite, 'affinityTypes'> & { weather?: Weather | null },
+  team: readonly PokemonInstance[],
+  hour?: number | null,
 ): number {
   const affinity = new Set(zone.affinityTypes);
-  return memberTypes(ctx, team).filter((types) => types.some((t) => affinity.has(t))).length;
+  if (affinity.size === 0) return 0;
+  // Calque : le porteur compte comme ayant le type d'affinité de la zone.
+  const copiers = new Set(
+    activeAbilityEffects(ctx, expeditionEnv(zone, team, hour))
+      .filter((e) => e.effect.type === 'copyZoneAffinity')
+      .map((e) => e.holder),
+  );
+  return memberTypes(ctx, team).filter(
+    (types, i) => copiers.has(i) || types.some((t) => affinity.has(t)),
+  ).length;
+}
+
+/** Le talent du Pokémon peut copier l'affinité de la zone (Calque), conditions mises à part. */
+export function copiesZoneAffinity(
+  ctx: GameContext,
+  pokemon: Pick<PokemonInstance, 'speciesId' | 'formId' | 'ability'>,
+): boolean {
+  return !!ctx
+    .ability(effectiveAbility(ctx, pokemon))
+    ?.effects.some((e) => e.type === 'copyZoneAffinity');
 }
 
 /** Types requis (« 2 Pokémon Eau ») qui manquent encore à l'équipe. */
@@ -310,7 +332,7 @@ export function checkTeam(
   const missing = missingTypes(ctx, team, zone.requiredTypes);
   if (missing.length > 0) errors.push({ code: 'MISSING_TYPES', missing });
 
-  return { power, affinityCount: countAffinity(ctx, zone, team), errors };
+  return { power, affinityCount: countAffinity(ctx, zone, team, hour), errors };
 }
 
 // --- Filtre de capture -------------------------------------------------------------------
@@ -513,7 +535,7 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
   const { zone } = input;
   const pity = new Map(Object.entries(input.pity).map(([k, v]) => [Number(k), v]));
   const touched = new Set<number>();
-  const affinityCount = input.affinityCount ?? countAffinity(ctx, zone, input.team);
+  const affinityCount = input.affinityCount ?? countAffinity(ctx, zone, input.team, input.hour);
   const ballMultiplier = input.balls
     ? (ctx.itemEffect(input.balls.itemId, 'ball')?.catchMultiplier ?? 1)
     : 0;

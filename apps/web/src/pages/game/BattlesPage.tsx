@@ -25,6 +25,7 @@ import {
 import { BattleReveal } from './BattleReveal';
 import { LaunchBattleDialog } from './LaunchBattleDialog';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
+import { WeatherIcon } from './WeatherIcon';
 
 /** Portrait d'un dresseur (sprite, ou initiale à défaut). */
 export function TrainerSprite({ trainer, size = 64 }: { trainer: Trainer; size?: number }) {
@@ -285,6 +286,13 @@ function TrainerCard({
               <h3 className="font-semibold">
                 {trainer.name}{' '}
                 {status.state === 'defeated' && <span className="text-emerald-600">✓</span>}
+                {zone?.weather && (
+                  <WeatherIcon
+                    weather={zone.weather}
+                    activity="battle"
+                    className="ml-1 text-base"
+                  />
+                )}
               </h3>
             </div>
             <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">

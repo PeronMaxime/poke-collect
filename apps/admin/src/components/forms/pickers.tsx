@@ -632,7 +632,7 @@ export function WeatherSelect({
       disabled={disabled}
       onChange={(e) => onChange((e.target.value || null) as Weather | null)}
     >
-      <option value="">Temps clair</option>
+      <option value="">{WEATHER_LABELS.clear}</option>
       {WEATHERS.map((w) => (
         <option key={w} value={w}>
           {WEATHER_LABELS[w]}

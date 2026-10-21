@@ -43,6 +43,7 @@ import { LegendaryEncounterDialog } from './LegendaryEncounterDialog';
 import { LootReveal } from './LootReveal';
 import { RegionStarterCard } from './RegionStarterCard';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
+import { WeatherIcon } from './WeatherIcon';
 
 /** Lien vers une zone (`#expeditions/<zone>`), depuis le Pokédex. */
 export const zoneLink = (zoneId: string) => `#expeditions/${zoneId}`;
@@ -535,6 +536,9 @@ export function ZoneCard({
             {favorite ? '★' : '☆'}
           </button>
           {zone.name}
+          {zone.weather && (
+            <WeatherIcon weather={zone.weather} activity="expedition" className="ml-1 text-base" />
+          )}
         </h3>
         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           PE ≥ {zone.minPower}

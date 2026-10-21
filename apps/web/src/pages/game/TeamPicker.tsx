@@ -4,6 +4,7 @@ import type { StatName } from '@poke/data';
 import {
   MAX_MEGAS_PER_TEAM,
   computeStats,
+  copiesZoneAffinity,
   isMegaForm,
   isRegionalSpecies,
   megaCount,
@@ -276,7 +277,9 @@ export function useTeamPickerOver(
         species,
         power: memberPower(ctx, p),
         stats: computeStats(species, p),
-        affinity: species.types.some((t) => zone.affinityTypes.includes(t)),
+        affinity:
+          species.types.some((t) => zone.affinityTypes.includes(t)) ||
+          (zone.affinityTypes.length > 0 && copiesZoneAffinity(ctx, p)),
       };
     })
     // Les membres déjà choisis restent visibles, quels que soient les filtres.

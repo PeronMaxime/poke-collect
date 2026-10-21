@@ -3,7 +3,6 @@ import type { ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Zone } from '@poke/content';
 import {
-  WEATHER_LABELS,
   abilityMultiplier,
   attractedTypes,
   captureProbability,
@@ -38,6 +37,7 @@ import {
   typeLabel,
 } from '../../lib/labels';
 import { TeamPicker, pillClass, useTeamPicker } from './TeamPicker';
+import { TEAM_WEATHER_NOTE, WeatherIcon } from './WeatherIcon';
 import { XpPreview, formatXp, usePlayerBonuses } from './XpPreview';
 
 export { pillClass };
@@ -239,7 +239,16 @@ export function LaunchExpeditionForm({
 
   return (
     <>
-      <h2 className="text-xl font-bold">{zone.name}</h2>
+      <h2 className="flex items-center gap-2 text-xl font-bold">
+        {zone.name}
+        {(weather || zone.weather) && (
+          <WeatherIcon
+            weather={weather ?? 'clear'}
+            activity="expedition"
+            note={weather !== (zone.weather ?? null) ? TEAM_WEATHER_NOTE : undefined}
+          />
+        )}
+      </h2>
       <p className="text-sm text-slate-500">{zone.description}</p>
 
       <h3 className="mt-5 text-sm font-semibold">Durée</h3>
@@ -255,7 +264,6 @@ export function LaunchExpeditionForm({
         ))}
       </div>
       <p className="mt-1 text-xs text-slate-500">
-        {weather && `Météo : ${WEATHER_LABELS[weather]}. `}
         {plan.realDurationMinutes !== duration &&
           `Retour en ${formatDuration(plan.realDurationMinutes)} grâce aux talents. `}
         {encounters} rencontre{encounters > 1 ? 's' : ''} prévue{encounters > 1 ? 's' : ''}. Taux

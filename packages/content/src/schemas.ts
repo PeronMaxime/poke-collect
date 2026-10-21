@@ -71,11 +71,17 @@ export const dungeonSettingsSchema = z.object({
   maxAttackIntervalMs: z.int().min(100).max(60_000),
   /**
    * Dégâts = ((2 × niveau / 5 + 2) × puissance × Att / Déf / 50 + 2) × bonus de type (STAB)
-   * × efficacité × aléa (entre `minDamageRoll` et 1) × multiplicateur.
+   * × efficacité × aléa (entre `minDamageRoll` et 1) × multiplicateur × coup critique.
    */
   damageMultiplier: z.number().positive().max(100),
   stabMultiplier: z.number().min(1).max(5),
   minDamageRoll: probabilitySchema,
+  /** Chance de coup critique de chaque attaque (0 = aucun). */
+  critChance: probabilitySchema.default(0.0625),
+  /** Dégâts d'un coup critique, qui ignore aussi les baisses d'Attaque (Intimidation). */
+  critMultiplier: z.number().min(1).max(5).default(1.5),
+  /** Délai avant qu'un Pokémon rappelé par le joueur puisse revenir au combat. */
+  recallCooldownSeconds: z.number().min(0).max(60).default(5),
   /** IV des adversaires quand l'admin n'en fixe pas. */
   defaultOpponentIv: z.int().min(0).max(31),
   /** Nom affiché de chaque niveau de difficulté. */
@@ -379,6 +385,10 @@ export type SpeciesOverride = z.infer<typeof speciesOverrideSchema>;
 export const WEATHERS = ['sun', 'rain', 'sand', 'hail'] as const;
 export const weatherSchema = z.enum(WEATHERS);
 export type Weather = z.infer<typeof weatherSchema>;
+/** Météo qu'un talent peut imposer : une météo, ou le temps clair (annule celle du lieu). */
+export const IMPOSED_WEATHERS = [...WEATHERS, 'clear'] as const;
+export const imposedWeatherSchema = z.enum(IMPOSED_WEATHERS);
+export type ImposedWeather = z.infer<typeof imposedWeatherSchema>;
 /** Météo facultative d'un lieu : null (colonne vide en base) devient absente. */
 const optionalWeatherSchema = z.preprocess((w) => w ?? undefined, weatherSchema.optional());
 
@@ -386,6 +396,17 @@ const optionalWeatherSchema = z.preprocess((w) => w ?? undefined, weatherSchema.
 export const STATUSES = ['paralysis', 'burn', 'poison', 'sleep', 'freeze'] as const;
 export const statusSchema = z.enum(STATUSES);
 export type Status = z.infer<typeof statusSchema>;
+
+/** Statistiques qu'un talent peut faire varier en donjon (Intimidation). */
+export const DUNGEON_STATS = [
+  'attack',
+  'defense',
+  'special-attack',
+  'special-defense',
+  'speed',
+] as const;
+export const dungeonStatSchema = z.enum(DUNGEON_STATS);
+export type DungeonStat = z.infer<typeof dungeonStatSchema>;
 
 // --- Talents ---------------------------------------------------------------------
 
@@ -420,6 +441,7 @@ export const ABILITY_PARAM_IDS = [
   'damageDealt',
   'damageTaken',
   'stab',
+  'critChance',
   // Élevage, couveuse, Musée et transfert
   'eggSpeed',
   'inheritedIvs',
@@ -452,10 +474,16 @@ export const abilityConditionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('fullHp') }),
   /** Donjon : l'attaque donnée ou reçue est de l'un de ces types (Isograisse, Brasier). */
   z.object({ type: z.literal('attackType'), types: z.array(z.string().min(1)).min(1) }),
+  /** Donjon : l'attaque donnée ou reçue est physique ou spéciale (Écaille Spéciale, Toison Épaisse). */
+  z.object({ type: z.literal('attackCategory'), category: z.enum(['physical', 'special']) }),
   /** Météo de la zone ou du donjon (ou imposée par un talent) : Chlorophylle, Glissade. */
   z.object({ type: z.literal('weather'), weathers: z.array(weatherSchema).min(1) }),
   /** Donjon : le Pokémon a un statut (Cran, Écaille Spéciale). */
   z.object({ type: z.literal('statused') }),
+  /** Donjon : l'attaque donnée ou reçue est super efficace (Filtre, Solide Roc, Ceinture Pro). */
+  z.object({ type: z.literal('superEffective') }),
+  /** Donjon : l'attaque donnée ou reçue est peu efficace (Lentille Teintée). */
+  z.object({ type: z.literal('notVeryEffective') }),
 ]);
 export type AbilityCondition = z.infer<typeof abilityConditionSchema>;
 export type AbilityConditionType = AbilityCondition['type'];
@@ -527,10 +555,12 @@ export const abilityEffectSchema = z.discriminatedUnion('type', [
     percent: z.number().positive().max(100),
     conditions: abilityConditionsSchema,
   }),
-  /** Donjon : à son entrée, baisse l'Attaque et l'Attaque Spéciale du Pokémon en face (Intimidation). */
+  /** Donjon : à son entrée, baisse ces statistiques du Pokémon en face (Intimidation). */
   z.object({
     type: z.literal('intimidate'),
     percent: z.number().positive().max(90),
+    /** Absent (contenu antérieur) = Attaque et Attaque Spéciale. */
+    stats: z.array(dungeonStatSchema).min(1).default(['attack', 'special-attack']),
     conditions: abilityConditionsSchema,
   }),
   /** Donjon : l'attaquant perd cette fraction de ses PV max à chaque attaque physique reçue (Peau Dure). */
@@ -542,7 +572,7 @@ export const abilityEffectSchema = z.discriminatedUnion('type', [
   /** Impose sa météo à l'expédition ou au donjon (Sécheresse, Crachin, Sable Volant, Alerte Neige). */
   z.object({
     type: z.literal('setWeather'),
-    weather: weatherSchema,
+    weather: imposedWeatherSchema,
     conditions: abilityConditionsSchema,
   }),
   /**
@@ -556,16 +586,26 @@ export const abilityEffectSchema = z.discriminatedUnion('type', [
     trigger: z.enum(['contact', 'attack']),
     conditions: abilityConditionsSchema,
   }),
-  /** Donjon : insensible à ces statuts (Insomnia, Vaccin, Échauffement, Ignifu-Voile). */
+  /**
+   * Donjon : insensible à ces statuts (Insomnia, Vaccin, Échauffement, Ignifu-Voile). `team` :
+   * toute l'équipe en profite (Voile Aroma, Voile Pastel).
+   */
   z.object({
     type: z.literal('statusImmunity'),
     statuses: z.array(statusSchema).min(1),
+    scope: z.enum(['self', 'team']).default('self'),
     conditions: abilityConditionsSchema,
   }),
+  /** Expédition : compte comme ayant le type d'affinité de la zone (Calque). */
+  z.object({ type: z.literal('copyZoneAffinity'), conditions: abilityConditionsSchema }),
+  /** Donjon : tant qu'il est sur le terrain, le talent du Pokémon en face ne joue plus (Gaz Inhibiteur). */
+  z.object({ type: z.literal('suppressAbility'), conditions: abilityConditionsSchema }),
   /** Donjon : guéri de son statut quand le joueur le rappelle (Médic Nature). */
   z.object({ type: z.literal('naturalCure'), conditions: abilityConditionsSchema }),
   /** Donjon : insensible aux dégâts de la tempête de sable et de la grêle (Envelocape, Voile Sable). */
   z.object({ type: z.literal('weatherImmunity'), conditions: abilityConditionsSchema }),
+  /** Donjon : ne subit jamais de coup critique (Armurbaston, Coque Armure). */
+  z.object({ type: z.literal('critImmunity'), conditions: abilityConditionsSchema }),
   /** Donjon : mis K.O. par une attaque physique, inflige cette fraction de ses PV max à l'attaquant (Boom Final). */
   z.object({
     type: z.literal('aftermath'),

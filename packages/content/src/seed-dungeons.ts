@@ -25,6 +25,9 @@ export const dungeonSettings: DungeonSettings = {
   damageMultiplier: 0.5,
   stabMultiplier: 1.5,
   minDamageRoll: 0.85,
+  critChance: 0.0625,
+  critMultiplier: 1.5,
+  recallCooldownSeconds: 5,
   defaultOpponentIv: 15,
   difficulties: {
     easy: { name: 'Facile' },

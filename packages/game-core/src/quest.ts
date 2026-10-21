@@ -251,7 +251,7 @@ export function resolveQuestExpedition(
         captureRate: species.captureRate,
         ballMultiplier: ctx.itemEffect(input.ballItemId!, 'ball')?.catchMultiplier ?? 1,
         boostMultiplier: berry?.multiplier ?? 1,
-        affinityCount: countAffinity(ctx, target.expedition, input.team),
+        affinityCount: countAffinity(ctx, target.expedition, input.team, input.hour),
         bonusMultiplier: bonuses.capture,
       });
   const captured = !fled && rng.chance(captureChance);

@@ -1201,8 +1201,8 @@ function DungeonSettingsSections({
       <Section title="Donjons : dégâts">
         <p className="text-xs text-slate-500">
           Dégâts = ((2 × niveau / 5 + 2) × puissance × Att / Déf / 50 + 2) × bonus de même type ×
-          efficacité × aléa × multiplicateur. Attaque physique : Attaque contre Défense ; spéciale :
-          Atq. Spé. contre Déf. Spé.
+          efficacité × aléa × multiplicateur × coup critique. Attaque physique : Attaque contre
+          Défense ; spéciale : Atq. Spé. contre Déf. Spé.
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Multiplicateur de dégâts" error={err('damageMultiplier')}>
@@ -1242,6 +1242,52 @@ function DungeonSettingsSections({
               max={100}
               unit="%"
               onChange={set('minDamageRoll')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Chance de coup critique"
+            hint="À chaque attaque. 0 % = aucun coup critique."
+            error={err('critChance')}
+          >
+            <NumberInput
+              value={s.critChance}
+              scale={100}
+              min={0}
+              max={100}
+              step={0.25}
+              unit="%"
+              onChange={set('critChance')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Dégâts d’un coup critique"
+            hint="Ignore aussi les baisses d’Attaque (Intimidation)."
+            error={err('critMultiplier')}
+          >
+            <NumberInput
+              value={s.critMultiplier}
+              min={1}
+              max={5}
+              step={0.1}
+              unit="×"
+              onChange={set('critMultiplier')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Délai de retour après un rappel"
+            hint="Un Pokémon rappelé ne peut pas revenir au combat avant ce délai, sauf s’il est le dernier encore debout."
+            error={err('recallCooldownSeconds')}
+          >
+            <NumberInput
+              value={s.recallCooldownSeconds}
+              min={0}
+              max={60}
+              step={0.5}
+              unit="s"
+              onChange={set('recallCooldownSeconds')}
               disabled={disabled}
             />
           </Field>

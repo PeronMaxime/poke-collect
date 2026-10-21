@@ -326,6 +326,7 @@ export const GAME_ERRORS: Record<string, string> = {
   DUNGEON_RUN_NOT_FOUND: 'Cette tentative n’existe plus.',
   MEMBER_KO: 'Ce Pokémon est K.O.',
   MEMBER_ACTIVE: 'Ce Pokémon est déjà au combat.',
+  MEMBER_RECALLED: 'Ce Pokémon vient d’être rappelé : il ne peut pas encore revenir.',
 };
 
 export function formatMoney(amount: number): string {

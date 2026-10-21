@@ -1,18 +1,28 @@
-import { ABILITY_EFFECT_TYPES, ABILITY_PARAM_IDS, STATUSES, WEATHERS } from '@poke/content';
+import {
+  ABILITY_EFFECT_TYPES,
+  ABILITY_PARAM_IDS,
+  DUNGEON_STATS,
+  IMPOSED_WEATHERS,
+  STATUSES,
+  WEATHERS,
+} from '@poke/content';
 import type {
   AbilityCondition,
   AbilityConditionType,
   AbilityEffect,
   AbilityEffectType,
   AbilityParam,
+  ImposedWeather,
   Status,
-  Weather,
 } from '@poke/content';
 import {
   ABILITY_ACTIVITY_LABELS,
   ABILITY_CONDITION_LABELS,
   ABILITY_EFFECT_LABELS,
   ABILITY_PARAMS,
+  DUNGEON_STAT_LABELS,
+  STATE_CONDITION_TYPES,
+  STATE_STAT_PARAMS,
   STATUS_LABELS,
   WEATHER_LABELS,
 } from '@poke/game-core';
@@ -41,17 +51,23 @@ const EFFECT_HELP: Record<AbilityEffectType, string> = {
   speedBoost: 'Donjon : Vitesse augmentée après chacune de ses attaques, jusqu’à ×3 (Turbo).',
   moxie: 'Donjon : Attaque et Attaque Spéciale augmentées après chaque K.O. infligé (Impudence).',
   intimidate:
-    'Donjon : à son entrée en combat, baisse l’Attaque et l’Attaque Spéciale du Pokémon en face (Intimidation).',
+    'Donjon : à son entrée en combat, baisse les statistiques choisies du Pokémon en face (Intimidation).',
   contactDamage:
     'Donjon : l’attaquant perd une part de ses PV max à chaque attaque physique reçue (Peau Dure, Épine de Fer).',
   aftermath:
     'Donjon : mis K.O. par une attaque physique, inflige une part des PV max de l’attaquant (Boom Final).',
   setWeather:
-    'Impose sa météo à l’expédition ou au donjon (le premier de l’équipe qui en impose une l’emporte).',
+    'Impose sa météo à l’expédition ou au donjon, ou le temps clair pour annuler celle du lieu (le premier de l’équipe qui en impose une l’emporte).',
   inflictStatus:
     'Donjon : chance d’infliger un statut, à qui le frappe d’une attaque physique (Statik) ou au Pokémon qu’il frappe (Toxitouche).',
-  statusImmunity: 'Donjon : insensible à ces statuts (Insomnia, Vaccin, Échauffement).',
+  statusImmunity:
+    'Donjon : insensible à ces statuts (Insomnia, Vaccin, Échauffement), ou toute l’équipe (Voile Aroma).',
   naturalCure: 'Donjon : guéri de son statut quand le joueur le rappelle (Médic Nature).',
+  critImmunity: 'Donjon : ne subit jamais de coup critique (Armurbaston, Coque Armure).',
+  copyZoneAffinity:
+    'Expédition et légendaires : compte comme ayant le type d’affinité de la zone, donc donne le bonus de capture d’affinité (Calque).',
+  suppressAbility:
+    'Donjon : tant qu’il est sur le terrain, le Pokémon en face perd son talent et les bonus d’équipe reçus (Gaz Inhibiteur). Seulement utile si les talents des adversaires sont activés (Équilibrage).',
   weatherImmunity:
     'Donjon : insensible aux dégâts de la tempête de sable et de la grêle (Envelocape).',
 };
@@ -97,8 +113,12 @@ const DUNGEON_ONLY_CONDITIONS = new Set<AbilityConditionType>([
   'hpBelow',
   'fullHp',
   'attackType',
+  'attackCategory',
   'statused',
+  'superEffective',
+  'notVeryEffective',
 ]);
+const NO_CONDITIONS: ReadonlySet<AbilityConditionType> = new Set();
 
 function newEffect(type: AbilityEffectType): AbilityEffect {
   switch (type) {
@@ -119,7 +139,7 @@ function newEffect(type: AbilityEffectType): AbilityEffect {
     case 'moxie':
       return { type, percent: 10, conditions: [] };
     case 'intimidate':
-      return { type, percent: 25, conditions: [] };
+      return { type, percent: 25, stats: ['attack', 'special-attack'], conditions: [] };
     case 'contactDamage':
       return { type, fraction: 0.125, conditions: [] };
     case 'aftermath':
@@ -129,9 +149,12 @@ function newEffect(type: AbilityEffectType): AbilityEffect {
     case 'inflictStatus':
       return { type, status: 'paralysis', chance: 0.3, trigger: 'contact', conditions: [] };
     case 'statusImmunity':
-      return { type, statuses: ['sleep'], conditions: [] };
+      return { type, statuses: ['sleep'], scope: 'self', conditions: [] };
     case 'naturalCure':
     case 'weatherImmunity':
+    case 'critImmunity':
+    case 'copyZoneAffinity':
+    case 'suppressAbility':
       return { type, conditions: [] };
   }
 }
@@ -150,6 +173,8 @@ function newCondition(type: AbilityConditionType): AbilityCondition {
     case 'solo':
     case 'fullHp':
     case 'statused':
+    case 'superEffective':
+    case 'notVeryEffective':
       return { type };
     case 'weather':
       return { type, weathers: ['sun'] };
@@ -157,6 +182,8 @@ function newCondition(type: AbilityConditionType): AbilityCondition {
       return { type, fraction: 1 / 3 };
     case 'attackType':
       return { type, types: [] };
+    case 'attackCategory':
+      return { type, category: 'special' };
   }
 }
 
@@ -372,12 +399,23 @@ function EffectRow({
             />
           </Field>
         )}
+        {effect.type === 'intimidate' && (
+          <Field label="Statistiques baissées" error={errors.get(`${path}.stats`)}>
+            <ChipsSelect
+              options={DUNGEON_STATS}
+              labels={DUNGEON_STAT_LABELS}
+              value={effect.stats}
+              disabled={disabled}
+              onChange={(stats) => onChange({ ...effect, stats })}
+            />
+          </Field>
+        )}
         {effect.type === 'setWeather' && (
           <Field label="Météo">
-            <SelectInput<Weather>
+            <SelectInput<ImposedWeather>
               value={effect.weather}
               disabled={disabled}
-              options={WEATHERS.map((w) => ({ value: w, label: WEATHER_LABELS[w] }))}
+              options={IMPOSED_WEATHERS.map((w) => ({ value: w, label: WEATHER_LABELS[w] }))}
               onChange={(weather) => onChange({ ...effect, weather })}
             />
           </Field>
@@ -418,15 +456,28 @@ function EffectRow({
           </>
         )}
         {effect.type === 'statusImmunity' && (
-          <Field label="Statuts" error={errors.get(`${path}.statuses`)}>
-            <ChipsSelect
-              options={STATUSES}
-              labels={STATUS_LABELS}
-              value={effect.statuses}
-              disabled={disabled}
-              onChange={(statuses) => onChange({ ...effect, statuses })}
-            />
-          </Field>
+          <>
+            <Field label="Statuts" error={errors.get(`${path}.statuses`)}>
+              <ChipsSelect
+                options={STATUSES}
+                labels={STATUS_LABELS}
+                value={effect.statuses}
+                disabled={disabled}
+                onChange={(statuses) => onChange({ ...effect, statuses })}
+              />
+            </Field>
+            <Field label="Pour">
+              <SelectInput
+                value={effect.scope ?? 'self'}
+                disabled={disabled}
+                options={[
+                  { value: 'self', label: 'Le Pokémon seul' },
+                  { value: 'team', label: 'Toute l’équipe' },
+                ]}
+                onChange={(scope) => onChange({ ...effect, scope })}
+              />
+            </Field>
+          </>
         )}
         {(effect.type === 'syncNature' || effect.type === 'attractGender') && (
           <Field label="Chance" error={errors.get(`${path}.chance`)}>
@@ -450,8 +501,13 @@ function EffectRow({
         path={`${path}.conditions`}
         editable={editable}
         instantAllowed={
-          effect.type === 'modifier' &&
-          (effect.param === 'damageDealt' || effect.param === 'damageTaken')
+          effect.type !== 'modifier'
+            ? NO_CONDITIONS
+            : effect.param === 'damageDealt' || effect.param === 'damageTaken'
+              ? DUNGEON_ONLY_CONDITIONS
+              : STATE_STAT_PARAMS.has(effect.param)
+                ? STATE_CONDITION_TYPES
+                : NO_CONDITIONS
         }
         onChange={(conditions) => onChange({ ...effect, conditions })}
       />
@@ -471,12 +527,14 @@ function ConditionsEditor({
   errors: FieldErrors;
   path: string;
   editable: boolean;
-  /** Conditions de l'instant (PV, type d'attaque) : seulement pour les dégâts en donjon. */
-  instantAllowed: boolean;
+  /** Conditions de l'instant acceptées : toutes pour les dégâts, PV et statut pour les statistiques. */
+  instantAllowed: ReadonlySet<AbilityConditionType>;
   onChange: (c: AbilityCondition[]) => void;
 }) {
   const disabled = !editable;
-  const misplaced = !instantAllowed && conditions.some((c) => DUNGEON_ONLY_CONDITIONS.has(c.type));
+  const misplaced = conditions.some(
+    (c) => DUNGEON_ONLY_CONDITIONS.has(c.type) && !instantAllowed.has(c.type),
+  );
   return (
     <div className="space-y-2 border-t border-slate-100 pt-2 dark:border-slate-800">
       <p className="text-xs font-medium text-slate-500">
@@ -484,8 +542,9 @@ function ConditionsEditor({
       </p>
       {misplaced && (
         <p className="text-xs text-amber-700 dark:text-amber-400">
-          ⚠️ Les conditions de PV et de type d’attaque ne jouent que pour les dégâts infligés ou
-          reçus en donjon : ici, l’effet ne s’activera jamais.
+          ⚠️ Les conditions de l’instant ne jouent qu’en donjon : PV et statut pour les dégâts et
+          les statistiques (hors PV max), type, catégorie et efficacité d’attaque pour les dégâts
+          seulement. Ici, l’effet ne s’activera jamais.
         </p>
       )}
       {conditions.map((condition, i) => {
@@ -528,6 +587,17 @@ function ConditionsEditor({
                 unit="%"
                 disabled={disabled}
                 onChange={(fraction) => update({ ...condition, fraction })}
+              />
+            )}
+            {condition.type === 'attackCategory' && (
+              <SelectInput
+                value={condition.category}
+                disabled={disabled}
+                options={[
+                  { value: 'physical', label: 'Physique' },
+                  { value: 'special', label: 'Spéciale' },
+                ]}
+                onChange={(category) => update({ ...condition, category })}
               />
             )}
             {condition.type === 'timeOfDay' && (

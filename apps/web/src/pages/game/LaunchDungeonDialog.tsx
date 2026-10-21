@@ -3,7 +3,6 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Dungeon } from '@poke/content';
 import { STAT_NAMES, typeWeaknesses, types } from '@poke/data';
 import {
-  WEATHER_LABELS,
   checkDungeonTeam,
   computeStats,
   dungeonAttack,
@@ -12,6 +11,8 @@ import {
   dungeonKoMinutes,
   dungeonMaxXp,
   dungeonTypeEffectiveness,
+  dungeonWeather,
+  imposedWeather,
   effectiveDungeonMove,
   pokemonPower,
 } from '@poke/game-core';
@@ -38,6 +39,7 @@ import {
 } from '../../lib/labels';
 import { DungeonDifficultyBadge } from './DungeonDifficultyBadge';
 import { TeamPicker, pillClass, useTeamPicker } from './TeamPicker';
+import { TEAM_WEATHER_NOTE, WeatherIcon } from './WeatherIcon';
 import { XpPreview, formatXp, usePlayerBonuses } from './XpPreview';
 
 function ruleText(e: DungeonTeamError): string {
@@ -184,6 +186,12 @@ export function LaunchDungeonDialog({
     return effectiveDungeonMove(species, p, moves[p.id] ?? p.dungeonMove);
   };
   const maxXp = dungeonMaxXp(ctx, dungeon, bonuses, members, new Date().getHours());
+  const weather = dungeonWeather(ctx, dungeon, members, new Date().getHours());
+  const weatherNote = imposedWeather(ctx, { activity: 'dungeon', team: members })
+    ? TEAM_WEATHER_NOTE
+    : weather !== (dungeon.weather ?? null)
+      ? 'Imposée par le talent d’un adversaire.'
+      : undefined;
   const withMoves = members.map((p) => ({ ...p, move: moveOf(p) }));
   const errors = checkDungeonTeam(ctx, dungeon, withMoves);
   const power = members.reduce(
@@ -214,12 +222,16 @@ export function LaunchDungeonDialog({
         </HoverBubble>
         <div className="min-w-0 flex-1">
           <p className="text-sm text-slate-500">Donjon</p>
-          <h2 className="text-xl font-bold">{dungeon.name}</h2>
+          <h2 className="flex items-center gap-2 text-xl font-bold">
+            {dungeon.name}
+            {(weather || weatherNote) && (
+              <WeatherIcon weather={weather ?? 'clear'} activity="dungeon" note={weatherNote} />
+            )}
+          </h2>
           <p className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-500">
             <DungeonDifficultyBadge ctx={ctx} dungeon={dungeon} />
             {dungeon.opponents.length + 1} combats ·{' '}
             {formatDuration(Math.ceil(dungeon.timeLimitSeconds / 60))} pour vaincre le boss
-            {dungeon.weather && ` · Météo : ${WEATHER_LABELS[dungeon.weather]}`}
           </p>
           <div className="mt-1 flex flex-wrap gap-1">
             {bossTypes.map((t) => (

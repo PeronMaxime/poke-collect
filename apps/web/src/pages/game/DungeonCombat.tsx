@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Dungeon } from '@poke/content';
 import { TYPE_COLORS } from '@poke/data';
 import { STATUS_LABELS, WEATHER_LABELS, dungeonAttack, simulateDungeon } from '@poke/game-core';
-import type { Status } from '@poke/content';
+import type { DungeonStat, Status } from '@poke/content';
 import type { DungeonEvent, DungeonFighter, GameContext } from '@poke/game-core';
 import type { ClaimDungeonResponse, DungeonRunDto, DungeonsResponse } from '@poke/shared';
 import { PokemonSprite, ShinyStar, TypeBadge } from '../../components/ui';
@@ -209,6 +209,7 @@ function DamagePopup({ event, age }: { event: DungeonEvent & { kind: 'attack' };
       <span className={`block text-lg ${event.damage > 0 ? 'text-red-600' : 'text-slate-500'}`}>
         {event.damage > 0 ? `−${event.damage}` : '0'}
       </span>
+      {event.critical && <span className="block text-[11px] text-red-600">Coup critique !</span>}
       {text && (
         <span
           className={`block text-[11px] ${event.effectiveness > 1 ? 'text-amber-600' : 'text-slate-600 dark:text-slate-300'}`}
@@ -220,18 +221,31 @@ function DamagePopup({ event, age }: { event: DungeonEvent & { kind: 'attack' };
   );
 }
 
-const ABILITY_EFFECT_TEXTS: Record<DungeonAbilityEvent['effect'], (amount: number) => string> = {
+const ABILITY_EFFECT_TEXTS: Record<
+  DungeonAbilityEvent['effect'],
+  (amount: number, stats: readonly DungeonStat[]) => string
+> = {
   immunity: (n) => (n > 0 ? `Absorbé ! +${n} PV` : 'Sans effet !'),
   sturdy: () => 'Tient bon !',
   regenerator: (n) => `+${n} PV`,
   moxie: (n) => `Attaque +${n} %`,
-  intimidate: (n) => `Attaque adverse −${n} %`,
+  intimidate: (n, stats) =>
+    `${stats.map((st) => DUNGEON_STAT_SHORT[st]).join(', ') || 'Attaque'} adverse −${n} %`,
   contactDamage: (n) => `L’attaquant perd ${n} PV`,
   aftermath: (n) => `L’attaquant perd ${n} PV`,
   naturalCure: () => 'Statut guéri',
+  suppressAbility: () => 'Talent adverse neutralisé',
 };
 
 type DungeonAbilityEvent = DungeonEvent & { kind: 'ability' };
+
+const DUNGEON_STAT_SHORT: Record<DungeonStat, string> = {
+  attack: 'Atq.',
+  defense: 'Déf.',
+  'special-attack': 'Atq. Spé.',
+  'special-defense': 'Déf. Spé.',
+  speed: 'Vit.',
+};
 type DungeonStatusEvent = DungeonEvent & { kind: 'status' };
 
 /** Statut infligé, sommeil, réveil ou dégâts de statut et de météo, au-dessus du Pokémon. */
@@ -281,7 +295,8 @@ function AbilityPopup({ event, age }: { event: DungeonAbilityEvent; age: number 
         opacity: 1 - t * t,
       }}
     >
-      {abilityLabel(event.ability)} · {ABILITY_EFFECT_TEXTS[event.effect](event.amount)}
+      {abilityLabel(event.ability)} ·{' '}
+      {ABILITY_EFFECT_TEXTS[event.effect](event.amount, event.stats ?? [])}
     </span>
   );
 }
@@ -431,7 +446,7 @@ export function DungeonCombat({
 
   function send(member: number) {
     if (outcome !== null || awaiting || member === shown.active) return;
-    if (shown.hp[member] === 0) return;
+    if (shown.hp[member] === 0 || (shown.recallReadyAt[member] ?? 0) > displayMs) return;
     // Daté à l'instant affiché (pas à l'instant réel, en avance de `TRAVEL_MS`) : le Pokémon
     // entre aussitôt, et le joueur agit sur ce qu'il voit. Le serveur tolère ce léger retard.
     const atMs = Math.round(displayMs);
@@ -592,22 +607,40 @@ export function DungeonCombat({
           const hp = shown.hp[i] ?? 0;
           const isActive = shown.active === i;
           const ko = hp === 0;
+          // Rappelé récemment : secondes avant qu'il puisse revenir.
+          const recallLeft = Math.ceil(((shown.recallReadyAt[i] ?? 0) - displayMs) / 1000);
+          const recalled = !ko && !isActive && recallLeft > 0;
           const attack = f.attackType ? dungeonAttack(setup.settings, f.attackType) : null;
           return (
             <button
               key={i}
               type="button"
-              disabled={ko || isActive || outcome !== null}
+              disabled={ko || isActive || recalled || outcome !== null}
               onClick={() => send(i)}
-              title={ko ? 'K.O.' : isActive ? 'Au combat' : 'Envoyer au combat'}
-              className={`flex items-center gap-2 rounded-xl border p-1.5 text-left text-xs transition ${
+              title={
+                ko
+                  ? 'K.O.'
+                  : isActive
+                    ? 'Au combat'
+                    : recalled
+                      ? `Rappelé : de retour possible dans ${recallLeft} s`
+                      : 'Envoyer au combat'
+              }
+              className={`relative flex items-center gap-2 rounded-xl border p-1.5 text-left text-xs transition ${
                 isActive
                   ? 'border-brand-500 bg-brand-500/10'
                   : ko
                     ? 'border-slate-200 opacity-50 grayscale dark:border-slate-800'
-                    : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
+                    : recalled
+                      ? 'border-slate-200 opacity-70 dark:border-slate-800'
+                      : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
               }`}
             >
+              {recalled && (
+                <span className="absolute top-1 left-1 grid h-6 min-w-6 place-items-center rounded-full bg-slate-900/80 px-1 text-[11px] font-bold tabular-nums text-white">
+                  {recallLeft}
+                </span>
+              )}
               <PokemonSprite
                 speciesId={f.speciesId}
                 formId={f.formId}
