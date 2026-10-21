@@ -10,6 +10,7 @@ import { ApiError, api } from './api';
 export type EntityCollection =
   | 'regions'
   | 'species'
+  | 'abilities'
   | 'items'
   | 'loot-tables'
   | 'zones'

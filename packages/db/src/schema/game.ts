@@ -17,6 +17,8 @@ import {
 } from 'drizzle-orm/pg-core';
 import { users } from './auth';
 import type {
+  AbilityHolder,
+  AssistantPost,
   CaptureFilter,
   DaycareParent,
   DungeonCommand,
@@ -96,6 +98,26 @@ export const pokemonTeams = pgTable(
   (t) => [index('pokemon_teams_owner').on(t.ownerId)],
 );
 
+/**
+ * Assistants : un Pokémon affecté à un bâtiment (Pension, couveuse, Musée) y apporte les effets
+ * de son talent. Il reste occupé tant qu'il y est affecté. Un assistant par bâtiment.
+ */
+export const assistants = pgTable(
+  'assistants',
+  {
+    ownerId: ownerId(),
+    post: text('post').$type<AssistantPost>().notNull(),
+    pokemonId: uuid('pokemon_id')
+      .notNull()
+      .references(() => pokemon.id, { onDelete: 'cascade' }),
+    assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    primaryKey({ columns: [t.ownerId, t.post] }),
+    uniqueIndex('assistants_pokemon').on(t.pokemonId),
+  ],
+);
+
 export const pokemonOrigin = pgEnum('pokemon_origin', [
   'starter',
   'capture',
@@ -165,6 +187,8 @@ export const eggs = pgTable(
     parentBId: uuid('parent_b_id').references(() => pokemon.id, { onDelete: 'set null' }),
     parents: jsonb('parents').$type<[DaycareParent, DaycareParent]>().notNull(),
     motherIndex: smallint('mother_index').notNull().default(0),
+    /** Assistant de la Pension au ramassage (son talent agit à l'éclosion) ; null = aucun. */
+    helper: jsonb('helper').$type<AbilityHolder>(),
     contentVersionId: integer('content_version_id')
       .notNull()
       .references(() => contentVersions.id),
@@ -205,6 +229,8 @@ export const fossilRevivals = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     readyAt: timestamp('ready_at', { withTimezone: true }).notNull(),
     seed: bigint('seed', { mode: 'number' }).notNull(),
+    /** Assistant du Musée au dépôt (son talent agit à la restauration) ; null = aucun. */
+    helper: jsonb('helper').$type<AbilityHolder>(),
     /** Pokémon récupéré (null = encore au Musée). */
     revivedAt: timestamp('revived_at', { withTimezone: true }),
     /** Notification push « fossile restauré » envoyée. */
@@ -266,6 +292,8 @@ export const expeditions = pgTable(
     seed: bigint('seed', { mode: 'number' }).notNull(),
     /** Maillon de la chaîne de zone au départ (bonus shiny). */
     shinyChain: smallint('shiny_chain').notNull().default(0),
+    /** Heure locale du joueur au départ (talents de jour ou de nuit) ; null = inconnue. */
+    localHour: smallint('local_hour'),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
     /** Notification push « expédition terminée » envoyée. */
     notifiedAt: timestamp('notified_at', { withTimezone: true }),
@@ -286,7 +314,10 @@ export const expeditions = pgTable(
 
 export const battleOutcome = pgEnum('battle_outcome', ['win', 'loss']);
 
-/** Combats de dresseurs : même schéma que les expéditions (lancer, attendre, réclamer). */
+/**
+ * Archives des combats de dresseurs à minuterie (avant le combat en temps réel du 21 octobre
+ * 2026) : plus aucun combat n'y est écrit, voir `trainerRuns`.
+ */
 export const trainerBattles = pgTable(
   'trainer_battles',
   {
@@ -301,6 +332,8 @@ export const trainerBattles = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
     seed: bigint('seed', { mode: 'number' }).notNull(),
+    /** Heure locale du joueur au départ (talents de jour ou de nuit) ; null = inconnue. */
+    localHour: smallint('local_hour'),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
     /** Notification push « combat terminé » envoyée. */
     notifiedAt: timestamp('notified_at', { withTimezone: true }),
@@ -359,6 +392,43 @@ export const dungeonRuns = pgTable(
   ],
 );
 
+/**
+ * Combats de dresseurs en temps réel, comme les donjons : simulés de façon déterministe à partir
+ * de `setup` (équipe et adversaires figés au départ) et des changements de Pokémon du joueur
+ * (`commands`). Le résultat s'applique à la réclamation, une fois le combat terminé.
+ */
+export const trainerRuns = pgTable(
+  'trainer_runs',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: ownerId(),
+    trainerId: text('trainer_id').notNull(),
+    team: jsonb('team').$type<string[]>().notNull(),
+    setup: jsonb('setup').$type<DungeonSetup>().notNull(),
+    commands: jsonb('commands').$type<DungeonCommand[]>().notNull().default([]),
+    contentVersionId: integer('content_version_id')
+      .notNull()
+      .references(() => contentVersions.id),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Fin au plus tard (temps imparti). */
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    /** Fuite : millisecondes écoulées depuis le départ. */
+    fledAtMs: integer('fled_at_ms'),
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    /** Le joueur a fermé la fenêtre du résultat (sur n'importe quel appareil). */
+    resultSeenAt: timestamp('result_seen_at', { withTimezone: true }),
+    outcome: text('outcome', { enum: ['win', 'loss', 'timeout', 'fled'] }),
+    result: jsonb('result'),
+  },
+  (t) => [
+    index('trainer_runs_owner_claimed').on(t.ownerId, t.claimedAt),
+    // Un seul combat de dresseur en cours à la fois.
+    uniqueIndex('trainer_runs_owner_active')
+      .on(t.ownerId)
+      .where(sql`${t.claimedAt} is null`),
+  ],
+);
+
 /** Bilan du joueur dans chaque donjon (temps de recharge, gemmes obtenues). */
 export const dungeonProgress = pgTable(
   'dungeon_progress',
@@ -385,6 +455,8 @@ export const trainerProgress = pgTable(
     losses: integer('losses').notNull().default(0),
     firstWinAt: timestamp('first_win_at', { withTimezone: true }),
     lastWinAt: timestamp('last_win_at', { withTimezone: true }),
+    /** Fin du dernier combat (début du temps de recharge d'un dresseur répétable). */
+    lastEndedAt: timestamp('last_ended_at', { withTimezone: true }),
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.trainerId] })],
 );

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import type { Zone } from '@poke/content';
+import type { Weather, Zone } from '@poke/content';
 import {
   MAX_LEVEL,
   MAX_SEED,
@@ -9,6 +9,7 @@ import {
   encounterCount,
   generatePokemon,
   resolveExpedition,
+  zoneWeather,
 } from '@poke/game-core';
 import type { CaughtDex, GameContext } from '@poke/game-core';
 import type {
@@ -27,6 +28,7 @@ import { LaunchExpeditionForm } from '@web/pages/game/LaunchExpeditionDialog';
 import { ExpeditionRevealView } from '@web/pages/game/LootReveal';
 import { TeamPicker, nameMatcher, pillClass, useTeamPickerOver } from '@web/pages/game/TeamPicker';
 import { VersionBanner } from '../components/EntityPage';
+import { WeatherSelect } from '../components/forms/pickers';
 import { errorMessage, useWorkingVersion } from '../lib/content';
 
 /** Étiquettes fictives, pour retrouver le filtre et le tri par étiquette du jeu. */
@@ -294,6 +296,8 @@ function SimulatorDialog({
   onClose: () => void;
 }) {
   const picker = useTeamPickerOver(ctx, zone, pc, TEST_TAGS);
+  // Météo de la zone simulée : par défaut, celle du moment.
+  const [weather, setWeather] = useState<Weather | null>(() => zoneWeather(zone, Date.now()));
   const [sim, setSim] = useState<Simulation | null>(null);
   const [runs, setRuns] = useState(0);
   const pcById = new Map(pc.map((p) => [p.id, p]));
@@ -324,6 +328,7 @@ function SimulatorDialog({
       shiny: { chain: simChain, charm },
       captureFilter: input.captureFilter,
       caught,
+      weather,
     });
     const captured = result.encounters.filter((e) => e.outcome === 'captured');
     setSim({
@@ -356,11 +361,12 @@ function SimulatorDialog({
           charm={charm}
           owned={() => Number.MAX_SAFE_INTEGER}
           unlimitedItems
+          weather={weather}
           team={picker.team}
           members={picker.members}
-          renderTeam={(power) => (
+          renderTeam={(power, env) => (
             <>
-              <TeamPicker ctx={ctx} zone={zone} picker={picker} power={power} />
+              <TeamPicker ctx={ctx} zone={zone} picker={picker} power={power} abilityEnv={env} />
               <VirtualPcEditor
                 ctx={ctx}
                 regionId={zone.regionId}
@@ -387,6 +393,12 @@ function SimulatorDialog({
                     onChainChange(Math.max(0, Math.floor(Number(e.target.value) || 0)))
                   }
                 />
+              </label>
+              <label className="flex items-center gap-2 text-xs">
+                <span className="text-slate-500">Météo de la zone</span>
+                <span className="w-40">
+                  <WeatherSelect value={weather} onChange={setWeather} />
+                </span>
               </label>
               {settings}
             </div>

@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { isKnockedOut, isRegionalSpecies, pokemonPower } from '@poke/game-core';
+import { effectiveAbility, isKnockedOut, isRegionalSpecies, memberPower } from '@poke/game-core';
 import type { GameContext, GameSpecies } from '@poke/game-core';
 import type { PokemonActivity, PokemonDto, PokemonTagDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar } from '../../components/ui';
 import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { useNewEvolutionChecker, usePlayerProgress } from '../../lib/game';
-import { formatCountdown } from '../../lib/labels';
+import { abilityLabel, formatCountdown } from '../../lib/labels';
 import { RegionTabs, currentRegionTab } from './RegionTabs';
 import { TypeFilterSelect } from './TeamPicker';
 
@@ -43,12 +43,15 @@ const ACTIVITY_LABELS: Record<PokemonActivity, string> = {
   battle: 'Combat',
   daycare: 'Pension',
   dungeon: 'Donjon',
+  assistant: 'Assistant',
 };
 
 export interface PcEntry {
   p: PokemonDto;
   species: GameSpecies | undefined;
   power: number;
+  /** Talent en vigueur (nom PokéAPI) ; vide = aucun. */
+  ability: string;
   /** Évolution possible vers une espèce ou forme absente du Pokédex. */
   canEvolve: boolean;
 }
@@ -64,12 +67,14 @@ export function usePcBrowser(ctx: GameContext, pokemon: readonly PokemonDto[]) {
   const [onlyShiny, setOnlyShiny] = useState(false);
   const [onlyEvolvable, setOnlyEvolvable] = useState(false);
   const [type, setType] = useState('all');
+  const [ability, setAbility] = useState('all');
   const tagFilter = useTagFilter();
 
   const list: PcEntry[] = pokemon.map((p) => ({
     p,
     species: ctx.species(p.speciesId, p.formId),
-    power: pokemonPower(ctx.species(p.speciesId, p.formId)!, p),
+    power: memberPower(ctx, p),
+    ability: effectiveAbility(ctx, p),
     canEvolve: hasNewEvolution(p),
   }));
   const tab = currentRegionTab(ctx, progress, selectedRegion ?? ALL_TAB.id, [ALL_TAB]);
@@ -80,6 +85,7 @@ export function usePcBrowser(ctx: GameContext, pokemon: readonly PokemonDto[]) {
     .filter(({ p }) => (!onlyFavorites || p.locked) && (!onlyShiny || p.isShiny))
     .filter(({ canEvolve }) => !onlyEvolvable || canEvolve)
     .filter(({ species }) => type === 'all' || !!species?.types.includes(type))
+    .filter((e) => ability === 'all' || e.ability === ability)
     .filter(({ p }) => tagFilter.matches(p))
     .sort((a, b) => {
       switch (sort) {
@@ -113,6 +119,8 @@ export function usePcBrowser(ctx: GameContext, pokemon: readonly PokemonDto[]) {
     setOnlyEvolvable,
     type,
     setType,
+    ability,
+    setAbility,
     tagFilter,
     list,
     filtered,
@@ -167,6 +175,7 @@ export function PcFilterBar({
           ))}
         </select>
         <TypeFilterSelect value={b.type} onChange={b.setType} className="" />
+        <AbilityFilterSelect list={b.list} value={b.ability} onChange={b.setAbility} />
         <label className="flex items-center gap-1 text-sm">
           <input
             type="checkbox"
@@ -205,6 +214,42 @@ export function PcFilterBar({
         {children}
       </div>
     </>
+  );
+}
+
+/** Filtre par talent : ceux des Pokémon du PC, par ordre alphabétique, avec leur nombre. */
+function AbilityFilterSelect({
+  list,
+  value,
+  onChange,
+}: {
+  list: readonly PcEntry[];
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const counts = new Map<string, number>();
+  for (const { ability } of list) if (ability) counts.set(ability, (counts.get(ability) ?? 0) + 1);
+  const abilities = [...counts.keys()].sort((a, b) =>
+    abilityLabel(a).localeCompare(abilityLabel(b), 'fr'),
+  );
+  return (
+    <select
+      className="input w-auto"
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      aria-label="Filtrer par talent"
+    >
+      <option value="all">Tous les talents</option>
+      {/* Talent choisi absent du PC (Pokémon relâché…) : gardé pour pouvoir le retirer. */}
+      {value !== 'all' && !counts.has(value) && (
+        <option value={value}>{abilityLabel(value)} (0)</option>
+      )}
+      {abilities.map((a) => (
+        <option key={a} value={a}>
+          {abilityLabel(a)} ({counts.get(a)})
+        </option>
+      ))}
+    </select>
   );
 }
 

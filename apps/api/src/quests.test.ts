@@ -56,7 +56,6 @@ content.quests.push({
     currency: 500,
     items: [{ itemId: 'bottle-cap', quantity: 1 }],
     expeditionSlots: 1,
-    battleSlots: 0,
     daycareSlots: 0,
     bonuses: [],
     pokemon: [

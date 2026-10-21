@@ -13,6 +13,7 @@ import { webPushSender } from './game/push';
 import type { PushSender } from './game/push';
 import { authRoutes } from './plugins/auth-routes';
 import { sessionHooks } from './plugins/session';
+import { betaProfileRoutes } from './beta-profiles';
 import { adminRoutes } from './routes/admin';
 import { battleRoutes } from './routes/battles';
 import { dungeonRoutes } from './routes/dungeons';
@@ -23,6 +24,7 @@ import { tagRoutes } from './routes/tags';
 import { teamRoutes } from './routes/teams';
 import { trainerRoutes } from './routes/trainers';
 import { museumRoutes } from './routes/museum';
+import { assistantRoutes } from './routes/assistants';
 import { playerRoutes } from './routes/player';
 import { progressionRoutes } from './routes/progression';
 import { pushRoutes } from './routes/push';
@@ -97,11 +99,19 @@ export async function buildApp({
   await app.register(spriteRoutes);
   await app.register(authRoutes, { auth });
   await app.register(playerRoutes, { db, content, hooks, now });
+  await app.register(betaProfileRoutes, {
+    db,
+    content,
+    hooks,
+    now,
+    secureCookie: env.authUrl.startsWith('https:'),
+  });
   await app.register(gameRoutes, { db, content, hooks, now });
   await app.register(tagRoutes, { db, hooks });
   await app.register(teamRoutes, { db, hooks });
   await app.register(breedingRoutes, { db, content, hooks, now });
   await app.register(museumRoutes, { db, content, hooks, now });
+  await app.register(assistantRoutes, { db, hooks, now });
   await app.register(battleRoutes, { db, content, hooks, now });
   await app.register(dungeonRoutes, { db, content, hooks, now });
   await app.register(shopRoutes, { db, content, hooks, now });

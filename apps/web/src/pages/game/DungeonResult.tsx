@@ -1,11 +1,14 @@
 import { motion, useReducedMotion } from 'motion/react';
-import type { GameContext } from '@poke/game-core';
+import type { ReactNode } from 'react';
+import type { DungeonOutcome, GameContext, TeamMemberResult } from '@poke/game-core';
+import type { ItemStack } from '@poke/content';
 import type { DungeonRunDto } from '@poke/shared';
 import { Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
 import { usePokemon } from '../../lib/game';
 import { formatDuration, formatMoney, itemIcon, itemName, speciesName } from '../../lib/labels';
 
-const TITLES = {
+/** Issue d'un combat en temps réel (donjon ou dresseur). */
+export const OUTCOME_TITLES = {
   win: { text: 'Victoire !', className: 'text-emerald-600' },
   loss: { text: 'Défaite…', className: 'text-red-600' },
   timeout: { text: 'Temps écoulé…', className: 'text-red-600' },
@@ -44,14 +47,11 @@ function ResultContent({
   onClose: () => void;
 }) {
   const reduced = useReducedMotion();
-  const pokemon = usePokemon();
-  const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
   const result = run.result!;
   const dungeon = ctx.dungeon(run.dungeonId);
   const boss = run.setup.enemies.at(-1);
-  const title = TITLES[result.outcome];
+  const title = OUTCOME_TITLES[result.outcome];
   const win = result.outcome === 'win';
-  const knockedOut = new Set(result.knockedOut);
   const gemChance = dungeon ? Math.round(dungeon.gemChance * 100) : null;
 
   return (
@@ -117,78 +117,111 @@ function ResultContent({
         </motion.div>
       )}
 
-      <div className="mt-4 grid gap-4 sm:grid-cols-2">
-        <div>
-          <h3 className="text-sm font-semibold">Récompenses</h3>
-          <ul className="mt-2 space-y-1 text-sm">
-            {result.money > 0 && (
-              <li className="text-lg font-bold">+{formatMoney(result.money)}</li>
-            )}
-            {result.loot.map((l) => (
-              <li key={l.itemId} className="flex items-center gap-2">
-                <img src={itemIcon(ctx, l.itemId)} alt="" className="h-7 w-7" />
-                {itemName(ctx, l.itemId)} <span className="font-semibold">× {l.quantity}</span>
-              </li>
-            ))}
-            {result.money === 0 && result.loot.length === 0 && (
-              <li className="text-slate-500">
-                {result.outcome === 'fled'
-                  ? 'Aucune récompense : tu as pris la fuite.'
-                  : win
-                    ? 'Rien d’autre cette fois-ci.'
-                    : 'Aucune récompense, mais l’XP des adversaires vaincus est acquise.'}
-              </li>
-            )}
-          </ul>
-          {currency !== null && (
-            <p className="mt-2 text-xs text-slate-500">Argent : {formatMoney(currency)}</p>
-          )}
-          {result.koUntil && (
-            <p className="mt-2 text-xs text-red-600">
-              Les Pokémon mis K.O. se reposent {formatDuration(result.koMinutes)}.
-            </p>
-          )}
-        </div>
-        <div>
-          <h3 className="text-sm font-semibold">Équipe</h3>
-          <ul className="mt-2 space-y-1 text-sm">
-            {result.team.map((m) => {
-              const p = pokemonById.get(m.id);
-              return (
-                p && (
-                  <li key={m.id} className="flex items-center gap-2">
-                    <PokemonSprite
-                      speciesId={p.speciesId}
-                      formId={p.formId}
-                      shiny={p.isShiny}
-                      size={32}
-                    />
-                    <span className="flex-1 truncate">
-                      {speciesName(ctx, p.speciesId, p.formId)} {p.isShiny && <ShinyStar />}
-                    </span>
-                    <span className="text-slate-500">+{m.xpGained} XP</span>
-                    {m.levelAfter > m.levelBefore && (
-                      <span className="rounded-full bg-emerald-100 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                        Niveau {m.levelAfter} !
-                      </span>
-                    )}
-                    {knockedOut.has(m.id) && (
-                      <span className="rounded bg-red-100 px-1 text-[10px] text-red-700 dark:bg-red-950 dark:text-red-300">
-                        K.O.
-                      </span>
-                    )}
-                  </li>
-                )
-              );
-            })}
-          </ul>
-        </div>
-      </div>
+      <CombatResultDetails ctx={ctx} result={result} currency={currency} />
 
       <div className="mt-6 text-right">
         <button className="btn-primary" onClick={onClose}>
           Continuer
         </button>
+      </div>
+    </div>
+  );
+}
+
+/** Résultat d'un combat en temps réel, à afficher. */
+export interface CombatResultView {
+  outcome: DungeonOutcome;
+  money: number;
+  loot: ItemStack[];
+  team: TeamMemberResult[];
+  knockedOut: string[];
+  koMinutes: number;
+  koUntil: string | null;
+}
+
+/** Récompenses (argent, butin, `extraRewards`) et équipe : XP, niveaux, K.O. */
+export function CombatResultDetails({
+  ctx,
+  result,
+  currency,
+  extraRewards,
+}: {
+  ctx: GameContext;
+  result: CombatResultView;
+  /** Poké Dollars après le combat (inconnu pour un combat réclamé en ton absence). */
+  currency: number | null;
+  /** Récompense en plus (badge…). */
+  extraRewards?: ReactNode;
+}) {
+  const pokemon = usePokemon();
+  const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
+  const win = result.outcome === 'win';
+  const knockedOut = new Set(result.knockedOut);
+  return (
+    <div className="mt-4 grid gap-4 sm:grid-cols-2">
+      <div>
+        <h3 className="text-sm font-semibold">Récompenses</h3>
+        <ul className="mt-2 space-y-1 text-sm">
+          {result.money > 0 && <li className="text-lg font-bold">+{formatMoney(result.money)}</li>}
+          {result.loot.map((l) => (
+            <li key={l.itemId} className="flex items-center gap-2">
+              <img src={itemIcon(ctx, l.itemId)} alt="" className="h-7 w-7" />
+              {itemName(ctx, l.itemId)} <span className="font-semibold">× {l.quantity}</span>
+            </li>
+          ))}
+          {extraRewards}
+          {result.money === 0 && result.loot.length === 0 && !extraRewards && (
+            <li className="text-slate-500">
+              {result.outcome === 'fled'
+                ? 'Aucune récompense : tu as pris la fuite.'
+                : win
+                  ? 'Rien d’autre cette fois-ci.'
+                  : 'Aucune récompense, mais l’XP des adversaires vaincus est acquise.'}
+            </li>
+          )}
+        </ul>
+        {currency !== null && (
+          <p className="mt-2 text-xs text-slate-500">Argent : {formatMoney(currency)}</p>
+        )}
+        {result.koUntil && (
+          <p className="mt-2 text-xs text-red-600">
+            Les Pokémon mis K.O. se reposent {formatDuration(result.koMinutes)}.
+          </p>
+        )}
+      </div>
+      <div>
+        <h3 className="text-sm font-semibold">Équipe</h3>
+        <ul className="mt-2 space-y-1 text-sm">
+          {result.team.map((m) => {
+            const p = pokemonById.get(m.id);
+            return (
+              p && (
+                <li key={m.id} className="flex items-center gap-2">
+                  <PokemonSprite
+                    speciesId={p.speciesId}
+                    formId={p.formId}
+                    shiny={p.isShiny}
+                    size={32}
+                  />
+                  <span className="flex-1 truncate">
+                    {speciesName(ctx, p.speciesId, p.formId)} {p.isShiny && <ShinyStar />}
+                  </span>
+                  <span className="text-slate-500">+{m.xpGained} XP</span>
+                  {m.levelAfter > m.levelBefore && (
+                    <span className="rounded-full bg-emerald-100 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
+                      Niveau {m.levelAfter} !
+                    </span>
+                  )}
+                  {knockedOut.has(m.id) && (
+                    <span className="rounded bg-red-100 px-1 text-[10px] text-red-700 dark:bg-red-950 dark:text-red-300">
+                      K.O.
+                    </span>
+                  )}
+                </li>
+              )
+            );
+          })}
+        </ul>
       </div>
     </div>
   );

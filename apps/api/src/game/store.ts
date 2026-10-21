@@ -1,5 +1,6 @@
 import { and, count, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import {
+  assistants,
   daycareSlots,
   dungeonRuns,
   eggs,
@@ -11,8 +12,8 @@ import {
   questProgress,
   rewardClaims,
   speciesCaptures,
-  trainerBattles,
   trainerProgress,
+  trainerRuns,
 } from '@poke/db';
 import type { Db } from '@poke/db';
 import type { ItemStack } from '@poke/content';
@@ -97,6 +98,7 @@ export function toExpeditionDto(row: ExpeditionRow): ExpeditionDto {
     endsAt: row.endsAt.toISOString(),
     claimedAt: row.claimedAt?.toISOString() ?? null,
     shinyChain: row.shinyChain,
+    localHour: row.localHour,
     result: (row.result as ExpeditionDto['result']) ?? null,
   };
 }
@@ -161,15 +163,15 @@ export async function pokemonActivities(
   db: Db,
   ownerId: string,
 ): Promise<Map<string, PokemonActivity>> {
-  const [running, battles, pensions, runs] = await Promise.all([
+  const [running, battles, pensions, runs, helpers] = await Promise.all([
     db
       .select({ team: expeditions.team })
       .from(expeditions)
       .where(and(eq(expeditions.ownerId, ownerId), isNull(expeditions.claimedAt))),
     db
-      .select({ team: trainerBattles.team })
-      .from(trainerBattles)
-      .where(and(eq(trainerBattles.ownerId, ownerId), isNull(trainerBattles.claimedAt))),
+      .select({ team: trainerRuns.team })
+      .from(trainerRuns)
+      .where(and(eq(trainerRuns.ownerId, ownerId), isNull(trainerRuns.claimedAt))),
     db
       .select({ a: daycareSlots.parentAId, b: daycareSlots.parentBId })
       .from(daycareSlots)
@@ -178,6 +180,7 @@ export async function pokemonActivities(
       .select({ team: dungeonRuns.team })
       .from(dungeonRuns)
       .where(and(eq(dungeonRuns.ownerId, ownerId), isNull(dungeonRuns.claimedAt))),
+    db.select({ id: assistants.pokemonId }).from(assistants).where(eq(assistants.ownerId, ownerId)),
   ]);
   const activities = new Map<string, PokemonActivity>();
   for (const r of running) for (const id of r.team) activities.set(id, 'expedition');
@@ -186,6 +189,7 @@ export async function pokemonActivities(
   for (const p of pensions) {
     for (const id of [p.a, p.b]) if (id) activities.set(id, 'daycare');
   }
+  for (const h of helpers) activities.set(h.id, 'assistant');
   return activities;
 }
 

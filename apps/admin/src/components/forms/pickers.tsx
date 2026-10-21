@@ -1,5 +1,13 @@
 import { useState } from 'react';
-import type { BaseUnlockCondition, Quest, Region, Trainer, UnlockCondition } from '@poke/content';
+import { WEATHERS } from '@poke/content';
+import type {
+  BaseUnlockCondition,
+  Quest,
+  Region,
+  Trainer,
+  UnlockCondition,
+  Weather,
+} from '@poke/content';
 import {
   TYPE_COLORS,
   itemSpriteUrl,
@@ -10,6 +18,7 @@ import {
   types,
 } from '@poke/data';
 import type { FormKind } from '@poke/data';
+import { WEATHER_LABELS } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import { NumberInput } from './fields';
 
@@ -603,5 +612,32 @@ export function UnlockEditor({
         </select>
       )}
     </div>
+  );
+}
+
+/** Météo d’un donjon ou d’une simulation ; vide = temps clair. */
+export function WeatherSelect({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: Weather | null | undefined;
+  onChange: (v: Weather | null) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <select
+      className="input"
+      value={value ?? ''}
+      disabled={disabled}
+      onChange={(e) => onChange((e.target.value || null) as Weather | null)}
+    >
+      <option value="">{WEATHER_LABELS.clear}</option>
+      {WEATHERS.map((w) => (
+        <option key={w} value={w}>
+          {WEATHER_LABELS[w]}
+        </option>
+      ))}
+    </select>
   );
 }

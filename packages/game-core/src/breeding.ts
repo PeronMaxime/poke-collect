@@ -1,7 +1,9 @@
 import { STAT_NAMES } from '@poke/data';
 import type { StatName, Stats } from '@poke/data';
 import type { GameContext, GameSpecies } from './context';
-import { MAX_LEVEL, generatePokemon, levelForXp, xpForLevel } from './pokemon';
+import { abilityFlat, abilityModifier, abilityMultiplier, applyWildAbilities } from './abilities';
+import type { AbilityEnv, AbilityHolder } from './abilities';
+import { MAX_LEVEL, generatePokemon, levelForXp, withPerfectIvs, xpForLevel } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import { createRng } from './rng';
 import { counterpartFormId } from './forms';
@@ -106,6 +108,14 @@ export interface DaycareParent extends PokemonInstance {
   originRegion?: string | null;
 }
 
+/** Environnement des talents de la pension : les deux parents, puis l'assistant. */
+export function breedingEnv(
+  parents: readonly AbilityHolder[],
+  helper?: AbilityHolder | null,
+): AbilityEnv {
+  return { activity: 'breeding', team: helper ? [...parents, helper] : [...parents] };
+}
+
 export interface InheritanceRules {
   /** Nombre d'IV transmis par les parents. */
   ivCount: number;
@@ -116,6 +126,7 @@ export interface InheritanceRules {
 export function inheritanceRules(
   ctx: GameContext,
   heldItemIds: readonly [string | null, string | null],
+  env?: AbilityEnv,
 ): InheritanceRules {
   const { inheritedIvCount } = ctx.balance.breeding;
   const effect = <T extends 'breedingIvs' | 'breedingNature'>(i: 0 | 1, type: T) => {
@@ -127,8 +138,9 @@ export function inheritanceRules(
     effect(0, 'breedingIvs')?.count ?? 0,
     effect(1, 'breedingIvs')?.count ?? 0,
   );
+  const extra = env ? abilityFlat(ctx, env, 'inheritedIvs', 0, STAT_NAMES.length) : 0;
   return {
-    ivCount: Math.min(ivCount, STAT_NAMES.length),
+    ivCount: Math.min(ivCount + extra, STAT_NAMES.length),
     natureChance: [
       effect(0, 'breedingNature')?.chance ?? 0,
       effect(1, 'breedingNature')?.chance ?? 0,
@@ -141,15 +153,39 @@ export function inheritanceRules(
 /** Cycles d'éclosion par défaut si PokéAPI n'en donne pas. */
 const DEFAULT_HATCH_COUNTER = 20;
 
-export function hatchMinutes(ctx: GameContext, speciesId: number): number {
+/** Durée d'éclosion, raccourcie par le talent de l'assistant de la couveuse. */
+export function hatchMinutes(
+  ctx: GameContext,
+  speciesId: number,
+  incubatorHelper?: AbilityHolder | null,
+): number {
   const counter = ctx.species(speciesId)?.hatchCounter ?? DEFAULT_HATCH_COUNTER;
-  return counter * ctx.balance.breeding.hatchMinutesPerCounter;
+  const minutes = counter * ctx.balance.breeding.hatchMinutesPerCounter;
+  if (!incubatorHelper) return minutes;
+  const env: AbilityEnv = { activity: 'incubator', team: [incubatorHelper] };
+  return minutes * abilityMultiplier(ctx, env, 'hatchTime');
 }
 
-/** Œufs pondus depuis `since` (évaluation paresseuse, sans tâche planifiée). */
-export function eggsLaid(ctx: GameContext, since: Date, now: Date): number {
+/** Minutes entre deux œufs d'une pension (talents des parents et de l'assistant compris). */
+export function eggCycleMinutes(ctx: GameContext, env?: AbilityEnv): number {
+  const { eggMinutes } = ctx.balance.breeding;
+  if (!env) return eggMinutes;
+  // Vitesse de ponte : +100 % = deux fois plus d'œufs ; au plus dix fois plus lent.
+  return eggMinutes / Math.max(0.1, abilityMultiplier(ctx, env, 'eggSpeed'));
+}
+
+/**
+ * Œufs pondus depuis `since` (évaluation paresseuse, sans tâche planifiée), un toutes les
+ * `cycleMinutes` (voir `eggCycleMinutes`).
+ */
+export function eggsLaid(
+  ctx: GameContext,
+  since: Date,
+  now: Date,
+  cycleMinutes = ctx.balance.breeding.eggMinutes,
+): number {
   const elapsed = now.getTime() - since.getTime();
-  return Math.max(0, Math.floor(elapsed / (ctx.balance.breeding.eggMinutes * 60_000)));
+  return Math.max(0, Math.floor(elapsed / (cycleMinutes * 60_000)));
 }
 
 // --- Éclosion --------------------------------------------------------------------------------
@@ -165,6 +201,8 @@ export interface EggInput {
   motherIndex: 0 | 1;
   /** Multiplicateur du Charme Chroma possédé à l'éclosion (1 = aucun). */
   shinyCharm?: number;
+  /** Assistant de la Pension au ramassage (talent figé dans l'œuf). */
+  helper?: AbilityHolder | null;
 }
 
 /** Probabilité shiny d'un œuf : Charme Chroma et bonus Masuda des parents. */
@@ -195,11 +233,16 @@ export function resolveEgg(ctx: GameContext, input: EggInput): PokemonInstance {
   if (!species) throw new Error(`Espèce inconnue : ${input.speciesId}`);
   const { breeding } = ctx.balance;
   const [pa, pb] = input.parents;
-  const rules = inheritanceRules(ctx, [pa.heldItemId, pb.heldItemId]);
+  const env = breedingEnv(input.parents, input.helper);
+  const rules = inheritanceRules(ctx, [pa.heldItemId, pb.heldItemId], env);
 
   // Base aléatoire (IV, nature, talent standard, sexe, shiny), puis héritage par-dessus.
   const child = generatePokemon(ctx, rng, species.id, breeding.eggLevel, {
-    shinyProbability: eggShinyProbability(ctx, input.parents, input.shinyCharm),
+    shinyProbability: Math.min(
+      1,
+      eggShinyProbability(ctx, input.parents, input.shinyCharm) *
+        abilityMultiplier(ctx, env, 'shinyChance'),
+    ),
     formId: species.form?.id ?? null,
   });
 
@@ -226,14 +269,22 @@ export function resolveEgg(ctx: GameContext, input: EggInput): PokemonInstance {
   let ability: string;
   if (
     hidden.length > 0 &&
-    (regular.length === 0 || (motherHasHidden && abilityRoll < breeding.hiddenAbilityInheritChance))
+    (regular.length === 0 ||
+      (motherHasHidden &&
+        abilityRoll <
+          breeding.hiddenAbilityInheritChance + abilityModifier(ctx, env, 'hiddenAbility') / 100))
   ) {
     ability = hidden[Math.floor(abilityPick * hidden.length)]!.name;
   } else {
     ability = regular[Math.floor(abilityPick * regular.length)]?.name ?? child.ability;
   }
 
-  return { ...child, ivs, nature, ability };
+  // Talents : tirages en plus seulement s'ils jouent (les œufs déjà pondus restent identiques).
+  const egg = { ...child, ivs, nature, ability };
+  const perfect = abilityFlat(ctx, env, 'perfectIvs', 0, STAT_NAMES.length);
+  if (perfect > 0) egg.ivs = withPerfectIvs(rng, egg.ivs, perfect);
+  applyWildAbilities(ctx, env, rng, egg);
+  return egg;
 }
 
 // --- Transfert et Bonbons de lignée -----------------------------------------------------------
@@ -251,12 +302,18 @@ export function isTransferableSpecies(ctx: GameContext, speciesId: number): bool
 
 export function transferCandies(
   ctx: GameContext,
-  pokemon: Pick<PokemonInstance, 'speciesId' | 'isShiny'>,
+  pokemon: Pick<PokemonInstance, 'speciesId' | 'isShiny'> &
+    Partial<Pick<PokemonInstance, 'formId' | 'ability'>>,
 ) {
   const { candiesPerPokemon, shinyBonusCandies } = ctx.balance.transfer;
   // Un Pokémon évolué rapporte le double des Bonbons de base.
   const evolved = ctx.species(pokemon.speciesId)?.evolvesFromSpeciesId != null;
-  return candiesPerPokemon * (evolved ? 2 : 1) + (pokemon.isShiny ? shinyBonusCandies : 0);
+  const base = candiesPerPokemon * (evolved ? 2 : 1) + (pokemon.isShiny ? shinyBonusCandies : 0);
+  const env: AbilityEnv = {
+    activity: 'transfer',
+    team: [{ ...pokemon, ability: pokemon.ability ?? '' }],
+  };
+  return Math.round(base * abilityMultiplier(ctx, env, 'candies'));
 }
 
 /** Bonbons nécessaires pour monter `pokemon` au niveau maximal (0 si déjà au max). */

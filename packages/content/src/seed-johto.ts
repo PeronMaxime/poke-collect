@@ -12,7 +12,8 @@ import type {
   UnlockCondition,
   Zone,
 } from './schemas';
-import { defaultLegendaryExpedition } from './schemas';
+import { defaultLegendaryExpedition, defaultTrainerTimeLimitSeconds } from './schemas';
+import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
 
 /**
  * Johto : le parcours des 8 arènes, la Ligue, les zones spéciales et les quêtes légendaires, sur
@@ -72,7 +73,16 @@ const allOf = (...conditions: UnlockCondition[]): UnlockCondition => ({
 });
 
 const zone = (
-  z: Omit<Zone, 'regionId' | 'image' | 'enabled' | 'requiredTypes' | 'durationsMinutes'> &
+  z: Omit<
+    Zone,
+    | 'regionId'
+    | 'image'
+    | 'enabled'
+    | 'requiredTypes'
+    | 'durationsMinutes'
+    | 'weatherChangeChance'
+    | 'weathers'
+  > &
     Partial<Zone>,
 ): Zone => ({
   regionId: 'johto',
@@ -80,6 +90,8 @@ const zone = (
   enabled: true,
   requiredTypes: [],
   durationsMinutes: ALL_DURATIONS,
+  weatherChangeChance: ZONE_WEATHER_CHANGE_CHANCE,
+  weathers: seedZoneWeathers(z.habitat, z.affinityTypes),
   ...z,
 });
 
@@ -805,7 +817,7 @@ const trainer = (
   return {
     regionId: 'johto',
     sprite: sprite(spriteName),
-    durationMinutes: null,
+    timeLimitSeconds: defaultTrainerTimeLimitSeconds(rest.team.length),
     rules: noRules(),
     money: 0,
     lootTableId: 'butin-route',
@@ -844,7 +856,6 @@ const gymLeader = (
     spriteName,
     team,
     unlock,
-    durationMinutes: 60,
     rules: { ...noRules(), teamSize: team.length, minPower },
     money: Math.max(...team.map((m) => m.level)) * 100,
     lootTableId: 'butin-grotte',
@@ -869,7 +880,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Gamin',
     spriteName: 'youngster-gen4',
     team: [mon(161, 4), mon(19, 4)],
-    durationMinutes: 10,
     money: 80,
     unlock: { type: 'always' },
   }),
@@ -881,7 +891,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Scout',
     spriteName: 'bugcatcher-gen3',
     team: [mon(165, 5), mon(167, 5), mon(13, 6)],
-    durationMinutes: 15,
     money: 150,
     lootTableId: 'butin-foret',
     unlock: johtoDex(3),
@@ -894,7 +903,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Sage',
     spriteName: 'sage',
     team: [mon(69, 7), mon(69, 7), mon(163, 10)],
-    durationMinutes: 20,
     money: 200,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
@@ -920,7 +928,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Pêcheur',
     spriteName: 'fisherman',
     team: [mon(129, 10), mon(211, 12), mon(72, 11)],
-    durationMinutes: 30,
     money: 300,
     lootTableId: 'butin-mer',
     lootRolls: 2,
@@ -934,7 +941,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Montagnard',
     spriteName: 'hiker-gen4',
     team: [mon(74, 12), mon(41, 12), mon(95, 13)],
-    durationMinutes: 30,
     money: 360,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
@@ -948,7 +954,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Team Rocket',
     spriteName: 'rocketgrunt',
     team: [mon(19, 13), mon(23, 14), mon(41, 15)],
-    durationMinutes: 30,
     money: 450,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
@@ -974,7 +979,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Scout',
     spriteName: 'bugcatcher-gen3',
     team: [mon(204, 16), mon(166, 17), mon(168, 17)],
-    durationMinutes: 45,
     money: 500,
     lootTableId: 'butin-foret',
     lootRolls: 2,
@@ -988,7 +992,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Pique-niqueuse',
     spriteName: 'picnicker',
     team: [mon(209, 17), mon(191, 17), mon(39, 18)],
-    durationMinutes: 45,
     money: 550,
     lootRolls: 2,
     unlock: defeated('scout-hugo'),
@@ -1013,7 +1016,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Médium',
     spriteName: 'medium',
     team: [mon(92, 20), mon(92, 20), mon(93, 22), mon(228, 22)],
-    durationMinutes: 60,
     money: 900,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
@@ -1039,7 +1041,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Nageuse',
     spriteName: 'swimmerf-gen4',
     team: [mon(170, 26), mon(72, 26), mon(116, 27), mon(226, 28)],
-    durationMinutes: 60,
     money: 1300,
     lootTableId: 'butin-mer',
     lootRolls: 2,
@@ -1054,7 +1055,7 @@ export const johtoTrainers: Trainer[] = [
     'Badge Choc',
     [mon(56, 30), mon(66, 30), mon(57, 32), mon(62, 34)],
     defeated('nageuse-marina'),
-    { minPower: 780, durationMinutes: 90 },
+    { minPower: 780 },
   ),
   // Badge Choc → Badge Minéral
   trainer({
@@ -1065,7 +1066,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Marin',
     spriteName: 'sailor',
     team: [mon(72, 30), mon(81, 30), mon(171, 31), mon(82, 32)],
-    durationMinutes: 60,
     money: 1600,
     lootTableId: 'butin-mer',
     lootRolls: 2,
@@ -1080,7 +1080,7 @@ export const johtoTrainers: Trainer[] = [
     'Badge Minéral',
     [mon(81, 34, 18), mon(82, 35, 18), mon(205, 35, 18), mon(208, 39, 18)],
     defeated('marin-gilles'),
-    { minPower: 970, durationMinutes: 90 },
+    { minPower: 970 },
   ),
   // Badge Minéral → Badge Glacier
   trainer({
@@ -1091,7 +1091,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Team Rocket',
     spriteName: 'rocketgrunt',
     team: [mon(24, 33), mon(89, 33), mon(110, 34), mon(20, 34)],
-    durationMinutes: 60,
     money: 1800,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
@@ -1106,7 +1105,7 @@ export const johtoTrainers: Trainer[] = [
     'Badge Glacier',
     [mon(86, 36, 20), mon(124, 37, 20), mon(91, 37, 20), mon(87, 38, 20), mon(221, 40, 20)],
     defeated('sbire-qg-rocket'),
-    { minPower: 1290, durationMinutes: 90 },
+    { minPower: 1290 },
   ),
   // Badge Glacier → Badge Lever
   trainer({
@@ -1117,7 +1116,6 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Skieuse',
     spriteName: 'skier',
     team: [mon(220, 35), mon(86, 35), mon(225, 36), mon(215, 37), mon(87, 37)],
-    durationMinutes: 60,
     money: 2200,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
@@ -1132,7 +1130,7 @@ export const johtoTrainers: Trainer[] = [
     'Badge Lever',
     [mon(148, 40, 25), mon(148, 40, 25), mon(148, 40, 25), mon(130, 41, 25), mon(230, 44, 25)],
     defeated('skieuse-rosa'),
-    { minPower: 1480, durationMinutes: 120, koMinutes: 180, lootTableId: 'butin-elite' },
+    { minPower: 1480, koMinutes: 180, lootTableId: 'butin-elite' },
   ),
   // Routes 26 et 27, puis la Ligue
   trainer({
@@ -1149,7 +1147,6 @@ export const johtoTrainers: Trainer[] = [
       mon(232, 44, 20),
       mon(164, 43, 20),
     ],
-    durationMinutes: 90,
     money: 3500,
     lootTableId: 'butin-elite',
     lootRolls: 2,
@@ -1171,7 +1168,6 @@ export const johtoTrainers: Trainer[] = [
       mon(6, 77, 31),
       mon(9, 77, 31),
     ],
-    durationMinutes: 240,
     money: 30_000,
     lootTableId: 'butin-elite',
     lootRolls: 6,
@@ -1201,7 +1197,6 @@ function league(): Trainer[] {
       spriteName,
       team,
       unlock,
-      durationMinutes: 120,
       money: 7000,
       lootTableId: 'butin-elite',
       lootRolls: 3,
@@ -1256,7 +1251,7 @@ function league(): Trainer[] {
         mon(149, 63, 31),
       ],
       defeated('marion'),
-      { trainerClass: 'Maître de la Ligue', durationMinutes: 180, money: 18_000, lootRolls: 5 },
+      { trainerClass: 'Maître de la Ligue', money: 18_000, lootRolls: 5 },
     ),
   ];
 }
@@ -1267,7 +1262,6 @@ const reward = (r: Partial<ProgressReward>): ProgressReward => ({
   currency: 0,
   items: [],
   expeditionSlots: 0,
-  battleSlots: 0,
   daycareSlots: 0,
   bonuses: [],
   ...r,

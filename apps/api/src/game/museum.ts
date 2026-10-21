@@ -1,9 +1,10 @@
 import { and, asc, count, eq, isNull, lte } from 'drizzle-orm';
 import { fossilRevivals } from '@poke/db';
 import type { Db } from '@poke/db';
-import { fossilEffect, reviveFossil } from '@poke/game-core';
+import { fossilEffect, restoreMinutes, reviveFossil } from '@poke/game-core';
 import type { FossilRevivalDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
+import { assistantHolder } from './assistants';
 import { GameError } from './errors';
 import { newSeed, requireStartedProfile } from './expeditions';
 import { addItems, insertPokemon, recordPokedex, shinyCharm, takeItems } from './store';
@@ -58,6 +59,7 @@ export async function depositFossil(
     if (!(await takeItems(tx, userId, itemId, 1))) {
       throw new GameError(409, 'ITEM_MISSING', { itemId });
     }
+    const helper = await assistantHolder(tx, userId, 'museum');
     const [row] = await tx
       .insert(fossilRevivals)
       .values({
@@ -68,8 +70,9 @@ export async function depositFossil(
         level: effect.level,
         contentVersionId: ctx.content.versionId,
         startedAt: now,
-        readyAt: new Date(now.getTime() + effect.minutes * 60_000),
+        readyAt: new Date(now.getTime() + restoreMinutes(ctx, effect, helper) * 60_000),
         seed: newSeed(),
+        helper,
       })
       .returning();
     return row!;

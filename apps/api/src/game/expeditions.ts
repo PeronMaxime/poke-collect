@@ -5,15 +5,18 @@ import type { Db } from '@poke/db';
 import {
   MAX_SEED,
   checkTeam,
-  encounterCount,
+  expeditionEnv,
+  expeditionPlan,
   isZoneUnlocked,
   legendarySite,
+  localHour,
   playerBonuses,
   playerSlots,
   questEncounter,
   resolveExpedition,
   resolveQuestExpedition,
   zoneChainStatus,
+  zoneWeather,
 } from '@poke/game-core';
 import type {
   ClaimedRewards,
@@ -62,6 +65,11 @@ const EMPTY_RESULT: ExpeditionResult = {
 
 export function newSeed(): number {
   return randomInt(0, MAX_SEED + 1);
+}
+
+/** Heure locale du joueur au départ (talents de jour ou de nuit) ; null si le client ne l'envoie pas. */
+export function startHour(now: Date, utcOffsetMinutes: number | undefined): number | null {
+  return utcOffsetMinutes === undefined ? null : localHour(now, utcOffsetMinutes);
 }
 
 /** Nombre d'emplacements d'expédition du joueur (départ + paliers et collections réclamés). */
@@ -177,11 +185,15 @@ export async function startExpedition(
   return db.transaction(async (tx) => {
     const slotIndex = await freeSlot(tx, ctx, userId);
     const team = await availableTeam(tx, userId, input.team, now);
-    const check = checkTeam(ctx, zone, input.durationMinutes, team);
+    const hour = startHour(now, input.utcOffsetMinutes);
+    // Météo de la zone au départ, retrouvée à la réclamation (même version de contenu).
+    const site = { ...zone, weather: zoneWeather(zone, now) };
+    const check = checkTeam(ctx, site, input.durationMinutes, team, hour);
     if (check.errors.length > 0) throw new GameError(400, 'TEAM_INVALID', { errors: check.errors });
 
     // Une Ball (et une baie) par rencontre au maximum : on réserve ce qui sera utilisé.
-    const encounters = encounterCount(ctx, input.durationMinutes);
+    const plan = expeditionPlan(ctx, input.durationMinutes, expeditionEnv(site, team, hour));
+    const { encounters } = plan;
     const reserve = async (itemId: string | null, max = encounters) => {
       if (!itemId) return 0;
       const quantity = Math.min(encounters, max, await itemQuantity(tx, userId, itemId));
@@ -209,9 +221,10 @@ export async function startExpedition(
         captureFilter: input.captureFilter ?? null,
         contentVersionId: ctx.content.versionId,
         startedAt: now,
-        endsAt: new Date(now.getTime() + input.durationMinutes * 60_000),
+        endsAt: new Date(now.getTime() + plan.realDurationMinutes * 60_000),
         seed: newSeed(),
         shinyChain: chain,
+        localHour: hour,
       })
       .returning();
     return row!;
@@ -261,8 +274,11 @@ export async function startQuestExpedition(
 
     const slotIndex = await freeSlot(tx, ctx, userId);
     const team = await availableTeam(tx, userId, input.team, now);
-    const { errors } = checkTeam(ctx, legendarySite(quest, target), durationMinutes, team);
+    const site = legendarySite(quest, target);
+    const hour = startHour(now, input.utcOffsetMinutes);
+    const { errors } = checkTeam(ctx, site, durationMinutes, team, hour);
     if (errors.length > 0) throw new GameError(400, 'TEAM_INVALID', { errors });
+    const plan = expeditionPlan(ctx, durationMinutes, expeditionEnv(site, team, hour, 'quest'));
     const key = questChainKey(quest.id);
     const chain = (await shinyChains(tx, ctx, userId, now, { questId: quest.id })).get(key);
 
@@ -280,9 +296,10 @@ export async function startQuestExpedition(
         berries: 0,
         contentVersionId: ctx.content.versionId,
         startedAt: now,
-        endsAt: new Date(now.getTime() + durationMinutes * 60_000),
+        endsAt: new Date(now.getTime() + plan.realDurationMinutes * 60_000),
         seed: newSeed(),
         shinyChain: chain?.chain ?? 0,
+        localHour: hour,
       })
       .returning();
     return row!;
@@ -459,7 +476,9 @@ export async function claimExpedition(
           .from(pokemon)
           .where(and(eq(pokemon.ownerId, userId), inArray(pokemon.id, found.team)))
       : [];
-    const team = teamRows.map(toInstance);
+    // Dans l'ordre du départ : le premier est en tête (talents « en tête d'équipe »).
+    const byId = new Map(teamRows.map((r) => [r.id, toInstance(r)]));
+    const team = found.team.flatMap((id) => byId.get(id) ?? []);
     const bonuses = playerBonuses(ctx, await claimedRewards(tx, userId));
     const charm = await shinyCharm(tx, ctx, userId);
     let result: ExpeditionResult;
@@ -479,6 +498,7 @@ export async function claimExpedition(
               berryItemId,
               bonuses,
               shiny: { chain: found.shinyChain, charm },
+              hour: found.localHour,
             })
           : EMPTY_RESULT; // plus rien à capturer (quête modifiée) : Ball et baie rendues
     } else if (zone) {
@@ -500,6 +520,8 @@ export async function claimExpedition(
         shiny: { chain: found.shinyChain, charm },
         captureFilter: found.captureFilter,
         ...(found.captureFilter?.newOnly && { caught: await caughtDex(tx, userId) }),
+        hour: found.localHour,
+        weather: zoneWeather(zone, found.startedAt),
       });
     } else {
       result = EMPTY_RESULT; // inatteignable : une expédition normale a toujours sa zone

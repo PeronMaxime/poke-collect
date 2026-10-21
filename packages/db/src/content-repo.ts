@@ -1,5 +1,6 @@
 import { and, asc, desc, eq } from 'drizzle-orm';
 import {
+  abilitySchema,
   collectionSchema,
   contentIssues,
   dexMilestoneSchema,
@@ -25,6 +26,7 @@ import type {
   DexMilestone,
   Dungeon,
   EvolutionOverride,
+  GameAbility,
   GameContent,
   GameContentData,
   Item,
@@ -40,6 +42,7 @@ import type {
 import type { z } from 'zod';
 import type { Db } from './client';
 import {
+  abilities,
   balanceSettings,
   collections,
   contentVersions,
@@ -111,6 +114,7 @@ const entityDefs = {
     schema: speciesOverrideSchema,
     order: speciesOverrides.speciesId,
   },
+  ability: { table: abilities, key: 'id', schema: abilitySchema, order: abilities.id },
   item: { table: items, key: 'id', schema: itemSchema, order: items.id },
   lootTable: { table: lootTables, key: 'id', schema: lootTableSchema, order: lootTables.id },
   zone: { table: zones, key: 'id', schema: zoneSchema, order: zones.order },
@@ -144,6 +148,7 @@ export type ContentEntityType = keyof typeof entityDefs;
 export interface ContentEntityMap {
   region: Region;
   speciesOverride: SpeciesOverride;
+  ability: GameAbility;
   item: Item;
   lootTable: LootTable;
   zone: Zone;
@@ -161,6 +166,7 @@ export interface ContentEntityMap {
 const collectionOf = {
   region: 'regions',
   speciesOverride: 'speciesOverrides',
+  ability: 'abilities',
   item: 'items',
   lootTable: 'lootTables',
   zone: 'zones',
@@ -177,6 +183,7 @@ const collectionOf = {
 export const contentEntitySchemas: { [K in ContentEntityType]: z.ZodType<ContentEntityMap[K]> } = {
   region: regionSchema,
   speciesOverride: speciesOverrideSchema,
+  ability: abilitySchema,
   item: itemSchema,
   lootTable: lootTableSchema,
   zone: zoneSchema,

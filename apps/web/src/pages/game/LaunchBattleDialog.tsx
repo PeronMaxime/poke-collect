@@ -1,42 +1,31 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Trainer } from '@poke/content';
+import { typeWeaknesses } from '@poke/data';
 import {
-  battleDurationMinutes,
+  battleCooldownMinutes,
+  battleEnv,
   battleKoMinutes,
-  battleXp,
+  battleMaxXp,
+  battleWeather,
   checkBattleTeam,
-  estimateBattle,
-  isRegionalSpecies,
+  imposedWeather,
   pokemonPower,
+  trainerEnemies,
+  trainerPower,
+  zoneWeather,
 } from '@poke/game-core';
-import type { BattleError, GameContext } from '@poke/game-core';
-import type { BattleDto, PokemonDto, StartBattleInput } from '@poke/shared';
-import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
-import { Modal, PokemonSprite, ShinyStar, useNow } from '../../components/ui';
+import type { BattleError, DungeonMove, ExpeditionSite, GameContext } from '@poke/game-core';
+import type { BattleDto, StartBattleInput } from '@poke/shared';
+import { HoverBubble, Modal, PokemonSprite, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, isUsable, usePokemon, useTeams } from '../../lib/game';
+import { PLAYER_STATE_KEYS, utcOffsetMinutes } from '../../lib/game';
 import { errorText, formatDuration, formatMoney, typeLabel } from '../../lib/labels';
-import { TrainerSprite } from './BattlesPage';
-import { pillClass } from './LaunchExpeditionDialog';
-import {
-  MEGA_LOCKED_TITLE,
-  NameSearch,
-  SavedTeamsBar,
-  TypeFilterSelect,
-  megaLocked,
-  nameMatcher,
-  selectionRank,
-  usePinnedSelection,
-} from './TeamPicker';
+import { BadgeIcon, TrainerRules, TrainerSprite, formatTimeLimit } from './BattlesPage';
+import { CombatTeamOrder, EnemyInfo, combatMove } from './CombatTeamOrder';
+import { TeamPicker, useTeamPicker } from './TeamPicker';
+import { TEAM_WEATHER_NOTE, WeatherIcon, zoneWeatherForecast } from './WeatherIcon';
 import { XpPreview, formatXp, usePlayerBonuses } from './XpPreview';
-
-const SORTS = {
-  power: 'PE',
-  level: 'Niveau',
-  tag: 'Étiquette',
-} as const;
-type Sort = keyof typeof SORTS;
 
 function ruleText(e: BattleError): string {
   switch (e.code) {
@@ -60,34 +49,9 @@ function ruleText(e: BattleError): string {
       return `Il manque : ${e.missing.map((m) => `${m.count} × ${typeLabel(m.type)}`).join(', ')}.`;
     case 'POWER_TOO_LOW':
       return `PE de l’équipe insuffisante pour lancer le combat (${e.power} / ${e.minPower}).`;
+    case 'INVALID_MOVE':
+      return 'Une attaque choisie n’est pas d’un type du Pokémon.';
   }
-}
-
-function advantageText(advantage: number): { label: string; className: string } {
-  if (advantage > 0.25) return { label: 'Avantage de types', className: 'text-emerald-600' };
-  if (advantage < -0.25) return { label: 'Désavantage de types', className: 'text-red-600' };
-  return { label: 'Types neutres', className: 'text-slate-500' };
-}
-
-/** Jauge de chances de victoire (rouge → vert). */
-export function WinGauge({ probability }: { probability: number }) {
-  const pct = Math.round(probability * 100);
-  const color =
-    probability >= 0.7 ? 'bg-emerald-500' : probability >= 0.4 ? 'bg-amber-500' : 'bg-red-500';
-  return (
-    <div>
-      <div className="flex items-baseline justify-between text-sm">
-        <span className="font-semibold">Chances de victoire</span>
-        <span className="font-mono text-lg font-bold">{pct} %</span>
-      </div>
-      <div className="mt-1 h-3 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800">
-        <div
-          className={`h-full rounded-full transition-[width] duration-300 ${color}`}
-          style={{ width: `${pct}%` }}
-        />
-      </div>
-    </div>
-  );
 }
 
 export function LaunchBattleDialog({
@@ -100,20 +64,26 @@ export function LaunchBattleDialog({
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const pokemon = usePokemon();
-  const teams = useTeams();
-  const now = useNow(10_000);
-  const [team, setTeam] = useState<string[]>([]);
-  const [sort, setSort] = useState<Sort>('power');
-  const [search, setSearch] = useState('');
-  const [type, setType] = useState('all');
-  const tagFilter = useTagFilter();
-  const pinned = usePinnedSelection(team, [sort, search, type, tagFilter.filter]);
+  const enemies = trainerEnemies(ctx, trainer);
+  // Les Pokémon dont un type est efficace contre un Pokémon du dresseur sont mis en évidence.
+  const site: ExpeditionSite = {
+    regionId: trainer.regionId,
+    minPower: trainer.rules.minPower,
+    requiredTypes: trainer.rules.requiredTypes,
+    affinityTypes: [...new Set(enemies.flatMap((e) => typeWeaknesses(e.types)))],
+    durationsMinutes: [],
+  };
+  const picker = useTeamPicker(ctx, site);
+  const [moves, setMoves] = useState<Record<string, DungeonMove>>({});
+  const maxTeamSize = trainer.rules.teamSize ?? ctx.balance.battles.maxTeamSize;
   const bonuses = usePlayerBonuses(ctx);
 
   const start = useMutation({
     mutationFn: (input: StartBattleInput) =>
-      api<BattleDto>('/api/battles', { method: 'POST', json: input }),
+      api<BattleDto>('/api/battles', {
+        method: 'POST',
+        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
+      }),
     onSuccess: () => {
       onClose();
       return Promise.all(
@@ -122,177 +92,120 @@ export function LaunchBattleDialog({
     },
   });
 
-  const region = ctx.region(trainer.regionId);
-  const matchesName = nameMatcher(search);
-  const usablePokemon = (pokemon.data ?? []).filter(
-    (p) => isUsable(p, now) && isRegionalSpecies(ctx, trainer.regionId, p.speciesId),
+  const members = picker.members;
+  // Talents, météo et conditions : évalués à l'instant présent (celui du départ).
+  const now = useNow(10_000);
+  const hour = new Date(now).getHours();
+  const withMoves = members.map((p) => ({ ...p, move: combatMove(ctx, p, moves) }));
+  const errors = checkBattleTeam(ctx, trainer, withMoves, hour, now);
+  const env = battleEnv(ctx, trainer, members, hour, now);
+  const power = members.reduce(
+    (sum, p) => sum + pokemonPower(ctx.species(p.speciesId, p.formId)!, p),
+    0,
   );
-  const available = usablePokemon
-    .map((p) => {
-      const species = ctx.species(p.speciesId, p.formId)!;
-      return { p, species, power: pokemonPower(species, p) };
-    })
-    // Les membres déjà choisis restent visibles, quels que soient les filtres.
-    .filter(
-      ({ p, species }) =>
-        (tagFilter.matches(p) &&
-          matchesName(species.nameFr) &&
-          (type === 'all' || species.types.includes(type))) ||
-        team.includes(p.id),
-    )
-    // Les membres choisis passent en tête (dans l'ordre de sélection) au changement de filtre ou de tri.
-    .sort(
-      (a, b) =>
-        selectionRank(pinned, a.p.id) - selectionRank(pinned, b.p.id) ||
-        (sort === 'level' ? b.p.level - a.p.level : 0) ||
-        (sort === 'tag' ? tagFilter.compare(a.p, b.p) : 0) ||
-        b.power - a.power,
-    );
-  const members = team.flatMap((id) => available.find((a) => a.p.id === id)?.p ?? []);
-  const maxSize = trainer.rules.teamSize ?? ctx.balance.battles.maxTeamSize;
-  const errors = checkBattleTeam(ctx, trainer, members);
-  const estimate = estimateBattle(ctx, trainer, members);
-  const advantage = advantageText(estimate.advantage);
-  const ko = battleKoMinutes(ctx, trainer);
-  const duration = battleDurationMinutes(ctx, trainer);
-  const xp = battleXp(ctx, trainer, bonuses);
-
-  function toggle(p: PokemonDto) {
-    if (megaLocked(p, members)) return;
-    setTeam((t) =>
-      t.includes(p.id) ? t.filter((id) => id !== p.id) : t.length < maxSize ? [...t, p.id] : t,
-    );
-  }
+  const maxXp = battleMaxXp(ctx, trainer, bonuses, members, hour);
+  const zone = trainer.zoneId ? ctx.zone(trainer.zoneId) : undefined;
+  const weather = battleWeather(ctx, trainer, members, hour, now);
+  const placeWeather = zone ? zoneWeather(zone, now) : null;
+  const forecast = zone && zoneWeatherForecast(zone, now);
+  const weatherNote = imposedWeather(ctx, { activity: 'battle', team: members })
+    ? TEAM_WEATHER_NOTE
+    : weather !== placeWeather
+      ? 'Imposée par le talent d’un adversaire.'
+      : undefined;
+  const targets = enemies.map((e) => ({
+    name: ctx.species(e.speciesId, e.formId)?.nameFr ?? `#${e.speciesId}`,
+    types: e.types,
+  }));
 
   return (
     <Modal open onClose={onClose} wide>
-      <div className="flex items-center gap-3">
-        <TrainerSprite trainer={trainer} size={80} />
-        <div>
+      <div className="flex flex-wrap items-center gap-3">
+        <TrainerSprite trainer={trainer} size={88} />
+        <div className="min-w-0 flex-1">
           <p className="text-sm text-slate-500">{trainer.trainerClass}</p>
-          <h2 className="text-xl font-bold">{trainer.name}</h2>
-          <p className="text-sm text-slate-500">
-            PE {estimate.trainerPower} · {formatDuration(duration)} ·{' '}
-            {trainer.money > 0 ? formatMoney(trainer.money) : 'Aucun argent'}
-            {trainer.badge && ` · ${trainer.badge.name}`}
-          </p>
-        </div>
-        <div className="ml-auto hidden gap-1 sm:flex">
-          {trainer.team.map((m, i) => (
-            <span key={i} className="flex flex-col items-center text-[10px] text-slate-500">
-              <PokemonSprite speciesId={m.speciesId} formId={m.formId} size={48} />
-              N.{m.level}
-            </span>
-          ))}
-        </div>
-      </div>
-
-      <SavedTeamsBar
-        ctx={ctx}
-        teams={teams.data ?? []}
-        pokemon={pokemon.data ?? []}
-        usable={new Set(usablePokemon.map((p) => p.id))}
-        maxSize={maxSize}
-        current={team}
-        onPick={setTeam}
-      />
-      <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">
-          Ton équipe ({team.length} / {maxSize})
-        </h3>
-        <div className="flex flex-wrap items-center gap-1 text-xs">
-          <span className="text-slate-500">Trier par</span>
-          {(Object.keys(SORTS) as Sort[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setSort(key)}
-              className={pillClass(sort === key)}
-            >
-              {SORTS[key]}
-            </button>
-          ))}
-          <TagFilterSelect
-            tags={tagFilter.tags}
-            value={tagFilter.filter}
-            onChange={tagFilter.setFilter}
-            className="ml-1 py-0.5 text-xs"
-          />
-          <TypeFilterSelect value={type} onChange={setType} />
-          <NameSearch value={search} onChange={setSearch} />
-        </div>
-        <span className="text-sm text-slate-500">PE {estimate.playerPower}</span>
-      </div>
-      <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5">
-        {available.map(({ p, species, power }) => {
-          const selected = team.includes(p.id);
-          const locked = megaLocked(p, members);
-          return (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => toggle(p)}
-              disabled={locked}
-              title={locked ? MEGA_LOCKED_TITLE : undefined}
-              className={`flex flex-col items-center rounded-xl border p-1 text-xs transition disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale ${
-                selected
-                  ? 'border-brand-500 bg-brand-500/10'
-                  : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
-              }`}
-            >
-              <PokemonSprite
-                speciesId={p.speciesId}
-                formId={p.formId}
-                shiny={p.isShiny}
-                size={56}
+          <h2 className="flex items-center gap-2 text-xl font-bold">
+            {trainer.name}
+            {(weather || placeWeather || forecast) && (
+              <WeatherIcon
+                weather={weather ?? 'clear'}
+                activity="battle"
+                note={weatherNote}
+                forecast={forecast}
               />
-              <span className="truncate">
-                {species.nameFr} {p.isShiny && <ShinyStar />}
-              </span>
-              <span className="text-slate-500">
-                N.{p.level} · PE {power}
-              </span>
-              <PokemonTagBadges pokemon={p} tags={tagFilter.tags} />
-            </button>
-          );
-        })}
-        {available.length === 0 && (
-          <p className="col-span-full text-sm text-slate-500">
-            {tagFilter.filter === 'all' && type === 'all' && !search.trim()
-              ? `Aucun Pokémon de ${region?.name} disponible : ils sont occupés, K.O., ou pas encore capturés.`
-              : `Aucun Pokémon de ${region?.name} disponible avec ces filtres.`}
+            )}
+          </h2>
+          <p className="text-sm text-slate-500">
+            {zone ? `${zone.name} · ` : ''}
+            {enemies.length} Pokémon · PE {trainerPower(ctx, trainer)} ·{' '}
+            {formatTimeLimit(trainer.timeLimitSeconds)} pour gagner
           </p>
-        )}
-      </div>
-      <p className="mt-1 text-xs text-slate-500">
-        Seuls les Pokémon du Pokédex de {region?.name} peuvent affronter les dresseurs de la région.
-      </p>
-
-      <div className="mt-5 grid gap-4 rounded-xl bg-slate-100 p-4 sm:grid-cols-[1fr_auto] dark:bg-slate-800/60">
-        <WinGauge probability={estimate.winProbability} />
-        <div className="text-sm sm:text-right">
-          <p className={advantage.className}>{members.length > 0 ? advantage.label : '—'}</p>
-          <p className="text-slate-500">
-            PE effective {Math.round(estimate.effectivePower)} / {estimate.trainerPower}
-          </p>
+          <TrainerRules rules={trainer.rules} className="mt-1" />
+        </div>
+        <div className="flex gap-0.5">
+          {trainer.team.map((m, i) => (
+            <HoverBubble
+              key={i}
+              className="flex flex-col items-center text-[10px] text-slate-500"
+              width={232}
+              height={420}
+              content={enemies[i] && <EnemyInfo fighter={enemies[i]} />}
+            >
+              <PokemonSprite speciesId={m.speciesId} formId={m.formId} size={44} />
+              N.{m.level}
+            </HoverBubble>
+          ))}
         </div>
       </div>
-      <p className="mt-2 text-xs text-slate-500">
-        Estimation calculée par le serveur au moment du combat. En cas de défaite, l’équipe est K.O.
-        pendant {formatDuration(ko)} et ne gagne
-        {ctx.balance.battles.lossXpFraction > 0
-          ? ` que ${Math.round(ctx.balance.battles.lossXpFraction * 100)} % de l’XP`
-          : ' aucune XP'}
-        .
-      </p>
-      <XpPreview ctx={ctx} members={members} xp={xp.win}>
-        {formatXp(xp.win)} par Pokémon en cas de victoire
-        {xp.loss > 0 && (
-          <span className="text-slate-500"> ({formatXp(xp.loss)} en cas de défaite)</span>
-        )}
-      </XpPreview>
 
-      {team.length > 0 && errors.length > 0 && (
+      <TeamPicker
+        ctx={ctx}
+        zone={site}
+        picker={picker}
+        power={power}
+        maxTeamSize={maxTeamSize}
+        statSort
+        abilityEnv={env}
+      />
+      <p className="mt-1 text-xs text-slate-500">
+        Encadrés en vert : un de leurs types est efficace contre un Pokémon du dresseur.
+      </p>
+
+      {members.length > 0 && (
+        <CombatTeamOrder
+          ctx={ctx}
+          members={members}
+          moves={moves}
+          setMoves={setMoves}
+          setTeam={picker.setTeam}
+          targets={targets}
+        />
+      )}
+
+      <div className="mt-5 grid gap-1 rounded-xl bg-slate-100 p-3 text-sm dark:bg-slate-800/60">
+        <p className="flex flex-wrap items-center gap-x-1">
+          <span className="font-semibold">Victoire :</span>{' '}
+          {trainer.money > 0 ? formatMoney(trainer.money) : 'aucun argent'}
+          {trainer.badge && (
+            <span className="ml-1 inline-flex items-center gap-1">
+              · <BadgeIcon badge={trainer.badge} size={18} /> {trainer.badge.name}
+            </span>
+          )}
+        </p>
+        <XpPreview ctx={ctx} members={members} xp={maxXp}>
+          jusqu’à {formatXp(maxXp)} par Pokémon si toute son équipe est vaincue
+        </XpPreview>
+        <p className="mt-2 text-xs text-slate-500">
+          Chaque Pokémon adverse vaincu rapporte de l’XP à toute l’équipe, même en cas de défaite
+          (pas en cas de fuite). Les Pokémon mis K.O. se reposent{' '}
+          {formatDuration(battleKoMinutes(ctx, trainer))}.{' '}
+          {trainer.repeatable
+            ? `Après chaque combat, ${trainer.name} se repose pendant ${formatDuration(battleCooldownMinutes(ctx, trainer))}.`
+            : `${trainer.name} ne se bat qu’une fois : en cas de défaite, tu peux le défier de nouveau aussitôt.`}
+        </p>
+      </div>
+
+      {members.length > 0 && errors.length > 0 && (
         <ul className="mt-4 space-y-1 text-sm text-red-600">
           {errors.map((e) => (
             <li key={e.code}>{ruleText(e)}</li>
@@ -308,9 +221,15 @@ export function LaunchBattleDialog({
         <button
           className="btn-primary"
           disabled={errors.length > 0 || start.isPending}
-          onClick={() => start.mutate({ trainerId: trainer.id, team })}
+          onClick={() =>
+            start.mutate({
+              trainerId: trainer.id,
+              team: members.map((p) => p.id),
+              moves: withMoves.map((m) => m.move),
+            })
+          }
         >
-          Combattre ({formatDuration(duration)})
+          Combattre
         </button>
       </div>
     </Modal>

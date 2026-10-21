@@ -1,22 +1,23 @@
 import type { FastifyInstance } from 'fastify';
-import { and, asc, desc, eq, isNotNull, isNull } from 'drizzle-orm';
 import { z } from 'zod';
-import { trainerBattles } from '@poke/db';
 import type { Db } from '@poke/db';
-import { startBattleInputSchema } from '@poke/shared';
+import { startBattleInputSchema, switchDungeonInputSchema } from '@poke/shared';
 import type { BattleDto, BattlesResponse, ClaimBattleResponse } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import {
-  battleSlots,
-  cancelBattle,
+  activeBattle,
   claimBattle,
+  fleeBattle,
+  lastBattle,
+  markBattleResultSeen,
+  settleFinishedBattle,
   startBattle,
+  switchBattleMember,
   toBattleDto,
   toRecordDto,
   trainerRecords,
 } from '../game/battles';
 import { requireStartedProfile } from '../game/expeditions';
-import { claimedRewards } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
@@ -28,51 +29,47 @@ interface Deps {
 
 const uuidParams = z.object({ id: z.uuid() });
 
-/** Combats de dresseurs : lancement, réclamation, bilan contre chaque dresseur. */
+/** Combats de dresseurs : lancement, changements de Pokémon, fuite, réclamation, bilan. */
 export async function battleRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
   app.addHook('preHandler', hooks.requireUser);
 
   app.get('/api/battles', async (request): Promise<BattlesResponse> => {
     const userId = request.user!.id;
-    const ctx = await content.get();
-    const [rows, records, claimed] = await Promise.all([
-      db
-        .select()
-        .from(trainerBattles)
-        .where(and(eq(trainerBattles.ownerId, userId), isNull(trainerBattles.claimedAt)))
-        .orderBy(asc(trainerBattles.slotIndex)),
+    const [active, records, last] = await Promise.all([
+      activeBattle(db, userId),
       trainerRecords(db, userId),
-      claimedRewards(db, userId),
+      lastBattle(db, userId),
     ]);
     return {
-      slots: battleSlots(ctx, claimed),
       serverTime: now().toISOString(),
-      active: rows.map(toBattleDto),
+      active: active ? toBattleDto(active) : null,
+      last: last ? toBattleDto(last) : null,
       records: records.map(toRecordDto),
     };
   });
 
-  /** Derniers combats réclamés (historique). */
-  app.get('/api/battles/history', async (request): Promise<BattleDto[]> => {
-    const rows = await db
-      .select()
-      .from(trainerBattles)
-      .where(and(eq(trainerBattles.ownerId, request.user!.id), isNotNull(trainerBattles.claimedAt)))
-      .orderBy(desc(trainerBattles.claimedAt))
-      .limit(20);
-    return rows.map(toBattleDto);
-  });
-
   app.post('/api/battles', async (request, reply) => {
     const input = startBattleInputSchema.parse(request.body);
-    const row = await startBattle(db, content, request.user!.id, input, now());
+    const userId = request.user!.id;
+    // Un combat terminé pendant l'absence du joueur ne bloque pas le suivant.
+    await settleFinishedBattle(db, content, userId, now());
+    const row = await startBattle(db, content, userId, input, now());
     return reply.code(201).send(toBattleDto(row));
   });
 
-  app.post('/api/battles/:id/cancel', async (request, reply) => {
+  app.post('/api/battles/:id/switch', async (request): Promise<BattleDto> => {
     const { id } = uuidParams.parse(request.params);
-    await cancelBattle(db, request.user!.id, id, now());
-    return reply.code(204).send();
+    const input = switchDungeonInputSchema.parse(request.body);
+    return toBattleDto(await switchBattleMember(db, request.user!.id, id, input, now()));
+  });
+
+  /** Fuite, puis réclamation (aucune récompense). */
+  app.post('/api/battles/:id/flee', async (request): Promise<ClaimBattleResponse> => {
+    const { id } = uuidParams.parse(request.params);
+    const userId = request.user!.id;
+    await fleeBattle(db, userId, id, now());
+    const { battle, currency } = await claimBattle(db, content, userId, id, now());
+    return { battle: toBattleDto(battle), currency };
   });
 
   app.post('/api/battles/:id/claim', async (request): Promise<ClaimBattleResponse> => {
@@ -81,5 +78,12 @@ export async function battleRoutes(app: FastifyInstance, { db, content, hooks, n
     await requireStartedProfile(db, userId);
     const { battle, currency } = await claimBattle(db, content, userId, id, now());
     return { battle: toBattleDto(battle), currency };
+  });
+
+  /** Fenêtre du résultat fermée : elle ne réapparaît pas sur un autre appareil. */
+  app.post('/api/battles/:id/seen', async (request, reply) => {
+    const { id } = uuidParams.parse(request.params);
+    await markBattleResultSeen(db, request.user!.id, id, now());
+    return reply.code(204).send();
   });
 }

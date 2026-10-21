@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { forms } from '@poke/data';
 import type { Zone } from '@poke/content';
 import { checkBreedingPair, resolveEgg } from './breeding';
-import { typeAdvantage } from './battle';
+import { dungeonTypeEffectiveness } from './dungeon';
 import { evolutionOptions, evolvePokemon } from './evolution';
 import { resolveExpedition } from './expedition';
 import { canEvolveInForm, counterpartFormId } from './forms';
@@ -41,16 +41,18 @@ describe('formes alternatives et régionales', () => {
     expect(plain.ivs).toEqual(p.ivs);
   });
 
-  it('tient compte de la forme pour la PE et l’avantage de types', () => {
+  it('tient compte de la forme pour la PE et les types en combat', () => {
     const geodude = member('a', 74, 30);
     const alolan = { ...geodude, formId: formId('geodude-alola') };
     expect(pokemonPower(ctx.species(74, alolan.formId)!, alolan)).toBe(
       pokemonPower(ctx.species(74)!, geodude),
     );
     // Racaillou d'Alola (Roche/Électrik) face à Léviator (Eau/Vol).
-    const gyarados = [{ speciesId: 130 }];
-    expect(typeAdvantage(ctx, [alolan], gyarados)).toBeGreaterThan(
-      typeAdvantage(ctx, [geodude], gyarados),
+    const gyarados = ctx.species(130)!.types;
+    const best = (types: readonly string[]) =>
+      Math.max(...types.map((t) => dungeonTypeEffectiveness(t, gyarados)));
+    expect(best(ctx.species(74, alolan.formId)!.types)).toBeGreaterThan(
+      best(ctx.species(74)!.types),
     );
   });
 

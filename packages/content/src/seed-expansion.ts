@@ -11,6 +11,8 @@ import type {
   TrainerPokemon,
   Zone,
 } from './schemas';
+import { defaultTrainerTimeLimitSeconds } from './schemas';
+import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
 
 /**
  * Contenu de test de l'expansion : les régions de Hoenn à Paldea (et Hisui), débloquées l'une
@@ -133,12 +135,18 @@ export const expansionRegions: Region[] = [
 ];
 
 const zone = (
-  z: Omit<Zone, 'image' | 'enabled' | 'requiredTypes' | 'durationsMinutes'> & Partial<Zone>,
+  z: Omit<
+    Zone,
+    'image' | 'enabled' | 'requiredTypes' | 'durationsMinutes' | 'weatherChangeChance' | 'weathers'
+  > &
+    Partial<Zone>,
 ): Zone => ({
   image: null,
   enabled: true,
   requiredTypes: [],
   durationsMinutes: ALL_DURATIONS,
+  weatherChangeChance: ZONE_WEATHER_CHANGE_CHANCE,
+  weathers: seedZoneWeathers(z.habitat, z.affinityTypes),
   ...z,
 });
 
@@ -501,7 +509,7 @@ const trainer = (
 ): Trainer => ({
   sprite: null,
   enabled: true,
-  durationMinutes: 15,
+  timeLimitSeconds: defaultTrainerTimeLimitSeconds(t.team.length),
   rules: noRules(),
   money: 200,
   lootTableId: 'butin-route',
@@ -528,7 +536,6 @@ export const expansionTrainers: Trainer[] = [
       mon(27, 24, 'sandshrew-alola'),
       mon(52, 26, 'meowth-galar'),
     ],
-    durationMinutes: 30,
     money: 900,
     lootTableId: 'butin-mer',
     lootRolls: 2,
@@ -543,7 +550,6 @@ export const expansionTrainers: Trainer[] = [
     trainerClass: 'Montagnard',
     sprite: `${TRAINER_SPRITES}/hiker-gen3.png`,
     team: [mon(296, 13), mon(304, 14)],
-    durationMinutes: 20,
     money: 400,
     lootTableId: 'butin-grotte',
   }),
@@ -556,7 +562,6 @@ export const expansionTrainers: Trainer[] = [
     trainerClass: 'Championne d’arène',
     sprite: `${TRAINER_SPRITES}/roxanne.png`,
     team: [mon(74, 15), mon(74, 15), mon(299, 18)],
-    durationMinutes: 60,
     money: 2400,
     lootTableId: 'butin-grotte',
     lootRolls: 3,
@@ -573,7 +578,6 @@ export const expansionTrainers: Trainer[] = [
     trainerClass: 'Champion d’arène',
     sprite: `${TRAINER_SPRITES}/roark.png`,
     team: [mon(74, 22), mon(95, 23), mon(408, 26)],
-    durationMinutes: 60,
     money: 3000,
     lootTableId: 'butin-grotte',
     lootRolls: 3,
@@ -590,7 +594,6 @@ export const expansionTrainers: Trainer[] = [
     trainerClass: 'Gamin',
     sprite: `${TRAINER_SPRITES}/youngster.png`,
     team: [mon(504, 7), mon(506, 8)],
-    durationMinutes: 10,
     money: 300,
   }),
   trainer({
@@ -602,7 +605,6 @@ export const expansionTrainers: Trainer[] = [
     trainerClass: 'Championne d’arène',
     sprite: `${TRAINER_SPRITES}/lenora.png`,
     team: [mon(506, 20), mon(505, 22)],
-    durationMinutes: 60,
     money: 3500,
     lootRolls: 3,
     badge: { name: 'Badge Basique', image: null },
@@ -618,7 +620,6 @@ export const expansionTrainers: Trainer[] = [
     trainerClass: 'Championne d’arène',
     sprite: `${TRAINER_SPRITES}/viola.png`,
     team: [mon(283, 22), mon(666, 25, 'vivillon-polar')],
-    durationMinutes: 60,
     money: 4000,
     lootRolls: 3,
     badge: { name: 'Badge Coléoptère', image: null },
@@ -634,7 +635,6 @@ export const expansionTrainers: Trainer[] = [
     trainerClass: 'Maîtresse de la Méga-Évolution',
     sprite: `${TRAINER_SPRITES}/korrina.png`,
     team: [mon(68, 46), mon(701, 46), mon(448, 50, 'lucario-mega')],
-    durationMinutes: 120,
     money: 15_000,
     lootTableId: 'butin-elite',
     lootRolls: 3,
@@ -651,7 +651,6 @@ export const expansionTrainers: Trainer[] = [
     trainerClass: 'Capitaine',
     sprite: `${TRAINER_SPRITES}/ilima.png`,
     team: [mon(734, 22), mon(20, 24, 'raticate-alola'), mon(235, 24)],
-    durationMinutes: 60,
     money: 4500,
     lootRolls: 3,
     badge: { name: 'Tampon de l’Épreuve Normal', image: null },
@@ -667,7 +666,6 @@ export const expansionTrainers: Trainer[] = [
     trainerClass: 'Champion d’arène',
     sprite: `${TRAINER_SPRITES}/milo.png`,
     team: [mon(829, 22), mon(830, 25)],
-    durationMinutes: 60,
     money: 5000,
     lootRolls: 3,
     badge: { name: 'Badge Plante', image: null },
@@ -683,7 +681,6 @@ export const expansionTrainers: Trainer[] = [
     trainerClass: 'Maître',
     sprite: `${TRAINER_SPRITES}/leon.png`,
     team: [mon(887, 50), mon(612, 50), mon(6, 52, 'charizard-gmax')],
-    durationMinutes: 180,
     money: 25_000,
     lootTableId: 'butin-elite',
     lootRolls: 4,
@@ -700,7 +697,6 @@ export const expansionTrainers: Trainer[] = [
     trainerClass: 'Membre du Groupe Galaxie',
     sprite: `${TRAINER_SPRITES}/youngster-gen4.png`,
     team: [mon(58, 14, 'growlithe-hisui'), mon(100, 14, 'voltorb-hisui')],
-    durationMinutes: 20,
     money: 800,
   }),
   trainer({
@@ -712,7 +708,6 @@ export const expansionTrainers: Trainer[] = [
     trainerClass: 'Championne d’arène',
     sprite: `${TRAINER_SPRITES}/katy.png`,
     team: [mon(917, 14), mon(919, 14), mon(216, 15)],
-    durationMinutes: 60,
     money: 5500,
     lootRolls: 3,
     badge: { name: 'Badge Insecte', image: null },
@@ -734,7 +729,6 @@ export const expansionDexMilestones: DexMilestone[] = [johtoRegion, ...expansion
       currency: 10_000 * (i + 1),
       items: [{ itemId: 'ultra-ball', quantity: 10 }],
       expeditionSlots: 0,
-      battleSlots: 0,
       daycareSlots: 0,
       bonuses: [],
     },

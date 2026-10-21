@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { captureProbability, resolveExpedition } from './expedition';
-import { resolveBattle } from './battle';
+import { buildBattleSetup, resolveBattle } from './battle';
 import {
   NO_CLAIMS,
   claimableRewardCount,
@@ -57,17 +57,16 @@ describe('collections', () => {
 
 describe('emplacements et bonus', () => {
   it('ajoute les emplacements réclamés, plafonnés au maximum', () => {
-    expect(playerSlots(ctx, NO_CLAIMS)).toEqual({ expeditions: 2, battles: 1, daycare: 1 });
+    expect(playerSlots(ctx, NO_CLAIMS)).toEqual({ expeditions: 2, daycare: 1 });
     expect(playerSlots(ctx, claims(['kanto-10', 'kanto-25']))).toEqual({
       expeditions: 3,
-      battles: 2,
       daycare: 2,
     });
     const all = claims(
       ctx.content.dexMilestones.map((m) => m.id),
       ctx.content.collections.map((c) => c.id),
     );
-    expect(playerSlots(ctx, all)).toEqual({ expeditions: 6, battles: 3, daycare: 4 });
+    expect(playerSlots(ctx, all)).toEqual({ expeditions: 6, daycare: 4 });
     const capped = testContext((c) => {
       c.balance.expeditions.maxSlots = 3;
     });
@@ -110,14 +109,18 @@ describe('emplacements et bonus', () => {
 
     const trainer = ctx.trainer('gamin-tom')!;
     const team = [member('a', 6, 60)];
-    const win = resolveBattle(ctx, { trainer, team, seed: 1 });
-    expect(win.outcome).toBe('win');
-    const rich = resolveBattle(ctx, {
+    const setup = buildBattleSetup(
+      ctx,
       trainer,
-      team,
-      seed: 1,
-      bonuses: { capture: 1, xp: 1, money: 1.1 },
-    });
+      team.map((m) => ({ ...m, move: null })),
+      1,
+      null,
+      new Date('2026-10-07T12:00:00Z'),
+    );
+    const battle = { trainer, setup, commands: [], fledAtMs: null, team };
+    const win = resolveBattle(ctx, battle);
+    expect(win.outcome).toBe('win');
+    const rich = resolveBattle(ctx, { ...battle, bonuses: { capture: 1, xp: 1, money: 1.1 } });
     expect(rich.money).toBe(Math.floor(trainer.money * 1.1));
   });
 });

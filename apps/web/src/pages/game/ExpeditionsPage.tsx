@@ -4,12 +4,14 @@ import type { Zone } from '@poke/content';
 import {
   chainMultiplier,
   chainPerfectIvs,
+  expeditionEnv,
   isUnlocked,
   isUnlockedSoon,
   isZoneUnlocked,
   regionDexProgress,
+  zoneWeather,
 } from '@poke/game-core';
-import type { GameContext } from '@poke/game-core';
+import type { AbilityEnv, GameContext } from '@poke/game-core';
 import type {
   ClaimExpeditionResponse,
   ExpeditionDto,
@@ -28,6 +30,7 @@ import {
   usePokedex,
   usePokedexForms,
   usePokemon,
+  useQuests,
 } from '../../lib/game';
 import {
   GAME_ERRORS,
@@ -38,11 +41,13 @@ import {
   speciesName,
   unlockConditionText,
 } from '../../lib/labels';
+import { ActiveAbilities } from './ActiveAbilities';
 import { LaunchExpeditionDialog } from './LaunchExpeditionDialog';
 import { LegendaryEncounterDialog } from './LegendaryEncounterDialog';
 import { LootReveal } from './LootReveal';
 import { RegionStarterCard } from './RegionStarterCard';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
+import { ZoneWeatherIcon } from './WeatherIcon';
 
 /** Lien vers une zone (`#expeditions/<zone>`), depuis le Pokédex. */
 export const zoneLink = (zoneId: string) => `#expeditions/${zoneId}`;
@@ -58,6 +63,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   const pokedex = usePokedex();
   const pokedexForms = usePokedexForms();
   const pokemon = usePokemon();
+  const quests = useQuests();
   const now = useNow();
   const [launchZone, setLaunchZone] = useState<Zone | null>(null);
   const [reveal, setReveal] = useState<ClaimExpeditionResponse | null>(null);
@@ -113,6 +119,21 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   const slots = expeditions.data?.slots ?? 0;
   const freeSlots = slots - active.length;
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
+  const questStates = new Map(quests.data?.quests.map((q) => [q.questId, q]));
+  /**
+   * Talents d'une expédition en cours, à l'heure du départ : zone explorée, ou expédition du
+   * légendaire visé (le prochain de la récompense pas encore capturé) ; undefined = inconnu.
+   */
+  const abilityEnvOf = (e: ExpeditionDto, team: PokemonDto[]): AbilityEnv | undefined => {
+    const zone = e.zoneId ? ctx.zone(e.zoneId) : undefined;
+    if (zone) {
+      const site = { ...zone, weather: zoneWeather(zone, Date.parse(e.startedAt)) };
+      return expeditionEnv(site, team, e.localHour);
+    }
+    const state = e.questId ? questStates.get(e.questId) : undefined;
+    const target = state && ctx.quest(state.questId)?.rewards.pokemon[state.pokemonCaught];
+    return target ? expeditionEnv(target.expedition, team, e.localHour, 'quest') : undefined;
+  };
   const chains = new Map(expeditions.data?.chains.map((c) => [c.zoneId, c]));
   // Favoris : affichage optimiste pendant l'enregistrement.
   const favoriteIds = new Set(expeditions.data?.favoriteZoneIds);
@@ -211,6 +232,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
         <div className="grid gap-3 sm:grid-cols-2">
           {Array.from({ length: slots }, (_, slot) => {
             const exp = active.find((e) => e.slotIndex === slot);
+            const team = exp?.team.flatMap((id) => pokemonById.get(id) ?? []) ?? [];
             return exp ? (
               <ActiveExpedition
                 key={exp.id}
@@ -218,6 +240,8 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
                 expedition={exp}
                 serverNow={serverNow}
                 teamSpecies={exp.team.map((id) => pokemonById.get(id))}
+                team={team}
+                abilityEnv={abilityEnvOf(exp, team)}
                 claiming={claim.isPending && claim.variables === exp.id}
                 onClaim={() =>
                   // Expédition légendaire : on découvre le légendaire avant de lancer la Ball.
@@ -316,6 +340,8 @@ function ActiveExpedition({
   expedition,
   serverNow,
   teamSpecies,
+  team,
+  abilityEnv,
   claiming,
   onClaim,
   cancelling,
@@ -325,6 +351,9 @@ function ActiveExpedition({
   expedition: ExpeditionDto;
   serverNow: number;
   teamSpecies: (PokemonDto | undefined)[];
+  /** Membres de l'équipe encore au PC, dans l'ordre (ceux de `abilityEnv`). */
+  team: PokemonDto[];
+  abilityEnv: AbilityEnv | undefined;
   claiming: boolean;
   onClaim: () => void;
   cancelling: boolean;
@@ -341,7 +370,7 @@ function ActiveExpedition({
       className={`card group/exp relative p-4 ${done ? 'ring-2 ring-brand-500/50' : ''}`}
       tabIndex={0}
     >
-      <ExpeditionSummary ctx={ctx} expedition={expedition} />
+      <ExpeditionSummary ctx={ctx} expedition={expedition} team={team} abilityEnv={abilityEnv} />
       <div className="flex items-start justify-between gap-2">
         <div>
           {expedition.questId && (
@@ -397,13 +426,20 @@ const SHINY_FILTER_LABELS = {
   only: 'shiny uniquement',
 } as const;
 
-/** Résumé d'une expédition en cours, au survol : équipe, Balls, baies et filtres de capture. */
+/**
+ * Résumé d'une expédition en cours, au survol : équipe, Balls, baies, filtres de capture et
+ * talents actifs.
+ */
 function ExpeditionSummary({
   ctx,
   expedition: e,
+  team,
+  abilityEnv,
 }: {
   ctx: GameContext;
   expedition: ExpeditionDto;
+  team: PokemonDto[];
+  abilityEnv: AbilityEnv | undefined;
 }) {
   const filter = e.captureFilter;
   const time = (iso: string) =>
@@ -460,6 +496,14 @@ function ExpeditionSummary({
               {filters.length > 0
                 ? filters.join(' · ')
                 : !filter?.speciesIds.length && 'tous les Pokémon rencontrés'}
+            </dd>
+          </>
+        )}
+        {abilityEnv && (
+          <>
+            <dt className="text-slate-500">Talents</dt>
+            <dd>
+              <ActiveAbilities ctx={ctx} env={abilityEnv} members={team} empty="aucun actif" />
             </dd>
           </>
         )}
@@ -535,6 +579,12 @@ export function ZoneCard({
             {favorite ? '★' : '☆'}
           </button>
           {zone.name}
+          <ZoneWeatherIcon
+            zone={zone}
+            at={serverNow}
+            activity="expedition"
+            className="ml-1 text-base"
+          />
         </h3>
         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           PE ≥ {zone.minPower}

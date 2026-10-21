@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { STAT_NAMES } from '@poke/data';
-import { MAX_IV, isTransferableSpecies, lineageId, pokemonPower } from '@poke/game-core';
+import { MAX_IV, isTransferableSpecies, lineageId, memberPower } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { PokemonDto } from '@poke/shared';
 import { Modal } from '../../components/ui';
@@ -74,7 +74,7 @@ export function duplicates(
       : `${p.speciesId}:${p.formId ?? ''}`;
   const groups = new Map<string, PokemonDto[]>();
   for (const p of list) groups.set(groupKey(p), [...(groups.get(groupKey(p)) ?? []), p]);
-  const power = (p: PokemonDto) => pokemonPower(ctx.species(p.speciesId, p.formId)!, p);
+  const power = (p: PokemonDto) => memberPower(ctx, p);
   const ids: string[] = [];
   for (const group of groups.values()) {
     if (group.length < 2) continue;

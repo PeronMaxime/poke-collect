@@ -32,6 +32,7 @@ import {
   SpeciesSetEditor,
   Sprite,
   UnlockEditor,
+  WeatherSelect,
 } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
 import { TeamEditor } from './TrainersPage';
@@ -52,7 +53,7 @@ function opponentSummary(ctx: GameContext, member: TrainerPokemon, hpMultiplier 
     bossHpMultiplier: hpMultiplier,
   });
   if (!fighter) return '—';
-  const interval = attackIntervalMs(ctx.balance.dungeons, fighter.stats.speed);
+  const interval = attackIntervalMs(ctx.balance.combat, fighter.stats.speed);
   return `N.${fighter.level} · ${fighter.maxHp} PV · ${(interval / 1000).toFixed(1)} s`;
 }
 
@@ -324,6 +325,16 @@ function DungeonForm({
 
       <Section title="Règles">
         <div className="grid gap-4 sm:grid-cols-3">
+          <Field
+            label="Météo"
+            hint="Soleil : Feu ×1,5, Eau ×0,5 ; Pluie : l’inverse ; Sable et Grêle : dégâts à chaque attaque."
+          >
+            <WeatherSelect
+              value={d.weather}
+              disabled={disabled}
+              onChange={(v) => set('weather', v ?? undefined)}
+            />
+          </Field>
           <Field label="Temps imparti" error={errors.get('timeLimitSeconds')}>
             <NumberInput
               value={d.timeLimitSeconds}

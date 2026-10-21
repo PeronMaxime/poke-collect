@@ -1,15 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
+  battleMaxXp,
+  buildBattleSetup,
   checkBattleTeam,
-  estimateBattle,
   isKnockedOut,
   resolveBattle,
+  trainerEnemies,
   trainerPower,
   trainerStatus,
-  typeAdvantage,
   typeEffectiveness,
-  winProbabilityForRatio,
 } from './battle';
+import type { TeamMember } from './expedition';
+import type { Trainer } from '@poke/content';
+import type { GameContext } from './context';
 import { member, testContext } from './test-helpers';
 
 const ctx = testContext();
@@ -19,6 +22,26 @@ const progress = (defeated: string[] = [], caught = 1) => ({
   defeatedTrainerIds: new Set(defeated),
   eggsHatched: 0,
 });
+const startedAt = new Date('2026-10-07T12:00:00Z');
+
+/** Combat laissé à lui-même (relais automatiques), sans fuite. */
+function fight(
+  c: GameContext,
+  trainer: Trainer,
+  team: TeamMember[],
+  seed = 42,
+  extra: { bonuses?: { capture: number; xp: number; money: number } } = {},
+) {
+  const setup = buildBattleSetup(
+    c,
+    trainer,
+    team.map((m) => ({ ...m, move: null })),
+    seed,
+    null,
+    startedAt,
+  );
+  return resolveBattle(c, { trainer, setup, commands: [], fledAtMs: null, team, ...extra });
+}
 
 describe('table des types', () => {
   it('multiplie les efficacités sur chaque type du défenseur', () => {
@@ -28,31 +51,9 @@ describe('table des types', () => {
     expect(typeEffectiveness('fire', ['water', 'grass'])).toBe(1);
     expect(typeEffectiveness('inconnu', ['water'])).toBe(1);
   });
-
-  it('calcule l’avantage d’équipe entre −1 et +1', () => {
-    const water = [member('a', 7, 10)];
-    const fire = [member('b', 4, 10)];
-    expect(typeAdvantage(ctx, water, pierre.team)).toBeGreaterThan(0.5);
-    expect(typeAdvantage(ctx, fire, pierre.team)).toBeLessThan(-0.5);
-    expect(typeAdvantage(ctx, [member('c', 19, 5)], [{ speciesId: 19 }])).toBe(0);
-    for (const v of [typeAdvantage(ctx, water, pierre.team), typeAdvantage(ctx, fire, pierre.team)])
-      expect(Math.abs(v)).toBeLessThanOrEqual(1);
-  });
 });
 
-describe('probabilité de victoire', () => {
-  it('suit la sigmoïde du plan : 50 % à PE égale, ~90 % à ×1,5, ~10 % à ×0,67', () => {
-    expect(winProbabilityForRatio(ctx, 1)).toBeCloseTo(0.5);
-    expect(winProbabilityForRatio(ctx, 1.5)).toBeCloseTo(0.9, 1);
-    expect(winProbabilityForRatio(ctx, 1 / 1.5)).toBeCloseTo(0.1, 1);
-  });
-
-  it('est bornée entre le plancher et le plafond', () => {
-    expect(winProbabilityForRatio(ctx, 100)).toBe(0.95);
-    expect(winProbabilityForRatio(ctx, 0.01)).toBe(0.05);
-    expect(winProbabilityForRatio(ctx, 0)).toBe(0.05);
-  });
-
+describe('équipe du dresseur', () => {
   it('calcule la PE d’un dresseur sans aléatoire', () => {
     expect(trainerPower(ctx, pierre)).toBe(293);
     const strong = testContext((c) => {
@@ -61,19 +62,33 @@ describe('probabilité de victoire', () => {
     expect(trainerPower(strong, pierre)).toBeGreaterThan(293);
   });
 
-  it('applique l’avantage de types à la PE effective', () => {
-    const estimate = estimateBattle(ctx, pierre, [member('a', 7, 20)]);
-    expect(estimate.advantage).toBeGreaterThan(0);
-    expect(estimate.effectivePower).toBeGreaterThan(estimate.playerPower);
-    expect(estimate.effectivePower).toBeLessThanOrEqual(estimate.playerPower * 1.1);
-    expect(estimateBattle(ctx, pierre, []).winProbability).toBe(0);
+  it('aligne ses Pokémon dans l’ordre, sans multiplicateur de PV', () => {
+    const enemies = trainerEnemies(ctx, pierre);
+    expect(enemies.map((e) => e.speciesId)).toEqual(pierre.team.map((m) => m.speciesId));
+    expect(enemies.every((e) => e.attackType === null)).toBe(true);
+    expect(enemies.at(-1)!.maxHp).toBe(enemies.at(-1)!.stats.hp);
+  });
+
+  it('fige la mise en place : temps imparti du dresseur, réglages de combat communs', () => {
+    const setup = buildBattleSetup(
+      ctx,
+      pierre,
+      [{ ...member('a', 7, 18), move: null }],
+      1,
+      12,
+      startedAt,
+    );
+    expect(setup.timeLimitMs).toBe(pierre.timeLimitSeconds * 1000);
+    expect(setup.settings.damageMultiplier).toBe(ctx.balance.combat.damageMultiplier);
+    expect(setup.team[0]!.attackType).toBe('water');
+    expect(setup.hour).toBe(12);
   });
 });
 
 describe('conditions d’équipe', () => {
   const leo = ctx.trainer('campeur-leo')!;
 
-  it('vérifie le niveau maximal, les types et la PE minimale', () => {
+  it('vérifie le niveau maximal, les types, la PE minimale et les attaques', () => {
     expect(checkBattleTeam(ctx, leo, [member('a', 4, 20)])).toContainEqual({
       code: 'LEVEL_TOO_HIGH',
       maxLevel: 15,
@@ -96,41 +111,57 @@ describe('conditions d’équipe', () => {
     expect(checkBattleTeam(ctx, pierre, [member('a', 7, 14), member('b', 152, 14)])).toEqual([
       { code: 'WRONG_REGION', regionId: 'kanto', speciesIds: [152] },
     ]);
+    const badMove = { ...member('a', 7, 14), move: { type: 'fire', category: 'special' as const } };
+    expect(checkBattleTeam(ctx, pierre, [badMove, member('b', 1, 14)])).toEqual([
+      { code: 'INVALID_MOVE' },
+    ]);
   });
 });
 
 describe('résolution', () => {
-  const team = [member('a', 7, 18), member('b', 1, 18)];
+  const strong = [member('a', 7, 40), member('b', 1, 40)];
+  const weak = [member('a', 10, 3)];
 
   it('est déterministe pour un seed donné', () => {
-    const input = { trainer: pierre, team, seed: 42 };
-    expect(resolveBattle(ctx, input)).toEqual(resolveBattle(ctx, input));
+    expect(fight(ctx, pierre, strong, 7)).toEqual(fight(ctx, pierre, strong, 7));
   });
 
-  it('gagne selon la probabilité estimée', () => {
-    const estimate = estimateBattle(ctx, pierre, team);
-    const runs = 2000;
-    let wins = 0;
-    for (let seed = 0; seed < runs; seed++) {
-      if (resolveBattle(ctx, { trainer: pierre, team, seed }).outcome === 'win') wins++;
-    }
-    expect(wins / runs).toBeCloseTo(estimate.winProbability, 1);
-  });
-
-  it('récompense une victoire et met K.O. en cas de défaite', () => {
-    const results = Array.from({ length: 200 }, (_, seed) =>
-      resolveBattle(ctx, { trainer: pierre, team, seed }),
-    );
-    const win = results.find((r) => r.outcome === 'win')!;
-    const loss = results.find((r) => r.outcome === 'loss')!;
-    expect(win).toMatchObject({ money: 1400, koMinutes: 0 });
-    expect(win.roll).toBeLessThan(win.estimate.winProbability);
+  it('récompense une victoire : argent, XP de toute l’équipe adverse, bonheur', () => {
+    const win = fight(ctx, pierre, strong);
+    expect(win.outcome).toBe('win');
+    expect(win).toMatchObject({ money: pierre.money, knockedOut: [] });
+    expect(win.defeated).toBe(pierre.team.length);
+    expect(win.xpPerMember).toBe(battleMaxXp(ctx, pierre));
     expect(win.team[0]!.happinessAfter).toBe(70 + 3);
-    expect(results.some((r) => r.loot.length > 0)).toBe(true);
+    expect(win.endedAtMs).toBeLessThan(pierre.timeLimitSeconds * 1000);
+  });
 
-    expect(loss).toMatchObject({ money: 0, loot: [], koMinutes: 60 });
-    expect(loss.xpPerMember).toBe(Math.floor(win.xpPerMember * 0.25));
+  it('en cas de défaite : XP des seuls vaincus, aucune récompense, K.O.', () => {
+    const loss = fight(ctx, pierre, weak);
+    expect(loss.outcome).toBe('loss');
+    expect(loss).toMatchObject({ money: 0, loot: [], knockedOut: ['a'] });
+    expect(loss.xpPerMember).toBeLessThan(battleMaxXp(ctx, pierre));
+    expect(loss.team[0]!.koMinutes).toBe(pierre.koMinutes ?? ctx.balance.battles.koMinutes);
     expect(loss.team[0]!.happinessAfter).toBe(70 - 2);
+  });
+
+  it('ne donne rien en cas de fuite', () => {
+    const setup = buildBattleSetup(
+      ctx,
+      pierre,
+      strong.map((m) => ({ ...m, move: null })),
+      1,
+      null,
+      startedAt,
+    );
+    const fled = resolveBattle(ctx, {
+      trainer: pierre,
+      setup,
+      commands: [],
+      fledAtMs: 100,
+      team: strong,
+    });
+    expect(fled).toMatchObject({ outcome: 'fled', xpPerMember: 0, money: 0, loot: [] });
   });
 });
 
@@ -143,10 +174,15 @@ describe('disponibilité', () => {
     expect(isKnockedOut(new Date('2026-10-07T11:00:00Z'), now)).toBe(false);
   });
 
-  it('calcule l’état d’un dresseur (verrouillé, recharge, battu)', () => {
+  it('calcule l’état d’un dresseur (verrouillé, recharge après chaque combat, battu)', () => {
     const tom = ctx.trainer('gamin-tom')!;
     expect(trainerStatus(ctx, pierre, progress(), undefined, now)).toEqual({ state: 'locked' });
     expect(trainerStatus(ctx, pierre, progress(['scout-rick']), undefined, now)).toEqual({
+      state: 'available',
+    });
+    // Unique : se retente aussitôt après une défaite.
+    const lost = { wins: 0, lastEndedAt: now };
+    expect(trainerStatus(ctx, pierre, progress(['scout-rick']), lost, now)).toEqual({
       state: 'available',
     });
     expect(
@@ -154,16 +190,17 @@ describe('disponibilité', () => {
         ctx,
         pierre,
         progress(['scout-rick', 'pierre']),
-        { wins: 1, lastWinAt: now },
+        { wins: 1, lastEndedAt: now },
         now,
       ),
     ).toEqual({ state: 'defeated' });
-    const recent = { wins: 1, lastWinAt: new Date(now.getTime() - 60 * 60_000) };
+    // Répétable : recharge après chaque combat, même perdu.
+    const recent = { wins: 0, lastEndedAt: new Date(now.getTime() - 60 * 60_000) };
     expect(trainerStatus(ctx, tom, progress(['gamin-tom']), recent, now)).toEqual({
       state: 'cooldown',
       until: new Date(now.getTime() + 3 * 60 * 60_000),
     });
-    const old = { wins: 3, lastWinAt: new Date(now.getTime() - 5 * 60 * 60_000) };
+    const old = { wins: 3, lastEndedAt: new Date(now.getTime() - 5 * 60 * 60_000) };
     expect(trainerStatus(ctx, tom, progress(['gamin-tom']), old, now)).toEqual({
       state: 'available',
     });

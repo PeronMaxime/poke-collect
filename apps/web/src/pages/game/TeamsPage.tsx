@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { pokemonPower } from '@poke/game-core';
+import { memberPower } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import { MAX_TEAMS, TEAM_MAX_SIZE, TEAM_NAME_MAX } from '@poke/shared';
 import type { PokemonDto, PokemonTeamDto, TeamInput } from '@poke/shared';
@@ -41,7 +41,7 @@ export function TeamsPage({ ctx }: { ctx: GameContext }) {
   }
   const members = draft?.pokemonIds.flatMap((id) => byId.get(id) ?? []) ?? [];
   const powerOf = (list: readonly PokemonDto[]) =>
-    list.reduce((sum, p) => sum + pokemonPower(ctx.species(p.speciesId, p.formId)!, p), 0);
+    list.reduce((sum, p) => sum + memberPower(ctx, p), 0);
 
   const save = useMutation({
     mutationFn: ({ id, ...input }: Draft) =>

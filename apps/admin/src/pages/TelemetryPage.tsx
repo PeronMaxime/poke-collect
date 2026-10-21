@@ -171,8 +171,8 @@ export function TelemetryPage() {
             <section className="card overflow-x-auto p-0">
               <h2 className="px-4 pt-4 font-semibold">Dresseurs ({t.days} j)</h2>
               <p className="px-4 text-xs text-slate-500">
-                « Bloqués » : joueurs qui ont perdu sans jamais gagner. Une victoire réelle bien
-                sous la chance estimée, ou beaucoup de bloqués, désigne un dresseur trop dur.
+                « Bloqués » : joueurs qui ont perdu sans jamais gagner. Peu de victoires, ou
+                beaucoup de bloqués, désigne un dresseur trop dur.
               </p>
               <table className="mt-2 w-full text-sm">
                 <thead className="text-left text-xs text-slate-500">
@@ -180,7 +180,7 @@ export function TelemetryPage() {
                     <th className="px-4 py-2 font-normal">Dresseur</th>
                     <th className="px-4 py-2 text-right font-normal">Combats</th>
                     <th className="px-4 py-2 font-normal">Victoires</th>
-                    <th className="px-4 py-2 text-right font-normal">Estimée</th>
+                    <th className="px-4 py-2 text-right font-normal">Fuites</th>
                     <th className="px-4 py-2 text-right font-normal">Bloqués</th>
                   </tr>
                 </thead>
@@ -197,12 +197,10 @@ export function TelemetryPage() {
                         <td className="px-4 py-1.5">
                           <Meter
                             value={percent(tr.wins, tr.battles)}
-                            title={`${tr.wins} victoire(s)`}
+                            title={`${tr.wins} victoire(s), ${tr.losses} défaite(s)`}
                           />
                         </td>
-                        <td className="px-4 py-1.5 text-right font-mono">
-                          {formatPercent(tr.avgWinChance === null ? null : tr.avgWinChance * 100)}
-                        </td>
+                        <td className="px-4 py-1.5 text-right font-mono">{fmt(tr.fled)}</td>
                         <td
                           className={`px-4 py-1.5 text-right font-mono ${tr.stuckPlayers > 0 ? 'font-semibold text-amber-700 dark:text-amber-400' : ''}`}
                         >

@@ -5,9 +5,11 @@ import type { StatName } from '@poke/data';
 import {
   MAX_IV,
   MAX_LEVEL,
+  abilityEffectSummary,
   applyCandies,
   candiesToMaxLevel,
   computeStats,
+  effectiveAbility,
   expeditionPower,
   getNature,
   isKnockedOut,
@@ -15,6 +17,7 @@ import {
   itemUseOptions,
   lineageId,
   megaOptions,
+  memberPower,
   transferCandies,
   xpForLevel,
 } from '@poke/game-core';
@@ -463,6 +466,7 @@ function PokemonDetail({
   });
   const species = ctx.species(p.speciesId, p.formId)!;
   const stats = computeStats(species, p);
+  const abilitySummary = abilityEffectSummary(ctx, effectiveAbility(ctx, p));
   const nature = getNature(p.nature);
   const levelXp = xpForLevel(species.growthRate, p.level);
   const nextXp = xpForLevel(species.growthRate, Math.min(MAX_LEVEL, p.level + 1));
@@ -692,9 +696,14 @@ function PokemonDetail({
                 )}
               </>
             )}
+            {abilitySummary && (
+              <span className="block text-xs text-emerald-700 dark:text-emerald-400">
+                {abilitySummary}
+              </span>
+            )}
           </dd>
           <dt className="text-slate-500">Puissance (PE)</dt>
-          <dd className="font-semibold">{expeditionPower(stats)}</dd>
+          <dd className="font-semibold">{memberPower(ctx, p)}</dd>
           <dt className="text-slate-500">Bonheur</dt>
           <dd>{p.happiness} / 255</dd>
           <dt className="text-slate-500">Origine</dt>

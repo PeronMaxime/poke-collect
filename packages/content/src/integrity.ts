@@ -1,4 +1,10 @@
-import { getForm, getSpecies, natures, types as typeData } from '@poke/data';
+import {
+  abilities as abilityData,
+  getForm,
+  getSpecies,
+  natures,
+  types as typeData,
+} from '@poke/data';
 import { gameContentStructureSchema, lowestUnitPrice, unlockParts } from './schemas';
 import type {
   BaseUnlockCondition,
@@ -29,6 +35,7 @@ export type ContentEntityKind =
   | 'balance'
   | 'region'
   | 'speciesOverride'
+  | 'ability'
   | 'item'
   | 'lootTable'
   | 'zone'
@@ -50,6 +57,7 @@ export interface ContentIssue {
 
 const KNOWN_TYPES = new Set(typeData.map((t) => t.name));
 const KNOWN_NATURES = new Set(natures.map((n) => n.name));
+const KNOWN_ABILITIES = new Set(abilityData.map((a) => a.name));
 /** Types techniques des données, sans Pokémon (Stellaire, ???, Obscur). */
 export const NON_POKEMON_TYPES: ReadonlySet<string> = new Set(['stellar', 'unknown', 'shadow']);
 
@@ -98,6 +106,8 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     add('error', 'trainer', id, 'Identifiant de dresseur en double');
   for (const id of duplicates(content.speciesOverrides.map((o) => o.speciesId)))
     add('error', 'speciesOverride', id, 'Surcharge d’espèce en double');
+  for (const id of duplicates(content.abilities.map((a) => a.id)))
+    add('error', 'ability', id, 'Talent en double');
   for (const id of duplicates(content.shopCategories.map((c) => c.id)))
     add('error', 'shopCategory', id, 'Identifiant de catégorie de boutique en double');
   for (const id of duplicates(content.shopEntries.map((e) => e.id)))
@@ -235,30 +245,24 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   if (balance.daycare.initialSlots > balance.daycare.maxSlots) {
     add('error', 'balance', null, 'Pensions : emplacements initiaux > maximum');
   }
-  if (balance.battles.initialSlots > balance.battles.maxSlots) {
-    add('error', 'balance', null, 'Combats : emplacements initiaux > maximum');
+  if (balance.combat.minAttackIntervalMs > balance.combat.maxAttackIntervalMs) {
+    add('error', 'balance', null, 'Combat : délai minimal entre deux attaques > maximal');
   }
-  if (balance.battles.minWinChance > balance.battles.maxWinChance) {
-    add('error', 'balance', null, 'Combats : probabilité de victoire minimale > maximale');
+  if (balance.combat.baseAttackIntervalMs > balance.combat.maxAttackIntervalMs) {
+    add('error', 'balance', null, 'Combat : délai de référence > délai à Vitesse 0');
   }
-  if (balance.dungeons.minAttackIntervalMs > balance.dungeons.maxAttackIntervalMs) {
-    add('error', 'balance', null, 'Donjons : délai minimal entre deux attaques > maximal');
-  }
-  if (balance.dungeons.baseAttackIntervalMs > balance.dungeons.maxAttackIntervalMs) {
-    add('error', 'balance', null, 'Donjons : délai de référence > délai à Vitesse 0');
-  }
-  for (const t of Object.keys(balance.dungeons.attacks)) {
-    if (!KNOWN_TYPES.has(t)) add('error', 'balance', null, `Donjons : type « ${t} » inconnu`);
+  for (const t of Object.keys(balance.combat.attacks)) {
+    if (!KNOWN_TYPES.has(t)) add('error', 'balance', null, `Combat : type « ${t} » inconnu`);
   }
   const missingAttacks = typeData
-    .filter((t) => !NON_POKEMON_TYPES.has(t.name) && !balance.dungeons.attacks[t.name])
+    .filter((t) => !NON_POKEMON_TYPES.has(t.name) && !balance.combat.attacks[t.name])
     .map((t) => t.nameFr);
   if (missingAttacks.length > 0) {
     add(
       'warning',
       'balance',
       null,
-      `Donjons : aucune attaque pour ${missingAttacks.join(', ')} (attaque par défaut)`,
+      `Combat : aucune attaque pour ${missingAttacks.join(', ')} (attaque par défaut)`,
     );
   }
   for (const stack of balance.newPlayer.startingInventory) {
@@ -314,6 +318,18 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   // Surcharges d'espèces
   for (const o of content.speciesOverrides) {
     if (!getSpecies(o.speciesId)) add('error', 'speciesOverride', o.speciesId, 'Espèce inconnue');
+  }
+
+  // Talents
+  for (const ability of content.abilities) {
+    if (!KNOWN_ABILITIES.has(ability.id)) add('error', 'ability', ability.id, 'Talent inconnu');
+    const usedTypes = ability.effects.flatMap((e) => [
+      ...(e.type === 'attractType' ? [e.pokemonType] : []),
+      ...e.conditions.flatMap((c) => ('types' in c ? c.types : [])),
+    ]);
+    for (const t of new Set(usedTypes)) {
+      if (!KNOWN_TYPES.has(t)) add('error', 'ability', ability.id, `Type « ${t} » inconnu`);
+    }
   }
 
   // Objets
@@ -603,11 +619,10 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   const rewards = [...content.dexMilestones, ...content.collections, ...content.quests].map(
     (r) => r.rewards,
   );
-  const slotTotal = (key: 'expeditionSlots' | 'battleSlots' | 'daycareSlots') =>
+  const slotTotal = (key: 'expeditionSlots' | 'daycareSlots') =>
     rewards.reduce((sum, r) => sum + r[key], 0);
   for (const [key, group, label] of [
     ['expeditionSlots', balance.expeditions, 'd’expédition'],
-    ['battleSlots', balance.battles, 'de combat'],
     ['daycareSlots', balance.daycare, 'de pension'],
   ] as const) {
     const unreachable = group.initialSlots + slotTotal(key) - group.maxSlots;
@@ -759,6 +774,7 @@ export function findUsages(
       break;
     }
     case 'speciesOverride':
+    case 'ability':
     case 'shopEntry':
     case 'evolutionOverride':
     case 'dexMilestone':

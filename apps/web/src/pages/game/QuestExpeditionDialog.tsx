@@ -1,11 +1,17 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Quest, QuestPokemon } from '@poke/content';
-import { chainMultiplier, checkTeam, legendarySite, shinyProbability } from '@poke/game-core';
+import {
+  chainMultiplier,
+  checkTeam,
+  expeditionEnv,
+  legendarySite,
+  shinyProbability,
+} from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { ExpeditionDto, StartQuestExpeditionInput } from '@poke/shared';
 import { Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, useShinyCharm } from '../../lib/game';
+import { PLAYER_STATE_KEYS, useShinyCharm, utcOffsetMinutes } from '../../lib/game';
 import {
   GAME_ERRORS,
   formatDuration,
@@ -14,6 +20,7 @@ import {
   speciesName,
 } from '../../lib/labels';
 import { teamErrorText } from './LaunchExpeditionDialog';
+import { ActiveAbilities } from './ActiveAbilities';
 import { TeamPicker, useTeamPicker } from './TeamPicker';
 
 /**
@@ -43,7 +50,10 @@ export function QuestExpeditionDialog({
   const picker = useTeamPicker(ctx, zone);
   const start = useMutation({
     mutationFn: (input: StartQuestExpeditionInput) =>
-      api<ExpeditionDto>(`/api/quests/${quest.id}/expedition`, { method: 'POST', json: input }),
+      api<ExpeditionDto>(`/api/quests/${quest.id}/expedition`, {
+        method: 'POST',
+        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
+      }),
     onSuccess: () => {
       onClose();
       return Promise.all(
@@ -53,6 +63,8 @@ export function QuestExpeditionDialog({
   });
 
   const check = checkTeam(ctx, zone, durationMinutes, picker.members);
+  // Talents de l'équipe : à l'heure actuelle (celle du départ).
+  const env = expeditionEnv(zone, picker.members, new Date().getHours(), 'quest');
   const { errors } = check;
   const name = speciesName(ctx, target.speciesId, target.formId);
 
@@ -90,7 +102,21 @@ export function QuestExpeditionDialog({
         ))}
       </div>
 
-      <TeamPicker ctx={ctx} zone={zone} picker={picker} power={check.power} />
+      <TeamPicker ctx={ctx} zone={zone} picker={picker} power={check.power} abilityEnv={env} />
+      {picker.members.length > 0 && (
+        <>
+          <h3 className="mt-4 text-sm font-semibold">Talents actifs</h3>
+          <ActiveAbilities
+            ctx={ctx}
+            env={env}
+            members={picker.members}
+            className="mt-1 text-xs"
+            empty={
+              <p className="mt-1 text-xs text-slate-500">Aucun talent de l’équipe n’agit ici.</p>
+            }
+          />
+        </>
+      )}
 
       <p className="mt-4 rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:bg-amber-950/40 dark:text-amber-200">
         {check.affinityCount > 0

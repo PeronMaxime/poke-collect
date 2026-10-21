@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import type { ReactNode } from 'react';
 import { DUNGEON_DIFFICULTIES } from '@poke/content';
 import type { Dungeon } from '@poke/content';
 import { dungeonStatus } from '@poke/game-core';
 import type { DungeonStatus, GameContext } from '@poke/game-core';
-import type { DungeonRecordDto, DungeonRunDto } from '@poke/shared';
+import type { ClaimDungeonResponse, DungeonRecordDto, DungeonRunDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
 import { keys, serverOffset, useDungeons, usePlayerProgress } from '../../lib/game';
@@ -16,37 +15,19 @@ import {
   speciesName,
   unlockConditionText,
 } from '../../lib/labels';
+import { CombatWindow, OngoingCombatBanner, useCombatWindow } from './CombatWindow';
 import { DungeonCombat } from './DungeonCombat';
 import { DungeonDifficultyBadge } from './DungeonDifficultyBadge';
 import { DungeonResult } from './DungeonResult';
 import { LaunchDungeonDialog } from './LaunchDungeonDialog';
 import { RegionTabs, currentRegionTab, useSavedRegionTab, visibleRegions } from './RegionTabs';
+import { WeatherIcon } from './WeatherIcon';
 
 /** Au-delà, le résultat d'une tentative réclamée en l'absence du joueur n'est plus montré. */
 const RESULT_MAX_AGE_MS = 3 * 24 * 3600_000;
 
 /** Onglet regroupant les donjons de toutes les régions débloquées, avant les onglets de région. */
 const ALL_TAB = { id: '__tous', label: 'Tous' };
-
-/** Tentative dont le joueur a fermé la fenêtre du combat (rouverte via le bouton de la liste). */
-const HIDDEN_KEY = 'dungeon-combat-hidden';
-
-function readHidden(): string | null {
-  try {
-    return sessionStorage.getItem(HIDDEN_KEY);
-  } catch {
-    return null;
-  }
-}
-
-function saveHidden(id: string | null) {
-  try {
-    if (id) sessionStorage.setItem(HIDDEN_KEY, id);
-    else sessionStorage.removeItem(HIDDEN_KEY);
-  } catch {
-    // Stockage indisponible : la fenêtre se rouvrira au prochain passage sur la page.
-  }
-}
 
 export function DungeonsPage({ ctx }: { ctx: GameContext }) {
   const dungeons = useDungeons();
@@ -60,7 +41,6 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   // Résultat fermé à l'instant, en attendant que le serveur le marque comme vu.
   const [seen, setSeen] = useState<string | null>(null);
-  const [hiddenRun, setHiddenRun] = useState(readHidden);
   // Tentative dont le combat est terminé, et celle dont le joueur a demandé le résultat.
   const [overRun, setOverRun] = useState<string | null>(null);
   const [claimRun, setClaimRun] = useState<string | null>(null);
@@ -106,13 +86,8 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
   const shownResult = result ?? (unseen ? { run: unseen, currency: null } : null);
 
   // Fenêtre du combat : ouverte d'office pour une nouvelle tentative, sauf si le joueur l'a fermée.
-  const combatOpen = !!active && hiddenRun !== active.id;
-  function showCombat(open: boolean) {
-    const id = open ? null : (active?.id ?? null);
-    saveHidden(id);
-    setHiddenRun(id);
-  }
   const activeId = active?.id ?? null;
+  const { open: combatOpen, show: showCombat } = useCombatWindow('dungeon-combat-hidden', activeId);
   const markOver = useCallback(() => setOverRun(activeId), [activeId]);
 
   function closeResult() {
@@ -132,8 +107,17 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
     <div className="space-y-6">
       {active && !combatOpen && (
         <OngoingCombatBanner
-          ctx={ctx}
-          run={active}
+          title={`Donjon : ${ctx.dungeon(active.dungeonId)?.name ?? active.dungeonId}`}
+          portrait={
+            active.setup.enemies.at(-1) && (
+              <PokemonSprite
+                speciesId={active.setup.enemies.at(-1)!.speciesId}
+                formId={active.setup.enemies.at(-1)!.formId}
+                size={72}
+                className="shrink-0"
+              />
+            )
+          }
           over={overRun === active.id}
           claiming={claimRun === active.id}
           onShow={() => {
@@ -191,10 +175,13 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
 
       {active && (
         <CombatWindow open={combatOpen} onClose={() => showCombat(false)}>
-          <DungeonCombat
+          <DungeonCombat<DungeonRunDto, ClaimDungeonResponse>
             key={active.id}
             ctx={ctx}
-            dungeon={ctx.dungeon(active.dungeonId)}
+            title={`Donjon : ${ctx.dungeon(active.dungeonId)?.name ?? active.dungeonId}`}
+            apiBase="/api/dungeons"
+            queryKey={keys.dungeons}
+            bossLast
             run={active}
             offsetMs={offset}
             visible={combatOpen}
@@ -219,102 +206,6 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
         onClose={closeResult}
       />
     </div>
-  );
-}
-
-/**
- * Fenêtre du combat. Contrairement à `Modal`, son contenu reste monté une fois fermée :
- * le combat continue de tourner (et se réclame à sa fin) pendant que le joueur parcourt la liste.
- */
-function CombatWindow({
-  open,
-  onClose,
-  children,
-}: {
-  open: boolean;
-  onClose: () => void;
-  children: ReactNode;
-}) {
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
-    window.addEventListener('keydown', onKey);
-    return () => window.removeEventListener('keydown', onKey);
-  }, [open, onClose]);
-
-  return (
-    <div
-      className={
-        open
-          ? 'fixed inset-0 z-50 grid animate-[dungeon-fade_150ms_ease-out] place-items-center overflow-y-auto bg-slate-950/60 p-4'
-          : 'hidden'
-      }
-      onClick={onClose}
-    >
-      <div
-        role="dialog"
-        aria-modal="true"
-        className="card w-full max-w-3xl"
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>
-  );
-}
-
-/**
- * Rappel du combat en cours, bien visible en haut de la liste, pour rouvrir sa fenêtre ;
- * une fois le combat terminé, pour en voir le résultat.
- */
-function OngoingCombatBanner({
-  ctx,
-  run,
-  over,
-  claiming,
-  onShow,
-}: {
-  ctx: GameContext;
-  run: DungeonRunDto;
-  over: boolean;
-  claiming: boolean;
-  onShow: () => void;
-}) {
-  const dungeon = ctx.dungeon(run.dungeonId);
-  const boss = run.setup.enemies.at(-1);
-  return (
-    <button
-      type="button"
-      onClick={onShow}
-      disabled={claiming}
-      className="group flex w-full items-center gap-4 rounded-2xl border-2 border-brand-500 bg-brand-500/10 p-4 text-left shadow-lg transition hover:bg-brand-500/20"
-    >
-      {boss && (
-        <PokemonSprite
-          speciesId={boss.speciesId}
-          formId={boss.formId}
-          size={72}
-          className="shrink-0"
-        />
-      )}
-      <span className="min-w-0 flex-1">
-        <span className="flex items-center gap-2 text-xs font-semibold tracking-wide text-brand-600 uppercase">
-          <span className="relative flex h-2.5 w-2.5">
-            {!over && (
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-brand-500 opacity-75" />
-            )}
-            <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-brand-500" />
-          </span>
-          {over ? 'Combat terminé' : 'Combat en cours'}
-        </span>
-        <span className="block truncate text-lg font-bold">
-          Donjon : {dungeon?.name ?? run.dungeonId}
-        </span>
-      </span>
-      <span className="btn-primary shrink-0 px-5 py-3 text-base">
-        {claiming ? 'Résultat…' : over ? '🏁 Voir le résultat' : '⚔️ Afficher le combat'}
-      </span>
-    </button>
   );
 }
 
@@ -357,7 +248,12 @@ function DungeonCard({
           className="shrink-0"
         />
         <div className="min-w-0 flex-1">
-          <h3 className="truncate font-semibold">{dungeon.name}</h3>
+          <h3 className="flex items-center gap-1 font-semibold">
+            <span className="truncate">{dungeon.name}</span>
+            {dungeon.weather && (
+              <WeatherIcon weather={dungeon.weather} activity="dungeon" className="text-base" />
+            )}
+          </h3>
           <div className="mt-0.5 flex flex-wrap gap-1">
             {boss?.types.map((t) => (
               <TypeBadge key={t} type={t} />

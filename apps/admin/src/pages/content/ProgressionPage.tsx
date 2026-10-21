@@ -355,7 +355,6 @@ function SummaryView() {
             <tr>
               <th className="p-2 font-normal">Récompense réclamée</th>
               <th className="p-2 font-normal">Expéditions (max {balance.expeditions.maxSlots})</th>
-              <th className="p-2 font-normal">Combats (max {balance.battles.maxSlots})</th>
               <th className="p-2 font-normal">Pensions (max {balance.daycare.maxSlots})</th>
               <th className="p-2 font-normal">Bonus</th>
             </tr>
@@ -364,7 +363,6 @@ function SummaryView() {
             <tr className="border-t border-slate-100 dark:border-slate-800">
               <td className="p-2 text-slate-500">Départ</td>
               <td className="p-2">{start.expeditions}</td>
-              <td className="p-2">{start.battles}</td>
               <td className="p-2">{start.daycare}</td>
               <td className="p-2" />
             </tr>
@@ -375,7 +373,6 @@ function SummaryView() {
               >
                 <td className="p-2">{r.label}</td>
                 <td className="p-2">{r.slots.expeditions}</td>
-                <td className="p-2">{r.slots.battles}</td>
                 <td className="p-2">{r.slots.daycare}</td>
                 <td className="p-2 text-xs text-slate-500">
                   {(Object.keys(BONUS_LABELS) as (keyof typeof BONUS_LABELS)[])

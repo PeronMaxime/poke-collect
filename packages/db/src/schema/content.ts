@@ -13,6 +13,7 @@ import {
   uniqueIndex,
 } from 'drizzle-orm/pg-core';
 import type {
+  AbilityEffect,
   BalanceSettings,
   BattleRules,
   DungeonDifficulty,
@@ -28,6 +29,7 @@ import type {
   Trainer,
   TrainerPokemon,
   UnlockCondition,
+  Weather,
   Zone,
 } from '@poke/content';
 import { users } from './auth';
@@ -113,6 +115,17 @@ export const speciesOverrides = pgTable(
   (t) => [primaryKey({ columns: [t.contentVersionId, t.speciesId] })],
 );
 
+export const abilities = pgTable(
+  'abilities',
+  {
+    contentVersionId: versionId(),
+    id: text('id').notNull(),
+    description: text('description').notNull(),
+    effects: jsonb('effects').$type<AbilityEffect[]>().notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
+);
+
 export const items = pgTable(
   'items',
   {
@@ -159,6 +172,8 @@ export const zones = pgTable(
     encounters: jsonb('encounters').$type<Encounter[]>().notNull(),
     lootTableId: text('loot_table_id'),
     unlock: jsonb('unlock').$type<UnlockCondition>().notNull(),
+    weatherChangeChance: doublePrecision('weather_change_chance').notNull().default(0),
+    weathers: jsonb('weathers').$type<Zone['weathers']>().notNull().default([]),
   },
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
 );
@@ -175,7 +190,7 @@ export const trainers = pgTable(
     trainerClass: text('trainer_class').notNull(),
     sprite: text('sprite'),
     team: jsonb('team').$type<TrainerPokemon[]>().notNull(),
-    durationMinutes: integer('duration_minutes'),
+    timeLimitSeconds: integer('time_limit_seconds').notNull(),
     rules: jsonb('rules').$type<BattleRules>().notNull(),
     money: integer('money').notNull(),
     lootTableId: text('loot_table_id'),
@@ -214,6 +229,7 @@ export const dungeons = pgTable(
     gemChance: doublePrecision('gem_chance').notNull(),
     enabled: boolean('enabled').notNull().default(true),
     unlock: jsonb('unlock').$type<UnlockCondition>().notNull(),
+    weather: text('weather').$type<Weather>(),
   },
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
 );
@@ -320,6 +336,7 @@ export const versionedContentTables = [
   balanceSettings,
   regions,
   speciesOverrides,
+  abilities,
   items,
   lootTables,
   zones,

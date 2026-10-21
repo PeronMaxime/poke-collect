@@ -23,7 +23,7 @@ import {
   questProgress,
   rewardClaims,
   shopPurchases,
-  trainerBattles,
+  trainerRuns,
   trainerProgress,
 } from '@poke/db';
 import type { Db } from '@poke/db';
@@ -112,9 +112,9 @@ export async function telemetry(
       .from(expeditions)
       .groupBy(expeditions.ownerId),
     db
-      .select({ ownerId: trainerBattles.ownerId, at: max(trainerBattles.startedAt) })
-      .from(trainerBattles)
-      .groupBy(trainerBattles.ownerId),
+      .select({ ownerId: trainerRuns.ownerId, at: max(trainerRuns.startedAt) })
+      .from(trainerRuns)
+      .groupBy(trainerRuns.ownerId),
     db
       .select({ ownerId: shopPurchases.ownerId, at: max(shopPurchases.purchasedAt) })
       .from(shopPurchases)
@@ -144,24 +144,21 @@ export async function telemetry(
     db.select().from(questProgress),
     db
       .select({
-        trainerId: trainerBattles.trainerId,
+        trainerId: trainerRuns.trainerId,
         battles: count(),
-        wins: sql<number>`count(*) filter (where ${trainerBattles.outcome} = 'win')`.mapWith(
-          Number,
-        ),
-        avgWinChance: sql<
-          number | null
-        >`avg((${trainerBattles.result} -> 'estimate' ->> 'winProbability')::float)`.mapWith(
-          (v: unknown) => (v === null ? null : Number(v)),
-        ),
-        earned:
-          sql<number>`coalesce(sum((${trainerBattles.result} ->> 'money')::bigint), 0)`.mapWith(
+        wins: sql<number>`count(*) filter (where ${trainerRuns.outcome} = 'win')`.mapWith(Number),
+        losses:
+          sql<number>`count(*) filter (where ${trainerRuns.outcome} in ('loss', 'timeout'))`.mapWith(
             Number,
           ),
+        fled: sql<number>`count(*) filter (where ${trainerRuns.outcome} = 'fled')`.mapWith(Number),
+        earned: sql<number>`coalesce(sum((${trainerRuns.result} ->> 'money')::bigint), 0)`.mapWith(
+          Number,
+        ),
       })
-      .from(trainerBattles)
-      .where(and(isNotNull(trainerBattles.claimedAt), gt(trainerBattles.claimedAt, since)))
-      .groupBy(trainerBattles.trainerId),
+      .from(trainerRuns)
+      .where(and(isNotNull(trainerRuns.claimedAt), gt(trainerRuns.claimedAt, since)))
+      .groupBy(trainerRuns.trainerId),
     db
       .select({ trainerId: trainerProgress.trainerId, players: count() })
       .from(trainerProgress)
@@ -374,7 +371,8 @@ export async function telemetry(
       label: `${t.trainerClass} ${t.name}`,
       battles: b?.battles ?? 0,
       wins: b?.wins ?? 0,
-      avgWinChance: b?.avgWinChance ?? null,
+      losses: b?.losses ?? 0,
+      fled: b?.fled ?? 0,
       stuckPlayers: stuckById.get(t.id) ?? 0,
     };
   });

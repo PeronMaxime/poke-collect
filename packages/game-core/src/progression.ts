@@ -136,22 +136,20 @@ function claimedRewardList(ctx: GameContext, claimed: ClaimedRewards): ProgressR
 
 export interface PlayerSlots {
   expeditions: number;
-  battles: number;
   daycare: number;
 }
 
 /** Emplacements du joueur : valeur de départ + récompenses réclamées, plafonnés au maximum. */
 export function playerSlots(ctx: GameContext, claimed: ClaimedRewards): PlayerSlots {
   const rewards = claimedRewardList(ctx, claimed);
-  const total = (key: 'expeditionSlots' | 'battleSlots' | 'daycareSlots') =>
+  const total = (key: 'expeditionSlots' | 'daycareSlots') =>
     rewards.reduce((sum, r) => sum + r[key], 0);
-  const { expeditions, battles, daycare } = ctx.balance;
+  const { expeditions, daycare } = ctx.balance;
   return {
     expeditions: Math.min(
       expeditions.maxSlots,
       expeditions.initialSlots + total('expeditionSlots'),
     ),
-    battles: Math.min(battles.maxSlots, battles.initialSlots + total('battleSlots')),
     daycare: Math.min(daycare.maxSlots, daycare.initialSlots + total('daycareSlots')),
   };
 }

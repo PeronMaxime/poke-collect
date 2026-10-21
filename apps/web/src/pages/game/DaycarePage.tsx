@@ -28,6 +28,7 @@ import {
   itemName,
   speciesName,
 } from '../../lib/labels';
+import { AssistantCard } from './AssistantCard';
 import { DepositDialog } from './DepositDialog';
 import { HatchReveal } from './HatchReveal';
 
@@ -92,8 +93,12 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
         </div>
         <p className="mb-3 text-sm text-slate-500">
           Dépose deux Pokémon compatibles (même groupe d’œufs et sexes opposés, ou un Métamorph) :
-          ils pondent un œuf toutes les {formatDuration(ctx.balance.breeding.eggMinutes)}.
+          ils pondent un œuf toutes les {formatDuration(ctx.balance.breeding.eggMinutes)} (plus ou
+          moins vite selon leurs talents et celui de l’assistant).
         </p>
+        <div className="mb-3">
+          <AssistantCard ctx={ctx} post="daycare" />
+        </div>
         <div className="grid gap-3 md:grid-cols-2">
           {Array.from({ length: data?.slots ?? 0 }, (_, slot) => {
             const pension = data?.pensions.find((p) => p.slotIndex === slot);
@@ -143,6 +148,9 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
             {hatch.isPending ? 'Éclosion…' : `Faire éclore${readyEggs ? ` (${readyEggs})` : ''}`}
           </button>
         </div>
+        <div className="mb-3">
+          <AssistantCard ctx={ctx} post="incubator" />
+        </div>
         {eggs.length === 0 ? (
           <p className="text-sm text-slate-500">Aucun œuf pour l’instant.</p>
         ) : (
@@ -180,11 +188,11 @@ function PensionCard({
   onCollect: () => void;
   onWithdraw: () => void;
 }) {
-  const { eggMinutes, maxEggs } = ctx.balance.breeding;
+  const { maxEggs } = ctx.balance.breeding;
   const start = Date.parse(pension.startedAt);
-  const laid = eggsLaid(ctx, new Date(start), new Date(serverNow));
+  const laid = eggsLaid(ctx, new Date(start), new Date(serverNow), pension.eggMinutes);
   const waiting = Math.min(laid, maxEggs);
-  const cycle = eggMinutes * 60_000;
+  const cycle = pension.eggMinutes * 60_000;
   const nextAt = start + (laid + 1) * cycle;
   const held = [pension.heldItemAId, pension.heldItemBId];
   const rules = inheritanceRules(ctx, [pension.heldItemAId, pension.heldItemBId]);

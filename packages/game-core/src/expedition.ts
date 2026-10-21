@@ -1,12 +1,11 @@
 import { STAT_NAMES } from '@poke/data';
-import type { Encounter, ItemStack, LootTable, Zone } from '@poke/content';
+import type { Encounter, ItemStack, LootTable, Weather, Zone } from '@poke/content';
 import type { GameContext } from './context';
 import {
   MAX_IV,
   MAX_LEVEL,
   generatePokemon,
   levelForXp,
-  pokemonPower,
   withPerfectIvs,
   xpForLevel,
 } from './pokemon';
@@ -14,6 +13,21 @@ import type { PokemonInstance } from './pokemon';
 import { outOfRegionSpecies } from './progress';
 import { NO_BONUSES } from './progression';
 import type { PlayerBonuses } from './progression';
+import {
+  abilityBonuses,
+  abilityHappiness,
+  abilityModifier,
+  abilityMultiplier,
+  activeAbilityEffects,
+  applyWildAbilities,
+  attractedTypes,
+  durationWithAbility,
+  effectiveAbility,
+  memberPower,
+  scaledByAbility,
+  teamMemberPowers,
+} from './abilities';
+import type { AbilityEnv } from './abilities';
 import { createRng } from './rng';
 import type { Rng } from './rng';
 import { chainPerfectIvs, shinyProbability } from './shiny';
@@ -74,15 +88,29 @@ export function captureProbability(ctx: GameContext, f: CaptureFactors): number 
   return Math.min(1, Math.max(0, a / 255));
 }
 
-/** Rencontres actives de la zone (espèces désactivées exclues), poids ajustés par la pitié. */
+/**
+ * Rencontres actives de la zone (espèces désactivées exclues), poids ajustés par la pitié et
+ * par les types qu'attirent les talents de l'équipe (multiplicateurs par type, cumulés).
+ */
 export function weightedEncounters(
   ctx: GameContext,
   zone: Zone,
   pity: ReadonlyMap<number, number> = new Map(),
+  attracted: ReadonlyMap<string, number> = new Map(),
 ): { value: Encounter; weight: number }[] {
+  const typeFactor = (e: Encounter) =>
+    attracted.size === 0
+      ? 1
+      : (ctx.species(e.speciesId, e.formId)?.types ?? []).reduce(
+          (f, t) => f * (attracted.get(t) ?? 1),
+          1,
+        );
   return zone.encounters
     .filter((e) => ctx.species(e.speciesId)?.enabled)
-    .map((e) => ({ value: e, weight: e.weight * pityMultiplier(ctx, pity.get(e.speciesId) ?? 0) }));
+    .map((e) => ({
+      value: e,
+      weight: e.weight * pityMultiplier(ctx, pity.get(e.speciesId) ?? 0) * typeFactor(e),
+    }));
 }
 
 /** Probabilité d'apparition de chaque espèce (pour l'admin et l'affichage). */
@@ -90,8 +118,9 @@ export function encounterProbabilities(
   ctx: GameContext,
   zone: Zone,
   pity?: ReadonlyMap<number, number>,
+  attracted?: ReadonlyMap<string, number>,
 ): { speciesId: number; formId: number | null; probability: number }[] {
-  const entries = weightedEncounters(ctx, zone, pity);
+  const entries = weightedEncounters(ctx, zone, pity, attracted);
   const total = entries.reduce((sum, e) => sum + e.weight, 0);
   const byForm = new Map<
     string,
@@ -132,10 +161,11 @@ export function lootProbabilities(
   ctx: GameContext,
   zone: Zone,
   durationMinutes: number,
+  env?: AbilityEnv,
 ): { itemId: string; probability: number; min: number; max: number }[] {
   const table = zone.lootTableId ? ctx.lootTable(zone.lootTableId) : undefined;
   if (!table) return [];
-  const rolls = lootRollCount(ctx, durationMinutes);
+  const rolls = expeditionPlan(ctx, durationMinutes, env).lootRolls;
   return table.entries.map((e) => ({
     itemId: e.itemId,
     probability: 1 - (1 - e.chance) ** rolls,
@@ -176,20 +206,43 @@ function memberTypes(
   return team.map((m) => ctx.species(m.speciesId, m.formId)?.types ?? []);
 }
 
-export function teamPower(ctx: GameContext, team: readonly PokemonInstance[]): number {
-  return team.reduce((sum, m) => {
-    const species = ctx.species(m.speciesId, m.formId);
-    return sum + (species ? pokemonPower(species, m) : 0);
-  }, 0);
+/** PE de l'équipe ; avec l'environnement de l'activité, talents conditionnels compris. */
+export function teamPower(
+  ctx: GameContext,
+  team: readonly PokemonInstance[],
+  env?: AbilityEnv,
+): number {
+  const powers = env ? teamMemberPowers(ctx, team, env) : team.map((m) => memberPower(ctx, m));
+  return powers.reduce((sum, p) => sum + p, 0);
 }
 
 export function countAffinity(
   ctx: GameContext,
-  zone: Pick<ExpeditionSite, 'affinityTypes'>,
-  team: readonly Pick<PokemonInstance, 'speciesId' | 'formId'>[],
+  zone: Pick<ExpeditionSite, 'affinityTypes'> & { weather?: Weather | null },
+  team: readonly PokemonInstance[],
+  hour?: number | null,
 ): number {
   const affinity = new Set(zone.affinityTypes);
-  return memberTypes(ctx, team).filter((types) => types.some((t) => affinity.has(t))).length;
+  if (affinity.size === 0) return 0;
+  // Calque : le porteur compte comme ayant le type d'affinité de la zone.
+  const copiers = new Set(
+    activeAbilityEffects(ctx, expeditionEnv(zone, team, hour))
+      .filter((e) => e.effect.type === 'copyZoneAffinity')
+      .map((e) => e.holder),
+  );
+  return memberTypes(ctx, team).filter(
+    (types, i) => copiers.has(i) || types.some((t) => affinity.has(t)),
+  ).length;
+}
+
+/** Le talent du Pokémon peut copier l'affinité de la zone (Calque), conditions mises à part. */
+export function copiesZoneAffinity(
+  ctx: GameContext,
+  pokemon: Pick<PokemonInstance, 'speciesId' | 'formId' | 'ability'>,
+): boolean {
+  return !!ctx
+    .ability(effectiveAbility(ctx, pokemon))
+    ?.effects.some((e) => e.type === 'copyZoneAffinity');
 }
 
 /** Types requis (« 2 Pokémon Eau ») qui manquent encore à l'équipe. */
@@ -214,6 +267,44 @@ export interface ExpeditionSite {
   requiredTypes: readonly { type: string; count: number }[];
   affinityTypes: readonly string[];
   durationsMinutes: readonly number[];
+  /** Météo du lieu au départ (voir `zoneWeather`) ; absente = temps clair. */
+  weather?: Weather | null;
+}
+
+/** Environnement des talents pour une expédition (zone ou repaire de légendaire). */
+export function expeditionEnv(
+  site: Pick<ExpeditionSite, 'affinityTypes'> & { weather?: Weather | null },
+  team: readonly PokemonInstance[],
+  hour?: number | null,
+  activity: 'expedition' | 'quest' = 'expedition',
+): AbilityEnv {
+  return { activity, team, zoneTypes: site.affinityTypes, hour, weather: site.weather ?? null };
+}
+
+export interface ExpeditionPlan {
+  /** Temps réel avant le retour (durée choisie modifiée par les talents). */
+  realDurationMinutes: number;
+  encounters: number;
+  lootRolls: number;
+}
+
+/**
+ * Rencontres, jets de butin et durée réelle d'une expédition de `durationMinutes`, talents de
+ * l'équipe compris (sans environnement : valeurs de base).
+ */
+export function expeditionPlan(
+  ctx: GameContext,
+  durationMinutes: number,
+  env?: AbilityEnv,
+): ExpeditionPlan {
+  const encounters = encounterCount(ctx, durationMinutes);
+  const lootRolls = lootRollCount(ctx, durationMinutes);
+  if (!env) return { realDurationMinutes: durationMinutes, encounters, lootRolls };
+  return {
+    realDurationMinutes: durationWithAbility(ctx, env, 'expeditionDuration', durationMinutes),
+    encounters: scaledByAbility(ctx, env, 'encounters', encounters),
+    lootRolls: scaledByAbility(ctx, env, 'lootRolls', lootRolls),
+  };
 }
 
 export function checkTeam(
@@ -221,6 +312,7 @@ export function checkTeam(
   zone: ExpeditionSite,
   durationMinutes: number,
   team: readonly TeamMember[],
+  hour?: number | null,
 ): TeamCheck {
   const errors: ExpeditionError[] = [];
   const { maxTeamSize } = ctx.balance.expeditions;
@@ -236,13 +328,13 @@ export function checkTeam(
   if (zone.regionId && outside.length > 0)
     errors.push({ code: 'WRONG_REGION', regionId: zone.regionId, speciesIds: outside });
 
-  const power = teamPower(ctx, team);
+  const power = teamPower(ctx, team, expeditionEnv(zone, team, hour));
   if (power < zone.minPower) errors.push({ code: 'POWER_TOO_LOW', power, minPower: zone.minPower });
 
   const missing = missingTypes(ctx, team, zone.requiredTypes);
   if (missing.length > 0) errors.push({ code: 'MISSING_TYPES', missing });
 
-  return { power, affinityCount: countAffinity(ctx, zone, team), errors };
+  return { power, affinityCount: countAffinity(ctx, zone, team, hour), errors };
 }
 
 // --- Filtre de capture -------------------------------------------------------------------
@@ -320,6 +412,10 @@ export interface ExpeditionInput {
   captureFilter?: CaptureFilter | null;
   /** Captures du Pokédex, lues à la réclamation ; requis par le filtre « nouveaux Pokémon ». */
   caught?: CaughtDex;
+  /** Heure locale du joueur au départ (talents de jour ou de nuit). */
+  hour?: number | null;
+  /** Météo de la zone au départ (voir `zoneWeather`) ; absente = temps clair. */
+  weather?: Weather | null;
 }
 
 /** `ignored` : écarté par le filtre de capture. */
@@ -357,27 +453,34 @@ export function defeatedXp(
 /**
  * XP moyenne que rapportera une expédition à chaque membre (pour l'affichage) : espérance sur
  * les rencontres et leurs niveaux, sans tenir compte de la pitié qui évolue en cours de route.
+ * Avec un environnement, les talents de l'équipe sont pris en compte (rencontres, types attirés,
+ * niveaux, bonus d'XP).
  */
 export function expectedExpeditionXp(
   ctx: GameContext,
   zone: Zone,
   durationMinutes: number,
   bonuses: PlayerBonuses = NO_BONUSES,
+  env?: AbilityEnv,
 ): number {
-  const entries = weightedEncounters(ctx, zone);
+  const attracted = env ? attractedTypes(ctx, env) : undefined;
+  const entries = weightedEncounters(ctx, zone, undefined, attracted);
   const total = entries.reduce((sum, e) => sum + e.weight, 0);
   if (total === 0) return 0;
-  const multiplier = ctx.balance.xp.multiplier * bonuses.xp;
+  const xpBonus = env ? abilityBonuses(ctx, env, bonuses).xp : bonuses.xp;
+  const extraLevels = env ? Math.round(abilityModifier(ctx, env, 'wildLevel')) : 0;
+  const multiplier = ctx.balance.xp.multiplier * xpBonus;
   const perEncounter = entries.reduce((sum, { value: e, weight }) => {
     const species = ctx.species(e.speciesId, e.formId);
     if (!species) return sum;
     let xp = 0;
     for (let level = e.minLevel; level <= e.maxLevel; level++) {
-      xp += Math.floor(defeatXp(species, level) * multiplier);
+      const wildLevel = Math.min(MAX_LEVEL, Math.max(1, level + extraLevels));
+      xp += Math.floor(defeatXp(species, wildLevel) * multiplier);
     }
     return sum + ((weight / total) * xp) / (e.maxLevel - e.minLevel + 1);
   }, 0);
-  return Math.round(perEncounter * encounterCount(ctx, durationMinutes));
+  return Math.round(perEncounter * expeditionPlan(ctx, durationMinutes, env).encounters);
 }
 
 export interface TeamMemberResult {
@@ -387,6 +490,8 @@ export interface TeamMemberResult {
   levelAfter: number;
   xpAfter: number;
   happinessAfter: number;
+  /** Durée de K.O. de ce Pokémon (combats et donjons perdus), talents compris. */
+  koMinutes?: number;
 }
 
 export interface ExpeditionResult {
@@ -431,10 +536,10 @@ export function applyTeamXp(
  */
 export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): ExpeditionResult {
   const rng = createRng(input.seed);
-  const { zone } = input;
+  const zone = { ...input.zone, weather: input.weather ?? null };
   const pity = new Map(Object.entries(input.pity).map(([k, v]) => [Number(k), v]));
   const touched = new Set<number>();
-  const affinityCount = input.affinityCount ?? countAffinity(ctx, zone, input.team);
+  const affinityCount = input.affinityCount ?? countAffinity(ctx, zone, input.team, input.hour);
   const ballMultiplier = input.balls
     ? (ctx.itemEffect(input.balls.itemId, 'ball')?.catchMultiplier ?? 1)
     : 0;
@@ -443,9 +548,20 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
     : 1;
   let ballsLeft = input.balls?.quantity ?? 0;
   let berriesLeft = input.berries?.quantity ?? 0;
-  const shinyChance = shinyProbability(ctx, input.shiny);
-  const perfectIvs = chainPerfectIvs(ctx, input.shiny?.chain ?? 0);
-  const bonuses = input.bonuses ?? NO_BONUSES;
+  const env = expeditionEnv(zone, input.team, input.hour);
+  const shinyChance = Math.min(
+    1,
+    shinyProbability(ctx, input.shiny) * abilityMultiplier(ctx, env, 'shinyChance'),
+  );
+  const perfectIvs = Math.min(
+    6,
+    chainPerfectIvs(ctx, input.shiny?.chain ?? 0) +
+      Math.max(0, Math.round(abilityModifier(ctx, env, 'perfectIvs'))),
+  );
+  const bonuses = abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES);
+  const attracted = attractedTypes(ctx, env);
+  const extraLevels = Math.round(abilityModifier(ctx, env, 'wildLevel'));
+  const plan = expeditionPlan(ctx, input.durationMinutes, env);
   // Copie enrichie au fil des captures : un nouveau Pokémon capturé n'est plus visé ensuite.
   const caught = {
     speciesIds: new Set(input.caught?.speciesIds),
@@ -454,20 +570,23 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
 
   const encounters: EncounterResult[] = [];
   let xpPerMember = 0;
-  const count = encounterCount(ctx, input.durationMinutes);
-  for (let i = 0; i < count; i++) {
-    const table = weightedEncounters(ctx, zone, pity);
+  for (let i = 0; i < plan.encounters; i++) {
+    const table = weightedEncounters(ctx, zone, pity, attracted);
     if (table.length === 0) break;
     const encounter = rng.weighted(table);
     const species = ctx.species(encounter.speciesId, encounter.formId)!;
     const formId = species.form?.id ?? null;
-    const level = rng.int(encounter.minLevel, encounter.maxLevel);
+    const level = Math.min(
+      MAX_LEVEL,
+      Math.max(1, rng.int(encounter.minLevel, encounter.maxLevel) + extraLevels),
+    );
     const wild = generatePokemon(ctx, rng, species.id, level, {
       shinyProbability: shinyChance,
       formId,
     });
     // Aucun tirage en plus sans palier atteint : les seeds sans chaîne restent inchangés.
     if (perfectIvs > 0) wild.ivs = withPerfectIvs(rng, wild.ivs, perfectIvs);
+    applyWildAbilities(ctx, env, rng, wild);
     xpPerMember += Math.floor(defeatXp(species, level) * ctx.balance.xp.multiplier * bonuses.xp);
 
     if (ballsLeft <= 0 || !matchesCaptureFilter(input.captureFilter, wild, caught)) {
@@ -512,14 +631,18 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
   const lootTotals = new Map<string, number>();
   const lootTable = zone.lootTableId ? ctx.lootTable(zone.lootTableId) : undefined;
   if (lootTable) {
-    const rolls = lootRollCount(ctx, input.durationMinutes);
-    for (let i = 0; i < rolls; i++) addStacks(lootTotals, rollLoot(rng, lootTable));
+    for (let i = 0; i < plan.lootRolls; i++) addStacks(lootTotals, rollLoot(rng, lootTable));
   }
 
   return {
     encounters,
     loot: [...lootTotals].map(([itemId, quantity]) => ({ itemId, quantity })),
-    team: applyTeamXp(ctx, input.team, xpPerMember, ctx.balance.xp.happinessPerExpedition),
+    team: applyTeamXp(
+      ctx,
+      input.team,
+      xpPerMember,
+      abilityHappiness(ctx, env, ctx.balance.xp.happinessPerExpedition),
+    ),
     xpPerMember,
     pity: Object.fromEntries([...touched].map((id) => [id, pity.get(id) ?? 0])),
     ballsUsed: (input.balls?.quantity ?? 0) - ballsLeft,

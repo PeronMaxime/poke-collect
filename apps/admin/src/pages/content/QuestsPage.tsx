@@ -496,7 +496,7 @@ function TypeOrAny({
 const isEmptyReward = (r: Quest['rewards']) =>
   r.currency === 0 &&
   r.items.length === 0 &&
-  r.expeditionSlots + r.battleSlots + r.daycareSlots === 0 &&
+  r.expeditionSlots + r.daycareSlots === 0 &&
   r.bonuses.length === 0;
 
 /** Résumé : zones et contenus ouverts par la quête, récompense. */

@@ -1,29 +1,34 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Zone } from '@poke/content';
+import type { Weather, Zone } from '@poke/content';
 import {
+  abilityMultiplier,
+  attractedTypes,
   captureProbability,
   chainPerfectIvs,
   checkTeam,
-  encounterCount,
   encounterProbabilities,
   expectedExpeditionXp,
+  expeditionEnv,
+  expeditionPlan,
   lootProbabilities,
+  resolveWeather,
+  zoneWeather,
   nextChainPerfectIvThreshold,
   shinyProbability,
 } from '@poke/game-core';
 import type {
+  AbilityEnv,
   CaptureFilter,
   ExpeditionError,
   GameContext,
   PlayerBonuses,
-  TeamMember,
 } from '@poke/game-core';
-import type { ExpeditionDto, StartExpeditionInput } from '@poke/shared';
-import { Modal, PokemonSprite, TypeBadge } from '../../components/ui';
+import type { ExpeditionDto, PokemonDto, StartExpeditionInput } from '@poke/shared';
+import { Modal, PokemonSprite, TypeBadge, useNow } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, useInventory, useShinyCharm } from '../../lib/game';
+import { PLAYER_STATE_KEYS, useInventory, useShinyCharm, utcOffsetMinutes } from '../../lib/game';
 import {
   GAME_ERRORS,
   formatDuration,
@@ -32,7 +37,9 @@ import {
   itemName,
   typeLabel,
 } from '../../lib/labels';
+import { ActiveAbilities } from './ActiveAbilities';
 import { TeamPicker, pillClass, useTeamPicker } from './TeamPicker';
+import { TEAM_WEATHER_NOTE, WeatherIcon, zoneWeatherForecast } from './WeatherIcon';
 import { XpPreview, formatXp, usePlayerBonuses } from './XpPreview';
 
 export { pillClass };
@@ -94,7 +101,10 @@ export function LaunchExpeditionDialog({
 
   const start = useMutation({
     mutationFn: (input: StartExpeditionInput) =>
-      api<ExpeditionDto>('/api/expeditions', { method: 'POST', json: input }),
+      api<ExpeditionDto>('/api/expeditions', {
+        method: 'POST',
+        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
+      }),
     onSuccess: () => {
       // Fermer avant le rechargement : l'équipe envoyée devient « occupée » et sortirait de la liste.
       onClose();
@@ -115,7 +125,9 @@ export function LaunchExpeditionDialog({
         bonuses={bonuses}
         team={picker.team}
         members={picker.members}
-        renderTeam={(power) => <TeamPicker ctx={ctx} zone={zone} picker={picker} power={power} />}
+        renderTeam={(power, env) => (
+          <TeamPicker ctx={ctx} zone={zone} picker={picker} power={power} abilityEnv={env} />
+        )}
         pending={start.isPending}
         error={
           start.error &&
@@ -143,6 +155,7 @@ export function LaunchExpeditionForm({
   owned,
   unlimitedItems = false,
   bonuses,
+  weather: forcedWeather,
   team,
   members,
   renderTeam,
@@ -165,10 +178,12 @@ export function LaunchExpeditionForm({
   unlimitedItems?: boolean;
   /** Bonus permanents du joueur (aucun par défaut). */
   bonuses?: PlayerBonuses;
+  /** Météo de la zone imposée (simulateur) ; par défaut, celle du moment. */
+  weather?: Weather | null;
   team: string[];
-  members: TeamMember[];
-  /** Choix de l'équipe, selon sa PE. */
-  renderTeam: (power: number) => ReactNode;
+  members: PokemonDto[];
+  /** Choix de l'équipe, selon sa PE et l'environnement des talents de l'expédition. */
+  renderTeam: (power: number, env: AbilityEnv) => ReactNode;
   /** Réglages supplémentaires, sous la durée. */
   extra?: ReactNode;
   pending: boolean;
@@ -206,14 +221,22 @@ export function LaunchExpeditionForm({
   const [captureFilter, setCaptureFilter] = useState<CaptureFilter | null>(null);
   const selectedBall = ballId === undefined ? (balls[0]?.id ?? null) : ballId;
 
-  const check = checkTeam(ctx, zone, duration, members);
-  const encounters = encounterCount(ctx, duration);
-  const xp = expectedExpeditionXp(ctx, zone, duration, bonuses);
+  // Talents de l'équipe et météo de la zone : estimations à l'instant présent (celui du départ).
+  const now = useNow(30_000);
+  const placeWeather = forcedWeather !== undefined ? forcedWeather : zoneWeather(zone, now);
+  const forecast = forcedWeather !== undefined ? undefined : zoneWeatherForecast(zone, now);
+  const site = { ...zone, weather: placeWeather };
+  const env = expeditionEnv(site, members, new Date().getHours());
+  const check = checkTeam(ctx, site, duration, members, env.hour);
+  const plan = expeditionPlan(ctx, duration, env);
+  const weather = resolveWeather(ctx, env);
+  const { encounters } = plan;
+  const xp = expectedExpeditionXp(ctx, zone, duration, bonuses, env);
   const maxBalls = selectedBall ? Math.min(encounters, owned(selectedBall)) : 0;
   const ballsTaken = Math.min(ballCount ?? maxBalls, maxBalls);
   const ballEffect = selectedBall ? ctx.itemEffect(selectedBall, 'ball') : undefined;
   const boost = berryId ? ctx.itemEffect(berryId, 'captureBoost')?.multiplier : undefined;
-  const possibleEncounters = encounterProbabilities(ctx, zone);
+  const possibleEncounters = encounterProbabilities(ctx, zone, undefined, attractedTypes(ctx, env));
   const zoneSpeciesIds = [...new Set(possibleEncounters.map((e) => e.speciesId))];
   const updateFilter = (patch: Partial<CaptureFilter>) =>
     setCaptureFilter((f) => ({ ...(f ?? NO_FILTER), ...patch }));
@@ -221,11 +244,23 @@ export function LaunchExpeditionForm({
     !captureFilter ||
     captureFilter.speciesIds.length === 0 ||
     captureFilter.speciesIds.includes(speciesId);
-  const loot = lootProbabilities(ctx, zone, duration).sort((a, b) => b.probability - a.probability);
+  const loot = lootProbabilities(ctx, zone, duration, env).sort(
+    (a, b) => b.probability - a.probability,
+  );
 
   return (
     <>
-      <h2 className="text-xl font-bold">{zone.name}</h2>
+      <h2 className="flex items-center gap-2 text-xl font-bold">
+        {zone.name}
+        {(weather || placeWeather || forecast) && (
+          <WeatherIcon
+            weather={weather ?? 'clear'}
+            activity="expedition"
+            note={weather !== placeWeather ? TEAM_WEATHER_NOTE : undefined}
+            forecast={forecast}
+          />
+        )}
+      </h2>
       <p className="text-sm text-slate-500">{zone.description}</p>
 
       <h3 className="mt-5 text-sm font-semibold">Durée</h3>
@@ -241,8 +276,16 @@ export function LaunchExpeditionForm({
         ))}
       </div>
       <p className="mt-1 text-xs text-slate-500">
+        {plan.realDurationMinutes !== duration &&
+          `Retour en ${formatDuration(plan.realDurationMinutes)} grâce aux talents. `}
         {encounters} rencontre{encounters > 1 ? 's' : ''} prévue{encounters > 1 ? 's' : ''}. Taux
-        shiny : {formatShinyRate(shinyProbability(ctx, { chain, charm }))}
+        shiny :{' '}
+        {formatShinyRate(
+          Math.min(
+            1,
+            shinyProbability(ctx, { chain, charm }) * abilityMultiplier(ctx, env, 'shinyChance'),
+          ),
+        )}
         {(chain > 0 || charm > 1) &&
           ` (${[chain > 0 && `chaîne ${chain}`, charm > 1 && 'Charme Chroma']
             .filter(Boolean)
@@ -255,7 +298,21 @@ export function LaunchExpeditionForm({
       </p>
       {extra}
 
-      {renderTeam(check.power)}
+      {renderTeam(check.power, env)}
+      {members.length > 0 && (
+        <>
+          <h3 className="mt-4 text-sm font-semibold">Talents actifs</h3>
+          <ActiveAbilities
+            ctx={ctx}
+            env={env}
+            members={members}
+            className="mt-1 text-xs"
+            empty={
+              <p className="mt-1 text-xs text-slate-500">Aucun talent de l’équipe n’agit ici.</p>
+            }
+          />
+        </>
+      )}
       <XpPreview ctx={ctx} members={members} xp={xp}>
         ≈ {formatXp(xp)} par Pokémon
         <span className="text-slate-500"> (moyenne, selon les rencontres)</span>
@@ -446,6 +503,7 @@ export function LaunchExpeditionForm({
                 ballMultiplier: ballEffect.catchMultiplier,
                 boostMultiplier: boost,
                 affinityCount: check.affinityCount,
+                bonusMultiplier: abilityMultiplier(ctx, env, 'capture'),
               })
             : 0;
           return (

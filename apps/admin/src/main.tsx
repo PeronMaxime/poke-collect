@@ -10,6 +10,7 @@ import { ExpeditionSimulatorPage } from './pages/ExpeditionSimulatorPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { PlayersPage } from './pages/PlayersPage';
 import { TelemetryPage } from './pages/TelemetryPage';
+import { AbilitiesPage } from './pages/content/AbilitiesPage';
 import { BalancePage } from './pages/content/BalancePage';
 import { DungeonsPage } from './pages/content/DungeonsPage';
 import { EvolutionsPage } from './pages/content/EvolutionsPage';
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
           { path: 'expedition-simulator', element: <ExpeditionSimulatorPage /> },
           { path: 'trainers', element: <TrainersPage /> },
           { path: 'dungeons', element: <DungeonsPage /> },
+          { path: 'abilities', element: <AbilitiesPage /> },
           { path: 'items', element: <ItemsPage /> },
           { path: 'loot-tables', element: <LootTablesPage /> },
           { path: 'shop', element: <ShopPage /> },

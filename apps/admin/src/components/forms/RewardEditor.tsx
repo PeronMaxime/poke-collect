@@ -14,7 +14,6 @@ export const emptyReward = (): ProgressReward => ({
   currency: 0,
   items: [],
   expeditionSlots: 0,
-  battleSlots: 0,
   daycareSlots: 0,
   bonuses: [],
 });
@@ -25,7 +24,6 @@ export function rewardSummary(r: ProgressReward): string {
     r.currency > 0 && `${r.currency.toLocaleString('fr-FR')} ₽`,
     r.items.length > 0 && `${r.items.length} objet(s)`,
     r.expeditionSlots > 0 && `+${r.expeditionSlots} exp.`,
-    r.battleSlots > 0 && `+${r.battleSlots} combat`,
     r.daycareSlots > 0 && `+${r.daycareSlots} pension`,
     ...r.bonuses.map((b) => `+${b.percent} % ${b.type === 'capture' ? 'capture' : b.type}`),
   ].filter(Boolean);
@@ -89,20 +87,6 @@ export function RewardEditor({
             max={6}
             unit="+"
             onChange={(v) => set('expeditionSlots', v)}
-            disabled={disabled}
-          />
-        </Field>
-        <Field
-          label="Emplacements de combat"
-          hint={`Départ ${balance.battles.initialSlots}, max ${balance.battles.maxSlots}`}
-          error={err('battleSlots')}
-        >
-          <NumberInput
-            value={value.battleSlots}
-            min={0}
-            max={6}
-            unit="+"
-            onChange={(v) => set('battleSlots', v)}
             disabled={disabled}
           />
         </Field>

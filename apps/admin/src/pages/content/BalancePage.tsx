@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { NON_POKEMON_TYPES, balanceSettingsSchema } from '@poke/content';
-import type { BalanceSettings, DungeonSettings } from '@poke/content';
+import type { BalanceSettings, CombatSettings, DungeonSettings } from '@poke/content';
 import { types } from '@poke/data';
 import {
   attackIntervalMs,
@@ -11,12 +11,12 @@ import {
   shinyProbability,
 } from '@poke/game-core';
 import { IssueList, VersionBanner } from '../../components/EntityPage';
-import { WinCurveChart } from '../../components/WinCurveChart';
 import {
   Field,
   NumberInput,
   Section,
   TextInput,
+  Toggle,
   errorsUnder,
   validate,
 } from '../../components/forms/fields';
@@ -239,195 +239,6 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
               ))}
             </tbody>
           </table>
-        )}
-      </Section>
-
-      <Section title="Combats de dresseurs">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Emplacements au départ" error={err('battles.initialSlots')}>
-            <NumberInput
-              value={b.battles.initialSlots}
-              min={1}
-              max={6}
-              onChange={bat('initialSlots')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Emplacements maximum" error={err('battles.maxSlots')}>
-            <NumberInput
-              value={b.battles.maxSlots}
-              min={1}
-              max={6}
-              onChange={bat('maxSlots')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Taille d’équipe maximale" error={err('battles.maxTeamSize')}>
-            <NumberInput
-              value={b.battles.maxTeamSize}
-              min={1}
-              max={6}
-              unit="Pokémon"
-              onChange={bat('maxTeamSize')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Durée par défaut"
-            hint="Si le dresseur n’en fixe pas."
-            error={err('battles.defaultDurationMinutes')}
-          >
-            <NumberInput
-              value={b.battles.defaultDurationMinutes}
-              min={1}
-              unit="min"
-              onChange={bat('defaultDurationMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Durée de K.O."
-            hint="Après une défaite (surchargeable par dresseur)."
-            error={err('battles.koMinutes')}
-          >
-            <NumberInput
-              value={b.battles.koMinutes}
-              min={0}
-              unit="min"
-              onChange={bat('koMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Temps de recharge"
-            hint="Dresseur répétable, après une victoire."
-            error={err('battles.cooldownMinutes')}
-          >
-            <NumberInput
-              value={b.battles.cooldownMinutes}
-              min={0}
-              unit="min"
-              onChange={bat('cooldownMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Pente de la courbe"
-            hint="5,4 ≈ 90 % de victoire à PE × 1,5."
-            error={err('battles.winCurveSteepness')}
-          >
-            <NumberInput
-              value={b.battles.winCurveSteepness}
-              min={0.1}
-              max={50}
-              step={0.1}
-              onChange={bat('winCurveSteepness')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Probabilité plancher" error={err('battles.minWinChance')}>
-            <NumberInput
-              value={b.battles.minWinChance}
-              scale={100}
-              min={0}
-              max={100}
-              unit="%"
-              onChange={bat('minWinChance')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Probabilité plafond" error={err('battles.maxWinChance')}>
-            <NumberInput
-              value={b.battles.maxWinChance}
-              scale={100}
-              min={0}
-              max={100}
-              unit="%"
-              onChange={bat('maxWinChance')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Poids de l’avantage de types"
-            hint="Effet maximal sur la PE effective."
-            error={err('battles.typeAdvantageWeight')}
-          >
-            <NumberInput
-              value={b.battles.typeAdvantageWeight}
-              scale={100}
-              min={0}
-              max={100}
-              unit="± %"
-              onChange={bat('typeAdvantageWeight')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="IV des Pokémon des dresseurs"
-            hint="Si le dresseur n’en fixe pas."
-            error={err('battles.defaultTrainerIv')}
-          >
-            <NumberInput
-              value={b.battles.defaultTrainerIv}
-              min={0}
-              max={31}
-              onChange={bat('defaultTrainerIv')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Multiplicateur d’XP"
-            hint="Sur l’XP des Pokémon adverses vaincus."
-            error={err('battles.xpMultiplier')}
-          >
-            <NumberInput
-              value={b.battles.xpMultiplier}
-              min={0}
-              step={0.1}
-              unit="×"
-              onChange={bat('xpMultiplier')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="XP en cas de défaite" error={err('battles.lossXpFraction')}>
-            <NumberInput
-              value={b.battles.lossXpFraction}
-              scale={100}
-              min={0}
-              max={100}
-              unit="%"
-              onChange={bat('lossXpFraction')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Bonheur (victoire)" error={err('battles.happinessOnWin')}>
-            <NumberInput
-              value={b.battles.happinessOnWin}
-              min={-255}
-              max={255}
-              onChange={bat('happinessOnWin')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Bonheur (défaite)"
-            hint="Négatif : le bonheur baisse."
-            error={err('battles.happinessOnLoss')}
-          >
-            <NumberInput
-              value={b.battles.happinessOnLoss}
-              min={-255}
-              max={255}
-              onChange={bat('happinessOnLoss')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-        {preview && (
-          <div>
-            <p className="text-sm font-medium">Aperçu : probabilité de victoire</p>
-            <WinCurveChart ctx={preview} />
-          </div>
         )}
       </Section>
 
@@ -972,12 +783,108 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
         </Field>
       </Section>
 
-      <DungeonSettingsSections
+      <Section title="Combats de dresseurs">
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Taille d’équipe maximale" error={err('battles.maxTeamSize')}>
+            <NumberInput
+              value={b.battles.maxTeamSize}
+              min={1}
+              max={6}
+              unit="Pokémon"
+              onChange={bat('maxTeamSize')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Durée de K.O."
+            hint="Pokémon mis K.O. (surchargeable par dresseur)."
+            error={err('battles.koMinutes')}
+          >
+            <NumberInput
+              value={b.battles.koMinutes}
+              min={0}
+              unit="min"
+              onChange={bat('koMinutes')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Temps de recharge"
+            hint="Dresseur répétable, après chaque combat (surchargeable)."
+            error={err('battles.cooldownMinutes')}
+          >
+            <NumberInput
+              value={b.battles.cooldownMinutes}
+              min={0}
+              unit="min"
+              onChange={bat('cooldownMinutes')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="IV des Pokémon des dresseurs"
+            hint="Si le dresseur n’en fixe pas."
+            error={err('battles.defaultTrainerIv')}
+          >
+            <NumberInput
+              value={b.battles.defaultTrainerIv}
+              min={0}
+              max={31}
+              onChange={bat('defaultTrainerIv')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Multiplicateur d’XP"
+            hint="XP des Pokémon adverses vaincus, pour chaque membre."
+            error={err('battles.xpMultiplier')}
+          >
+            <NumberInput
+              value={b.battles.xpMultiplier}
+              min={0}
+              step={0.1}
+              unit="×"
+              onChange={bat('xpMultiplier')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field label="Bonheur (victoire)" error={err('battles.happinessOnWin')}>
+            <NumberInput
+              value={b.battles.happinessOnWin}
+              min={-255}
+              max={255}
+              onChange={bat('happinessOnWin')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Bonheur (défaite)"
+            hint="Négatif : le bonheur baisse."
+            error={err('battles.happinessOnLoss')}
+          >
+            <NumberInput
+              value={b.battles.happinessOnLoss}
+              min={-255}
+              max={255}
+              onChange={bat('happinessOnLoss')}
+              disabled={disabled}
+            />
+          </Field>
+        </div>
+      </Section>
+
+      <DungeonSettingsSection
         s={b.dungeons}
         set={set('dungeons')}
         errors={errors}
         disabled={disabled}
-        preview={preview?.balance.dungeons ?? null}
+      />
+      <CombatSettingsSections
+        s={b.combat}
+        set={set('combat')}
+        errors={errors}
+        disabled={disabled}
+        preview={preview?.balance.combat ?? null}
       />
     </div>
   );
@@ -1030,110 +937,132 @@ function ShinyRatesPreview({ ctx }: { ctx: ReturnType<typeof createGameContext> 
 
 const POKEMON_TYPES = types.filter((t) => !NON_POKEMON_TYPES.has(t.name));
 
-/** Réglages communs à tous les donjons ; les tentatives en cours gardent ceux de leur départ. */
-function DungeonSettingsSections({
+/** Réglages propres aux donjons (le combat suit les réglages communs, plus bas). */
+function DungeonSettingsSection({
+  s,
+  set,
+  errors,
+  disabled,
+}: {
+  s: DungeonSettings;
+  set: <K extends keyof DungeonSettings>(key: K) => (v: DungeonSettings[K]) => void;
+  errors: FieldErrors;
+  disabled: boolean;
+}) {
+  const err = (path: string) => errors.get(`dungeons.${path}`);
+  return (
+    <Section title="Donjons">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Taille d’équipe maximale" error={err('maxTeamSize')}>
+          <NumberInput
+            value={s.maxTeamSize}
+            min={1}
+            max={6}
+            unit="Pokémon"
+            onChange={set('maxTeamSize')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Temps de recharge"
+          hint="Après chaque tentative (surchargeable par donjon)."
+          error={err('cooldownMinutes')}
+        >
+          <NumberInput
+            value={s.cooldownMinutes}
+            min={0}
+            unit="min"
+            onChange={set('cooldownMinutes')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Durée de K.O."
+          hint="Pokémon mis K.O. (surchargeable par donjon)."
+          error={err('koMinutes')}
+        >
+          <NumberInput
+            value={s.koMinutes}
+            min={0}
+            unit="min"
+            onChange={set('koMinutes')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Multiplicateur d’XP"
+          hint="XP des adversaires vaincus, pour chaque membre."
+          error={err('xpMultiplier')}
+        >
+          <NumberInput
+            value={s.xpMultiplier}
+            min={0}
+            step={0.1}
+            unit="×"
+            onChange={set('xpMultiplier')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Bonheur (victoire)" error={err('happinessOnWin')}>
+          <NumberInput
+            value={s.happinessOnWin}
+            min={-255}
+            max={255}
+            onChange={set('happinessOnWin')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Bonheur (défaite)" error={err('happinessOnLoss')}>
+          <NumberInput
+            value={s.happinessOnLoss}
+            min={-255}
+            max={255}
+            onChange={set('happinessOnLoss')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="IV des adversaires"
+          hint="Quand le donjon n’en fixe pas."
+          error={err('defaultOpponentIv')}
+        >
+          <NumberInput
+            value={s.defaultOpponentIv}
+            min={0}
+            max={31}
+            onChange={set('defaultOpponentIv')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+    </Section>
+  );
+}
+
+/**
+ * Réglages communs aux combats en temps réel (donjons et dresseurs) ; un combat en cours garde
+ * ceux de son départ.
+ */
+function CombatSettingsSections({
   s,
   set,
   errors,
   disabled,
   preview,
 }: {
-  s: DungeonSettings;
-  set: <K extends keyof DungeonSettings>(key: K) => (v: DungeonSettings[K]) => void;
+  s: CombatSettings;
+  set: <K extends keyof CombatSettings>(key: K) => (v: CombatSettings[K]) => void;
   errors: FieldErrors;
   disabled: boolean;
-  preview: DungeonSettings | null;
+  preview: CombatSettings | null;
 }) {
-  const err = (path: string) => errors.get(`dungeons.${path}`);
+  const err = (path: string) => errors.get(`combat.${path}`);
   return (
     <>
-      <Section title="Donjons : équipe et conséquences">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Taille d’équipe maximale" error={err('maxTeamSize')}>
-            <NumberInput
-              value={s.maxTeamSize}
-              min={1}
-              max={6}
-              unit="Pokémon"
-              onChange={set('maxTeamSize')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Temps de recharge"
-            hint="Après chaque tentative (surchargeable par donjon)."
-            error={err('cooldownMinutes')}
-          >
-            <NumberInput
-              value={s.cooldownMinutes}
-              min={0}
-              unit="min"
-              onChange={set('cooldownMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Durée de K.O."
-            hint="Pokémon mis K.O. (surchargeable par donjon)."
-            error={err('koMinutes')}
-          >
-            <NumberInput
-              value={s.koMinutes}
-              min={0}
-              unit="min"
-              onChange={set('koMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Multiplicateur d’XP"
-            hint="XP des adversaires vaincus, pour chaque membre."
-            error={err('xpMultiplier')}
-          >
-            <NumberInput
-              value={s.xpMultiplier}
-              min={0}
-              step={0.1}
-              unit="×"
-              onChange={set('xpMultiplier')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Bonheur (victoire)" error={err('happinessOnWin')}>
-            <NumberInput
-              value={s.happinessOnWin}
-              min={-255}
-              max={255}
-              onChange={set('happinessOnWin')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Bonheur (défaite)" error={err('happinessOnLoss')}>
-            <NumberInput
-              value={s.happinessOnLoss}
-              min={-255}
-              max={255}
-              onChange={set('happinessOnLoss')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="IV des adversaires"
-            hint="Quand le donjon n’en fixe pas."
-            error={err('defaultOpponentIv')}
-          >
-            <NumberInput
-              value={s.defaultOpponentIv}
-              min={0}
-              max={31}
-              onChange={set('defaultOpponentIv')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-      </Section>
-
-      <Section title="Donjons : rythme des attaques">
+      <Section title="Combat : rythme des attaques">
+        <p className="text-xs text-slate-500">
+          Réglages communs aux donjons et aux combats de dresseurs.
+        </p>
         <p className="text-xs text-slate-500">
           Délai linéaire selon la Vitesse : le délai à Vitesse 0 diminue d’un même nombre de
           millisecondes par point de Vitesse, pour atteindre le délai de référence à la Vitesse de
@@ -1197,11 +1126,11 @@ function DungeonSettingsSections({
         )}
       </Section>
 
-      <Section title="Donjons : dégâts">
+      <Section title="Combat : dégâts">
         <p className="text-xs text-slate-500">
           Dégâts = ((2 × niveau / 5 + 2) × puissance × Att / Déf / 50 + 2) × bonus de même type ×
-          efficacité × aléa × multiplicateur. Attaque physique : Attaque contre Défense ; spéciale :
-          Atq. Spé. contre Déf. Spé.
+          efficacité × aléa × multiplicateur × coup critique. Attaque physique : Attaque contre
+          Défense ; spéciale : Atq. Spé. contre Déf. Spé.
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
           <Field label="Multiplicateur de dégâts" error={err('damageMultiplier')}>
@@ -1244,10 +1173,62 @@ function DungeonSettingsSections({
               disabled={disabled}
             />
           </Field>
+          <Field
+            label="Chance de coup critique"
+            hint="À chaque attaque. 0 % = aucun coup critique."
+            error={err('critChance')}
+          >
+            <NumberInput
+              value={s.critChance}
+              scale={100}
+              min={0}
+              max={100}
+              step={0.25}
+              unit="%"
+              onChange={set('critChance')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Dégâts d’un coup critique"
+            hint="Ignore aussi les baisses d’Attaque (Intimidation)."
+            error={err('critMultiplier')}
+          >
+            <NumberInput
+              value={s.critMultiplier}
+              min={1}
+              max={5}
+              step={0.1}
+              unit="×"
+              onChange={set('critMultiplier')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Délai de retour après un rappel"
+            hint="Un Pokémon rappelé ne peut pas revenir au combat avant ce délai, sauf s’il est le dernier encore debout."
+            error={err('recallCooldownSeconds')}
+          >
+            <NumberInput
+              value={s.recallCooldownSeconds}
+              min={0}
+              max={60}
+              step={0.5}
+              unit="s"
+              onChange={set('recallCooldownSeconds')}
+              disabled={disabled}
+            />
+          </Field>
         </div>
+        <Toggle
+          checked={s.enemyAbilities}
+          onChange={set('enemyAbilities')}
+          disabled={disabled}
+          label="Talents des adversaires (donjons et dresseurs) : chacun a le premier talent de son espèce (le boss d’un donjon, celui de sa forme Méga), avec l’effet réglé dans la section Talents"
+        />
       </Section>
 
-      <Section title="Donjons : attaque de chaque type">
+      <Section title="Combat : attaque de chaque type">
         <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
           {POKEMON_TYPES.map((t) => {
             const attack = s.attacks[t.name];
@@ -1283,7 +1264,7 @@ function DungeonSettingsSections({
             );
           })}
         </div>
-        {errorsUnder(errors, 'dungeons.attacks').map((msg) => (
+        {errorsUnder(errors, 'combat.attacks').map((msg) => (
           <p key={msg} className="text-xs text-red-600">
             {msg}
           </p>

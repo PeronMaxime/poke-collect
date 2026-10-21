@@ -1,16 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
-import { createDb, ensureSeedContent, trainerBattles, trainerProgress, users } from '@poke/db';
-import { createRng } from '@poke/game-core';
+import { getSpecies } from '@poke/data';
+import { createDb, ensureSeedContent, trainerProgress, users } from '@poke/db';
+import { simulateDungeon } from '@poke/game-core';
 import type { PokemonInstance } from '@poke/game-core';
-import type {
-  BattleDto,
-  BattlesResponse,
-  ClaimBattleResponse,
-  MeResponse,
-  PokemonDto,
-} from '@poke/shared';
+import type { BattleDto, BattlesResponse, ClaimBattleResponse, PokemonDto } from '@poke/shared';
 import { buildApp } from './app';
 import { loadEnv } from './env';
 import { insertPokemon } from './game/store';
@@ -100,21 +95,47 @@ async function give(userId: string, speciesId: number, extra: Partial<PokemonIns
   return row!;
 }
 
-/**
- * Fixe le seed d'un combat pour forcer son issue : le premier tirage décide de la victoire,
- * et la probabilité reste toujours entre 5 % et 95 %.
- */
-async function forceOutcome(battleId: string, outcome: 'win' | 'loss') {
-  let seed = 0;
-  for (; ; seed++) {
-    const roll = createRng(seed).next();
-    if (outcome === 'win' ? roll < 0.04 : roll > 0.96) break;
-  }
-  await handle.db.update(trainerBattles).set({ seed }).where(eq(trainerBattles.id, battleId));
+/** Attaque par défaut (premier type, physique) pour chaque Pokémon. */
+const moves = (team: readonly { speciesId: number }[]) =>
+  team.map((p) => ({ type: getSpecies(p.speciesId)!.types[0]!, category: 'physical' }));
+
+async function start(
+  call: Player['call'],
+  trainerId: string,
+  team: readonly { id: string; speciesId: number }[],
+) {
+  return call<BattleDto>('POST', '/api/battles', {
+    trainerId,
+    team: team.map((p) => p.id),
+    moves: moves(team),
+  });
 }
 
+/** Avance l'horloge jusqu'à la fin du combat (simulé comme le serveur et le navigateur). */
+function finish(battle: BattleDto) {
+  const { state } = simulateDungeon(
+    battle.setup,
+    battle.commands,
+    battle.fledAtMs,
+    battle.setup.timeLimitMs,
+  );
+  clock = new Date(Date.parse(battle.startedAt) + (state.endedAtMs ?? battle.setup.timeLimitMs));
+  return state;
+}
+
+/** Le joueur a battu ces dresseurs (déblocages). */
+async function defeated(userId: string, trainerIds: string[]) {
+  await handle.db
+    .insert(trainerProgress)
+    .values(
+      trainerIds.map((trainerId) => ({ ownerId: userId, trainerId, wins: 1, lastWinAt: clock })),
+    );
+}
+
+type Player = Awaited<ReturnType<typeof newPlayer>>;
+
 describe('combats de dresseurs', () => {
-  let call: Awaited<ReturnType<typeof newPlayer>>['call'];
+  let call: Player['call'];
   let userId: string;
   let starter: PokemonDto;
 
@@ -122,195 +143,203 @@ describe('combats de dresseurs', () => {
     ({ call, userId, starter } = await newPlayer('blue@example.com', 'Blue'));
   });
 
-  it('liste les emplacements et le bilan', async () => {
+  it('liste le combat en cours et le bilan', async () => {
     const res = await call<BattlesResponse>('GET', '/api/battles');
-    expect(res.body).toMatchObject({ slots: 1, active: [], records: [] });
+    expect(res.body).toMatchObject({ active: null, last: null, records: [] });
   });
 
   it('refuse un dresseur verrouillé ou inconnu', async () => {
-    const locked = await call('POST', '/api/battles', { trainerId: 'pierre', team: [starter.id] });
+    const locked = await start(call, 'pierre', [starter]);
     expect(locked).toMatchObject({ status: 403, body: { error: 'TRAINER_LOCKED' } });
-    const unknown = await call('POST', '/api/battles', {
-      trainerId: 'inconnu',
-      team: [starter.id],
-    });
+    const unknown = await start(call, 'inconnu', [starter]);
     expect(unknown).toMatchObject({ status: 404, body: { error: 'TRAINER_NOT_FOUND' } });
   });
 
-  it('abandonne un combat en cours sans résultat ni bilan', async () => {
-    const start = await call<BattleDto>('POST', '/api/battles', {
-      trainerId: 'gamin-tom',
-      team: [starter.id],
-    });
-    expect(start.status).toBe(201);
-    const cancel = await call('POST', `/api/battles/${start.body.id}/cancel`);
-    expect(cancel.status).toBe(204);
-    const res = await call<BattlesResponse>('GET', '/api/battles');
-    expect(res.body).toMatchObject({ active: [], records: [] });
+  it('gagne : argent, XP, bonheur, temps de recharge et déblocages', async () => {
+    const strong = await give(userId, 9);
+    const res = await start(call, 'gamin-tom', [strong]);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    const battle = res.body;
+    expect(battle.setup.timeLimitMs).toBe(90_000);
+    expect(battle.setup.enemies.map((e) => e.speciesId)).toEqual([19]);
+    expect(battle.setup.team[0]).toMatchObject({ attackType: 'water', category: 'physical' });
+
+    // L'équipe est occupée ; un seul combat de dresseur à la fois.
     const pokemon = await call<PokemonDto[]>('GET', '/api/pokemon');
-    expect(pokemon.body[0]).toMatchObject({ busy: false });
-  });
-
-  it('gagne : argent, butin, XP, bonheur, temps de recharge et déblocages', async () => {
-    const start = await call<BattleDto>('POST', '/api/battles', {
-      trainerId: 'gamin-tom',
-      team: [starter.id],
+    expect(pokemon.body.find((p) => p.id === strong.id)).toMatchObject({
+      busy: true,
+      activity: 'battle',
     });
-    expect(start.status).toBe(201);
-    expect(Date.parse(start.body.endsAt) - Date.parse(start.body.startedAt)).toBe(10 * 60_000);
-
-    // Le starter est occupé : ni expédition, ni second combat.
-    const pokemon = await call<PokemonDto[]>('GET', '/api/pokemon');
-    expect(pokemon.body[0]).toMatchObject({ busy: true, activity: 'battle', koUntil: null });
-    const expedition = await call('POST', '/api/expeditions', {
-      zoneId: 'route-1',
-      durationMinutes: 15,
-      team: [starter.id],
-      ballItemId: null,
-      berryItemId: null,
-    });
-    expect(expedition.body).toMatchObject({ error: 'POKEMON_BUSY' });
-    const twice = await call('POST', '/api/battles', {
-      trainerId: 'gamin-tom',
-      team: [starter.id],
-    });
-    expect(twice.body).toMatchObject({ error: 'TRAINER_BUSY' });
-
-    const early = await call('POST', `/api/battles/${start.body.id}/claim`);
+    const other = await start(call, 'gamin-tom', [starter]);
+    expect(other.body).toMatchObject({ error: 'BATTLE_BUSY' });
+    const early = await call('POST', `/api/battles/${battle.id}/claim`);
     expect(early.body).toMatchObject({ error: 'NOT_FINISHED' });
 
-    await forceOutcome(start.body.id, 'win');
-    advance(10);
-    const claim = await call<ClaimBattleResponse>('POST', `/api/battles/${start.body.id}/claim`);
+    expect(finish(battle).outcome).toBe('win');
+    const claim = await call<ClaimBattleResponse>('POST', `/api/battles/${battle.id}/claim`);
     expect(claim.status, JSON.stringify(claim.body)).toBe(200);
-    const { battle, currency } = claim.body;
-    expect(battle.outcome).toBe('win');
-    expect(battle.result).toMatchObject({ money: 80, koMinutes: 0, koUntil: null });
-    expect(battle.result!.xpPerMember).toBeGreaterThan(0);
-    expect(currency).toBe(80);
-
-    const again = await call('POST', `/api/battles/${start.body.id}/claim`);
+    expect(claim.body.battle.outcome).toBe('win');
+    expect(claim.body.battle.result).toMatchObject({
+      money: 80,
+      knockedOut: [],
+      koUntil: null,
+      badgeEarned: false,
+      defeated: 1,
+    });
+    expect(claim.body.battle.result!.xpPerMember).toBeGreaterThan(0);
+    expect(claim.body.currency).toBe(80);
+    const again = await call('POST', `/api/battles/${battle.id}/claim`);
     expect(again.body).toMatchObject({ error: 'ALREADY_CLAIMED' });
 
-    const me = await call<MeResponse>('GET', '/api/me');
-    expect(me.body.profile!.currency).toBe(80);
-    const after = (await call<PokemonDto[]>('GET', '/api/pokemon')).body[0]!;
-    expect(after).toMatchObject({ busy: false, koUntil: null });
-    expect(after.xp).toBeGreaterThan(starter.xp);
-    expect(after.happiness).toBe(starter.happiness + 3);
+    const after = (await call<PokemonDto[]>('GET', '/api/pokemon')).body.find(
+      (p) => p.id === strong.id,
+    )!;
+    expect(after).toMatchObject({ busy: false, koUntil: null, happiness: 73 });
 
-    // Dresseur répétable : 4 h de recharge.
-    const cooldown = await call('POST', '/api/battles', {
-      trainerId: 'gamin-tom',
-      team: [starter.id],
-    });
+    // Dresseur répétable : 4 h de recharge après le combat.
+    const cooldown = await start(call, 'gamin-tom', [strong]);
     expect(cooldown.body).toMatchObject({ error: 'TRAINER_COOLDOWN' });
-
     const list = await call<BattlesResponse>('GET', '/api/battles');
+    expect(list.body.active).toBeNull();
+    expect(list.body.last?.id).toBe(battle.id);
     expect(list.body.records).toEqual([
-      expect.objectContaining({ trainerId: 'gamin-tom', wins: 1, losses: 0 }),
+      expect.objectContaining({
+        trainerId: 'gamin-tom',
+        wins: 1,
+        losses: 0,
+        lastEndedAt: clock.toISOString(),
+      }),
     ]);
-    const history = await call<BattleDto[]>('GET', '/api/battles/history');
-    expect(history.body.map((b) => b.id)).toEqual([start.body.id]);
   });
 
-  it('perd : aucune récompense et équipe K.O. pendant 1 h', async () => {
+  it('perd : XP des vaincus seulement, Pokémon K.O., recharge même après une défaite', async () => {
     // Lise est débloquée par la victoire contre Tom.
-    const start = await call<BattleDto>('POST', '/api/battles', {
-      trainerId: 'fillette-lise',
-      team: [starter.id],
-    });
-    expect(start.status, JSON.stringify(start.body)).toBe(201);
-    await forceOutcome(start.body.id, 'loss');
-    advance(15);
-    const claim = await call<ClaimBattleResponse>('POST', `/api/battles/${start.body.id}/claim`);
+    const weak = await give(userId, 10, { level: 1, xp: 0 });
+    const res = await start(call, 'fillette-lise', [weak]);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(finish(res.body).outcome).toBe('loss');
+    const claim = await call<ClaimBattleResponse>('POST', `/api/battles/${res.body.id}/claim`);
     expect(claim.body.battle.outcome).toBe('loss');
-    expect(claim.body.battle.result).toMatchObject({ money: 0, loot: [], koMinutes: 60 });
+    expect(claim.body.battle.result).toMatchObject({ money: 0, loot: [], knockedOut: [weak.id] });
     expect(claim.body.currency).toBe(80);
 
-    const ko = (await call<PokemonDto[]>('GET', '/api/pokemon')).body[0]!;
+    const ko = (await call<PokemonDto[]>('GET', '/api/pokemon')).body.find(
+      (p) => p.id === weak.id,
+    )!;
     expect(ko.koUntil).toBe(new Date(clock.getTime() + 60 * 60_000).toISOString());
-    expect(ko.busy).toBe(false);
-
-    // K.O. : inutilisable en expédition, en combat et en pension.
-    const expedition = await call('POST', '/api/expeditions', {
-      zoneId: 'route-1',
-      durationMinutes: 15,
-      team: [starter.id],
-      ballItemId: null,
-      berryItemId: null,
-    });
-    expect(expedition).toMatchObject({ status: 409, body: { error: 'POKEMON_KO' } });
-    const partner = await give(userId, 9, { gender: 'female' });
-    const daycare = await call('POST', '/api/daycare', {
-      parentAId: starter.id,
-      parentBId: partner.id,
-      heldItemAId: null,
-      heldItemBId: null,
-    });
-    expect(daycare.body).toMatchObject({ error: 'POKEMON_KO' });
-
-    advance(60);
-    const healed = await call('POST', '/api/expeditions', {
-      zoneId: 'route-1',
-      durationMinutes: 15,
-      team: [starter.id],
-      ballItemId: null,
-      berryItemId: null,
-    });
-    expect(healed.status).toBe(201);
+    const retry = await start(call, 'fillette-lise', [starter]);
+    expect(retry.body).toMatchObject({ error: 'TRAINER_COOLDOWN' });
     const records = (await call<BattlesResponse>('GET', '/api/battles')).body.records;
     expect(records).toContainEqual(
       expect.objectContaining({ trainerId: 'fillette-lise', wins: 0, losses: 1 }),
     );
   });
 
+  it('fuit sans récompense ni défaite', async () => {
+    advance(5 * 60);
+    const res = await start(call, 'gamin-tom', [starter]);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    advance(1 / 60);
+    const fled = await call<ClaimBattleResponse>('POST', `/api/battles/${res.body.id}/flee`);
+    expect(fled.status, JSON.stringify(fled.body)).toBe(200);
+    expect(fled.body.battle).toMatchObject({ outcome: 'fled', fledAtMs: 1000 });
+    expect(fled.body.battle.result).toMatchObject({ money: 0, xpPerMember: 0 });
+    const records = (await call<BattlesResponse>('GET', '/api/battles')).body.records;
+    expect(records).toContainEqual(
+      expect.objectContaining({ trainerId: 'gamin-tom', wins: 1, losses: 0 }),
+    );
+  });
+
+  it('change de Pokémon pendant le combat', async () => {
+    advance(5 * 60);
+    const second = await give(userId, 8);
+    const res = await start(call, 'gamin-tom', [starter, second]);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    advance(1 / 60);
+    const sw = await call<BattleDto>('POST', `/api/battles/${res.body.id}/switch`, {
+      member: 1,
+      atMs: 1000,
+    });
+    expect(sw.status, JSON.stringify(sw.body)).toBe(200);
+    expect(sw.body.commands).toEqual([{ atMs: 1000, member: 1 }]);
+    const active = await call('POST', `/api/battles/${res.body.id}/switch`, {
+      member: 1,
+      atMs: 1000,
+    });
+    expect(active.body).toMatchObject({ error: 'MEMBER_ACTIVE' });
+    finish(sw.body);
+    const claim = await call<ClaimBattleResponse>('POST', `/api/battles/${res.body.id}/claim`);
+    expect(claim.status).toBe(200);
+  });
+
   it('vérifie les conditions d’équipe du dresseur', async () => {
     // Léo exige des Pokémon de niveau 15 au plus et un badge pour être débloqué.
-    await handle.db.insert(trainerProgress).values({
-      ownerId: userId,
-      trainerId: 'pierre',
-      wins: 1,
-      firstWinAt: clock,
-      lastWinAt: clock,
-    });
+    await defeated(userId, ['pierre']);
     const strong = await give(userId, 8);
-    const res = await call('POST', '/api/battles', { trainerId: 'campeur-leo', team: [strong.id] });
+    const res = await start(call, 'campeur-leo', [strong]);
     expect(res).toMatchObject({
       status: 400,
       body: { error: 'TEAM_INVALID', errors: [{ code: 'LEVEL_TOO_HIGH', maxLevel: 15 }] },
     });
+    const badMove = await call('POST', '/api/battles', {
+      trainerId: 'campeur-leo',
+      team: [starter.id],
+      moves: [{ type: 'grass', category: 'special' }],
+    });
+    expect(badMove).toMatchObject({
+      status: 400,
+      body: { error: 'TEAM_INVALID', errors: [{ code: 'INVALID_MOVE' }] },
+    });
     await handle.db.delete(trainerProgress).where(eq(trainerProgress.trainerId, 'pierre'));
   });
 
-  it('donne un badge pour une première victoire contre un dresseur unique', async () => {
-    await handle.db
-      .insert(trainerProgress)
-      .values({ ownerId: userId, trainerId: 'scout-rick', wins: 1, lastWinAt: clock });
-    const team = [await give(userId, 8), await give(userId, 2, { gender: 'female' })];
-    const ids = team.map((p) => p.id);
-    const start = await call<BattleDto>('POST', '/api/battles', { trainerId: 'pierre', team: ids });
-    expect(start.status, JSON.stringify(start.body)).toBe(201);
-    expect(Date.parse(start.body.endsAt) - Date.parse(start.body.startedAt)).toBe(60 * 60_000);
-    await forceOutcome(start.body.id, 'win');
-    advance(60);
-    const claim = await call<ClaimBattleResponse>('POST', `/api/battles/${start.body.id}/claim`);
-    expect(claim.body.battle.result).toMatchObject({ badgeEarned: true, money: 1400 });
-    expect(claim.body.currency).toBe(80 + 1400);
+  it('réclame tout seul un combat terminé pendant l’absence du joueur', async () => {
+    advance(5 * 60);
+    const res = await start(call, 'gamin-tom', [starter]);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    advance(10);
+    const pokemon = await call<PokemonDto[]>('GET', '/api/pokemon');
+    expect(pokemon.body.find((p) => p.id === starter.id)).toMatchObject({ busy: false });
+    const list = await call<BattlesResponse>('GET', '/api/battles');
+    expect(list.body.active).toBeNull();
+    expect(list.body.last).toMatchObject({ id: res.body.id, resultSeenAt: null });
+    const seen = await call('POST', `/api/battles/${res.body.id}/seen`);
+    expect(seen.status).toBe(204);
+    const after = await call<BattlesResponse>('GET', '/api/battles');
+    expect(after.body.last?.resultSeenAt).not.toBeNull();
+  });
+});
 
-    const rematch = await call('POST', '/api/battles', { trainerId: 'pierre', team: ids });
-    expect(rematch.body).toMatchObject({ error: 'TRAINER_DEFEATED' });
-    // Le badge ouvre le Mont Sélénite ; Ondine attend la Pique-niqueuse Ali (et sa condition de
-    // PE minimale est remplie par cette équipe).
-    const leo = await call('POST', '/api/battles', { trainerId: 'campeur-leo', team: ids });
-    expect(leo.body).toMatchObject({ error: 'TEAM_INVALID' }); // débloqué, mais niveau 15 max
-    expect((await call('POST', '/api/battles', { trainerId: 'ondine', team: ids })).body).toEqual({
-      error: 'TRAINER_LOCKED',
-    });
-    await handle.db
-      .insert(trainerProgress)
-      .values({ ownerId: userId, trainerId: 'pique-niqueuse-ali', wins: 1, lastWinAt: clock });
-    const misty = await call<BattleDto>('POST', '/api/battles', { trainerId: 'ondine', team: ids });
-    expect(misty.status, JSON.stringify(misty.body)).toBe(201);
+describe('dresseurs uniques', () => {
+  it('se retentent aussitôt après une défaite, donnent un badge à la première victoire', async () => {
+    const { call, userId } = await newPlayer('green@example.com', 'Green');
+    await defeated(userId, ['scout-rick']);
+    const weak = [
+      await give(userId, 10, { level: 1, xp: 0 }),
+      await give(userId, 13, { level: 1, xp: 0 }),
+    ];
+    // PE minimale de Pierre : 150.
+    const tooWeak = await start(call, 'pierre', weak);
+    expect(tooWeak.body).toMatchObject({ error: 'TEAM_INVALID' });
+
+    const team = [
+      await give(userId, 8, { level: 40 }),
+      await give(userId, 2, { level: 40, gender: 'female' }),
+    ];
+    const res = await start(call, 'pierre', team);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    expect(res.body.setup.timeLimitMs).toBe(120_000);
+    // Fuite : un dresseur unique se retente aussitôt.
+    advance(1 / 60);
+    expect((await call('POST', `/api/battles/${res.body.id}/flee`)).status).toBe(200);
+    const rematch = await start(call, 'pierre', team);
+    expect(rematch.status, JSON.stringify(rematch.body)).toBe(201);
+    expect(finish(rematch.body).outcome).toBe('win');
+    const claim = await call<ClaimBattleResponse>('POST', `/api/battles/${rematch.body.id}/claim`);
+    expect(claim.body.battle.result).toMatchObject({ badgeEarned: true, money: 1400 });
+
+    advance(24 * 60);
+    const again = await start(call, 'pierre', team);
+    expect(again.body).toMatchObject({ error: 'TRAINER_DEFEATED' });
   });
 });
