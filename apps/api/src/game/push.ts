@@ -1,13 +1,6 @@
 import { and, eq, gt, inArray, isNull, lte } from 'drizzle-orm';
 import webpush from 'web-push';
-import {
-  eggs,
-  expeditions,
-  fossilRevivals,
-  playerProfiles,
-  pushSubscriptions,
-  trainerBattles,
-} from '@poke/db';
+import { eggs, expeditions, fossilRevivals, playerProfiles, pushSubscriptions } from '@poke/db';
 import type { Db } from '@poke/db';
 import type { GameContext } from '@poke/game-core';
 import { DEFAULT_NOTIFICATION_SETTINGS, notificationSettingsSchema } from '@poke/shared';
@@ -65,7 +58,6 @@ export interface ActivitySummary {
   zoneIds: string[];
   /** Expéditions légendaires terminées (quêtes). */
   questIds: string[];
-  trainerIds: string[];
   eggs: number;
   fossils: number;
 }
@@ -77,7 +69,7 @@ export function pushMessage(
   settings: NotificationSettings,
 ): PushPayload | null {
   const parts: { text: string; tab: string }[] = [];
-  const { zoneIds, questIds, trainerIds, eggs: eggCount, fossils } = summary;
+  const { zoneIds, questIds, eggs: eggCount, fossils } = summary;
   const expeditionCount = zoneIds.length + questIds.length;
   if (settings.expeditions && expeditionCount > 0) {
     parts.push({
@@ -88,15 +80,6 @@ export function pushMessage(
           : zoneIds[0]
             ? `Expédition terminée : ${ctx.zone(zoneIds[0])?.name ?? zoneIds[0]}`
             : `Expédition légendaire terminée : ${ctx.quest(questIds[0]!)?.name ?? questIds[0]}`,
-    });
-  }
-  if (settings.battles && trainerIds.length > 0) {
-    const trainer = trainerIds.length === 1 ? ctx.trainer(trainerIds[0]!) : undefined;
-    parts.push({
-      tab: 'battles',
-      text: trainer
-        ? `Combat terminé contre ${trainer.trainerClass} ${trainer.name}`
-        : `${trainerIds.length} combats terminés`,
     });
   }
   if (settings.eggs && eggCount > 0) {
@@ -181,19 +164,6 @@ export async function runPushRound(
       zoneId: expeditions.zoneId,
       questId: expeditions.questId,
     });
-  const doneBattles = await db
-    .update(trainerBattles)
-    .set({ notifiedAt: now })
-    .where(
-      and(
-        isNull(trainerBattles.claimedAt),
-        isNull(trainerBattles.notifiedAt),
-        lte(trainerBattles.endsAt, now),
-        gt(trainerBattles.endsAt, since),
-        inArray(trainerBattles.ownerId, subscribed),
-      ),
-    )
-    .returning({ ownerId: trainerBattles.ownerId, trainerId: trainerBattles.trainerId });
   const readyEggs = await db
     .update(eggs)
     .set({ notifiedAt: now })
@@ -224,18 +194,13 @@ export async function runPushRound(
   const summaries = new Map<string, ActivitySummary>();
   const summary = (ownerId: string) => {
     let s = summaries.get(ownerId);
-    if (!s)
-      summaries.set(
-        ownerId,
-        (s = { zoneIds: [], questIds: [], trainerIds: [], eggs: 0, fossils: 0 }),
-      );
+    if (!s) summaries.set(ownerId, (s = { zoneIds: [], questIds: [], eggs: 0, fossils: 0 }));
     return s;
   };
   for (const e of doneExpeditions) {
     if (e.zoneId) summary(e.ownerId).zoneIds.push(e.zoneId);
     else if (e.questId) summary(e.ownerId).questIds.push(e.questId);
   }
-  for (const b of doneBattles) summary(b.ownerId).trainerIds.push(b.trainerId);
   for (const e of readyEggs) summary(e.ownerId).eggs++;
   for (const f of readyFossils) summary(f.ownerId).fossils++;
   if (summaries.size === 0) return 0;

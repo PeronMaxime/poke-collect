@@ -8,6 +8,7 @@ import {
   ABILITY_PARAMS,
   STATUS_LABELS,
   WEATHER_LABELS,
+  effectActivities,
 } from '@poke/game-core';
 import type { AbilityActivity, GameContext } from '@poke/game-core';
 
@@ -15,34 +16,6 @@ export interface SummaryRow {
   ability: Ability;
   entry: GameAbility | undefined;
 }
-
-/** Activités touchées par chaque type d'effet (hors modificateur : voir son paramètre). */
-const EFFECT_ACTIVITIES: Record<Exclude<AbilityEffectType, 'modifier'>, AbilityActivity[]> = {
-  attractType: ['expedition'],
-  syncNature: ['expedition'],
-  attractGender: ['expedition'],
-  copyZoneAffinity: ['expedition', 'quest'],
-  setWeather: ['expedition', 'dungeon'],
-  immunity: ['dungeon'],
-  sturdy: ['dungeon'],
-  regenerator: ['dungeon'],
-  speedBoost: ['dungeon'],
-  moxie: ['dungeon'],
-  intimidate: ['dungeon'],
-  contactDamage: ['dungeon'],
-  aftermath: ['dungeon'],
-  inflictStatus: ['dungeon'],
-  statusImmunity: ['dungeon'],
-  naturalCure: ['dungeon'],
-  critImmunity: ['dungeon'],
-  weatherImmunity: ['dungeon'],
-  suppressAbility: ['dungeon'],
-};
-
-const effectActivities = (effect: AbilityEffect): readonly AbilityActivity[] =>
-  effect.type === 'modifier'
-    ? ABILITY_PARAMS[effect.param].activities
-    : EFFECT_ACTIVITIES[effect.type];
 
 const ACTIVITIES = Object.keys(ABILITY_ACTIVITY_LABELS) as AbilityActivity[];
 

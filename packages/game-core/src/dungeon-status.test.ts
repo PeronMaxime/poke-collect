@@ -7,7 +7,7 @@ import { expeditionEnv } from './expedition';
 import { member, testContext } from './test-helpers';
 
 const ctx = testContext();
-const settings = ctx.balance.dungeons;
+const settings = ctx.balance.combat;
 
 const NO_TRAITS: DungeonTraits = {
   damage: [],

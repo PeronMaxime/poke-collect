@@ -53,7 +53,7 @@ function opponentSummary(ctx: GameContext, member: TrainerPokemon, hpMultiplier 
     bossHpMultiplier: hpMultiplier,
   });
   if (!fighter) return '—';
-  const interval = attackIntervalMs(ctx.balance.dungeons, fighter.stats.speed);
+  const interval = attackIntervalMs(ctx.balance.combat, fighter.stats.speed);
   return `N.${fighter.level} · ${fighter.maxHp} PV · ${(interval / 1000).toFixed(1)} s`;
 }
 

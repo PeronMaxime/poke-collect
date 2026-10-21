@@ -5,12 +5,14 @@ import {
   MAX_MEGAS_PER_TEAM,
   computeStats,
   copiesZoneAffinity,
+  effectiveAbility,
   isMegaForm,
   isRegionalSpecies,
   megaCount,
   memberPower,
+  possibleAbilityEffects,
 } from '@poke/game-core';
-import type { ExpeditionSite, GameContext } from '@poke/game-core';
+import type { AbilityEnv, ExpeditionSite, GameContext } from '@poke/game-core';
 import type { PokemonDto, PokemonTagDto, PokemonTeamDto } from '@poke/shared';
 import { PokemonTagBadges, TagFilterSelect, useTagFilterOver } from '../../components/tags';
 import {
@@ -22,7 +24,7 @@ import {
   useNow,
 } from '../../components/ui';
 import { isUsable, usePokemon, useTags, useTeams } from '../../lib/game';
-import { STAT_LABELS, typeLabel } from '../../lib/labels';
+import { STAT_LABELS, abilityLabel, typeLabel } from '../../lib/labels';
 
 const SORTS = {
   power: 'PE',
@@ -260,8 +262,16 @@ export function useTeamPickerOver(
   const [stat, setStat] = useState<StatName>('attack');
   const [search, setSearch] = useState('');
   const [type, setType] = useState('all');
+  const [abilityOnly, setAbilityOnly] = useState(false);
   const tagFilter = useTagFilterOver(tags);
-  const pinned = usePinnedSelection(team, [sort, stat, search, type, tagFilter.filter]);
+  const pinned = usePinnedSelection(team, [
+    sort,
+    stat,
+    search,
+    type,
+    abilityOnly,
+    tagFilter.filter,
+  ]);
   const now = useNow(10_000);
   const matchesName = nameMatcher(search);
   const usablePokemon = pokemon.filter(
@@ -312,6 +322,8 @@ export function useTeamPickerOver(
     setSearch,
     type,
     setType,
+    abilityOnly,
+    setAbilityOnly,
     tagFilter,
     available,
     members,
@@ -328,6 +340,7 @@ export function TeamPicker({
   power,
   maxTeamSize = ctx.balance.expeditions.maxTeamSize,
   statSort = false,
+  abilityEnv,
 }: {
   ctx: GameContext;
   zone: ExpeditionSite;
@@ -338,6 +351,8 @@ export function TeamPicker({
   maxTeamSize?: number;
   /** Propose le tri par statistique et les statistiques au survol (donjons, où elles font le combat). */
   statSort?: boolean;
+  /** Activité de l'équipe choisie : propose le filtre des Pokémon dont le talent y agirait. */
+  abilityEnv?: AbilityEnv;
 }) {
   const {
     team,
@@ -350,8 +365,10 @@ export function TeamPicker({
     setSearch,
     type,
     setType,
+    abilityOnly,
+    setAbilityOnly,
     tagFilter,
-    available,
+    available: candidates,
     members,
     usable,
     savedTeams,
@@ -359,6 +376,15 @@ export function TeamPicker({
   } = picker;
   const region = zone.regionId ? ctx.region(zone.regionId) : undefined;
   const from = region ? ` de ${region.name}` : '';
+  // Talent qui agirait dans l'activité ; les membres choisis restent visibles avec le filtre.
+  const withAbility = candidates.map((c) => ({
+    ...c,
+    activeAbility: !!abilityEnv && possibleAbilityEffects(ctx, abilityEnv, c.p).length > 0,
+  }));
+  const available =
+    abilityEnv && abilityOnly
+      ? withAbility.filter((c) => c.activeAbility || team.includes(c.p.id))
+      : withAbility;
 
   function toggle(p: PokemonDto) {
     if (megaLocked(p, members)) return;
@@ -422,6 +448,16 @@ export function TeamPicker({
           />
           <TypeFilterSelect value={type} onChange={setType} />
           <NameSearch value={search} onChange={setSearch} />
+          {abilityEnv && (
+            <button
+              type="button"
+              onClick={() => setAbilityOnly(!abilityOnly)}
+              title="N'afficher que les Pokémon dont le talent agit ici (lieu, heure, météo, équipiers)"
+              className={`ml-1 ${pillClass(abilityOnly)}`}
+            >
+              Talent actif
+            </button>
+          )}
         </div>
         {zone.requiredTypes.length > 0 && (
           <div className="flex w-full flex-wrap items-center gap-1 text-xs">
@@ -455,7 +491,7 @@ export function TeamPicker({
         </span>
       </div>
       <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto p-1 sm:grid-cols-5">
-        {available.map(({ p, species, power, stats, affinity }) => {
+        {available.map(({ p, species, power, stats, affinity, activeAbility }) => {
           const selected = team.includes(p.id);
           const locked = megaLocked(p, members);
           const card = (
@@ -490,6 +526,11 @@ export function TeamPicker({
                   {STAT_LABELS[stat]} {stats[stat]}
                 </span>
               )}
+              {activeAbility && (
+                <span className="max-w-full truncate text-[10px] text-emerald-700 dark:text-emerald-400">
+                  ✦ {abilityLabel(effectiveAbility(ctx, p))}
+                </span>
+              )}
               <PokemonTagBadges pokemon={p} tags={tagFilter.tags} />
             </button>
           );
@@ -509,7 +550,7 @@ export function TeamPicker({
         })}
         {available.length === 0 && (
           <p className="col-span-full text-sm text-slate-500">
-            {tagFilter.filter === 'all' && type === 'all' && !search.trim()
+            {tagFilter.filter === 'all' && type === 'all' && !search.trim() && !abilityOnly
               ? `Aucun Pokémon${from} disponible : ils sont occupés, K.O., ou pas encore capturés.`
               : `Aucun Pokémon${from} disponible avec ces filtres.`}
           </p>

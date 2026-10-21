@@ -121,7 +121,7 @@ describe('notifications push', () => {
     const config = await player.call<PushConfigResponse>('GET', '/api/push');
     expect(config.body).toEqual({
       publicKey: env.vapid!.publicKey,
-      settings: { expeditions: true, battles: true, eggs: true, fossils: true },
+      settings: { expeditions: true, eggs: true, fossils: true },
       subscriptions: 0,
     });
   });
@@ -149,7 +149,7 @@ describe('notifications push', () => {
   });
 
   it('respecte les réglages du joueur', async () => {
-    const settings = { expeditions: false, battles: true, eggs: true, fossils: true };
+    const settings = { expeditions: false, eggs: true, fossils: true };
     expect((await player.call('PUT', '/api/push/settings', settings)).body).toEqual(settings);
     const exp = await expedition();
     advance(20);

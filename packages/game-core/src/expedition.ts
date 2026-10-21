@@ -267,6 +267,8 @@ export interface ExpeditionSite {
   requiredTypes: readonly { type: string; count: number }[];
   affinityTypes: readonly string[];
   durationsMinutes: readonly number[];
+  /** Météo du lieu au départ (voir `zoneWeather`) ; absente = temps clair. */
+  weather?: Weather | null;
 }
 
 /** Environnement des talents pour une expédition (zone ou repaire de légendaire). */
@@ -412,6 +414,8 @@ export interface ExpeditionInput {
   caught?: CaughtDex;
   /** Heure locale du joueur au départ (talents de jour ou de nuit). */
   hour?: number | null;
+  /** Météo de la zone au départ (voir `zoneWeather`) ; absente = temps clair. */
+  weather?: Weather | null;
 }
 
 /** `ignored` : écarté par le filtre de capture. */
@@ -532,7 +536,7 @@ export function applyTeamXp(
  */
 export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): ExpeditionResult {
   const rng = createRng(input.seed);
-  const { zone } = input;
+  const zone = { ...input.zone, weather: input.weather ?? null };
   const pity = new Map(Object.entries(input.pity).map(([k, v]) => [Number(k), v]));
   const touched = new Set<number>();
   const affinityCount = input.affinityCount ?? countAffinity(ctx, zone, input.team, input.hour);

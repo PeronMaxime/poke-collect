@@ -81,6 +81,8 @@ export interface AbilityParamInfo {
 }
 
 const ALL: readonly AbilityActivity[] = ['expedition', 'quest', 'battle', 'dungeon'];
+/** Combats en temps réel : donjons et dresseurs. */
+const COMBAT: readonly AbilityActivity[] = ['battle', 'dungeon'];
 
 export const ABILITY_PARAMS: Record<AbilityParam, AbilityParamInfo> = {
   xp: {
@@ -107,7 +109,7 @@ export const ABILITY_PARAMS: Record<AbilityParam, AbilityParamInfo> = {
     kind: 'percent',
     unit: '%',
     selfScope: false,
-    activities: ['battle', 'dungeon'],
+    activities: COMBAT,
     help: 'Poké Dollars gagnés en combat de dresseur et en donjon.',
   },
   power: {
@@ -117,7 +119,7 @@ export const ABILITY_PARAMS: Record<AbilityParam, AbilityParamInfo> = {
     unit: '%',
     selfScope: true,
     activities: ['expedition', 'quest', 'battle'],
-    help: 'Puissance d’expédition, comptée en expédition, en combat de dresseur et pour les conditions des quêtes.',
+    help: 'Puissance d’expédition, comptée en expédition, pour la PE minimale des dresseurs et pour les conditions des quêtes.',
   },
   expeditionDuration: {
     group: 'Expéditions',
@@ -144,7 +146,7 @@ export const ABILITY_PARAMS: Record<AbilityParam, AbilityParamInfo> = {
     unit: '%',
     selfScope: false,
     activities: ['expedition', 'battle', 'dungeon'],
-    help: 'Tirages de butin des expéditions, combats et donjons (arrondis au plus proche).',
+    help: 'Tirages de butin des expéditions, combats de dresseurs et donjons (arrondis au plus proche).',
   },
   capture: {
     group: 'Expéditions',
@@ -173,112 +175,85 @@ export const ABILITY_PARAMS: Record<AbilityParam, AbilityParamInfo> = {
     activities: ['expedition', 'breeding', 'museum'],
     help: 'Probabilité qu’une rencontre, un œuf ou un fossile ranimé soit shiny.',
   },
-  opponentPower: {
-    group: 'Combats de dresseurs',
-    label: 'PE de l’adversaire',
-    kind: 'percent',
-    unit: '%',
-    selfScope: false,
-    activities: ['battle'],
-    help: 'PE de l’équipe du dresseur (Intimidation : négatif).',
-  },
-  typeAdvantage: {
-    group: 'Combats de dresseurs',
-    label: 'Poids de l’avantage de types',
-    kind: 'percent',
-    unit: '%',
-    selfScope: false,
-    activities: ['battle'],
-    help: 'Effet de l’avantage (ou du désavantage) de types sur la PE effective (Adaptabilité).',
-  },
-  battleDuration: {
-    group: 'Combats de dresseurs',
-    label: 'Durée du combat',
-    kind: 'percent',
-    unit: '%',
-    selfScope: false,
-    activities: ['battle'],
-    help: 'Temps avant le résultat du combat.',
-  },
   koDuration: {
-    group: 'Combats de dresseurs',
+    group: 'Combats',
     label: 'Durée de K.O.',
     kind: 'percent',
     unit: '%',
     selfScope: true,
-    activities: ['battle', 'dungeon'],
-    help: 'Durée d’indisponibilité après une défaite ou un K.O. (Médic Nature, Régé-Force : négatif).',
+    activities: COMBAT,
+    help: 'Durée d’indisponibilité d’un Pokémon mis K.O. en combat (Médic Nature, Régé-Force : négatif).',
   },
   hp: {
-    group: 'Donjons',
+    group: 'Combats',
     label: 'PV',
     kind: 'percent',
     unit: '%',
     selfScope: true,
-    activities: ['dungeon'],
-    help: 'PV maximum en donjon.',
+    activities: COMBAT,
+    help: 'PV maximum en combat.',
   },
   attack: {
-    group: 'Donjons',
+    group: 'Combats',
     label: 'Attaque',
     kind: 'percent',
     unit: '%',
     selfScope: true,
-    activities: ['dungeon'],
-    help: 'Attaque en donjon (Coloforce : +100).',
+    activities: COMBAT,
+    help: 'Attaque en combat (Coloforce : +100).',
   },
   defense: {
-    group: 'Donjons',
+    group: 'Combats',
     label: 'Défense',
     kind: 'percent',
     unit: '%',
     selfScope: true,
-    activities: ['dungeon'],
-    help: 'Défense en donjon (Toison Épaisse : +100).',
+    activities: COMBAT,
+    help: 'Défense en combat (Toison Épaisse : +100).',
   },
   specialAttack: {
-    group: 'Donjons',
+    group: 'Combats',
     label: 'Attaque Spéciale',
     kind: 'percent',
     unit: '%',
     selfScope: true,
-    activities: ['dungeon'],
-    help: 'Attaque Spéciale en donjon.',
+    activities: COMBAT,
+    help: 'Attaque Spéciale en combat.',
   },
   specialDefense: {
-    group: 'Donjons',
+    group: 'Combats',
     label: 'Défense Spéciale',
     kind: 'percent',
     unit: '%',
     selfScope: true,
-    activities: ['dungeon'],
-    help: 'Défense Spéciale en donjon.',
+    activities: COMBAT,
+    help: 'Défense Spéciale en combat.',
   },
   speed: {
-    group: 'Donjons',
+    group: 'Combats',
     label: 'Vitesse',
     kind: 'percent',
     unit: '%',
     selfScope: true,
-    activities: ['dungeon'],
-    help: 'Vitesse en donjon : attaques plus rapprochées (Chlorophylle, Glissade).',
+    activities: COMBAT,
+    help: 'Vitesse en combat : attaques plus rapprochées (Chlorophylle, Glissade).',
   },
   damageDealt: {
-    group: 'Donjons',
+    group: 'Combats',
     label: 'Dégâts infligés',
     kind: 'percent',
     unit: '%',
     selfScope: true,
-    activities: ['dungeon'],
+    activities: COMBAT,
     help: 'Dégâts des attaques du Pokémon ; avec les conditions « type d’attaque », « PV sous » (Brasier, Torrent, Technicien).',
   },
   damageTaken: {
-    group: 'Donjons',
+    group: 'Combats',
     label: 'Dégâts reçus',
     kind: 'percent',
     unit: '%',
     selfScope: true,
-    activities: ['dungeon'],
+    activities: COMBAT,
     help: 'Dégâts reçus par le Pokémon (Isograisse : −50 contre Feu et Glace ; Multiécaille : −50 PV au maximum).',
   },
   eggSpeed: {
@@ -345,21 +320,21 @@ export const ABILITY_PARAMS: Record<AbilityParam, AbilityParamInfo> = {
     help: 'Bonbons de lignée reçus en transférant ce Pokémon.',
   },
   critChance: {
-    group: 'Donjons',
+    group: 'Combats',
     label: 'Taux de critique',
     kind: 'percent',
     unit: '%',
     selfScope: true,
-    activities: ['dungeon'],
-    help: 'Chance de coup critique en donjon, relative au taux de l’équilibrage (Super Chance : +100, soit ×2).',
+    activities: COMBAT,
+    help: 'Chance de coup critique en combat, relative au taux de l’équilibrage (Super Chance : +100, soit ×2).',
   },
   stab: {
-    group: 'Donjons',
+    group: 'Combats',
     label: 'Bonus de même type (STAB)',
     kind: 'percent',
     unit: '%',
     selfScope: true,
-    activities: ['dungeon'],
+    activities: COMBAT,
     help: 'Bonus des attaques du même type que le Pokémon (Adaptabilité : +33).',
   },
 };
@@ -409,7 +384,7 @@ export const STATUS_LABELS: Record<Status, string> = {
   freeze: 'Gel',
 };
 
-/** Statistiques modifiables en donjon (Intimidation). */
+/** Statistiques modifiables en combat (Intimidation). */
 export const DUNGEON_STAT_LABELS: Record<DungeonStat, string> = {
   attack: 'Attaque',
   defense: 'Défense',
@@ -496,7 +471,7 @@ function conditionMet(
       return env.team.length === 1;
     case 'weather':
       return !!env.weather && condition.weathers.includes(env.weather);
-    // Conditions de l'instant (donjon) : seulement pour les dégâts, voir `deferredAbilityEffects`.
+    // Conditions de l'instant (combat) : seulement pour les dégâts, voir `deferredAbilityEffects`.
     case 'hpBelow':
     case 'fullHp':
     case 'attackType':
@@ -516,7 +491,7 @@ export interface ActiveAbilityEffect {
 
 /**
  * Effets des talents de l'équipe dont les conditions sont remplies, sauf celles des types
- * `deferred`, renvoyées pour être évaluées plus tard (en donjon, à chaque attaque).
+ * `deferred`, renvoyées pour être évaluées plus tard (en combat, à chaque attaque).
  */
 export function deferredAbilityEffects(
   ctx: GameContext,
@@ -549,6 +524,70 @@ export function activeAbilityEffects(ctx: GameContext, env: AbilityEnv): ActiveA
     }
   });
   return active;
+}
+
+/** Activités touchées par chaque type d'effet (hors modificateur : voir son paramètre). */
+const EFFECT_ACTIVITIES: Record<Exclude<AbilityEffectType, 'modifier'>, AbilityActivity[]> = {
+  attractType: ['expedition'],
+  syncNature: ['expedition'],
+  attractGender: ['expedition'],
+  copyZoneAffinity: ['expedition', 'quest'],
+  setWeather: ['expedition', ...COMBAT],
+  immunity: [...COMBAT],
+  sturdy: [...COMBAT],
+  regenerator: [...COMBAT],
+  speedBoost: [...COMBAT],
+  moxie: [...COMBAT],
+  intimidate: [...COMBAT],
+  contactDamage: [...COMBAT],
+  aftermath: [...COMBAT],
+  inflictStatus: [...COMBAT],
+  statusImmunity: [...COMBAT],
+  naturalCure: [...COMBAT],
+  critImmunity: [...COMBAT],
+  weatherImmunity: [...COMBAT],
+  suppressAbility: [...COMBAT],
+};
+
+/** Activités où un effet de talent agit. */
+export const effectActivities = (effect: AbilityEffect): readonly AbilityActivity[] =>
+  effect.type === 'modifier'
+    ? ABILITY_PARAMS[effect.param].activities
+    : EFFECT_ACTIVITIES[effect.type];
+
+/** Effets des talents de l'équipe qui agissent dans l'activité de `env` (conditions remplies). */
+export function activityAbilityEffects(ctx: GameContext, env: AbilityEnv): ActiveAbilityEffect[] {
+  return activeAbilityEffects(ctx, env).filter(({ effect }) =>
+    effectActivities(effect).includes(env.activity),
+  );
+}
+
+/** Conditions que le joueur remplit en composant l'équipe : être en tête, partir seul. */
+const PLACEMENT_CONDITION_TYPES: ReadonlySet<AbilityCondition['type']> = new Set([
+  'leader',
+  'solo',
+]);
+
+/**
+ * Effets du talent de `pokemon` qui agiraient dans l'activité de `env` avec lui dans l'équipe
+ * (ajouté à la fin s'il n'en fait pas partie, comparé par référence) : lieu, heure, météo et
+ * équipiers comptent ; être en tête ou seul est supposé possible.
+ */
+export function possibleAbilityEffects(
+  ctx: GameContext,
+  env: AbilityEnv,
+  pokemon: AbilityHolder,
+): AbilityEffect[] {
+  const team = env.team.includes(pokemon) ? env.team : [...env.team, pokemon];
+  const withPokemon = withResolvedWeather(ctx, { ...env, team });
+  const holder = team.indexOf(pokemon);
+  return (ctx.ability(effectiveAbility(ctx, pokemon))?.effects ?? []).filter(
+    (effect) =>
+      effectActivities(effect).includes(env.activity) &&
+      effect.conditions.every(
+        (c) => PLACEMENT_CONDITION_TYPES.has(c.type) || conditionMet(ctx, withPokemon, holder, c),
+      ),
+  );
 }
 
 // --- Modificateurs ---------------------------------------------------------------------------
@@ -623,7 +662,10 @@ export function abilityFlat(
   return Math.min(max, Math.max(min, Math.round(abilityModifier(ctx, env, param))));
 }
 
-/** Durée en minutes multipliée par un paramètre (au moins une minute si elle était positive). */
+/**
+ * Durée en minutes multipliée par un paramètre, arrondie à la seconde (2 min − 10 % → 1 min 48 s) ;
+ * au moins une seconde si elle était positive.
+ */
 export function durationWithAbility(
   ctx: GameContext,
   env: AbilityEnv,
@@ -632,7 +674,8 @@ export function durationWithAbility(
   self?: number,
 ): number {
   if (minutes <= 0) return minutes;
-  return Math.max(1, Math.round(minutes * abilityMultiplier(ctx, env, param, self)));
+  const seconds = Math.round(minutes * 60 * abilityMultiplier(ctx, env, param, self));
+  return Math.max(1, seconds) / 60;
 }
 
 // --- PE ----------------------------------------------------------------------------------------
@@ -720,14 +763,14 @@ const natureCount = natures.length;
 export const typeNameFr = (type: string) => typeNames.get(type) ?? type;
 const typeList = (types: readonly string[]) => types.map(typeNameFr).join('/');
 
-/** Conditions sur l'état du Pokémon (donjon) : aussi évaluées en continu pour ses statistiques. */
+/** Conditions sur l'état du Pokémon (combat) : aussi évaluées en continu pour ses statistiques. */
 export const STATE_CONDITION_TYPES: ReadonlySet<AbilityCondition['type']> = new Set([
   'hpBelow',
   'fullHp',
   'statused',
 ]);
 
-/** Statistiques de donjon que l'état du Pokémon peut conditionner (pas les PV max). */
+/** Statistiques de combat que l'état du Pokémon peut conditionner (pas les PV max). */
 export const STATE_STAT_PARAMS: ReadonlySet<AbilityParam> = new Set([
   'attack',
   'defense',
@@ -743,14 +786,14 @@ export const ABILITY_CONDITION_LABELS: Record<AbilityCondition['type'], string> 
   timeOfDay: 'Moment de la journée',
   leader: 'En tête d’équipe',
   solo: 'Seul dans l’équipe',
-  hpBelow: 'PV sous (donjon)',
-  fullHp: 'PV au maximum (donjon)',
-  attackType: 'Attaque de type (donjon)',
-  attackCategory: 'Attaque physique / spéciale (donjon)',
+  hpBelow: 'PV sous (combat)',
+  fullHp: 'PV au maximum (combat)',
+  attackType: 'Attaque de type (combat)',
+  attackCategory: 'Attaque physique / spéciale (combat)',
   weather: 'Météo',
-  statused: 'A un statut (donjon)',
-  superEffective: 'Attaque super efficace (donjon)',
-  notVeryEffective: 'Attaque peu efficace (donjon)',
+  statused: 'A un statut (combat)',
+  superEffective: 'Attaque super efficace (combat)',
+  notVeryEffective: 'Attaque peu efficace (combat)',
 };
 
 export function abilityConditionText(condition: AbilityCondition): string {

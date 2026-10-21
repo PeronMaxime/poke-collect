@@ -1,15 +1,17 @@
 import { useState } from 'react';
-import { zoneSchema } from '@poke/content';
-import type { Encounter, Zone } from '@poke/content';
+import { IMPOSED_WEATHERS, zoneSchema } from '@poke/content';
+import type { Encounter, ImposedWeather, Zone } from '@poke/content';
 import { habitats } from '@poke/data';
-import { simulateZone } from '@poke/game-core';
+import { WEATHER_LABELS, simulateZone, weatherHour, zoneWeatherAtHour } from '@poke/game-core';
 import type { ZoneSimulation } from '@poke/game-core';
+import { useNow } from '@web/components/ui';
 import { EntityPage } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
 import {
   Field,
   NullableTextInput,
   NumberInput,
+  SelectInput,
   Section,
   TextInput,
   Toggle,
@@ -24,7 +26,6 @@ import {
   TypeMultiSelect,
   TypeSelect,
   UnlockEditor,
-  WeatherSelect,
 } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
 
@@ -68,6 +69,8 @@ export function ZonesPage() {
         lootTableId: null,
         enabled: true,
         unlock: { type: 'always' },
+        weatherChangeChance: 0,
+        weathers: [],
       })}
       duplicate={(z) => ({ ...structuredClone(z), id: `${z.id}-copie`, name: `${z.name} (copie)` })}
       renderForm={(p) => <ZoneForm {...p} />}
@@ -285,16 +288,12 @@ function ZoneForm({ value: z, onChange, errors, isNew, editable, working }: Enti
       </Section>
 
       <Section title="Météo">
-        <Field
-          label="Météo de la zone"
-          hint="Pour les talents qui en dépendent (Chlorophylle, Glissade…) et les dresseurs de la zone."
-        >
-          <WeatherSelect
-            value={z.weather}
-            disabled={disabled}
-            onChange={(v) => set('weather', v ?? undefined)}
-          />
-        </Field>
+        <ZoneWeatherEditor
+          zone={z}
+          onChange={(patch) => onChange({ ...z, ...patch })}
+          error={errors.get('weathers')}
+          disabled={disabled}
+        />
       </Section>
 
       <Section title="Butin">
@@ -604,5 +603,132 @@ function ZoneSimulator({ zone, working }: { zone: Zone; working: WorkingVersion 
         </div>
       )}
     </div>
+  );
+}
+
+/** Heures simulées pour la répartition des météos (30 jours). */
+const WEATHER_PREVIEW_HOURS = 30 * 24;
+
+/** Météo variable : chance de changement à chaque heure pile, météos possibles et leurs poids. */
+function ZoneWeatherEditor({
+  zone,
+  onChange,
+  error,
+  disabled,
+}: {
+  zone: Zone;
+  onChange: (patch: Pick<Zone, 'weatherChangeChance' | 'weathers'>) => void;
+  error?: string;
+  disabled: boolean;
+}) {
+  const { weathers, weatherChangeChance } = zone;
+  const setWeathers = (next: Zone['weathers']) => onChange({ weatherChangeChance, weathers: next });
+  const unused = IMPOSED_WEATHERS.filter((w) => !weathers.some((x) => x.weather === w));
+  const totalWeight = weathers.reduce((sum, w) => sum + w.weight, 0);
+  const weatherOptions = (current: ImposedWeather) =>
+    IMPOSED_WEATHERS.filter((w) => w === current || unused.includes(w)).map((w) => ({
+      value: w,
+      label: WEATHER_LABELS[w],
+    }));
+
+  // Répartition du temps sur les 30 prochains jours (mêmes tirages que le jeu).
+  const now = weatherHour(useNow(60_000));
+  const hours = new Map<ImposedWeather, number>();
+  for (let h = now; h < now + WEATHER_PREVIEW_HOURS; h++) {
+    const w = zoneWeatherAtHour(zone, h);
+    hours.set(w, (hours.get(w) ?? 0) + 1);
+  }
+  const current = zoneWeatherAtHour(zone, now);
+
+  return (
+    <>
+      <p className="text-xs text-slate-500">
+        La zone démarre en temps clair. À chaque heure pile, un premier tirage décide si la météo
+        change ; si oui, un second tirage choisit la nouvelle météo parmi les autres météos de la
+        liste, selon leurs poids. Elle sert aux talents qui en dépendent (Chlorophylle, Glissade…)
+        et aux dresseurs de la zone ; une expédition garde la météo de son départ.
+      </p>
+      <Field label="Chance de changer de météo, à chaque heure">
+        <NumberInput
+          value={weatherChangeChance}
+          min={0}
+          max={100}
+          step={0.5}
+          unit="%"
+          className="w-40"
+          disabled={disabled}
+          onChange={(v) =>
+            onChange({ weathers, weatherChangeChance: Math.min(100, Math.max(0, v || 0)) })
+          }
+        />
+      </Field>
+      <Field
+        label="Météos possibles"
+        hint="Ajoute « Temps clair » pour que la zone puisse y revenir ; sans lui, elle n’y revient jamais une fois la première météo installée."
+        error={error}
+      >
+        <div className="space-y-2">
+          {weathers.map((w, i) => (
+            <div key={w.weather} className="flex items-center gap-2">
+              <div className="w-48">
+                <SelectInput<ImposedWeather>
+                  value={w.weather}
+                  options={weatherOptions(w.weather)}
+                  disabled={disabled}
+                  onChange={(weather) =>
+                    setWeathers(weathers.map((x, j) => (j === i ? { ...x, weather } : x)))
+                  }
+                />
+              </div>
+              <span className="text-xs text-slate-500">Poids</span>
+              <NumberInput
+                value={w.weight}
+                min={1}
+                className="w-24"
+                disabled={disabled}
+                onChange={(weight) =>
+                  setWeathers(
+                    weathers.map((x, j) =>
+                      j === i ? { ...x, weight: Math.max(1, Math.round(weight || 1)) } : x,
+                    ),
+                  )
+                }
+              />
+              <span className="w-12 text-right text-xs text-slate-500">
+                {Math.round((100 * w.weight) / totalWeight)} %
+              </span>
+              {!disabled && (
+                <button
+                  type="button"
+                  className="text-slate-400 hover:text-red-600"
+                  onClick={() => setWeathers(weathers.filter((_, j) => j !== i))}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+          {!disabled && unused.length > 0 && (
+            <button
+              type="button"
+              className="btn-ghost py-1 text-xs"
+              onClick={() => setWeathers([...weathers, { weather: unused[0]!, weight: 1 }])}
+            >
+              + Météo
+            </button>
+          )}
+        </div>
+      </Field>
+      <p className="text-xs text-slate-500">
+        En ce moment : <strong>{WEATHER_LABELS[current]}</strong>. Sur les 30 prochains jours :{' '}
+        {[...hours]
+          .sort((a, b) => b[1] - a[1])
+          .map(
+            ([w, n]) => `${WEATHER_LABELS[w]} ${Math.round((100 * n) / WEATHER_PREVIEW_HOURS)} %`,
+          )
+          .join(' · ')}
+        .
+      </p>
+    </>
   );
 }

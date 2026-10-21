@@ -1,18 +1,29 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Dungeon } from '@poke/content';
+import type { QueryKey } from '@tanstack/react-query';
 import { TYPE_COLORS } from '@poke/data';
-import { STATUS_LABELS, WEATHER_LABELS, dungeonAttack, simulateDungeon } from '@poke/game-core';
+import {
+  STATUS_LABELS,
+  WEATHER_LABELS,
+  abilityEffectText,
+  dungeonAttack,
+  dungeonStatChanges,
+  effectActivities,
+  simulateDungeon,
+} from '@poke/game-core';
 import type { DungeonStat, Status } from '@poke/content';
 import type { DungeonEvent, DungeonFighter, GameContext } from '@poke/game-core';
-import type { ClaimDungeonResponse, DungeonRunDto, DungeonsResponse } from '@poke/shared';
+import type { DungeonRunDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar, TypeBadge } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, keys } from '../../lib/game';
+import { PLAYER_STATE_KEYS } from '../../lib/game';
 import { abilityLabel, errorText, formatCountdown } from '../../lib/labels';
 
+/** Combat en cours (tentative de donjon ou combat de dresseur) : ce qu'il faut pour le rejouer. */
+export type CombatRun = Pick<DungeonRunDto, 'id' | 'setup' | 'commands' | 'fledAtMs' | 'startedAt'>;
+
 /**
- * Combat d'un donjon, en temps réel. L'état vient de la même simulation que le serveur
+ * Combat en temps réel (donjon ou dresseur). L'état vient de la même simulation que le serveur
  * (`simulateDungeon`), recalculée à chaque image : l'affichage a un léger retard
  * (`TRAVEL_MS`) pour que chaque projectile parte de l'attaquant et touche le défenseur à
  * l'instant où les PV baissent.
@@ -119,38 +130,147 @@ const STATUS_COLORS: Record<Status, string> = {
 };
 const WEATHER_ICONS = { sun: '☀️', rain: '🌧️', sand: '🌪️', hail: '🌨️' } as const;
 
-/** Encadré de nom, niveau et PV d'un combattant. */
+/** Ce que fait un talent en donjon : ses effets qui y agissent. */
+function dungeonAbilityText(ctx: GameContext, ability: string): string {
+  const effects = (ctx.ability(ability)?.effects ?? []).filter((e) =>
+    effectActivities(e).includes('dungeon'),
+  );
+  return effects.map(abilityEffectText).join(' · ') || 'Sans effet en donjon';
+}
+
+/** Variations de statistiques d'un combattant : hausses en vert, baisses en rouge. */
+function StatChanges({
+  changes,
+  className = '',
+}: {
+  changes: Partial<Record<DungeonStat, number>>;
+  className?: string;
+}) {
+  const entries = Object.entries(changes) as [DungeonStat, number][];
+  if (entries.length === 0) return null;
+  return (
+    <span
+      className={`flex flex-wrap gap-x-1.5 text-[10px] leading-tight font-semibold ${className}`}
+    >
+      {entries.map(([stat, percent]) => (
+        <span
+          key={stat}
+          className={
+            percent > 0
+              ? 'text-emerald-600 dark:text-emerald-400'
+              : 'text-red-600 dark:text-red-400'
+          }
+        >
+          {DUNGEON_STAT_SHORT[stat]}
+          {percent > 0 ? '+' : '−'}
+          {Math.abs(percent)} %
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/**
+ * Talent d'un combattant, expliqué au survol : bulle au-dessus (calée à droite) ou, avec
+ * `below`, en dessous (calée à gauche), pour rester dans l'arène.
+ */
+function AbilityTag({
+  ctx,
+  ability,
+  neutralizedBy,
+  below = false,
+}: {
+  ctx: GameContext;
+  ability: string;
+  /** Talent du Pokémon en face qui neutralise celui-ci (Gaz Inhibiteur, Brise Moule…). */
+  neutralizedBy: string | null;
+  below?: boolean;
+}) {
+  return (
+    <span className="group flex min-w-0" tabIndex={0}>
+      <span
+        className={`cursor-help truncate text-[10px] font-semibold text-violet-700 underline decoration-dotted dark:text-violet-300 ${
+          neutralizedBy ? 'line-through opacity-60' : ''
+        }`}
+      >
+        {abilityLabel(ability)}
+      </span>
+      <span
+        className={`pointer-events-none invisible absolute z-20 w-max max-w-[16rem] rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-normal text-slate-700 opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus:visible group-focus:opacity-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 ${
+          below ? 'top-full left-0 mt-1' : 'right-0 bottom-full mb-1'
+        }`}
+      >
+        <span className="block font-semibold text-violet-700 dark:text-violet-300">
+          {abilityLabel(ability)}
+        </span>
+        {dungeonAbilityText(ctx, ability)}
+        {neutralizedBy && (
+          <span className="mt-0.5 block text-red-600 dark:text-red-400">
+            Neutralisé par {abilityLabel(neutralizedBy)}, le talent du Pokémon en face
+          </span>
+        )}
+      </span>
+    </span>
+  );
+}
+
+/** Talent qui neutralise celui du Pokémon en face (Gaz Inhibiteur, Brise Moule…) ; null = aucun. */
+const suppressorAbility = (f: DungeonFighter): string | null =>
+  f.traits?.suppressAbility ? f.ability || 'talent' : null;
+
+/** Encadré de nom, talent, variations de statistiques, niveau et PV d'un combattant. */
 function FighterCard({
+  ctx,
   name,
   level,
   hp,
   maxHp,
   shiny,
   status,
+  ability,
+  neutralizedBy = null,
+  statChanges,
+  tooltipBelow,
 }: {
+  ctx: GameContext;
   name: string;
   level: number;
   hp: number;
   maxHp: number;
   shiny?: boolean;
   status?: Status | null;
+  ability?: string | null;
+  neutralizedBy?: string | null;
+  statChanges: Partial<Record<DungeonStat, number>>;
+  tooltipBelow?: boolean;
 }) {
   return (
-    <div className="w-40 rounded-lg bg-white/85 px-2 py-1 text-xs shadow dark:bg-slate-900/85">
+    <div className="relative w-48 rounded-lg bg-white/85 px-2 py-1 text-xs shadow dark:bg-slate-900/85">
       <div className="flex items-baseline justify-between gap-1">
-        <span className="truncate font-semibold">
-          {name} {shiny && <ShinyStar />}
+        <span className="flex min-w-0 items-baseline gap-1">
+          <span className="shrink-0 font-semibold">
+            {name} {shiny && <ShinyStar />}
+          </span>
           {status && (
             <span
               title={STATUS_LABELS[status]}
-              className={`ml-1 rounded px-1 text-[9px] font-bold ${STATUS_COLORS[status]}`}
+              className={`shrink-0 rounded px-1 text-[9px] font-bold ${STATUS_COLORS[status]}`}
             >
               {STATUS_BADGES[status]}
             </span>
           )}
+          {ability && (
+            <AbilityTag
+              ctx={ctx}
+              ability={ability}
+              neutralizedBy={neutralizedBy}
+              below={tooltipBelow}
+            />
+          )}
         </span>
         <span className="shrink-0 text-slate-500">N.{level}</span>
       </div>
+      <StatChanges changes={statChanges} className="mt-0.5" />
       <HpBar hp={hp} max={maxHp} className="mt-1" />
       <p className="mt-0.5 text-right font-mono text-[10px] text-slate-500">
         {hp} / {maxHp}
@@ -308,9 +428,12 @@ const OUTCOME_LABELS = {
   fled: 'Tu as pris la fuite.',
 } as const;
 
-export function DungeonCombat({
+export function DungeonCombat<R extends CombatRun, C>({
   ctx,
-  dungeon,
+  title,
+  apiBase,
+  queryKey,
+  bossLast = false,
   run,
   offsetMs,
   visible,
@@ -321,8 +444,15 @@ export function DungeonCombat({
   onFinished,
 }: {
   ctx: GameContext;
-  dungeon: Dungeon | undefined;
-  run: DungeonRunDto;
+  /** Titre de la fenêtre (« Donjon : … », « Combat contre … »). */
+  title: string;
+  /** Routes du combat : `${apiBase}/${id}/switch`, `/claim`, `/flee`. */
+  apiBase: string;
+  /** Requête dont `active` est ce combat (mise à jour après un changement de Pokémon). */
+  queryKey: QueryKey;
+  /** Le dernier adversaire est un boss (plus grand, couronné). */
+  bossLast?: boolean;
+  run: R;
   /** Décalage entre l'horloge du serveur et celle du navigateur. */
   offsetMs: number;
   /** Fenêtre du combat affichée (masquée, le combat continue et se réclame à sa fin). */
@@ -334,7 +464,7 @@ export function DungeonCombat({
   onOver: () => void;
   /** Échec de la réclamation demandée fenêtre fermée : la fenêtre s'ouvre pour réessayer. */
   onClaimError: () => void;
-  onFinished: (result: ClaimDungeonResponse) => void;
+  onFinished: (result: C) => void;
 }) {
   const queryClient = useQueryClient();
   const { setup } = run;
@@ -364,9 +494,9 @@ export function DungeonCombat({
   const over = outcome !== null && displayMs >= (live.state.endedAtMs ?? 0);
 
   const refresh = () =>
-    Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
-  const updateRun = (next: DungeonRunDto) =>
-    queryClient.setQueryData<DungeonsResponse>(keys.dungeons, (old) =>
+    Promise.all(PLAYER_STATE_KEYS.map((key) => queryClient.invalidateQueries({ queryKey: key })));
+  const updateRun = (next: R) =>
+    queryClient.setQueryData<{ active: R | null; serverTime: string }>(queryKey, (old) =>
       // L'heure du serveur suit la date de mise à jour du cache : le décalage d'horloge reste juste.
       old
         ? { ...old, active: next, serverTime: new Date(Date.now() + offsetMs).toISOString() }
@@ -375,14 +505,13 @@ export function DungeonCombat({
 
   const switchMember = useMutation({
     mutationFn: (input: { member: number; atMs: number }) =>
-      api<DungeonRunDto>(`/api/dungeons/${run.id}/switch`, { method: 'POST', json: input }),
+      api<R>(`${apiBase}/${run.id}/switch`, { method: 'POST', json: input }),
     onSuccess: (next) => updateRun(next),
     onError: () => setPending(null),
   });
 
   const claim = useMutation({
-    mutationFn: () =>
-      api<ClaimDungeonResponse>(`/api/dungeons/${run.id}/claim`, { method: 'POST' }),
+    mutationFn: () => api<C>(`${apiBase}/${run.id}/claim`, { method: 'POST' }),
     onSuccess: (data) => {
       onFinished(data);
       return refresh();
@@ -393,7 +522,7 @@ export function DungeonCombat({
   });
 
   const flee = useMutation({
-    mutationFn: () => api<ClaimDungeonResponse>(`/api/dungeons/${run.id}/flee`, { method: 'POST' }),
+    mutationFn: () => api<C>(`${apiBase}/${run.id}/flee`, { method: 'POST' }),
     onSuccess: (data) => {
       setFinished(true);
       onFinished(data);
@@ -458,7 +587,7 @@ export function DungeonCombat({
     <div className="space-y-4">
       <div className="flex items-start justify-between gap-2">
         <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 className="text-lg font-semibold">Donjon : {dungeon?.name ?? run.dungeonId}</h2>
+          <h2 className="text-lg font-semibold">{title}</h2>
           <span className="text-sm text-slate-500">
             Adversaire {Math.min(shown.enemyIndex + 1, setup.enemies.length)} /{' '}
             {setup.enemies.length}
@@ -498,7 +627,7 @@ export function DungeonCombat({
                     size={30}
                     className="opacity-60 grayscale"
                   />
-                  {i === remaining.length - 1 && (
+                  {bossLast && i === remaining.length - 1 && (
                     <span className="absolute -top-1 -right-0.5 text-[10px]" title="Boss">
                       👑
                     </span>
@@ -526,11 +655,16 @@ export function DungeonCombat({
         {/* Adversaire, à droite. */}
         <div className="absolute top-12 left-3 sm:left-6">
           <FighterCard
+            ctx={ctx}
             name={fighterName(ctx, enemy)}
             level={enemy.level}
             hp={shown.enemyHp}
             maxHp={enemy.maxHp}
             status={shown.enemyStatus}
+            ability={enemy.ability}
+            neutralizedBy={suppressorAbility(player)}
+            statChanges={dungeonStatChanges(setup, shown, 'enemy', shown.enemyIndex)}
+            tooltipBelow
           />
         </div>
         <div
@@ -543,7 +677,7 @@ export function DungeonCombat({
             <PokemonSprite
               speciesId={enemy.speciesId}
               formId={enemy.formId}
-              size={shown.enemyIndex === setup.enemies.length - 1 ? 144 : 120}
+              size={bossLast && shown.enemyIndex === setup.enemies.length - 1 ? 144 : 120}
             />
           </div>
         </div>
@@ -551,12 +685,16 @@ export function DungeonCombat({
         {/* Notre Pokémon, à gauche, retourné pour regarder l'adversaire. */}
         <div className="absolute right-3 bottom-3 sm:right-6">
           <FighterCard
+            ctx={ctx}
             name={fighterName(ctx, player)}
             level={player.level}
             hp={playerHp}
             maxHp={player.maxHp}
             shiny={player.isShiny}
             status={shown.statuses[shown.active]}
+            ability={player.ability}
+            neutralizedBy={suppressorAbility(enemy)}
+            statChanges={dungeonStatChanges(setup, shown, 'player', shown.active)}
           />
         </div>
         <div
@@ -611,6 +749,7 @@ export function DungeonCombat({
           const recallLeft = Math.ceil(((shown.recallReadyAt[i] ?? 0) - displayMs) / 1000);
           const recalled = !ko && !isActive && recallLeft > 0;
           const attack = f.attackType ? dungeonAttack(setup.settings, f.attackType) : null;
+          const neutralizedBy = isActive ? suppressorAbility(enemy) : null;
           return (
             <button
               key={i}
@@ -626,7 +765,7 @@ export function DungeonCombat({
                       ? `Rappelé : de retour possible dans ${recallLeft} s`
                       : 'Envoyer au combat'
               }
-              className={`relative flex items-center gap-2 rounded-xl border p-1.5 text-left text-xs transition ${
+              className={`relative flex items-start gap-2 rounded-xl border p-1.5 text-left text-xs transition ${
                 isActive
                   ? 'border-brand-500 bg-brand-500/10'
                   : ko
@@ -661,6 +800,28 @@ export function DungeonCombat({
                     </span>
                   )}
                 </span>
+                <StatChanges
+                  changes={dungeonStatChanges(setup, shown, 'player', i)}
+                  className="mt-0.5"
+                />
+                {f.ability && (
+                  <span className="mt-0.5 block text-[10px] leading-snug text-slate-600 dark:text-slate-300">
+                    <span
+                      className={`font-semibold text-violet-700 dark:text-violet-300 ${
+                        neutralizedBy ? 'line-through opacity-60' : ''
+                      }`}
+                    >
+                      {abilityLabel(f.ability)}
+                    </span>{' '}
+                    : {dungeonAbilityText(ctx, f.ability)}
+                    {neutralizedBy && (
+                      <span className="text-red-600 dark:text-red-400">
+                        {' '}
+                        (neutralisé par {abilityLabel(neutralizedBy)})
+                      </span>
+                    )}
+                  </span>
+                )}
               </span>
             </button>
           );

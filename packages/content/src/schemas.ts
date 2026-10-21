@@ -37,7 +37,7 @@ export const itemStackSchema = z.object({
 });
 export type ItemStack = z.infer<typeof itemStackSchema>;
 
-/** Attaque utilisée en donjon par les Pokémon d'un type (une seule attaque par type). */
+/** Attaque utilisée en combat (donjons et dresseurs) par les Pokémon d'un type (une seule attaque par type). */
 export const dungeonAttackSchema = z.object({
   name: nameSchema,
   power: z.int().min(1).max(250),
@@ -58,12 +58,14 @@ export const dungeonDifficultySettingsSchema = z.object({
 });
 export type DungeonDifficultySettings = z.infer<typeof dungeonDifficultySettingsSchema>;
 
-/** Réglages des combats de donjon (temps réel). */
-export const dungeonSettingsSchema = z.object({
-  maxTeamSize: z.int().min(1).max(6),
+/**
+ * Réglages communs aux combats en temps réel (donjons et dresseurs). Un combat garde ceux de son
+ * départ : une modification n'affecte pas un combat en cours.
+ */
+export const combatSettingsSchema = z.object({
   /**
-   * Délai entre deux attaques = délai de référence × vitesse de référence / Vitesse du Pokémon,
-   * borné par le minimum et le maximum.
+   * Délai entre deux attaques, linéaire selon la Vitesse : `maxAttackIntervalMs` à Vitesse 0,
+   * `baseAttackIntervalMs` à la Vitesse de référence, au plus court `minAttackIntervalMs`.
    */
   baseAttackIntervalMs: z.int().min(100).max(60_000),
   referenceSpeed: z.int().min(1).max(1000),
@@ -77,11 +79,21 @@ export const dungeonSettingsSchema = z.object({
   stabMultiplier: z.number().min(1).max(5),
   minDamageRoll: probabilitySchema,
   /** Chance de coup critique de chaque attaque (0 = aucun). */
-  critChance: probabilitySchema.default(0.0625),
+  critChance: probabilitySchema,
   /** Dégâts d'un coup critique, qui ignore aussi les baisses d'Attaque (Intimidation). */
-  critMultiplier: z.number().min(1).max(5).default(1.5),
+  critMultiplier: z.number().min(1).max(5),
   /** Délai avant qu'un Pokémon rappelé par le joueur puisse revenir au combat. */
-  recallCooldownSeconds: z.number().min(0).max(60).default(5),
+  recallCooldownSeconds: z.number().min(0).max(60),
+  /** Attaque de chaque type (clé : type PokéAPI, ex. `fire`). */
+  attacks: z.record(z.string().min(1), dungeonAttackSchema),
+  /** Les adversaires ont le premier talent de leur espèce (ou de leur forme). */
+  enemyAbilities: z.boolean(),
+});
+export type CombatSettings = z.infer<typeof combatSettingsSchema>;
+
+/** Réglages propres aux donjons (le combat suit `combatSettingsSchema`). */
+export const dungeonSettingsSchema = z.object({
+  maxTeamSize: z.int().min(1).max(6),
   /** IV des adversaires quand l'admin n'en fixe pas. */
   defaultOpponentIv: z.int().min(0).max(31),
   /** Nom affiché de chaque niveau de difficulté. */
@@ -99,10 +111,6 @@ export const dungeonSettingsSchema = z.object({
   xpMultiplier: z.number().min(0),
   happinessOnWin: z.int().min(-255).max(255),
   happinessOnLoss: z.int().min(-255).max(255),
-  /** Attaque de chaque type (clé : type PokéAPI, ex. `fire`). */
-  attacks: z.record(z.string().min(1), dungeonAttackSchema),
-  /** Les adversaires ont le premier talent de leur espèce (ou de leur forme Méga). */
-  enemyAbilities: z.boolean().default(false),
 });
 export type DungeonSettings = z.infer<typeof dungeonSettingsSchema>;
 
@@ -255,34 +263,22 @@ export const balanceSettingsSchema = z.object({
     /** Fossiles en cours de restauration au Musée au maximum (en même temps). */
     slots: z.int().min(1).max(20),
   }),
+  /** Combats de dresseurs (le combat suit `combat`). */
   battles: z.object({
-    initialSlots: z.int().min(1).max(6),
-    maxSlots: z.int().min(1).max(6),
     maxTeamSize: z.int().min(1).max(6),
-    /** Durée d'un combat quand le dresseur n'en fixe pas. */
-    defaultDurationMinutes: z.int().positive(),
-    /**
-     * Probabilité de victoire = r^pente / (1 + r^pente), r = PE effective du joueur / PE du
-     * dresseur (sigmoïde sur le log du rapport : 50 % à PE égale), bornée par plancher et plafond.
-     */
-    winCurveSteepness: z.number().positive().max(50),
-    minWinChance: probabilitySchema,
-    maxWinChance: probabilitySchema,
-    /** Effet maximal de l'avantage de types sur la PE effective (0.1 = ±10 %). */
-    typeAdvantageWeight: z.number().min(0).max(1),
     /** IV des Pokémon des dresseurs quand l'admin n'en fixe pas. */
     defaultTrainerIv: z.int().min(0).max(31),
-    /** Durée de K.O. après une défaite (surchargeable par dresseur). */
+    /** Durée de K.O. des Pokémon mis K.O. (surchargeable par dresseur). */
     koMinutes: z.int().min(0),
-    /** Temps de recharge d'un dresseur répétable après une victoire (surchargeable). */
+    /** Temps de recharge d'un dresseur répétable après chaque combat (surchargeable). */
     cooldownMinutes: z.int().min(0),
-    /** XP par membre = Σ (XP de base × niveau / 7) de l'équipe adverse × multiplicateur. */
+    /** XP par membre = Σ (XP de base × niveau / 7) des Pokémon adverses vaincus × multiplicateur. */
     xpMultiplier: z.number().min(0),
-    /** Part de cette XP gagnée malgré une défaite (0 = aucune). */
-    lossXpFraction: probabilitySchema,
     happinessOnWin: z.int().min(-255).max(255),
     happinessOnLoss: z.int().min(-255).max(255),
   }),
+  /** Réglages communs aux combats en temps réel (donjons et dresseurs). */
+  combat: combatSettingsSchema,
   dungeons: dungeonSettingsSchema,
   evolution: z.object({
     /** Objet qui remplace l'échange (Câble Link) ; null = évolutions par échange impossibles. */
@@ -392,12 +388,19 @@ export type ImposedWeather = z.infer<typeof imposedWeatherSchema>;
 /** Météo facultative d'un lieu : null (colonne vide en base) devient absente. */
 const optionalWeatherSchema = z.preprocess((w) => w ?? undefined, weatherSchema.optional());
 
-/** Statuts des combats de donjon. */
+/** Météo possible d'une zone (temps clair compris) et son poids au tirage. */
+export const zoneWeatherSchema = z.object({
+  weather: imposedWeatherSchema,
+  weight: z.int().min(1),
+});
+export type ZoneWeather = z.infer<typeof zoneWeatherSchema>;
+
+/** Statuts des combats (donjons et dresseurs). */
 export const STATUSES = ['paralysis', 'burn', 'poison', 'sleep', 'freeze'] as const;
 export const statusSchema = z.enum(STATUSES);
 export type Status = z.infer<typeof statusSchema>;
 
-/** Statistiques qu'un talent peut faire varier en donjon (Intimidation). */
+/** Statistiques qu'un talent peut faire varier en combat (Intimidation). */
 export const DUNGEON_STATS = [
   'attack',
   'defense',
@@ -419,7 +422,7 @@ export const ABILITY_PARAM_IDS = [
   'xp',
   'happiness',
   'money',
-  // Expéditions et combats de dresseurs
+  // Expéditions
   'power',
   'expeditionDuration',
   'encounters',
@@ -427,11 +430,8 @@ export const ABILITY_PARAM_IDS = [
   'capture',
   'wildLevel',
   'shinyChance',
-  'opponentPower',
-  'typeAdvantage',
-  'battleDuration',
+  // Combats (donjons et dresseurs)
   'koDuration',
-  // Donjons
   'hp',
   'attack',
   'defense',
@@ -468,21 +468,21 @@ export const abilityConditionSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('leader') }),
   /** Le Pokémon est seul dans l'équipe. */
   z.object({ type: z.literal('solo') }),
-  /** Donjon : PV du Pokémon sous cette fraction (Brasier, Torrent : 1/3). */
+  /** Combat : PV du Pokémon sous cette fraction (Brasier, Torrent : 1/3). */
   z.object({ type: z.literal('hpBelow'), fraction: z.number().gt(0).max(1) }),
-  /** Donjon : PV du Pokémon au maximum (Multiécaille). */
+  /** Combat : PV du Pokémon au maximum (Multiécaille). */
   z.object({ type: z.literal('fullHp') }),
-  /** Donjon : l'attaque donnée ou reçue est de l'un de ces types (Isograisse, Brasier). */
+  /** Combat : l'attaque donnée ou reçue est de l'un de ces types (Isograisse, Brasier). */
   z.object({ type: z.literal('attackType'), types: z.array(z.string().min(1)).min(1) }),
-  /** Donjon : l'attaque donnée ou reçue est physique ou spéciale (Écaille Spéciale, Toison Épaisse). */
+  /** Combat : l'attaque donnée ou reçue est physique ou spéciale (Écaille Spéciale, Toison Épaisse). */
   z.object({ type: z.literal('attackCategory'), category: z.enum(['physical', 'special']) }),
-  /** Météo de la zone ou du donjon (ou imposée par un talent) : Chlorophylle, Glissade. */
+  /** Météo de la zone, du dresseur ou du donjon (ou imposée par un talent) : Chlorophylle, Glissade. */
   z.object({ type: z.literal('weather'), weathers: z.array(weatherSchema).min(1) }),
-  /** Donjon : le Pokémon a un statut (Cran, Écaille Spéciale). */
+  /** Combat : le Pokémon a un statut (Cran, Écaille Spéciale). */
   z.object({ type: z.literal('statused') }),
-  /** Donjon : l'attaque donnée ou reçue est super efficace (Filtre, Solide Roc, Ceinture Pro). */
+  /** Combat : l'attaque donnée ou reçue est super efficace (Filtre, Solide Roc, Ceinture Pro). */
   z.object({ type: z.literal('superEffective') }),
-  /** Donjon : l'attaque donnée ou reçue est peu efficace (Lentille Teintée). */
+  /** Combat : l'attaque donnée ou reçue est peu efficace (Lentille Teintée). */
   z.object({ type: z.literal('notVeryEffective') }),
 ]);
 export type AbilityCondition = z.infer<typeof abilityConditionSchema>;
@@ -526,7 +526,7 @@ export const abilityEffectSchema = z.discriminatedUnion('type', [
     conditions: abilityConditionsSchema,
   }),
   /**
-   * Donjon : insensible aux attaques d'un type, et soigne `heal` de ses PV max à chaque attaque
+   * Combat : insensible aux attaques d'un type, et soigne `heal` de ses PV max à chaque attaque
    * absorbée (Lévitation, Absorbe-Eau, Absorbe-Volt, Torche).
    */
   z.object({
@@ -535,27 +535,27 @@ export const abilityEffectSchema = z.discriminatedUnion('type', [
     heal: probabilitySchema,
     conditions: abilityConditionsSchema,
   }),
-  /** Donjon : survit à 1 PV à un coup fatal reçu PV au maximum, une fois (Fermeté). */
+  /** Combat : survit à 1 PV à un coup fatal reçu PV au maximum, une fois (Fermeté). */
   z.object({ type: z.literal('sturdy'), conditions: abilityConditionsSchema }),
-  /** Donjon : soigne cette fraction de ses PV max quand le joueur le rappelle (Régé-Force). */
+  /** Combat : soigne cette fraction de ses PV max quand le joueur le rappelle (Régé-Force). */
   z.object({
     type: z.literal('regenerator'),
     fraction: probabilitySchema,
     conditions: abilityConditionsSchema,
   }),
-  /** Donjon : Vitesse augmentée de ce pourcentage après chacune de ses attaques (Turbo). */
+  /** Combat : Vitesse augmentée de ce pourcentage après chacune de ses attaques (Turbo). */
   z.object({
     type: z.literal('speedBoost'),
     percent: z.number().positive().max(100),
     conditions: abilityConditionsSchema,
   }),
-  /** Donjon : Attaque et Attaque Spéciale augmentées après chaque K.O. infligé (Impudence). */
+  /** Combat : Attaque et Attaque Spéciale augmentées après chaque K.O. infligé (Impudence). */
   z.object({
     type: z.literal('moxie'),
     percent: z.number().positive().max(100),
     conditions: abilityConditionsSchema,
   }),
-  /** Donjon : à son entrée, baisse ces statistiques du Pokémon en face (Intimidation). */
+  /** Combat : à son entrée, baisse ces statistiques du Pokémon en face (Intimidation). */
   z.object({
     type: z.literal('intimidate'),
     percent: z.number().positive().max(90),
@@ -563,20 +563,20 @@ export const abilityEffectSchema = z.discriminatedUnion('type', [
     stats: z.array(dungeonStatSchema).min(1).default(['attack', 'special-attack']),
     conditions: abilityConditionsSchema,
   }),
-  /** Donjon : l'attaquant perd cette fraction de ses PV max à chaque attaque physique reçue (Peau Dure). */
+  /** Combat : l'attaquant perd cette fraction de ses PV max à chaque attaque physique reçue (Peau Dure). */
   z.object({
     type: z.literal('contactDamage'),
     fraction: probabilitySchema,
     conditions: abilityConditionsSchema,
   }),
-  /** Impose sa météo à l'expédition ou au donjon (Sécheresse, Crachin, Sable Volant, Alerte Neige). */
+  /** Impose sa météo à l'expédition ou au combat (Sécheresse, Crachin, Sable Volant, Alerte Neige). */
   z.object({
     type: z.literal('setWeather'),
     weather: imposedWeatherSchema,
     conditions: abilityConditionsSchema,
   }),
   /**
-   * Donjon : chance d'infliger un statut. `contact` : à l'attaquant qui le frappe d'une attaque
+   * Combat : chance d'infliger un statut. `contact` : à l'attaquant qui le frappe d'une attaque
    * physique (Statik, Point Poison, Corps Ardent) ; `attack` : au Pokémon qu'il frappe (Toxitouche).
    */
   z.object({
@@ -587,7 +587,7 @@ export const abilityEffectSchema = z.discriminatedUnion('type', [
     conditions: abilityConditionsSchema,
   }),
   /**
-   * Donjon : insensible à ces statuts (Insomnia, Vaccin, Échauffement, Ignifu-Voile). `team` :
+   * Combat : insensible à ces statuts (Insomnia, Vaccin, Échauffement, Ignifu-Voile). `team` :
    * toute l'équipe en profite (Voile Aroma, Voile Pastel).
    */
   z.object({
@@ -598,15 +598,15 @@ export const abilityEffectSchema = z.discriminatedUnion('type', [
   }),
   /** Expédition : compte comme ayant le type d'affinité de la zone (Calque). */
   z.object({ type: z.literal('copyZoneAffinity'), conditions: abilityConditionsSchema }),
-  /** Donjon : tant qu'il est sur le terrain, le talent du Pokémon en face ne joue plus (Gaz Inhibiteur). */
+  /** Combat : tant qu'il est sur le terrain, le talent du Pokémon en face ne joue plus (Gaz Inhibiteur). */
   z.object({ type: z.literal('suppressAbility'), conditions: abilityConditionsSchema }),
-  /** Donjon : guéri de son statut quand le joueur le rappelle (Médic Nature). */
+  /** Combat : guéri de son statut quand le joueur le rappelle (Médic Nature). */
   z.object({ type: z.literal('naturalCure'), conditions: abilityConditionsSchema }),
-  /** Donjon : insensible aux dégâts de la tempête de sable et de la grêle (Envelocape, Voile Sable). */
+  /** Combat : insensible aux dégâts de la tempête de sable et de la grêle (Envelocape, Voile Sable). */
   z.object({ type: z.literal('weatherImmunity'), conditions: abilityConditionsSchema }),
-  /** Donjon : ne subit jamais de coup critique (Armurbaston, Coque Armure). */
+  /** Combat : ne subit jamais de coup critique (Armurbaston, Coque Armure). */
   z.object({ type: z.literal('critImmunity'), conditions: abilityConditionsSchema }),
-  /** Donjon : mis K.O. par une attaque physique, inflige cette fraction de ses PV max à l'attaquant (Boom Final). */
+  /** Combat : mis K.O. par une attaque physique, inflige cette fraction de ses PV max à l'attaquant (Boom Final). */
   z.object({
     type: z.literal('aftermath'),
     fraction: probabilitySchema,
@@ -790,8 +790,16 @@ export const zoneSchema = z.object({
   encounters: z.array(encounterSchema).min(1, 'Au moins une rencontre'),
   lootTableId: slugSchema.nullable(),
   unlock: unlockConditionSchema,
-  /** Météo de la zone (talents qui en dépendent) ; absente = temps clair. */
-  weather: optionalWeatherSchema,
+  /**
+   * Météo variable (talents qui en dépendent) : temps clair au départ, puis à chaque heure pile,
+   * `weatherChangeChance` % de chances d'en changer pour une autre de `weathers`, tirée selon
+   * les poids. Aucune météo = toujours temps clair.
+   */
+  weatherChangeChance: z.number().min(0).max(100).default(0),
+  weathers: z
+    .array(zoneWeatherSchema)
+    .default([])
+    .refine((list) => new Set(list.map((w) => w.weather)).size === list.length, 'Météo en double'),
 });
 export type Zone = z.infer<typeof zoneSchema>;
 
@@ -831,8 +839,8 @@ export const trainerSchema = z.object({
   trainerClass: nameSchema,
   sprite: imageSchema,
   team: z.array(trainerPokemonSchema).min(1, 'Au moins un Pokémon').max(6),
-  /** Durée du combat ; null = durée par défaut de l'équilibrage. */
-  durationMinutes: z.int().positive().nullable(),
+  /** Temps imparti pour vaincre toute l'équipe du dresseur. */
+  timeLimitSeconds: z.int().min(10).max(3600),
   rules: battleRulesSchema,
   /** Poké Dollars gagnés en cas de victoire. */
   money: z.int().min(0),
@@ -840,17 +848,20 @@ export const trainerSchema = z.object({
   lootRolls: z.int().min(0).max(20),
   /** Badge obtenu à la première victoire (Champions d'arène). */
   badge: z.object({ name: nameSchema, image: imageSchema }).nullable(),
-  /** Unique : une seule victoire possible. Répétable : temps de recharge après une victoire. */
+  /** Unique : une seule victoire possible. Répétable : temps de recharge après chaque combat. */
   repeatable: z.boolean(),
   /** Temps de recharge ; null = valeur de l'équilibrage. */
   cooldownMinutes: z.int().min(0).nullable(),
-  /** Durée de K.O. après une défaite ; null = valeur de l'équilibrage. */
+  /** Durée de K.O. des Pokémon mis K.O. ; null = valeur de l'équilibrage. */
   koMinutes: z.int().min(0).nullable(),
   /** Désactivé : caché aux joueurs, plus aucun combat ne peut être lancé contre lui. */
   enabled: z.boolean().default(true),
   unlock: unlockConditionSchema,
 });
 export type Trainer = z.infer<typeof trainerSchema>;
+
+/** Temps imparti proposé pour un dresseur : 1 min, plus 30 s par Pokémon de son équipe. */
+export const defaultTrainerTimeLimitSeconds = (teamSize: number) => 60 + 30 * teamSize;
 
 // --- Donjons ------------------------------------------------------------------------------
 
@@ -1030,7 +1041,6 @@ export const progressRewardSchema = z.object({
   items: z.array(itemStackSchema),
   /** Emplacements supplémentaires (le total reste plafonné par le maximum de l'équilibrage). */
   expeditionSlots: z.int().min(0).max(6),
-  battleSlots: z.int().min(0).max(6),
   daycareSlots: z.int().min(0).max(10),
   bonuses: z.array(permanentBonusSchema),
 });

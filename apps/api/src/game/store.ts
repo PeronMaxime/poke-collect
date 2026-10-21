@@ -12,8 +12,8 @@ import {
   questProgress,
   rewardClaims,
   speciesCaptures,
-  trainerBattles,
   trainerProgress,
+  trainerRuns,
 } from '@poke/db';
 import type { Db } from '@poke/db';
 import type { ItemStack } from '@poke/content';
@@ -98,6 +98,7 @@ export function toExpeditionDto(row: ExpeditionRow): ExpeditionDto {
     endsAt: row.endsAt.toISOString(),
     claimedAt: row.claimedAt?.toISOString() ?? null,
     shinyChain: row.shinyChain,
+    localHour: row.localHour,
     result: (row.result as ExpeditionDto['result']) ?? null,
   };
 }
@@ -168,9 +169,9 @@ export async function pokemonActivities(
       .from(expeditions)
       .where(and(eq(expeditions.ownerId, ownerId), isNull(expeditions.claimedAt))),
     db
-      .select({ team: trainerBattles.team })
-      .from(trainerBattles)
-      .where(and(eq(trainerBattles.ownerId, ownerId), isNull(trainerBattles.claimedAt))),
+      .select({ team: trainerRuns.team })
+      .from(trainerRuns)
+      .where(and(eq(trainerRuns.ownerId, ownerId), isNull(trainerRuns.claimedAt))),
     db
       .select({ a: daycareSlots.parentAId, b: daycareSlots.parentBId })
       .from(daycareSlots)

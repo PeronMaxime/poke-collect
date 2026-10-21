@@ -11,7 +11,8 @@ import type {
   UnlockCondition,
   Zone,
 } from './schemas';
-import { defaultLegendaryExpedition } from './schemas';
+import { defaultLegendaryExpedition, defaultTrainerTimeLimitSeconds } from './schemas';
+import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
 
 /**
  * Kanto : le parcours des 8 arènes, la Ligue, les zones spéciales et les quêtes légendaires.
@@ -53,7 +54,16 @@ const allOf = (...conditions: UnlockCondition[]): UnlockCondition => ({
 });
 
 const zone = (
-  z: Omit<Zone, 'regionId' | 'image' | 'enabled' | 'requiredTypes' | 'durationsMinutes'> &
+  z: Omit<
+    Zone,
+    | 'regionId'
+    | 'image'
+    | 'enabled'
+    | 'requiredTypes'
+    | 'durationsMinutes'
+    | 'weatherChangeChance'
+    | 'weathers'
+  > &
     Partial<Zone>,
 ): Zone => ({
   regionId: 'kanto',
@@ -61,6 +71,8 @@ const zone = (
   enabled: true,
   requiredTypes: [],
   durationsMinutes: ALL_DURATIONS,
+  weatherChangeChance: ZONE_WEATHER_CHANGE_CHANCE,
+  weathers: seedZoneWeathers(z.habitat, z.affinityTypes),
   ...z,
 });
 
@@ -730,7 +742,7 @@ const trainer = (
   return {
     regionId: 'kanto',
     sprite: sprite(spriteName),
-    durationMinutes: null,
+    timeLimitSeconds: defaultTrainerTimeLimitSeconds(rest.team.length),
     rules: noRules(),
     money: 0,
     lootTableId: 'butin-route',
@@ -769,7 +781,6 @@ const gymLeader = (
     spriteName,
     team,
     unlock,
-    durationMinutes: 60,
     rules: { ...noRules(), teamSize: team.length, minPower },
     money: Math.max(...team.map((m) => m.level)) * 100,
     lootTableId: 'butin-grotte',
@@ -794,7 +805,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Gamin',
     spriteName: 'youngster',
     team: [mon(19, 4)],
-    durationMinutes: 10,
     money: 80,
     unlock: { type: 'always' },
   }),
@@ -806,7 +816,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Fillette',
     spriteName: 'lass',
     team: [mon(16, 4), mon(29, 5)],
-    durationMinutes: 15,
     money: 120,
     unlock: defeated('gamin-tom'),
   }),
@@ -818,7 +827,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Scout',
     spriteName: 'bugcatcher',
     team: [mon(10, 6), mon(13, 6), mon(14, 7)],
-    durationMinutes: 20,
     money: 180,
     lootTableId: 'butin-foret',
     lootRolls: 2,
@@ -844,7 +852,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Campeur',
     spriteName: 'camper',
     team: [mon(27, 10), mon(23, 11)],
-    durationMinutes: 30,
     rules: { ...noRules(), maxLevel: 15 },
     money: 300,
     lootTableId: 'butin-grotte',
@@ -859,7 +866,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Intello',
     spriteName: 'supernerd',
     team: [mon(88, 12), mon(100, 12), mon(109, 12)],
-    durationMinutes: 30,
     money: 360,
     lootTableId: 'butin-fouilles',
     lootRolls: 2,
@@ -873,7 +879,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Pique-niqueuse',
     spriteName: 'picnicker',
     team: [mon(43, 14), mon(69, 14), mon(16, 15)],
-    durationMinutes: 30,
     money: 420,
     lootTableId: 'butin-foret',
     lootRolls: 2,
@@ -899,7 +904,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Marin',
     spriteName: 'sailor',
     team: [mon(72, 18), mon(66, 18), mon(98, 20)],
-    durationMinutes: 45,
     money: 600,
     lootTableId: 'butin-mer',
     lootRolls: 2,
@@ -925,7 +929,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Montagnard',
     spriteName: 'hiker-gen3',
     team: [mon(74, 20), mon(66, 21), mon(95, 22), mon(75, 24)],
-    durationMinutes: 45,
     money: 900,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
@@ -951,7 +954,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Médium',
     spriteName: 'channeler-gen3',
     team: [mon(92, 26), mon(92, 26), mon(104, 27), mon(93, 28)],
-    durationMinutes: 60,
     money: 1100,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
@@ -965,7 +967,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Motard',
     spriteName: 'biker',
     team: [mon(109, 28), mon(88, 28), mon(110, 30), mon(89, 30)],
-    durationMinutes: 60,
     money: 1300,
     lootRolls: 2,
     unlock: defeated('mediume-paula'),
@@ -979,7 +980,7 @@ export const kantoTrainers: Trainer[] = [
     'Badge Âme',
     [mon(109, 37, 18), mon(89, 39, 18), mon(109, 37, 18), mon(110, 43, 18)],
     defeated('motard-rex'),
-    { minPower: 1050, durationMinutes: 90 },
+    { minPower: 1050 },
   ),
   // Badge Âme → Badge Marais
   trainer({
@@ -990,7 +991,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Maître Karaté',
     spriteName: 'blackbelt',
     team: [mon(106, 37), mon(107, 37), mon(57, 38), mon(68, 40)],
-    durationMinutes: 90,
     money: 2500,
     lootTableId: 'butin-elite',
     lootRolls: 2,
@@ -1006,7 +1006,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Team Rocket',
     spriteName: 'rocketgrunt',
     team: [mon(24, 36), mon(42, 36), mon(110, 38), mon(53, 38)],
-    durationMinutes: 60,
     money: 1800,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
@@ -1021,7 +1020,7 @@ export const kantoTrainers: Trainer[] = [
     'Badge Marais',
     [mon(64, 38, 20), mon(122, 37, 20), mon(49, 38, 20), mon(65, 43, 20)],
     defeated('sbire-rocket'),
-    { minPower: 1100, durationMinutes: 90 },
+    { minPower: 1100 },
   ),
   // Badge Marais → Badge Volcan
   trainer({
@@ -1032,7 +1031,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Nageuse',
     spriteName: 'swimmerf',
     team: [mon(120, 37), mon(117, 38), mon(119, 38), mon(121, 40)],
-    durationMinutes: 60,
     money: 1600,
     lootTableId: 'butin-mer',
     lootRolls: 2,
@@ -1047,7 +1045,7 @@ export const kantoTrainers: Trainer[] = [
     'Badge Volcan',
     [mon(58, 42, 22), mon(77, 40, 22), mon(78, 42, 22), mon(59, 47, 22)],
     defeated('nageuse-lena'),
-    { minPower: 1250, durationMinutes: 90 },
+    { minPower: 1250 },
   ),
   // Badge Volcan → Badge Terre
   trainer({
@@ -1058,7 +1056,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Scientifique',
     spriteName: 'scientist',
     team: [mon(101, 42), mon(82, 42), mon(89, 43), mon(110, 44), mon(137, 44)],
-    durationMinutes: 60,
     money: 2200,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
@@ -1073,7 +1070,7 @@ export const kantoTrainers: Trainer[] = [
     'Badge Terre',
     [mon(111, 45, 25), mon(51, 42, 25), mon(31, 44, 25), mon(34, 45, 25), mon(112, 50, 25)],
     defeated('scientifique-hector'),
-    { minPower: 1650, durationMinutes: 120, koMinutes: 180, lootTableId: 'butin-elite' },
+    { minPower: 1650, koMinutes: 180, lootTableId: 'butin-elite' },
   ),
   // Route Victoire, puis la Ligue
   trainer({
@@ -1084,7 +1081,6 @@ export const kantoTrainers: Trainer[] = [
     trainerClass: 'Topdresseuse',
     spriteName: 'acetrainerf',
     team: [mon(112, 48, 20), mon(26, 47, 20), mon(62, 48, 20), mon(121, 48, 20), mon(36, 47, 20)],
-    durationMinutes: 90,
     money: 3500,
     lootTableId: 'butin-elite',
     lootRolls: 2,
@@ -1113,7 +1109,6 @@ function league(): Trainer[] {
       spriteName,
       team,
       unlock,
-      durationMinutes: 120,
       money: 6000,
       lootTableId: 'butin-elite',
       lootRolls: 3,
@@ -1168,7 +1163,7 @@ function league(): Trainer[] {
         mon(6, 65, 31),
       ],
       defeated('peter'),
-      { trainerClass: 'Maître de la Ligue', durationMinutes: 180, money: 15_000, lootRolls: 5 },
+      { trainerClass: 'Maître de la Ligue', money: 15_000, lootRolls: 5 },
     ),
   ];
 }
@@ -1179,7 +1174,6 @@ const reward = (r: Partial<ProgressReward>): ProgressReward => ({
   currency: 0,
   items: [],
   expeditionSlots: 0,
-  battleSlots: 0,
   daycareSlots: 0,
   bonuses: [],
   ...r,

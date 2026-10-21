@@ -16,6 +16,7 @@ import {
   resolveExpedition,
   resolveQuestExpedition,
   zoneChainStatus,
+  zoneWeather,
 } from '@poke/game-core';
 import type {
   ClaimedRewards,
@@ -185,11 +186,13 @@ export async function startExpedition(
     const slotIndex = await freeSlot(tx, ctx, userId);
     const team = await availableTeam(tx, userId, input.team, now);
     const hour = startHour(now, input.utcOffsetMinutes);
-    const check = checkTeam(ctx, zone, input.durationMinutes, team, hour);
+    // Météo de la zone au départ, retrouvée à la réclamation (même version de contenu).
+    const site = { ...zone, weather: zoneWeather(zone, now) };
+    const check = checkTeam(ctx, site, input.durationMinutes, team, hour);
     if (check.errors.length > 0) throw new GameError(400, 'TEAM_INVALID', { errors: check.errors });
 
     // Une Ball (et une baie) par rencontre au maximum : on réserve ce qui sera utilisé.
-    const plan = expeditionPlan(ctx, input.durationMinutes, expeditionEnv(zone, team, hour));
+    const plan = expeditionPlan(ctx, input.durationMinutes, expeditionEnv(site, team, hour));
     const { encounters } = plan;
     const reserve = async (itemId: string | null, max = encounters) => {
       if (!itemId) return 0;
@@ -518,6 +521,7 @@ export async function claimExpedition(
         captureFilter: found.captureFilter,
         ...(found.captureFilter?.newOnly && { caught: await caughtDex(tx, userId) }),
         hour: found.localHour,
+        weather: zoneWeather(zone, found.startedAt),
       });
     } else {
       result = EMPTY_RESULT; // inatteignable : une expédition normale a toujours sa zone

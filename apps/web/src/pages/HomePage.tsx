@@ -36,6 +36,8 @@ import { QuestsPage } from './game/QuestsPage';
 import { ShopPage } from './game/ShopPage';
 import { TeamsPage } from './game/TeamsPage';
 import { TrainerCardPage } from './game/TrainerCardPage';
+import { WikiPage } from './game/WikiPage';
+import { WIKI_HASH, wikiLink } from './game/wiki';
 import { CHANGELOG_PATH, hasUnseenChangelog } from './ChangelogPage';
 import { FanDisclaimer, LegalLinks, navigate } from './LegalPages';
 import { SettingsDialog } from './SettingsDialog';
@@ -45,17 +47,22 @@ const TAB_LABELS = Object.fromEntries(MENU_TABS.map((t) => [t.id, t.label])) as 
   string
 >;
 
-function tabFromHash(): TabId {
+/** Onglet du menu, ou page du wiki (lien de l'en-tête). */
+type PageId = TabId | typeof WIKI_HASH;
+
+const PAGE_LABELS: Record<PageId, string> = { ...TAB_LABELS, [WIKI_HASH]: 'Wiki' };
+
+function tabFromHash(): PageId {
   // `#expeditions/<zone>` : l'onglet, suivi d'une cible propre à la page.
   const hash = window.location.hash.slice(1).split('/')[0] ?? '';
-  return hash in TAB_LABELS ? (hash as TabId) : 'expeditions';
+  return hash in PAGE_LABELS ? (hash as PageId) : 'expeditions';
 }
 
 /** Coquille du jeu : en-tête, onglets (synchronisés avec l'ancre de l'URL) et pied de page. */
 export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfileDto }) {
   const queryClient = useQueryClient();
   const ctx = useGameContext();
-  const [tab, setTab] = useState<TabId>(tabFromHash);
+  const [tab, setTab] = useState<PageId>(tabFromHash);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // Groupes d'onglets réglés dans l'admin (Menu du jeu), séparés par un trait.
@@ -90,7 +97,6 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
 
   const now = useNow(5000);
   const finished = expeditions.data?.active.filter((e) => Date.parse(e.endsAt) <= now).length ?? 0;
-  const battlesDone = battles.data?.active.filter((b) => Date.parse(b.endsAt) <= now).length ?? 0;
   const dexCatches = useDexCatches();
   const caught = dexCatches.caughtSpeciesIds.size;
   // Paliers et collections à réclamer, Pokémon disponibles prêts à évoluer vers une espèce
@@ -116,7 +122,6 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   // Une action attend le joueur quelque part : point sur le bouton du menu mobile.
   const pending =
     finished +
-      battlesDone +
       daycareReady +
       fossilsReady +
       questsReady +
@@ -125,6 +130,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
       evolutionsReady >
       0 ||
     !!dungeons.data?.active ||
+    !!battles.data?.active ||
     unseenChangelog;
 
   /** Liens des onglets, partagés par la barre latérale et le menu mobile. */
@@ -170,15 +176,11 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
             {finished}
           </span>
         )}
-        {id === 'battles' && battles.data && (
-          <span className="ml-1.5 text-xs text-slate-400" title="Emplacements utilisés">
-            {battles.data.active.length}/{battles.data.slots}
-          </span>
-        )}
-        {id === 'battles' && battlesDone > 0 && (
-          <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
-            {battlesDone}
-          </span>
+        {id === 'battles' && battles.data?.active && (
+          <span
+            className="ml-1.5 inline-block h-2 w-2 animate-pulse rounded-full bg-brand-500"
+            title="Combat en cours"
+          />
         )}
         {id === 'dungeons' && dungeons.data?.active && (
           <span
@@ -252,6 +254,13 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
             />
           )}
         </a>
+        <a
+          className={`${className} ${tab === WIKI_HASH ? 'text-brand-600 dark:text-brand-500' : ''}`}
+          href={wikiLink()}
+          onClick={() => setMenuOpen(false)}
+        >
+          Wiki
+        </a>
         <button
           className={className}
           onClick={() => {
@@ -318,7 +327,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
               <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-slate-50 dark:ring-slate-950" />
             )}
           </button>
-          <span className="min-w-0 flex-1 truncate font-semibold">{TAB_LABELS[tab]}</span>
+          <span className="min-w-0 flex-1 truncate font-semibold">{PAGE_LABELS[tab]}</span>
           <span
             className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-sm font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300"
             title="Poké Dollars"
@@ -384,6 +393,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
               {tab === 'bag' && <InventoryPage ctx={ctx} />}
               {tab === 'trainer' && <TrainerCardPage ctx={ctx} profile={profile} />}
               {tab === 'leaderboard' && <LeaderboardPage />}
+              {tab === WIKI_HASH && <WikiPage ctx={ctx} />}
             </ErrorBoundary>
           )}
         </main>

@@ -1,4 +1,5 @@
 import { boolean, pgTable, text, timestamp } from 'drizzle-orm/pg-core';
+import type { AnyPgColumn } from 'drizzle-orm/pg-core';
 
 /**
  * Tables gérées par Better Auth (schéma « core »), plus la colonne `role`.
@@ -16,6 +17,13 @@ export const users = pgTable('users', {
     .default('player'),
   /** Dernière requête authentifiée (présence affichée dans l'administration). */
   lastSeenAt: timestamp('last_seen_at', { withTimezone: true }),
+  /**
+   * Bêta : profil secondaire (nouvelle partie sans nouveau compte) rattaché au compte principal.
+   * Sans identifiant de connexion ; sélectionné par cookie (voir `apps/api/src/beta-profiles.ts`).
+   */
+  parentUserId: text('parent_user_id').references((): AnyPgColumn => users.id, {
+    onDelete: 'cascade',
+  }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });

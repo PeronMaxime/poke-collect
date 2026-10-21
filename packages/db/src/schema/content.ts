@@ -172,7 +172,8 @@ export const zones = pgTable(
     encounters: jsonb('encounters').$type<Encounter[]>().notNull(),
     lootTableId: text('loot_table_id'),
     unlock: jsonb('unlock').$type<UnlockCondition>().notNull(),
-    weather: text('weather').$type<Weather>(),
+    weatherChangeChance: doublePrecision('weather_change_chance').notNull().default(0),
+    weathers: jsonb('weathers').$type<Zone['weathers']>().notNull().default([]),
   },
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
 );
@@ -189,7 +190,7 @@ export const trainers = pgTable(
     trainerClass: text('trainer_class').notNull(),
     sprite: text('sprite'),
     team: jsonb('team').$type<TrainerPokemon[]>().notNull(),
-    durationMinutes: integer('duration_minutes'),
+    timeLimitSeconds: integer('time_limit_seconds').notNull(),
     rules: jsonb('rules').$type<BattleRules>().notNull(),
     money: integer('money').notNull(),
     lootTableId: text('loot_table_id'),

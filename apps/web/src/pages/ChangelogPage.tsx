@@ -17,6 +17,70 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '21 octobre 2026',
+    title: 'Talents, combats en temps réel, météo et wiki',
+    changes: [
+      {
+        section: 'Talents',
+        items: [
+          'Les talents des Pokémon ont désormais de vrais effets, proches de ceux des jeux : plus d’XP ou de Poké Dollars, rencontres plus nombreuses, meilleure chance de capture ou de shiny, statistiques renforcées, dégâts augmentés ou réduits, immunités, statuts infligés, météo déclenchée…',
+          'Certains talents n’agissent que dans certaines conditions : en tête d’équipe, selon l’heure, la météo, le type de la zone, les PV restants du Pokémon…',
+          'Au PC, la fiche d’un Pokémon résume l’effet de son talent, et sa puissance en tient compte.',
+          'Au choix de l’équipe d’une expédition, les talents qui agiront sont listés, et le filtre « Talent actif » n’affiche que les Pokémon dont le talent servira dans cette zone. Survole une expédition en cours pour revoir ses talents actifs.',
+          'L’XP prévue, les durées et les chances affichées avant un départ tiennent compte des talents de ton équipe.',
+        ],
+      },
+      {
+        section: 'Assistants',
+        items: [
+          'Nouveaux postes d’assistant à la Pension, à la couveuse et au Musée : place un Pokémon pour faire profiter le bâtiment de son talent (ponte plus rapide, éclosion accélérée avec Corps Ardent, restauration des fossiles…). Il reste occupé tant qu’il y travaille, et tu peux le libérer à tout moment.',
+          'Les talents des parents comptent aussi à la Pension : vitesse de ponte, IV transmis, chance de talent caché…',
+        ],
+      },
+      {
+        section: 'Combats de dresseurs',
+        items: [
+          'Les combats de dresseurs se jouent maintenant en temps réel, comme les donjons : envoie tes Pokémon un par un, choisis leur attaque et bats toute l’équipe adverse avant la fin du temps imparti.',
+          'Un seul combat de dresseur à la fois, indépendamment du donjon en cours : il n’y a plus d’emplacements de combat à débloquer.',
+          'Un dresseur répétable se repose un moment après chaque combat ; un dresseur unique (Champion d’arène, Conseil 4, Maître) peut être retenté aussitôt après une défaite.',
+          'La page des combats est refaite : les Champions d’arène, le Conseil 4 et le Maître de la Ligue ont chacun leur grande carte, en fin de liste.',
+          'Le combat a lieu sous la météo de la zone où se trouve le dresseur.',
+        ],
+      },
+      {
+        section: 'Combats et donjons',
+        items: [
+          'Nouveaux coups critiques, qui infligent plus de dégâts.',
+          'Les statuts arrivent en combat : paralysie, brûlure, poison, sommeil et gel, affichés au-dessus du Pokémon touché.',
+          'Les hausses et baisses de statistiques (Intimidation…) s’affichent sous chaque combattant, et son talent est expliqué au survol.',
+          'Les Pokémon adverses ont eux aussi leur talent.',
+          'La météo compte : le soleil renforce le Feu et affaiblit l’Eau, la pluie fait l’inverse, et la tempête de sable et la grêle blessent les Pokémon qui n’y résistent pas. Certains donjons ont leur propre météo.',
+          'Un Pokémon rappelé doit attendre quelques secondes avant de revenir au combat.',
+        ],
+      },
+      {
+        section: 'Météo',
+        items: [
+          'La météo des zones d’expédition change désormais au fil des heures : à chaque heure pile, elle a une chance de changer, et elle est la même pour tous les dresseurs. Survole l’icône de météo d’une zone pour voir les météos possibles et l’heure du prochain changement.',
+          'La météo au départ d’une expédition peut activer certains talents (Chlorophylle sous le soleil, Glissade sous la pluie…).',
+        ],
+      },
+      {
+        section: 'Wiki',
+        items: [
+          'Nouveau lien « Wiki » en haut de l’écran (en bas du menu sur mobile) : la fiche de chaque Pokémon et de ses formes avec les endroits où le trouver, la liste des talents et de leurs effets, et un tutoriel pour bien débuter.',
+        ],
+      },
+      {
+        section: 'Profils secondaires (bêta)',
+        items: [
+          'Pendant la bêta, tu peux lancer une nouvelle partie sans créer de nouveau compte : dans Réglages, « Créer un profil secondaire ». Ces profils portent le préfixe « Alt » suivi de ton pseudo (Alt1_Sacha…), jusqu’à 3 par compte, et tu passes de l’un à l’autre depuis les Réglages.',
+          'Les profils secondaires pourront être supprimés à la fin de la bêta.',
+        ],
+      },
+    ],
+  },
+  {
     date: '17 octobre 2026',
     title: 'Fiches des autres dresseurs et légendaires protégés',
     changes: [

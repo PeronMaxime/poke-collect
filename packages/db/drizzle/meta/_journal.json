@@ -351,6 +351,62 @@
       "when": 1792541657093,
       "tag": "0049_talents_contenu",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1792594643365,
+      "tag": "0050_meteo_variable",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1792594652129,
+      "tag": "0051_meteo_variable_ancienne_colonne",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1792596629335,
+      "tag": "0052_meteo_contenu",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1792597025592,
+      "tag": "0053_meteo_25_pourcent",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1792599081271,
+      "tag": "0054_combats_temps_reel",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1792599082710,
+      "tag": "0055_combats_ancienne_colonne",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1792599084024,
+      "tag": "0056_combats_contenu",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1792611722220,
+      "tag": "0057_profils_secondaires",
+      "breakpoints": true
     }
   ]
 }

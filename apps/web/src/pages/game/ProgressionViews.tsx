@@ -115,9 +115,6 @@ function ProgressionSummary() {
         Expéditions : <strong>{data.slots.expeditions}</strong> emplacement(s)
       </span>
       <span>
-        Combats : <strong>{data.slots.battles}</strong>
-      </span>
-      <span>
         Pensions : <strong>{data.slots.daycare}</strong>
       </span>
       {bonuses.length > 0 && <span className="text-emerald-600">{bonuses.join(' · ')}</span>}

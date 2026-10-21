@@ -1,16 +1,17 @@
 import type {
   AbilityCondition,
   AbilityParam,
+  CombatSettings,
   Dungeon,
   DungeonAttack,
   DungeonDifficultySettings,
-  DungeonSettings,
   DungeonStat,
   ItemStack,
   Status,
   TrainerPokemon,
   Weather,
 } from '@poke/content';
+import { DUNGEON_STATS } from '@poke/content';
 import { STAT_NAMES, typeEffectiveness, types as typeData } from '@poke/data';
 import type { StatName, Stats } from '@poke/data';
 import type { GameContext, GameSpecies } from './context';
@@ -34,14 +35,14 @@ import {
   STATE_CONDITION_TYPES,
   weatherOrClear,
 } from './abilities';
-import type { AbilityEnv } from './abilities';
+import type { AbilityActivity, AbilityEnv } from './abilities';
 import { createRng } from './rng';
 import { MAX_MEGAS_PER_TEAM, megaCount } from './mega';
 
 /**
- * Donjons : combats en temps réel contre une suite d'adversaires, jusqu'au boss (une
- * Méga-Évolution). Un seul Pokémon de chaque camp combat à la fois ; chacun attaque à son rythme
- * (selon sa Vitesse) avec l'attaque unique d'un de ses types.
+ * Combats en temps réel contre une suite d'adversaires : donjons (jusqu'au boss, une
+ * Méga-Évolution) et dresseurs (voir `battle.ts`). Un seul Pokémon de chaque camp combat à la
+ * fois ; chacun attaque à son rythme (selon sa Vitesse) avec l'attaque unique d'un de ses types.
  *
  * Le combat est entièrement déterminé par sa mise en place (`DungeonSetup`, figée au départ),
  * son seed et les changements de Pokémon du joueur (`DungeonCommand`, horodatés depuis le
@@ -66,7 +67,7 @@ const typeNamesFr = new Map(typeData.map((t) => [t.name, t.nameFr]));
 
 /** Attaque d'un type (celle de l'équilibrage, sinon une attaque par défaut). */
 export function dungeonAttack(
-  settings: Pick<DungeonSettings, 'attacks'>,
+  settings: Pick<CombatSettings, 'attacks'>,
   type: string,
 ): DungeonAttack {
   return (
@@ -215,7 +216,7 @@ export interface DungeonFighter {
 
 /** Réglages de combat figés au départ (une modification de l'équilibrage n'affecte pas un combat en cours). */
 export type DungeonCombatSettings = Pick<
-  DungeonSettings,
+  CombatSettings,
   | 'baseAttackIntervalMs'
   | 'referenceSpeed'
   | 'minAttackIntervalMs'
@@ -226,7 +227,7 @@ export type DungeonCombatSettings = Pick<
   | 'attacks'
 > &
   /** Coups critiques : absents des tentatives antérieures (aucun critique, aucun tirage). */
-  Partial<Pick<DungeonSettings, 'critChance' | 'critMultiplier'>> & {
+  Partial<Pick<CombatSettings, 'critChance' | 'critMultiplier'>> & {
     /** Délai avant qu'un Pokémon rappelé puisse revenir ; absent (tentatives antérieures) = aucun. */
     recallCooldownMs?: number;
   };
@@ -400,7 +401,7 @@ function withAbilities(
       const mine = holder === index;
       if (effect.type === 'modifier') {
         const info = ABILITY_PARAMS[effect.param];
-        if (!info.activities.includes('dungeon')) continue;
+        if (!info.activities.includes(env.activity)) continue;
         if (!mine && info.selfScope && effect.scope === 'self') continue;
         const stat = STAT_PARAMS[effect.param];
         if (effect.param === 'damageDealt' || effect.param === 'damageTaken') {
@@ -530,7 +531,7 @@ export function dungeonDifficulty(ctx: GameContext, dungeon: Dungeon): DungeonDi
   return ctx.balance.dungeons.difficulties[dungeon.difficulty];
 }
 
-/** Pokémon d'un donjon (adversaire ou équipe type) : IV uniformes, nature neutre par défaut. */
+/** Pokémon adverse (donjon, dresseur ou équipe type) : IV uniformes, nature neutre par défaut. */
 export function dungeonOpponentInstance(member: TrainerPokemon, defaultIv: number) {
   const iv = member.iv ?? defaultIv;
   return {
@@ -542,24 +543,37 @@ export function dungeonOpponentInstance(member: TrainerPokemon, defaultIv: numbe
   };
 }
 
-/** Adversaires du donjon, boss compris (en dernier, PV multipliés). */
-export function dungeonEnemies(ctx: GameContext, dungeon: Dungeon): DungeonFighter[] {
-  const members = [...dungeon.opponents, dungeon.boss];
-  const defaultIv = ctx.balance.dungeons.defaultOpponentIv;
+/** Adversaires d'un combat, dans l'ordre ; PV du dernier multipliés par `lastHpMultiplier`. */
+export function enemyFighters(
+  ctx: GameContext,
+  members: readonly TrainerPokemon[],
+  defaultIv: number,
+  lastHpMultiplier = 1,
+): DungeonFighter[] {
   return members.flatMap((member, i) => {
     const species = ctx.species(member.speciesId, member.formId);
     if (!species) return [];
     const instance = dungeonOpponentInstance(member, defaultIv);
-    const boss = i === members.length - 1;
+    const last = i === members.length - 1;
     return [
       fighter(
         species,
         instance,
         { type: null, category: bestCategory(computeStats(species, instance)) },
-        boss ? dungeon.bossHpMultiplier : 1,
+        last ? lastHpMultiplier : 1,
       ),
     ];
   });
+}
+
+/** Adversaires du donjon, boss compris (en dernier, PV multipliés). */
+export function dungeonEnemies(ctx: GameContext, dungeon: Dungeon): DungeonFighter[] {
+  return enemyFighters(
+    ctx,
+    [...dungeon.opponents, dungeon.boss],
+    ctx.balance.dungeons.defaultOpponentIv,
+    dungeon.bossHpMultiplier,
+  );
 }
 
 /** Adversaires porteurs de talent : premier talent de leur espèce (ou forme). */
@@ -571,30 +585,51 @@ function enemyAbilityHolders(ctx: GameContext, enemies: readonly DungeonFighter[
   }));
 }
 
+/** Combat à mettre en place : activité (talents), adversaires, temps imparti et météo du lieu. */
+export interface CombatArena {
+  activity: Extract<AbilityActivity, 'battle' | 'dungeon'>;
+  enemies: readonly DungeonFighter[];
+  timeLimitMs: number;
+  /** Météo du lieu (donjon, zone du dresseur) ; absente = temps clair. */
+  weather?: Weather | null;
+}
+
 /**
- * Météo d'une tentative : imposée par un talent de l'équipe, sinon des adversaires (si
- * l'équilibrage active leurs talents), sinon celle du donjon.
+ * Météo d'un combat : imposée par un talent de l'équipe, sinon des adversaires (si
+ * l'équilibrage active leurs talents), sinon celle du lieu.
  */
+export function combatWeather(
+  ctx: GameContext,
+  arena: Omit<CombatArena, 'timeLimitMs'>,
+  team: readonly PokemonInstance[],
+  hour: number | null = null,
+): Weather | null {
+  const { activity } = arena;
+  return weatherOrClear(
+    imposedWeather(ctx, { activity, team, hour }) ??
+      (ctx.balance.combat.enemyAbilities
+        ? imposedWeather(ctx, { activity, team: enemyAbilityHolders(ctx, arena.enemies), hour })
+        : null) ??
+      arena.weather,
+  );
+}
+
+/** Météo d'une tentative de donjon (voir `combatWeather`). */
 export function dungeonWeather(
   ctx: GameContext,
   dungeon: Dungeon,
   team: readonly PokemonInstance[],
   hour: number | null = null,
 ): Weather | null {
-  return weatherOrClear(
-    imposedWeather(ctx, { activity: 'dungeon', team, hour }) ??
-      (ctx.balance.dungeons.enemyAbilities
-        ? imposedWeather(ctx, {
-            activity: 'dungeon',
-            team: enemyAbilityHolders(ctx, dungeonEnemies(ctx, dungeon)),
-            hour,
-          })
-        : null) ??
-      dungeon.weather,
+  return combatWeather(
+    ctx,
+    { activity: 'dungeon', enemies: dungeonEnemies(ctx, dungeon), weather: dungeon.weather },
+    team,
+    hour,
   );
 }
 
-/** Mise en place d'une tentative : équipe (avec ses attaques), adversaires et réglages figés. */
+/** Mise en place d'une tentative de donjon (voir `buildCombatSetup`). */
 export function buildDungeonSetup(
   ctx: GameContext,
   dungeon: Dungeon,
@@ -602,17 +637,39 @@ export function buildDungeonSetup(
   seed: number,
   hour: number | null = null,
 ): DungeonSetup {
-  const { attacks, ...rest } = ctx.balance.dungeons;
+  return buildCombatSetup(
+    ctx,
+    {
+      activity: 'dungeon',
+      enemies: dungeonEnemies(ctx, dungeon),
+      timeLimitMs: dungeon.timeLimitSeconds * 1000,
+      weather: dungeon.weather,
+    },
+    team,
+    seed,
+    hour,
+  );
+}
+
+/** Mise en place d'un combat : équipe (avec ses attaques), adversaires et réglages figés. */
+export function buildCombatSetup(
+  ctx: GameContext,
+  arena: CombatArena,
+  team: readonly (PokemonInstance & { move: DungeonMove | null })[],
+  seed: number,
+  hour: number | null = null,
+): DungeonSetup {
+  const { attacks, ...rest } = ctx.balance.combat;
   const typesOf = (list: readonly DungeonFighter[]) => [...new Set(list.flatMap((f) => f.types))];
   const baseTeam = team.map((m) => {
     const species = ctx.species(m.speciesId, m.formId)!;
     return fighter(species, m, effectiveDungeonMove(species, m, m.move));
   });
-  const baseEnemies = dungeonEnemies(ctx, dungeon);
+  const baseEnemies = [...arena.enemies];
   // Adversaires : premier talent de leur espèce (ou forme), si l'équilibrage l'active.
   const enemyHolders = enemyAbilityHolders(ctx, baseEnemies);
-  const weather = dungeonWeather(ctx, dungeon, team, hour);
-  const env = { activity: 'dungeon', hour, weather, weatherResolved: true } as const;
+  const weather = combatWeather(ctx, arena, team, hour);
+  const env = { activity: arena.activity, hour, weather, weatherResolved: true } as const;
   const teamFighters = withAbilities(
     ctx,
     { ...env, team, opponentTypes: typesOf(baseEnemies) },
@@ -641,7 +698,7 @@ export function buildDungeonSetup(
       recallCooldownMs: rest.recallCooldownSeconds * 1000,
       attacks,
     },
-    timeLimitMs: dungeon.timeLimitSeconds * 1000,
+    timeLimitMs: arena.timeLimitMs,
     seed,
     hour,
     weather,
@@ -657,7 +714,7 @@ export function buildDungeonSetup(
  */
 export function attackIntervalMs(
   settings: Pick<
-    DungeonSettings,
+    CombatSettings,
     'baseAttackIntervalMs' | 'referenceSpeed' | 'minAttackIntervalMs' | 'maxAttackIntervalMs'
   >,
   speed: number,
@@ -926,6 +983,12 @@ export interface DungeonState {
    * Un K.O. fait toujours entrer un Pokémon : le dernier encore debout revient même avant.
    */
   recallReadyAt: number[];
+  /**
+   * Multiplicateurs de statistiques gagnés ou perdus en combat (Intimidation, Impudence, Turbo)
+   * de l'équipe (même ordre que `hp`) et de l'adversaire en face.
+   */
+  statMods: Record<DungeonStat, number>[];
+  enemyStatMods: Record<DungeonStat, number>;
 }
 
 export interface DungeonSimulation {
@@ -1411,9 +1474,47 @@ export function simulateDungeon(
       statuses: mods.map((m) => m.status),
       enemyStatus: enemyMods.status,
       recallReadyAt,
+      statMods: mods.map((m) => ({ ...m.stats })),
+      enemyStatMods: { ...enemyMods.stats },
     },
     events,
   };
+}
+
+/**
+ * Variation (en %, arrondie) de chaque statistique d'un combattant à l'instant de `state` :
+ * talents (fixes et selon son état), changements du combat et paralysie. Sans les variations
+ * nulles. Un adversaire pas encore entré n'a que ses talents ; le talent du Pokémon actif ne
+ * joue plus face à un Gaz Inhibiteur.
+ */
+export function dungeonStatChanges(
+  setup: DungeonSetup,
+  state: DungeonState,
+  side: 'player' | 'enemy',
+  index: number,
+): Partial<Record<DungeonStat, number>> {
+  const player = side === 'player';
+  const f = player ? setup.team[index] : setup.enemies[index];
+  if (!f) return {};
+  const onField = index === (player ? state.active : state.enemyIndex);
+  const facing = player ? setup.enemies[state.enemyIndex] : setup.team[state.active];
+  const neutralized = onField && !!facing?.traits?.suppressAbility;
+  const changes = player ? state.statMods[index] : onField ? state.enemyStatMods : undefined;
+  const hp = player ? (state.hp[index] ?? 0) : onField ? state.enemyHp : f.maxHp;
+  const status = player ? state.statuses[index] : onField ? state.enemyStatus : null;
+  const up: HolderUp = player ? (i) => (state.hp[i] ?? 0) > 0 : (i) => i >= state.enemyIndex;
+  const out: Partial<Record<DungeonStat, number>> = {};
+  for (const stat of DUNGEON_STATS) {
+    let mult = changes?.[stat] ?? 1;
+    if (!neutralized) {
+      if (f.baseStats) mult *= f.stats[stat] / f.baseStats[stat];
+      mult *= stateStatMultiplier(f.traits, stat, hp / f.maxHp, !!status, up);
+    }
+    if (stat === 'speed' && status === 'paralysis') mult *= 0.5;
+    const percent = Math.round((mult - 1) * 100);
+    if (percent !== 0) out[stat] = percent;
+  }
+  return out;
 }
 
 // --- Accès et équipe -------------------------------------------------------------------------
@@ -1493,15 +1594,22 @@ export function checkDungeonTeam(
     .filter((m) => !isRegionalSpecies(ctx, dungeon.regionId, m.speciesId))
     .map((m) => m.speciesId);
   if (outside.length > 0) errors.push({ code: 'WRONG_REGION', speciesIds: outside });
-  const badMove = team.some((m) => {
+  if (hasInvalidMove(ctx, team)) errors.push({ code: 'INVALID_MOVE' });
+  return errors;
+}
+
+/** Une attaque choisie n'est pas d'un type du Pokémon (ou de catégorie inconnue). */
+export function hasInvalidMove(
+  ctx: GameContext,
+  team: readonly (Pick<TeamMember, 'speciesId' | 'formId'> & { move?: DungeonMove | null })[],
+): boolean {
+  return team.some((m) => {
     if (!m.move) return false;
     const species = ctx.species(m.speciesId, m.formId);
     return (
       !species || !species.types.includes(m.move.type) || !MOVE_CATEGORIES.includes(m.move.category)
     );
   });
-  if (badMove) errors.push({ code: 'INVALID_MOVE' });
-  return errors;
 }
 
 // --- Résultat ---------------------------------------------------------------------------------------

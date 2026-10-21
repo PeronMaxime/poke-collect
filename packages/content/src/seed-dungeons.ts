@@ -1,5 +1,6 @@
 import { directLineage, forms, getSpecies } from '@poke/data';
 import type {
+  CombatSettings,
   Dungeon,
   DungeonDifficulty,
   DungeonSettings,
@@ -7,6 +8,7 @@ import type {
   Region,
   TrainerPokemon,
 } from './schemas';
+import { seedDungeonWeather } from './seed-weather';
 
 /**
  * Donjons du contenu de test : un par Méga-Évolution d'une espèce des régions, avec sa
@@ -15,19 +17,9 @@ import type {
  * dépend de la difficulté (légendaire, starter, espèce évoluée ou seule dans sa lignée).
  */
 
-/** Attaque de chaque type en donjon (même puissance pour tous au départ). */
+/** Réglages propres aux donjons. */
 export const dungeonSettings: DungeonSettings = {
   maxTeamSize: 6,
-  baseAttackIntervalMs: 2000,
-  referenceSpeed: 150,
-  minAttackIntervalMs: 500,
-  maxAttackIntervalMs: 3000,
-  damageMultiplier: 0.5,
-  stabMultiplier: 1.5,
-  minDamageRoll: 0.85,
-  critChance: 0.0625,
-  critMultiplier: 1.5,
-  recallCooldownSeconds: 5,
   defaultOpponentIv: 15,
   difficulties: {
     easy: { name: 'Facile' },
@@ -40,6 +32,20 @@ export const dungeonSettings: DungeonSettings = {
   xpMultiplier: 1,
   happinessOnWin: 3,
   happinessOnLoss: -2,
+};
+
+/** Combat en temps réel (donjons et dresseurs) : attaque de chaque type, même puissance au départ. */
+export const combatSettings: CombatSettings = {
+  baseAttackIntervalMs: 2000,
+  referenceSpeed: 150,
+  minAttackIntervalMs: 500,
+  maxAttackIntervalMs: 3000,
+  damageMultiplier: 0.5,
+  stabMultiplier: 1.5,
+  minDamageRoll: 0.85,
+  critChance: 0.0625,
+  critMultiplier: 1.5,
+  recallCooldownSeconds: 5,
   enemyAbilities: false,
   attacks: {
     normal: { name: 'Plaquage', power: 80 },
@@ -247,6 +253,7 @@ export function seedDungeons(regions: readonly Region[]): Dungeon[] {
       gemChance: GEM_CHANCE,
       enabled: true,
       unlock: { type: 'always' },
+      weather: seedDungeonWeather(form.types),
     };
   });
 }

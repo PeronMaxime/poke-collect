@@ -5,12 +5,15 @@ import { users } from '@poke/db';
 import type { Db } from '@poke/db';
 import type { UserRole } from '@poke/shared';
 import type { Auth } from '../auth';
+import { activeProfileId } from '../beta-profiles';
 
 export interface SessionUser {
   id: string;
   email: string;
   name: string;
   role: UserRole;
+  /** Compte connecté ; diffère de `id` quand un profil secondaire (bêta) est actif. */
+  accountUserId: string;
 }
 
 declare module 'fastify' {
@@ -36,23 +39,32 @@ export function sessionHooks(auth: Auth, db: Db, now: () => Date) {
       .catch(() => lastWrites.delete(userId));
   };
 
-  const loadUser = async (request: FastifyRequest): Promise<SessionUser | null> => {
+  /** `withProfile` : applique le profil secondaire actif (bêta), jamais pour l'administration. */
+  const loadUser = async (
+    request: FastifyRequest,
+    withProfile: boolean,
+  ): Promise<SessionUser | null> => {
     const session = await auth.api.getSession({ headers: fromNodeHeaders(request.headers) });
     if (!session) return null;
     const { id, email, name, role } = session.user;
     await touch(id);
-    return { id, email, name, role: role === 'admin' ? 'admin' : 'player' };
+    const profile = withProfile ? await activeProfileId(db, request, id) : null;
+    if (profile) {
+      await touch(profile.id);
+      return { id: profile.id, email, name: profile.name, role: 'player', accountUserId: id };
+    }
+    return { id, email, name, role: role === 'admin' ? 'admin' : 'player', accountUserId: id };
   };
 
   return {
     /** Exige une session valide. */
     async requireUser(request: FastifyRequest, reply: FastifyReply) {
-      request.user = await loadUser(request);
+      request.user = await loadUser(request, true);
       if (!request.user) return reply.code(401).send({ error: 'UNAUTHENTICATED' });
     },
     /** Exige une session valide ET le rôle admin (vérifié côté serveur, à chaque requête). */
     async requireAdmin(request: FastifyRequest, reply: FastifyReply) {
-      request.user = await loadUser(request);
+      request.user = await loadUser(request, false);
       if (!request.user) return reply.code(401).send({ error: 'UNAUTHENTICATED' });
       if (request.user.role !== 'admin') return reply.code(403).send({ error: 'FORBIDDEN' });
     },

@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import type { GameAbility } from '@poke/content';
-import { attackDamage, buildDungeonSetup, simulateDungeon } from './dungeon';
+import { attackDamage, buildDungeonSetup, dungeonStatChanges, simulateDungeon } from './dungeon';
 import type { DungeonFighter, DungeonSetup, DungeonTraits } from './dungeon';
 import { member, testContext } from './test-helpers';
 
 const ctx = testContext();
-const settings = ctx.balance.dungeons;
+const settings = ctx.balance.combat;
 
 const NO_TRAITS: DungeonTraits = {
   damage: [],
@@ -323,6 +323,30 @@ describe('talents en donjon : mécaniques', () => {
     expect(gasHit(fighter({}, { intimidate: 50 })).damage).toBe(gasHit(fighter()).damage);
   });
 
+  it('variations de statistiques affichées : talents, Intimidation, paralysie, Gaz Inhibiteur', () => {
+    const tough = fighter(
+      { stats: { ...fighter().stats, defense: 120 }, baseStats: fighter().stats },
+      { stats: [{ stat: 'speed', percent: 50, hpBelow: 0.5 }] },
+    );
+    const s = setup([tough, fighter()], [fighter({}, { intimidateStats: { attack: 25 } })]);
+    const { state } = simulateDungeon(s, [], null, 0);
+    expect(dungeonStatChanges(s, state, 'player', 0)).toEqual({ attack: -25, defense: 20 });
+    // Sur le banc : ses talents seulement ; vitesse conditionnée par ses PV.
+    expect(dungeonStatChanges(s, state, 'player', 1)).toEqual({});
+    expect(
+      dungeonStatChanges(
+        s,
+        { ...state, hp: [40, 100], statuses: ['paralysis', null] },
+        'player',
+        0,
+      ),
+    ).toEqual({ attack: -25, defense: 20, speed: -25 });
+    const gas = setup([tough], [fighter({}, { suppressAbility: true })]);
+    expect(dungeonStatChanges(gas, simulateDungeon(gas, [], null, 0).state, 'player', 0)).toEqual(
+      {},
+    );
+  });
+
   it('sans talent, le combat est inchangé', () => {
     const plain = (f: Partial<DungeonFighter> = {}) => {
       const { traits: _t, ability: _a, ...rest } = fighter(f);
@@ -446,7 +470,7 @@ describe('talents en donjon : mise en place', () => {
   it('donne leur talent aux adversaires si l’équilibrage l’active', () => {
     const on = testContext((c) => {
       c.abilities = ABILITIES;
-      c.balance.dungeons.enemyAbilities = true;
+      c.balance.combat.enemyAbilities = true;
     });
     const team = [{ ...member('a', 6, 50), move: null }];
     expect(buildDungeonSetup(on, dungeon, team, 1).enemies.at(-1)!.ability).toBe('tough-claws');

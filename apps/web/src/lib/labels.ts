@@ -222,16 +222,24 @@ export function rewardLines(r: ProgressReward): string[] {
   return [
     r.currency > 0 && formatMoney(r.currency),
     r.expeditionSlots > 0 && plural(r.expeditionSlots, 'emplacement') + ' d’expédition',
-    r.battleSlots > 0 && plural(r.battleSlots, 'emplacement') + ' de combat',
     r.daycareSlots > 0 && plural(r.daycareSlots, 'pension'),
     ...r.bonuses.map(bonusText),
   ].filter((line): line is string => typeof line === 'string');
 }
 
+/** « 45 min », « 1 h 30 » ; les durées raccourcies par un talent ont des secondes (« 1 min 48 s »). */
 export function formatDuration(minutes: number): string {
-  if (minutes < 60) return `${minutes} min`;
-  const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
+  const total = Math.round(minutes * 60);
+  const s = total % 60;
+  const whole = (total - s) / 60;
+  if (s) {
+    const h = Math.floor(whole / 60);
+    const m = whole % 60;
+    return [h && `${h} h`, m && `${m} min`, `${s} s`].filter(Boolean).join(' ');
+  }
+  if (whole < 60) return `${whole} min`;
+  const h = Math.floor(whole / 60);
+  const m = whole % 60;
   return m ? `${h} h ${m}` : `${h} h`;
 }
 
@@ -275,7 +283,9 @@ export const GAME_ERRORS: Record<string, string> = {
   TRAINER_LOCKED: 'Ce dresseur n’est pas encore accessible.',
   TRAINER_DEFEATED: 'Tu as déjà battu ce dresseur.',
   TRAINER_COOLDOWN: 'Ce dresseur se repose : reviens plus tard.',
-  TRAINER_BUSY: 'Tu affrontes déjà ce dresseur.',
+  BATTLE_BUSY: 'Tu affrontes déjà un dresseur : termine ce combat d’abord.',
+  BATTLE_FINISHED: 'Le combat est déjà terminé.',
+  BATTLE_NOT_FOUND: 'Ce combat n’existe plus.',
   NOT_ENOUGH_MONEY: 'Tu n’as pas assez de Poké Dollars.',
   ENTRY_LOCKED: 'Cet article n’est pas encore débloqué.',
   NOT_ON_SALE: 'Cet article n’est plus en vente.',

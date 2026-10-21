@@ -245,30 +245,24 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   if (balance.daycare.initialSlots > balance.daycare.maxSlots) {
     add('error', 'balance', null, 'Pensions : emplacements initiaux > maximum');
   }
-  if (balance.battles.initialSlots > balance.battles.maxSlots) {
-    add('error', 'balance', null, 'Combats : emplacements initiaux > maximum');
+  if (balance.combat.minAttackIntervalMs > balance.combat.maxAttackIntervalMs) {
+    add('error', 'balance', null, 'Combat : délai minimal entre deux attaques > maximal');
   }
-  if (balance.battles.minWinChance > balance.battles.maxWinChance) {
-    add('error', 'balance', null, 'Combats : probabilité de victoire minimale > maximale');
+  if (balance.combat.baseAttackIntervalMs > balance.combat.maxAttackIntervalMs) {
+    add('error', 'balance', null, 'Combat : délai de référence > délai à Vitesse 0');
   }
-  if (balance.dungeons.minAttackIntervalMs > balance.dungeons.maxAttackIntervalMs) {
-    add('error', 'balance', null, 'Donjons : délai minimal entre deux attaques > maximal');
-  }
-  if (balance.dungeons.baseAttackIntervalMs > balance.dungeons.maxAttackIntervalMs) {
-    add('error', 'balance', null, 'Donjons : délai de référence > délai à Vitesse 0');
-  }
-  for (const t of Object.keys(balance.dungeons.attacks)) {
-    if (!KNOWN_TYPES.has(t)) add('error', 'balance', null, `Donjons : type « ${t} » inconnu`);
+  for (const t of Object.keys(balance.combat.attacks)) {
+    if (!KNOWN_TYPES.has(t)) add('error', 'balance', null, `Combat : type « ${t} » inconnu`);
   }
   const missingAttacks = typeData
-    .filter((t) => !NON_POKEMON_TYPES.has(t.name) && !balance.dungeons.attacks[t.name])
+    .filter((t) => !NON_POKEMON_TYPES.has(t.name) && !balance.combat.attacks[t.name])
     .map((t) => t.nameFr);
   if (missingAttacks.length > 0) {
     add(
       'warning',
       'balance',
       null,
-      `Donjons : aucune attaque pour ${missingAttacks.join(', ')} (attaque par défaut)`,
+      `Combat : aucune attaque pour ${missingAttacks.join(', ')} (attaque par défaut)`,
     );
   }
   for (const stack of balance.newPlayer.startingInventory) {
@@ -625,11 +619,10 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   const rewards = [...content.dexMilestones, ...content.collections, ...content.quests].map(
     (r) => r.rewards,
   );
-  const slotTotal = (key: 'expeditionSlots' | 'battleSlots' | 'daycareSlots') =>
+  const slotTotal = (key: 'expeditionSlots' | 'daycareSlots') =>
     rewards.reduce((sum, r) => sum + r[key], 0);
   for (const [key, group, label] of [
     ['expeditionSlots', balance.expeditions, 'd’expédition'],
-    ['battleSlots', balance.battles, 'de combat'],
     ['daycareSlots', balance.daycare, 'de pension'],
   ] as const) {
     const unreachable = group.initialSlots + slotTotal(key) - group.maxSlots;

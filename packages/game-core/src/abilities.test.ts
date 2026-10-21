@@ -4,16 +4,14 @@ import {
   abilityBonuses,
   abilityEffectSummary,
   abilityEffectText,
+  activityAbilityEffects,
   effectiveAbility,
   memberPower,
+  possibleAbilityEffects,
 } from './abilities';
-import {
-  battleEnv,
-  battleRealDurationMinutes,
-  estimateBattle,
-  resolveBattle,
-  trainerPower,
-} from './battle';
+import { battleEnv, buildBattleSetup, resolveBattle, trainerPower } from './battle';
+import type { Trainer } from '@poke/content';
+import type { TeamMember } from './expedition';
 import { expeditionEnv, expeditionPlan, resolveExpedition } from './expedition';
 import type { ExpeditionInput } from './expedition';
 import { pokemonPower } from './pokemon';
@@ -46,7 +44,9 @@ const ABILITIES: GameAbility[] = [
   {
     id: 'intimidate',
     description: '',
-    effects: [modifier('opponentPower', -20), modifier('battleDuration', -50)],
+    effects: [
+      { type: 'intimidate', percent: 25, stats: ['attack', 'special-attack'], conditions: [] },
+    ],
   },
   {
     id: 'natural-cure',
@@ -64,6 +64,11 @@ const ABILITIES: GameAbility[] = [
     id: 'synchronize',
     description: '',
     effects: [{ type: 'syncNature', chance: 1, conditions: [] }],
+  },
+  {
+    id: 'run-away',
+    description: '',
+    effects: [modifier('encounters', 10, { conditions: [{ type: 'leader' }] })],
   },
 ];
 
@@ -132,6 +137,8 @@ describe('talents : expéditions', () => {
     const base = expeditionPlan(ctx, 120);
     const plan = expeditionPlan(ctx, 120, expeditionEnv(zone, team));
     expect(plan.realDurationMinutes).toBe(90);
+    // Arrondi à la seconde : 2 min − 25 % = 1 min 30 s.
+    expect(expeditionPlan(ctx, 2, expeditionEnv(zone, team)).realDurationMinutes).toBe(1.5);
     expect(plan.encounters).toBe(Math.round(base.encounters * 1.5));
     expect(expedition(team).encounters).toHaveLength(
       Math.round(expeditionPlan(ctx, 60).encounters * 1.5),
@@ -149,6 +156,19 @@ describe('talents : expéditions', () => {
     );
   });
 
+  it('liste les talents qui agissent dans l’activité, et ceux qui agiraient dans l’équipe', () => {
+    const leader = member('a', 6, 50, { ability: 'intimidate' });
+    const night = member('b', 6, 50, { ability: 'insomnia' });
+    const runAway = member('c', 6, 50, { ability: 'run-away' });
+    const env = expeditionEnv(zone, [leader, night, runAway], 23);
+    // Intimidation n'agit qu'en combat ; Fuite demande d'être en tête.
+    expect(activityAbilityEffects(ctx, env).map((a) => a.holder)).toEqual([1]);
+    expect(possibleAbilityEffects(ctx, env, leader)).toEqual([]);
+    expect(possibleAbilityEffects(ctx, env, runAway)).toHaveLength(1);
+    expect(possibleAbilityEffects(ctx, expeditionEnv(zone, [leader], 12), night)).toEqual([]);
+    expect(possibleAbilityEffects(ctx, expeditionEnv(zone, [leader], 23), night)).toHaveLength(1);
+  });
+
   it('Synchro donne sa nature aux sauvages ; sans talent, les seeds sont inchangés', () => {
     const plain = expedition([member('a', 6, 50)]);
     expect(expedition([member('a', 6, 50, { ability: 'none' })])).toEqual(plain);
@@ -159,22 +179,31 @@ describe('talents : expéditions', () => {
   });
 });
 
-describe('talents : combats', () => {
+describe('talents : combats de dresseurs', () => {
   const trainer = ctx.trainer('gamin-tom')!;
-
-  it('réduit la PE adverse et la durée du combat', () => {
-    const plain = estimateBattle(ctx, trainer, [member('a', 6, 30)]);
-    const scary = estimateBattle(ctx, trainer, [member('a', 6, 30, { ability: 'intimidate' })]);
-    expect(scary.trainerPower).toBe(Math.round(plain.trainerPower * 0.8));
-    expect(scary.winProbability).toBeGreaterThanOrEqual(plain.winProbability);
-    expect(
-      battleRealDurationMinutes(ctx, trainer, [member('a', 6, 30, { ability: 'intimidate' })]),
-    ).toBe(
-      Math.max(
-        1,
-        Math.round((trainer.durationMinutes ?? ctx.balance.battles.defaultDurationMinutes) * 0.5),
-      ),
+  /** Combat laissé à lui-même (relais automatiques). */
+  const fight = (t: Trainer, team: TeamMember[]) => {
+    const setup = buildBattleSetup(
+      ctx,
+      t,
+      team.map((m) => ({ ...m, move: null })),
+      1,
+      null,
+      new Date('2026-10-07T12:00:00Z'),
     );
+    return resolveBattle(ctx, { trainer: t, setup, commands: [], fledAtMs: null, team });
+  };
+
+  it('applique les briques de combat, comme en donjon', () => {
+    const setup = buildBattleSetup(
+      ctx,
+      trainer,
+      [{ ...member('a', 6, 30, { ability: 'intimidate' }), move: null }],
+      1,
+      null,
+      new Date('2026-10-07T12:00:00Z'),
+    );
+    expect(setup.team[0]!.traits?.intimidateStats).toEqual({ attack: 25, 'special-attack': 25 });
   });
 
   it('raccourcit le K.O. du seul Pokémon qui a le talent', () => {
@@ -182,7 +211,7 @@ describe('talents : combats', () => {
     const champion = [...ctx.trainers].sort(
       (x, y) => trainerPower(ctx, y) - trainerPower(ctx, x),
     )[0]!;
-    const result = resolveBattle(ctx, { trainer: champion, team, seed: 1 });
+    const result = fight(champion, team);
     expect(result.outcome).toBe('loss');
     expect(result.team.map((m) => m.koMinutes)).toEqual([
       Math.round(result.koMinutes * 0.5),
@@ -192,9 +221,7 @@ describe('talents : combats', () => {
 
   it('applique le bonus d’argent en combat', () => {
     const team = [member('a', 6, 60, { ability: 'pickup' })];
-    expect(resolveBattle(ctx, { trainer, team, seed: 1 }).money).toBe(
-      Math.floor(trainer.money * 1.2),
-    );
+    expect(fight(trainer, team).money).toBe(Math.floor(trainer.money * 1.2));
   });
 });
 

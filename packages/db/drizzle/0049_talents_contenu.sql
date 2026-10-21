@@ -124,7 +124,7 @@ CROSS JOIN (VALUES
   ('skill-link', '', '[{"type":"modifier","param":"damageDealt","value":20,"scope":"self","conditions":[]}]'::jsonb),
   ('slush-rush', '', '[{"type":"modifier","param":"speed","value":20,"scope":"self","conditions":[{"type":"weather","weathers":["hail"]}]},{"type":"modifier","param":"expeditionDuration","value":-15,"scope":"team","conditions":[{"type":"weather","weathers":["hail"]}]}]'::jsonb),
   ('sniper', '', '[{"type":"modifier","param":"critChance","value":100,"scope":"self","conditions":[]},{"type":"modifier","param":"capture","value":5,"scope":"team","conditions":[]}]'::jsonb),
-  ('snow-cloak', '', '[{"type":"weatherImmunity","conditions":[{"type":"weather","weathers":["hail"]}]},{"type":"modifier","param":"damageTaken","value":-20,"scope":"self","conditions":[{"type":"weather","weathers":["hail"]}]}]'::jsonb),
+  ('snow-cloak', '', '[{"type":"weatherImmunity","conditions":[{"type":"weather","weathers":["hail"]}]},{"type":"inflictStatus","status":"freeze","chance":0.3,"trigger":"contact","conditions":[]}]'::jsonb),
   ('snow-warning', '', '[{"type":"setWeather","weather":"hail","conditions":[{"type":"leader"}]}]'::jsonb),
   ('solar-power', '', '[{"type":"modifier","param":"specialAttack","value":30,"scope":"self","conditions":[{"type":"weather","weathers":["sun"]}]}]'::jsonb),
   ('soundproof', '', '[{"type":"statusImmunity","statuses":["sleep","paralysis"],"scope":"self","conditions":[]}]'::jsonb),

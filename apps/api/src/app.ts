@@ -13,6 +13,7 @@ import { webPushSender } from './game/push';
 import type { PushSender } from './game/push';
 import { authRoutes } from './plugins/auth-routes';
 import { sessionHooks } from './plugins/session';
+import { betaProfileRoutes } from './beta-profiles';
 import { adminRoutes } from './routes/admin';
 import { battleRoutes } from './routes/battles';
 import { dungeonRoutes } from './routes/dungeons';
@@ -98,6 +99,13 @@ export async function buildApp({
   await app.register(spriteRoutes);
   await app.register(authRoutes, { auth });
   await app.register(playerRoutes, { db, content, hooks, now });
+  await app.register(betaProfileRoutes, {
+    db,
+    content,
+    hooks,
+    now,
+    secureCookie: env.authUrl.startsWith('https:'),
+  });
   await app.register(gameRoutes, { db, content, hooks, now });
   await app.register(tagRoutes, { db, hooks });
   await app.register(teamRoutes, { db, hooks });

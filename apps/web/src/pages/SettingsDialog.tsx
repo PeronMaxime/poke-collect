@@ -1,8 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type { MeResponse, NotificationSettings, PushConfigResponse } from '@poke/shared';
+import type {
+  BetaProfilesResponse,
+  MeResponse,
+  NotificationSettings,
+  PushConfigResponse,
+} from '@poke/shared';
 import { Modal } from '../components/ui';
-import { api } from '../lib/api';
+import { ApiError, api } from '../lib/api';
 import { authClient } from '../lib/auth-client';
 import { isIos, pushSupported, useDeviceSubscription, useInstallPrompt } from '../lib/pwa';
 
@@ -10,7 +15,6 @@ const PUSH_KEY = ['push'] as const;
 
 const TYPES: { key: keyof NotificationSettings; label: string }[] = [
   { key: 'expeditions', label: 'Expédition terminée' },
-  { key: 'battles', label: 'Combat de dresseur terminé' },
   { key: 'eggs', label: 'Œuf prêt à éclore' },
   { key: 'fossils', label: 'Fossile restauré au Musée' },
 ];
@@ -24,6 +28,7 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         <>
           <InstallSection />
           <NotificationSection />
+          <BetaProfilesSection />
           <AccountSection />
         </>
       )}
@@ -161,6 +166,89 @@ function NotificationSection() {
             </button>
           )}
         </>
+      )}
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    </section>
+  );
+}
+
+/**
+ * Bêta : profils secondaires, pour recommencer une partie sans recréer de compte. À retirer
+ * après la bêta (voir `apps/api/src/beta-profiles.ts`).
+ */
+function BetaProfilesSection() {
+  const profiles = useQuery({
+    queryKey: ['beta-profiles'],
+    queryFn: () => api<BetaProfilesResponse>('/api/beta/profiles'),
+  });
+  const [error, setError] = useState<string | null>(null);
+  // Changer de profil change toutes les données du jeu : on recharge l'application.
+  const onSwitched = () => window.location.reload();
+  const onError = (err: unknown) =>
+    setError(
+      err instanceof ApiError && err.code === 'TRAINER_NAME_TAKEN'
+        ? 'Ce pseudo est déjà pris par un autre dresseur.'
+        : 'Action impossible, réessaie plus tard.',
+    );
+  const create = useMutation({
+    mutationFn: () => api<BetaProfilesResponse>('/api/beta/profiles', { method: 'POST' }),
+    onSuccess: onSwitched,
+    onError,
+  });
+  const select = useMutation({
+    mutationFn: (profileId: string | null) =>
+      api<BetaProfilesResponse>('/api/beta/profiles/active', {
+        method: 'POST',
+        json: { profileId },
+      }),
+    onSuccess: onSwitched,
+    onError,
+  });
+
+  const data = profiles.data;
+  if (!data) return null;
+  const secondary = data.profiles.filter((p) => !p.main).length;
+  const busy = create.isPending || select.isPending;
+
+  return (
+    <section className="mt-5">
+      <h3 className="text-sm font-semibold">
+        Profils <span className="text-xs font-normal text-amber-600">bêta</span>
+      </h3>
+      <p className="mt-1 text-sm text-slate-500">
+        Un profil secondaire est une nouvelle partie sur le même compte. Ces profils pourront être
+        supprimés à la fin de la bêta.
+      </p>
+      <ul className="mt-2 space-y-1">
+        {data.profiles.map((p) => {
+          const active = p.id === data.activeProfileId;
+          return (
+            <li key={p.id} className="flex items-center justify-between gap-3 text-sm">
+              <span>
+                {p.trainerName}
+                <span className="ml-1 text-xs text-slate-500">
+                  {p.main ? '(principal)' : !p.starterChosen && '(starter à choisir)'}
+                </span>
+              </span>
+              {active ? (
+                <span className="text-xs font-semibold text-emerald-600">Actif</span>
+              ) : (
+                <button
+                  className="btn-ghost"
+                  disabled={busy}
+                  onClick={() => select.mutate(p.main ? null : p.id)}
+                >
+                  Jouer
+                </button>
+              )}
+            </li>
+          );
+        })}
+      </ul>
+      {secondary < data.maxSecondary && (
+        <button className="btn-ghost mt-2" disabled={busy} onClick={() => create.mutate()}>
+          Créer un profil secondaire
+        </button>
       )}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </section>

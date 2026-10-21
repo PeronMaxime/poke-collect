@@ -20,7 +20,7 @@ import {
   expansionTrainers,
   expansionZones,
 } from './seed-expansion';
-import { dungeonSettings, megaStoneItems, seedDungeons } from './seed-dungeons';
+import { combatSettings, dungeonSettings, megaStoneItems, seedDungeons } from './seed-dungeons';
 import { johtoQuests, johtoRegion, johtoTrainers, johtoZones } from './seed-johto';
 import { kantoQuests, kantoTrainers, kantoZones } from './seed-kanto';
 
@@ -214,7 +214,6 @@ const reward = (r: Partial<ProgressReward>): ProgressReward => ({
   currency: 0,
   items: [],
   expeditionSlots: 0,
-  battleSlots: 0,
   daycareSlots: 0,
   bonuses: [],
   ...r,
@@ -238,7 +237,7 @@ const dexMilestones: DexMilestone[] = [
     regionId: 'kanto',
     shiny: false,
     percent: 25,
-    rewards: reward({ battleSlots: 1, daycareSlots: 1, currency: 3000 }),
+    rewards: reward({ daycareSlots: 1, currency: 3000 }),
   },
   {
     id: 'kanto-50',
@@ -262,7 +261,7 @@ const dexMilestones: DexMilestone[] = [
     regionId: 'kanto',
     shiny: false,
     percent: 75,
-    rewards: reward({ battleSlots: 1, daycareSlots: 1, currency: 10_000 }),
+    rewards: reward({ daycareSlots: 1, currency: 10_000 }),
   },
   {
     id: 'kanto-100',
@@ -395,23 +394,15 @@ export const seedContent: GameContentData = {
     daycare: { initialSlots: 1, maxSlots: 4 },
     museum: { slots: 2 },
     battles: {
-      initialSlots: 1,
-      maxSlots: 3,
       maxTeamSize: 6,
-      defaultDurationMinutes: 10,
-      // ln 9 / ln 1,5 : ~90 % à PE × 1,5 et ~10 % à PE × 0,67 (PLAN.md, section 7).
-      winCurveSteepness: 5.4,
-      minWinChance: 0.05,
-      maxWinChance: 0.95,
-      typeAdvantageWeight: 0.1,
       defaultTrainerIv: 15,
       koMinutes: 60,
       cooldownMinutes: 240,
       xpMultiplier: 1,
-      lossXpFraction: 0.25,
       happinessOnWin: 3,
       happinessOnLoss: -2,
     },
+    combat: combatSettings,
     dungeons: dungeonSettings,
     evolution: { tradeItemId: 'linking-cord', dayStartHour: 6, nightStartHour: 20 },
     newPlayer: {

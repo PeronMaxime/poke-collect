@@ -1,35 +1,23 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Dungeon } from '@poke/content';
-import { STAT_NAMES, typeWeaknesses, types } from '@poke/data';
+import { typeWeaknesses } from '@poke/data';
 import {
   checkDungeonTeam,
-  computeStats,
-  dungeonAttack,
   dungeonCooldownMinutes,
   dungeonEnemies,
   dungeonKoMinutes,
   dungeonMaxXp,
-  dungeonTypeEffectiveness,
   dungeonWeather,
   imposedWeather,
-  effectiveDungeonMove,
   pokemonPower,
 } from '@poke/game-core';
 import type { DungeonMove, DungeonTeamError, ExpeditionSite, GameContext } from '@poke/game-core';
-import type { DungeonRunDto, PokemonDto, StartDungeonInput } from '@poke/shared';
-import {
-  HoverBubble,
-  Modal,
-  PokemonSprite,
-  ShinyStar,
-  StatLines,
-  TypeBadge,
-} from '../../components/ui';
+import type { DungeonRunDto, StartDungeonInput } from '@poke/shared';
+import { HoverBubble, Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { api } from '../../lib/api';
 import { PLAYER_STATE_KEYS, utcOffsetMinutes } from '../../lib/game';
 import {
-  STAT_LABELS,
   errorText,
   formatDuration,
   formatMoney,
@@ -37,8 +25,9 @@ import {
   itemName,
   typeLabel,
 } from '../../lib/labels';
+import { CombatTeamOrder, EnemyInfo, combatMove } from './CombatTeamOrder';
 import { DungeonDifficultyBadge } from './DungeonDifficultyBadge';
-import { TeamPicker, pillClass, useTeamPicker } from './TeamPicker';
+import { TeamPicker, useTeamPicker } from './TeamPicker';
 import { TEAM_WEATHER_NOTE, WeatherIcon } from './WeatherIcon';
 import { XpPreview, formatXp, usePlayerBonuses } from './XpPreview';
 
@@ -59,84 +48,15 @@ function ruleText(e: DungeonTeamError): string {
   }
 }
 
-/** Multiplicateur lisible (×2, ×½, ×¼, ×⅛…). */
-function effectivenessLabel(e: number): string {
-  if (e === 0.5) return '×½';
-  if (e === 0.25) return '×¼';
-  if (e === 0.125) return '×⅛';
-  if (e < 0.125) return `×1/${Math.round(1 / e)}`;
-  return `×${e}`;
-}
-
-const effectivenessClass = (e: number) =>
-  e > 1 ? 'text-emerald-600' : e < 1 ? 'text-red-600' : 'text-slate-500';
-
-/** Types techniques des données, qui ne sont pas des types d'attaque. */
-const NON_POKEMON_TYPES = new Set(['stellar', 'unknown', 'shadow']);
-
-/** Types d'attaque regroupés par efficacité contre le boss (×4, ×2, ×½, ×¼…, une immunité comptant ×¼). */
-function matchups(bossTypes: readonly string[]) {
-  const byFactor = new Map<number, string[]>();
-  for (const { name } of types) {
-    const e = dungeonTypeEffectiveness(name, bossTypes);
-    if (e !== 1 && !NON_POKEMON_TYPES.has(name)) {
-      byFactor.set(e, [...(byFactor.get(e) ?? []), name]);
-    }
-  }
-  return [...byFactor.entries()].sort(([a], [b]) => b - a);
-}
-
 /** Fiche du boss au survol : statistiques, faiblesses et résistances, attaque. */
 function BossInfo({ ctx, dungeon }: { ctx: GameContext; dungeon: Dungeon }) {
   const boss = dungeonEnemies(ctx, dungeon).at(-1);
   if (!boss) return null;
-  const stats = { ...boss.stats, hp: boss.maxHp };
-  const total = STAT_NAMES.reduce((sum, s) => sum + stats[s], 0);
-  const special = boss.category === 'special';
   return (
-    <span className="grid gap-2">
-      <span>
-        <span className="mb-0.5 block font-semibold">Statistiques</span>
-        <StatLines values={stats} total={total} />
-        {dungeon.bossHpMultiplier !== 1 && (
-          <span className="block text-[10px] text-slate-500">
-            PV ×{dungeon.bossHpMultiplier} (boss)
-          </span>
-        )}
-      </span>
-      <span>
-        <span className="mb-0.5 block font-semibold">Faiblesses et résistances</span>
-        {matchups(boss.types).map(([e, list]) => (
-          <span key={e} className="mb-0.5 flex items-start gap-1">
-            <span className={`w-6 shrink-0 font-semibold ${effectivenessClass(e)}`}>
-              {effectivenessLabel(e)}
-            </span>
-            <span className="flex flex-wrap gap-0.5">
-              {list.map((t) => (
-                <TypeBadge key={t} type={t} />
-              ))}
-            </span>
-          </span>
-        ))}
-      </span>
-      <span>
-        <span className="mb-0.5 block font-semibold">Attaque</span>
-        <span className="block">
-          {special ? 'Spéciale' : 'Physique'} ({STAT_LABELS[special ? 'special-attack' : 'attack']}{' '}
-          {stats[special ? 'special-attack' : 'attack']})
-        </span>
-        <span className="mt-0.5 flex flex-wrap items-center gap-0.5">
-          {boss.types.map((t) => (
-            <TypeBadge key={t} type={t} />
-          ))}
-        </span>
-        <span className="block text-[10px] text-slate-500">
-          {boss.types.length > 1
-            ? 'Choisit le plus efficace de ses types contre le Pokémon en face.'
-            : 'Attaque toujours de son type.'}
-        </span>
-      </span>
-    </span>
+    <EnemyInfo
+      fighter={boss}
+      note={dungeon.bossHpMultiplier !== 1 ? `PV ×${dungeon.bossHpMultiplier} (boss)` : null}
+    />
   );
 }
 
@@ -181,10 +101,6 @@ export function LaunchDungeonDialog({
   });
 
   const members = picker.members;
-  const moveOf = (p: PokemonDto): DungeonMove => {
-    const species = ctx.species(p.speciesId, p.formId)!;
-    return effectiveDungeonMove(species, p, moves[p.id] ?? p.dungeonMove);
-  };
   const maxXp = dungeonMaxXp(ctx, dungeon, bonuses, members, new Date().getHours());
   const weather = dungeonWeather(ctx, dungeon, members, new Date().getHours());
   const weatherNote = imposedWeather(ctx, { activity: 'dungeon', team: members })
@@ -192,22 +108,12 @@ export function LaunchDungeonDialog({
     : weather !== (dungeon.weather ?? null)
       ? 'Imposée par le talent d’un adversaire.'
       : undefined;
-  const withMoves = members.map((p) => ({ ...p, move: moveOf(p) }));
+  const withMoves = members.map((p) => ({ ...p, move: combatMove(ctx, p, moves) }));
   const errors = checkDungeonTeam(ctx, dungeon, withMoves);
   const power = members.reduce(
     (sum, p) => sum + pokemonPower(ctx.species(p.speciesId, p.formId)!, p),
     0,
   );
-
-  function move(index: number, delta: number) {
-    picker.setTeam((t) => {
-      const next = [...t];
-      const target = index + delta;
-      if (target < 0 || target >= next.length) return t;
-      [next[index], next[target]] = [next[target]!, next[index]!];
-      return next;
-    });
-  }
 
   return (
     <Modal open onClose={onClose} wide>
@@ -275,104 +181,14 @@ export function LaunchDungeonDialog({
       </p>
 
       {members.length > 0 && (
-        <section className="mt-5">
-          <h3 className="text-sm font-semibold">Ordre d’entrée et attaques</h3>
-          <p className="text-xs text-slate-500">
-            Le premier entre en combat ; quand un Pokémon est K.O., le suivant prend le relais.
-            Chaque Pokémon attaque avec un de ses types, en physique (Attaque) ou en spécial (Atq.
-            Spé.).
-          </p>
-          <ol className="mt-2 space-y-2">
-            {members.map((p, i) => {
-              const species = ctx.species(p.speciesId, p.formId)!;
-              const stats = computeStats(species, p);
-              const current = moveOf(p);
-              const setMove = (patch: Partial<DungeonMove>) =>
-                setMoves((m) => ({ ...m, [p.id]: { ...current, ...patch } }));
-              return (
-                <li
-                  key={p.id}
-                  className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-2 dark:border-slate-800"
-                >
-                  <span className="w-5 text-center font-mono text-sm text-slate-400">{i + 1}</span>
-                  <PokemonSprite
-                    speciesId={p.speciesId}
-                    formId={p.formId}
-                    shiny={p.isShiny}
-                    size={40}
-                  />
-                  <span className="w-28 min-w-0 text-sm">
-                    <span className="block truncate font-medium">
-                      {species.nameFr} {p.isShiny && <ShinyStar />}
-                    </span>
-                    <span className="text-xs text-slate-500">N.{p.level}</span>
-                  </span>
-                  <span className="flex flex-wrap items-center gap-1">
-                    {species.types.map((t) => {
-                      const e = bossTypes.length ? dungeonTypeEffectiveness(t, bossTypes) : 1;
-                      return (
-                        <button
-                          key={t}
-                          type="button"
-                          onClick={() => setMove({ type: t })}
-                          title={`${dungeonAttack(ctx.balance.dungeons, t).name} : ${effectivenessLabel(e)} contre ${boss?.nameFr ?? 'le boss'}`}
-                          className={`flex items-center gap-1 rounded-full p-0.5 pr-1.5 text-[11px] transition ${
-                            current.type === t
-                              ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900'
-                              : 'opacity-50 hover:opacity-100'
-                          }`}
-                        >
-                          <TypeBadge type={t} />
-                          <span className={`font-semibold ${effectivenessClass(e)}`}>
-                            {effectivenessLabel(e)}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </span>
-                  <span className="flex items-center gap-1 text-xs">
-                    <button
-                      type="button"
-                      className={pillClass(current.category === 'physical')}
-                      onClick={() => setMove({ category: 'physical' })}
-                      title={`${STAT_LABELS.attack} ${stats.attack}`}
-                    >
-                      Physique {stats.attack}
-                    </button>
-                    <button
-                      type="button"
-                      className={pillClass(current.category === 'special')}
-                      onClick={() => setMove({ category: 'special' })}
-                      title={`${STAT_LABELS['special-attack']} ${stats['special-attack']}`}
-                    >
-                      Spécial {stats['special-attack']}
-                    </button>
-                  </span>
-                  <span className="ml-auto flex gap-1">
-                    <button
-                      type="button"
-                      className="btn-ghost px-2 py-0.5"
-                      disabled={i === 0}
-                      onClick={() => move(i, -1)}
-                      aria-label="Monter"
-                    >
-                      ↑
-                    </button>
-                    <button
-                      type="button"
-                      className="btn-ghost px-2 py-0.5"
-                      disabled={i === members.length - 1}
-                      onClick={() => move(i, 1)}
-                      aria-label="Descendre"
-                    >
-                      ↓
-                    </button>
-                  </span>
-                </li>
-              );
-            })}
-          </ol>
-        </section>
+        <CombatTeamOrder
+          ctx={ctx}
+          members={members}
+          moves={moves}
+          setMoves={setMoves}
+          setTeam={picker.setTeam}
+          targets={[{ name: boss?.nameFr ?? 'le boss', types: bossTypes }]}
+        />
       )}
 
       <div className="mt-5 grid gap-1 rounded-xl bg-slate-100 p-3 text-sm dark:bg-slate-800/60">

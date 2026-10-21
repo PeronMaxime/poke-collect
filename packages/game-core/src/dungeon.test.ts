@@ -18,7 +18,7 @@ import { member, testContext } from './test-helpers';
 
 const ctx = testContext();
 const dracaufeuX = ctx.dungeon('mega-dracaufeu-x')!;
-const settings = ctx.balance.dungeons;
+const settings = ctx.balance.combat;
 
 const progress = (caught: number[]) => ({
   caughtSpeciesIds: new Set(caught),
@@ -361,14 +361,16 @@ describe('accès et équipe', () => {
 
 describe('résultat', () => {
   const team = [member('a', 9, 100), member('b', 3, 100)];
+  // Temps clair : le soleil du donjon affaiblirait Tortank.
+  const dungeon = { ...dracaufeuX, weather: undefined };
   const run = (fledAtMs: number | null, seed: number) => {
     const s = buildDungeonSetup(
       ctx,
-      dracaufeuX,
+      dungeon,
       team.map((m) => ({ ...m, move: null })),
       seed,
     );
-    return resolveDungeonRun(ctx, { dungeon: dracaufeuX, setup: s, commands: [], fledAtMs, team });
+    return resolveDungeonRun(ctx, { dungeon, setup: s, commands: [], fledAtMs, team });
   };
 
   it('donne argent, XP et parfois la Méga-Gemme en cas de victoire', () => {

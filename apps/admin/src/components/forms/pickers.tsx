@@ -615,7 +615,7 @@ export function UnlockEditor({
   );
 }
 
-/** Météo d'une zone ou d'un donjon ; vide = temps clair. */
+/** Météo d’un donjon ou d’une simulation ; vide = temps clair. */
 export function WeatherSelect({
   value,
   onChange,

@@ -1,16 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
-import {
-  createDb,
-  ensureSeedContent,
-  inventory,
-  pokedex,
-  pokemon,
-  trainerBattles,
-  users,
-} from '@poke/db';
-import { createRng } from '@poke/game-core';
+import { createDb, ensureSeedContent, inventory, pokedex, pokemon, users } from '@poke/db';
 import type {
   BattleDto,
   ClaimBattleResponse,
@@ -220,7 +211,7 @@ describe('paliers et collections', () => {
     const res = await call<ProgressionResponse>('GET', '/api/progression');
     expect(res.body).toEqual({
       claims: [],
-      slots: { expeditions: 2, battles: 1, daycare: 1 },
+      slots: { expeditions: 2, daycare: 1 },
       bonuses: { capture: 1, xp: 1, money: 1 },
     });
   });
@@ -234,7 +225,7 @@ describe('paliers et collections', () => {
     await catchSpecies(userId, range(1, 16));
     const res = await claim('milestone', 'kanto-10');
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.slots).toEqual({ expeditions: 3, battles: 1, daycare: 1 });
+    expect(res.body.slots).toEqual({ expeditions: 3, daycare: 1 });
     expect(await itemCount(userId, 'great-ball')).toBe(5);
     expect((await claim('milestone', 'kanto-10')).body.error).toBe('ALREADY_CLAIMED');
 
@@ -264,15 +255,11 @@ describe('paliers et collections', () => {
     const start = await call<BattleDto>('POST', '/api/battles', {
       trainerId: 'gamin-tom',
       team: [starter.id],
+      moves: [{ type: 'fire', category: 'physical' }],
     });
-    expect(start.status).toBe(201);
-    let seed = 0;
-    while (createRng(seed).next() >= 0.04) seed++;
-    await handle.db
-      .update(trainerBattles)
-      .set({ seed })
-      .where(eq(trainerBattles.id, start.body.id));
-    advance(60);
+    expect(start.status, JSON.stringify(start.body)).toBe(201);
+    // Le combat se termine au plus tard au bout du temps imparti (1 min 30 contre Tom).
+    advance(2);
     const result = await call<ClaimBattleResponse>('POST', `/api/battles/${start.body.id}/claim`);
     expect(result.body.battle.outcome).toBe('win');
     const tom = seedContent.trainers.find((t) => t.id === 'gamin-tom')!;

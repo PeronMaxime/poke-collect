@@ -1,19 +1,19 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { trainerSchema } from '@poke/content';
+import { defaultTrainerTimeLimitSeconds, trainerSchema } from '@poke/content';
 import type { BattleRules, Trainer, TrainerPokemon } from '@poke/content';
 import { natures } from '@poke/data';
 import {
   battleCooldownMinutes,
-  battleDurationMinutes,
   battleKoMinutes,
+  buildBattleSetup,
+  dungeonOpponentInstance,
+  simulateDungeon,
   trainerMemberPower,
   trainerPower,
-  winProbabilityForRatio,
 } from '@poke/game-core';
 import { EntityPage } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
-import { WinCurveChart } from '../../components/WinCurveChart';
 import {
   Field,
   NullableNumberInput,
@@ -39,7 +39,7 @@ export function TrainersPage() {
   return (
     <EntityPage<Trainer>
       title="Dresseurs"
-      description="Équipe (PE calculée), conditions d’équipe, durée, récompenses, badge, rejouabilité, déblocage."
+      description="Équipe (PE calculée), conditions d’équipe, temps imparti, récompenses, badge, rejouabilité, déblocage."
       collection="trainers"
       entityKind="trainer"
       schema={trainerSchema}
@@ -76,7 +76,7 @@ export function TrainersPage() {
         trainerClass: 'Gamin',
         sprite: null,
         team: [{ speciesId: 19, level: 5, iv: null, nature: null }],
-        durationMinutes: null,
+        timeLimitSeconds: defaultTrainerTimeLimitSeconds(1),
         rules: {
           teamSize: null,
           maxLevel: null,
@@ -96,7 +96,7 @@ export function TrainersPage() {
       })}
       duplicate={(t) => ({ ...structuredClone(t), id: `${t.id}-copie`, name: `${t.name} (copie)` })}
       renderForm={(p) => <TrainerForm {...p} />}
-      renderExtra={(t, w) => <WinSimulator trainer={t} working={w} />}
+      renderExtra={(t, w) => <BattleSimulator key={t.id} trainer={t} working={w} />}
       newLabel="Nouveau dresseur"
     />
   );
@@ -222,16 +222,17 @@ function TrainerForm({
       <Section title="Combat">
         <div className="grid gap-4 sm:grid-cols-3">
           <Field
-            label="Durée"
-            hint={`Vide = ${battles.defaultDurationMinutes} min (équilibrage).`}
-            error={errors.get('durationMinutes')}
+            label="Temps imparti"
+            hint={`Pour vaincre toute l’équipe. Proposé : ${defaultTrainerTimeLimitSeconds(t.team.length)} s (1 min + 30 s par Pokémon).`}
+            error={errors.get('timeLimitSeconds')}
           >
-            <NullableNumberInput
-              value={t.durationMinutes}
-              min={1}
-              unit="min"
-              placeholder={String(battles.defaultDurationMinutes)}
-              onChange={(v) => set('durationMinutes', v)}
+            <NumberInput
+              value={t.timeLimitSeconds}
+              min={10}
+              max={3600}
+              step={10}
+              unit="s"
+              onChange={(v) => set('timeLimitSeconds', v)}
               disabled={disabled}
             />
           </Field>
@@ -604,55 +605,72 @@ export function TeamEditor({
   );
 }
 
-/** Probabilité de victoire contre ce dresseur selon la PE d'une équipe (courbe + essai). */
-function WinSimulator({ trainer, working }: { trainer: Trainer; working: WorkingVersion }) {
+/** IV de l'équipe type du simulateur quand ils ne sont pas fixés (moyenne d'un Pokémon sauvage). */
+const TEAM_IV = 15;
+
+/** Victoires d'une équipe type contre ce dresseur (sans changement de Pokémon), sur 50 tirages. */
+function BattleSimulator({ trainer, working }: { trainer: Trainer; working: WorkingVersion }) {
   const { ctx } = working;
-  const power = trainerPower(ctx, trainer);
-  const [playerPower, setPlayerPower] = useState(power);
-  const [advantage, setAdvantage] = useState(0);
-  const factor = 1 + ctx.balance.battles.typeAdvantageWeight * advantage;
-  const ratio = power > 0 ? playerPower / power : 0;
-  const chance = winProbabilityForRatio(ctx, ratio * factor);
+  // Équipe type : la même que celle du dresseur.
+  const [team, setTeam] = useState<TrainerPokemon[]>(() =>
+    trainer.team.map((m) => ({ ...m, iv: null, nature: null })),
+  );
+  const [result, setResult] = useState<string | null>(null);
+  const valid = trainerSchema.safeParse(trainer).success && team.length > 0;
+
+  function run() {
+    const outcomes = { win: 0, loss: 0, timeout: 0, fled: 0 };
+    let time = 0;
+    let defeated = 0;
+    const runs = 50;
+    // Météo de la zone à l'instant présent.
+    const now = Date.now();
+    for (let seed = 0; seed < runs; seed++) {
+      const members = team.map((m) => ({
+        ...dungeonOpponentInstance(m, TEAM_IV),
+        xp: 0,
+        ability: '',
+        isShiny: false,
+        gender: 'male' as const,
+        happiness: 0,
+        move: null,
+      }));
+      const setup = buildBattleSetup(ctx, trainer, members, seed, null, now);
+      const { state } = simulateDungeon(setup, [], null, setup.timeLimitMs);
+      outcomes[state.outcome ?? 'timeout']++;
+      time += state.endedAtMs ?? setup.timeLimitMs;
+      defeated += state.defeated;
+    }
+    setResult(
+      `${Math.round((outcomes.win / runs) * 100)} % de victoires · ${outcomes.loss} équipes K.O. · ${outcomes.timeout} temps écoulés · ${(time / runs / 1000).toFixed(0)} s en moyenne · ${(defeated / runs).toFixed(1)} / ${trainer.team.length} Pokémon vaincus`,
+    );
+  }
 
   return (
     <div className="card space-y-4">
       <div>
-        <h2 className="font-semibold">Simulateur de victoire</h2>
+        <h2 className="font-semibold">Simulateur</h2>
         <p className="text-xs text-slate-500">
-          Avec les réglages de combat et l’équipe affichée (y compris les modifications non
-          enregistrées). Durée {battleDurationMinutes(ctx, trainer)} min · K.O.{' '}
-          {battleKoMinutes(ctx, trainer)} min
+          Équipe type (IV {TEAM_IV} si vide, attaque par défaut, sans changement de Pokémon), contre
+          le dresseur affiché (modifications non enregistrées comprises), avec les réglages de
+          combat de l’équilibrage. K.O. {battleKoMinutes(ctx, trainer)} min
           {trainer.repeatable && ` · recharge ${battleCooldownMinutes(ctx, trainer)} min`}.
         </p>
       </div>
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field label="PE de l’équipe du joueur">
-          <NumberInput value={playerPower} min={0} unit="PE" onChange={setPlayerPower} />
-        </Field>
-        <Field label="Avantage de types" hint="−1 très défavorable, +1 très favorable.">
-          <input
-            type="range"
-            className="w-full accent-brand-500"
-            min={-1}
-            max={1}
-            step={0.1}
-            value={advantage}
-            onChange={(e) => setAdvantage(e.target.valueAsNumber)}
-          />
-          <span className="text-xs text-slate-500">
-            {advantage > 0 ? '+' : ''}
-            {advantage.toFixed(1)} → PE effective × {factor.toFixed(2)}
-          </span>
-        </Field>
-        <div className="text-sm">
-          <p className="text-slate-500">Probabilité de victoire</p>
-          <p className="text-3xl font-bold">{(chance * 100).toFixed(1)} %</p>
-          <p className="text-xs text-slate-500">
-            PE {playerPower} contre {power} (×{ratio.toFixed(2)})
-          </p>
-        </div>
+      <TeamEditor
+        working={working}
+        team={team}
+        onChange={setTeam}
+        errors={new Map()}
+        disabled={false}
+        defaultIv={TEAM_IV}
+      />
+      <div className="flex flex-wrap items-center gap-3">
+        <button className="btn-primary" disabled={!valid} onClick={run}>
+          Simuler 50 combats
+        </button>
+        {result && <p className="text-sm">{result}</p>}
       </div>
-      <WinCurveChart ctx={ctx} trainerPower={power} advantage={advantage} marker={ratio} />
     </div>
   );
 }
