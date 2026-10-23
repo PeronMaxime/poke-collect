@@ -652,11 +652,7 @@ export async function claimExpedition(
         const roamer = found.roamers.find((r) => r.questId === questId);
         const regionId = ctx.quest(questId!)?.regionId;
         if (!roamer || !regionId) continue;
-        const zoneId = roamerFleeZoneId(
-          roamingZones(ctx, regionId, progress),
-          zone.id,
-          found.seed,
-        );
+        const zoneId = roamerFleeZoneId(roamingZones(ctx, regionId, progress), zone.id, found.seed);
         if (!zoneId) continue;
         await tx
           .update(questProgress)
