@@ -17,11 +17,14 @@ let clock = new Date('2026-10-07T10:00:00Z');
 let app: Awaited<ReturnType<typeof buildApp>>['app'];
 
 // Quête de test : une capture, puis Raikou en fuyard. Au départ, seules la Route 1 et la Forêt de
-// Jade sont débloquées : il se cache dans l'une des deux, et chaque rencontre est lui (100 %) ; la
+// Jade sont débloquées (sans puissance minimale) : il se cache dans l'une des deux, et chaque rencontre est lui (100 %) ; la
 // capture est assurée s'il reste une Ball.
 const content = structuredClone(seedContent);
 content.balance.capture.globalMultiplier = 1000;
-content.zones.find((z) => z.id === 'foret-de-jade')!.unlock = { type: 'always' };
+const foretDeJade = content.zones.find((z) => z.id === 'foret-de-jade')!;
+foretDeJade.unlock = { type: 'always' };
+// La zone du fuyard dépend du joueur : le starter seul doit pouvoir partir dans les deux.
+foretDeJade.minPower = 0;
 const raikou = content.quests.find((q) => q.id === 'raikou')!.rewards.pokemon[0]!;
 content.quests.push({
   id: 'fuyard-test',
