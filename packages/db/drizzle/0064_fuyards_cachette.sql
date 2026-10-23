@@ -1,0 +1,1 @@
+ALTER TABLE "quest_progress" ADD COLUMN "roamer_hideout" jsonb;

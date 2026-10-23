@@ -103,6 +103,8 @@ export function effectText(effect: ItemEffect): string {
       return `Musée : ${getSpecies(effect.speciesId)?.nameFr ?? `#${effect.speciesId}`} en ${formatDuration(effect.minutes)}`;
     case 'megaEvolution':
       return `Au PC : Méga-Évolution en ${getForm(effect.formId)?.nameFr ?? `forme ${effect.formId}`}`;
+    case 'revive':
+      return 'Ranime un Pokémon K.O.';
   }
 }
 
@@ -279,7 +281,11 @@ export const GAME_ERRORS: Record<string, string> = {
   LAST_POKEMON: 'Tu dois garder au moins un Pokémon.',
   NOT_ENOUGH_CANDIES: 'Pas assez de Bonbons.',
   MAX_LEVEL: 'Ce Pokémon est déjà au niveau maximal.',
-  POKEMON_KO: 'Un de ces Pokémon est K.O. : il doit se reposer.',
+  POKEMON_KO: 'Un de ces Pokémon est K.O. : soigne-le d’abord au Centre Pokémon.',
+  POKEMON_HEALING: 'Un de ces Pokémon est en soins au Centre Pokémon.',
+  POKEMON_NOT_KO: 'Ce Pokémon n’est pas K.O.',
+  CENTER_FULL: 'Le Centre Pokémon n’a plus assez de place.',
+  NOT_A_REVIVE: 'Cet objet ne ranime pas les Pokémon.',
   TRAINER_LOCKED: 'Ce dresseur n’est pas encore accessible.',
   TRAINER_DEFEATED: 'Tu as déjà battu ce dresseur.',
   TRAINER_COOLDOWN: 'Ce dresseur se repose : reviens plus tard.',
@@ -310,6 +316,8 @@ export const GAME_ERRORS: Record<string, string> = {
   QUEST_NOT_COMPLETED: 'Cette quête n’est pas encore terminée.',
   QUEST_NOT_CLAIMED: 'Réclame d’abord la récompense de la quête.',
   QUEST_POKEMON_CAUGHT: 'Le légendaire de cette quête est déjà capturé.',
+  QUEST_POKEMON_ROAMING:
+    'Ce légendaire est un fuyard : il se trouve dans les expéditions, pas dans une expédition légendaire.',
   QUEST_EXPEDITION_RUNNING: 'Une expédition légendaire est déjà en cours pour cette quête.',
   DECISION_REQUIRED: 'Choisis une Ball ou prends la fuite.',
   NOT_A_LEGENDARY_EXPEDITION: 'Ce n’est pas une expédition légendaire en attente.',

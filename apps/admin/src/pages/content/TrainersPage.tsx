@@ -5,7 +5,6 @@ import type { BattleRules, Trainer, TrainerPokemon } from '@poke/content';
 import { natures } from '@poke/data';
 import {
   battleCooldownMinutes,
-  battleKoMinutes,
   buildBattleSetup,
   dungeonOpponentInstance,
   simulateDungeon,
@@ -90,7 +89,6 @@ export function TrainersPage() {
         badge: null,
         repeatable: true,
         cooldownMinutes: null,
-        koMinutes: null,
         enabled: true,
         unlock: { type: 'always' },
       })}
@@ -435,20 +433,6 @@ function TrainerForm({
               />
             </Field>
           )}
-          <Field
-            label="Durée de K.O. après une défaite"
-            hint={`Vide = ${battles.koMinutes} min (équilibrage).`}
-            error={errors.get('koMinutes')}
-          >
-            <NullableNumberInput
-              value={t.koMinutes}
-              min={0}
-              unit="min"
-              placeholder={String(battles.koMinutes)}
-              onChange={(v) => set('koMinutes', v)}
-              disabled={disabled}
-            />
-          </Field>
         </div>
         <Field label="Condition de déblocage" error={errorsUnder(errors, 'unlock')[0]}>
           <UnlockEditor
@@ -653,7 +637,7 @@ function BattleSimulator({ trainer, working }: { trainer: Trainer; working: Work
         <p className="text-xs text-slate-500">
           Équipe type (IV {TEAM_IV} si vide, attaque par défaut, sans changement de Pokémon), contre
           le dresseur affiché (modifications non enregistrées comprises), avec les réglages de
-          combat de l’équilibrage. K.O. {battleKoMinutes(ctx, trainer)} min
+          combat de l’équilibrage
           {trainer.repeatable && ` · recharge ${battleCooldownMinutes(ctx, trainer)} min`}.
         </p>
       </div>

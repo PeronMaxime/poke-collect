@@ -22,6 +22,7 @@ import {
   speciesName,
   unlockConditionText,
 } from '../../lib/labels';
+import { zoneLink } from './ExpeditionsPage';
 import { RewardList } from './ProgressionViews';
 import { QuestExpeditionDialog } from './QuestExpeditionDialog';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
@@ -42,6 +43,17 @@ interface Hunt {
   chainExpiresIn: number | null;
   canLaunch: boolean;
   onLaunch: () => void;
+  /** Pokémon fuyard : pas d'expédition légendaire, il se cache dans les zones de la région. */
+  roaming: Roaming | null;
+}
+
+interface Roaming {
+  /** Zone où il se cache ; null = parti avec une expédition, ou aucune zone débloquée. */
+  zoneId: string | null;
+  /** Temps restant avant qu'il change de zone (ms). */
+  movesIn: number;
+  /** Parti avec une expédition pas encore récupérée. */
+  engaged: boolean;
 }
 
 /**
@@ -88,6 +100,7 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
     if (!target) return null;
     const running = active.find((e) => e.questId === q.id);
     const chain = expeditions.data?.questChains.find((c) => c.questId === q.id);
+    const roamer = expeditions.data?.roamers.find((r) => r.questId === q.id);
     return {
       running,
       endsIn: running ? Date.parse(running.endsAt) - (now + offset) : 0,
@@ -96,6 +109,14 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
       chainExpiresIn: chain?.expiresAt ? Date.parse(chain.expiresAt) - (now + offset) : null,
       canLaunch: freeSlot,
       onLaunch: () => setHuntQuest(q),
+      roaming:
+        target.roaming == null
+          ? null
+          : {
+              zoneId: roamer?.zoneId ?? null,
+              movesIn: roamer ? Date.parse(roamer.movesAt) - (now + offset) : 0,
+              engaged: active.some((e) => e.roamerQuestIds.includes(q.id)),
+            },
     };
   };
   // Quêtes à réclamer d'abord, légendaires à capturer, en cours, verrouillées, terminées.
@@ -112,7 +133,10 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
     ctx.quests.some((q) => tabOf(q) === id && byId.get(q.id)?.status === 'completed')
       ? 'Récompense à réclamer'
       : ctx.quests.some(
-            (q) => tabOf(q) === id && targetOf(q) && !active.some((e) => e.questId === q.id),
+            (q) =>
+              tabOf(q) === id &&
+              targetOf(q) &&
+              !active.some((e) => e.questId === q.id || e.roamerQuestIds.includes(q.id)),
           )
         ? 'Légendaire à capturer'
         : null;
@@ -125,7 +149,9 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
         étapes se valident dans l’ordre ; captures et expéditions ne comptent qu’à partir du début
         de l’étape. Une fois la récompense réclamée, pars à la recherche du légendaire lors d’une
         expédition légendaire : au retour, tu vois s’il est shiny avant de lancer ta Ball (une
-        seule) ou de fuir. Relancer de suite allonge la chaîne shiny.
+        seule) ou de fuir. Relancer de suite allonge la chaîne shiny. Les fuyards, eux, se cachent
+        dans les expéditions ordinaires et changent de zone à chaque heure : repère leur logo sur
+        les zones.
       </p>
       <RegionTabs
         ctx={ctx}
@@ -195,7 +221,9 @@ function QuestCard({
   return (
     <div
       className={`card flex flex-col gap-3 p-4 ${status === 'locked' ? 'opacity-60' : ''} ${
-        status === 'completed' || (hunt && !hunt.running) ? 'ring-2 ring-amber-400' : ''
+        status === 'completed' || (hunt && !hunt.running && !hunt.roaming?.engaged)
+          ? 'ring-2 ring-amber-400'
+          : ''
       }`}
     >
       <div className="flex items-start gap-3">
@@ -219,7 +247,9 @@ function QuestCard({
           <p className="text-xs text-slate-500">{quest.description}</p>
           {status === 'claimed' &&
             (hunt ? (
-              <p className="mt-1 text-xs font-medium text-amber-600">✦ Légendaire à capturer</p>
+              <p className="mt-1 text-xs font-medium text-amber-600">
+                ✦ {hunt.roaming ? 'Fuyard à capturer' : 'Légendaire à capturer'}
+              </p>
             ) : (
               <p className="mt-1 text-xs text-emerald-600">✓ Terminée</p>
             ))}
@@ -288,7 +318,9 @@ function QuestCard({
             {claiming ? '…' : 'Réclamer la récompense'}
           </button>
         )}
+        {hunt?.roaming && <RoamingStatus ctx={ctx} roaming={hunt.roaming} />}
         {hunt &&
+          !hunt.roaming &&
           (hunt.running ? (
             <p className="rounded-lg bg-brand-500/10 px-2 py-1.5 text-center text-sm">
               Expédition légendaire{' '}
@@ -323,7 +355,31 @@ function QuestCard({
   );
 }
 
-/** Récompense réclamée : les légendaires attendent leur expédition légendaire. */
+/** Où se cache le fuyard d'une quête : lien vers sa zone (qui ouvre le départ d'expédition). */
+function RoamingStatus({ ctx, roaming }: { ctx: GameContext; roaming: Roaming }) {
+  const zone = roaming.zoneId ? ctx.zone(roaming.zoneId) : undefined;
+  if (roaming.engaged) {
+    return (
+      <p className="rounded-lg bg-brand-500/10 px-2 py-1.5 text-center text-sm">
+        Une de tes expéditions est sur sa piste : récupère-la pour savoir si tu l’as croisé.
+      </p>
+    );
+  }
+  if (!zone) {
+    return (
+      <p className="rounded-lg bg-slate-100 px-2 py-1.5 text-center text-sm text-slate-500 dark:bg-slate-800">
+        Il rôde dans la région, mais dans aucune zone que tu as débloquée.
+      </p>
+    );
+  }
+  return (
+    <a href={zoneLink(zone.id)} className="btn-primary block w-full text-center">
+      Le traquer : {zone.name} (encore {formatCountdown(Math.max(0, roaming.movesIn))})
+    </a>
+  );
+}
+
+/** Récompense réclamée : les légendaires attendent leur expédition légendaire (ou fuient). */
 function QuestReveal({
   ctx,
   data,
@@ -363,8 +419,9 @@ function QuestReveal({
                 {data.rewards.pokemon
                   .map((p) => speciesName(ctx, p.speciesId, p.formId))
                   .join(', ')}{' '}
-                t’attend : pars à sa recherche avec une expédition légendaire. Une seule Ball sera
-                lancée, prépare bien ton équipe !
+                {data.rewards.pokemon.some((p) => p.roaming != null)
+                  ? 's’est enfui ! C’est un fuyard : il change de zone à chaque heure. Repère son logo sur les zones d’expédition et envoie une équipe avec des Balls à sa poursuite.'
+                  : 't’attend : pars à sa recherche avec une expédition légendaire. Une seule Ball sera lancée, prépare bien ton équipe !'}
               </p>
             </>
           )}

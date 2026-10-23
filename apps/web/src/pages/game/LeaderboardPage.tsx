@@ -8,9 +8,9 @@ import { trainerLink } from './TrainerCardPage';
 const BOARDS: { id: LeaderboardKind; label: string; unit: string; hint: string }[] = [
   {
     id: 'species',
-    label: 'Espèces capturées',
-    unit: 'Espèces',
-    hint: 'Espèces différentes capturées au moins une fois (Pokédex).',
+    label: 'Pokémon capturés',
+    unit: 'Pokémon',
+    hint: 'Espèces et formes (régionales, Méga…) différentes capturées au moins une fois (Pokédex).',
   },
   { id: 'money', label: 'Fortune', unit: 'Argent', hint: 'Poké Dollars possédés actuellement.' },
   {
@@ -22,8 +22,8 @@ const BOARDS: { id: LeaderboardKind; label: string; unit: string; hint: string }
   {
     id: 'shiny',
     label: 'Chromatiques',
-    unit: 'Espèces',
-    hint: 'Espèces différentes capturées au moins une fois en chromatique.',
+    unit: 'Pokémon',
+    hint: 'Espèces et formes (régionales, Méga…) différentes capturées au moins une fois en chromatique.',
   },
 ];
 

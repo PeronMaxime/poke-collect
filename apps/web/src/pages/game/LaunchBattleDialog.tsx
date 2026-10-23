@@ -5,7 +5,6 @@ import { typeWeaknesses } from '@poke/data';
 import {
   battleCooldownMinutes,
   battleEnv,
-  battleKoMinutes,
   battleMaxXp,
   battleWeather,
   checkBattleTeam,
@@ -197,8 +196,8 @@ export function LaunchBattleDialog({
         </XpPreview>
         <p className="mt-2 text-xs text-slate-500">
           Chaque Pokémon adverse vaincu rapporte de l’XP à toute l’équipe, même en cas de défaite
-          (pas en cas de fuite). Les Pokémon mis K.O. se reposent{' '}
-          {formatDuration(battleKoMinutes(ctx, trainer))}.{' '}
+          (pas en cas de fuite). Les Pokémon mis K.O. le restent jusqu’à leurs soins au Centre
+          Pokémon.{' '}
           {trainer.repeatable
             ? `Après chaque combat, ${trainer.name} se repose pendant ${formatDuration(battleCooldownMinutes(ctx, trainer))}.`
             : `${trainer.name} ne se bat qu’une fois : en cas de défaite, tu peux le défier de nouveau aussitôt.`}

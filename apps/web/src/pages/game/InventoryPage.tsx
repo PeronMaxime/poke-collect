@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { ITEM_CATEGORIES } from '@poke/content';
 import type { ItemCategory } from '@poke/content';
 import type { GameContext } from '@poke/game-core';
@@ -11,6 +12,7 @@ import {
   itemIcon,
   lineageSpeciesId,
 } from '../../lib/labels';
+import { ReviveDialog } from './ReviveDialog';
 
 const CATEGORY_LABELS: Record<ItemCategory, string> = {
   ball: 'Balls',
@@ -28,6 +30,7 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
   const candies = useCandies();
   const stacks = inventory.data ?? [];
   const candyStacks = candies.data ?? [];
+  const [reviving, setReviving] = useState<string | null>(null);
 
   if (!inventory.isPending && stacks.length === 0 && candyStacks.length === 0) {
     return (
@@ -73,6 +76,11 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
                         </>
                       )}
                     </div>
+                    {s.quantity > 0 && ctx.itemEffect(s.itemId, 'revive') && (
+                      <button className="btn-primary" onClick={() => setReviving(s.itemId)}>
+                        Utiliser
+                      </button>
+                    )}
                   </li>
                 );
               })}
@@ -80,6 +88,7 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
           </section>
         );
       })}
+      {reviving && <ReviveDialog ctx={ctx} itemId={reviving} onClose={() => setReviving(null)} />}
       {candyStacks.length > 0 && (
         <section>
           <h2 className="mb-2 font-semibold">Bonbons de lignée</h2>

@@ -517,7 +517,6 @@ const trainer = (
   badge: null,
   repeatable: true,
   cooldownMinutes: null,
-  koMinutes: null,
   unlock: { type: 'always' },
   ...t,
 });

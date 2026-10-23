@@ -1,5 +1,5 @@
 import { randomInt } from 'node:crypto';
-import { and, eq, gt, gte, inArray, isNull, or } from 'drizzle-orm';
+import { and, eq, gt, gte, inArray, isNotNull, isNull, or } from 'drizzle-orm';
 import { expeditions, pityCounters, playerProfiles, pokemon, questProgress } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
@@ -15,13 +15,21 @@ import {
   questEncounter,
   resolveExpedition,
   resolveQuestExpedition,
+  roamerFleeZoneId,
+  roamerPositions,
+  roamingTarget,
+  roamingZones,
+  weatherHour,
   zoneChainStatus,
   zoneWeather,
 } from '@poke/game-core';
 import type {
   ClaimedRewards,
   ExpeditionResult,
+  ExpeditionRoamer,
   GameContext,
+  PlayerProgress,
+  RoamerPosition,
   ZoneChainStatus,
 } from '@poke/game-core';
 import type {
@@ -129,6 +137,43 @@ export async function shinyChains(
   return chains;
 }
 
+/**
+ * Pokémon fuyards du joueur et leur zone à l'instant `now` : ceux des quêtes réclamées, sauf ceux
+ * partis avec une expédition pas encore réclamée.
+ */
+export async function playerRoamers(
+  db: Db,
+  ctx: GameContext,
+  userId: string,
+  now: Date,
+  progress?: PlayerProgress,
+): Promise<RoamerPosition[]> {
+  const claimedQuests = await db
+    .select({
+      questId: questProgress.questId,
+      pokemonCaught: questProgress.pokemonCaught,
+      roamerHideout: questProgress.roamerHideout,
+    })
+    .from(questProgress)
+    .where(and(eq(questProgress.ownerId, userId), isNotNull(questProgress.claimedAt)));
+  const roaming = claimedQuests.filter(({ questId, pokemonCaught }) => {
+    const quest = ctx.quest(questId);
+    return quest && roamingTarget(quest, pokemonCaught);
+  });
+  if (roaming.length === 0) return [];
+  const running = await db
+    .select({ roamers: expeditions.roamers })
+    .from(expeditions)
+    .where(and(eq(expeditions.ownerId, userId), isNull(expeditions.claimedAt)));
+  return roamerPositions(ctx, {
+    userId,
+    claimedQuests: roaming,
+    progress: progress ?? (await playerProgress(db, ctx, userId)),
+    engagedQuestIds: new Set(running.flatMap((r) => r.roamers.map((x) => x.questId))),
+    at: now,
+  });
+}
+
 /** Premier emplacement d'expédition libre du joueur. */
 async function freeSlot(db: Db, ctx: GameContext, userId: string): Promise<number> {
   const active = await db
@@ -172,9 +217,8 @@ export async function startExpedition(
   await requireStartedProfile(db, userId);
   const zone = ctx.zone(input.zoneId);
   if (!zone) throw new GameError(404, 'ZONE_NOT_FOUND');
-  if (!isZoneUnlocked(ctx, zone, await playerProgress(db, ctx, userId))) {
-    throw new GameError(403, 'ZONE_LOCKED');
-  }
+  const progress = await playerProgress(db, ctx, userId);
+  if (!isZoneUnlocked(ctx, zone, progress)) throw new GameError(403, 'ZONE_LOCKED');
   if (input.ballItemId && !ctx.itemEffect(input.ballItemId, 'ball')) {
     throw new GameError(400, 'NOT_A_BALL');
   }
@@ -205,6 +249,10 @@ export async function startExpedition(
     const berries = await reserve(input.berryItemId);
     const chain =
       (await shinyChains(tx, ctx, userId, now, { zoneId: zone.id })).get(zone.id)?.chain ?? 0;
+    // Fuyards de la zone au départ : ils partent avec l'expédition.
+    const roamers = (await playerRoamers(tx, ctx, userId, now, progress))
+      .filter((r) => r.zoneId === zone.id)
+      .map(({ questId, pokemonIndex }) => ({ questId, pokemonIndex }));
 
     const [row] = await tx
       .insert(expeditions)
@@ -225,6 +273,7 @@ export async function startExpedition(
         seed: newSeed(),
         shinyChain: chain,
         localHour: hour,
+        roamers,
       })
       .returning();
     return row!;
@@ -259,6 +308,8 @@ export async function startQuestExpedition(
     if (!progress?.claimedAt) throw new GameError(409, 'QUEST_NOT_CLAIMED');
     const target = quest.rewards.pokemon[progress.pokemonCaught];
     if (!target) throw new GameError(409, 'QUEST_POKEMON_CAUGHT');
+    // Un fuyard se trouve dans les expéditions ordinaires, pas dans une expédition légendaire.
+    if (target.roaming != null) throw new GameError(409, 'QUEST_POKEMON_ROAMING');
     const { durationMinutes } = target.expedition;
     const [running] = await tx
       .select({ id: expeditions.id })
@@ -365,6 +416,38 @@ async function finishedExpedition(
   if (found.claimedAt) throw new GameError(409, 'ALREADY_CLAIMED');
   if (now < found.endsAt) throw new GameError(409, 'NOT_FINISHED', { endsAt: found.endsAt });
   return { found, ctx: await content.version(found.contentVersionId) };
+}
+
+/**
+ * Fuyards emportés par une expédition, à la réclamation : ceux qui sont toujours à capturer (le
+ * même Pokémon de la récompense, toujours fuyard dans la version de départ).
+ */
+async function expeditionRoamers(
+  db: Db,
+  ctx: GameContext,
+  userId: string,
+  snapshot: readonly { questId: string; pokemonIndex: number }[],
+): Promise<ExpeditionRoamer[]> {
+  if (snapshot.length === 0) return [];
+  const rows = await db
+    .select({ questId: questProgress.questId, pokemonCaught: questProgress.pokemonCaught })
+    .from(questProgress)
+    .where(
+      and(
+        eq(questProgress.ownerId, userId),
+        inArray(
+          questProgress.questId,
+          snapshot.map((r) => r.questId),
+        ),
+      ),
+    );
+  return snapshot.flatMap(({ questId, pokemonIndex }) => {
+    const row = rows.find((r) => r.questId === questId);
+    const quest = ctx.quest(questId);
+    const target =
+      row?.pokemonCaught === pokemonIndex && quest && roamingTarget(quest, pokemonIndex);
+    return target ? [{ questId, target }] : [];
+  });
 }
 
 /** Pokémon visé par une expédition légendaire : le prochain de la récompense pas encore capturé. */
@@ -522,6 +605,7 @@ export async function claimExpedition(
         ...(found.captureFilter?.newOnly && { caught: await caughtDex(tx, userId) }),
         hour: found.localHour,
         weather: zoneWeather(zone, found.startedAt),
+        roamers: await expeditionRoamers(tx, ctx, userId, found.roamers),
       });
     } else {
       result = EMPTY_RESULT; // inatteignable : une expédition normale a toujours sa zone
@@ -543,6 +627,50 @@ export async function claimExpedition(
         .update(questProgress)
         .set({ pokemonCaught: questRow.pokemonCaught + captured.length })
         .where(and(eq(questProgress.ownerId, userId), eq(questProgress.questId, questRow.questId)));
+    }
+    // Fuyard capturé : la quête passe au Pokémon suivant de sa récompense (s'il y en a).
+    for (const { questId } of capturedEncounters) {
+      const roamer = questId ? found.roamers.find((r) => r.questId === questId) : undefined;
+      if (!roamer) continue;
+      await tx
+        .update(questProgress)
+        .set({ pokemonCaught: roamer.pokemonIndex + 1 })
+        .where(
+          and(
+            eq(questProgress.ownerId, userId),
+            eq(questProgress.questId, roamer.questId),
+            eq(questProgress.pokemonCaught, roamer.pokemonIndex),
+          ),
+        );
+    }
+    // Fuyard croisé mais pas capturé : il fuit aussitôt vers une autre zone, jusqu'à l'heure
+    // pleine suivante. Pas croisé, il reste où il était (rien à enregistrer).
+    const fled = result.encounters.filter((e) => e.questId && !e.pokemon);
+    if (zone && fled.length > 0) {
+      const progress = await playerProgress(tx, ctx, userId);
+      for (const { questId } of fled) {
+        const roamer = found.roamers.find((r) => r.questId === questId);
+        const regionId = ctx.quest(questId!)?.regionId;
+        if (!roamer || !regionId) continue;
+        const zoneId = roamerFleeZoneId(
+          roamingZones(ctx, regionId, progress),
+          zone.id,
+          found.seed,
+        );
+        if (!zoneId) continue;
+        await tx
+          .update(questProgress)
+          .set({
+            roamerHideout: { pokemonIndex: roamer.pokemonIndex, hour: weatherHour(now), zoneId },
+          })
+          .where(
+            and(
+              eq(questProgress.ownerId, userId),
+              eq(questProgress.questId, roamer.questId),
+              eq(questProgress.pokemonCaught, roamer.pokemonIndex),
+            ),
+          );
+      }
     }
     const newInDex = await recordPokedex(tx, userId, {
       seen: result.encounters.map((e) => e.speciesId),

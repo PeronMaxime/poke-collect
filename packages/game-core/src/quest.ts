@@ -229,9 +229,38 @@ export function questEncounter(
   return { pokemon, shinyChance, rng };
 }
 
+export interface QuestCaptureInput {
+  target: QuestPokemon;
+  team: readonly TeamMember[];
+  ballItemId: string;
+  berryItemId: string | null;
+  bonuses?: PlayerBonuses;
+  /** Heure locale du joueur au départ (talents de jour ou de nuit). */
+  hour?: number | null;
+}
+
+/**
+ * Chance de capture du légendaire : même formule qu'en expédition (Ball, baie, affinité de
+ * l'équipe, bonus permanents et talents de l'équipe). Le serveur et l'affichage la partagent.
+ */
+export function questCaptureChance(ctx: GameContext, input: QuestCaptureInput): number {
+  const { target } = input;
+  const species = ctx.species(target.speciesId, target.formId);
+  if (!species) return 0;
+  const env = expeditionEnv(target.expedition, input.team, input.hour, 'quest');
+  const berry = input.berryItemId ? ctx.itemEffect(input.berryItemId, 'captureBoost') : undefined;
+  return captureProbability(ctx, {
+    captureRate: species.captureRate,
+    ballMultiplier: ctx.itemEffect(input.ballItemId, 'ball')?.catchMultiplier ?? 1,
+    boostMultiplier: berry?.multiplier ?? 1,
+    affinityCount: countAffinity(ctx, target.expedition, input.team, input.hour),
+    bonusMultiplier: abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES).capture,
+  });
+}
+
 /**
  * Rencontre du légendaire, au format d'un résultat d'expédition (une rencontre, une Ball) :
- * même formule de capture qu'en expédition (Ball, baie, affinité de l'équipe, bonus permanents).
+ * chance de capture de `questCaptureChance`.
  */
 export function resolveQuestExpedition(
   ctx: GameContext,
@@ -247,12 +276,10 @@ export function resolveQuestExpedition(
     !fled && input.berryItemId ? ctx.itemEffect(input.berryItemId, 'captureBoost') : undefined;
   const captureChance = fled
     ? 0
-    : captureProbability(ctx, {
-        captureRate: species.captureRate,
-        ballMultiplier: ctx.itemEffect(input.ballItemId!, 'ball')?.catchMultiplier ?? 1,
-        boostMultiplier: berry?.multiplier ?? 1,
-        affinityCount: countAffinity(ctx, target.expedition, input.team, input.hour),
-        bonusMultiplier: bonuses.capture,
+    : questCaptureChance(ctx, {
+        ...input,
+        ballItemId: input.ballItemId!,
+        berryItemId: berry ? input.berryItemId : null,
       });
   const captured = !fled && rng.chance(captureChance);
   // Fuir ne rapporte rien : ni XP ni bonheur pour l'équipe.

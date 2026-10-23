@@ -1,5 +1,14 @@
 import { and, asc, count, eq, inArray, sql } from 'drizzle-orm';
-import { playerProfiles, pokedex, pokemon, sessions, speciesCaptures, users } from '@poke/db';
+import {
+  playerProfiles,
+  pokedex,
+  pokemon,
+  questProgress,
+  sessions,
+  speciesCaptures,
+  trainerProgress,
+  users,
+} from '@poke/db';
 import type { Db } from '@poke/db';
 import { STAT_NAMES } from '@poke/data';
 import { createRng, generatePokemon, isUnlocked } from '@poke/game-core';
@@ -8,15 +17,19 @@ import type {
   AdminPlayerDetailResponse,
   AdminPlayerDto,
   AdminSpeciesStatsDto,
+  AdminTestItemsInput,
+  AdminTestItemsResponse,
   AdminTestPokemonDeleteResponse,
   AdminTestPokemonInput,
   AdminTestPokemonResponse,
+  AdminTestQuestsResponse,
+  AdminTestTrainersResponse,
 } from '@poke/shared';
 import { toDto } from '../routes/player';
 import { GameError } from './errors';
 import { newSeed, requireStartedProfile } from './expeditions';
 import { trainerCard } from './stats';
-import { playerProgress, pokemonActivities, recordPokedex } from './store';
+import { addItems, playerProgress, pokemonActivities, recordPokedex } from './store';
 
 /**
  * Dernière activité connue : présence enregistrée à chaque requête, complétée par la dernière
@@ -201,6 +214,112 @@ export function testPokemonSpecies(
 }
 
 /**
+ * Compte administrateur au profil créé (lots de test) : lève `NOT_FOUND`, `NOT_ADMIN` ou
+ * `NO_PROFILE`.
+ */
+async function requireTestAccount(db: Db, userId: string) {
+  const [user] = await db.select({ role: users.role }).from(users).where(eq(users.id, userId));
+  if (!user) throw new GameError(404, 'NOT_FOUND');
+  if (user.role !== 'admin') throw new GameError(403, 'NOT_ADMIN');
+  await requireStartedProfile(db, userId);
+}
+
+/**
+ * Donne `quantity` exemplaires de chaque objet du contenu publié à un administrateur, pour tester.
+ * Lève `NOT_FOUND`, `NOT_ADMIN` ou `NO_PROFILE`.
+ */
+export async function giveTestItems(
+  db: Db,
+  ctx: GameContext,
+  userId: string,
+  { quantity }: AdminTestItemsInput,
+): Promise<AdminTestItemsResponse> {
+  await requireTestAccount(db, userId);
+  const stacks = ctx.content.items.map((i) => ({ itemId: i.id, quantity }));
+  await addItems(db, userId, stacks);
+  return { items: stacks.length, quantity };
+}
+
+/**
+ * Marque chaque dresseur du contenu publié comme battu une fois (badges, zones et dresseurs
+ * suivants débloqués), sans les récompenses de première victoire. Les dresseurs déjà battus ne
+ * changent pas. Lève `NOT_FOUND`, `NOT_ADMIN` ou `NO_PROFILE`.
+ */
+export async function unlockTestTrainers(
+  db: Db,
+  ctx: GameContext,
+  userId: string,
+  now: Date,
+): Promise<AdminTestTrainersResponse> {
+  await requireTestAccount(db, userId);
+  const total = ctx.trainers.length;
+  if (total === 0) return { defeated: 0, total };
+  const rows = await db
+    .insert(trainerProgress)
+    .values(
+      ctx.trainers.map((t) => ({
+        ownerId: userId,
+        trainerId: t.id,
+        wins: 1,
+        firstWinAt: now,
+        lastWinAt: now,
+      })),
+    )
+    .onConflictDoUpdate({
+      target: [trainerProgress.ownerId, trainerProgress.trainerId],
+      set: {
+        wins: sql`1`,
+        firstWinAt: sql`coalesce(${trainerProgress.firstWinAt}, excluded.first_win_at)`,
+        lastWinAt: sql`coalesce(${trainerProgress.lastWinAt}, excluded.last_win_at)`,
+      },
+      setWhere: sql`${trainerProgress.wins} = 0`,
+    })
+    .returning({ trainerId: trainerProgress.trainerId });
+  return { defeated: rows.length, total };
+}
+
+/**
+ * Termine toutes les quêtes du contenu publié (étapes validées, même verrouillées) : leurs
+ * récompenses restent à réclamer depuis la page Quêtes. Les quêtes déjà terminées ne changent
+ * pas. Lève `NOT_FOUND`, `NOT_ADMIN` ou `NO_PROFILE`.
+ */
+export async function completeTestQuests(
+  db: Db,
+  ctx: GameContext,
+  userId: string,
+  now: Date,
+): Promise<AdminTestQuestsResponse> {
+  await requireTestAccount(db, userId);
+  let completed = 0;
+  await db.transaction(async (tx) => {
+    for (const quest of ctx.quests) {
+      const values = {
+        step: quest.steps.length,
+        progress: {},
+        stepStartedAt: now,
+        completedAt: now,
+      };
+      const rows = await tx
+        .insert(questProgress)
+        .values({
+          ownerId: userId,
+          questId: quest.id,
+          contentVersionId: ctx.content.versionId,
+          ...values,
+        })
+        .onConflictDoUpdate({
+          target: [questProgress.ownerId, questProgress.questId],
+          set: values,
+          setWhere: sql`${questProgress.completedAt} is null`,
+        })
+        .returning({ questId: questProgress.questId });
+      completed += rows.length;
+    }
+  });
+  return { completed, total: ctx.quests.length };
+}
+
+/**
  * Donne un lot de Pokémon de test à un administrateur (origine `admin`) et les inscrit au
  * Pokédex, ce qui rend visibles les donjons de la région. Les statistiques de capture globales
  * ne sont pas touchées. Lève `NOT_FOUND`, `NOT_ADMIN`, `NO_PROFILE` ou `REGION_NOT_FOUND`.
@@ -212,10 +331,7 @@ export async function giveTestPokemon(
   input: AdminTestPokemonInput,
   now: Date,
 ): Promise<AdminTestPokemonResponse> {
-  const [user] = await db.select({ role: users.role }).from(users).where(eq(users.id, userId));
-  if (!user) throw new GameError(404, 'NOT_FOUND');
-  if (user.role !== 'admin') throw new GameError(403, 'NOT_ADMIN');
-  await requireStartedProfile(db, userId);
+  await requireTestAccount(db, userId);
   if (!ctx.region(input.regionId)) throw new GameError(404, 'REGION_NOT_FOUND');
 
   const speciesIds = testPokemonSpecies(ctx, input.regionId, input.legendaries);

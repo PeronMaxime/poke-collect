@@ -8,8 +8,9 @@ import { GameError } from './errors';
 import { assertAvailable, toInstance } from './store';
 
 /**
- * Assistants : un Pokémon affecté à la Pension, à la couveuse ou au Musée y apporte les effets
- * de son talent. Il est occupé tant qu'il y reste ; un seul assistant par bâtiment.
+ * Assistants : un Pokémon affecté à la Pension, à la couveuse, au Musée ou au Centre Pokémon y
+ * apporte les effets de son talent. Il est occupé tant qu'il y reste ; un seul assistant par
+ * bâtiment.
  */
 
 export async function listAssistants(db: Db, userId: string): Promise<AssistantDto[]> {

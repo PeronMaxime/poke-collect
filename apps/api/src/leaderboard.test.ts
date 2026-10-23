@@ -6,6 +6,7 @@ import {
   ensureSeedContent,
   playerProfiles,
   pokedex,
+  pokedexForms,
   pokemon,
   trainerProgress,
   users,
@@ -76,6 +77,14 @@ describe('Classement', () => {
       { ownerId: blue.userId, speciesId: 10, seen: true, caught: false },
       { ownerId: green.userId, speciesId: 16, seen: true, caught: true },
     ]);
+    // Formes du Pokédex comptées avec les espèces : Rattata d'Alola (shiny), Méga-Florizarre ;
+    // une forme naturelle (Pikachu à casquette, sans case au Pokédex) ne compte pas.
+    const at = new Date();
+    await handle.db.insert(pokedexForms).values([
+      { ownerId: red.userId, formId: 10091, caughtShiny: true, firstCaughtAt: at },
+      { ownerId: red.userId, formId: 10033, firstCaughtAt: at },
+      { ownerId: green.userId, formId: 10094, firstCaughtAt: at },
+    ]);
     await handle.db
       .update(playerProfiles)
       .set({ currency: 5000 })
@@ -93,13 +102,13 @@ describe('Classement', () => {
     const species = await red.call<LeaderboardResponse>('GET', '/api/leaderboard/species');
     expect(species.status).toBe(200);
     expect(species.body.total).toBe(3);
-    // Starter compris : Blue 3 espèces (starter + 2), Green 2 ; Red 1.
+    // Starter compris : Blue 3 espèces (starter + 2), Red 1 + 2 formes, Green 2.
     expect(species.body.entries.map((e) => [e.rank, e.trainerName, e.value])).toEqual([
       [1, 'Blue', 3],
-      [2, 'Green', 2],
-      [3, 'Red', 1],
+      [1, 'Red', 3],
+      [3, 'Green', 2],
     ]);
-    expect(species.body.me).toMatchObject({ rank: 3, trainerName: 'Red', isMe: true });
+    expect(species.body.me).toMatchObject({ rank: 1, trainerName: 'Red', isMe: true });
 
     const money = await blue.call<LeaderboardResponse>('GET', '/api/leaderboard/money');
     expect(money.body.entries[0]).toMatchObject({ trainerName: 'Red', value: 5000 });
@@ -112,8 +121,12 @@ describe('Classement', () => {
     ]);
 
     const shiny = await green.call<LeaderboardResponse>('GET', '/api/leaderboard/shiny');
-    expect(shiny.body.entries[0]).toMatchObject({ rank: 1, trainerName: 'Blue', value: 1 });
-    expect(shiny.body.me).toMatchObject({ rank: 2, value: 0 });
+    expect(shiny.body.entries.map((e) => [e.rank, e.trainerName, e.value])).toEqual([
+      [1, 'Blue', 1],
+      [1, 'Red', 1],
+      [3, 'Green', 0],
+    ]);
+    expect(shiny.body.me).toMatchObject({ rank: 3, value: 0 });
 
     const none = await newbie.call<LeaderboardResponse>('GET', '/api/leaderboard/species');
     expect(none.body.me).toBeNull();

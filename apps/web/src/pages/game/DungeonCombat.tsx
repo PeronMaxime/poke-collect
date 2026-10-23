@@ -5,10 +5,9 @@ import { TYPE_COLORS } from '@poke/data';
 import {
   STATUS_LABELS,
   WEATHER_LABELS,
-  abilityEffectText,
+  abilityEffectSummary,
   dungeonAttack,
   dungeonStatChanges,
-  effectActivities,
   simulateDungeon,
 } from '@poke/game-core';
 import type { DungeonStat, Status } from '@poke/content';
@@ -130,12 +129,12 @@ const STATUS_COLORS: Record<Status, string> = {
 };
 const WEATHER_ICONS = { sun: '☀️', rain: '🌧️', sand: '🌪️', hail: '🌨️' } as const;
 
-/** Ce que fait un talent en donjon : ses effets qui y agissent. */
+/**
+ * Ce que fait un talent en combat (donjons et dresseurs) : ses effets qui y agissent. Ceux des
+ * donjons, les mêmes en combat de dresseur hormis la PE minimale, qui ne joue pas pendant le combat.
+ */
 function dungeonAbilityText(ctx: GameContext, ability: string): string {
-  const effects = (ctx.ability(ability)?.effects ?? []).filter((e) =>
-    effectActivities(e).includes('dungeon'),
-  );
-  return effects.map(abilityEffectText).join(' · ') || 'Sans effet en donjon';
+  return abilityEffectSummary(ctx, ability, ['dungeon']) ?? 'Sans effet en combat';
 }
 
 /** Variations de statistiques d'un combattant : hausses en vert, baisses en rouge. */

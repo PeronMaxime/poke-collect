@@ -1,11 +1,6 @@
 import { useMemo } from 'react';
-import { useQuery } from '@tanstack/react-query';
-import {
-  charmMultiplier,
-  createGameContext,
-  isKnockedOut,
-  pokemonEvolutions,
-} from '@poke/game-core';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { charmMultiplier, createGameContext, isHealing, pokemonEvolutions } from '@poke/game-core';
 import type {
   ClaimedRewards,
   DexCatches,
@@ -133,7 +128,7 @@ export const useDaycare = () =>
 export const useMuseum = () =>
   useQuery({ queryKey: keys.museum, queryFn: () => api<MuseumResponse>('/api/museum') });
 
-/** Assistants de la Pension, de la couveuse et du Musée. */
+/** Assistants de la Pension, de la couveuse, du Musée et du Centre Pokémon. */
 export const useAssistants = () =>
   useQuery({ queryKey: keys.assistants, queryFn: () => api<AssistantDto[]>('/api/assistants') });
 
@@ -242,8 +237,50 @@ export function useShinyCharm(ctx: GameContext | undefined): number {
   );
 }
 
-/** Pokémon engageable : ni occupé, ni K.O. (le serveur vérifie de nouveau). */
-export const isUsable = (p: PokemonDto, now: number) => !p.busy && !isKnockedOut(p.koUntil, now);
+/** Pokémon engageable : ni occupé, ni K.O., ni en soins (le serveur vérifie de nouveau). */
+export const isUsable = (p: PokemonDto, now: number) =>
+  !p.busy && !p.knockedOut && !isHealing(p.healUntil, now);
+
+/**
+ * Centre Pokémon : Pokémon en soins (par fin de soins), Pokémon K.O. qui attendent et places
+ * libres (affichage : le serveur vérifie de nouveau).
+ */
+export function centerState(ctx: GameContext, pokemon: readonly PokemonDto[], now: number) {
+  const healing = pokemon
+    .filter((p) => isHealing(p.healUntil, now))
+    .sort((a, b) => Date.parse(a.healUntil!) - Date.parse(b.healUntil!));
+  const knockedOut = pokemon.filter((p) => p.knockedOut);
+  const { slots } = ctx.balance.center;
+  return { slots, healing, knockedOut, free: Math.max(0, slots - healing.length) };
+}
+
+/** Envoie des Pokémon K.O. au Centre Pokémon. */
+export function useHeal() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (pokemonIds: string[]) =>
+      api<PokemonDto[]>('/api/center', { method: 'POST', json: { pokemonIds } }),
+    onSuccess: () =>
+      Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+  });
+}
+
+/** Rappels du sac (objets `revive`), avec leur quantité. */
+export function useReviveStacks(ctx: GameContext) {
+  const inventory = useInventory();
+  return (inventory.data ?? []).filter((s) => s.quantity > 0 && ctx.itemEffect(s.itemId, 'revive'));
+}
+
+/** Ranime des Pokémon K.O. avec un Rappel chacun. */
+export function useRevive() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: { itemId: string; pokemonIds: string[] }) =>
+      api<PokemonDto[]>('/api/center/revive', { method: 'POST', json: input }),
+    onSuccess: () =>
+      Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+  });
+}
 
 export const useProgression = () =>
   useQuery({

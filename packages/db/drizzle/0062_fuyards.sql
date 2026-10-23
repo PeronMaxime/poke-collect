@@ -1,0 +1,1 @@
+ALTER TABLE "expeditions" ADD COLUMN "roamers" jsonb DEFAULT '[]'::jsonb NOT NULL;

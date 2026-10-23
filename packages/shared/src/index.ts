@@ -84,8 +84,10 @@ export interface PokemonDto {
   /** Occupé (expédition, combat, pension) : indisponible pour une autre activité. */
   busy: boolean;
   activity: PokemonActivity | null;
-  /** K.O. après une défaite : indisponible jusqu'à cette date (comparer à l'heure du serveur). */
-  koUntil: string | null;
+  /** K.O. après une défaite : indisponible tant qu'il n'est pas soigné au Centre Pokémon. */
+  knockedOut: boolean;
+  /** En soins au Centre Pokémon jusqu'à cette date (comparer à l'heure du serveur). */
+  healUntil: string | null;
   /** Étiquettes du joueur (identifiants de `PokemonTagDto`). */
   tagIds: string[];
   /** Attaque enregistrée pour les donjons ; null = choix par défaut. */
@@ -98,14 +100,27 @@ export type PokemonActivity = 'expedition' | 'battle' | 'daycare' | 'dungeon' | 
 
 // --- Assistants ------------------------------------------------------------------------
 
-/** Pokémon affecté à un bâtiment (`daycare`, `incubator`, `museum`) : son talent y agit. */
+/** Pokémon affecté à un bâtiment (`daycare`, `incubator`, `museum`, `center`) : son talent y agit. */
 export interface AssistantDto {
-  post: 'daycare' | 'incubator' | 'museum';
+  post: 'daycare' | 'incubator' | 'museum' | 'center';
   pokemonId: string;
 }
 
 export const assignAssistantInputSchema = z.object({ pokemonId: z.uuid() });
 export type AssignAssistantInput = z.infer<typeof assignAssistantInputSchema>;
+
+// --- Centre Pokémon ----------------------------------------------------------------------
+
+/** Pokémon K.O. à soigner (dans la limite des places libres du Centre). */
+export const healPokemonInputSchema = z.object({ pokemonIds: z.array(z.uuid()).min(1).max(30) });
+export type HealPokemonInput = z.infer<typeof healPokemonInputSchema>;
+
+/** Pokémon K.O. ranimés par un objet `revive` (un objet par Pokémon). */
+export const revivePokemonInputSchema = z.object({
+  itemId: slugSchema,
+  pokemonIds: z.array(z.uuid()).min(1).max(100),
+});
+export type RevivePokemonInput = z.infer<typeof revivePokemonInputSchema>;
 
 // --- Étiquettes (tags) -----------------------------------------------------------------
 
@@ -612,7 +627,20 @@ export interface ExpeditionDto {
   shinyChain: number;
   /** Heure locale du joueur au départ (talents de jour ou de nuit) ; null = inconnue. */
   localHour: number | null;
+  /** Quêtes des fuyards présents dans la zone au départ (à croiser pendant l'expédition). */
+  roamerQuestIds: string[];
   result: StoredExpeditionResult | null;
+}
+
+/** Pokémon fuyard en fuite et la zone où il se cache jusqu'à l'heure pleine suivante. */
+export interface RoamerDto {
+  questId: string;
+  speciesId: number;
+  formId: number | null;
+  zoneId: string;
+  /** Chances (%) que chaque rencontre de la zone soit lui. */
+  encounterChance: number;
+  movesAt: string;
 }
 
 /** Chaîne de zone en cours : maillon qu'aurait une expédition lancée maintenant. */
@@ -634,6 +662,8 @@ export interface ExpeditionsResponse {
   questChains: QuestChainDto[];
   /** Zones mises en favori, dans l'ordre où elles ont été ajoutées. */
   favoriteZoneIds: string[];
+  /** Pokémon fuyards en fuite et leur zone actuelle. */
+  roamers: RoamerDto[];
 }
 
 /** Chaîne d'une expédition légendaire : comme une chaîne de zone, propre à la quête. */
@@ -682,8 +712,6 @@ export type StartBattleInput = z.infer<typeof startBattleInputSchema>;
 export interface StoredBattleResult extends BattleResult {
   /** Badge obtenu lors de ce combat (première victoire). */
   badgeEarned: boolean;
-  /** Fin du K.O. des Pokémon mis K.O. (null : aucun). */
-  koUntil: string | null;
 }
 
 /** Combat de dresseur en temps réel (même déroulé qu'une tentative de donjon). */
@@ -758,10 +786,7 @@ export const switchDungeonInputSchema = z.object({
 });
 export type SwitchDungeonInput = z.infer<typeof switchDungeonInputSchema>;
 
-export interface StoredDungeonResult extends DungeonResult {
-  /** Fin du K.O. des Pokémon mis K.O. (null : aucun). */
-  koUntil: string | null;
-}
+export type StoredDungeonResult = DungeonResult;
 
 export interface DungeonRunDto {
   id: string;
@@ -1137,6 +1162,30 @@ export type AdminTestPokemonInput = z.infer<typeof adminTestPokemonInputSchema>;
 export interface AdminTestPokemonResponse {
   added: number;
   speciesIds: number[];
+}
+
+/** Lot d'objets de test (comptes administrateurs seulement) : chaque objet du contenu publié. */
+export const adminTestItemsInputSchema = z.object({ quantity: z.int().min(1).max(999) });
+export type AdminTestItemsInput = z.infer<typeof adminTestItemsInputSchema>;
+
+export interface AdminTestItemsResponse {
+  /** Objets différents ajoutés au sac. */
+  items: number;
+  quantity: number;
+}
+
+/** Tous les dresseurs marqués battus (comptes administrateurs seulement). */
+export interface AdminTestTrainersResponse {
+  /** Dresseurs battus pour la première fois. */
+  defeated: number;
+  total: number;
+}
+
+/** Toutes les quêtes terminées, récompenses à réclamer (comptes administrateurs seulement). */
+export interface AdminTestQuestsResponse {
+  /** Quêtes terminées par l'action. */
+  completed: number;
+  total: number;
 }
 
 /** Suppression du lot de test : les Pokémon occupés (expédition, donjon…) sont gardés. */

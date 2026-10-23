@@ -177,6 +177,10 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
       slots: all.filter(keep),
     };
   }).filter((section) => section.total > 0);
+  // Total affiché : espèces du Pokédex régional et formes de ses sections (régionales, Méga…).
+  const dexCaught = progress.caught + formSections.reduce((n, s) => n + s.caught, 0);
+  const dexTotal = progress.total + formSections.reduce((n, s) => n + s.total, 0);
+  const dexPercent = dexTotal ? (dexCaught / dexTotal) * 100 : 0;
   const detail = selected ? ctx.species(selected.speciesId, selected.formId) : undefined;
   const detailState = selected ? slotState(selected) : undefined;
   // Zones où l'espèce (ou cette forme précise) se rencontre ; celles des régions encore
@@ -221,11 +225,16 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Pokédex de {region.name}</h2>
           <p className="text-sm text-slate-500">
-            {shiny ? 'Shiny' : `Vus : ${seenCount} · Capturés`} : {progress.caught} /{' '}
-            {progress.total} ({progress.percent.toFixed(1)} %)
+            {shiny ? 'Shiny' : `Vus : ${seenCount} · Capturés`} :{' '}
+            {`${dexCaught} / ${dexTotal} (${dexPercent.toFixed(1)} %)`}
           </p>
         </div>
-        <ProgressBar className="mt-3" value={progress.percent / 100} />
+        <ProgressBar className="mt-3" value={dexPercent / 100} />
+        {dexTotal > progress.total && (
+          <p className="mt-1 text-xs text-slate-500">
+            Formes comprises · espèces seules : {progress.caught} / {progress.total}
+          </p>
+        )}
         {shiny && !foreign && (
           <p className="mt-2 text-xs text-slate-500">
             Taux shiny de base : {formatShinyRate(1 / ctx.balance.shiny.baseRateDenominator)}

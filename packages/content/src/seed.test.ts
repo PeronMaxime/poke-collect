@@ -377,6 +377,7 @@ describe('cohérence du contenu', () => {
       level: 50,
       perfectIvs: 3,
       expedition: { durationMinutes: 240, minPower: 0, requiredTypes: [], affinityTypes: ['feu'] },
+      roaming: null,
     });
     electhor!.unlock = { type: 'questStepsDone', questId: 'sulfura', count: 4 };
     bad.items.find((i) => i.id === 'adamant-mint')!.effects = [{ type: 'mint', nature: 'grognon' }];
@@ -398,6 +399,9 @@ describe('cohérence du contenu', () => {
     expect(findUsages(seedContent, 'quest', 'mewtwo')).toEqual([
       'Condition de « Grotte Azurée »',
       'Condition de « Le Pokémon fabuleux »',
+      'Condition de « L’oiseau au regard glacial »',
+      'Condition de « L’oiseau aux pas de feu »',
+      'Condition de « L’oiseau aux flammes sombres »',
     ]);
     expect(findUsages(seedContent, 'zone', 'iles-ecume')).toEqual([
       'Quête L’oiseau des glaces, étape 3',

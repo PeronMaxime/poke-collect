@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Zone } from '@poke/content';
 import {
+  WEATHER_LABELS,
   chainMultiplier,
   chainPerfectIvs,
   expeditionEnv,
@@ -9,6 +10,7 @@ import {
   isUnlockedSoon,
   isZoneUnlocked,
   regionDexProgress,
+  resolveWeather,
   zoneWeather,
 } from '@poke/game-core';
 import type { AbilityEnv, GameContext } from '@poke/game-core';
@@ -18,6 +20,7 @@ import type {
   ExpeditionsResponse,
   PlayerProfileDto,
   PokemonDto,
+  RoamerDto,
   ShinyChainDto,
 } from '@poke/shared';
 import { CancelButton, PokemonSprite, ProgressBar, TypeBadge, useNow } from '../../components/ui';
@@ -135,6 +138,19 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
     return target ? expeditionEnv(target.expedition, team, e.localHour, 'quest') : undefined;
   };
   const chains = new Map(expeditions.data?.chains.map((c) => [c.zoneId, c]));
+  const roamers = expeditions.data?.roamers ?? [];
+  // Les fuyards changent de zone à l'heure pleine : on recharge à ce moment-là.
+  const nextMove = Math.min(...roamers.map((r) => Date.parse(r.movesAt)));
+  useEffect(() => {
+    if (!Number.isFinite(nextMove)) return;
+    const timer = setTimeout(
+      () => void queryClient.invalidateQueries({ queryKey: keys.expeditions }),
+      Math.max(0, nextMove - serverNow) + 1000,
+    );
+    return () => clearTimeout(timer);
+    // serverNow avance chaque seconde : seule l'échéance compte.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nextMove, queryClient]);
   // Favoris : affichage optimiste pendant l'enregistrement.
   const favoriteIds = new Set(expeditions.data?.favoriteZoneIds);
   if (favorite.isPending) {
@@ -205,6 +221,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
       unlocked={unlocked}
       canLaunch={freeSlots > 0}
       chain={chains.get(zone.id)}
+      roamers={roamers.filter((r) => r.zoneId === zone.id)}
       serverNow={serverNow}
       onLaunch={() => setLaunchZone(zone)}
       favorite={favoriteIds.has(zone.id)}
@@ -376,6 +393,17 @@ function ActiveExpedition({
           {expedition.questId && (
             <p className="text-xs font-medium text-amber-600">✦ Expédition légendaire</p>
           )}
+          {expedition.roamerQuestIds.length > 0 && (
+            <p className="text-xs font-medium text-amber-600">
+              ✦ Sur la piste de{' '}
+              {expedition.roamerQuestIds
+                .map((id) => {
+                  const p = ctx.quest(id)?.rewards.pokemon.find((x) => x.roaming != null);
+                  return p ? speciesName(ctx, p.speciesId, p.formId) : id;
+                })
+                .join(' et ')}
+            </p>
+          )}
           <p className="font-semibold">
             {zone?.name ?? quest?.name ?? expedition.zoneId ?? expedition.questId}
           </p>
@@ -448,6 +476,11 @@ function ExpeditionSummary({
   const rows: [string, string][] = [
     ['Durée', `${formatDuration(e.durationMinutes)} · retour ${time(e.endsAt)}`],
   ];
+  // Météo figée au départ (talents compris) : celle de la zone a pu changer depuis.
+  if (e.zoneId && abilityEnv) {
+    const weather = resolveWeather(ctx, abilityEnv);
+    rows.push(['Météo', `${weather ? WEATHER_LABELS[weather] : 'Temps clair'} (au départ)`]);
+  }
   if (legendary) rows.push(['Ball', 'au choix au retour (une seule lancée)']);
   else {
     rows.push([
@@ -523,6 +556,7 @@ export function ZoneCard({
   unlocked,
   canLaunch,
   chain,
+  roamers = [],
   serverNow,
   onLaunch,
   favorite,
@@ -540,6 +574,8 @@ export function ZoneCard({
   unlocked: boolean;
   canLaunch: boolean;
   chain: ShinyChainDto | undefined;
+  /** Pokémon fuyards cachés dans la zone en ce moment. */
+  roamers?: RoamerDto[];
   serverNow: number;
   onLaunch: () => void;
   favorite: boolean;
@@ -585,6 +621,23 @@ export function ZoneCard({
             activity="expedition"
             className="ml-1 text-base"
           />
+          {roamers.map((r) => (
+            <span
+              key={r.questId}
+              className="relative -my-2 flex"
+              // Heure fixe plutôt qu'un compte à rebours : un titre qui change chaque seconde fait
+              // clignoter l'infobulle.
+              title={`${speciesName(ctx, r.speciesId, r.formId)} se cache ici jusqu’à ${new Date(r.movesAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} (fuyard : ${r.encounterChance} % de chances par rencontre)`}
+            >
+              <PokemonSprite
+                speciesId={r.speciesId}
+                formId={r.formId}
+                size={36}
+                className="animate-pulse"
+                alt={speciesName(ctx, r.speciesId, r.formId)}
+              />
+            </span>
+          ))}
         </h3>
         <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
           PE ≥ {zone.minPower}

@@ -15,7 +15,7 @@ interface Deps {
 
 const postParams = z.object({ post: z.enum(ASSISTANT_POSTS) });
 
-/** Assistants de la Pension, de la couveuse et du Musée. */
+/** Assistants de la Pension, de la couveuse, du Musée et du Centre Pokémon. */
 export async function assistantRoutes(app: FastifyInstance, { db, hooks, now }: Deps) {
   app.addHook('preHandler', hooks.requireUser);
 

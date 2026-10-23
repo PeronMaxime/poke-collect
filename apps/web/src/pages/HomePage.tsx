@@ -8,6 +8,7 @@ import { MENU_TABS, normalizeMenuGroups } from '@poke/content';
 import type { MenuTabId as TabId } from '@poke/content';
 import { claimableRewardCount, eggsLaid } from '@poke/game-core';
 import {
+  centerState,
   isUsable,
   useBattles,
   useClaimedRewards,
@@ -24,6 +25,7 @@ import {
 } from '../lib/game';
 import { formatMoney } from '../lib/labels';
 import { BattlesPage } from './game/BattlesPage';
+import { CenterPage } from './game/CenterPage';
 import { DaycarePage } from './game/DaycarePage';
 import { DungeonsPage } from './game/DungeonsPage';
 import { ExpeditionsPage } from './game/ExpeditionsPage';
@@ -118,12 +120,16 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
 
   const fossilsReady =
     museum.data?.revivals.filter((r) => Date.parse(r.readyAt) <= now).length ?? 0;
+  // Pokémon K.O. qui attendent leurs soins (comptés seulement s'il reste de la place).
+  const center = ctx && pokemon.data ? centerState(ctx, pokemon.data, now) : null;
+  const koWaiting = center && center.free > 0 ? center.knockedOut.length : 0;
 
   // Une action attend le joueur quelque part : point sur le bouton du menu mobile.
   const pending =
     finished +
       daycareReady +
       fossilsReady +
+      koWaiting +
       questsReady +
       shopNew +
       rewardsReady +
@@ -191,6 +197,14 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
         {id === 'daycare' && daycareReady > 0 && (
           <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
             {daycareReady}
+          </span>
+        )}
+        {id === 'center' && koWaiting > 0 && (
+          <span
+            className="ml-1.5 rounded-full bg-red-500 px-1.5 text-xs text-white"
+            title="Pokémon K.O. à soigner"
+          >
+            {koWaiting}
           </span>
         )}
         {id === 'museum' && fossilsReady > 0 && (
@@ -383,6 +397,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
               {tab === 'expeditions' && <ExpeditionsPage ctx={ctx} profile={profile} />}
               {tab === 'battles' && <BattlesPage ctx={ctx} />}
               {tab === 'dungeons' && <DungeonsPage ctx={ctx} />}
+              {tab === 'center' && <CenterPage ctx={ctx} />}
               {tab === 'daycare' && <DaycarePage ctx={ctx} />}
               {tab === 'museum' && <MuseumPage ctx={ctx} />}
               {tab === 'quests' && <QuestsPage ctx={ctx} />}

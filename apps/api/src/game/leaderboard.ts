@@ -1,22 +1,38 @@
 import { asc, isNotNull, sql } from 'drizzle-orm';
 import type { SQL } from 'drizzle-orm';
-import { playerProfiles, pokedex, trainerProgress } from '@poke/db';
+import { playerProfiles, pokedex, pokedexForms, trainerProgress } from '@poke/db';
 import type { Db } from '@poke/db';
+import { dexForms } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { LeaderboardEntryDto, LeaderboardKind, LeaderboardResponse } from '@poke/shared';
 
 /** Nombre de dresseurs affichés en tête de classement. */
 export const LEADERBOARD_SIZE = 50;
 
+/** Formes qui ont leur case au Pokédex (régionales, Méga…) : comptées avec les espèces. */
+const DEX_FORM_IDS = sql.join(
+  dexForms().map((f) => sql`${f.id}`),
+  sql`, `,
+);
+
+/** Espèces capturées (ou en shiny) et formes du Pokédex capturées (sous-requêtes corrélées). */
+function caughtCount(shiny: boolean): SQL {
+  return sql`((select count(*) from ${pokedex}
+      where ${pokedex.ownerId} = ${playerProfiles.userId}
+        and ${shiny ? pokedex.caughtShiny : pokedex.caught})
+    + (select count(*) from ${pokedexForms}
+      where ${pokedexForms.ownerId} = ${playerProfiles.userId}
+        and ${pokedexForms.formId} in (${DEX_FORM_IDS})
+        ${shiny ? sql`and ${pokedexForms.caughtShiny}` : sql``}))`;
+}
+
 /** Valeur classée de chaque joueur (sous-requête corrélée au profil). */
 function rankedValue(ctx: GameContext, kind: LeaderboardKind): SQL {
   switch (kind) {
     case 'species':
-      return sql`(select count(*) from ${pokedex}
-        where ${pokedex.ownerId} = ${playerProfiles.userId} and ${pokedex.caught})`;
+      return caughtCount(false);
     case 'shiny':
-      return sql`(select count(*) from ${pokedex}
-        where ${pokedex.ownerId} = ${playerProfiles.userId} and ${pokedex.caughtShiny})`;
+      return caughtCount(true);
     case 'money':
       return sql`${playerProfiles.currency}`;
     case 'badges': {

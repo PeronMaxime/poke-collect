@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
-import { captureProbability, countAffinity, playerBonuses } from '@poke/game-core';
+import { countAffinity, expeditionEnv, playerBonuses, questCaptureChance } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type {
   ClaimExpeditionInput,
@@ -13,6 +13,7 @@ import { GenderSymbol, Modal, PokemonSprite, ShinySparkles, ShinyStar } from '..
 import { api } from '../../lib/api';
 import { PLAYER_STATE_KEYS, useClaimedRewards, useInventory, usePokemon } from '../../lib/game';
 import { errorText, formatShinyRate, itemIcon, itemName, speciesName } from '../../lib/labels';
+import { ActiveAbilities } from './ActiveAbilities';
 
 /**
  * Retour d'une expédition légendaire : le légendaire apparaît (shiny ou non), puis le joueur
@@ -109,25 +110,27 @@ function EncounterContent({
     },
   });
 
-  const species = ctx.species(e.speciesId, e.formId);
   // formId absent du contenu (undefined) quand l'API renvoie null : on compare les deux à null.
   const target = ctx
     .quest(e.questId)
     ?.rewards.pokemon.find((p) => p.speciesId === e.speciesId && (p.formId ?? null) === e.formId);
   const team = expedition.team.flatMap((id) => pokemon.data?.find((p) => p.id === id) ?? []);
-  const affinityCount = target ? countAffinity(ctx, target.expedition, team) : 0;
+  // Talents de l'équipe à l'heure du départ, comme au serveur.
+  const hour = expedition.localHour;
+  const affinityCount = target ? countAffinity(ctx, target.expedition, team, hour) : 0;
   const ball = selectedBall ? ctx.itemEffect(selectedBall, 'ball') : undefined;
-  const boost = selectedBerry ? ctx.itemEffect(selectedBerry, 'captureBoost') : undefined;
   const chance =
-    ball && species
-      ? captureProbability(ctx, {
-          captureRate: species.captureRate,
-          ballMultiplier: ball.catchMultiplier,
-          boostMultiplier: boost?.multiplier,
-          affinityCount,
-          bonusMultiplier: playerBonuses(ctx, claimed).capture,
+    ball && target && selectedBall
+      ? questCaptureChance(ctx, {
+          target,
+          team,
+          ballItemId: selectedBall,
+          berryItemId: selectedBerry,
+          bonuses: playerBonuses(ctx, claimed),
+          hour,
         })
       : 0;
+  const env = target && expeditionEnv(target.expedition, team, hour, 'quest');
   const name = speciesName(ctx, e.speciesId, e.formId);
 
   return (
@@ -225,6 +228,7 @@ function EncounterContent({
           d’échec, il s’enfuit.
         </p>
       )}
+      {env && <ActiveAbilities ctx={ctx} env={env} members={team} className="mt-2 text-xs" />}
       {claim.error && <p className="mt-3 text-sm text-red-600">{errorText(claim.error)}</p>}
 
       <div className="mt-6 flex flex-wrap items-center justify-end gap-2">

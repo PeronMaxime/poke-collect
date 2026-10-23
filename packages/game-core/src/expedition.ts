@@ -1,5 +1,5 @@
 import { STAT_NAMES } from '@poke/data';
-import type { Encounter, ItemStack, LootTable, Weather, Zone } from '@poke/content';
+import type { Encounter, ItemStack, LootTable, QuestPokemon, Weather, Zone } from '@poke/content';
 import type { GameContext } from './context';
 import {
   MAX_IV,
@@ -28,6 +28,7 @@ import {
   teamMemberPowers,
 } from './abilities';
 import type { AbilityEnv } from './abilities';
+import { generateQuestPokemon } from './quest';
 import { createRng } from './rng';
 import type { Rng } from './rng';
 import { chainPerfectIvs, shinyProbability } from './shiny';
@@ -416,6 +417,17 @@ export interface ExpeditionInput {
   hour?: number | null;
   /** Météo de la zone au départ (voir `zoneWeather`) ; absente = temps clair. */
   weather?: Weather | null;
+  /**
+   * Fuyards présents dans la zone au départ (voir `roamerPositions`) : chaque rencontre a
+   * `target.roaming` % de chances d'être l'un d'eux, croisé une fois au plus.
+   */
+  roamers?: readonly ExpeditionRoamer[];
+}
+
+/** Fuyard emporté par une expédition. */
+export interface ExpeditionRoamer {
+  questId: string;
+  target: QuestPokemon;
 }
 
 /** `ignored` : écarté par le filtre de capture. */
@@ -432,6 +444,8 @@ export interface EncounterResult {
   captureChance: number;
   /** Présent si capturé. */
   pokemon?: PokemonInstance;
+  /** Fuyard de cette quête (absent pour une rencontre ordinaire). */
+  questId?: string;
 }
 
 /** XP de base que rapporte un Pokémon vaincu (ou rencontré), avant multiplicateur. */
@@ -490,8 +504,6 @@ export interface TeamMemberResult {
   levelAfter: number;
   xpAfter: number;
   happinessAfter: number;
-  /** Durée de K.O. de ce Pokémon (combats et donjons perdus), talents compris. */
-  koMinutes?: number;
 }
 
 export interface ExpeditionResult {
@@ -570,7 +582,48 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
 
   const encounters: EncounterResult[] = [];
   let xpPerMember = 0;
+  // Sans fuyard, aucun tirage en plus : les seeds restent inchangés.
+  const roamers = [...(input.roamers ?? [])];
   for (let i = 0; i < plan.encounters; i++) {
+    const roamerIndex = roamers.findIndex((r) => rng.chance((r.target.roaming ?? 0) / 100));
+    if (roamerIndex >= 0) {
+      // Fuyard : toujours tenté s'il reste une Ball, quel que soit le filtre ; pas de pitié.
+      const [{ questId, target }] = roamers.splice(roamerIndex, 1) as [ExpeditionRoamer];
+      const species = ctx.species(target.speciesId, target.formId)!;
+      const wild = generateQuestPokemon(ctx, rng, target, shinyChance);
+      xpPerMember += Math.floor(
+        defeatXp(species, wild.level) * ctx.balance.xp.multiplier * bonuses.xp,
+      );
+      const base = {
+        speciesId: wild.speciesId,
+        formId: wild.formId ?? null,
+        level: wild.level,
+        isShiny: wild.isShiny,
+        questId,
+      };
+      if (ballsLeft <= 0) {
+        encounters.push({ ...base, outcome: 'noBall', captureChance: 0 });
+        continue;
+      }
+      const useBerry = berriesLeft > 0;
+      const captureChance = captureProbability(ctx, {
+        captureRate: species.captureRate,
+        ballMultiplier,
+        boostMultiplier: useBerry ? boostMultiplier : 1,
+        affinityCount,
+        bonusMultiplier: bonuses.capture,
+      });
+      ballsLeft--;
+      if (useBerry) berriesLeft--;
+      const captured = rng.chance(captureChance);
+      encounters.push({
+        ...base,
+        outcome: captured ? 'captured' : 'escaped',
+        captureChance,
+        ...(captured && { pokemon: wild }),
+      });
+      continue;
+    }
     const table = weightedEncounters(ctx, zone, pity, attracted);
     if (table.length === 0) break;
     const encounter = rng.weighted(table);

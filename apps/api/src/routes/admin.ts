@@ -19,6 +19,7 @@ import {
 } from '@poke/db';
 import type { ContentEntityType, ContentErrorCode, Db } from '@poke/db';
 import {
+  adminTestItemsInputSchema,
   adminTestPokemonInputSchema,
   createDraftInputSchema,
   importContentInputSchema,
@@ -28,8 +29,11 @@ import type {
   AdminPlayerDetailResponse,
   AdminPlayerDto,
   AdminSpeciesStatsDto,
+  AdminTestItemsResponse,
   AdminTestPokemonDeleteResponse,
   AdminTestPokemonResponse,
+  AdminTestQuestsResponse,
+  AdminTestTrainersResponse,
   AuditLogEntryDto,
   ContentVersionDetailDto,
   ContentVersionDto,
@@ -38,11 +42,14 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import {
+  completeTestQuests,
   deleteTestPokemon,
+  giveTestItems,
   giveTestPokemon,
   listPlayers,
   playerDetail,
   speciesStats,
+  unlockTestTrainers,
 } from '../game/admin-players';
 import { telemetry } from '../game/telemetry';
 import type { sessionHooks } from '../plugins/session';
@@ -348,6 +355,64 @@ export async function adminRoutes(
       entity: 'user',
       entityId: userId,
       after: { ...input, added: result.added },
+    });
+    return result;
+  });
+
+  /** Lot de tous les objets du contenu publié, pour un compte administrateur seulement. */
+  app.post('/api/admin/players/:userId/test-items', async (request) => {
+    const { userId } = z.object({ userId: z.string().min(1).max(64) }).parse(request.params);
+    const input = adminTestItemsInputSchema.parse(request.body);
+    const result: AdminTestItemsResponse = await giveTestItems(
+      db,
+      await content.get(),
+      userId,
+      input,
+    );
+    await logAdminAction(db, {
+      adminId: request.user!.id,
+      action: 'player.test_items',
+      entity: 'user',
+      entityId: userId,
+      after: result,
+    });
+    return result;
+  });
+
+  /** Tous les dresseurs battus une fois, pour un compte administrateur seulement. */
+  app.post('/api/admin/players/:userId/test-trainers', async (request) => {
+    const { userId } = z.object({ userId: z.string().min(1).max(64) }).parse(request.params);
+    const result: AdminTestTrainersResponse = await unlockTestTrainers(
+      db,
+      await content.get(),
+      userId,
+      now(),
+    );
+    await logAdminAction(db, {
+      adminId: request.user!.id,
+      action: 'player.test_trainers',
+      entity: 'user',
+      entityId: userId,
+      after: result,
+    });
+    return result;
+  });
+
+  /** Toutes les quêtes terminées (récompenses à réclamer), pour un compte administrateur seulement. */
+  app.post('/api/admin/players/:userId/test-quests', async (request) => {
+    const { userId } = z.object({ userId: z.string().min(1).max(64) }).parse(request.params);
+    const result: AdminTestQuestsResponse = await completeTestQuests(
+      db,
+      await content.get(),
+      userId,
+      now(),
+    );
+    await logAdminAction(db, {
+      adminId: request.user!.id,
+      action: 'player.test_quests',
+      entity: 'user',
+      entityId: userId,
+      after: result,
     });
     return result;
   });

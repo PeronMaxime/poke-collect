@@ -6,13 +6,19 @@ import {
   checkDungeonTeam,
   dungeonCooldownMinutes,
   dungeonEnemies,
-  dungeonKoMinutes,
+  dungeonEnv,
   dungeonMaxXp,
   dungeonWeather,
   imposedWeather,
   pokemonPower,
 } from '@poke/game-core';
-import type { DungeonMove, DungeonTeamError, ExpeditionSite, GameContext } from '@poke/game-core';
+import type {
+  AbilityEnv,
+  DungeonMove,
+  DungeonTeamError,
+  ExpeditionSite,
+  GameContext,
+} from '@poke/game-core';
 import type { DungeonRunDto, StartDungeonInput } from '@poke/shared';
 import { HoverBubble, Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { api } from '../../lib/api';
@@ -101,8 +107,14 @@ export function LaunchDungeonDialog({
   });
 
   const members = picker.members;
-  const maxXp = dungeonMaxXp(ctx, dungeon, bonuses, members, new Date().getHours());
-  const weather = dungeonWeather(ctx, dungeon, members, new Date().getHours());
+  const hour = new Date().getHours();
+  const maxXp = dungeonMaxXp(ctx, dungeon, bonuses, members, hour);
+  const weather = dungeonWeather(ctx, dungeon, members, hour);
+  // Talents de l'équipe : adversaires du donjon, heure actuelle (celle du départ) et météo du lieu.
+  const env: AbilityEnv = {
+    ...dungeonEnv({ enemies: dungeonEnemies(ctx, dungeon) }, members, hour),
+    weather: dungeon.weather ?? null,
+  };
   const weatherNote = imposedWeather(ctx, { activity: 'dungeon', team: members })
     ? TEAM_WEATHER_NOTE
     : weather !== (dungeon.weather ?? null)
@@ -175,6 +187,7 @@ export function LaunchDungeonDialog({
         power={power}
         maxTeamSize={maxTeamSize}
         statSort
+        abilityEnv={env}
       />
       <p className="mt-1 text-xs text-slate-500">
         Encadrés en vert : un de leurs types est efficace contre {boss?.nameFr ?? 'le boss'}.
@@ -208,9 +221,9 @@ export function LaunchDungeonDialog({
         </XpPreview>
         <p className="mt-2 text-xs text-slate-500">
           Chaque adversaire vaincu rapporte de l’XP à toute l’équipe, même en cas de défaite (pas en
-          cas de fuite). Les Pokémon mis K.O. se reposent{' '}
-          {formatDuration(dungeonKoMinutes(ctx, dungeon))}. Après chaque tentative, le donjon se
-          referme pendant {formatDuration(dungeonCooldownMinutes(ctx, dungeon))}.{' '}
+          cas de fuite). Les Pokémon mis K.O. le restent jusqu’à leurs soins au Centre Pokémon.
+          Après chaque tentative, le donjon se referme pendant{' '}
+          {formatDuration(dungeonCooldownMinutes(ctx, dungeon))}.{' '}
           {bossTypes.length > 0 &&
             `Le boss est faible contre : ${typeWeaknesses(bossTypes).map(typeLabel).join(', ') || 'rien'}.`}
         </p>

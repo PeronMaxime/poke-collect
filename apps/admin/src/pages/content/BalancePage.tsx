@@ -643,6 +643,32 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
               disabled={disabled}
             />
           </Field>
+          <Field
+            label="Places au Centre Pokémon"
+            hint="Pokémon K.O. soignés en même temps."
+            error={err('center.slots')}
+          >
+            <NumberInput
+              value={b.center.slots}
+              min={1}
+              max={30}
+              onChange={set('center')('slots')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Durée des soins"
+            hint="Au Centre Pokémon, avant talents (Médic Nature, Cœur Soin…)."
+            error={err('center.healMinutes')}
+          >
+            <NumberInput
+              value={b.center.healMinutes}
+              min={1}
+              unit="min"
+              onChange={set('center')('healMinutes')}
+              disabled={disabled}
+            />
+          </Field>
         </div>
       </Section>
 
@@ -792,19 +818,6 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
               max={6}
               unit="Pokémon"
               onChange={bat('maxTeamSize')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Durée de K.O."
-            hint="Pokémon mis K.O. (surchargeable par dresseur)."
-            error={err('battles.koMinutes')}
-          >
-            <NumberInput
-              value={b.battles.koMinutes}
-              min={0}
-              unit="min"
-              onChange={bat('koMinutes')}
               disabled={disabled}
             />
           </Field>
@@ -973,19 +986,6 @@ function DungeonSettingsSection({
             min={0}
             unit="min"
             onChange={set('cooldownMinutes')}
-            disabled={disabled}
-          />
-        </Field>
-        <Field
-          label="Durée de K.O."
-          hint="Pokémon mis K.O. (surchargeable par donjon)."
-          error={err('koMinutes')}
-        >
-          <NumberInput
-            value={s.koMinutes}
-            min={0}
-            unit="min"
-            onChange={set('koMinutes')}
             disabled={disabled}
           />
         </Field>

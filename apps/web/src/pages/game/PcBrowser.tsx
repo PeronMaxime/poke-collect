@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { effectiveAbility, isKnockedOut, isRegionalSpecies, memberPower } from '@poke/game-core';
+import { effectiveAbility, isHealing, isRegionalSpecies, memberPower } from '@poke/game-core';
 import type { GameContext, GameSpecies } from '@poke/game-core';
 import type { PokemonActivity, PokemonDto, PokemonTagDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar } from '../../components/ui';
@@ -253,15 +253,25 @@ function AbilityFilterSelect({
   );
 }
 
-/** Pastille « K.O. » avec le temps de repos restant. */
-export function KoBadge({ koUntil, now }: { koUntil: string | null; now: number }) {
-  if (!isKnockedOut(koUntil, now)) return null;
+/** Pastille « K.O. », ou « Soins » avec le temps restant au Centre Pokémon. */
+export function KoBadge({ p, now }: { p: PokemonDto; now: number }) {
+  if (p.knockedOut) {
+    return (
+      <span
+        className="rounded bg-red-100 px-1 text-[10px] text-red-700 dark:bg-red-950 dark:text-red-300"
+        title="K.O. : indisponible jusqu’à ses soins au Centre Pokémon"
+      >
+        K.O.
+      </span>
+    );
+  }
+  if (!isHealing(p.healUntil, now)) return null;
   return (
     <span
-      className="rounded bg-red-100 px-1 font-mono text-[10px] text-red-700 dark:bg-red-950 dark:text-red-300"
-      title="K.O. après une défaite : indisponible jusqu’à la fin du repos"
+      className="rounded bg-pink-100 px-1 font-mono text-[10px] text-pink-700 dark:bg-pink-950 dark:text-pink-300"
+      title="En soins au Centre Pokémon"
     >
-      K.O. {formatCountdown(Date.parse(koUntil!) - now)}
+      Soins {formatCountdown(Date.parse(p.healUntil!) - now)}
     </span>
   );
 }
@@ -308,7 +318,7 @@ export function PcPokemonCard({
             {ACTIVITY_LABELS[p.activity]}
           </span>
         )}
-        <KoBadge koUntil={p.koUntil} now={now} />
+        <KoBadge p={p} now={now} />
         {canEvolve && (
           <span
             className="rounded bg-emerald-100 px-1 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"

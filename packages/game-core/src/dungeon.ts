@@ -28,7 +28,6 @@ import {
   abilityBonuses,
   abilityHappiness,
   deferredAbilityEffects,
-  durationWithAbility,
   effectiveAbility,
   imposedWeather,
   scaledByAbility,
@@ -1523,10 +1522,6 @@ export function dungeonCooldownMinutes(ctx: GameContext, dungeon: Dungeon): numb
   return dungeon.cooldownMinutes ?? ctx.balance.dungeons.cooldownMinutes;
 }
 
-export function dungeonKoMinutes(ctx: GameContext, dungeon: Dungeon): number {
-  return dungeon.koMinutes ?? ctx.balance.dungeons.koMinutes;
-}
-
 export interface DungeonRecord {
   lastEndedAt: Date | string | null;
 }
@@ -1621,9 +1616,8 @@ export interface DungeonResult {
   defeated: number;
   xpPerMember: number;
   team: TeamMemberResult[];
-  /** Pokémon mis K.O. (identifiants), indisponibles pendant `koMinutes`. */
+  /** Pokémon mis K.O. (identifiants), indisponibles jusqu'à leurs soins au Centre Pokémon. */
   knockedOut: string[];
-  koMinutes: number;
   money: number;
   loot: ItemStack[];
   /** Méga-Gemme obtenue (null = aucune). */
@@ -1688,7 +1682,6 @@ export function resolveDungeonRun(ctx: GameContext, input: DungeonRunInput): Dun
   const outcome = state.outcome ?? 'timeout';
   const win = outcome === 'win';
   const fled = outcome === 'fled';
-  const koMinutes = dungeonKoMinutes(ctx, dungeon);
   const env = dungeonEnv(setup, input.team, input.hour);
   const bonuses = abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES);
 
@@ -1717,12 +1710,8 @@ export function resolveDungeonRun(ctx: GameContext, input: DungeonRunInput): Dun
     endedAtMs: state.endedAtMs ?? setup.timeLimitMs,
     defeated: state.defeated,
     xpPerMember,
-    team: applyTeamXp(ctx, input.team, xpPerMember, happiness).map((m, i) => ({
-      ...m,
-      koMinutes: state.hp[i] === 0 ? durationWithAbility(ctx, env, 'koDuration', koMinutes, i) : 0,
-    })),
+    team: applyTeamXp(ctx, input.team, xpPerMember, happiness),
     knockedOut: input.team.filter((_, i) => state.hp[i] === 0).map((m) => m.id),
-    koMinutes,
     money: win ? Math.floor(dungeon.money * bonuses.money) : 0,
     loot: [...loot].map(([itemId, quantity]) => ({ itemId, quantity })),
     gemItemId,

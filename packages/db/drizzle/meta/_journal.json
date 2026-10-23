@@ -407,6 +407,55 @@
       "when": 1792611722220,
       "tag": "0057_profils_secondaires",
       "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1792763882851,
+      "tag": "0058_centre_pokemon",
+      "breakpoints": true
+    },
+    {
+      "idx": 59,
+      "version": "7",
+      "when": 1792763893977,
+      "tag": "0059_centre_pokemon_ancienne_colonne",
+      "breakpoints": true
+    },
+    {
+      "idx": 60,
+      "version": "7",
+      "when": 1792764862989,
+      "tag": "0060_sans_duree_ko",
+      "breakpoints": true
+    },
+    {
+      "idx": 61,
+      "version": "7",
+      "when": 1792765463900,
+      "tag": "0061_rappel",
+      "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1792767572959,
+      "tag": "0062_fuyards",
+      "breakpoints": true
+    },
+    {
+      "idx": 63,
+      "version": "7",
+      "when": 1792767574256,
+      "tag": "0063_fuyards_contenu",
+      "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1792770135882,
+      "tag": "0064_fuyards_cachette",
+      "breakpoints": true
     }
   ]
 }

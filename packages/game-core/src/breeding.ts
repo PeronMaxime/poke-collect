@@ -205,13 +205,23 @@ export interface EggInput {
   helper?: AbilityHolder | null;
 }
 
-/** Probabilité shiny d'un œuf : Charme Chroma et bonus Masuda des parents. */
+type ShinyParent = AbilityHolder & Pick<DaycareParent, 'originRegion'>;
+
+/**
+ * Probabilité shiny d'un œuf : Charme Chroma, bonus Masuda des parents et talents des parents
+ * et de l'assistant de la Pension.
+ */
 export function eggShinyProbability(
   ctx: GameContext,
-  parents: readonly [DaycareParent, DaycareParent],
+  parents: readonly [ShinyParent, ShinyParent],
   shinyCharm = 1,
+  helper?: AbilityHolder | null,
 ): number {
-  return shinyProbability(ctx, { charm: shinyCharm, masuda: isMasudaPair(parents[0], parents[1]) });
+  return Math.min(
+    1,
+    shinyProbability(ctx, { charm: shinyCharm, masuda: isMasudaPair(parents[0], parents[1]) }) *
+      abilityMultiplier(ctx, breedingEnv(parents, helper), 'shinyChance'),
+  );
 }
 
 function shuffled<T>(rng: ReturnType<typeof createRng>, list: readonly T[]): T[] {
@@ -238,11 +248,7 @@ export function resolveEgg(ctx: GameContext, input: EggInput): PokemonInstance {
 
   // Base aléatoire (IV, nature, talent standard, sexe, shiny), puis héritage par-dessus.
   const child = generatePokemon(ctx, rng, species.id, breeding.eggLevel, {
-    shinyProbability: Math.min(
-      1,
-      eggShinyProbability(ctx, input.parents, input.shinyCharm) *
-        abilityMultiplier(ctx, env, 'shinyChance'),
-    ),
+    shinyProbability: eggShinyProbability(ctx, input.parents, input.shinyCharm, input.helper),
     formId: species.form?.id ?? null,
   });
 

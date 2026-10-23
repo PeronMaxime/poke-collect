@@ -153,8 +153,10 @@ export const pokemon = pgTable(
     originRegion: text('origin_region'),
     caughtAt: timestamp('caught_at', { withTimezone: true }).notNull().defaultNow(),
     locked: boolean('locked').notNull().default(false),
-    /** K.O. après une défaite : indisponible jusqu'à cette date (évaluation paresseuse). */
-    koUntil: timestamp('ko_until', { withTimezone: true }),
+    /** K.O. après une défaite : indisponible jusqu'à ce qu'il soit soigné au Centre Pokémon. */
+    knockedOut: boolean('knocked_out').notNull().default(false),
+    /** En soins au Centre Pokémon jusqu'à cette date (évaluation paresseuse). */
+    healUntil: timestamp('heal_until', { withTimezone: true }),
     /** Étiquettes du joueur (`pokemon_tags`), retirées du tableau quand l'une est supprimée. */
     tagIds: uuid('tag_ids')
       .array()
@@ -294,6 +296,14 @@ export const expeditions = pgTable(
     shinyChain: smallint('shiny_chain').notNull().default(0),
     /** Heure locale du joueur au départ (talents de jour ou de nuit) ; null = inconnue. */
     localHour: smallint('local_hour'),
+    /**
+     * Fuyards présents dans la zone au départ (quête et rang du Pokémon dans sa récompense) : ils
+     * n'apparaissent plus ailleurs tant que l'expédition n'est pas réclamée.
+     */
+    roamers: jsonb('roamers')
+      .$type<{ questId: string; pokemonIndex: number }[]>()
+      .notNull()
+      .default([]),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
     /** Notification push « expédition terminée » envoyée. */
     notifiedAt: timestamp('notified_at', { withTimezone: true }),
@@ -603,6 +613,15 @@ export const questProgress = pgTable(
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
     /** Pokémon de la récompense déjà capturés (expéditions légendaires), dans l'ordre. */
     pokemonCaught: smallint('pokemon_caught').notNull().default(0),
+    /**
+     * Cachette d'un fuyard vu mais pas capturé : il a fui vers cette zone, où il reste jusqu'à la
+     * fin de l'heure `hour` (voir `weatherHour`) ; ensuite il reprend son trajet habituel.
+     */
+    roamerHideout: jsonb('roamer_hideout').$type<{
+      pokemonIndex: number;
+      hour: number;
+      zoneId: string;
+    }>(),
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.questId] })],
 );

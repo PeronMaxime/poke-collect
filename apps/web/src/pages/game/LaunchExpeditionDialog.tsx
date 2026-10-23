@@ -3,6 +3,8 @@ import type { ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Weather, Zone } from '@poke/content';
 import {
+  NO_BONUSES,
+  abilityBonuses,
   abilityMultiplier,
   attractedTypes,
   captureProbability,
@@ -14,6 +16,7 @@ import {
   expeditionPlan,
   lootProbabilities,
   resolveWeather,
+  roamerMeetChance,
   zoneWeather,
   nextChainPerfectIvThreshold,
   shinyProbability,
@@ -25,16 +28,23 @@ import type {
   GameContext,
   PlayerBonuses,
 } from '@poke/game-core';
-import type { ExpeditionDto, PokemonDto, StartExpeditionInput } from '@poke/shared';
+import type { ExpeditionDto, PokemonDto, RoamerDto, StartExpeditionInput } from '@poke/shared';
 import { Modal, PokemonSprite, TypeBadge, useNow } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, useInventory, useShinyCharm, utcOffsetMinutes } from '../../lib/game';
+import {
+  PLAYER_STATE_KEYS,
+  useExpeditions,
+  useInventory,
+  useShinyCharm,
+  utcOffsetMinutes,
+} from '../../lib/game';
 import {
   GAME_ERRORS,
   formatDuration,
   formatShinyRate,
   itemIcon,
   itemName,
+  speciesName,
   typeLabel,
 } from '../../lib/labels';
 import { ActiveAbilities } from './ActiveAbilities';
@@ -98,6 +108,7 @@ export function LaunchExpeditionDialog({
   const picker = useTeamPicker(ctx, zone);
   const bonuses = usePlayerBonuses(ctx);
   const owned = new Map(inventory.data?.map((i) => [i.itemId, i.quantity]));
+  const roamers = useExpeditions().data?.roamers.filter((r) => r.zoneId === zone.id);
 
   const start = useMutation({
     mutationFn: (input: StartExpeditionInput) =>
@@ -123,6 +134,7 @@ export function LaunchExpeditionDialog({
         charm={charm}
         owned={(itemId) => owned.get(itemId) ?? 0}
         bonuses={bonuses}
+        roamers={roamers}
         team={picker.team}
         members={picker.members}
         renderTeam={(power, env) => (
@@ -156,6 +168,7 @@ export function LaunchExpeditionForm({
   unlimitedItems = false,
   bonuses,
   weather: forcedWeather,
+  roamers = [],
   team,
   members,
   renderTeam,
@@ -180,6 +193,8 @@ export function LaunchExpeditionForm({
   bonuses?: PlayerBonuses;
   /** Météo de la zone imposée (simulateur) ; par défaut, celle du moment. */
   weather?: Weather | null;
+  /** Pokémon fuyards cachés dans la zone en ce moment. */
+  roamers?: RoamerDto[];
   team: string[];
   members: PokemonDto[];
   /** Choix de l'équipe, selon sa PE et l'environnement des talents de l'expédition. */
@@ -236,6 +251,8 @@ export function LaunchExpeditionForm({
   const ballsTaken = Math.min(ballCount ?? maxBalls, maxBalls);
   const ballEffect = selectedBall ? ctx.itemEffect(selectedBall, 'ball') : undefined;
   const boost = berryId ? ctx.itemEffect(berryId, 'captureBoost')?.multiplier : undefined;
+  // Bonus permanents et talents de l'équipe, comme au serveur.
+  const captureBonus = abilityBonuses(ctx, env, bonuses ?? NO_BONUSES).capture;
   const possibleEncounters = encounterProbabilities(ctx, zone, undefined, attractedTypes(ctx, env));
   const zoneSpeciesIds = [...new Set(possibleEncounters.map((e) => e.speciesId))];
   const updateFilter = (patch: Partial<CaptureFilter>) =>
@@ -296,6 +313,21 @@ export function LaunchExpeditionForm({
         {nextIvThreshold !== null &&
           ` Prochain IV parfait garanti à ${nextIvThreshold} maillon${nextIvThreshold > 1 ? 's' : ''}.`}
       </p>
+      {roamers.map((r) => (
+        <p
+          key={r.questId}
+          className="mt-2 flex items-center gap-2 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
+        >
+          <PokemonSprite speciesId={r.speciesId} formId={r.formId} size={40} />
+          <span>
+            <strong>{speciesName(ctx, r.speciesId, r.formId)}</strong> se cache ici ! Chances de le
+            croiser pendant cette expédition :{' '}
+            {formatChance(roamerMeetChance(r.encounterChance, encounters))}. S’il reste une Ball,
+            elle lui est lancée quel que soit le filtre de capture. L’expédition l’emmène avec elle
+            : il n’apparaît plus ailleurs jusqu’à son retour.
+          </span>
+        </p>
+      ))}
       {extra}
 
       {renderTeam(check.power, env)}
@@ -503,7 +535,7 @@ export function LaunchExpeditionForm({
                 ballMultiplier: ballEffect.catchMultiplier,
                 boostMultiplier: boost,
                 affinityCount: check.affinityCount,
-                bonusMultiplier: abilityMultiplier(ctx, env, 'capture'),
+                bonusMultiplier: captureBonus,
               })
             : 0;
           return (

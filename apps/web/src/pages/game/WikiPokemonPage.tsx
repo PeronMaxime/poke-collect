@@ -1,19 +1,12 @@
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
-import {
-  STAT_NAMES,
-  TYPE_COLORS,
-  directLineage,
-  eggGroups,
-  getForm,
-  habitats,
-  typeEffectiveness,
-} from '@poke/data';
+import { STAT_NAMES, TYPE_COLORS, directLineage, eggGroups, getForm, habitats } from '@poke/data';
 import type { StatName } from '@poke/data';
 import {
   abilityEffectSummary,
   baseSpeciesId,
   counterpartFormId,
+  dungeonTypeEffectiveness,
   encounterProbabilities,
   evolutionOptions,
   isBreedable,
@@ -626,7 +619,9 @@ function Locations({ ctx, entry }: { ctx: GameContext; entry: WikiEntry }) {
     return [{ zone, probability, levels: min === max ? `N.${min}` : `N.${min}–${max}` }];
   });
   const quests = ctx.quests.flatMap((q) =>
-    q.rewards.pokemon.filter(same).map((p) => ({ quest: q, level: p.level })),
+    q.rewards.pokemon
+      .filter(same)
+      .map((p) => ({ quest: q, level: p.level, roaming: p.roaming != null })),
   );
   const fossils = ctx.content.items.filter((i) => {
     const effect = ctx.itemEffect(i.id, 'fossil');
@@ -671,11 +666,13 @@ function Locations({ ctx, entry }: { ctx: GameContext; entry: WikiEntry }) {
       </div>,
     );
   }
-  for (const { quest, level } of quests) {
+  for (const { quest, level, roaming } of quests) {
     lines.push(
       <p key={`q-${quest.id}`}>
-        Récompense de la quête <strong>{quest.name}</strong> (N.{level}), puis capture lors d’une
-        expédition légendaire.
+        Récompense de la quête <strong>{quest.name}</strong> (N.{level}), puis{' '}
+        {roaming
+          ? 'capture en expédition : c’est un fuyard, qui change de zone à chaque heure.'
+          : 'capture lors d’une expédition légendaire.'}
       </p>,
     );
   }
@@ -874,13 +871,16 @@ const DEFENSE_GROUPS = [
   { label: 'Vulnérable (×2)', test: (m: number) => m === 2 },
   { label: 'Neutre (×1)', test: (m: number) => m === 1 },
   { label: 'Résistant (×½)', test: (m: number) => m === 0.5 },
-  { label: 'Très résistant (×¼)', test: (m: number) => m > 0 && m <= 0.25 },
-  { label: 'Immunisé (×0)', test: (m: number) => m === 0 },
+  { label: 'Très résistant (×¼)', test: (m: number) => m === 0.25 },
+  { label: 'Extrêmement résistant (×⅛ ou moins)', test: (m: number) => m < 0.25 },
 ];
 
-/** Multiplicateur des attaques de chaque type contre le Pokémon (talents non compris). */
+/**
+ * Multiplicateur des attaques de chaque type contre le Pokémon (talents non compris), comme en
+ * combat : une immunité de la table des types divise les dégâts par 4.
+ */
 function TypeDefenses({ types }: { types: string[] }) {
-  const multipliers = ATTACK_TYPES.map((t) => ({ type: t, m: typeEffectiveness(t, types) }));
+  const multipliers = ATTACK_TYPES.map((t) => ({ type: t, m: dungeonTypeEffectiveness(t, types) }));
   return (
     <div className="space-y-2 text-sm">
       {DEFENSE_GROUPS.map((group) => {
@@ -901,7 +901,8 @@ function TypeDefenses({ types }: { types: string[] }) {
         );
       })}
       <p className="text-xs text-slate-400">
-        Dégâts reçus des attaques de chaque type, sans tenir compte des talents.
+        Dégâts reçus des attaques de chaque type, sans tenir compte des talents. En combat, une
+        immunité (×0 dans les jeux) divise les dégâts par 4.
       </p>
     </div>
   );

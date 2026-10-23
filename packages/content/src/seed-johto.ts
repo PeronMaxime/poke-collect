@@ -12,7 +12,11 @@ import type {
   UnlockCondition,
   Zone,
 } from './schemas';
-import { defaultLegendaryExpedition, defaultTrainerTimeLimitSeconds } from './schemas';
+import {
+  DEFAULT_ROAMING_CHANCE,
+  defaultLegendaryExpedition,
+  defaultTrainerTimeLimitSeconds,
+} from './schemas';
 import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
 
 /**
@@ -26,7 +30,8 @@ import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
  *   Les Champions se battent à effectif égal, puis le Conseil 4 et le Maître sans restriction.
  * - Zones spéciales : plusieurs conditions à la fois, PE élevée, Pokémon introuvables ailleurs
  *   (starters et Togepi, Simularbre, Scarhino, Scorplane et Airmure, Embrylex et Feuforêve).
- * - Quêtes : Raikou, Entei, Suicune, Lugia, Ho-Oh puis Celebi.
+ * - Quêtes : Raikou, Entei, Suicune, Lugia, Ho-Oh puis Celebi. Les trois bêtes sont des fuyards :
+ *   pas d'expédition légendaire, elles changent de zone de Johto à chaque heure.
  *
  * Les 100 espèces sont obtenables : rencontres, évolutions (niveau, bonheur, pierres et objets de
  * la boutique), œufs (bébés : Pichu, Mélo, Toudoudou, Debugant, Lippouti, Élekid, Magby) et quêtes.
@@ -825,7 +830,6 @@ const trainer = (
     badge: null,
     repeatable: true,
     cooldownMinutes: null,
-    koMinutes: null,
     enabled: true,
     ...rest,
   };
@@ -862,7 +866,6 @@ const gymLeader = (
     lootRolls: 3,
     badge: { name: badge, image: null },
     repeatable: false,
-    koMinutes: 120,
     ...rest,
   });
 };
@@ -917,7 +920,7 @@ export const johtoTrainers: Trainer[] = [
     'Badge Zéphyr',
     [mon(16, 11), mon(17, 15)],
     defeated('sage-li'),
-    { minPower: 160, koMinutes: null, lootTableId: 'butin-route' },
+    { minPower: 160, lootTableId: 'butin-route' },
   ),
   // Badge Zéphyr → Badge Essaim
   trainer({
@@ -1130,7 +1133,7 @@ export const johtoTrainers: Trainer[] = [
     'Badge Lever',
     [mon(148, 40, 25), mon(148, 40, 25), mon(148, 40, 25), mon(130, 41, 25), mon(230, 44, 25)],
     defeated('skieuse-rosa'),
-    { minPower: 1480, koMinutes: 180, lootTableId: 'butin-elite' },
+    { minPower: 1480, lootTableId: 'butin-elite' },
   ),
   // Routes 26 et 27, puis la Ligue
   trainer({
@@ -1172,7 +1175,6 @@ export const johtoTrainers: Trainer[] = [
     lootTableId: 'butin-elite',
     lootRolls: 6,
     repeatable: false,
-    koMinutes: 480,
     unlock: allOf(defeated('maitre-peter'), defeated('maitre-blue')),
   }),
 ];
@@ -1201,7 +1203,6 @@ function league(): Trainer[] {
       lootTableId: 'butin-elite',
       lootRolls: 3,
       repeatable: false,
-      koMinutes: 240,
       ...extra,
     });
   return [
@@ -1273,6 +1274,12 @@ const legendary = (speciesId: number, level: number, minPower: number): QuestPok
   level,
   perfectIvs: 3,
   expedition: defaultLegendaryExpedition(speciesId, null, minPower),
+  roaming: null,
+});
+/** Fuyard : il change de zone de Johto à chaque heure au lieu d'une expédition légendaire. */
+const roamer = (speciesId: number, level: number): QuestPokemon => ({
+  ...legendary(speciesId, level, 0),
+  roaming: DEFAULT_ROAMING_CHANCE,
 });
 const step = (name: string, description: string, condition: QuestCondition): QuestStep => ({
   name,
@@ -1325,7 +1332,7 @@ export const johtoQuests: Quest[] = [
         questExpedition('tour-cendree', 'electric', 2, 350),
       ),
     ],
-    rewards: { ...BEAST_REWARD, pokemon: [legendary(243, 50, 850)] },
+    rewards: { ...BEAST_REWARD, pokemon: [roamer(243, 50)] },
   }),
   quest({
     id: 'entei',
@@ -1342,7 +1349,7 @@ export const johtoQuests: Quest[] = [
         questExpedition('tour-cendree', 'fire', 2, 450),
       ),
     ],
-    rewards: { ...BEAST_REWARD, pokemon: [legendary(244, 50, 850)] },
+    rewards: { ...BEAST_REWARD, pokemon: [roamer(244, 50)] },
   }),
   quest({
     id: 'suicune',
@@ -1359,7 +1366,7 @@ export const johtoQuests: Quest[] = [
         questExpedition('lac-colere', 'water', 2, 500),
       ),
     ],
-    rewards: { ...BEAST_REWARD, pokemon: [legendary(245, 50, 2400)] },
+    rewards: { ...BEAST_REWARD, pokemon: [roamer(245, 50)] },
   }),
   quest({
     id: 'lugia',

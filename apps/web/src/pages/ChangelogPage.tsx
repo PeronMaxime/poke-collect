@@ -17,6 +17,73 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '23 octobre 2026',
+    title: 'Centre Pokémon, Pokémon fuyards, talents mieux affichés et formes au Pokédex',
+    changes: [
+      {
+        section: 'Pokémon fuyards',
+        items: [
+          'Raikou, Entei et Suicune sont désormais des fuyards : une fois la récompense de leur quête réclamée, plus d’expédition légendaire, ils se cachent dans une zone d’expédition de Johto et en changent à chaque heure.',
+          'Un petit logo du fuyard apparaît sur la zone où il se trouve. Pendant une expédition dans cette zone, chaque rencontre a une petite chance d’être lui (une fois au plus), et une Ball lui est toujours lancée s’il t’en reste, quel que soit ton filtre de capture.',
+          'L’expédition lancée dans sa zone l’emmène avec elle : il n’apparaît plus nulle part tant qu’elle n’est pas récupérée. Si tu ne l’as pas croisé, il reste dans la même zone jusqu’à l’heure suivante ; si tu l’as croisé sans le capturer, il fuit aussitôt vers une autre zone (et en repart quand même à l’heure pile). Ces expéditions ne peuvent pas être relancées.',
+          'Trois nouvelles quêtes à Kanto, après celle de Mewtwo : Artikodin, Électhor et Sulfura de Galar, eux aussi des fuyards, dans les zones de Kanto.',
+          'Depuis les Quêtes, le bouton « Le traquer » mène directement à la zone où se cache le fuyard.',
+          'Une expédition partie dans la zone d’un fuyard affiche « Sur la piste de… » tant qu’elle est en cours.',
+        ],
+      },
+      {
+        section: 'Centre Pokémon',
+        items: [
+          'Nouveau bâtiment dans le menu, juste au-dessus de la Pension : le Centre Pokémon soigne jusqu’à 6 Pokémon à la fois, en 30 minutes.',
+          'Un Pokémon mis K.O. en combat ou en donjon ne se repose plus tout seul : il reste K.O. jusqu’à ce que tu le confies au Centre. Depuis sa fiche au PC, un bouton l’y envoie directement s’il reste de la place.',
+          'À la fin d’un combat ou d’un donjon, un bouton envoie directement tes Pokémon K.O. au Centre (les plus forts d’abord s’il manque de la place).',
+          'Une pastille sur l’onglet du Centre indique combien de Pokémon K.O. attendent leurs soins, tant qu’il reste de la place.',
+          'Les Pokémon qui étaient en plein repos au moment de la mise à jour sont eux aussi K.O. : confie-les au Centre.',
+          'Les talents qui réduisaient la durée de K.O. (Médic Nature, Attention, Tempo Perso, Mue) raccourcissent maintenant les soins de leur porteur au Centre.',
+          'Le Centre a aussi son poste d’assistant : un Pokémon au talent Cœur Soin y accélère les soins de tous les patients.',
+          'Nouvel objet : le Rappel ranime aussitôt un Pokémon K.O., sans passer par le Centre. En vente à la Boutique (rayon Soins, 2 000 ₽) dès ton 4e badge de Kanto. Utilise-le depuis le Sac, ou depuis la fiche d’un Pokémon K.O. au PC.',
+        ],
+      },
+      {
+        section: 'Talents',
+        items: [
+          'Face à un légendaire, la chance de capture affichée tient compte des talents de ton équipe (Pression…) et de tes bonus de collection, et les talents actifs sont listés.',
+          'Avant une expédition, la chance de capture de chaque Pokémon tient aussi compte de tes bonus de collection.',
+          'Le bouton « Relancer » emporte autant de Balls que la nouvelle expédition aura de rencontres, talents compris, si tu en avais pris le maximum.',
+          'Au survol d’une expédition en cours, sa météo au départ est indiquée : c’est elle qui active les talents comme Glissade, même si la météo de la zone a changé depuis.',
+          'Seuls les effets utiles sont affichés : ceux de la Pension pour un parent ou l’assistant de la Pension, ceux de l’activité en cours au PC pour un Pokémon occupé, ceux du combat pendant un combat. Au choix de l’équipe, survole le talent d’un Pokémon pour voir ce qu’il fera.',
+        ],
+      },
+      {
+        section: 'Pension',
+        items: [
+          'Le talent des parents et ses effets sur la ponte sont affichés, à la Pension comme au moment de les déposer.',
+          'La chance d’obtenir un œuf shiny est affichée pour le couple en pension, avec les bonus qui s’appliquent (Masuda, Charme Chroma) ; l’assistant de la Pension est compté s’il est en poste.',
+        ],
+      },
+      {
+        section: 'Choix de l’équipe',
+        items: [
+          'Nouveau filtre « ♥ Favoris » dans les expéditions, les combats et les donjons.',
+          'Le filtre « Talent actif » arrive dans les donjons.',
+        ],
+      },
+      {
+        section: 'Pokédex et classements',
+        items: [
+          'Le compteur du Pokédex compte maintenant aussi les formes (régionales, Méga-Évolutions…), dans le Pokédex normal comme dans le Pokédex shiny.',
+          'Les classements « Pokémon capturés » et « Chromatiques » comptent eux aussi les formes.',
+        ],
+      },
+      {
+        section: 'Wiki',
+        items: [
+          'Les faiblesses et résistances d’un Pokémon reprennent la règle du jeu : une immunité divise les dégâts par 4 au lieu de les annuler.',
+        ],
+      },
+    ],
+  },
+  {
     date: '21 octobre 2026',
     title: 'Talents, combats en temps réel, météo et wiki',
     changes: [

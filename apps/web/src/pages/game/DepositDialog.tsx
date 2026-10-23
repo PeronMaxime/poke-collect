@@ -9,6 +9,7 @@ import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../component
 import { api } from '../../lib/api';
 import { PLAYER_STATE_KEYS, isUsable, useInventory, usePokemon } from '../../lib/game';
 import { errorText, formatDuration, speciesName } from '../../lib/labels';
+import { AbilityLine } from './AssistantCard';
 import { pillClass } from './LaunchExpeditionDialog';
 
 const GENDER_LABELS = { male: '♂', female: '♀', genderless: '' } as const;
@@ -170,9 +171,12 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
                 )}
               </p>
               {p && (
-                <p className="text-xs text-slate-500">
-                  {ctx.species(p.speciesId, p.formId)!.eggGroups.map(eggGroupName).join(' · ')}
-                </p>
+                <>
+                  <p className="text-xs text-slate-500">
+                    {ctx.species(p.speciesId, p.formId)!.eggGroups.map(eggGroupName).join(' · ')}
+                  </p>
+                  <AbilityLine ctx={ctx} p={p} activities={['breeding']} />
+                </>
               )}
               <select
                 className="input mt-1 py-1"
