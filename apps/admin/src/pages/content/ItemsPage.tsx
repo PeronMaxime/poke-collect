@@ -99,6 +99,11 @@ const EFFECTS: Record<
     help: 'Méga-Gemme : au PC, un Pokémon de l’espèce (forme normale) la tient et passe dans la forme Méga choisie. Retirée du sac, rendue quand il redevient normal.',
     create: () => ({ type: 'megaEvolution', formId: MEGA_FORMS[0]!.id }),
   },
+  revive: {
+    label: 'Rappel',
+    help: 'Utilisé sur un Pokémon K.O. (depuis le sac ou sa fiche au PC) : il est aussitôt soigné, sans passer par le Centre Pokémon. Consommé.',
+    create: () => ({ type: 'revive' }),
+  },
 };
 
 const pokeApiById = new Map(pokeApiItems.map((i) => [i.name, i]));

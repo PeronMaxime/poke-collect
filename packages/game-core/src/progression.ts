@@ -1,3 +1,5 @@
+import { DEX_FORM_SECTIONS, forms, speciesForms } from '@poke/data';
+import type { FormKind, PokemonForm } from '@poke/data';
 import type { Collection, DexMilestone, PermanentBonusType, ProgressReward } from '@poke/content';
 import type { GameContext } from './context';
 import type { DexProgress, PlayerProgress } from './progress';
@@ -31,6 +33,18 @@ export const NO_CLAIMS: ClaimedRewards = { milestoneIds: new Set(), collectionId
 export function dexSpeciesIds(ctx: GameContext, regionId: string | null): number[] {
   if (regionId !== null) return ctx.region(regionId)?.speciesIds ?? [];
   return [...new Set(ctx.regions.flatMap((r) => r.speciesIds))];
+}
+
+const DEX_FORM_KINDS: ReadonlySet<FormKind> = new Set(DEX_FORM_SECTIONS.map((s) => s.kind));
+
+/**
+ * Formes qui ont leur case au Pokédex (sections de formes : régionales, Méga…), parmi celles de
+ * `speciesIds` (toutes sans liste). Comptées dans le total du Pokédex et dans les classements,
+ * pas dans les paliers (`dexProgress`).
+ */
+export function dexForms(speciesIds?: readonly number[]): PokemonForm[] {
+  const list = speciesIds ? speciesIds.flatMap((id) => speciesForms(id)) : forms;
+  return list.filter((f) => DEX_FORM_KINDS.has(f.kind));
 }
 
 export function dexProgress(

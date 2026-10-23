@@ -1,0 +1,1 @@
+ALTER TABLE "pokemon" DROP COLUMN "ko_until";

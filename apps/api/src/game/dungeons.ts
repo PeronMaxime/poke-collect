@@ -298,21 +298,16 @@ export async function claimDungeonRun(
     });
     const win = result.outcome === 'win';
     const endedAt = new Date(found.startedAt.getTime() + result.endedAtMs);
+    // Les Pokémon mis K.O. le restent jusqu'à leurs soins au Centre Pokémon.
     const knockedOut = new Set(result.knockedOut);
-    // Durée de K.O. propre à chaque Pokémon (talents) ; affichée : la plus longue.
-    let koUntil: Date | null = null;
     for (const m of result.team) {
-      const minutes = m.koMinutes ?? result.koMinutes;
-      const until = new Date(endedAt.getTime() + minutes * 60_000);
-      const ko = knockedOut.has(m.id) && minutes > 0 && until > now;
-      if (ko && (!koUntil || until > koUntil)) koUntil = until;
       await tx
         .update(pokemon)
         .set({
           xp: m.xpAfter,
           level: m.levelAfter,
           happiness: m.happinessAfter,
-          ...(ko && { koUntil: until }),
+          ...(knockedOut.has(m.id) && { knockedOut: true }),
         })
         .where(eq(pokemon.id, m.id));
     }
@@ -350,7 +345,6 @@ export async function claimDungeonRun(
 
     const stored: StoredDungeonResult = {
       ...result,
-      koUntil: koUntil ? koUntil.toISOString() : null,
     };
     const [claimed] = await tx
       .update(dungeonRuns)

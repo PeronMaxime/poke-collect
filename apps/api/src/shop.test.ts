@@ -114,6 +114,7 @@ describe('boutique', () => {
       'calm-mint:locked',
       'ability-capsule:locked',
       'ability-patch:locked',
+      'revive:locked',
     ]);
 
     const seen = await call('POST', '/api/shop/seen', {

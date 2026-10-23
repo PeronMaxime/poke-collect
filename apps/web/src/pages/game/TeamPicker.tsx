@@ -3,6 +3,7 @@ import { STAT_NAMES, types } from '@poke/data';
 import type { StatName } from '@poke/data';
 import {
   MAX_MEGAS_PER_TEAM,
+  abilityEffectText,
   computeStats,
   copiesZoneAffinity,
   effectiveAbility,
@@ -263,6 +264,7 @@ export function useTeamPickerOver(
   const [search, setSearch] = useState('');
   const [type, setType] = useState('all');
   const [abilityOnly, setAbilityOnly] = useState(false);
+  const [favoritesOnly, setFavoritesOnly] = useState(false);
   const tagFilter = useTagFilterOver(tags);
   const pinned = usePinnedSelection(team, [
     sort,
@@ -270,6 +272,7 @@ export function useTeamPickerOver(
     search,
     type,
     abilityOnly,
+    favoritesOnly,
     tagFilter.filter,
   ]);
   const now = useNow(10_000);
@@ -297,6 +300,7 @@ export function useTeamPickerOver(
       ({ p, species }) =>
         (tagFilter.matches(p) &&
           matchesName(species.nameFr) &&
+          (!favoritesOnly || p.locked) &&
           (type === 'all' || species.types.includes(type))) ||
         team.includes(p.id),
     )
@@ -324,6 +328,8 @@ export function useTeamPickerOver(
     setType,
     abilityOnly,
     setAbilityOnly,
+    favoritesOnly,
+    setFavoritesOnly,
     tagFilter,
     available,
     members,
@@ -367,6 +373,8 @@ export function TeamPicker({
     setType,
     abilityOnly,
     setAbilityOnly,
+    favoritesOnly,
+    setFavoritesOnly,
     tagFilter,
     available: candidates,
     members,
@@ -377,10 +385,15 @@ export function TeamPicker({
   const region = zone.regionId ? ctx.region(zone.regionId) : undefined;
   const from = region ? ` de ${region.name}` : '';
   // Talent qui agirait dans l'activité ; les membres choisis restent visibles avec le filtre.
-  const withAbility = candidates.map((c) => ({
-    ...c,
-    activeAbility: !!abilityEnv && possibleAbilityEffects(ctx, abilityEnv, c.p).length > 0,
-  }));
+  const withAbility = candidates.map((c) => {
+    const effects = abilityEnv ? possibleAbilityEffects(ctx, abilityEnv, c.p) : [];
+    return {
+      ...c,
+      activeAbility: effects.length > 0,
+      // Seulement les effets qui joueraient ici.
+      abilityText: effects.map(abilityEffectText).join(' · '),
+    };
+  });
   const available =
     abilityEnv && abilityOnly
       ? withAbility.filter((c) => c.activeAbility || team.includes(c.p.id))
@@ -448,6 +461,14 @@ export function TeamPicker({
           />
           <TypeFilterSelect value={type} onChange={setType} />
           <NameSearch value={search} onChange={setSearch} />
+          <button
+            type="button"
+            onClick={() => setFavoritesOnly(!favoritesOnly)}
+            title="N'afficher que les Pokémon favoris (♥)"
+            className={`ml-1 ${pillClass(favoritesOnly)}`}
+          >
+            ♥ Favoris
+          </button>
           {abilityEnv && (
             <button
               type="button"
@@ -491,7 +512,7 @@ export function TeamPicker({
         </span>
       </div>
       <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto p-1 sm:grid-cols-5">
-        {available.map(({ p, species, power, stats, affinity, activeAbility }) => {
+        {available.map(({ p, species, power, stats, affinity, activeAbility, abilityText }) => {
           const selected = team.includes(p.id);
           const locked = megaLocked(p, members);
           const card = (
@@ -527,7 +548,10 @@ export function TeamPicker({
                 </span>
               )}
               {activeAbility && (
-                <span className="max-w-full truncate text-[10px] text-emerald-700 dark:text-emerald-400">
+                <span
+                  className="max-w-full truncate text-[10px] text-emerald-700 dark:text-emerald-400"
+                  title={abilityText}
+                >
                   ✦ {abilityLabel(effectiveAbility(ctx, p))}
                 </span>
               )}
@@ -550,7 +574,11 @@ export function TeamPicker({
         })}
         {available.length === 0 && (
           <p className="col-span-full text-sm text-slate-500">
-            {tagFilter.filter === 'all' && type === 'all' && !search.trim() && !abilityOnly
+            {tagFilter.filter === 'all' &&
+            type === 'all' &&
+            !search.trim() &&
+            !abilityOnly &&
+            !favoritesOnly
               ? `Aucun Pokémon${from} disponible : ils sont occupés, K.O., ou pas encore capturés.`
               : `Aucun Pokémon${from} disponible avec ces filtres.`}
           </p>

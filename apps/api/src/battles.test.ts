@@ -1,14 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { eq, inArray } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
 import { getSpecies } from '@poke/data';
-import { createDb, ensureSeedContent, trainerProgress, users } from '@poke/db';
+import { createDb, ensureSeedContent, pokemon, trainerProgress, users } from '@poke/db';
 import { simulateDungeon } from '@poke/game-core';
 import type { PokemonInstance } from '@poke/game-core';
 import type { BattleDto, BattlesResponse, ClaimBattleResponse, PokemonDto } from '@poke/shared';
 import { buildApp } from './app';
 import { loadEnv } from './env';
-import { insertPokemon } from './game/store';
+import { addItems, insertPokemon } from './game/store';
 
 const handle = createDb({ pgliteDataDir: 'memory://' });
 const env = loadEnv({ NODE_ENV: 'test' });
@@ -44,7 +44,7 @@ async function signUp(email: string): Promise<{ cookie: string; userId: string }
 }
 
 function client(cookie: string) {
-  return async <T>(method: 'GET' | 'POST' | 'DELETE', url: string, payload?: unknown) => {
+  return async <T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, payload?: unknown) => {
     const res = await app.inject({
       method,
       url,
@@ -182,7 +182,6 @@ describe('combats de dresseurs', () => {
     expect(claim.body.battle.result).toMatchObject({
       money: 80,
       knockedOut: [],
-      koUntil: null,
       badgeEarned: false,
       defeated: 1,
     });
@@ -194,7 +193,7 @@ describe('combats de dresseurs', () => {
     const after = (await call<PokemonDto[]>('GET', '/api/pokemon')).body.find(
       (p) => p.id === strong.id,
     )!;
-    expect(after).toMatchObject({ busy: false, koUntil: null, happiness: 73 });
+    expect(after).toMatchObject({ busy: false, knockedOut: false, happiness: 73 });
 
     // Dresseur répétable : 4 h de recharge après le combat.
     const cooldown = await start(call, 'gamin-tom', [strong]);
@@ -226,13 +225,82 @@ describe('combats de dresseurs', () => {
     const ko = (await call<PokemonDto[]>('GET', '/api/pokemon')).body.find(
       (p) => p.id === weak.id,
     )!;
-    expect(ko.koUntil).toBe(new Date(clock.getTime() + 60 * 60_000).toISOString());
+    // K.O. sans fin de repos : il attend ses soins au Centre Pokémon.
+    expect(ko).toMatchObject({ knockedOut: true, healUntil: null });
     const retry = await start(call, 'fillette-lise', [starter]);
     expect(retry.body).toMatchObject({ error: 'TRAINER_COOLDOWN' });
     const records = (await call<BattlesResponse>('GET', '/api/battles')).body.records;
     expect(records).toContainEqual(
       expect.objectContaining({ trainerId: 'fillette-lise', wins: 0, losses: 1 }),
     );
+  });
+
+  it('soigne les Pokémon K.O. au Centre Pokémon, dans la limite des places', async () => {
+    const [weak] = (await call<PokemonDto[]>('GET', '/api/pokemon')).body.filter(
+      (p) => p.knockedOut,
+    );
+    const notKo = await call('POST', '/api/center', { pokemonIds: [starter.id] });
+    expect(notKo).toMatchObject({ status: 409, body: { error: 'POKEMON_NOT_KO' } });
+
+    const ko = await call('PUT', '/api/assistants/daycare', { pokemonId: weak!.id });
+    expect(ko.body).toMatchObject({ error: 'POKEMON_KO' });
+    const healed = await call<PokemonDto[]>('POST', '/api/center', { pokemonIds: [weak!.id] });
+    expect(healed.status, JSON.stringify(healed.body)).toBe(200);
+    expect(healed.body).toMatchObject([
+      { knockedOut: false, healUntil: new Date(clock.getTime() + 30 * 60_000).toISOString() },
+    ]);
+    const twice = await call('POST', '/api/center', { pokemonIds: [weak!.id] });
+    expect(twice.body).toMatchObject({ error: 'POKEMON_NOT_KO' });
+    const healing = await call('PUT', '/api/assistants/daycare', { pokemonId: weak!.id });
+    expect(healing.body).toMatchObject({ error: 'POKEMON_HEALING' });
+
+    // 6 places : une est prise, six Pokémon K.O. de plus n'y tiennent pas.
+    const others = await Promise.all(Array.from({ length: 6 }, () => give(userId, 10)));
+    const ids = others.map((p) => p.id);
+    await handle.db.update(pokemon).set({ knockedOut: true }).where(inArray(pokemon.id, ids));
+    const full = await call('POST', '/api/center', { pokemonIds: ids });
+    expect(full).toMatchObject({ status: 409, body: { error: 'CENTER_FULL' } });
+    expect((await call('POST', '/api/center', { pokemonIds: ids.slice(0, 5) })).status).toBe(200);
+
+    // Soins terminés : de nouveau libre, et sa place se libère.
+    advance(30);
+    const assigned = await call('PUT', '/api/assistants/daycare', { pokemonId: weak!.id });
+    expect(assigned.status, JSON.stringify(assigned.body)).toBe(200);
+    await call('DELETE', '/api/assistants/daycare');
+    expect((await call('POST', '/api/center', { pokemonIds: [ids[5]] })).status).toBe(200);
+  });
+
+  it('ranime des Pokémon K.O. avec un Rappel chacun', async () => {
+    const ko = await Promise.all([give(userId, 10), give(userId, 10)]);
+    const ids = ko.map((p) => p.id);
+    await handle.db.update(pokemon).set({ knockedOut: true }).where(inArray(pokemon.id, ids));
+
+    const notRevive = await call('POST', '/api/center/revive', {
+      itemId: 'poke-ball',
+      pokemonIds: ids,
+    });
+    expect(notRevive.body).toMatchObject({ error: 'NOT_A_REVIVE' });
+    await addItems(handle.db, userId, [{ itemId: 'revive', quantity: 1 }]);
+    const missing = await call('POST', '/api/center/revive', { itemId: 'revive', pokemonIds: ids });
+    expect(missing.body).toMatchObject({ error: 'ITEM_MISSING' });
+
+    const revived = await call<PokemonDto[]>('POST', '/api/center/revive', {
+      itemId: 'revive',
+      pokemonIds: [ids[0]],
+    });
+    expect(revived.status, JSON.stringify(revived.body)).toBe(200);
+    expect(revived.body).toMatchObject([{ knockedOut: false, healUntil: null }]);
+    const again = await call('POST', '/api/center/revive', {
+      itemId: 'revive',
+      pokemonIds: [ids[0]],
+    });
+    expect(again.body).toMatchObject({ error: 'POKEMON_NOT_KO' });
+    // Le Rappel a bien été consommé.
+    const last = await call('POST', '/api/center/revive', {
+      itemId: 'revive',
+      pokemonIds: [ids[1]],
+    });
+    expect(last.body).toMatchObject({ error: 'ITEM_MISSING' });
   });
 
   it('fuit sans récompense ni défaite', async () => {

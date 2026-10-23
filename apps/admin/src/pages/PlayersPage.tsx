@@ -4,9 +4,12 @@ import { ACTIVE_WINDOW_MS, ONLINE_WINDOW_MS } from '@poke/shared';
 import type {
   AdminPlayerDetailResponse,
   AdminPlayerDto,
+  AdminTestItemsResponse,
   AdminTestPokemonDeleteResponse,
   AdminTestPokemonInput,
   AdminTestPokemonResponse,
+  AdminTestQuestsResponse,
+  AdminTestTrainersResponse,
 } from '@poke/shared';
 import { Sprite } from '../components/forms/pickers';
 import { ApiError, api } from '../lib/api';
@@ -491,8 +494,9 @@ function TestPokemonSection({ userId }: { userId: string }) {
       ),
     );
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [itemQuantity, setItemQuantity] = useState(10);
   /** Seul le résultat de la dernière action est affiché. */
-  const [last, setLast] = useState<'give' | 'remove'>('give');
+  const [last, setLast] = useState<'give' | 'remove' | 'items' | 'trainers' | 'quests'>('give');
   const give = useMutation({
     mutationFn: () =>
       api<AdminTestPokemonResponse>(url, { method: 'POST', json: { ...form, regionId } }),
@@ -505,7 +509,28 @@ function TestPokemonSection({ userId }: { userId: string }) {
     onSettled: () => setConfirmDelete(false),
     onSuccess: refresh,
   });
-  const action = last === 'give' ? give : remove;
+  const items = useMutation({
+    mutationFn: () =>
+      api<AdminTestItemsResponse>(`/api/admin/players/${encodeURIComponent(userId)}/test-items`, {
+        method: 'POST',
+        json: { quantity: itemQuantity },
+      }),
+    onMutate: () => setLast('items'),
+    onSuccess: refresh,
+  });
+  const playerUrl = `/api/admin/players/${encodeURIComponent(userId)}`;
+  const trainers = useMutation({
+    mutationFn: () =>
+      api<AdminTestTrainersResponse>(`${playerUrl}/test-trainers`, { method: 'POST' }),
+    onMutate: () => setLast('trainers'),
+    onSuccess: refresh,
+  });
+  const quests = useMutation({
+    mutationFn: () => api<AdminTestQuestsResponse>(`${playerUrl}/test-quests`, { method: 'POST' }),
+    onMutate: () => setLast('quests'),
+    onSuccess: refresh,
+  });
+  const action = { give, items, remove, trainers, quests }[last];
   const failure = action.error;
   const error =
     failure instanceof ApiError
@@ -571,6 +596,45 @@ function TestPokemonSection({ userId }: { userId: string }) {
         >
           {give.isPending ? 'Ajout…' : 'Ajouter le lot'}
         </button>
+        <span className="flex items-end gap-2">
+          <label className="space-y-1">
+            <span className="block text-xs text-slate-500">Objets ×</span>
+            <input
+              className="input w-20"
+              type="number"
+              min={1}
+              max={999}
+              value={itemQuantity}
+              onChange={(e) =>
+                setItemQuantity(Math.min(999, Math.max(1, Number(e.target.value) || 1)))
+              }
+            />
+          </label>
+          <button
+            className="btn-primary"
+            disabled={items.isPending}
+            onClick={() => items.mutate()}
+            title="Ajoute ce nombre d’exemplaires de chaque objet du contenu publié au sac."
+          >
+            {items.isPending ? 'Ajout…' : 'Ajouter tous les objets'}
+          </button>
+        </span>
+        <button
+          className="btn-primary"
+          disabled={trainers.isPending}
+          onClick={() => trainers.mutate()}
+          title="Chaque dresseur du contenu publié compte comme battu une fois : badges, zones et dresseurs suivants débloqués, sans les récompenses de première victoire."
+        >
+          {trainers.isPending ? 'Déblocage…' : 'Débloquer tous les dresseurs'}
+        </button>
+        <button
+          className="btn-primary"
+          disabled={quests.isPending}
+          onClick={() => quests.mutate()}
+          title="Toutes les quêtes du contenu publié passent terminées : leurs récompenses sont à réclamer depuis la page Quêtes."
+        >
+          {quests.isPending ? 'Déblocage…' : 'Débloquer toutes les quêtes'}
+        </button>
         {confirmDelete ? (
           <span className="flex items-center gap-2">
             <button
@@ -591,6 +655,24 @@ function TestPokemonSection({ userId }: { userId: string }) {
         )}
       </div>
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      {last === 'items' && items.data && (
+        <p className="mt-2 text-sm text-green-700 dark:text-green-400">
+          {fmt(items.data.items)} objets ajoutés au sac, {fmt(items.data.quantity)} de chaque.
+        </p>
+      )}
+      {last === 'trainers' && trainers.data && (
+        <p className="mt-2 text-sm text-green-700 dark:text-green-400">
+          {fmt(trainers.data.defeated)} dresseurs marqués battus (
+          {fmt(trainers.data.total - trainers.data.defeated)} l’étaient déjà).
+        </p>
+      )}
+      {last === 'quests' && quests.data && (
+        <p className="mt-2 text-sm text-green-700 dark:text-green-400">
+          {fmt(quests.data.completed)} quêtes terminées (
+          {fmt(quests.data.total - quests.data.completed)} l’étaient déjà) : récompenses à réclamer
+          depuis la page Quêtes.
+        </p>
+      )}
       {last === 'remove' && remove.data && (
         <p className="mt-2 text-sm text-green-700 dark:text-green-400">
           {fmt(remove.data.deleted)} Pokémon du lot supprimés

@@ -54,6 +54,7 @@ const shopCategories: ShopCategory[] = [
   { id: 'elevage', name: 'Élevage', icon: null, order: 2 },
   { id: 'evolution', name: 'Évolution', icon: null, order: 3 },
   { id: 'rare', name: 'Rare', icon: null, order: 4 },
+  { id: 'soin', name: 'Soins', icon: null, order: 5 },
 ];
 
 const article = (
@@ -92,6 +93,9 @@ const shopEntries: ShopEntry[] = [
   }),
   article('ultra-ball', 'ultra-ball', 'balls', 3, 1200, {
     unlock: { type: 'trainerDefeated', trainerId: 'ondine' },
+  }),
+  article('revive', 'revive', 'soin', 0, 2000, {
+    unlock: { type: 'badgeCount', count: 4, regionId: 'kanto' },
   }),
   article('razz-berry', 'razz-berry', 'baies', 0, 150),
   article('razz-berry-x5', 'razz-berry', 'baies', 1, 600, { lotSize: 5 }),
@@ -393,10 +397,10 @@ export const seedContent: GameContentData = {
     transfer: { candiesPerPokemon: 1, shinyBonusCandies: 10, xpPerCandy: 500 },
     daycare: { initialSlots: 1, maxSlots: 4 },
     museum: { slots: 2 },
+    center: { slots: 6, healMinutes: 30 },
     battles: {
       maxTeamSize: 6,
       defaultTrainerIv: 15,
-      koMinutes: 60,
       cooldownMinutes: 240,
       xpMultiplier: 1,
       happinessOnWin: 3,
@@ -544,6 +548,15 @@ export const seedContent: GameContentData = {
       category: 'endgame',
       rarity: 'legendary',
       effects: [{ type: 'shinyCharm', multiplier: 3 }],
+    },
+    {
+      id: 'revive',
+      name: 'Rappel',
+      description: 'Ranime aussitôt un Pokémon K.O., sans passer par le Centre Pokémon.',
+      icon: null,
+      category: 'misc',
+      rarity: 'uncommon',
+      effects: [{ type: 'revive' }],
     },
     ...endgameItems(),
     ...fossilItems(),

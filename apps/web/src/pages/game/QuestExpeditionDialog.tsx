@@ -62,9 +62,10 @@ export function QuestExpeditionDialog({
     },
   });
 
-  const check = checkTeam(ctx, zone, durationMinutes, picker.members);
   // Talents de l'équipe : à l'heure actuelle (celle du départ).
-  const env = expeditionEnv(zone, picker.members, new Date().getHours(), 'quest');
+  const hour = new Date().getHours();
+  const check = checkTeam(ctx, zone, durationMinutes, picker.members, hour);
+  const env = expeditionEnv(zone, picker.members, hour, 'quest');
   const { errors } = check;
   const name = speciesName(ctx, target.speciesId, target.formId);
 

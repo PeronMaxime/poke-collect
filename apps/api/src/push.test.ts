@@ -15,7 +15,12 @@ import type {
   AdminPlayerDto,
   AdminSpeciesStatsDto,
   AdminTestPokemonDeleteResponse,
+  AdminTestItemsResponse,
   AdminTestPokemonResponse,
+  AdminTestQuestsResponse,
+  AdminTestTrainersResponse,
+  QuestsResponse,
+  InventoryEntryDto,
   ExpeditionDto,
   PokemonDto,
   PushConfigResponse,
@@ -313,6 +318,55 @@ describe('joueurs (admin)', () => {
     expect(removed.body).toEqual({ deleted: res.body.added, busy: 0 });
     const left = await handle.db.select().from(pokemon).where(eq(pokemon.ownerId, admin.userId));
     expect(left.map((r) => r.origin)).toEqual(['starter']);
+  });
+
+  it('donne un lot de tous les objets à un administrateur seulement', async () => {
+    const admin = await newPlayer('chen-objets@example.com', 'Chenobjets');
+    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, admin.userId));
+    const player = await newPlayer('sacha-objets@example.com', 'Sachaobjets');
+    const url = (userId: string) => `/api/admin/players/${userId}/test-items`;
+
+    expect((await admin.call('POST', url(player.userId), { quantity: 5 })).status).toBe(403);
+    const res = await admin.call<AdminTestItemsResponse>('POST', url(admin.userId), {
+      quantity: 5,
+    });
+    expect(res.body).toEqual({ items: seedContent.items.length, quantity: 5 });
+    const bag = await admin.call<InventoryEntryDto[]>('GET', '/api/inventory');
+    const revive = bag.body.find((i) => i.itemId === 'revive');
+    expect(revive?.quantity).toBe(5);
+    expect(bag.body.filter((i) => i.quantity >= 5)).toHaveLength(seedContent.items.length);
+  });
+
+  it('débloque tous les dresseurs et toutes les quêtes d’un administrateur seulement', async () => {
+    const admin = await newPlayer('chen-deblocage@example.com', 'Chendeblocage');
+    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, admin.userId));
+    const player = await newPlayer('sacha-deblocage@example.com', 'Sachadeblocage');
+    const url = (userId: string, what: string) => `/api/admin/players/${userId}/test-${what}`;
+
+    expect((await admin.call('POST', url(player.userId, 'trainers'))).status).toBe(403);
+    expect((await admin.call('POST', url(player.userId, 'quests'))).status).toBe(403);
+
+    const trainers = await admin.call<AdminTestTrainersResponse>(
+      'POST',
+      url(admin.userId, 'trainers'),
+    );
+    expect(trainers.body.total).toBeGreaterThan(0);
+    expect(trainers.body.defeated).toBe(trainers.body.total);
+    const again = await admin.call<AdminTestTrainersResponse>(
+      'POST',
+      url(admin.userId, 'trainers'),
+    );
+    expect(again.body.defeated).toBe(0);
+
+    const quests = await admin.call<AdminTestQuestsResponse>('POST', url(admin.userId, 'quests'));
+    expect(quests.body.completed).toBe(quests.body.total);
+    const state = await admin.call<QuestsResponse>('GET', '/api/quests');
+    expect(state.body.quests).toHaveLength(quests.body.total);
+    expect(state.body.quests.every((q) => q.status === 'completed')).toBe(true);
+    const claimed = await admin.call('POST', `/api/quests/${state.body.quests[0]!.questId}/claim`);
+    expect(claimed.status).toBe(200);
+    const twice = await admin.call<AdminTestQuestsResponse>('POST', url(admin.userId, 'quests'));
+    expect(twice.body.completed).toBe(0);
   });
 
   it('compte les captures depuis le début, transférés et évolués compris', async () => {

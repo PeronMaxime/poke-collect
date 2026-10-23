@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { STAT_NAMES } from '@poke/data';
 import type { StatName } from '@poke/data';
 import {
+  ASSISTANT_POST_INFO,
   MAX_IV,
   MAX_LEVEL,
   abilityEffectSummary,
@@ -12,7 +13,7 @@ import {
   effectiveAbility,
   expeditionPower,
   getNature,
-  isKnockedOut,
+  isHealing,
   isTransferableSpecies,
   itemUseOptions,
   lineageId,
@@ -21,9 +22,16 @@ import {
   transferCandies,
   xpForLevel,
 } from '@poke/game-core';
-import type { EvolutionCheck, EvolutionOption, GameContext } from '@poke/game-core';
 import type {
+  AbilityActivity,
+  EvolutionCheck,
+  EvolutionOption,
+  GameContext,
+} from '@poke/game-core';
+import type {
+  AssistantDto,
   EvolveResponse,
+  ExpeditionDto,
   MegaEvolveInput,
   PokemonDto,
   TransferPokemonResponse,
@@ -44,10 +52,16 @@ import { PokemonTagBadges, TagManagerDialog, TagPicker } from '../../components/
 import { api } from '../../lib/api';
 import {
   PLAYER_STATE_KEYS,
+  centerState,
   isUsable,
   keys,
+  useAssistants,
   useCandies,
   useEvolutionChecker,
+  useExpeditions,
+  useHeal,
+  useRevive,
+  useReviveStacks,
   useInventory,
   usePokedex,
   usePokedexForms,
@@ -412,14 +426,81 @@ function FavoriteToggle({ pokemon: p }: { pokemon: PokemonDto }) {
   );
 }
 
-function KoDetail({ koUntil }: { koUntil: string | null }) {
+/** K.O. (avec l'envoi au Centre Pokémon s'il reste de la place) ou en soins. */
+function KoDetail({ ctx, p }: { ctx: GameContext; p: PokemonDto }) {
   const now = useNow();
-  if (!isKnockedOut(koUntil, now)) return null;
+  const pokemon = usePokemon();
+  const heal = useHeal();
+  const revive = useRevive();
+  const [reviveStack] = useReviveStacks(ctx);
+  if (p.knockedOut) {
+    const { free } = centerState(ctx, pokemon.data ?? [], now);
+    const pending = heal.isPending || revive.isPending;
+    const error = heal.error ?? revive.error;
+    return (
+      <div className="mt-1 text-sm">
+        <p className="text-red-600">K.O. : il doit être soigné au Centre Pokémon.</p>
+        <div className="mt-1 flex flex-wrap justify-center gap-2">
+          {free > 0 && (
+            <button
+              className="btn-primary py-1 text-sm"
+              disabled={pending}
+              onClick={() => heal.mutate([p.id])}
+            >
+              Envoyer au Centre Pokémon
+            </button>
+          )}
+          {reviveStack && (
+            <button
+              className="btn-ghost py-1 text-sm"
+              disabled={pending}
+              onClick={() => revive.mutate({ itemId: reviveStack.itemId, pokemonIds: [p.id] })}
+            >
+              Utiliser un rappel ({reviveStack.quantity})
+            </button>
+          )}
+        </div>
+        {free === 0 && (
+          <p className="text-xs text-slate-500">Le Centre Pokémon est plein pour l’instant.</p>
+        )}
+        {error && <p className="text-xs text-red-600">{errorText(error)}</p>}
+      </div>
+    );
+  }
+  if (!isHealing(p.healUntil, now)) return null;
   return (
-    <p className="mt-1 text-sm text-red-600">
-      K.O. : au repos encore {formatCountdown(Date.parse(koUntil!) - now)}
+    <p className="mt-1 text-sm text-pink-600 dark:text-pink-400">
+      En soins au Centre Pokémon encore {formatCountdown(Date.parse(p.healUntil!) - now)}
     </p>
   );
+}
+
+/**
+ * Activité où le talent d'un Pokémon occupé agit en ce moment (expédition, légendaire, combat,
+ * donjon, pension, poste d'assistant) ; undefined = Pokémon libre.
+ */
+function busyAbilityActivities(
+  p: PokemonDto,
+  assistants: readonly AssistantDto[] | undefined,
+  expeditions: readonly ExpeditionDto[] | undefined,
+): AbilityActivity[] | undefined {
+  switch (p.activity) {
+    case 'expedition':
+      return [
+        expeditions?.some((e) => e.questId && e.team.includes(p.id)) ? 'quest' : 'expedition',
+      ];
+    case 'battle':
+    case 'dungeon':
+      return [p.activity];
+    case 'daycare':
+      return ['breeding'];
+    case 'assistant': {
+      const post = assistants?.find((a) => a.pokemonId === p.id)?.post;
+      return post ? [ASSISTANT_POST_INFO[post].activity] : undefined;
+    }
+    default:
+      return undefined;
+  }
 }
 
 function PokemonDetail({
@@ -435,6 +516,8 @@ function PokemonDetail({
 }) {
   const queryClient = useQueryClient();
   const tags = useTags().data ?? [];
+  const assistants = useAssistants();
+  const expeditions = useExpeditions();
   const [reveal, setReveal] = useState<EvolveResponse | null>(null);
   const [revealMega, setRevealMega] = useState(false);
   const refreshPlayerState = () =>
@@ -466,7 +549,11 @@ function PokemonDetail({
   });
   const species = ctx.species(p.speciesId, p.formId)!;
   const stats = computeStats(species, p);
-  const abilitySummary = abilityEffectSummary(ctx, effectiveAbility(ctx, p));
+  const abilitySummary = abilityEffectSummary(
+    ctx,
+    effectiveAbility(ctx, p),
+    busyAbilityActivities(p, assistants.data, expeditions.data?.active),
+  );
   const nature = getNature(p.nature);
   const levelXp = xpForLevel(species.growthRate, p.level);
   const nextXp = xpForLevel(species.growthRate, Math.min(MAX_LEVEL, p.level + 1));
@@ -542,7 +629,7 @@ function PokemonDetail({
           className="mt-1 gap-1"
           badgeClassName="px-2 text-xs leading-5"
         />
-        <KoDetail koUntil={p.koUntil} />
+        <KoDetail ctx={ctx} p={p} />
         <div className="mt-2 flex gap-1">
           {species.types.map((t) => (
             <TypeBadge key={t} type={t} />

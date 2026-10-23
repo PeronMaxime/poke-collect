@@ -5,7 +5,7 @@ import {
   natures,
   types as typeData,
 } from '@poke/data';
-import { gameContentStructureSchema, lowestUnitPrice, unlockParts } from './schemas';
+import { gameContentStructureSchema, isRoamingZone, lowestUnitPrice, unlockParts } from './schemas';
 import type {
   BaseUnlockCondition,
   GameContentData,
@@ -597,6 +597,13 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     checkUnlock('quest', quest.id, quest.unlock);
     quest.steps.forEach((step, i) => checkQuestCondition(quest.id, i, step.condition));
     checkQuestReward(quest.id, quest.rewards);
+    if (quest.rewards.pokemon.some((p) => p.roaming !== null)) {
+      if (!quest.regionId) {
+        add('error', 'quest', quest.id, 'Pokémon fuyard : la quête doit avoir une région');
+      } else if (!content.zones.some((z) => z.regionId === quest.regionId && isRoamingZone(z))) {
+        add('warning', 'quest', quest.id, 'Pokémon fuyard : aucune zone ordinaire dans la région');
+      }
+    }
     for (const { expedition } of quest.rewards.pokemon) {
       for (const t of [
         ...expedition.affinityTypes,

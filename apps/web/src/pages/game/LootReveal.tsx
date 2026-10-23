@@ -2,6 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
+import { expeditionEnv, expeditionPlan, zoneWeather } from '@poke/game-core';
 import type { GameContext, PokemonInstance } from '@poke/game-core';
 import type { ClaimExpeditionResponse, ExpeditionDto, StartExpeditionInput } from '@poke/shared';
 import {
@@ -11,6 +12,7 @@ import {
   PokemonSprite,
   ShinySparkles,
   ShinyStar,
+  useNow,
 } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
@@ -71,6 +73,25 @@ function RevealContent({
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
   const capturedById = new Map(data.captured.map((p) => [p.id, p]));
   const queryClient = useQueryClient();
+  const { ballItemId, balls, berryItemId, berries, zoneId } = data.expedition;
+  // Pas de relance d'une expédition qui a emporté un fuyard : il faut le traquer à nouveau.
+  const canRelaunch = !!zoneId && data.expedition.roamerQuestIds.length === 0;
+  // Rencontres de la relance, talents de l'équipe compris (heure et météo de maintenant) : elles
+  // peuvent différer de celles de l'expédition récupérée (talents de nuit, de pluie…).
+  const now = useNow(30_000);
+  const zone = zoneId ? ctx.zone(zoneId) : undefined;
+  const team = data.expedition.team.flatMap((id) => pokemonById.get(id) ?? []);
+  const encounters = zone
+    ? expeditionPlan(
+        ctx,
+        data.expedition.durationMinutes,
+        expeditionEnv({ ...zone, weather: zoneWeather(zone, now) }, team, new Date(now).getHours()),
+      ).encounters
+    : 0;
+  // Une Ball par rencontre emportée la dernière fois : la relance en emporte autant qu'elle aura
+  // de rencontres (le serveur plafonne au stock), sinon le même nombre qu'avant.
+  const tookMax = balls >= (data.expedition.result?.encounters.length ?? Infinity);
+  const ballsNeeded = ballItemId && balls > 0 ? (tookMax ? encounters : balls) : 0;
   // Relance : repartir dans la même zone avec les mêmes réglages (équipe, durée, Balls, baie et
   // filtre), pour enchaîner les maillons. Le serveur plafonne Balls et baies au stock restant.
   const relaunch = useMutation({
@@ -81,7 +102,7 @@ function RevealContent({
         team: e.team,
         ballItemId: e.ballItemId,
         ...(e.ballItemId && e.balls > 0
-          ? { ballCount: e.balls, captureFilter: e.captureFilter }
+          ? { ...(!tookMax && { ballCount: e.balls }), captureFilter: e.captureFilter }
           : {}),
         berryItemId: e.berryItemId,
       };
@@ -100,15 +121,14 @@ function RevealContent({
   // Stock rafraîchi après la récupération (Balls et baies non utilisées rendues) : on attend la
   // fin du rechargement pour ne pas avertir à tort.
   const inventory = useInventory();
-  const { ballItemId, balls, berryItemId, berries } = data.expedition;
   const shortage = (itemId: string | null, needed: number) => {
     if (!itemId || needed === 0 || !inventory.data || inventory.isFetching) return null;
     const owned = inventory.data.find((i) => i.itemId === itemId)?.quantity ?? 0;
     return owned < needed ? { itemId, owned, needed } : null;
   };
-  const ballsShort = shortage(ballItemId, balls);
-  const berriesShort = shortage(berryItemId, berries);
-  const { zoneId } = data.expedition;
+  const ballsShort = shortage(ballItemId, ballsNeeded);
+  // Une baie par tentative de capture, autant que de rencontres au plus.
+  const berriesShort = shortage(berryItemId, berries > 0 ? encounters : 0);
 
   return (
     <ExpeditionRevealView
@@ -121,7 +141,7 @@ function RevealContent({
       }}
       footer={
         <>
-          {zoneId && (ballsShort || berriesShort) && (
+          {canRelaunch && (ballsShort || berriesShort) && (
             <div className="mt-4 space-y-1 text-right text-sm text-amber-700 dark:text-amber-400">
               {ballsShort && (
                 <p>
@@ -152,7 +172,7 @@ function RevealContent({
             </p>
           )}
           <div className="mt-6 flex justify-end gap-2">
-            {zoneId && (
+            {canRelaunch && (
               <button
                 className="btn-ghost"
                 disabled={relaunch.isPending}
@@ -304,10 +324,16 @@ export function ExpeditionRevealView({
                 animate={{ opacity: 1, scale: 1, rotate: 0 }}
                 transition={{ delay: delay(i), type: 'spring', stiffness: 260, damping: 18 }}
               >
-                {isNew && (
+                {isNew ? (
                   <span className="absolute -top-2 rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white">
                     Nouveau !
                   </span>
+                ) : (
+                  e.questId && (
+                    <span className="absolute -top-2 rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+                      Fuyard !
+                    </span>
+                  )
                 )}
                 <motion.div
                   initial={instant ? false : { y: -6 }}

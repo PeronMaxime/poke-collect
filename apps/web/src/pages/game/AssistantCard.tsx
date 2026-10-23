@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
-  ABILITY_PARAMS,
   ASSISTANT_POST_INFO,
   abilityEffectSummary,
   effectiveAbility,
+  helpsAsAssistant,
 } from '@poke/game-core';
 import type { AbilityActivity, AssistantPost, GameContext } from '@poke/game-core';
 import type { AssignAssistantInput, AssistantDto, PokemonDto } from '@poke/shared';
@@ -13,18 +13,31 @@ import { api } from '../../lib/api';
 import { PLAYER_STATE_KEYS, isUsable, useAssistants, usePokemon } from '../../lib/game';
 import { abilityLabel, errorText, speciesName } from '../../lib/labels';
 
-/** Le talent du Pokémon a-t-il un effet dans cette activité ? */
+/** Le talent du Pokémon a-t-il un effet dans cette activité, en tant qu'assistant ? */
 function helpsIn(ctx: GameContext, p: PokemonDto, activity: AbilityActivity): boolean {
   return (ctx.ability(effectiveAbility(ctx, p))?.effects ?? []).some((e) =>
-    e.type === 'modifier'
-      ? ABILITY_PARAMS[e.param].activities.includes(activity)
-      : (e.type === 'syncNature' || e.type === 'attractGender') && activity !== 'incubator',
+    helpsAsAssistant(e, activity),
   );
 }
 
-function AbilityLine({ ctx, p }: { ctx: GameContext; p: PokemonDto }) {
+/**
+ * Talent d'un Pokémon et ses effets dans `activities` seulement (ceux de la pension pour un
+ * parent ou l'assistant de la Pension…).
+ */
+export function AbilityLine({
+  ctx,
+  p,
+  activities,
+  assistant = false,
+}: {
+  ctx: GameContext;
+  p: PokemonDto;
+  activities: readonly AbilityActivity[];
+  /** Seulement les effets qui agissent chez un assistant. */
+  assistant?: boolean;
+}) {
   const ability = effectiveAbility(ctx, p);
-  const summary = abilityEffectSummary(ctx, ability);
+  const summary = abilityEffectSummary(ctx, ability, activities, assistant);
   return (
     <span className="block text-xs text-slate-500">
       {abilityLabel(ability)}
@@ -75,7 +88,7 @@ export function AssistantCard({ ctx, post }: { ctx: GameContext; post: Assistant
               {speciesName(ctx, p.speciesId, p.formId)}{' '}
               <span className="text-xs text-slate-500">niv. {p.level}</span>
             </p>
-            <AbilityLine ctx={ctx} p={p} />
+            <AbilityLine ctx={ctx} p={p} activities={[info.activity]} assistant />
           </>
         ) : (
           <p className="text-xs text-slate-500">{info.help}</p>
@@ -193,7 +206,7 @@ function AssistantPicker({
                   {speciesName(ctx, p.speciesId, p.formId)}{' '}
                   <span className="text-xs text-slate-500">niv. {p.level}</span>
                 </span>
-                <AbilityLine ctx={ctx} p={p} />
+                <AbilityLine ctx={ctx} p={p} activities={[activity]} assistant />
               </span>
             </button>
           </li>

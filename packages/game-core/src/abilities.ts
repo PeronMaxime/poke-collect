@@ -25,11 +25,19 @@ import type { Rng } from './rng';
 
 /**
  * Activités où un talent peut agir. `breeding` : parents en pension et assistant de la Pension ;
- * `incubator` : assistant de la couveuse ; `museum` : assistant du Musée ; `transfer` : Pokémon
- * transféré.
+ * `incubator` : assistant de la couveuse ; `museum` : assistant du Musée ; `center` : Pokémon
+ * soigné au Centre Pokémon et assistant du Centre ; `transfer` : Pokémon transféré.
  */
 export type AbilityActivity =
-  'expedition' | 'quest' | 'battle' | 'dungeon' | 'breeding' | 'incubator' | 'museum' | 'transfer';
+  | 'expedition'
+  | 'quest'
+  | 'battle'
+  | 'dungeon'
+  | 'breeding'
+  | 'incubator'
+  | 'museum'
+  | 'center'
+  | 'transfer';
 
 export const ABILITY_ACTIVITY_LABELS: Record<AbilityActivity, string> = {
   expedition: 'expéditions',
@@ -39,11 +47,12 @@ export const ABILITY_ACTIVITY_LABELS: Record<AbilityActivity, string> = {
   breeding: 'pension (parents et assistant)',
   incubator: 'couveuse (assistant)',
   museum: 'Musée (assistant)',
+  center: 'Centre Pokémon (soigné et assistant)',
   transfer: 'transfert',
 };
 
 /** Postes d'assistant : un Pokémon affecté à un bâtiment y apporte les effets de son talent. */
-export const ASSISTANT_POSTS = ['daycare', 'incubator', 'museum'] as const;
+export const ASSISTANT_POSTS = ['daycare', 'incubator', 'museum', 'center'] as const;
 export type AssistantPost = (typeof ASSISTANT_POSTS)[number];
 
 export const ASSISTANT_POST_INFO: Record<
@@ -64,6 +73,11 @@ export const ASSISTANT_POST_INFO: Record<
     label: 'Assistant du Musée',
     activity: 'museum',
     help: 'Son talent agit sur la restauration des fossiles déposés et sur les Pokémon ranimés.',
+  },
+  center: {
+    label: 'Assistant du Centre Pokémon',
+    activity: 'center',
+    help: 'Son talent agit sur la durée des soins des Pokémon déposés (Cœur Soin).',
   },
 };
 
@@ -181,8 +195,8 @@ export const ABILITY_PARAMS: Record<AbilityParam, AbilityParamInfo> = {
     kind: 'percent',
     unit: '%',
     selfScope: true,
-    activities: COMBAT,
-    help: 'Durée d’indisponibilité d’un Pokémon mis K.O. en combat (Médic Nature, Régé-Force : négatif).',
+    activities: ['center'],
+    help: 'Durée des soins au Centre Pokémon d’un Pokémon mis K.O. (Médic Nature, Attention : négatif ; Cœur Soin agit aussi chez l’assistant du Centre).',
   },
   hp: {
     group: 'Combats',
@@ -554,6 +568,18 @@ export const effectActivities = (effect: AbilityEffect): readonly AbilityActivit
   effect.type === 'modifier'
     ? ABILITY_PARAMS[effect.param].activities
     : EFFECT_ACTIVITIES[effect.type];
+
+/**
+ * L'effet agit-il chez l'assistant d'un poste ? Un effet « lui seul » ne vise jamais l'assistant
+ * (au Centre Pokémon, il vise le Pokémon soigné).
+ */
+export const helpsAsAssistant = (effect: AbilityEffect, activity: AbilityActivity): boolean =>
+  effectActivities(effect).includes(activity) &&
+  !(
+    effect.type === 'modifier' &&
+    effect.scope === 'self' &&
+    ABILITY_PARAMS[effect.param].selfScope
+  );
 
 /** Effets des talents de l'équipe qui agissent dans l'activité de `env` (conditions remplies). */
 export function activityAbilityEffects(ctx: GameContext, env: AbilityEnv): ActiveAbilityEffect[] {
@@ -937,9 +963,27 @@ export function abilityEffectText(effect: AbilityEffect): string {
   return conditions.length ? `${text}, ${conditions.join(', ')}` : text;
 }
 
-/** Effet d'un talent expliqué au joueur : texte de l'admin, sinon liste des effets ; null = aucun. */
-export function abilityEffectSummary(ctx: GameContext, ability: string): string | null {
+/**
+ * Effet d'un talent expliqué au joueur : texte de l'admin, sinon liste des effets ; null = aucun.
+ * Avec `activities` (Pokémon occupé, assistant, parent en pension), seulement les effets qui y
+ * agissent (le texte de l'admin, qui décrit tout le talent, n'est alors pas repris).
+ */
+export function abilityEffectSummary(
+  ctx: GameContext,
+  ability: string,
+  activities?: readonly AbilityActivity[],
+  /** Seulement les effets qui agissent chez l'assistant (voir `helpsAsAssistant`). */
+  assistant = false,
+): string | null {
   const entry = ctx.ability(ability);
   if (!entry) return null;
+  if (activities) {
+    const effects = entry.effects.filter((e) =>
+      activities.some((a) =>
+        assistant ? helpsAsAssistant(e, a) : effectActivities(e).includes(a),
+      ),
+    );
+    return effects.map(abilityEffectText).join(' · ') || null;
+  }
   return entry.description.trim() || entry.effects.map(abilityEffectText).join(' · ') || null;
 }

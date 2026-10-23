@@ -18,6 +18,7 @@ import { adminRoutes } from './routes/admin';
 import { battleRoutes } from './routes/battles';
 import { dungeonRoutes } from './routes/dungeons';
 import { breedingRoutes } from './routes/breeding';
+import { centerRoutes } from './routes/center';
 import { gameRoutes } from './routes/game';
 import { leaderboardRoutes } from './routes/leaderboard';
 import { tagRoutes } from './routes/tags';
@@ -111,6 +112,7 @@ export async function buildApp({
   await app.register(teamRoutes, { db, hooks });
   await app.register(breedingRoutes, { db, content, hooks, now });
   await app.register(museumRoutes, { db, content, hooks, now });
+  await app.register(centerRoutes, { db, content, hooks, now });
   await app.register(assistantRoutes, { db, hooks, now });
   await app.register(battleRoutes, { db, content, hooks, now });
   await app.register(dungeonRoutes, { db, content, hooks, now });

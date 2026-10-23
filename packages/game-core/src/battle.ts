@@ -9,13 +9,7 @@ import type { PlayerProgress } from './progress';
 import { isUnlocked, outOfRegionSpecies } from './progress';
 import { NO_BONUSES } from './progression';
 import type { PlayerBonuses } from './progression';
-import {
-  abilityBonuses,
-  abilityHappiness,
-  durationWithAbility,
-  scaledByAbility,
-  teamMemberPowers,
-} from './abilities';
+import { abilityBonuses, abilityHappiness, scaledByAbility, teamMemberPowers } from './abilities';
 import type { AbilityEnv } from './abilities';
 import {
   buildCombatSetup,
@@ -134,8 +128,6 @@ export function battleEnv(
 
 export const battleCooldownMinutes = (ctx: GameContext, trainer: Trainer) =>
   trainer.cooldownMinutes ?? ctx.balance.battles.cooldownMinutes;
-export const battleKoMinutes = (ctx: GameContext, trainer: Trainer) =>
-  trainer.koMinutes ?? ctx.balance.battles.koMinutes;
 
 // --- Conditions d'équipe ------------------------------------------------------------------------
 
@@ -200,14 +192,6 @@ export function checkBattleTeam(
   return errors;
 }
 
-// --- Disponibilité ------------------------------------------------------------------------------
-
-/** Un Pokémon K.O. reste inutilisable jusqu'à `koUntil` (évaluation paresseuse). */
-export function isKnockedOut(koUntil: Date | string | null, now: Date | number): boolean {
-  if (koUntil === null) return false;
-  return new Date(koUntil).getTime() > new Date(now).getTime();
-}
-
 export interface TrainerRecord {
   wins: number;
   /** Fin du dernier combat (début du temps de recharge d'un dresseur répétable). */
@@ -257,9 +241,8 @@ export interface BattleResult {
   defeated: number;
   xpPerMember: number;
   team: TeamMemberResult[];
-  /** Pokémon mis K.O. (identifiants), indisponibles pendant `koMinutes`. */
+  /** Pokémon mis K.O. (identifiants), indisponibles jusqu'à leurs soins au Centre Pokémon. */
   knockedOut: string[];
-  koMinutes: number;
   money: number;
   loot: ItemStack[];
 }
@@ -309,7 +292,6 @@ export function resolveBattle(ctx: GameContext, input: BattleInput): BattleResul
   const outcome = state.outcome ?? 'timeout';
   const win = outcome === 'win';
   const fled = outcome === 'fled';
-  const koMinutes = battleKoMinutes(ctx, trainer);
   const env = setupEnv(setup, input.team);
   const bonuses = abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES);
 
@@ -334,12 +316,8 @@ export function resolveBattle(ctx: GameContext, input: BattleInput): BattleResul
     endedAtMs: state.endedAtMs ?? setup.timeLimitMs,
     defeated: state.defeated,
     xpPerMember,
-    team: applyTeamXp(ctx, input.team, xpPerMember, happiness).map((m, i) => ({
-      ...m,
-      koMinutes: state.hp[i] === 0 ? durationWithAbility(ctx, env, 'koDuration', koMinutes, i) : 0,
-    })),
+    team: applyTeamXp(ctx, input.team, xpPerMember, happiness),
     knockedOut: input.team.filter((_, i) => state.hp[i] === 0).map((m) => m.id),
-    koMinutes,
     money: win ? Math.floor(trainer.money * bonuses.money) : 0,
     loot: [...loot].map(([itemId, quantity]) => ({ itemId, quantity })),
   };

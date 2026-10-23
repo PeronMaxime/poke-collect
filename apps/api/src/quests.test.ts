@@ -69,6 +69,7 @@ content.quests.push({
           requiredTypes: [],
           affinityTypes: ['water'],
         },
+        roaming: null,
       },
     ],
   },

@@ -1,11 +1,12 @@
 import { motion, useReducedMotion } from 'motion/react';
 import type { ReactNode } from 'react';
+import { isHealing } from '@poke/game-core';
 import type { DungeonOutcome, GameContext, TeamMemberResult } from '@poke/game-core';
 import type { ItemStack } from '@poke/content';
 import type { DungeonRunDto } from '@poke/shared';
-import { Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
-import { usePokemon } from '../../lib/game';
-import { formatDuration, formatMoney, itemIcon, itemName, speciesName } from '../../lib/labels';
+import { Modal, PokemonSprite, ShinySparkles, ShinyStar, useNow } from '../../components/ui';
+import { centerState, useHeal, usePokemon } from '../../lib/game';
+import { errorText, formatMoney, itemIcon, itemName, speciesName } from '../../lib/labels';
 
 /** Issue d'un combat en temps réel (donjon ou dresseur). */
 export const OUTCOME_TITLES = {
@@ -135,11 +136,9 @@ export interface CombatResultView {
   loot: ItemStack[];
   team: TeamMemberResult[];
   knockedOut: string[];
-  koMinutes: number;
-  koUntil: string | null;
 }
 
-/** Récompenses (argent, butin, `extraRewards`) et équipe : XP, niveaux, K.O. */
+/** Récompenses (argent, butin, `extraRewards`) et équipe : XP, niveaux, K.O. et envoi au Centre. */
 export function CombatResultDetails({
   ctx,
   result,
@@ -153,10 +152,21 @@ export function CombatResultDetails({
   /** Récompense en plus (badge…). */
   extraRewards?: ReactNode;
 }) {
+  const now = useNow();
   const pokemon = usePokemon();
+  const heal = useHeal();
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
   const win = result.outcome === 'win';
   const knockedOut = new Set(result.knockedOut);
+  const { free } = centerState(ctx, pokemon.data ?? [], now);
+  // K.O. du combat qui attendent encore leurs soins, les plus hauts niveaux d'abord.
+  const waiting = result.knockedOut
+    .flatMap((id) => pokemonById.get(id) ?? [])
+    .filter((p) => p.knockedOut)
+    .sort((a, b) => b.level - a.level);
+  const allHealing =
+    result.knockedOut.length > 0 &&
+    result.knockedOut.every((id) => isHealing(pokemonById.get(id)?.healUntil ?? null, now));
   return (
     <div className="mt-4 grid gap-4 sm:grid-cols-2">
       <div>
@@ -183,9 +193,30 @@ export function CombatResultDetails({
         {currency !== null && (
           <p className="mt-2 text-xs text-slate-500">Argent : {formatMoney(currency)}</p>
         )}
-        {result.koUntil && (
-          <p className="mt-2 text-xs text-red-600">
-            Les Pokémon mis K.O. se reposent {formatDuration(result.koMinutes)}.
+        {waiting.length > 0 && (
+          <div className="mt-2 text-xs">
+            <p className="text-red-600">
+              Les Pokémon mis K.O. doivent être soignés au Centre Pokémon.
+            </p>
+            {free > 0 ? (
+              <button
+                className="btn-primary mt-2 py-1 text-sm"
+                disabled={heal.isPending}
+                onClick={() => heal.mutate(waiting.slice(0, free).map((p) => p.id))}
+              >
+                {free >= waiting.length
+                  ? 'Envoyer au Centre Pokémon'
+                  : `Envoyer les ${free} plus forts au Centre Pokémon`}
+              </button>
+            ) : (
+              <p className="mt-1 text-slate-500">Le Centre Pokémon est plein pour l’instant.</p>
+            )}
+            {heal.error && <p className="mt-1 text-red-600">{errorText(heal.error)}</p>}
+          </div>
+        )}
+        {allHealing && (
+          <p className="mt-2 text-xs text-pink-600 dark:text-pink-400">
+            Les Pokémon mis K.O. sont en soins au Centre Pokémon.
           </p>
         )}
       </div>
@@ -212,10 +243,24 @@ export function CombatResultDetails({
                       Niveau {m.levelAfter} !
                     </span>
                   )}
-                  {knockedOut.has(m.id) && (
-                    <span className="rounded bg-red-100 px-1 text-[10px] text-red-700 dark:bg-red-950 dark:text-red-300">
-                      K.O.
-                    </span>
+                  {knockedOut.has(m.id) &&
+                    (isHealing(p.healUntil, now) ? (
+                      <span className="rounded bg-pink-100 px-1 text-[10px] text-pink-700 dark:bg-pink-950 dark:text-pink-300">
+                        En soins
+                      </span>
+                    ) : (
+                      <span className="rounded bg-red-100 px-1 text-[10px] text-red-700 dark:bg-red-950 dark:text-red-300">
+                        K.O.
+                      </span>
+                    ))}
+                  {p.knockedOut && knockedOut.has(m.id) && waiting.length > 1 && free > 0 && (
+                    <button
+                      className="btn-ghost px-2 py-0 text-xs"
+                      disabled={heal.isPending}
+                      onClick={() => heal.mutate([p.id])}
+                    >
+                      Soigner
+                    </button>
                   )}
                 </li>
               )

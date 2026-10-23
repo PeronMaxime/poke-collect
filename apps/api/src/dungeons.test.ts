@@ -165,7 +165,6 @@ describe('donjons', () => {
     const { run } = claim.body;
     expect(run.outcome).toBe('loss');
     expect(run.result).toMatchObject({ money: 0, gemItemId: null, knockedOut: [starter.id] });
-    expect(run.result!.koUntil).not.toBeNull();
 
     const list = await call<DungeonsResponse>('GET', '/api/dungeons');
     expect(list.body.active).toBeNull();
@@ -173,8 +172,7 @@ describe('donjons', () => {
     expect(list.body.records).toMatchObject([{ dungeonId: 'mega-florizarre', wins: 0, losses: 1 }]);
 
     const ko = (await call<PokemonDto[]>('GET', '/api/pokemon')).body[0]!;
-    expect(ko).toMatchObject({ busy: false });
-    expect(ko.koUntil).not.toBeNull();
+    expect(ko).toMatchObject({ busy: false, knockedOut: true });
 
     const cooldown = await call('POST', '/api/dungeons', {
       dungeonId: 'mega-florizarre',

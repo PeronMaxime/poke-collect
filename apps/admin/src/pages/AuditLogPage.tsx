@@ -13,6 +13,9 @@ const ACTION_LABELS: Record<string, string> = {
   'user.revoke': 'Retrait du rôle admin',
   'player.test_pokemon': 'Lot de Pokémon de test',
   'player.test_pokemon_delete': 'Suppression du lot de Pokémon de test',
+  'player.test_items': 'Lot d’objets de test',
+  'player.test_trainers': 'Dresseurs de test battus',
+  'player.test_quests': 'Quêtes de test terminées',
 };
 
 const ENTITY_LABELS: Record<string, string> = {

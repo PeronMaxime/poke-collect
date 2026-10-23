@@ -12,6 +12,7 @@ import {
   legendarySite,
   questStatus,
   questStepsDone,
+  questCaptureChance,
   questEncounter,
   resolveQuestExpedition,
 } from './quest';
@@ -221,6 +222,26 @@ describe('expédition légendaire', () => {
       ).toBeGreaterThanOrEqual(target.perfectIvs);
     }
     expect(outcomes.filter((e) => e.outcome === 'escaped').every((e) => !e.pokemon)).toBe(true);
+  });
+
+  it('talents de l’équipe : la chance affichée est celle du lancer (Pression : +10 %)', () => {
+    const withPressure = testContext((c) => {
+      c.abilities = [
+        {
+          id: 'pressure',
+          description: '',
+          effects: [
+            { type: 'modifier', param: 'capture', value: 10, scope: 'team', conditions: [] },
+          ],
+        },
+      ];
+    });
+    const pressured = [member('a', 59, 50, { ability: 'pressure' }), member('b', 19, 50)];
+    const withTalent = { ...input, team: pressured };
+    const base = resolveQuestExpedition(withPressure, input).encounters[0]!.captureChance;
+    const boosted = resolveQuestExpedition(withPressure, withTalent).encounters[0]!.captureChance;
+    expect(boosted).toBeCloseTo(base * 1.1);
+    expect(questCaptureChance(withPressure, withTalent)).toBe(boosted);
   });
 
   it('la baie augmente la chance de capture et est consommée', () => {

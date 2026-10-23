@@ -8,7 +8,6 @@ import {
   dungeonCooldownMinutes,
   dungeonDifficulty,
   dungeonEnemies,
-  dungeonKoMinutes,
   dungeonOpponentInstance,
   simulateDungeon,
 } from '@poke/game-core';
@@ -71,7 +70,6 @@ function emptyDungeon(ctx: GameContext): Dungeon {
     opponents: [],
     timeLimitSeconds: 180,
     cooldownMinutes: null,
-    koMinutes: null,
     money: 5000,
     lootTableId: null,
     lootRolls: 0,
@@ -359,20 +357,6 @@ function DungeonForm({
               disabled={disabled}
             />
           </Field>
-          <Field
-            label="Durée de K.O."
-            hint={`Pokémon mis K.O. Vide = ${rules.koMinutes} min.`}
-            error={errors.get('koMinutes')}
-          >
-            <NullableNumberInput
-              value={d.koMinutes}
-              min={0}
-              unit="min"
-              placeholder={String(rules.koMinutes)}
-              onChange={(v) => set('koMinutes', v)}
-              disabled={disabled}
-            />
-          </Field>
         </div>
         <Field label="Condition supplémentaire" error={errorsUnder(errors, 'unlock')[0]}>
           <UnlockEditor
@@ -509,7 +493,7 @@ function DungeonSimulator({ dungeon, working }: { dungeon: Dungeon; working: Wor
         <p className="text-xs text-slate-500">
           Équipe type (IV {TEAM_IV} si vide, attaque par défaut, sans changement de Pokémon), contre
           le donjon affiché (modifications non enregistrées comprises). Recharge{' '}
-          {dungeonCooldownMinutes(ctx, dungeon)} min · K.O. {dungeonKoMinutes(ctx, dungeon)} min.
+          {dungeonCooldownMinutes(ctx, dungeon)} min.
         </p>
       </div>
       <TeamEditor

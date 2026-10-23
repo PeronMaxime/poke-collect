@@ -17,7 +17,7 @@ import {
 } from '@poke/db';
 import type { Db } from '@poke/db';
 import type { ItemStack } from '@poke/content';
-import { charmMultiplier, isKnockedOut, questStepsDone } from '@poke/game-core';
+import { charmMultiplier, isHealing, questStepsDone } from '@poke/game-core';
 import type {
   CaughtDex,
   ClaimedRewards,
@@ -73,7 +73,8 @@ export function toPokemonDto(row: PokemonRow, activity: PokemonActivity | null =
     locked: row.locked,
     busy: activity !== null,
     activity,
-    koUntil: row.koUntil?.toISOString() ?? null,
+    knockedOut: row.knockedOut,
+    healUntil: row.healUntil?.toISOString() ?? null,
     tagIds: row.tagIds,
     dungeonMove: row.dungeonMove,
     megaStone: row.megaStone,
@@ -99,6 +100,7 @@ export function toExpeditionDto(row: ExpeditionRow): ExpeditionDto {
     claimedAt: row.claimedAt?.toISOString() ?? null,
     shinyChain: row.shinyChain,
     localHour: row.localHour,
+    roamerQuestIds: row.roamers.map((r) => r.questId),
     result: (row.result as ExpeditionDto['result']) ?? null,
   };
 }
@@ -194,8 +196,9 @@ export async function pokemonActivities(
 }
 
 /**
- * Disponibilité commune aux expéditions, combats et pensions : un Pokémon occupé ou K.O.
- * ne peut pas être engagé. Lève `POKEMON_BUSY` ou `POKEMON_KO`.
+ * Disponibilité commune aux expéditions, combats et pensions : un Pokémon occupé, K.O. ou en
+ * soins au Centre Pokémon ne peut pas être engagé. Lève `POKEMON_BUSY`, `POKEMON_KO` ou
+ * `POKEMON_HEALING`.
  */
 export async function assertAvailable(
   db: Db,
@@ -205,10 +208,11 @@ export async function assertAvailable(
 ): Promise<void> {
   const busy = await pokemonActivities(db, ownerId);
   if (rows.some((r) => busy.has(r.id))) throw new GameError(409, 'POKEMON_BUSY');
-  const ko = rows.filter((r) => isKnockedOut(r.koUntil, now));
-  if (ko.length > 0) {
-    throw new GameError(409, 'POKEMON_KO', {
-      koUntil: new Date(Math.max(...ko.map((r) => r.koUntil!.getTime()))).toISOString(),
+  if (rows.some((r) => r.knockedOut)) throw new GameError(409, 'POKEMON_KO');
+  const healing = rows.filter((r) => isHealing(r.healUntil, now));
+  if (healing.length > 0) {
+    throw new GameError(409, 'POKEMON_HEALING', {
+      healUntil: new Date(Math.max(...healing.map((r) => r.healUntil!.getTime()))).toISOString(),
     });
   }
 }

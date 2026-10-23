@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { eggsLaid, inheritanceRules } from '@poke/game-core';
-import type { GameContext } from '@poke/game-core';
+import { eggShinyProbability, eggsLaid, inheritanceRules, isMasudaPair } from '@poke/game-core';
+import type { AbilityHolder, GameContext } from '@poke/game-core';
 import type {
   CollectEggsResponse,
   DaycareDto,
@@ -19,16 +19,24 @@ import {
   useNow,
 } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, serverOffset, useDaycare, usePokemon } from '../../lib/game';
+import {
+  PLAYER_STATE_KEYS,
+  serverOffset,
+  useAssistants,
+  useDaycare,
+  usePokemon,
+  useShinyCharm,
+} from '../../lib/game';
 import {
   errorText,
   formatCountdown,
   formatDuration,
+  formatShinyRate,
   itemIcon,
   itemName,
   speciesName,
 } from '../../lib/labels';
-import { AssistantCard } from './AssistantCard';
+import { AbilityLine, AssistantCard } from './AssistantCard';
 import { DepositDialog } from './DepositDialog';
 import { HatchReveal } from './HatchReveal';
 
@@ -36,6 +44,8 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const daycare = useDaycare();
   const pokemon = usePokemon();
+  const assistants = useAssistants();
+  const charm = useShinyCharm(ctx);
   const now = useNow();
   const [depositOpen, setDepositOpen] = useState(false);
   const [hatched, setHatched] = useState<HatchEggsResponse | null>(null);
@@ -78,6 +88,9 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
   const data = daycare.data;
   const serverNow = now + serverOffset(data, daycare.dataUpdatedAt);
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
+  // Assistant de la Pension : son talent est figé dans les œufs au ramassage.
+  const helperId = assistants.data?.find((a) => a.post === 'daycare')?.pokemonId;
+  const helper = helperId ? pokemonById.get(helperId) : undefined;
   const eggs = data?.eggs ?? [];
   const readyEggs = eggs.filter((e) => Date.parse(e.hatchAt) <= serverNow).length;
   const error = collect.error ?? withdraw.error ?? hatch.error;
@@ -110,6 +123,8 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
                 parents={[pension.parentAId, pension.parentBId].map((id) =>
                   id ? pokemonById.get(id) : undefined,
                 )}
+                charm={charm}
+                helper={helper}
                 serverNow={serverNow}
                 busy={collect.isPending || withdraw.isPending}
                 onCollect={() => collect.mutate(slot)}
@@ -175,6 +190,8 @@ function PensionCard({
   ctx,
   pension,
   parents,
+  charm,
+  helper,
   serverNow,
   busy,
   onCollect,
@@ -183,6 +200,8 @@ function PensionCard({
   ctx: GameContext;
   pension: DaycareDto;
   parents: (PokemonDto | undefined)[];
+  charm: number;
+  helper: AbilityHolder | undefined;
   serverNow: number;
   busy: boolean;
   onCollect: () => void;
@@ -196,6 +215,12 @@ function PensionCard({
   const nextAt = start + (laid + 1) * cycle;
   const held = [pension.heldItemAId, pension.heldItemBId];
   const rules = inheritanceRules(ctx, [pension.heldItemAId, pension.heldItemBId]);
+  const [pa, pb] = parents;
+  const shinyRate = pa && pb ? eggShinyProbability(ctx, [pa, pb], charm, helper) : null;
+  const shinyBonuses = [
+    pa && pb && isMasudaPair(pa, pb) && 'Masuda',
+    charm > 1 && 'Charme Chroma',
+  ].filter(Boolean);
 
   return (
     <div className={`card p-4 ${waiting > 0 ? 'ring-2 ring-brand-500/50' : ''}`}>
@@ -217,6 +242,9 @@ function PensionCard({
                   {p.isShiny && <ShinyStar />}
                 </span>
                 <span className="text-slate-500">N.{p.level}</span>
+                <span className="max-w-48 text-center">
+                  <AbilityLine ctx={ctx} p={p} activities={['breeding']} />
+                </span>
               </>
             ) : (
               <span className="text-slate-400">?</span>
@@ -241,6 +269,12 @@ function PensionCard({
             {rules.ivCount} IV hérités
             {rules.natureChance.some((c) => c > 0) && ' · nature transmise'}
           </p>
+          {shinyRate !== null && (
+            <p title="Le Charme Chroma compte s’il est dans le sac à l’éclosion ; l’assistant, s’il est en poste au ramassage.">
+              <ShinyStar /> Chance shiny : {formatShinyRate(shinyRate)}
+              {shinyBonuses.length > 0 && ` (${shinyBonuses.join(', ')})`}
+            </p>
+          )}
           <ProgressBar
             className="mt-1"
             value={waiting >= maxEggs ? 1 : (serverNow - (nextAt - cycle)) / cycle}

@@ -1,4 +1,4 @@
-import { defaultLegendaryExpedition } from '@poke/content';
+import { DEFAULT_ROAMING_CHANCE, defaultLegendaryExpedition } from '@poke/content';
 import type { LegendaryExpedition, QuestPokemon } from '@poke/content';
 import { pokemonTypes, typeWeaknesses } from '@poke/data';
 import type { GameContext } from '@poke/game-core';
@@ -13,7 +13,7 @@ import {
 
 /**
  * Pokémon de la récompense d'une quête : espèce, niveau, IV parfaits garantis, et l'expédition
- * légendaire qui permet de le capturer (une seule Ball lancée).
+ * légendaire qui permet de le capturer (une seule Ball lancée), ou son réglage de fuyard.
  */
 export function PokemonRewardsEditor({
   ctx,
@@ -41,7 +41,9 @@ export function PokemonRewardsEditor({
       },
     });
   const err = (i: number) =>
-    errors.get(`rewards.pokemon.${i}.level`) ?? errors.get(`rewards.pokemon.${i}.perfectIvs`);
+    errors.get(`rewards.pokemon.${i}.level`) ??
+    errors.get(`rewards.pokemon.${i}.perfectIvs`) ??
+    errors.get(`rewards.pokemon.${i}.roaming`);
 
   return (
     <div className="space-y-3">
@@ -51,7 +53,12 @@ export function PokemonRewardsEditor({
         avec la formule de capture habituelle. Les membres de l’équipe d’un type d’affinité
         augmentent la chance de capture ; par défaut, les faiblesses du Pokémon. L’équipe doit venir
         du Pokédex de la région de la quête. IV aléatoires, dont au moins le nombre indiqué à 31 ;
-        le taux shiny habituel s’applique (Charme Chroma compris).
+        le taux shiny habituel s’applique (Charme Chroma compris). Un fuyard, lui, n’a pas
+        d’expédition légendaire : il change de zone à chaque heure parmi les zones ordinaires
+        débloquées par le joueur dans la région de la quête (ni zones de quête, ni zones à plusieurs
+        conditions), et chaque rencontre d’une expédition dans sa zone a le pourcentage indiqué de
+        chances d’être lui (une fois au plus). Une Ball lui est toujours lancée, quel que soit le
+        filtre de capture.
       </p>
       {value.map((p, i) => (
         <div
@@ -102,14 +109,41 @@ export function PokemonRewardsEditor({
             )}
             {err(i) && <span className="text-xs text-red-600">{err(i)}</span>}
           </div>
-          <LegendaryExpeditionEditor
-            value={p.expedition}
-            weaknesses={typeWeaknesses(pokemonTypes(p.speciesId, p.formId))}
-            onChange={(expedition) => update(i, { expedition })}
-            errors={errors}
-            prefix={`rewards.pokemon.${i}.expedition`}
-            disabled={disabled}
-          />
+          <div className="flex flex-wrap items-center gap-3 text-sm">
+            <label className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                checked={p.roaming != null}
+                disabled={disabled}
+                onChange={(e) =>
+                  update(i, { roaming: e.target.checked ? DEFAULT_ROAMING_CHANCE : null })
+                }
+              />
+              Fuyard
+            </label>
+            {p.roaming != null && (
+              <NumberInput
+                className="w-48"
+                value={p.roaming}
+                min={0.1}
+                max={100}
+                step={0.5}
+                unit="% par rencontre"
+                disabled={disabled}
+                onChange={(roaming) => update(i, { roaming })}
+              />
+            )}
+          </div>
+          {p.roaming == null && (
+            <LegendaryExpeditionEditor
+              value={p.expedition}
+              weaknesses={typeWeaknesses(pokemonTypes(p.speciesId, p.formId))}
+              onChange={(expedition) => update(i, { expedition })}
+              errors={errors}
+              prefix={`rewards.pokemon.${i}.expedition`}
+              disabled={disabled}
+            />
+          )}
         </div>
       ))}
       {!disabled && value.length < 6 && (
@@ -124,6 +158,7 @@ export function PokemonRewardsEditor({
                 level: 70,
                 perfectIvs: 3,
                 expedition: defaultLegendaryExpedition(150),
+                roaming: null,
               },
             ])
           }

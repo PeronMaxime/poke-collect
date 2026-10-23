@@ -11,7 +11,11 @@ import type {
   UnlockCondition,
   Zone,
 } from './schemas';
-import { defaultLegendaryExpedition, defaultTrainerTimeLimitSeconds } from './schemas';
+import {
+  DEFAULT_ROAMING_CHANCE,
+  defaultLegendaryExpedition,
+  defaultTrainerTimeLimitSeconds,
+} from './schemas';
 import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
 
 /**
@@ -24,6 +28,7 @@ import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
  *   types imposés, expéditions longues). Elles abritent, rarement, des Pokémon introuvables
  *   ailleurs (Kangourex, Kicklee, Porygon, Ronflex, Lokhlass…).
  * - Quêtes : les oiseaux légendaires, Mewtwo puis Mew ; chacune ouvre sa zone en cours de route.
+ *   Après Mewtwo, les oiseaux de Galar : des fuyards, qui changent de zone de Kanto chaque heure.
  *
  * Les 151 espèces sont obtenables : rencontres, évolutions (niveau, pierres de la boutique, Câble
  * Link), fossiles restaurés au Musée et quêtes. Formes alternatives : Archipel Lointain, à part.
@@ -750,7 +755,6 @@ const trainer = (
     badge: null,
     repeatable: true,
     cooldownMinutes: null,
-    koMinutes: null,
     enabled: true,
     ...rest,
   };
@@ -787,7 +791,6 @@ const gymLeader = (
     lootRolls: 3,
     badge: { name: badge, image: null },
     repeatable: false,
-    koMinutes: 120,
     ...rest,
   });
 };
@@ -841,7 +844,7 @@ export const kantoTrainers: Trainer[] = [
     'Badge Roche',
     [mon(74, 12), mon(95, 14)],
     defeated('scout-rick'),
-    { minPower: 150, koMinutes: null },
+    { minPower: 150 },
   ),
   // Badge Roche → Badge Cascade
   trainer({
@@ -995,7 +998,6 @@ export const kantoTrainers: Trainer[] = [
     lootTableId: 'butin-elite',
     lootRolls: 2,
     repeatable: false,
-    koMinutes: 120,
     unlock: badges(5),
   }),
   trainer({
@@ -1070,7 +1072,7 @@ export const kantoTrainers: Trainer[] = [
     'Badge Terre',
     [mon(111, 45, 25), mon(51, 42, 25), mon(31, 44, 25), mon(34, 45, 25), mon(112, 50, 25)],
     defeated('scientifique-hector'),
-    { minPower: 1650, koMinutes: 180, lootTableId: 'butin-elite' },
+    { minPower: 1650, lootTableId: 'butin-elite' },
   ),
   // Route Victoire, puis la Ligue
   trainer({
@@ -1113,7 +1115,6 @@ function league(): Trainer[] {
       lootTableId: 'butin-elite',
       lootRolls: 3,
       repeatable: false,
-      koMinutes: 240,
       ...extra,
     });
   return [
@@ -1185,6 +1186,16 @@ const legendary = (speciesId: number, level: number, minPower: number): QuestPok
   level,
   perfectIvs: 3,
   expedition: defaultLegendaryExpedition(speciesId, null, minPower),
+  roaming: null,
+});
+/** Fuyard : il change de zone de Kanto à chaque heure au lieu d'une expédition légendaire. */
+const roamer = (speciesId: number, formId: number, level: number): QuestPokemon => ({
+  speciesId,
+  formId,
+  level,
+  perfectIvs: 3,
+  expedition: defaultLegendaryExpedition(speciesId, formId),
+  roaming: DEFAULT_ROAMING_CHANCE,
 });
 const step = (name: string, description: string, condition: QuestCondition): QuestStep => ({
   name,
@@ -1356,6 +1367,86 @@ export const kantoQuests: Quest[] = [
     rewards: {
       ...reward({ items: [{ itemId: 'ability-patch', quantity: 1 }] }),
       pokemon: [legendary(151, 30, 3600)],
+    },
+  },
+  // Oiseaux de Galar : fuyards de fin de partie, après Mewtwo.
+  {
+    id: 'artikodin-galar',
+    order: 5,
+    name: 'L’oiseau au regard glacial',
+    description:
+      'Un oiseau aux ailes violettes, venu d’une région lointaine, plongerait les esprits de Kanto dans la torpeur.',
+    image: null,
+    regionId: 'kanto',
+    enabled: true,
+    unlock: { type: 'questCompleted', questId: 'mewtwo' },
+    steps: [
+      step('Ondes étranges', 'Capture 15 Pokémon Psy.', catchOf(15, 'psychic')),
+      step('Dans le ciel', 'Capture 10 Pokémon Vol.', catchOf(10, 'flying')),
+      step(
+        'Sur sa piste',
+        'Réussis une expédition sur la Route Victoire avec 2 Pokémon Psy de PE 800 ou plus.',
+        questExpedition('route-victoire', 'psychic', 2, 800),
+      ),
+    ],
+    rewards: {
+      ...reward({ currency: 15_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] }),
+      pokemon: [roamer(144, 10169, 70)],
+    },
+  },
+  {
+    id: 'electhor-galar',
+    order: 6,
+    name: 'L’oiseau aux pas de feu',
+    description:
+      'Un oiseau aux pattes puissantes, venu d’une région lointaine, courrait à travers Kanto plus vite que l’éclair.',
+    image: null,
+    regionId: 'kanto',
+    enabled: true,
+    unlock: { type: 'questCompleted', questId: 'mewtwo' },
+    steps: [
+      step('Coups de pied', 'Capture 15 Pokémon Combat.', catchOf(15, 'fighting')),
+      step('Grand voyageur', 'Capture 140 espèces différentes.', {
+        type: 'speciesCaught',
+        count: 140,
+      }),
+      step(
+        'Sur sa piste',
+        'Réussis une expédition au Dojo Karaté avec 2 Pokémon Combat de PE 800 ou plus.',
+        questExpedition('dojo-karate', 'fighting', 2, 800),
+      ),
+    ],
+    rewards: {
+      ...reward({ currency: 15_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] }),
+      pokemon: [roamer(145, 10170, 70)],
+    },
+  },
+  {
+    id: 'sulfura-galar',
+    order: 7,
+    name: 'L’oiseau aux flammes sombres',
+    description:
+      'Un oiseau aux flammes noires, venu d’une région lointaine, se nourrirait de la rancœur des Pokémon de Kanto.',
+    image: null,
+    regionId: 'kanto',
+    enabled: true,
+    unlock: { type: 'questCompleted', questId: 'mewtwo' },
+    steps: [
+      step('Rancœur', 'Capture 12 Pokémon Spectre.', catchOf(12, 'ghost')),
+      step('Presque complet', 'Capture 90 % du Pokédex de Kanto.', {
+        type: 'regionDexPercent',
+        regionId: 'kanto',
+        percent: 90,
+      }),
+      step(
+        'Sur sa piste',
+        'Réussis une expédition à la Tour Pokémon avec 2 Pokémon Spectre de PE 800 ou plus.',
+        questExpedition('tour-pokemon', 'ghost', 2, 800),
+      ),
+    ],
+    rewards: {
+      ...reward({ currency: 15_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] }),
+      pokemon: [roamer(146, 10171, 70)],
     },
   },
 ];

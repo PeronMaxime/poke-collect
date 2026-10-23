@@ -65,10 +65,13 @@
     "museum": {
       "slots": 2
     },
+    "center": {
+      "slots": 6,
+      "healMinutes": 30
+    },
     "battles": {
       "maxTeamSize": 6,
       "defaultTrainerIv": 15,
-      "koMinutes": 60,
       "cooldownMinutes": 240,
       "xpMultiplier": 1,
       "happinessOnWin": 3,
@@ -179,7 +182,6 @@
         }
       },
       "cooldownMinutes": 60,
-      "koMinutes": 30,
       "xpMultiplier": 1,
       "happinessOnWin": 3,
       "happinessOnLoss": -2
@@ -5517,6 +5519,20 @@
       "rarity": "epic",
       "sellPrice": 3000,
       "effects": []
+    },
+    {
+      "id": "revive",
+      "name": "Rappel",
+      "description": "Ranime aussitôt un Pokémon K.O., sans passer par le Centre Pokémon.",
+      "icon": null,
+      "category": "misc",
+      "rarity": "uncommon",
+      "sellPrice": 1000,
+      "effects": [
+        {
+          "type": "revive"
+        }
+      ]
     },
     {
       "id": "ribbon-sweet",
@@ -13427,7 +13443,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "always"
@@ -13469,7 +13484,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "always"
@@ -13505,7 +13519,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "always"
@@ -13556,7 +13569,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "regionDexPercent",
@@ -13602,7 +13614,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "always"
@@ -13647,7 +13658,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "regionDexPercent",
@@ -13701,7 +13711,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "regionDexPercent",
@@ -13749,7 +13758,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "regionDexPercent",
@@ -13793,7 +13801,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "always"
@@ -13844,7 +13851,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "regionDexPercent",
@@ -13888,7 +13894,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -13934,7 +13939,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -13987,7 +13991,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14039,7 +14042,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14088,7 +14090,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "regionDexPercent",
@@ -14139,7 +14140,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": 1440,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "regionDexPercent",
@@ -14189,7 +14189,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "regionDexPercent",
@@ -14239,7 +14238,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14285,7 +14283,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14331,7 +14328,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14374,7 +14370,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -14424,7 +14419,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -14474,7 +14468,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14523,7 +14516,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14572,7 +14564,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14621,7 +14612,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14667,7 +14657,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14719,7 +14708,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14768,7 +14756,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -14818,7 +14805,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -14868,7 +14854,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14920,7 +14905,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -14972,7 +14956,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -15027,7 +15010,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -15080,7 +15062,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -15135,7 +15116,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -15191,7 +15171,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -15250,7 +15229,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -15305,7 +15283,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -15360,7 +15337,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -15419,7 +15395,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -15477,7 +15452,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -15532,7 +15506,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -15588,7 +15561,6 @@
       "badge": null,
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -15644,7 +15616,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -15703,7 +15674,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -15758,7 +15728,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -15817,7 +15786,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -15881,7 +15849,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -15936,7 +15903,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -15995,7 +15961,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 120,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -16056,7 +16021,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -16118,7 +16082,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -16183,7 +16146,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 180,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -16244,7 +16206,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -16309,7 +16270,6 @@
       },
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 180,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -16370,7 +16330,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
@@ -16432,7 +16391,6 @@
       "badge": null,
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 240,
       "enabled": true,
       "unlock": {
         "type": "allOf",
@@ -16503,7 +16461,6 @@
       "badge": null,
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 240,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -16564,7 +16521,6 @@
       "badge": null,
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 240,
       "enabled": true,
       "unlock": {
         "type": "allOf",
@@ -16635,7 +16591,6 @@
       "badge": null,
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 240,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -16696,7 +16651,6 @@
       "badge": null,
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 240,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -16757,7 +16711,6 @@
       "badge": null,
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 240,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -16818,7 +16771,6 @@
       "badge": null,
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 240,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -16885,7 +16837,6 @@
       "badge": null,
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 240,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -16946,7 +16897,6 @@
       "badge": null,
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 240,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -17013,7 +16963,6 @@
       "badge": null,
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 480,
       "enabled": true,
       "unlock": {
         "type": "allOf",
@@ -17089,7 +17038,6 @@
       "badge": null,
       "repeatable": false,
       "cooldownMinutes": null,
-      "koMinutes": 240,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
@@ -17141,7 +17089,6 @@
       "badge": null,
       "repeatable": true,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "regionDexPercent",
@@ -17210,7 +17157,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -17280,7 +17226,6 @@
       ],
       "timeLimitSeconds": 240,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 8000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -17350,7 +17295,6 @@
       ],
       "timeLimitSeconds": 240,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 8000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -17420,7 +17364,6 @@
       ],
       "timeLimitSeconds": 240,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 8000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -17490,7 +17433,6 @@
       ],
       "timeLimitSeconds": 240,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 8000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -17560,7 +17502,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -17630,7 +17571,6 @@
       ],
       "timeLimitSeconds": 240,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 8000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -17701,7 +17641,6 @@
       ],
       "timeLimitSeconds": 240,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 8000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -17772,7 +17711,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -17843,7 +17781,6 @@
       ],
       "timeLimitSeconds": 240,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 8000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -17914,7 +17851,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -17984,7 +17920,6 @@
       ],
       "timeLimitSeconds": 240,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 8000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18055,7 +17990,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18124,7 +18058,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18195,7 +18128,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18265,7 +18197,6 @@
       ],
       "timeLimitSeconds": 240,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 8000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18334,7 +18265,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 5000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18404,7 +18334,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18473,7 +18402,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18542,7 +18470,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18610,7 +18537,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 5000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18679,7 +18605,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18749,7 +18674,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18817,7 +18741,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 5000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18887,7 +18810,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -18956,7 +18878,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19027,7 +18948,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19095,7 +19015,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 5000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19165,7 +19084,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19234,7 +19152,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19304,7 +19221,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19373,7 +19289,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19443,7 +19358,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19514,7 +19428,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19583,7 +19496,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19653,7 +19565,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19723,7 +19634,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19794,7 +19704,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19864,7 +19773,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -19933,7 +19841,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20003,7 +19910,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20072,7 +19978,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20142,7 +20047,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20212,7 +20116,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20280,7 +20183,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 5000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20349,7 +20251,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20417,7 +20318,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 5000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20486,7 +20386,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20555,7 +20454,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 5000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20623,7 +20521,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 5000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20692,7 +20589,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20762,7 +20658,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20831,7 +20726,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 5000,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20902,7 +20796,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -20972,7 +20865,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -21042,7 +20934,6 @@
       ],
       "timeLimitSeconds": 180,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 6500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -21103,7 +20994,6 @@
       ],
       "timeLimitSeconds": 300,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 9500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -21164,7 +21054,6 @@
       ],
       "timeLimitSeconds": 300,
       "cooldownMinutes": null,
-      "koMinutes": null,
       "money": 9500,
       "lootTableId": null,
       "lootRolls": 0,
@@ -21206,46 +21095,29 @@
       "name": "Rare",
       "icon": null,
       "order": 4
+    },
+    {
+      "id": "soin",
+      "name": "Soins",
+      "icon": null,
+      "order": 5
     }
   ],
   "shopEntries": [
     {
-      "id": "poke-ball",
-      "itemId": "poke-ball",
-      "categoryId": "balls",
+      "id": "revive",
+      "itemId": "revive",
+      "categoryId": "soin",
       "order": 0,
-      "price": 200,
+      "price": 2000,
       "lotSize": 1,
       "unlock": {
-        "type": "always"
+        "type": "badgeCount",
+        "count": 4,
+        "regionId": "kanto"
       },
       "lockedVisibility": "locked",
       "purchaseLimit": null,
-      "availableFrom": null,
-      "availableUntil": null,
-      "enabled": true,
-      "gift": {
-        "itemId": "premier-ball",
-        "every": 10,
-        "quantity": 1
-      }
-    },
-    {
-      "id": "bottle-cap",
-      "itemId": "bottle-cap",
-      "categoryId": "rare",
-      "order": 0,
-      "price": 50000,
-      "lotSize": 1,
-      "unlock": {
-        "type": "trainerDefeated",
-        "trainerId": "olga"
-      },
-      "lockedVisibility": "locked",
-      "purchaseLimit": {
-        "lots": 1,
-        "period": "week"
-      },
       "availableFrom": null,
       "availableUntil": null,
       "enabled": true,
@@ -21306,6 +21178,90 @@
       "gift": null
     },
     {
+      "id": "bottle-cap",
+      "itemId": "bottle-cap",
+      "categoryId": "rare",
+      "order": 0,
+      "price": 50000,
+      "lotSize": 1,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "olga"
+      },
+      "lockedVisibility": "locked",
+      "purchaseLimit": {
+        "lots": 1,
+        "period": "week"
+      },
+      "availableFrom": null,
+      "availableUntil": null,
+      "enabled": true,
+      "gift": null
+    },
+    {
+      "id": "poke-ball",
+      "itemId": "poke-ball",
+      "categoryId": "balls",
+      "order": 0,
+      "price": 200,
+      "lotSize": 1,
+      "unlock": {
+        "type": "always"
+      },
+      "lockedVisibility": "locked",
+      "purchaseLimit": null,
+      "availableFrom": null,
+      "availableUntil": null,
+      "enabled": true,
+      "gift": {
+        "itemId": "premier-ball",
+        "every": 10,
+        "quantity": 1
+      }
+    },
+    {
+      "id": "poke-ball-x10",
+      "itemId": "poke-ball",
+      "categoryId": "balls",
+      "order": 1,
+      "price": 1800,
+      "lotSize": 10,
+      "unlock": {
+        "type": "always"
+      },
+      "lockedVisibility": "locked",
+      "purchaseLimit": null,
+      "availableFrom": null,
+      "availableUntil": null,
+      "enabled": true,
+      "gift": {
+        "itemId": "premier-ball",
+        "every": 10,
+        "quantity": 1
+      }
+    },
+    {
+      "id": "gold-bottle-cap",
+      "itemId": "gold-bottle-cap",
+      "categoryId": "rare",
+      "order": 1,
+      "price": 300000,
+      "lotSize": 1,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "maitre-blue"
+      },
+      "lockedVisibility": "locked",
+      "purchaseLimit": {
+        "lots": 1,
+        "period": "total"
+      },
+      "availableFrom": null,
+      "availableUntil": null,
+      "enabled": true,
+      "gift": null
+    },
+    {
       "id": "razz-berry-x5",
       "itemId": "razz-berry",
       "categoryId": "baies",
@@ -21340,48 +21296,6 @@
       "availableUntil": null,
       "enabled": true,
       "gift": null
-    },
-    {
-      "id": "gold-bottle-cap",
-      "itemId": "gold-bottle-cap",
-      "categoryId": "rare",
-      "order": 1,
-      "price": 300000,
-      "lotSize": 1,
-      "unlock": {
-        "type": "trainerDefeated",
-        "trainerId": "maitre-blue"
-      },
-      "lockedVisibility": "locked",
-      "purchaseLimit": {
-        "lots": 1,
-        "period": "total"
-      },
-      "availableFrom": null,
-      "availableUntil": null,
-      "enabled": true,
-      "gift": null
-    },
-    {
-      "id": "poke-ball-x10",
-      "itemId": "poke-ball",
-      "categoryId": "balls",
-      "order": 1,
-      "price": 1800,
-      "lotSize": 10,
-      "unlock": {
-        "type": "always"
-      },
-      "lockedVisibility": "locked",
-      "purchaseLimit": null,
-      "availableFrom": null,
-      "availableUntil": null,
-      "enabled": true,
-      "gift": {
-        "itemId": "premier-ball",
-        "every": 10,
-        "quantity": 1
-      }
     },
     {
       "id": "destiny-knot",
@@ -21515,6 +21429,24 @@
       "gift": null
     },
     {
+      "id": "jolly-mint",
+      "itemId": "jolly-mint",
+      "categoryId": "rare",
+      "order": 4,
+      "price": 20000,
+      "lotSize": 1,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 2
+      },
+      "lockedVisibility": "locked",
+      "purchaseLimit": null,
+      "availableFrom": null,
+      "availableUntil": null,
+      "enabled": true,
+      "gift": null
+    },
+    {
       "id": "leaf-stone",
       "itemId": "leaf-stone",
       "categoryId": "evolution",
@@ -21534,10 +21466,10 @@
       "gift": null
     },
     {
-      "id": "jolly-mint",
-      "itemId": "jolly-mint",
+      "id": "timid-mint",
+      "itemId": "timid-mint",
       "categoryId": "rare",
-      "order": 4,
+      "order": 5,
       "price": 20000,
       "lotSize": 1,
       "unlock": {
@@ -21557,24 +21489,6 @@
       "categoryId": "evolution",
       "order": 5,
       "price": 5000,
-      "lotSize": 1,
-      "unlock": {
-        "type": "badgeCount",
-        "count": 2
-      },
-      "lockedVisibility": "locked",
-      "purchaseLimit": null,
-      "availableFrom": null,
-      "availableUntil": null,
-      "enabled": true,
-      "gift": null
-    },
-    {
-      "id": "timid-mint",
-      "itemId": "timid-mint",
-      "categoryId": "rare",
-      "order": 5,
-      "price": 20000,
       "lotSize": 1,
       "unlock": {
         "type": "badgeCount",
@@ -23517,81 +23431,6 @@
   ],
   "quests": [
     {
-      "id": "raikou",
-      "order": 0,
-      "name": "La bête du tonnerre",
-      "description": "Un grondement de tonnerre résonne sous la Tour Cendrée.",
-      "image": null,
-      "regionId": "johto",
-      "enabled": true,
-      "unlock": {
-        "type": "badgeCount",
-        "count": 4,
-        "regionId": "johto"
-      },
-      "steps": [
-        {
-          "name": "Orage",
-          "description": "Capture 10 Pokémon Électrik.",
-          "condition": {
-            "type": "catchPokemon",
-            "count": 10,
-            "pokemonType": "electric",
-            "speciesId": null
-          }
-        },
-        {
-          "name": "Les cendres",
-          "description": "Capture 5 Pokémon Feu.",
-          "condition": {
-            "type": "catchPokemon",
-            "count": 5,
-            "pokemonType": "fire",
-            "speciesId": null
-          }
-        },
-        {
-          "name": "Le sous-sol de la tour",
-          "description": "Réussis une expédition à la Tour Cendrée avec 2 Pokémon Électrik de PE 350 ou plus.",
-          "condition": {
-            "type": "expedition",
-            "zoneId": "tour-cendree",
-            "count": 1,
-            "memberType": "electric",
-            "memberCount": 2,
-            "minMemberPower": 350
-          }
-        }
-      ],
-      "rewards": {
-        "currency": 12000,
-        "items": [
-          {
-            "itemId": "bottle-cap",
-            "quantity": 1
-          }
-        ],
-        "expeditionSlots": 0,
-        "daycareSlots": 0,
-        "bonuses": [],
-        "pokemon": [
-          {
-            "speciesId": 243,
-            "level": 50,
-            "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 850,
-              "requiredTypes": [],
-              "affinityTypes": [
-                "ground"
-              ]
-            }
-          }
-        ]
-      }
-    },
-    {
       "id": "electhor",
       "order": 0,
       "name": "L’oiseau de foudre",
@@ -23670,7 +23509,84 @@
                 "rock",
                 "ice"
               ]
-            }
+            },
+            "roaming": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "raikou",
+      "order": 0,
+      "name": "La bête du tonnerre",
+      "description": "Un grondement de tonnerre résonne sous la Tour Cendrée.",
+      "image": null,
+      "regionId": "johto",
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 4,
+        "regionId": "johto"
+      },
+      "steps": [
+        {
+          "name": "Orage",
+          "description": "Capture 10 Pokémon Électrik.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 10,
+            "pokemonType": "electric",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Les cendres",
+          "description": "Capture 5 Pokémon Feu.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 5,
+            "pokemonType": "fire",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Le sous-sol de la tour",
+          "description": "Réussis une expédition à la Tour Cendrée avec 2 Pokémon Électrik de PE 350 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "tour-cendree",
+            "count": 1,
+            "memberType": "electric",
+            "memberCount": 2,
+            "minMemberPower": 350
+          }
+        }
+      ],
+      "rewards": {
+        "currency": 12000,
+        "items": [
+          {
+            "itemId": "bottle-cap",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "bonuses": [],
+        "pokemon": [
+          {
+            "speciesId": 243,
+            "level": 50,
+            "perfectIvs": 3,
+            "expedition": {
+              "durationMinutes": 240,
+              "minPower": 850,
+              "requiredTypes": [],
+              "affinityTypes": [
+                "ground"
+              ]
+            },
+            "roaming": 3
           }
         ]
       }
@@ -23746,7 +23662,8 @@
                 "rock",
                 "water"
               ]
-            }
+            },
+            "roaming": 3
           }
         ]
       }
@@ -23824,7 +23741,83 @@
                 "fire",
                 "electric"
               ]
-            }
+            },
+            "roaming": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "suicune",
+      "order": 2,
+      "name": "La bête des aurores",
+      "description": "Une bête aux reflets de cristal court sur l’eau du Lac Colère.",
+      "image": null,
+      "regionId": "johto",
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 6,
+        "regionId": "johto"
+      },
+      "steps": [
+        {
+          "name": "Eaux pures",
+          "description": "Capture 15 Pokémon Eau.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 15,
+            "pokemonType": "water",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Le vent du nord",
+          "description": "Bats Frédo, le Champion d’Acajou.",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "fredo"
+          }
+        },
+        {
+          "name": "Sur le lac",
+          "description": "Réussis une expédition au Lac Colère avec 2 Pokémon Eau de PE 500 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "lac-colere",
+            "count": 1,
+            "memberType": "water",
+            "memberCount": 2,
+            "minMemberPower": 500
+          }
+        }
+      ],
+      "rewards": {
+        "currency": 12000,
+        "items": [
+          {
+            "itemId": "bottle-cap",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "bonuses": [],
+        "pokemon": [
+          {
+            "speciesId": 245,
+            "level": 50,
+            "perfectIvs": 3,
+            "expedition": {
+              "durationMinutes": 240,
+              "minPower": 2400,
+              "requiredTypes": [],
+              "affinityTypes": [
+                "grass",
+                "electric"
+              ]
+            },
+            "roaming": 3
           }
         ]
       }
@@ -23899,61 +23892,72 @@
                 "water",
                 "electric"
               ]
-            }
+            },
+            "roaming": null
           }
         ]
       }
     },
     {
-      "id": "suicune",
-      "order": 2,
-      "name": "La bête des aurores",
-      "description": "Une bête aux reflets de cristal court sur l’eau du Lac Colère.",
+      "id": "lugia",
+      "order": 3,
+      "name": "Le gardien des mers",
+      "description": "Les tourbillons des Tourb’Îles cacheraient un Pokémon aux ailes d’argent.",
       "image": null,
       "regionId": "johto",
       "enabled": true,
       "unlock": {
         "type": "badgeCount",
-        "count": 6,
+        "count": 7,
         "regionId": "johto"
       },
       "steps": [
         {
-          "name": "Eaux pures",
-          "description": "Capture 15 Pokémon Eau.",
+          "name": "Plongée",
+          "description": "Capture 20 Pokémon Eau pour franchir les tourbillons.",
           "condition": {
             "type": "catchPokemon",
-            "count": 15,
+            "count": 20,
             "pokemonType": "water",
             "speciesId": null
           }
         },
         {
-          "name": "Le vent du nord",
-          "description": "Bats Frédo, le Champion d’Acajou.",
+          "name": "Le chant des kimonos",
+          "description": "Bats Sandra, la Championne d’Ebenelle.",
           "condition": {
             "type": "trainerDefeated",
-            "trainerId": "fredo"
+            "trainerId": "sandra"
           }
         },
         {
-          "name": "Sur le lac",
-          "description": "Réussis une expédition au Lac Colère avec 2 Pokémon Eau de PE 500 ou plus.",
+          "name": "Esprits",
+          "description": "Capture 10 Pokémon Psy.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 10,
+            "pokemonType": "psychic",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Les profondeurs",
+          "description": "Réussis une expédition aux Tourb’Îles avec 2 Pokémon Psy de PE 600 ou plus.",
           "condition": {
             "type": "expedition",
-            "zoneId": "lac-colere",
+            "zoneId": "tourb-iles",
             "count": 1,
-            "memberType": "water",
+            "memberType": "psychic",
             "memberCount": 2,
-            "minMemberPower": 500
+            "minMemberPower": 600
           }
         }
       ],
       "rewards": {
-        "currency": 12000,
+        "currency": 40000,
         "items": [
           {
-            "itemId": "bottle-cap",
+            "itemId": "gold-bottle-cap",
             "quantity": 1
           }
         ],
@@ -23962,18 +23966,22 @@
         "bonuses": [],
         "pokemon": [
           {
-            "speciesId": 245,
-            "level": 50,
+            "speciesId": 249,
+            "level": 70,
             "perfectIvs": 3,
             "expedition": {
               "durationMinutes": 240,
-              "minPower": 2400,
+              "minPower": 3000,
               "requiredTypes": [],
               "affinityTypes": [
-                "grass",
-                "electric"
+                "rock",
+                "ghost",
+                "electric",
+                "ice",
+                "dark"
               ]
-            }
+            },
+            "roaming": null
           }
         ]
       }
@@ -24068,71 +24076,70 @@
                 "ghost",
                 "dark"
               ]
-            }
+            },
+            "roaming": null
           }
         ]
       }
     },
     {
-      "id": "lugia",
-      "order": 3,
-      "name": "Le gardien des mers",
-      "description": "Les tourbillons des Tourb’Îles cacheraient un Pokémon aux ailes d’argent.",
+      "id": "mew",
+      "order": 4,
+      "name": "Le Pokémon fabuleux",
+      "description": "Mewtwo n’est qu’une copie. L’original jouerait sur une île absente des cartes.",
       "image": null,
-      "regionId": "johto",
+      "regionId": "kanto",
       "enabled": true,
       "unlock": {
-        "type": "badgeCount",
-        "count": 7,
-        "regionId": "johto"
+        "type": "questCompleted",
+        "questId": "mewtwo"
       },
       "steps": [
         {
-          "name": "Plongée",
-          "description": "Capture 20 Pokémon Eau pour franchir les tourbillons.",
+          "name": "Origines",
+          "description": "Fais éclore 20 œufs.",
+          "condition": {
+            "type": "eggsHatched",
+            "count": 20
+          }
+        },
+        {
+          "name": "Presque complet",
+          "description": "Capture 95 % du Pokédex de Kanto.",
+          "condition": {
+            "type": "regionDexPercent",
+            "regionId": "kanto",
+            "percent": 95
+          }
+        },
+        {
+          "name": "Grand collectionneur",
+          "description": "Capture 30 Pokémon.",
           "condition": {
             "type": "catchPokemon",
-            "count": 20,
-            "pokemonType": "water",
+            "count": 30,
+            "pokemonType": null,
             "speciesId": null
           }
         },
         {
-          "name": "Le chant des kimonos",
-          "description": "Bats Sandra, la Championne d’Ebenelle.",
-          "condition": {
-            "type": "trainerDefeated",
-            "trainerId": "sandra"
-          }
-        },
-        {
-          "name": "Esprits",
-          "description": "Capture 10 Pokémon Psy.",
-          "condition": {
-            "type": "catchPokemon",
-            "count": 10,
-            "pokemonType": "psychic",
-            "speciesId": null
-          }
-        },
-        {
-          "name": "Les profondeurs",
-          "description": "Réussis une expédition aux Tourb’Îles avec 2 Pokémon Psy de PE 600 ou plus.",
+          "name": "Les hautes herbes",
+          "description": "Réussis 3 expéditions sur l’Île Lointaine.",
           "condition": {
             "type": "expedition",
-            "zoneId": "tourb-iles",
-            "count": 1,
-            "memberType": "psychic",
-            "memberCount": 2,
-            "minMemberPower": 600
+            "zoneId": "ile-lointaine",
+            "count": 3,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0
           }
         }
       ],
       "rewards": {
-        "currency": 40000,
+        "currency": 0,
         "items": [
           {
-            "itemId": "gold-bottle-cap",
+            "itemId": "ability-patch",
             "quantity": 1
           }
         ],
@@ -24141,21 +24148,20 @@
         "bonuses": [],
         "pokemon": [
           {
-            "speciesId": 249,
-            "level": 70,
+            "speciesId": 151,
+            "level": 30,
             "perfectIvs": 3,
             "expedition": {
               "durationMinutes": 240,
-              "minPower": 3000,
+              "minPower": 3600,
               "requiredTypes": [],
               "affinityTypes": [
-                "rock",
+                "bug",
                 "ghost",
-                "electric",
-                "ice",
                 "dark"
               ]
-            }
+            },
+            "roaming": null
           }
         ]
       }
@@ -24250,90 +24256,8 @@
                 "water",
                 "electric"
               ]
-            }
-          }
-        ]
-      }
-    },
-    {
-      "id": "mew",
-      "order": 4,
-      "name": "Le Pokémon fabuleux",
-      "description": "Mewtwo n’est qu’une copie. L’original jouerait sur une île absente des cartes.",
-      "image": null,
-      "regionId": "kanto",
-      "enabled": true,
-      "unlock": {
-        "type": "questCompleted",
-        "questId": "mewtwo"
-      },
-      "steps": [
-        {
-          "name": "Origines",
-          "description": "Fais éclore 20 œufs.",
-          "condition": {
-            "type": "eggsHatched",
-            "count": 20
-          }
-        },
-        {
-          "name": "Presque complet",
-          "description": "Capture 95 % du Pokédex de Kanto.",
-          "condition": {
-            "type": "regionDexPercent",
-            "regionId": "kanto",
-            "percent": 95
-          }
-        },
-        {
-          "name": "Grand collectionneur",
-          "description": "Capture 30 Pokémon.",
-          "condition": {
-            "type": "catchPokemon",
-            "count": 30,
-            "pokemonType": null,
-            "speciesId": null
-          }
-        },
-        {
-          "name": "Les hautes herbes",
-          "description": "Réussis 3 expéditions sur l’Île Lointaine.",
-          "condition": {
-            "type": "expedition",
-            "zoneId": "ile-lointaine",
-            "count": 3,
-            "memberType": null,
-            "memberCount": 0,
-            "minMemberPower": 0
-          }
-        }
-      ],
-      "rewards": {
-        "currency": 0,
-        "items": [
-          {
-            "itemId": "ability-patch",
-            "quantity": 1
-          }
-        ],
-        "expeditionSlots": 0,
-        "daycareSlots": 0,
-        "bonuses": [],
-        "pokemon": [
-          {
-            "speciesId": 151,
-            "level": 30,
-            "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 3600,
-              "requiredTypes": [],
-              "affinityTypes": [
-                "bug",
-                "ghost",
-                "dark"
-              ]
-            }
+            },
+            "roaming": null
           }
         ]
       }
@@ -24429,7 +24353,244 @@
                 "ice",
                 "dark"
               ]
-            }
+            },
+            "roaming": null
+          }
+        ]
+      }
+    },
+    {
+      "id": "artikodin-galar",
+      "order": 5,
+      "name": "L’oiseau au regard glacial",
+      "description": "Un oiseau aux ailes violettes, venu d’une région lointaine, plongerait les esprits de Kanto dans la torpeur.",
+      "image": null,
+      "regionId": "kanto",
+      "enabled": true,
+      "unlock": {
+        "type": "questCompleted",
+        "questId": "mewtwo"
+      },
+      "steps": [
+        {
+          "name": "Ondes étranges",
+          "description": "Capture 15 Pokémon Psy.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 15,
+            "pokemonType": "psychic",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Dans le ciel",
+          "description": "Capture 10 Pokémon Vol.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 10,
+            "pokemonType": "flying",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Sur sa piste",
+          "description": "Réussis une expédition sur la Route Victoire avec 2 Pokémon Psy de PE 800 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "route-victoire",
+            "count": 1,
+            "memberType": "psychic",
+            "memberCount": 2,
+            "minMemberPower": 800
+          }
+        }
+      ],
+      "rewards": {
+        "currency": 15000,
+        "items": [
+          {
+            "itemId": "bottle-cap",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "bonuses": [],
+        "pokemon": [
+          {
+            "speciesId": 144,
+            "formId": 10169,
+            "level": 70,
+            "perfectIvs": 3,
+            "expedition": {
+              "durationMinutes": 240,
+              "minPower": 0,
+              "requiredTypes": [],
+              "affinityTypes": [
+                "rock",
+                "ghost",
+                "electric",
+                "ice",
+                "dark"
+              ]
+            },
+            "roaming": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "electhor-galar",
+      "order": 6,
+      "name": "L’oiseau aux pas de feu",
+      "description": "Un oiseau aux pattes puissantes, venu d’une région lointaine, courrait à travers Kanto plus vite que l’éclair.",
+      "image": null,
+      "regionId": "kanto",
+      "enabled": true,
+      "unlock": {
+        "type": "questCompleted",
+        "questId": "mewtwo"
+      },
+      "steps": [
+        {
+          "name": "Coups de pied",
+          "description": "Capture 15 Pokémon Combat.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 15,
+            "pokemonType": "fighting",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Grand voyageur",
+          "description": "Capture 140 espèces différentes.",
+          "condition": {
+            "type": "speciesCaught",
+            "count": 140
+          }
+        },
+        {
+          "name": "Sur sa piste",
+          "description": "Réussis une expédition au Dojo Karaté avec 2 Pokémon Combat de PE 800 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "dojo-karate",
+            "count": 1,
+            "memberType": "fighting",
+            "memberCount": 2,
+            "minMemberPower": 800
+          }
+        }
+      ],
+      "rewards": {
+        "currency": 15000,
+        "items": [
+          {
+            "itemId": "bottle-cap",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "bonuses": [],
+        "pokemon": [
+          {
+            "speciesId": 145,
+            "formId": 10170,
+            "level": 70,
+            "perfectIvs": 3,
+            "expedition": {
+              "durationMinutes": 240,
+              "minPower": 0,
+              "requiredTypes": [],
+              "affinityTypes": [
+                "flying",
+                "electric",
+                "psychic",
+                "ice",
+                "fairy"
+              ]
+            },
+            "roaming": 3
+          }
+        ]
+      }
+    },
+    {
+      "id": "sulfura-galar",
+      "order": 7,
+      "name": "L’oiseau aux flammes sombres",
+      "description": "Un oiseau aux flammes noires, venu d’une région lointaine, se nourrirait de la rancœur des Pokémon de Kanto.",
+      "image": null,
+      "regionId": "kanto",
+      "enabled": true,
+      "unlock": {
+        "type": "questCompleted",
+        "questId": "mewtwo"
+      },
+      "steps": [
+        {
+          "name": "Rancœur",
+          "description": "Capture 12 Pokémon Spectre.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 12,
+            "pokemonType": "ghost",
+            "speciesId": null
+          }
+        },
+        {
+          "name": "Presque complet",
+          "description": "Capture 90 % du Pokédex de Kanto.",
+          "condition": {
+            "type": "regionDexPercent",
+            "regionId": "kanto",
+            "percent": 90
+          }
+        },
+        {
+          "name": "Sur sa piste",
+          "description": "Réussis une expédition à la Tour Pokémon avec 2 Pokémon Spectre de PE 800 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "tour-pokemon",
+            "count": 1,
+            "memberType": "ghost",
+            "memberCount": 2,
+            "minMemberPower": 800
+          }
+        }
+      ],
+      "rewards": {
+        "currency": 15000,
+        "items": [
+          {
+            "itemId": "bottle-cap",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "bonuses": [],
+        "pokemon": [
+          {
+            "speciesId": 146,
+            "formId": 10171,
+            "level": 70,
+            "perfectIvs": 3,
+            "expedition": {
+              "durationMinutes": 240,
+              "minPower": 0,
+              "requiredTypes": [],
+              "affinityTypes": [
+                "rock",
+                "electric",
+                "ice",
+                "fairy"
+              ]
+            },
+            "roaming": 3
           }
         ]
       }

@@ -33,6 +33,7 @@ import {
   claimExpedition,
   expeditionSlots,
   legendaryEncounter,
+  playerRoamers,
   questChainKey,
   requireStartedProfile,
   shinyChains,
@@ -132,7 +133,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     const ctx = await content.get();
     const userId = request.user!.id;
     const at = now();
-    const [rows, claimed, chains, [profile]] = await Promise.all([
+    const [rows, claimed, chains, [profile], roamers] = await Promise.all([
       db
         .select()
         .from(expeditions)
@@ -144,6 +145,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
         .select({ favoriteZoneIds: playerProfiles.favoriteZoneIds })
         .from(playerProfiles)
         .where(eq(playerProfiles.userId, userId)),
+      playerRoamers(db, ctx, userId, at),
     ]);
     const chainDto = (s: { chain: number; expiresAt: Date | null }) => ({
       chain: s.chain,
@@ -162,6 +164,14 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
         return s ? [{ questId: q.id, ...chainDto(s) }] : [];
       }),
       favoriteZoneIds: profile?.favoriteZoneIds ?? [],
+      roamers: roamers.map((r) => ({
+        questId: r.questId,
+        speciesId: r.target.speciesId,
+        formId: r.target.formId ?? null,
+        zoneId: r.zoneId,
+        encounterChance: r.target.roaming ?? 0,
+        movesAt: r.movesAt.toISOString(),
+      })),
     };
   });
 

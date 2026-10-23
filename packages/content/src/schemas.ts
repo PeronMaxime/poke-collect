@@ -105,8 +105,6 @@ export const dungeonSettingsSchema = z.object({
   }),
   /** Temps de recharge d'un donjon après chaque tentative (surchargeable par donjon). */
   cooldownMinutes: z.int().min(0),
-  /** Durée de K.O. des Pokémon mis K.O. dans un donjon (surchargeable par donjon). */
-  koMinutes: z.int().min(0),
   /** XP par membre = Σ (XP de base × niveau / 7) des adversaires vaincus × multiplicateur. */
   xpMultiplier: z.number().min(0),
   happinessOnWin: z.int().min(-255).max(255),
@@ -122,6 +120,7 @@ export const MENU_TABS = [
   { id: 'battles', label: 'Combats' },
   { id: 'dungeons', label: 'Donjons' },
   { id: 'quests', label: 'Quêtes' },
+  { id: 'center', label: 'Centre Pokémon' },
   { id: 'daycare', label: 'Pension' },
   { id: 'museum', label: 'Musée' },
   { id: 'pc', label: 'PC' },
@@ -137,7 +136,7 @@ export type MenuTabId = (typeof MENU_TABS)[number]['id'];
 /** Groupes du menu quand l'admin n'en a pas défini. */
 export const DEFAULT_MENU_GROUPS: MenuTabId[][] = [
   ['expeditions', 'battles', 'dungeons', 'quests'],
-  ['daycare', 'museum'],
+  ['center', 'daycare', 'museum'],
   ['pc', 'teams', 'pokedex', 'shop', 'bag'],
   ['trainer', 'leaderboard'],
 ];
@@ -158,15 +157,18 @@ export function normalizeMenuGroups(groups: readonly (readonly string[])[] | und
   const result = (groups ?? DEFAULT_MENU_GROUPS).map((g) =>
     g.filter((id) => known.has(id) && !seen.has(id) && seen.add(id)),
   ) as MenuTabId[][];
-  // Onglet oublié (souvent ajouté au jeu après le réglage de l'admin) : placé après son voisin
-  // dans les groupes par défaut s'il est affiché, sinon dans un groupe final.
+  // Onglet oublié (souvent ajouté au jeu après le réglage de l'admin) : placé à côté de son voisin
+  // dans les groupes par défaut (celui d'avant, sinon celui d'après) s'il est affiché, sinon dans
+  // un groupe final.
   const missing: MenuTabId[] = [];
   for (const id of MENU_TABS.map((t) => t.id).filter((id) => !seen.has(id))) {
     const defaults = DEFAULT_MENU_GROUPS.find((g) => g.includes(id)) ?? [];
     const before = defaults.slice(0, defaults.indexOf(id)).reverse();
-    const anchor = before.find((other) => seen.has(other));
+    const after = defaults.slice(defaults.indexOf(id) + 1);
+    const previous = before.find((other) => seen.has(other));
+    const anchor = previous ?? after.find((other) => seen.has(other));
     const group = anchor && result.find((g) => g.includes(anchor));
-    if (group) group.splice(group.indexOf(anchor) + 1, 0, id);
+    if (group && anchor) group.splice(group.indexOf(anchor) + (previous ? 1 : 0), 0, id);
     else missing.push(id);
     seen.add(id);
   }
@@ -263,13 +265,18 @@ export const balanceSettingsSchema = z.object({
     /** Fossiles en cours de restauration au Musée au maximum (en même temps). */
     slots: z.int().min(1).max(20),
   }),
+  /** Centre Pokémon : les Pokémon mis K.O. y sont soignés. */
+  center: z.object({
+    /** Pokémon en soins au maximum (en même temps). */
+    slots: z.int().min(1).max(30),
+    /** Durée des soins (talents compris : Médic Nature, Cœur Soin…). */
+    healMinutes: z.int().min(1),
+  }),
   /** Combats de dresseurs (le combat suit `combat`). */
   battles: z.object({
     maxTeamSize: z.int().min(1).max(6),
     /** IV des Pokémon des dresseurs quand l'admin n'en fixe pas. */
     defaultTrainerIv: z.int().min(0).max(31),
-    /** Durée de K.O. des Pokémon mis K.O. (surchargeable par dresseur). */
-    koMinutes: z.int().min(0),
     /** Temps de recharge d'un dresseur répétable après chaque combat (surchargeable). */
     cooldownMinutes: z.int().min(0),
     /** XP par membre = Σ (XP de base × niveau / 7) des Pokémon adverses vaincus × multiplicateur. */
@@ -681,6 +688,8 @@ export const itemEffectSchema = z.discriminatedUnion('type', [
    * Retirée de l'inventaire à la Méga-Évolution, rendue quand le Pokémon redevient normal.
    */
   z.object({ type: z.literal('megaEvolution'), formId: z.int().positive() }),
+  /** Utilisé sur un Pokémon K.O. : il est aussitôt soigné, sans passer par le Centre (Rappel). */
+  z.object({ type: z.literal('revive') }),
 ]);
 export type ItemEffect = z.infer<typeof itemEffectSchema>;
 export type ItemEffectType = ItemEffect['type'];
@@ -852,8 +861,6 @@ export const trainerSchema = z.object({
   repeatable: z.boolean(),
   /** Temps de recharge ; null = valeur de l'équilibrage. */
   cooldownMinutes: z.int().min(0).nullable(),
-  /** Durée de K.O. des Pokémon mis K.O. ; null = valeur de l'équilibrage. */
-  koMinutes: z.int().min(0).nullable(),
   /** Désactivé : caché aux joueurs, plus aucun combat ne peut être lancé contre lui. */
   enabled: z.boolean().default(true),
   unlock: unlockConditionSchema,
@@ -889,8 +896,6 @@ export const dungeonSchema = z.object({
   timeLimitSeconds: z.int().min(10).max(3600),
   /** Temps de recharge après une tentative ; null = valeur de l'équilibrage. */
   cooldownMinutes: z.int().min(0).nullable(),
-  /** Durée de K.O. des Pokémon mis K.O. ; null = valeur de l'équilibrage. */
-  koMinutes: z.int().min(0).nullable(),
   /** Poké Dollars gagnés en cas de victoire. */
   money: z.int().min(0),
   lootTableId: slugSchema.nullable(),
@@ -1116,6 +1121,20 @@ export function unlockParts(condition: QuestCondition) {
   return condition.type === 'allOf' ? condition.conditions : [condition];
 }
 
+/**
+ * Zone où peuvent fuir les Pokémon fuyards : active, et ordinaire, c'est-à-dire ni zone de quête
+ * (ouverte par une quête) ni zone spéciale (plusieurs conditions de déblocage).
+ */
+export function isRoamingZone(zone: Pick<Zone, 'enabled' | 'unlock'>): boolean {
+  const { unlock } = zone;
+  return (
+    zone.enabled &&
+    unlock.type !== 'allOf' &&
+    unlock.type !== 'questStepsDone' &&
+    unlock.type !== 'questCompleted'
+  );
+}
+
 export const questStepSchema = z.object({
   name: nameSchema,
   description: z.string().max(500),
@@ -1146,6 +1165,13 @@ export const questPokemonSchema = z.object({
   level: z.int().min(1).max(100),
   perfectIvs: z.int().min(0).max(6),
   expedition: legendaryExpeditionSchema,
+  /**
+   * Pokémon fuyard : pas d'expédition légendaire ; une fois la récompense réclamée, il change de
+   * zone à chaque heure (zones ordinaires débloquées de la région de la quête) et chaque rencontre
+   * d'une expédition dans sa zone a `roaming` % de chances d'être lui (une fois au plus).
+   * null = expédition légendaire.
+   */
+  roaming: z.number().gt(0).max(100).nullable().default(null),
 });
 export type QuestPokemon = z.infer<typeof questPokemonSchema>;
 
@@ -1199,6 +1225,9 @@ export type GameContentData = z.infer<typeof gameContentStructureSchema>;
 export interface GameContent extends GameContentData {
   versionId: number;
 }
+
+/** Chances par défaut qu'une rencontre soit le Pokémon fuyard (%), dans la zone où il se trouve. */
+export const DEFAULT_ROAMING_CHANCE = 3;
 
 /** Durée par défaut d'une expédition légendaire. */
 export const DEFAULT_LEGENDARY_EXPEDITION_MINUTES = 240;

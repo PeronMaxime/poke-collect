@@ -3,7 +3,6 @@ import {
   battleMaxXp,
   buildBattleSetup,
   checkBattleTeam,
-  isKnockedOut,
   resolveBattle,
   trainerEnemies,
   trainerPower,
@@ -141,7 +140,6 @@ describe('résolution', () => {
     expect(loss.outcome).toBe('loss');
     expect(loss).toMatchObject({ money: 0, loot: [], knockedOut: ['a'] });
     expect(loss.xpPerMember).toBeLessThan(battleMaxXp(ctx, pierre));
-    expect(loss.team[0]!.koMinutes).toBe(pierre.koMinutes ?? ctx.balance.battles.koMinutes);
     expect(loss.team[0]!.happinessAfter).toBe(70 - 2);
   });
 
@@ -167,12 +165,6 @@ describe('résolution', () => {
 
 describe('disponibilité', () => {
   const now = new Date('2026-10-07T12:00:00Z');
-
-  it('détecte un Pokémon K.O.', () => {
-    expect(isKnockedOut(null, now)).toBe(false);
-    expect(isKnockedOut('2026-10-07T12:30:00Z', now)).toBe(true);
-    expect(isKnockedOut(new Date('2026-10-07T11:00:00Z'), now)).toBe(false);
-  });
 
   it('calcule l’état d’un dresseur (verrouillé, recharge après chaque combat, battu)', () => {
     const tom = ctx.trainer('gamin-tom')!;

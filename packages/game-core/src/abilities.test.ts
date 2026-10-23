@@ -9,7 +9,7 @@ import {
   memberPower,
   possibleAbilityEffects,
 } from './abilities';
-import { battleEnv, buildBattleSetup, resolveBattle, trainerPower } from './battle';
+import { battleEnv, buildBattleSetup, resolveBattle } from './battle';
 import type { Trainer } from '@poke/content';
 import type { TeamMember } from './expedition';
 import { expeditionEnv, expeditionPlan, resolveExpedition } from './expedition';
@@ -204,19 +204,6 @@ describe('talents : combats de dresseurs', () => {
       new Date('2026-10-07T12:00:00Z'),
     );
     expect(setup.team[0]!.traits?.intimidateStats).toEqual({ attack: 25, 'special-attack': 25 });
-  });
-
-  it('raccourcit le K.O. du seul Pokémon qui a le talent', () => {
-    const team = [member('a', 10, 2, { ability: 'natural-cure' }), member('b', 10, 2)];
-    const champion = [...ctx.trainers].sort(
-      (x, y) => trainerPower(ctx, y) - trainerPower(ctx, x),
-    )[0]!;
-    const result = fight(champion, team);
-    expect(result.outcome).toBe('loss');
-    expect(result.team.map((m) => m.koMinutes)).toEqual([
-      Math.round(result.koMinutes * 0.5),
-      result.koMinutes,
-    ]);
   });
 
   it('applique le bonus d’argent en combat', () => {
