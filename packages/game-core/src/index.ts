@@ -15,6 +15,7 @@ export * from './endgame';
 export * from './forms';
 export * from './museum';
 export * from './center';
+export * from './farm';
 export * from './dungeon';
 export * from './mega';
 export * from './abilities';

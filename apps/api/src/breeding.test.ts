@@ -195,6 +195,8 @@ describe('pension et œufs', () => {
     const res = await call<CollectEggsResponse>('POST', '/api/daycare/0/collect');
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body.eggs).toHaveLength(2);
+    // Une place de la couveuse chacun.
+    expect(res.body.eggs.map((e) => e.slotIndex)).toEqual([0, 1]);
     expect(res.body.lost).toBe(0);
     // Bulbizarre : 20 cycles × 2 min.
     expect(Date.parse(res.body.eggs[0]!.hatchAt) - clock.getTime()).toBe(40 * 60_000);
@@ -232,7 +234,7 @@ describe('pension et œufs', () => {
     // 5 + 40 + 600 min depuis le début du cycle : 32 œufs ; 6 attendent, 26 sont perdus.
     advance(10 * 60);
     const res = await call<CollectEggsResponse>('POST', '/api/daycare/0/collect');
-    expect(res.body.eggs).toHaveLength(6);
+    expect(res.body.eggs.map((e) => e.slotIndex)).toEqual([0, 1, 2, 3, 4, 5]);
     expect(res.body.lost).toBe(26);
     advance(20);
     const full = await call('POST', '/api/daycare/0/collect');

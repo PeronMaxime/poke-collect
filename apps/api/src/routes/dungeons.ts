@@ -1,7 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '@poke/db';
-import { startDungeonInputSchema, switchDungeonInputSchema } from '@poke/shared';
+import {
+  startDungeonInputSchema,
+  switchDungeonInputSchema,
+  combatItemInputSchema,
+} from '@poke/shared';
 import type { ClaimDungeonResponse, DungeonRunDto, DungeonsResponse } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import {
@@ -14,6 +18,7 @@ import {
   settleFinishedDungeonRun,
   startDungeon,
   switchDungeonMember,
+  useDungeonItem,
   toDungeonRecordDto,
   toDungeonRunDto,
 } from '../game/dungeons';
@@ -61,6 +66,13 @@ export async function dungeonRoutes(app: FastifyInstance, { db, content, hooks, 
     const { id } = uuidParams.parse(request.params);
     const input = switchDungeonInputSchema.parse(request.body);
     return toDungeonRunDto(await switchDungeonMember(db, request.user!.id, id, input, now()));
+  });
+
+  /** Baie Sitrus (ou autre objet de soin) donnée au Pokémon actif. */
+  app.post('/api/dungeons/:id/item', async (request): Promise<DungeonRunDto> => {
+    const { id } = uuidParams.parse(request.params);
+    const input = combatItemInputSchema.parse(request.body);
+    return toDungeonRunDto(await useDungeonItem(db, content, request.user!.id, id, input, now()));
   });
 
   /** Fuite, puis réclamation (aucune récompense). */

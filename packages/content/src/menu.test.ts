@@ -9,7 +9,7 @@ describe('menu du jeu', () => {
       ['pc', 'teams', 'pokedex', 'shop', 'bag'],
       ['trainer', 'leaderboard'],
     ]);
-    // Le Centre Pokémon, premier de son groupe, se place avant la Pension.
-    expect(groups[1]).toEqual(['center', 'daycare', 'museum']);
+    // Le Centre Pokémon, premier de son groupe, se place avant la Pension ; la ferme après le Musée.
+    expect(groups[1]).toEqual(['center', 'daycare', 'museum', 'farm']);
   });
 });

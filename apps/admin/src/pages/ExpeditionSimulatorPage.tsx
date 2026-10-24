@@ -67,6 +67,7 @@ function virtualPokemon(
     activity: null,
     knockedOut: false,
     healUntil: null,
+    healSlot: null,
     tagIds,
     dungeonMove: null,
   };

@@ -95,8 +95,6 @@ describe('boutique', () => {
       'poke-ball-x10:available*',
       'great-ball:locked',
       'ultra-ball:locked',
-      'razz-berry:available*',
-      'razz-berry-x5:available*',
       'everstone:locked',
       'moon-stone:locked',
       'water-stone:locked',
@@ -118,11 +116,11 @@ describe('boutique', () => {
     ]);
 
     const seen = await call('POST', '/api/shop/seen', {
-      entryIds: ['poke-ball', 'poke-ball-x10', 'razz-berry'],
+      entryIds: ['poke-ball'],
     });
     expect(seen.status).toBe(204);
     const after = await shop();
-    expect(after.entries.filter((e) => e.isNew).map((e) => e.entryId)).toEqual(['razz-berry-x5']);
+    expect(after.entries.filter((e) => e.isNew).map((e) => e.entryId)).toEqual(['poke-ball-x10']);
   });
 
   it('achète : débit, crédit de l’inventaire, historique', async () => {

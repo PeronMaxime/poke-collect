@@ -12,6 +12,7 @@ import {
 import type { DungeonCommand } from '@poke/game-core';
 import type {
   BattleDto,
+  CombatItemInput,
   StartBattleInput,
   StoredBattleResult,
   SwitchDungeonInput,
@@ -19,9 +20,16 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
-import { SWITCH_TOLERANCE_MS } from './dungeons';
+import { combatHealCommand, commandAtMs } from './dungeons';
 import { newSeed, requireStartedProfile, startHour } from './expeditions';
-import { addItems, assertAvailable, claimedRewards, playerProgress, toInstance } from './store';
+import {
+  addItems,
+  assertAvailable,
+  claimedRewards,
+  playerProgress,
+  takeItems,
+  toInstance,
+} from './store';
 
 /**
  * Combats de dresseurs : combats en temps réel, comme les donjons. Le serveur fige la mise en
@@ -208,8 +216,7 @@ export async function switchBattleMember(
 ): Promise<BattleRow> {
   const battle = await findBattle(db, userId, battleId);
   const elapsed = elapsedMs(battle, now);
-  const last = battle.commands.at(-1)?.atMs ?? 0;
-  const atMs = Math.min(elapsed, Math.max(input.atMs, last, elapsed - SWITCH_TOLERANCE_MS));
+  const atMs = commandAtMs(input.atMs, elapsed, battle.commands);
   const state = simulateDungeon(battle.setup, battle.commands, battle.fledAtMs, atMs).state;
   if (state.outcome !== null) throw new GameError(409, 'BATTLE_FINISHED');
   if (input.member >= battle.team.length || state.hp[input.member] === 0) {
@@ -226,6 +233,32 @@ export async function switchBattleMember(
     .returning();
   if (!updated) throw new GameError(409, 'ALREADY_CLAIMED');
   return updated;
+}
+
+/** Donne un objet de soin (consommé) au Pokémon actif du combat. */
+export async function useBattleItem(
+  db: Db,
+  content: ContentCache,
+  userId: string,
+  battleId: string,
+  input: CombatItemInput,
+  now: Date,
+): Promise<BattleRow> {
+  const ctx = await content.get();
+  const battle = await findBattle(db, userId, battleId);
+  const command = combatHealCommand(ctx, battle, input, elapsedMs(battle, now), 'BATTLE_FINISHED');
+  return db.transaction(async (tx) => {
+    if (!(await takeItems(tx, userId, input.itemId, 1))) {
+      throw new GameError(409, 'ITEM_MISSING', { itemId: input.itemId });
+    }
+    const [updated] = await tx
+      .update(trainerRuns)
+      .set({ commands: sql`${trainerRuns.commands} || ${JSON.stringify([command])}::jsonb` })
+      .where(and(eq(trainerRuns.id, battle.id), isNull(trainerRuns.claimedAt)))
+      .returning();
+    if (!updated) throw new GameError(409, 'ALREADY_CLAIMED');
+    return updated;
+  });
 }
 
 /** Fuite : le combat s'arrête sans récompense (les Pokémon déjà K.O. le restent). */

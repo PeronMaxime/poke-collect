@@ -21,13 +21,20 @@ afterAll(async () => {
   await handle.close();
 });
 
-const request = (method: 'GET' | 'POST', url: string, cookie: string, payload?: unknown) =>
+const request = (
+  method: 'GET' | 'POST',
+  url: string,
+  cookie: string,
+  payload?: unknown,
+  tabProfile?: string,
+) =>
   app.inject({
     method,
     url,
     headers: {
       origin: ORIGIN,
       cookie,
+      ...(tabProfile !== undefined && { 'x-dex-profile': tabProfile }),
       ...(payload !== undefined && { 'content-type': 'application/json' }),
     },
     ...(payload !== undefined && { payload: payload as object }),
@@ -102,6 +109,25 @@ describe('profils secondaires (bêta)', () => {
     expect(me.profile?.trainerName).toBe('Flora');
     const select = await request('POST', '/api/beta/profiles/active', thief, { profileId: altId });
     expect(select.statusCode).toBe(404);
+  });
+
+  it('le profil de l’onglet (en-tête) est prioritaire sur le cookie', async () => {
+    const session = await newPlayer('brock@example.com', 'Brock');
+    const created = await request('POST', '/api/beta/profiles', session);
+    const onAlt = `${session}; ${cookieOf(created)}`;
+    const altId = created.json<BetaProfilesResponse>().activeProfileId;
+    const nameOf = async (cookie: string, tabProfile?: string) =>
+      (await request('GET', '/api/me', cookie, undefined, tabProfile)).json<MeResponse>().profile
+        ?.trainerName;
+
+    // Un onglet sans profil suit le cookie ; sinon l'en-tête l'emporte, dans les deux sens.
+    expect(await nameOf(onAlt)).toBe('Alt1_Brock');
+    expect(await nameOf(onAlt, 'main')).toBe('Brock');
+    expect(await nameOf(session, altId)).toBe('Alt1_Brock');
+
+    // Un profil d'un autre compte dans l'en-tête ramène au profil principal du compte connecté.
+    const thief = await newPlayer('sbire@example.com', 'Sbire');
+    expect(await nameOf(thief, altId)).toBe('Sbire');
   });
 
   it('supprimés avec le compte principal', async () => {

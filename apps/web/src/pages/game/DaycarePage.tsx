@@ -1,6 +1,13 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { eggShinyProbability, eggsLaid, inheritanceRules, isMasudaPair } from '@poke/game-core';
+import {
+  ASSISTANT_POST_PLACES,
+  assistantSlotCount,
+  eggShinyProbability,
+  eggsLaid,
+  inheritanceRules,
+  isMasudaPair,
+} from '@poke/game-core';
 import type { AbilityHolder, GameContext } from '@poke/game-core';
 import type {
   CollectEggsResponse,
@@ -47,7 +54,8 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
   const assistants = useAssistants();
   const charm = useShinyCharm(ctx);
   const now = useNow();
-  const [depositOpen, setDepositOpen] = useState(false);
+  // Pension où déposer un couple (null = fenêtre fermée).
+  const [depositSlot, setDepositSlot] = useState<number | null>(null);
   const [hatched, setHatched] = useState<HatchEggsResponse | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
@@ -88,10 +96,13 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
   const data = daycare.data;
   const serverNow = now + serverOffset(data, daycare.dataUpdatedAt);
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
-  // Assistant de la Pension : son talent est figé dans les œufs au ramassage.
-  const helperId = assistants.data?.find((a) => a.post === 'daycare')?.pokemonId;
-  const helper = helperId ? pokemonById.get(helperId) : undefined;
+  // Assistant d'une pension : son talent est figé dans ses œufs au ramassage.
+  const helperOf = (slot: number) => {
+    const id = assistants.data?.find((a) => a.post === 'daycare' && a.slot === slot)?.pokemonId;
+    return id ? pokemonById.get(id) : undefined;
+  };
   const eggs = data?.eggs ?? [];
+  const maxEggs = data?.maxEggs ?? 0;
   const readyEggs = eggs.filter((e) => Date.parse(e.hatchAt) <= serverNow).length;
   const error = collect.error ?? withdraw.error ?? hatch.error;
 
@@ -107,11 +118,8 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
         <p className="mb-3 text-sm text-slate-500">
           Dépose deux Pokémon compatibles (même groupe d’œufs et sexes opposés, ou un Métamorph) :
           ils pondent un œuf toutes les {formatDuration(ctx.balance.breeding.eggMinutes)} (plus ou
-          moins vite selon leurs talents et celui de l’assistant).
+          moins vite selon leurs talents et celui de l’assistant de la pension).
         </p>
-        <div className="mb-3">
-          <AssistantCard ctx={ctx} post="daycare" />
-        </div>
         <div className="grid gap-3 md:grid-cols-2">
           {Array.from({ length: data?.slots ?? 0 }, (_, slot) => {
             const pension = data?.pensions.find((p) => p.slotIndex === slot);
@@ -124,21 +132,26 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
                   id ? pokemonById.get(id) : undefined,
                 )}
                 charm={charm}
-                helper={helper}
+                helper={helperOf(slot)}
                 serverNow={serverNow}
                 busy={collect.isPending || withdraw.isPending}
                 onCollect={() => collect.mutate(slot)}
                 onWithdraw={() => withdraw.mutate(slot)}
               />
             ) : (
-              <button
+              <div
                 key={slot}
-                type="button"
-                onClick={() => setDepositOpen(true)}
-                className="grid min-h-40 place-items-center rounded-2xl border-2 border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 transition hover:border-brand-500 hover:text-brand-600 dark:border-slate-700"
+                className="flex min-h-40 flex-col gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-3 dark:border-slate-700"
               >
-                + Déposer un couple
-              </button>
+                <button
+                  type="button"
+                  onClick={() => setDepositSlot(slot)}
+                  className="grid flex-1 place-items-center rounded-xl text-center text-sm text-slate-500 transition hover:bg-slate-100 hover:text-brand-600 dark:hover:bg-slate-800"
+                >
+                  + Déposer un couple
+                </button>
+                <AssistantCard ctx={ctx} post="daycare" slot={slot} />
+              </div>
             );
           })}
           {data?.slots === 0 && (
@@ -163,24 +176,49 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
             {hatch.isPending ? 'Éclosion…' : `Faire éclore${readyEggs ? ` (${readyEggs})` : ''}`}
           </button>
         </div>
-        <div className="mb-3">
-          <AssistantCard ctx={ctx} post="incubator" />
+        <p className="mb-3 text-sm text-slate-500">
+          L’assistant d’une couveuse agit sur la durée d’éclosion des œufs qu’on y pose au
+          ramassage.
+        </p>
+        <div className="space-y-4">
+          {Array.from({ length: assistantSlotCount('incubator', maxEggs) }, (_, incubator) => {
+            const size = ASSISTANT_POST_PLACES.incubator;
+            const first = incubator * size;
+            return (
+              <div key={incubator} className="space-y-2">
+                {maxEggs > size && (
+                  <h3 className="text-sm font-semibold">Couveuse {incubator + 1}</h3>
+                )}
+                <AssistantCard ctx={ctx} post="incubator" slot={incubator} standalone />
+                <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
+                  {Array.from({ length: Math.min(size, maxEggs - first) }, (_, i) => {
+                    const egg = eggs.find((e) => e.slotIndex === first + i);
+                    return egg ? (
+                      <div key={i} className="card flex flex-col items-center p-3 text-xs">
+                        <EggCard ctx={ctx} egg={egg} serverNow={serverNow} />
+                      </div>
+                    ) : (
+                      <div
+                        key={i}
+                        className="grid min-h-28 place-items-center rounded-2xl border-2 border-dashed border-slate-300 p-3 text-center text-xs text-slate-500 dark:border-slate-700"
+                      >
+                        Place libre
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
         </div>
-        {eggs.length === 0 ? (
-          <p className="text-sm text-slate-500">Aucun œuf pour l’instant.</p>
-        ) : (
-          <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-            {eggs.map((egg) => (
-              <EggCard key={egg.id} ctx={ctx} egg={egg} serverNow={serverNow} />
-            ))}
-          </div>
-        )}
       </section>
 
       {notice && <p className="text-sm text-emerald-600">{notice}</p>}
       {error && <p className="text-sm text-red-600">{errorText(error)}</p>}
 
-      {depositOpen && <DepositDialog ctx={ctx} onClose={() => setDepositOpen(false)} />}
+      {depositSlot !== null && (
+        <DepositDialog ctx={ctx} slotIndex={depositSlot} onClose={() => setDepositSlot(null)} />
+      )}
       <HatchReveal ctx={ctx} data={hatched} onClose={() => setHatched(null)} />
     </div>
   );
@@ -304,6 +342,9 @@ function PensionCard({
           </button>
         </div>
       </div>
+      <div className="mt-3">
+        <AssistantCard ctx={ctx} post="daycare" slot={pension.slotIndex} />
+      </div>
     </div>
   );
 }
@@ -313,7 +354,7 @@ function EggCard({ ctx, egg, serverNow }: { ctx: GameContext; egg: EggDto; serve
   const end = Date.parse(egg.hatchAt);
   const ready = serverNow >= end;
   return (
-    <div className="card flex flex-col items-center gap-1 p-3 text-xs">
+    <div className="flex w-full flex-col items-center gap-1">
       <Egg ready={ready} />
       <span className="font-medium">{speciesName(ctx, egg.speciesId, egg.formId)} ?</span>
       <ProgressBar className="w-full" value={(serverNow - laid) / (end - laid)} />

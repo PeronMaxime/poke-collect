@@ -105,8 +105,24 @@ export function effectText(effect: ItemEffect): string {
       return `Au PC : Méga-Évolution en ${getForm(effect.formId)?.nameFr ?? `forme ${effect.formId}`}`;
     case 'revive':
       return 'Ranime un Pokémon K.O.';
+    case 'battleHeal':
+      return `En combat : soigne ${Math.round(effect.fraction * 100)} % des PV du Pokémon actif${
+        effect.cooldownSeconds > 0 ? ` (une fois toutes les ${effect.cooldownSeconds} s)` : ''
+      }`;
+    case 'happiness':
+      return `Sur un Pokémon : bonheur +${effect.amount}`;
+    case 'encounterBoost':
+      return `Expédition : rencontres ${formatMultiplier(effect.multiplier)} (une baie par heure)`;
+    case 'berryPlant':
+      return `Ferme : pousse en ${formatDuration(effect.minutes)}, donne ${yieldRange(effect)} baies`;
   }
 }
+
+/** Baies récoltées d'une plantation : « 1 à 3 ». */
+export const yieldRange = (effect: { minYield: number; maxYield: number }) =>
+  effect.maxYield > effect.minYield
+    ? `${effect.minYield} à ${effect.maxYield}`
+    : `${effect.minYield}`;
 
 /** Probabilité shiny lisible : « 1 / 4 096 ». */
 export function formatShinyRate(probability: number): string {
@@ -259,6 +275,7 @@ export const GAME_ERRORS: Record<string, string> = {
   POKEMON_BUSY:
     'Un de ces Pokémon est déjà occupé (expédition, combat, donjon, pension ou assistant).',
   NO_ASSISTANT: 'Aucun assistant à libérer.',
+  NO_SUCH_SLOT: 'Cette place n’est pas encore débloquée.',
   ZONE_LOCKED: 'Cette zone n’est pas encore débloquée.',
   TEAM_INVALID: 'L’équipe ne remplit pas les conditions de la zone.',
   NOT_FINISHED: 'L’expédition n’est pas encore terminée.',
@@ -330,6 +347,17 @@ export const GAME_ERRORS: Record<string, string> = {
   NO_FOSSIL_READY: 'Aucun fossile n’est encore restauré.',
   FOSSIL_NOT_FOUND: 'Ce fossile n’est plus au Musée.',
   FOSSIL_ALREADY_REVIVED: 'Ce fossile est déjà restauré : récupère le Pokémon.',
+  NOT_A_BATTLE_ITEM: 'Cet objet ne s’utilise pas en combat.',
+  FULL_HP: 'Ce Pokémon a déjà tous ses PV.',
+  ITEM_COOLDOWN: 'Cette baie se recharge : attends quelques secondes.',
+  NOT_ENOUGH_BERRIES: 'Tu n’as pas assez de baies pour toute la durée de l’expédition.',
+  NOT_PLANTABLE: 'Cet objet ne se plante pas à la ferme.',
+  PLOT_TAKEN: 'Cette parcelle est déjà plantée.',
+  PLOT_EMPTY: 'Cette parcelle est vide.',
+  BERRY_ALREADY_RIPE: 'Cette baie est mûre : récolte-la.',
+  NO_BERRY_READY: 'Aucune baie n’est encore mûre.',
+  ASSISTANT_WRONG_TYPE: 'Ce Pokémon n’a pas le type demandé pour ce poste.',
+  ASSISTANT_NO_ABILITY: 'Le talent de ce Pokémon n’agit pas à ce poste.',
   TAG_NOT_FOUND: 'Cette étiquette n’existe plus.',
   TOO_MANY_TAGS: 'Tu as atteint le nombre maximal d’étiquettes.',
   TEAM_NOT_FOUND: 'Cette équipe n’existe plus.',

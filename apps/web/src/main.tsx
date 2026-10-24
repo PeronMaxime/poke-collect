@@ -6,6 +6,7 @@ import { ErrorBoundary } from './components/ErrorBoundary';
 import { UpdatePrompt } from './components/UpdatePrompt';
 import { logError } from './lib/log';
 import { registerServiceWorker } from './lib/pwa';
+import { adoptTabProfileFromUrl } from './lib/tab-profile';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -22,6 +23,7 @@ const queryClient = new QueryClient({
 window.addEventListener('error', (e) => logError('Erreur non interceptée', e.error ?? e.message));
 window.addEventListener('unhandledrejection', (e) => logError('Promesse rejetée', e.reason));
 registerServiceWorker();
+adoptTabProfileFromUrl();
 
 createRoot(document.getElementById('root')!, {
   onCaughtError: (error, info) => logError('Rendu', error, { componentStack: info.componentStack }),

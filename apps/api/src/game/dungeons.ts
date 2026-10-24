@@ -5,14 +5,16 @@ import {
   buildDungeonSetup,
   checkDungeonTeam,
   dungeonStatus,
+  healCommand,
   playerBonuses,
   resolveDungeonRun,
   simulateDungeon,
 } from '@poke/game-core';
-import type { DungeonCommand } from '@poke/game-core';
+import type { DungeonCommand, DungeonSetup, GameContext } from '@poke/game-core';
 import type {
   DungeonRecordDto,
   DungeonRunDto,
+  CombatItemInput,
   StartDungeonInput,
   StoredDungeonResult,
   SwitchDungeonInput,
@@ -20,7 +22,14 @@ import type {
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
 import { newSeed, requireStartedProfile, startHour } from './expeditions';
-import { addItems, assertAvailable, claimedRewards, playerProgress, toInstance } from './store';
+import {
+  addItems,
+  assertAvailable,
+  claimedRewards,
+  playerProgress,
+  takeItems,
+  toInstance,
+} from './store';
 
 /**
  * Donjons : combats en temps réel. Le serveur fige la mise en place au départ, enregistre les
@@ -36,6 +45,46 @@ type DungeonProgressRow = typeof dungeonProgress.$inferSelect;
  * changement prend effet à l'instant où le joueur a cliqué, s'il date de moins que ça.
  */
 export const SWITCH_TOLERANCE_MS = 1500;
+
+/** Instant d'une action du joueur, recalé comme un changement de Pokémon. */
+export function commandAtMs(
+  requested: number,
+  elapsed: number,
+  commands: readonly DungeonCommand[],
+): number {
+  const last = commands.at(-1)?.atMs ?? 0;
+  return Math.min(elapsed, Math.max(requested, last, elapsed - SWITCH_TOLERANCE_MS));
+}
+
+/**
+ * Commande « objet de soin » (Baie Sitrus) d'un combat en cours, après vérification de l'objet
+ * et du Pokémon actif. `finished` : erreur d'un combat terminé (donjon ou dresseur).
+ */
+export function combatHealCommand(
+  ctx: GameContext,
+  combat: { setup: DungeonSetup; commands: DungeonCommand[]; fledAtMs: number | null },
+  input: CombatItemInput,
+  elapsed: number,
+  finished: string,
+): DungeonCommand {
+  const effect = ctx.itemEffect(input.itemId, 'battleHeal');
+  if (!effect) throw new GameError(400, 'NOT_A_BATTLE_ITEM');
+  const atMs = commandAtMs(input.atMs, elapsed, combat.commands);
+  const result = healCommand(
+    combat.setup,
+    combat.commands,
+    combat.fledAtMs,
+    atMs,
+    input.itemId,
+    effect.fraction,
+    effect.cooldownSeconds * 1000,
+  );
+  if ('error' in result) {
+    const code = result.error === 'FINISHED' ? finished : result.error;
+    throw new GameError(409, code === 'COOLDOWN' ? 'ITEM_COOLDOWN' : code);
+  }
+  return result.command;
+}
 
 export function toDungeonRunDto(row: DungeonRunRow): DungeonRunDto {
   return {
@@ -213,8 +262,7 @@ export async function switchDungeonMember(
 ): Promise<DungeonRunRow> {
   const run = await findRun(db, userId, runId);
   const elapsed = elapsedMs(run, now);
-  const last = run.commands.at(-1)?.atMs ?? 0;
-  const atMs = Math.min(elapsed, Math.max(input.atMs, last, elapsed - SWITCH_TOLERANCE_MS));
+  const atMs = commandAtMs(input.atMs, elapsed, run.commands);
   const state = simulateDungeon(run.setup, run.commands, run.fledAtMs, atMs).state;
   if (state.outcome !== null) throw new GameError(409, 'DUNGEON_FINISHED');
   if (input.member >= run.team.length || state.hp[input.member] === 0) {
@@ -231,6 +279,32 @@ export async function switchDungeonMember(
     .returning();
   if (!updated) throw new GameError(409, 'ALREADY_CLAIMED');
   return updated;
+}
+
+/** Donne un objet de soin (consommé) au Pokémon actif du donjon. */
+export async function useDungeonItem(
+  db: Db,
+  content: ContentCache,
+  userId: string,
+  runId: string,
+  input: CombatItemInput,
+  now: Date,
+): Promise<DungeonRunRow> {
+  const ctx = await content.get();
+  const run = await findRun(db, userId, runId);
+  const command = combatHealCommand(ctx, run, input, elapsedMs(run, now), 'DUNGEON_FINISHED');
+  return db.transaction(async (tx) => {
+    if (!(await takeItems(tx, userId, input.itemId, 1))) {
+      throw new GameError(409, 'ITEM_MISSING', { itemId: input.itemId });
+    }
+    const [updated] = await tx
+      .update(dungeonRuns)
+      .set({ commands: sql`${dungeonRuns.commands} || ${JSON.stringify([command])}::jsonb` })
+      .where(and(eq(dungeonRuns.id, run.id), isNull(dungeonRuns.claimedAt)))
+      .returning();
+    if (!updated) throw new GameError(409, 'ALREADY_CLAIMED');
+    return updated;
+  });
 }
 
 /** Fuite : le combat s'arrête sans récompense (les Pokémon déjà K.O. le restent). */

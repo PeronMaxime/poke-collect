@@ -1,4 +1,4 @@
-import { and, asc, count, eq, isNull, lte } from 'drizzle-orm';
+import { and, asc, eq, isNull, lte } from 'drizzle-orm';
 import { fossilRevivals } from '@poke/db';
 import type { Db } from '@poke/db';
 import { fossilEffect, restoreMinutes, reviveFossil } from '@poke/game-core';
@@ -23,6 +23,7 @@ export function toFossilRevivalDto(row: FossilRevivalRow): FossilRevivalDto {
     itemId: row.itemId,
     speciesId: row.speciesId,
     formId: row.formId,
+    slotIndex: row.slotIndex,
     startedAt: row.startedAt.toISOString(),
     readyAt: row.readyAt.toISOString(),
   };
@@ -37,7 +38,10 @@ export async function activeRevivals(db: Db, userId: string): Promise<FossilRevi
     .orderBy(asc(fossilRevivals.readyAt), asc(fossilRevivals.id));
 }
 
-/** Dépose un fossile au Musée, dans la limite des places (`balance.museum.slots`). */
+/**
+ * Dépose un fossile au Musée, à la première place libre (`balance.museum.slots` places) : l'assistant
+ * de cette place agit sur la restauration.
+ */
 export async function depositFossil(
   db: Db,
   content: ContentCache,
@@ -51,15 +55,22 @@ export async function depositFossil(
   if (!effect || !ctx.species(effect.speciesId)) throw new GameError(400, 'NOT_A_FOSSIL');
 
   return db.transaction(async (tx) => {
-    const [{ value: used } = { value: 0 }] = await tx
-      .select({ value: count() })
-      .from(fossilRevivals)
-      .where(and(eq(fossilRevivals.ownerId, userId), isNull(fossilRevivals.revivedAt)));
-    if (used >= ctx.balance.museum.slots) throw new GameError(409, 'MUSEUM_FULL');
+    const taken = new Set(
+      (
+        await tx
+          .select({ slot: fossilRevivals.slotIndex })
+          .from(fossilRevivals)
+          .where(and(eq(fossilRevivals.ownerId, userId), isNull(fossilRevivals.revivedAt)))
+      ).map((r) => r.slot),
+    );
+    const slotIndex = Array.from({ length: ctx.balance.museum.slots }, (_, i) => i).find(
+      (i) => !taken.has(i),
+    );
+    if (slotIndex === undefined) throw new GameError(409, 'MUSEUM_FULL');
     if (!(await takeItems(tx, userId, itemId, 1))) {
       throw new GameError(409, 'ITEM_MISSING', { itemId });
     }
-    const helper = await assistantHolder(tx, userId, 'museum');
+    const helper = await assistantHolder(tx, userId, 'museum', slotIndex);
     const [row] = await tx
       .insert(fossilRevivals)
       .values({
@@ -68,6 +79,7 @@ export async function depositFossil(
         speciesId: effect.speciesId,
         formId: effect.formId ?? null,
         level: effect.level,
+        slotIndex,
         contentVersionId: ctx.content.versionId,
         startedAt: now,
         readyAt: new Date(now.getTime() + restoreMinutes(ctx, effect, helper) * 60_000),

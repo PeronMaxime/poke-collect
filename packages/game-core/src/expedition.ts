@@ -48,6 +48,27 @@ export function encounterCount(ctx: GameContext, durationMinutes: number): numbe
   return scaledCount(ctx, durationMinutes, encountersPerHour, minEncounters);
 }
 
+/**
+ * Baies emportées en expédition : une baie de capture par rencontre au plus, une baie de
+ * rencontres (Baie Nanana) par heure d'expédition, au moins une. 0 si la baie ne sert pas en
+ * expédition.
+ */
+export function expeditionBerryCount(
+  ctx: GameContext,
+  itemId: string,
+  durationMinutes: number,
+  encounters: number,
+): number {
+  if (ctx.itemEffect(itemId, 'encounterBoost')) return Math.max(1, Math.ceil(durationMinutes / 60));
+  return ctx.itemEffect(itemId, 'captureBoost') ? encounters : 0;
+}
+
+/** Multiplicateur de rencontres de la baie emportée (1 sans Baie Nanana). */
+export const berryEncounterMultiplier = (
+  ctx: GameContext,
+  berryItemId: string | null | undefined,
+) => (berryItemId && ctx.itemEffect(berryItemId, 'encounterBoost')?.multiplier) || 1;
+
 export function lootRollCount(ctx: GameContext, durationMinutes: number): number {
   const { lootRollsPerHour, minLootRolls } = ctx.balance.expeditions;
   return scaledCount(ctx, durationMinutes, lootRollsPerHour, minLootRolls);
@@ -291,19 +312,21 @@ export interface ExpeditionPlan {
 
 /**
  * Rencontres, jets de butin et durée réelle d'une expédition de `durationMinutes`, talents de
- * l'équipe compris (sans environnement : valeurs de base).
+ * l'équipe compris (sans environnement : valeurs de base), et Baie Nanana emportée.
  */
 export function expeditionPlan(
   ctx: GameContext,
   durationMinutes: number,
   env?: AbilityEnv,
+  berryItemId?: string | null,
 ): ExpeditionPlan {
-  const encounters = encounterCount(ctx, durationMinutes);
+  const base = encounterCount(ctx, durationMinutes);
   const lootRolls = lootRollCount(ctx, durationMinutes);
-  if (!env) return { realDurationMinutes: durationMinutes, encounters, lootRolls };
+  const boosted = (n: number) => Math.floor(n * berryEncounterMultiplier(ctx, berryItemId));
+  if (!env) return { realDurationMinutes: durationMinutes, encounters: boosted(base), lootRolls };
   return {
     realDurationMinutes: durationWithAbility(ctx, env, 'expeditionDuration', durationMinutes),
-    encounters: scaledByAbility(ctx, env, 'encounters', encounters),
+    encounters: boosted(scaledByAbility(ctx, env, 'encounters', base)),
     lootRolls: scaledByAbility(ctx, env, 'lootRolls', lootRolls),
   };
 }
@@ -399,7 +422,10 @@ export interface ExpeditionInput {
   team: readonly TeamMember[];
   /** Balls réservées au départ (une par tentative de capture). */
   balls: ItemStack | null;
-  /** Baies réservées au départ (une par tentative de capture). */
+  /**
+   * Baies réservées au départ : une par tentative de capture, ou des Baies Nanana (toutes
+   * consommées, rencontres multipliées).
+   */
   berries: ItemStack | null;
   /** Échecs de capture accumulés par espèce. */
   pity: Readonly<Record<number, number>>;
@@ -555,11 +581,14 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
   const ballMultiplier = input.balls
     ? (ctx.itemEffect(input.balls.itemId, 'ball')?.catchMultiplier ?? 1)
     : 0;
-  const boostMultiplier = input.berries
-    ? (ctx.itemEffect(input.berries.itemId, 'captureBoost')?.multiplier ?? 1)
-    : 1;
+  const captureBerry = input.berries
+    ? ctx.itemEffect(input.berries.itemId, 'captureBoost')
+    : undefined;
+  const boostMultiplier = captureBerry?.multiplier ?? 1;
+  const encounterBerry = input.berries && input.berries.quantity > 0 ? input.berries.itemId : null;
   let ballsLeft = input.balls?.quantity ?? 0;
-  let berriesLeft = input.berries?.quantity ?? 0;
+  // Baies de capture : une par tentative ; Baies Nanana : consommées d'office.
+  let berriesLeft = captureBerry ? (input.berries?.quantity ?? 0) : 0;
   const env = expeditionEnv(zone, input.team, input.hour);
   const shinyChance = Math.min(
     1,
@@ -573,7 +602,7 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
   const bonuses = abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES);
   const attracted = attractedTypes(ctx, env);
   const extraLevels = Math.round(abilityModifier(ctx, env, 'wildLevel'));
-  const plan = expeditionPlan(ctx, input.durationMinutes, env);
+  const plan = expeditionPlan(ctx, input.durationMinutes, env, encounterBerry);
   // Copie enrichie au fil des captures : un nouveau Pokémon capturé n'est plus visé ensuite.
   const caught = {
     speciesIds: new Set(input.caught?.speciesIds),

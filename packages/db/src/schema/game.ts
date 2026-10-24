@@ -99,21 +99,24 @@ export const pokemonTeams = pgTable(
 );
 
 /**
- * Assistants : un Pokémon affecté à un bâtiment (Pension, couveuse, Musée) y apporte les effets
- * de son talent. Il reste occupé tant qu'il y est affecté. Un assistant par bâtiment.
+ * Assistants : un Pokémon affecté à une place d'un bâtiment (une pension, une place de la
+ * couveuse, du Musée ou du Centre Pokémon) y apporte les effets de son talent. Il reste occupé tant
+ * qu'il y est affecté. Un assistant par place.
  */
 export const assistants = pgTable(
   'assistants',
   {
     ownerId: ownerId(),
     post: text('post').$type<AssistantPost>().notNull(),
+    /** Place du bâtiment (pension, place de la couveuse, du Musée ou du Centre). */
+    slotIndex: smallint('slot_index').notNull().default(0),
     pokemonId: uuid('pokemon_id')
       .notNull()
       .references(() => pokemon.id, { onDelete: 'cascade' }),
     assignedAt: timestamp('assigned_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [
-    primaryKey({ columns: [t.ownerId, t.post] }),
+    primaryKey({ columns: [t.ownerId, t.post, t.slotIndex] }),
     uniqueIndex('assistants_pokemon').on(t.pokemonId),
   ],
 );
@@ -157,6 +160,8 @@ export const pokemon = pgTable(
     knockedOut: boolean('knocked_out').notNull().default(false),
     /** En soins au Centre Pokémon jusqu'à cette date (évaluation paresseuse). */
     healUntil: timestamp('heal_until', { withTimezone: true }),
+    /** Place du Centre Pokémon occupée pendant les soins (son assistant agit sur leur durée). */
+    healSlot: smallint('heal_slot'),
     /** Étiquettes du joueur (`pokemon_tags`), retirées du tableau quand l'une est supprimée. */
     tagIds: uuid('tag_ids')
       .array()
@@ -189,6 +194,8 @@ export const eggs = pgTable(
     parentBId: uuid('parent_b_id').references(() => pokemon.id, { onDelete: 'set null' }),
     parents: jsonb('parents').$type<[DaycareParent, DaycareParent]>().notNull(),
     motherIndex: smallint('mother_index').notNull().default(0),
+    /** Place de la couveuse (son assistant agit sur la durée d'éclosion). */
+    slotIndex: smallint('slot_index').notNull().default(0),
     /** Assistant de la Pension au ramassage (son talent agit à l'éclosion) ; null = aucun. */
     helper: jsonb('helper').$type<AbilityHolder>(),
     contentVersionId: integer('content_version_id')
@@ -231,6 +238,8 @@ export const fossilRevivals = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     readyAt: timestamp('ready_at', { withTimezone: true }).notNull(),
     seed: bigint('seed', { mode: 'number' }).notNull(),
+    /** Place du Musée (son assistant agit sur la restauration). */
+    slotIndex: smallint('slot_index').notNull().default(0),
     /** Assistant du Musée au dépôt (son talent agit à la restauration) ; null = aucun. */
     helper: jsonb('helper').$type<AbilityHolder>(),
     /** Pokémon récupéré (null = encore au Musée). */
@@ -247,6 +256,28 @@ export const fossilRevivals = pgTable(
       .on(t.readyAt)
       .where(sql`${t.revivedAt} is null and ${t.notifiedAt} is null`),
   ],
+);
+
+/**
+ * Ferme à baies : une baie plantée par parcelle (ligne supprimée à la récolte). Elle ne pousse que
+ * tant que le champ a un assistant de type Eau : `ready_at` est alors la maturité prévue ; sans
+ * lui, la pousse est en pause (`ready_at` null) avec `remaining_ms` à faire.
+ */
+export const berryPlots = pgTable(
+  'berry_plots',
+  {
+    ownerId: ownerId(),
+    /** Parcelle du champ (0 à 8). */
+    plotIndex: smallint('plot_index').notNull(),
+    itemId: text('item_id').notNull(),
+    plantedAt: timestamp('planted_at', { withTimezone: true }).notNull().defaultNow(),
+    growMs: integer('grow_ms').notNull(),
+    remainingMs: integer('remaining_ms').notNull(),
+    readyAt: timestamp('ready_at', { withTimezone: true }),
+    /** Baies récoltées à maturité (tirées à la plantation). */
+    yield: smallint('yield').notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.ownerId, t.plotIndex] })],
 );
 
 /** Pension : un couple par emplacement, tant qu'il y est déposé (ligne supprimée au retrait). */

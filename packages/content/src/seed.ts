@@ -97,8 +97,9 @@ const shopEntries: ShopEntry[] = [
   article('revive', 'revive', 'soin', 0, 2000, {
     unlock: { type: 'badgeCount', count: 4, regionId: 'kanto' },
   }),
-  article('razz-berry', 'razz-berry', 'baies', 0, 150),
-  article('razz-berry-x5', 'razz-berry', 'baies', 1, 600, { lotSize: 5 }),
+  // Baies : plus vendues, on les trouve en expédition puis on les cultive à la ferme.
+  article('razz-berry', 'razz-berry', 'baies', 0, 150, { enabled: false }),
+  article('razz-berry-x5', 'razz-berry', 'baies', 1, 600, { lotSize: 5, enabled: false }),
   article('everstone', 'everstone', 'elevage', 0, 10_000, {
     unlock: { type: 'badgeCount', count: 1 },
   }),
@@ -412,10 +413,7 @@ export const seedContent: GameContentData = {
     newPlayer: {
       starterLevel: 5,
       startingCurrency: 0,
-      startingInventory: [
-        { itemId: 'poke-ball', quantity: 20 },
-        { itemId: 'razz-berry', quantity: 5 },
-      ],
+      startingInventory: [{ itemId: 'poke-ball', quantity: 20 }],
     },
   },
   regions,
@@ -465,7 +463,46 @@ export const seedContent: GameContentData = {
       icon: null,
       category: 'berry',
       rarity: 'common',
-      effects: [{ type: 'captureBoost', multiplier: 1.5 }],
+      effects: [
+        { type: 'captureBoost', multiplier: 1.5 },
+        { type: 'berryPlant', minutes: 60, minYield: 1, maxYield: 3 },
+      ],
+    },
+    {
+      id: 'sitrus-berry',
+      name: 'Baie Sitrus',
+      description: 'Donnée en combat au Pokémon actif : lui rend un quart de ses PV.',
+      icon: null,
+      category: 'berry',
+      rarity: 'uncommon',
+      effects: [
+        { type: 'battleHeal', fraction: 0.25, cooldownSeconds: 10 },
+        { type: 'berryPlant', minutes: 60, minYield: 1, maxYield: 3 },
+      ],
+    },
+    {
+      id: 'pomeg-berry',
+      name: 'Baie Grena',
+      description: 'Donnée à un Pokémon : son bonheur augmente un peu.',
+      icon: null,
+      category: 'berry',
+      rarity: 'uncommon',
+      effects: [
+        { type: 'happiness', amount: 1 },
+        { type: 'berryPlant', minutes: 60, minYield: 1, maxYield: 3 },
+      ],
+    },
+    {
+      id: 'nanab-berry',
+      name: 'Baie Nanana',
+      description: 'Emportée en expédition : plus de rencontres. Une baie par heure d’expédition.',
+      icon: null,
+      category: 'berry',
+      rarity: 'uncommon',
+      effects: [
+        { type: 'encounterBoost', multiplier: 1.25 },
+        { type: 'berryPlant', minutes: 60, minYield: 1, maxYield: 3 },
+      ],
     },
     {
       id: 'moon-stone',
@@ -569,8 +606,9 @@ export const seedContent: GameContentData = {
       name: 'Butin de route',
       entries: [
         loot('poke-ball', 0.7, 1, 3),
-        loot('razz-berry', 0.25, 1, 2),
+        loot('razz-berry', 0.02),
         loot('great-ball', 0.05),
+        loot('nanab-berry', 0.015),
       ],
     },
     {
@@ -578,9 +616,11 @@ export const seedContent: GameContentData = {
       name: 'Butin de forêt',
       entries: [
         loot('poke-ball', 0.7, 1, 3),
-        loot('razz-berry', 0.35, 1, 2),
+        loot('razz-berry', 0.02),
         loot('great-ball', 0.1),
         loot('everstone', 0.02),
+        loot('pomeg-berry', 0.015),
+        loot('sitrus-berry', 0.01),
       ],
     },
     { id: 'butin-grotte', name: 'Butin de grotte', entries: caveLoot() },
@@ -614,6 +654,8 @@ export const seedContent: GameContentData = {
         loot('ultra-ball', 0.05),
         loot('water-stone', 0.03),
         loot('destiny-knot', 0.02),
+        loot('sitrus-berry', 0.015),
+        loot('nanab-berry', 0.01),
       ],
     },
     {

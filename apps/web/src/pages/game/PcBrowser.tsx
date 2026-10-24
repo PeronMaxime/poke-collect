@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { effectiveAbility, isHealing, isRegionalSpecies, memberPower } from '@poke/game-core';
 import type { GameContext, GameSpecies } from '@poke/game-core';
+import { searchKey } from '@poke/shared';
 import type { PokemonActivity, PokemonDto, PokemonTagDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar } from '../../components/ui';
 import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
@@ -78,10 +79,10 @@ export function usePcBrowser(ctx: GameContext, pokemon: readonly PokemonDto[]) {
     canEvolve: hasNewEvolution(p),
   }));
   const tab = currentRegionTab(ctx, progress, selectedRegion ?? ALL_TAB.id, [ALL_TAB]);
-  const needle = search.trim().toLowerCase();
+  const needle = searchKey(search.trim());
   const filtered = list
     .filter(({ p }) => tab === ALL_TAB.id || isRegionalSpecies(ctx, tab, p.speciesId))
-    .filter(({ species }) => !needle || species?.nameFr.toLowerCase().includes(needle))
+    .filter(({ species }) => !needle || searchKey(species?.nameFr ?? '').includes(needle))
     .filter(({ p }) => (!onlyFavorites || p.locked) && (!onlyShiny || p.isShiny))
     .filter(({ canEvolve }) => !onlyEvolvable || canEvolve)
     .filter(({ species }) => type === 'all' || !!species?.types.includes(type))

@@ -15,7 +15,7 @@ import type {
 } from '@poke/shared';
 import { buildApp } from './app';
 import { loadEnv } from './env';
-import { recordPokedex } from './game/store';
+import { addItems, recordPokedex } from './game/store';
 
 const handle = createDb({ pgliteDataDir: 'memory://' });
 const env = loadEnv({ NODE_ENV: 'test' });
@@ -101,10 +101,10 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
     expect(again).toMatchObject({ status: 409, body: { error: 'STARTER_ALREADY_CHOSEN' } });
 
     const inv = await call<InventoryEntryDto[]>('GET', '/api/inventory');
-    expect(inv.body).toEqual([
-      { itemId: 'poke-ball', quantity: 20 },
-      { itemId: 'razz-berry', quantity: 5 },
-    ]);
+    // Plus de baies au départ : on les trouve en expédition (données ici pour la suite).
+    expect(inv.body).toEqual([{ itemId: 'poke-ball', quantity: 20 }]);
+    const [user] = await handle.db.select().from(users).where(eq(users.email, 'red@example.com'));
+    await addItems(handle.db, user!.id, [{ itemId: 'razz-berry', quantity: 5 }]);
     const dex = await call<PokedexEntryDto[]>('GET', '/api/pokedex');
     expect(dex.body).toEqual([expect.objectContaining({ speciesId: 4, seen: true, caught: true })]);
   });

@@ -18,6 +18,7 @@ const target = (patch: Partial<ItemTarget> = {}): ItemTarget => ({
   nature: 'hardy',
   originalNature: 'hardy',
   ability: 'pressure',
+  happiness: 70,
   ...patch,
 });
 

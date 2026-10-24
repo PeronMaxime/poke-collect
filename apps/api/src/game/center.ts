@@ -1,9 +1,9 @@
-import { and, count, eq, gt, inArray } from 'drizzle-orm';
+import { and, eq, gt, inArray } from 'drizzle-orm';
 import { pokemon } from '@poke/db';
 import type { Db } from '@poke/db';
-import { abilityHolder, healMinutes } from '@poke/game-core';
+import { abilityHolder, assistantSlotOf, healMinutes } from '@poke/game-core';
 import type { ContentCache } from '../content-cache';
-import { assistantHolder } from './assistants';
+import { assistantHolders } from './assistants';
 import { GameError } from './errors';
 import { requireStartedProfile } from './expeditions';
 import { takeItems, toInstance } from './store';
@@ -11,8 +11,9 @@ import type { PokemonRow } from './store';
 
 /**
  * Centre Pokémon : un Pokémon mis K.O. en combat y est soigné, dans la limite des places
- * (`balance.center.slots`). Il est en soins jusqu'à `healUntil`, puis de nouveau libre : rien à
- * récupérer, la place se libère d'elle-même. Un Rappel (objet `revive`) le ranime aussitôt.
+ * (`balance.center.slots`, 6 par Centre). Il occupe une place (`healSlot` ; l'assistant de son
+ * Centre agit sur la durée) jusqu'à `healUntil`, puis il est de nouveau libre : rien à récupérer,
+ * la place se libère d'elle-même. Un Rappel (objet `revive`) le ranime aussitôt.
  */
 
 async function knockedOutRows(tx: Db, userId: string, ids: readonly string[]) {
@@ -23,7 +24,8 @@ async function knockedOutRows(tx: Db, userId: string, ids: readonly string[]) {
     .where(and(eq(pokemon.ownerId, userId), inArray(pokemon.id, unique)));
   if (rows.length !== unique.length) throw new GameError(404, 'POKEMON_NOT_FOUND');
   if (rows.some((r) => !r.knockedOut)) throw new GameError(409, 'POKEMON_NOT_KO');
-  return rows;
+  // Dans l'ordre de la demande.
+  return unique.map((id) => rows.find((r) => r.id === id)!);
 }
 
 /** Dépose des Pokémon K.O. au Centre Pokémon (tous, ou aucun s'il n'y a pas assez de place). */
@@ -39,20 +41,35 @@ export async function healPokemon(
   return db.transaction(async (tx) => {
     const rows = await knockedOutRows(tx, userId, ids);
 
-    const [{ value: healing } = { value: 0 }] = await tx
-      .select({ value: count() })
-      .from(pokemon)
-      .where(and(eq(pokemon.ownerId, userId), gt(pokemon.healUntil, now)));
-    if (healing + rows.length > ctx.balance.center.slots) throw new GameError(409, 'CENTER_FULL');
+    // Premières places libres, dans l'ordre des Pokémon demandés.
+    const taken = new Set(
+      (
+        await tx
+          .select({ slot: pokemon.healSlot })
+          .from(pokemon)
+          .where(and(eq(pokemon.ownerId, userId), gt(pokemon.healUntil, now)))
+      ).map((r) => r.slot),
+    );
+    const free = Array.from({ length: ctx.balance.center.slots }, (_, i) => i).filter(
+      (i) => !taken.has(i),
+    );
+    if (rows.length > free.length) throw new GameError(409, 'CENTER_FULL');
 
-    const helper = await assistantHolder(tx, userId, 'center');
+    const helpers = await assistantHolders(tx, userId, 'center');
     const healed: PokemonRow[] = [];
-    for (const row of rows) {
+    for (const [i, row] of rows.entries()) {
+      const slot = free[i]!;
+      // L'assistant de son Centre (6 places chacun) agit sur la durée des soins.
+      const helper = helpers.get(assistantSlotOf('center', slot)) ?? null;
       const minutes = healMinutes(ctx, abilityHolder(toInstance(row)), helper);
       // Verrou : un Pokémon déjà soigné par une autre demande n'est pas soigné deux fois.
       const [updated] = await tx
         .update(pokemon)
-        .set({ knockedOut: false, healUntil: new Date(now.getTime() + minutes * 60_000) })
+        .set({
+          knockedOut: false,
+          healUntil: new Date(now.getTime() + minutes * 60_000),
+          healSlot: slot,
+        })
         .where(and(eq(pokemon.id, row.id), eq(pokemon.knockedOut, true)))
         .returning();
       if (!updated) throw new GameError(409, 'POKEMON_NOT_KO');

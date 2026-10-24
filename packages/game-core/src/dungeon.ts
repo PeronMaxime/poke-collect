@@ -243,13 +243,64 @@ export interface DungeonSetup {
   hour?: number | null;
   /** Météo du combat (celle du donjon, ou imposée par un talent) ; absente = temps clair. */
   weather?: Weather | null;
+  /**
+   * Météo du lieu, avant les talents (null = temps clair) ; absente = inconnue (combats
+   * antérieurs). Seulement pour l'affichage : le combat se joue tout entier sous `weather`.
+   */
+  placeWeather?: Weather | null;
 }
 
-/** Changement de Pokémon actif demandé par le joueur, `atMs` après le départ. */
-export interface DungeonCommand {
-  atMs: number;
-  /** Index du Pokémon dans l'équipe. */
-  member: number;
+/**
+ * Action du joueur, `atMs` après le départ : changement de Pokémon actif, ou objet de soin
+ * (Baie Sitrus) donné au Pokémon actif.
+ */
+export type DungeonCommand =
+  | {
+      atMs: number;
+      /** Index du Pokémon dans l'équipe. */
+      member: number;
+    }
+  | {
+      atMs: number;
+      itemId: string;
+      /** Part des PV max du Pokémon actif rendue (fixée au moment de l'utilisation). */
+      heal: number;
+    };
+
+export const isHealCommand = (c: DungeonCommand): c is Extract<DungeonCommand, { heal: number }> =>
+  'heal' in c;
+
+/** Instant à partir duquel l'objet de soin peut resservir (0 = jamais utilisé). */
+export function healReadyAt(
+  commands: readonly DungeonCommand[],
+  itemId: string,
+  cooldownMs: number,
+): number {
+  const last = commands.findLast((c) => isHealCommand(c) && c.itemId === itemId);
+  return last ? last.atMs + cooldownMs : 0;
+}
+
+/**
+ * Objet de soin utilisable maintenant sur le Pokémon actif : le combat doit continuer, l'objet
+ * ne pas être en recharge (`cooldownMs` après sa dernière utilisation), et le Pokémon être
+ * debout sans tous ses PV. Renvoie la commande à enregistrer, ou l'erreur.
+ */
+export function healCommand(
+  setup: DungeonSetup,
+  commands: readonly DungeonCommand[],
+  fledAtMs: number | null,
+  atMs: number,
+  itemId: string,
+  fraction: number,
+  cooldownMs = 0,
+): { command: DungeonCommand } | { error: 'FINISHED' | 'FULL_HP' | 'MEMBER_KO' | 'COOLDOWN' } {
+  const { state } = simulateDungeon(setup, commands, fledAtMs, atMs);
+  if (state.outcome !== null) return { error: 'FINISHED' };
+  if (healReadyAt(commands, itemId, cooldownMs) > atMs) return { error: 'COOLDOWN' };
+  const hp = state.hp[state.active] ?? 0;
+  if (hp === 0) return { error: 'MEMBER_KO' };
+  if (hp >= setup.team[state.active]!.maxHp) return { error: 'FULL_HP' };
+  return { command: { atMs, itemId, heal: fraction } };
 }
 
 function fighter(
@@ -701,7 +752,30 @@ export function buildCombatSetup(
     seed,
     hour,
     weather,
+    placeWeather: arena.weather ?? null,
   };
+}
+
+/**
+ * Pokémon dont le talent impose la météo du combat (le premier de l'équipe, sinon des adversaires,
+ * comme `combatWeather`), pour l'annoncer ; null = météo du lieu.
+ */
+export function combatWeatherSource(
+  ctx: GameContext,
+  setup: Pick<DungeonSetup, 'team' | 'enemies' | 'weather' | 'placeWeather'>,
+): { side: 'player' | 'enemy'; fighter: DungeonFighter; ability: string } | null {
+  const weather = setup.weather ?? null;
+  if (setup.placeWeather === undefined || setup.placeWeather === weather) return null;
+  for (const side of ['player', 'enemy'] as const) {
+    for (const fighter of side === 'player' ? setup.team : setup.enemies) {
+      const ability = fighter.ability;
+      const imposes = ctx
+        .ability(ability ?? '')
+        ?.effects.some((e) => e.type === 'setWeather' && weatherOrClear(e.weather) === weather);
+      if (ability && imposes) return { side, fighter, ability };
+    }
+  }
+  return null;
 }
 
 // --- Règles de combat --------------------------------------------------------------------------
@@ -928,6 +1002,8 @@ export type DungeonEvent =
     }
   /** Changement de Pokémon actif : demandé par le joueur, ou automatique après un K.O. */
   | { kind: 'switch'; atMs: number; member: number; auto: boolean }
+  /** Objet de soin donné par le joueur au Pokémon actif (`amount` : PV rendus). */
+  | { kind: 'item'; atMs: number; member: number; itemId: string; amount: number }
   /** Entrée en combat de l'adversaire suivant. */
   | { kind: 'enemy'; atMs: number; index: number }
   /**
@@ -1257,7 +1333,23 @@ export function simulateDungeon(
     t = next;
 
     if (nextCommand === t) {
-      const { member } = queue[ci++]!;
+      const command = queue[ci++]!;
+      if (isHealCommand(command)) {
+        const max = team[active]!.maxHp;
+        const before = hp[active]!;
+        if (before > 0 && before < max) {
+          hp[active] = Math.min(max, before + Math.max(1, Math.round(command.heal * max)));
+          events.push({
+            kind: 'item',
+            atMs: t,
+            member: active,
+            itemId: command.itemId,
+            amount: hp[active]! - before,
+          });
+        }
+        continue;
+      }
+      const { member } = command;
       if (
         member !== active &&
         member >= 0 &&

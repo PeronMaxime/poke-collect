@@ -24,6 +24,7 @@ import { leaderboardRoutes } from './routes/leaderboard';
 import { tagRoutes } from './routes/tags';
 import { teamRoutes } from './routes/teams';
 import { trainerRoutes } from './routes/trainers';
+import { farmRoutes } from './routes/farm';
 import { museumRoutes } from './routes/museum';
 import { assistantRoutes } from './routes/assistants';
 import { playerRoutes } from './routes/player';
@@ -113,7 +114,8 @@ export async function buildApp({
   await app.register(breedingRoutes, { db, content, hooks, now });
   await app.register(museumRoutes, { db, content, hooks, now });
   await app.register(centerRoutes, { db, content, hooks, now });
-  await app.register(assistantRoutes, { db, hooks, now });
+  await app.register(farmRoutes, { db, content, hooks, now });
+  await app.register(assistantRoutes, { db, content, hooks, now });
   await app.register(battleRoutes, { db, content, hooks, now });
   await app.register(dungeonRoutes, { db, content, hooks, now });
   await app.register(shopRoutes, { db, content, hooks, now });

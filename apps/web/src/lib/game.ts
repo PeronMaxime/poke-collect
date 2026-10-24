@@ -15,6 +15,7 @@ import type {
   DungeonsResponse,
   DaycareResponse,
   ExpeditionsResponse,
+  FarmResponse,
   InventoryEntryDto,
   LeaderboardKind,
   LeaderboardResponse,
@@ -46,6 +47,7 @@ export const keys = {
   expeditions: ['expeditions'],
   daycare: ['daycare'],
   museum: ['museum'],
+  farm: ['farm'],
   assistants: ['assistants'],
   candies: ['candies'],
   battles: ['battles'],
@@ -66,6 +68,7 @@ export const PLAYER_STATE_KEYS = [
   keys.expeditions,
   keys.daycare,
   keys.museum,
+  keys.farm,
   keys.assistants,
   keys.candies,
   keys.battles,
@@ -128,7 +131,10 @@ export const useDaycare = () =>
 export const useMuseum = () =>
   useQuery({ queryKey: keys.museum, queryFn: () => api<MuseumResponse>('/api/museum') });
 
-/** Assistants de la Pension, de la couveuse, du Musée et du Centre Pokémon. */
+export const useFarm = () =>
+  useQuery({ queryKey: keys.farm, queryFn: () => api<FarmResponse>('/api/farm') });
+
+/** Assistants de la Pension, de la couveuse, du Musée, du Centre Pokémon et de la ferme. */
 export const useAssistants = () =>
   useQuery({ queryKey: keys.assistants, queryFn: () => api<AssistantDto[]>('/api/assistants') });
 

@@ -12,6 +12,7 @@ import {
   checkTeam,
   encounterProbabilities,
   expectedExpeditionXp,
+  expeditionBerryCount,
   expeditionEnv,
   expeditionPlan,
   lootProbabilities,
@@ -41,6 +42,7 @@ import {
 import {
   GAME_ERRORS,
   formatDuration,
+  formatMultiplier,
   formatShinyRate,
   itemIcon,
   itemName,
@@ -58,6 +60,25 @@ export { pillClass };
 function formatChance(p: number): string {
   const pct = p * 100;
   return pct < 1 ? '< 1 %' : `${Math.round(pct)} %`;
+}
+
+/** Chance de capture d'une rencontre, derrière une petite Poké Ball (plus court qu'un libellé). */
+function CaptureChance({ chance }: { chance: number }) {
+  return (
+    <span
+      className="flex shrink-0 items-center gap-0.5 text-slate-500"
+      title="Chance de capture avec la Ball et la baie choisies"
+    >
+      <svg viewBox="0 0 16 16" className="h-3 w-3" aria-label="Capture">
+        <path d="M1 8a7 7 0 0 1 14 0z" fill="#ef4444" />
+        <path d="M1 8a7 7 0 0 0 14 0z" fill="#fff" />
+        <circle cx="8" cy="8" r="7" fill="none" stroke="#1e293b" strokeWidth="1.5" />
+        <path d="M1 8h14" stroke="#1e293b" strokeWidth="1.5" />
+        <circle cx="8" cy="8" r="2.2" fill="#fff" stroke="#1e293b" strokeWidth="1.5" />
+      </svg>
+      {Math.round(chance * 100)} %
+    </span>
+  );
 }
 
 const SHINY_MODES = {
@@ -220,12 +241,18 @@ export function LaunchExpeditionForm({
         ctx.itemEffect(a.id, 'ball')!.catchMultiplier -
         ctx.itemEffect(b.id, 'ball')!.catchMultiplier,
     );
+  // Baies de capture (de la plus faible à la plus forte), puis baies de rencontres : une seule
+  // baie par expédition.
   const berries = ctx.content.items
-    .filter((i) => ctx.itemEffect(i.id, 'captureBoost') && owned(i.id) > 0)
+    .filter(
+      (i) =>
+        (ctx.itemEffect(i.id, 'captureBoost') || ctx.itemEffect(i.id, 'encounterBoost')) &&
+        owned(i.id) > 0,
+    )
     .sort(
       (a, b) =>
-        ctx.itemEffect(a.id, 'captureBoost')!.multiplier -
-        ctx.itemEffect(b.id, 'captureBoost')!.multiplier,
+        (ctx.itemEffect(a.id, 'captureBoost')?.multiplier ?? Infinity) -
+        (ctx.itemEffect(b.id, 'captureBoost')?.multiplier ?? Infinity),
     );
   // undefined = choix par défaut (première Ball possédée) ; null = aucune Ball.
   const [ballId, setBallId] = useState<string | null | undefined>(undefined);
@@ -243,7 +270,12 @@ export function LaunchExpeditionForm({
   const site = { ...zone, weather: placeWeather };
   const env = expeditionEnv(site, members, new Date().getHours());
   const check = checkTeam(ctx, site, duration, members, env.hour);
-  const plan = expeditionPlan(ctx, duration, env);
+  // Baie Nanana : une par heure, toutes exigées (sinon le départ est refusé).
+  const encounterBerry = berryId ? ctx.itemEffect(berryId, 'encounterBoost') : undefined;
+  const berriesNeeded =
+    berryId && encounterBerry ? expeditionBerryCount(ctx, berryId, duration, 0) : 0;
+  const missingBerries = !unlimitedItems && berryId !== null && berriesNeeded > owned(berryId);
+  const plan = expeditionPlan(ctx, duration, env, missingBerries ? null : berryId);
   const weather = resolveWeather(ctx, env);
   const { encounters } = plan;
   const xp = expectedExpeditionXp(ctx, zone, duration, bonuses, env);
@@ -254,6 +286,13 @@ export function LaunchExpeditionForm({
   // Bonus permanents et talents de l'équipe, comme au serveur.
   const captureBonus = abilityBonuses(ctx, env, bonuses ?? NO_BONUSES).capture;
   const possibleEncounters = encounterProbabilities(ctx, zone, undefined, attractedTypes(ctx, env));
+  // Fuyards dans le même pool que les autres, comme au serveur : chacun est tiré avant les
+  // Pokémon de la zone, qui se partagent le reste. Une fois croisé, il en sort et les autres
+  // retrouvent leur part entière.
+  const missedAll = (n: number) =>
+    roamers.slice(0, n).reduce((rest, r) => rest * (1 - r.encounterChance / 100), 1);
+  const roamerShares = roamers.map((r, i) => missedAll(i) * (r.encounterChance / 100));
+  const normalShare = missedAll(roamers.length);
   const zoneSpeciesIds = [...new Set(possibleEncounters.map((e) => e.speciesId))];
   const updateFilter = (patch: Partial<CaptureFilter>) =>
     setCaptureFilter((f) => ({ ...(f ?? NO_FILTER), ...patch }));
@@ -414,6 +453,14 @@ export function LaunchExpeditionForm({
               </option>
             ))}
           </select>
+          {encounterBerry && (
+            <p className={`mt-1 text-xs ${missingBerries ? 'text-red-600' : 'text-slate-500'}`}>
+              Rencontres {formatMultiplier(encounterBerry.multiplier)} : {berriesNeeded} baie
+              {berriesNeeded > 1 ? 's' : ''} consommée{berriesNeeded > 1 ? 's' : ''} (une par heure
+              d’expédition).
+              {missingBerries && ` Tu n’en as que ${owned(berryId!)}.`}
+            </p>
+          )}
         </div>
       </div>
 
@@ -527,6 +574,36 @@ export function LaunchExpeditionForm({
 
       <h3 className="mt-5 text-sm font-semibold">Rencontres possibles</h3>
       <ul className="mt-2 grid grid-cols-2 gap-1 text-xs sm:grid-cols-3">
+        {roamers.map((r, i) => {
+          const species = ctx.species(r.speciesId, r.formId)!;
+          // Toujours visé, quel que soit le filtre de capture.
+          const chance = ballEffect
+            ? captureProbability(ctx, {
+                captureRate: species.captureRate,
+                ballMultiplier: ballEffect.catchMultiplier,
+                boostMultiplier: boost,
+                affinityCount: check.affinityCount,
+                bonusMultiplier: captureBonus,
+              })
+            : 0;
+          return (
+            <li
+              key={`roamer:${r.questId}`}
+              className="flex min-w-0 items-center gap-1 text-amber-800 dark:text-amber-300"
+              title={`Pokémon fuyard : ${formatChance(roamerMeetChance(r.encounterChance, encounters))} de chances de le croiser pendant l’expédition. Une fois croisé, il ne revient plus et les autres Pokémon retrouvent leur part entière.`}
+            >
+              <PokemonSprite
+                speciesId={r.speciesId}
+                formId={r.formId}
+                size={32}
+                className="shrink-0"
+              />
+              <span className="min-w-0 truncate">✦ {species.nameFr}</span>
+              <span className="shrink-0">· {formatChance(roamerShares[i]!)}</span>
+              <CaptureChance chance={chance} />
+            </li>
+          );
+        })}
         {possibleEncounters.map(({ speciesId, formId, probability }) => {
           const species = ctx.species(speciesId, formId)!;
           const chance = ballEffect
@@ -541,13 +618,12 @@ export function LaunchExpeditionForm({
           return (
             <li
               key={`${speciesId}:${formId ?? ''}`}
-              className={`flex items-center gap-1 ${targeted(speciesId) ? '' : 'opacity-40'}`}
+              className={`flex min-w-0 items-center gap-1 ${targeted(speciesId) ? '' : 'opacity-40'}`}
             >
-              <PokemonSprite speciesId={speciesId} formId={formId} size={32} />
-              <span className="truncate">
-                {species.nameFr} · {Math.round(probability * 100)} %
-                <span className="text-slate-500"> (capture {Math.round(chance * 100)} %)</span>
-              </span>
+              <PokemonSprite speciesId={speciesId} formId={formId} size={32} className="shrink-0" />
+              <span className="min-w-0 truncate">{species.nameFr}</span>
+              <span className="shrink-0">· {Math.round(probability * normalShare * 100)} %</span>
+              <CaptureChance chance={chance} />
             </li>
           );
         })}
@@ -602,7 +678,7 @@ export function LaunchExpeditionForm({
         </button>
         <button
           className="btn-primary"
-          disabled={check.errors.length > 0 || pending}
+          disabled={check.errors.length > 0 || missingBerries || pending}
           onClick={() =>
             onSubmit({
               zoneId: zone.id,

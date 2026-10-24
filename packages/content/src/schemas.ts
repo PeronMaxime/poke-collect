@@ -123,6 +123,7 @@ export const MENU_TABS = [
   { id: 'center', label: 'Centre Pokémon' },
   { id: 'daycare', label: 'Pension' },
   { id: 'museum', label: 'Musée' },
+  { id: 'farm', label: 'Ferme à baies' },
   { id: 'pc', label: 'PC' },
   { id: 'teams', label: 'Équipe Pkmn' },
   { id: 'pokedex', label: 'Pokédex' },
@@ -136,7 +137,7 @@ export type MenuTabId = (typeof MENU_TABS)[number]['id'];
 /** Groupes du menu quand l'admin n'en a pas défini. */
 export const DEFAULT_MENU_GROUPS: MenuTabId[][] = [
   ['expeditions', 'battles', 'dungeons', 'quests'],
-  ['center', 'daycare', 'museum'],
+  ['center', 'daycare', 'museum', 'farm'],
   ['pc', 'teams', 'pokedex', 'shop', 'bag'],
   ['trainer', 'leaderboard'],
 ];
@@ -457,6 +458,9 @@ export const ABILITY_PARAM_IDS = [
   'hatchTime',
   'restoreTime',
   'candies',
+  // Ferme à baies
+  'berryYield',
+  'berryGrowth',
 ] as const;
 export const abilityParamSchema = z.enum(ABILITY_PARAM_IDS);
 export type AbilityParam = z.infer<typeof abilityParamSchema>;
@@ -690,6 +694,32 @@ export const itemEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('megaEvolution'), formId: z.int().positive() }),
   /** Utilisé sur un Pokémon K.O. : il est aussitôt soigné, sans passer par le Centre (Rappel). */
   z.object({ type: z.literal('revive') }),
+  /**
+   * Plantée à la ferme (consommée) : pousse `minutes` tant que le champ est arrosé, puis donne
+   * de `minYield` à `maxYield` baies de la même espèce.
+   */
+  z.object({
+    type: z.literal('berryPlant'),
+    minutes: z.int().min(1).max(10_080),
+    minYield: z.int().min(1).max(99),
+    maxYield: z.int().min(1).max(99),
+  }),
+  /**
+   * En combat (donjon, dresseur) : soigne le Pokémon actif de `fraction` de ses PV max (Baie
+   * Sitrus), au plus une fois toutes les `cooldownSeconds` secondes.
+   */
+  z.object({
+    type: z.literal('battleHeal'),
+    fraction: z.number().gt(0).max(1),
+    cooldownSeconds: z.int().min(0).max(3600).default(10),
+  }),
+  /** Utilisé sur un Pokémon : son bonheur augmente de `amount` (Baie Grena). */
+  z.object({ type: z.literal('happiness'), amount: z.int().min(1).max(255) }),
+  /**
+   * Emportée en expédition à la place d'une baie de capture : multiplie les rencontres (Baie
+   * Nanana). Une baie par heure d'expédition, au moins une.
+   */
+  z.object({ type: z.literal('encounterBoost'), multiplier: z.number().min(1).max(10) }),
 ]);
 export type ItemEffect = z.infer<typeof itemEffectSchema>;
 export type ItemEffectType = ItemEffect['type'];

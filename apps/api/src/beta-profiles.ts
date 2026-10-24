@@ -14,24 +14,35 @@ import type { sessionHooks } from './plugins/session';
  * indexées par `users.id`, le cookie ci-dessous suffit à jouer une autre partie. Le serveur
  * vérifie à chaque requête que le profil appartient bien au compte connecté.
  *
+ * Profil par onglet : le web envoie le profil de l'onglet dans l'en-tête `x-dex-profile`
+ * (identifiant, ou `main` pour le principal), prioritaire sur le cookie ; le cookie ne sert
+ * plus que de profil par défaut (dernier choisi) pour un onglet qui n'en a pas.
+ *
  * Pour retirer la fonctionnalité : supprimer ce fichier, son enregistrement dans `app.ts`,
- * l'appel à `activeProfileId` dans `plugins/session.ts`, `BetaProfilesSection` côté web et
- * les profils secondaires en base (`delete from users where parent_user_id is not null`).
+ * l'appel à `activeProfileId` dans `plugins/session.ts`, `BetaProfilesSection`,
+ * `apps/web/src/lib/tab-profile.ts` et son usage dans `api.ts` côté web, et les profils secondaires en base (`delete from users where parent_user_id is not null`).
  */
 
 export const BETA_PROFILE_COOKIE = 'dex_profile';
+const BETA_PROFILE_HEADER = 'x-dex-profile';
+/** Valeur de l'en-tête désignant le profil principal. */
+const MAIN_PROFILE = 'main';
 /** Préfixe du pseudo d'un profil secondaire, suivi de son numéro : `Alt1_Sacha`. */
 const NAME_PREFIX = 'Alt';
 const MAX_SECONDARY_PROFILES = 3;
 
-/** Profil secondaire demandé par le cookie, s'il appartient bien au compte `accountUserId`. */
+/**
+ * Profil secondaire demandé par l'en-tête de l'onglet, à défaut par le cookie, s'il appartient
+ * bien au compte `accountUserId`.
+ */
 export async function activeProfileId(
   db: Db,
   request: FastifyRequest,
   accountUserId: string,
 ): Promise<{ id: string; name: string } | null> {
-  const wanted = readCookie(request, BETA_PROFILE_COOKIE);
-  if (!wanted) return null;
+  const header = request.headers[BETA_PROFILE_HEADER];
+  const wanted = typeof header === 'string' ? header : readCookie(request, BETA_PROFILE_COOKIE);
+  if (!wanted || wanted === MAIN_PROFILE) return null;
   const [row] = await db
     .select({ id: users.id, name: users.name })
     .from(users)

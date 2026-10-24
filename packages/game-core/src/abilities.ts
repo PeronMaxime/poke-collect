@@ -26,7 +26,8 @@ import type { Rng } from './rng';
 /**
  * Activités où un talent peut agir. `breeding` : parents en pension et assistant de la Pension ;
  * `incubator` : assistant de la couveuse ; `museum` : assistant du Musée ; `center` : Pokémon
- * soigné au Centre Pokémon et assistant du Centre ; `transfer` : Pokémon transféré.
+ * soigné au Centre Pokémon et assistant du Centre ; `farm` : assistant de la ferme à baies ;
+ * `transfer` : Pokémon transféré.
  */
 export type AbilityActivity =
   | 'expedition'
@@ -37,6 +38,7 @@ export type AbilityActivity =
   | 'incubator'
   | 'museum'
   | 'center'
+  | 'farm'
   | 'transfer';
 
 export const ABILITY_ACTIVITY_LABELS: Record<AbilityActivity, string> = {
@@ -48,38 +50,117 @@ export const ABILITY_ACTIVITY_LABELS: Record<AbilityActivity, string> = {
   incubator: 'couveuse (assistant)',
   museum: 'Musée (assistant)',
   center: 'Centre Pokémon (soigné et assistant)',
+  farm: 'ferme à baies (assistant)',
   transfer: 'transfert',
 };
 
-/** Postes d'assistant : un Pokémon affecté à un bâtiment y apporte les effets de son talent. */
-export const ASSISTANT_POSTS = ['daycare', 'incubator', 'museum', 'center'] as const;
+/**
+ * Postes d'assistant : un Pokémon affecté à un bâtiment (une pension, une couveuse, une place du
+ * Musée, un Centre Pokémon, la ferme à baies) y apporte les effets de son talent, pour ce bâtiment
+ * seulement.
+ */
+export const ASSISTANT_POSTS = [
+  'daycare',
+  'incubator',
+  'museum',
+  'center',
+  'farm',
+  'harvest',
+] as const;
 export type AssistantPost = (typeof ASSISTANT_POSTS)[number];
+
+/**
+ * Places couvertes par un assistant : une couveuse et un Centre Pokémon en ont 6 chacun (les
+ * places suivantes forment une autre couveuse, un autre Centre) ; une pension, une place du Musée ;
+ * l'arrosage et la récolte de la ferme, ses 9 parcelles.
+ */
+export const ASSISTANT_POST_PLACES: Record<AssistantPost, number> = {
+  daycare: 1,
+  incubator: 6,
+  museum: 1,
+  center: 6,
+  farm: 9,
+  harvest: 9,
+};
+
+/** Poste d'assistant (bâtiment) dont dépend une place. */
+export const assistantSlotOf = (post: AssistantPost, place: number) =>
+  Math.floor(place / ASSISTANT_POST_PLACES[post]);
+
+/** Postes d'assistant (bâtiments) pour `places` places. */
+export const assistantSlotCount = (post: AssistantPost, places: number) =>
+  Math.ceil(places / ASSISTANT_POST_PLACES[post]);
 
 export const ASSISTANT_POST_INFO: Record<
   AssistantPost,
-  { label: string; activity: AbilityActivity; help: string }
+  {
+    label: string;
+    activity: AbilityActivity;
+    help: string;
+    /** Type exigé de l'assistant (la ferme : un Pokémon Eau pour arroser). */
+    requiredType?: string;
+    /** Talent exigé : il doit augmenter ce paramètre au poste (récolte de la ferme). */
+    requiredParam?: AbilityParam;
+  }
 > = {
   daycare: {
     label: 'Assistant de la Pension',
     activity: 'breeding',
-    help: 'Son talent agit sur la ponte et sur les œufs de toutes les pensions.',
+    help: 'Son talent agit sur la ponte et sur les œufs de cette pension.',
   },
   incubator: {
     label: 'Assistant de la couveuse',
     activity: 'incubator',
-    help: 'Son talent agit sur la durée d’éclosion des œufs ramassés (Corps Ardent, Armumagma).',
+    help: 'Son talent agit sur la durée d’éclosion des œufs posés dans cette couveuse (Corps Ardent, Armumagma).',
   },
   museum: {
     label: 'Assistant du Musée',
     activity: 'museum',
-    help: 'Son talent agit sur la restauration des fossiles déposés et sur les Pokémon ranimés.',
+    help: 'Son talent agit sur la restauration du fossile déposé ici et sur le Pokémon ranimé.',
   },
   center: {
     label: 'Assistant du Centre Pokémon',
     activity: 'center',
-    help: 'Son talent agit sur la durée des soins des Pokémon déposés (Cœur Soin).',
+    help: 'Son talent agit sur la durée des soins des Pokémon déposés dans ce Centre (Cœur Soin).',
+  },
+  farm: {
+    label: 'Assistant de la ferme',
+    activity: 'farm',
+    help: 'Un Pokémon de type Eau arrose le champ : sans lui, les baies ne poussent pas. Son talent peut accélérer la pousse.',
+    requiredType: 'water',
+  },
+  harvest: {
+    label: 'Assistant de récolte',
+    activity: 'farm',
+    help: 'Seul un Pokémon dont le talent augmente la récolte peut tenir ce poste : il ajoute des baies à chaque parcelle récoltée.',
+    requiredParam: 'berryYield',
   },
 };
+
+/**
+ * Le Pokémon peut-il tenir ce poste ? Type exigé (forme comprise) ; talent exigé : un effet qui
+ * augmente le paramètre chez l'assistant (conditions non vérifiées).
+ */
+export function canAssist(
+  ctx: GameContext,
+  post: AssistantPost,
+  p: Pick<PokemonInstance, 'speciesId' | 'formId' | 'ability'>,
+): boolean {
+  const { activity, requiredType, requiredParam } = ASSISTANT_POST_INFO[post];
+  if (requiredType && !ctx.species(p.speciesId, p.formId)?.types.includes(requiredType)) {
+    return false;
+  }
+  return (
+    !requiredParam ||
+    (ctx.ability(effectiveAbility(ctx, p))?.effects ?? []).some(
+      (e) =>
+        e.type === 'modifier' &&
+        e.param === requiredParam &&
+        e.value > 0 &&
+        helpsAsAssistant(e, activity),
+    )
+  );
+}
 
 export interface AbilityParamInfo {
   /** Groupe d'affichage dans l'admin. */
@@ -332,6 +413,24 @@ export const ABILITY_PARAMS: Record<AbilityParam, AbilityParamInfo> = {
     selfScope: false,
     activities: ['transfer'],
     help: 'Bonbons de lignée reçus en transférant ce Pokémon.',
+  },
+  berryYield: {
+    group: 'Ferme à baies',
+    label: 'Baies récoltées',
+    kind: 'flat',
+    unit: 'baie(s)',
+    selfScope: false,
+    activities: ['farm'],
+    help: 'Baies en plus par parcelle récoltée, chez l’assistant de récolte de la ferme (seuls les Pokémon dont le talent l’augmente peuvent tenir ce poste).',
+  },
+  berryGrowth: {
+    group: 'Ferme à baies',
+    label: 'Vitesse de pousse',
+    kind: 'percent',
+    unit: '%',
+    selfScope: false,
+    activities: ['farm'],
+    help: 'Vitesse de pousse des baies, chez l’assistant de la ferme qui arrose le champ (+100 = deux fois plus vite).',
   },
   critChance: {
     group: 'Combats',

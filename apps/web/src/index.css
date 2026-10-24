@@ -78,3 +78,134 @@ body {
     filter: brightness(2);
   }
 }
+
+/*
+ * Combats : particules de la météo (pluie, tempête de sable, grêle) et reflets du soleil,
+ * au-dessus du décor et sous les Pokémon. Chaque calque se décale d'un nombre entier de motifs
+ * pour boucler sans saut.
+ */
+.weather-sun {
+  background: radial-gradient(circle at 88% 10%, #fff7 0 8%, transparent 32%);
+  animation: weather-glow 4s ease-in-out infinite alternate;
+}
+.weather-rain {
+  inset: -10% -20%;
+  transform: skewX(-12deg);
+  background-image:
+    radial-gradient(1px 10px at 50% 50%, #ffffffb0 60%, transparent),
+    radial-gradient(1px 7px at 50% 50%, #ffffff80 60%, transparent);
+  background-size:
+    23px 60px,
+    37px 90px;
+  background-position:
+    0 0,
+    11px 30px;
+  animation: weather-rain 0.6s linear infinite;
+}
+/* Sable : deux calques (proche et rapide, lointain et lent) qui tombent en zigzaguant. */
+.weather-sand {
+  background-image: linear-gradient(to right, #fde68a33, #d9770633, #fde68a33);
+}
+.weather-sand::before,
+.weather-sand::after {
+  content: '';
+  position: absolute;
+  inset: 0 -30px;
+}
+.weather-sand::before {
+  background-image:
+    radial-gradient(circle, #a16207bb 1.5px, transparent 2px),
+    radial-gradient(circle, #b45309aa 1.5px, transparent 2px);
+  background-size: 60px 40px;
+  background-position:
+    0 0,
+    30px 20px;
+  animation:
+    weather-sand-near 1.2s linear infinite,
+    weather-sand-sway-near 0.9s ease-in-out infinite alternate;
+}
+.weather-sand::after {
+  background-image:
+    radial-gradient(circle, #ca8a0499 1px, transparent 1.5px),
+    radial-gradient(circle, #d9770688 1px, transparent 1.5px);
+  background-size: 90px 60px;
+  background-position:
+    0 0,
+    45px 30px;
+  animation:
+    weather-sand-far 2.6s linear infinite,
+    weather-sand-sway-far 1.5s ease-in-out infinite alternate;
+}
+.weather-hail {
+  background-image:
+    radial-gradient(circle, #fff 2px, transparent 2.5px),
+    radial-gradient(circle, #ffffffcc 1.5px, transparent 2px);
+  background-size:
+    40px 40px,
+    56px 56px;
+  background-position:
+    0 0,
+    20px 28px;
+  animation: weather-hail 1.6s linear infinite;
+}
+@keyframes weather-glow {
+  from {
+    opacity: 0.6;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes weather-rain {
+  to {
+    background-position:
+      0 120px,
+      11px 210px;
+  }
+}
+@keyframes weather-sand-near {
+  to {
+    background-position:
+      0 80px,
+      30px 100px;
+  }
+}
+@keyframes weather-sand-far {
+  to {
+    background-position:
+      0 120px,
+      45px 150px;
+  }
+}
+@keyframes weather-sand-sway-near {
+  from {
+    transform: translateX(-12px);
+  }
+  to {
+    transform: translateX(12px);
+  }
+}
+@keyframes weather-sand-sway-far {
+  from {
+    transform: translateX(8px);
+  }
+  to {
+    transform: translateX(-8px);
+  }
+}
+@keyframes weather-hail {
+  to {
+    background-position:
+      0 80px,
+      20px 140px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .weather-sun,
+  .weather-rain,
+  .weather-sand::before,
+  .weather-sand::after,
+  .weather-hail {
+    animation: none;
+  }
+}

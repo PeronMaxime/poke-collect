@@ -72,9 +72,4 @@ export function wikiAbilities(ctx: GameContext): { id: string; holders: AbilityH
   return [...holders].map(([id, list]) => ({ id, holders: list }));
 }
 
-/** Texte sans accents ni majuscules, pour les recherches. */
-export const searchKey = (text: string) =>
-  text
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase();
+export { searchKey } from '@poke/shared';

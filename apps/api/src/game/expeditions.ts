@@ -6,6 +6,7 @@ import {
   MAX_SEED,
   checkTeam,
   expeditionEnv,
+  expeditionBerryCount,
   expeditionPlan,
   isZoneUnlocked,
   legendarySite,
@@ -222,7 +223,11 @@ export async function startExpedition(
   if (input.ballItemId && !ctx.itemEffect(input.ballItemId, 'ball')) {
     throw new GameError(400, 'NOT_A_BALL');
   }
-  if (input.berryItemId && !ctx.itemEffect(input.berryItemId, 'captureBoost')) {
+  if (
+    input.berryItemId &&
+    !ctx.itemEffect(input.berryItemId, 'captureBoost') &&
+    !ctx.itemEffect(input.berryItemId, 'encounterBoost')
+  ) {
     throw new GameError(400, 'NOT_A_BERRY');
   }
 
@@ -235,8 +240,14 @@ export async function startExpedition(
     const check = checkTeam(ctx, site, input.durationMinutes, team, hour);
     if (check.errors.length > 0) throw new GameError(400, 'TEAM_INVALID', { errors: check.errors });
 
-    // Une Ball (et une baie) par rencontre au maximum : on réserve ce qui sera utilisé.
-    const plan = expeditionPlan(ctx, input.durationMinutes, expeditionEnv(site, team, hour));
+    // Une Ball (et une baie de capture) par rencontre au maximum : on réserve ce qui sera
+    // utilisé. Baie Nanana : une par heure, toutes exigées (elles multiplient les rencontres).
+    const plan = expeditionPlan(
+      ctx,
+      input.durationMinutes,
+      expeditionEnv(site, team, hour),
+      input.berryItemId,
+    );
     const { encounters } = plan;
     const reserve = async (itemId: string | null, max = encounters) => {
       if (!itemId) return 0;
@@ -246,7 +257,15 @@ export async function startExpedition(
       return quantity;
     };
     const balls = await reserve(input.ballItemId, input.ballCount);
-    const berries = await reserve(input.berryItemId);
+    let berries: number;
+    if (input.berryItemId && ctx.itemEffect(input.berryItemId, 'encounterBoost')) {
+      berries = expeditionBerryCount(ctx, input.berryItemId, input.durationMinutes, encounters);
+      if (!(await takeItems(tx, userId, input.berryItemId, berries))) {
+        throw new GameError(409, 'NOT_ENOUGH_BERRIES', { itemId: input.berryItemId, berries });
+      }
+    } else {
+      berries = await reserve(input.berryItemId);
+    }
     const chain =
       (await shinyChains(tx, ctx, userId, now, { zoneId: zone.id })).get(zone.id)?.chain ?? 0;
     // Fuyards de la zone au départ : ils partent avec l'expédition.

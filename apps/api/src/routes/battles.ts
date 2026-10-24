@@ -1,7 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '@poke/db';
-import { startBattleInputSchema, switchDungeonInputSchema } from '@poke/shared';
+import {
+  startBattleInputSchema,
+  switchDungeonInputSchema,
+  combatItemInputSchema,
+} from '@poke/shared';
 import type { BattleDto, BattlesResponse, ClaimBattleResponse } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import {
@@ -13,6 +17,7 @@ import {
   settleFinishedBattle,
   startBattle,
   switchBattleMember,
+  useBattleItem,
   toBattleDto,
   toRecordDto,
   trainerRecords,
@@ -61,6 +66,13 @@ export async function battleRoutes(app: FastifyInstance, { db, content, hooks, n
     const { id } = uuidParams.parse(request.params);
     const input = switchDungeonInputSchema.parse(request.body);
     return toBattleDto(await switchBattleMember(db, request.user!.id, id, input, now()));
+  });
+
+  /** Baie Sitrus (ou autre objet de soin) donnée au Pokémon actif. */
+  app.post('/api/battles/:id/item', async (request): Promise<BattleDto> => {
+    const { id } = uuidParams.parse(request.params);
+    const input = combatItemInputSchema.parse(request.body);
+    return toBattleDto(await useBattleItem(db, content, request.user!.id, id, input, now()));
   });
 
   /** Fuite, puis réclamation (aucune récompense). */

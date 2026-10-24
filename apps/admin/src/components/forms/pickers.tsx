@@ -20,6 +20,7 @@ import {
 import type { FormKind } from '@poke/data';
 import { WEATHER_LABELS } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
+import { searchKey } from '@poke/shared';
 import { NumberInput } from './fields';
 
 /** Sélecteurs avec recherche et aperçu (sprites, icônes, couleurs de type). */
@@ -100,13 +101,13 @@ export function SpeciesSelect({
 }) {
   const [query, setQuery] = useState('');
   const [open, setOpen] = useState(false);
-  const needle = query.trim().toLowerCase();
+  const needle = searchKey(query.trim());
   const results = allSpecies
     .filter(
       (s) =>
         !needle ||
         String(s.id) === needle ||
-        ctx.species(s.id)!.nameFr.toLowerCase().includes(needle) ||
+        searchKey(ctx.species(s.id)!.nameFr).includes(needle) ||
         s.name.includes(needle),
     )
     .slice(0, 30);

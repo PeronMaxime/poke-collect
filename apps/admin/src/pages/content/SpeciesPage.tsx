@@ -12,6 +12,7 @@ import {
   speciesForms,
 } from '@poke/data';
 import type { FormKind, PokemonForm } from '@poke/data';
+import { searchKey } from '@poke/shared';
 import type { AdminSpeciesStatsDto } from '@poke/shared';
 import { IssueList, VersionBanner } from '../../components/EntityPage';
 import { Field, NullableTextInput, Toggle, validate } from '../../components/forms/fields';
@@ -139,16 +140,16 @@ function FormsView({ kind }: { kind: FormKind }) {
   const overrides = new Map(w.content.speciesOverrides.map((o) => [o.speciesId, o]));
   const locations = locateForms(w);
   const section = DEX_FORM_SECTIONS.find((s) => s.kind === kind)!;
-  const needle = search.trim().toLowerCase();
+  const needle = searchKey(search.trim());
   const rows = allForms.filter((f: PokemonForm) => {
     if (f.kind !== kind) return false;
     if (!needle) return true;
     return (
       String(f.speciesId) === needle ||
-      f.nameFr.toLowerCase().includes(needle) ||
-      w.ctx.species(f.speciesId)!.nameFr.toLowerCase().includes(needle) ||
+      searchKey(f.nameFr).includes(needle) ||
+      searchKey(w.ctx.species(f.speciesId)!.nameFr).includes(needle) ||
       f.name.includes(needle) ||
-      f.types.some((t) => typeLabel(t).toLowerCase().includes(needle))
+      f.types.some((t) => searchKey(typeLabel(t)).includes(needle))
     );
   });
 
@@ -289,7 +290,7 @@ function SpeciesView() {
   const unlocatedCount = allSpecies.filter(
     (s) => w.ctx.species(s.id)!.enabled && !hasActiveZone(locations.get(s.id)),
   ).length;
-  const needle = search.trim().toLowerCase();
+  const needle = searchKey(search.trim());
   const rows = allSpecies.filter((s) => {
     if (onlyOverridden && !overrides.has(s.id)) return false;
     if (onlyUnlocated && hasActiveZone(locations.get(s.id))) return false;
@@ -297,9 +298,9 @@ function SpeciesView() {
     const merged = w.ctx.species(s.id)!;
     return (
       String(s.id) === needle ||
-      merged.nameFr.toLowerCase().includes(needle) ||
+      searchKey(merged.nameFr).includes(needle) ||
       s.name.includes(needle) ||
-      s.types.some((t) => typeLabel(t).toLowerCase().includes(needle))
+      s.types.some((t) => searchKey(typeLabel(t)).includes(needle))
     );
   });
 

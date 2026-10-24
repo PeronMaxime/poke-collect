@@ -17,6 +17,76 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '24 octobre 2026',
+    title: 'Ferme à baies, nouvelles baies et un assistant par place',
+    changes: [
+      {
+        section: 'Ferme à baies',
+        items: [
+          'Nouvel onglet sous le Musée : un champ de 9 parcelles où planter tes baies.',
+          'Les baies ne poussent que si le champ est arrosé : confie-le à un assistant de type Eau. Sans lui, la pousse se met en pause et reprend là où elle en était. Avec le talent Moiteur, l’arroseur fait pousser les baies 25 % plus vite.',
+          'Un second poste, l’assistant de récolte, accueille les Pokémon dont le talent augmente la récolte : avec le talent Récolte, chaque parcelle récoltée donne une baie de plus.',
+          'Une Baie Framby pousse en 1 h et en donne de 1 à 3 à la récolte : clique sur une baie mûre pour la récolter. Tant qu’elle n’est pas mûre, tu peux l’arracher pour la récupérer.',
+          'La baie grossit au fil de sa pousse. Le bouton « Tout récolter » ramasse toutes les baies mûres d’un coup, et « Remplir le champ » plante la baie choisie dans toutes les parcelles libres (tant qu’il t’en reste).',
+        ],
+      },
+      {
+        section: 'Nouvelles baies',
+        items: [
+          'Baie Sitrus : en combat de dresseur ou en donjon, un bouton à son image (avec le nombre qu’il te reste) la donne à ton Pokémon actif, qui récupère un quart de ses PV. Une fois toutes les 10 secondes au plus.',
+          'Baie Grena : donne-la à un Pokémon depuis le Sac ou depuis sa fiche au PC, son bonheur augmente de 1.',
+          'Baie Nanana : emporte-la en expédition à la place de la Baie Framby pour 25 % de rencontres en plus. Il en faut une par heure d’expédition (au moins une).',
+          'Toutes se plantent à la ferme à baies.',
+        ],
+      },
+      {
+        section: 'Baies plus rares',
+        items: [
+          'Les baies ne se trouvent plus qu’en expédition, et rarement : la Boutique ne vend plus de Baie Framby et les nouveaux dresseurs n’en reçoivent plus au départ.',
+          'Une fois ta première baie trouvée, cultive-la à la ferme pour en avoir davantage.',
+        ],
+      },
+      {
+        section: 'Assistants',
+        items: [
+          'Chaque pension et chaque place du Musée ont désormais leur propre assistant, choisi directement depuis la pension ou la place. Son talent n’agit que sur le couple de sa pension, ou sur le fossile déposé à sa place.',
+          'La couveuse et le Centre Pokémon gardent un assistant chacun, qui agit sur leurs 6 places.',
+          'Tes assistants déjà en poste restent à la première pension et à la première place du Musée.',
+          'Tu choisis la pension où déposer un couple en cliquant sur la pension libre voulue. Les œufs, fossiles et Pokémon à soigner prennent la première place libre.',
+        ],
+      },
+      {
+        section: 'Expéditions',
+        items: [
+          'Chaque zone affiche deux barres de progression : les Pokémon de la zone que tu as capturés, et ceux que tu as capturés en shiny (par exemple 7 / 8).',
+          'Au survol d’une expédition en cours, son taux de shiny est de nouveau affiché, avec la chaîne et le Charme Chroma.',
+          'Avant de partir dans la zone d’un fuyard, il apparaît parmi les rencontres possibles avec sa chance de capture. Son pourcentage est sa part de chaque rencontre : les autres Pokémon se partagent le reste, le total fait 100 %. Ses chances de le croiser sur toute l’expédition restent indiquées dans l’encadré au-dessus.',
+        ],
+      },
+      {
+        section: 'Combats',
+        items: [
+          'Le décor des combats de dresseurs et des donjons montre la météo : soleil éclatant, pluie, tempête de sable ou grêle. Par temps clair, rien ne change.',
+          'Quand un talent impose sa météo (Sable Volant, Sécheresse…), le combat s’ouvre sur la météo du lieu, puis une annonce montre quel Pokémon la change, et le décor bascule. C’est cette météo-là qui compte pour tout le combat.',
+        ],
+      },
+      {
+        section: 'Recherche',
+        items: [
+          'Les recherches ne tiennent plus compte des accents : « evoli » trouve Évoli, au PC, dans les choix d’équipe, à la Pension, dans le Wiki ou parmi les dresseurs.',
+          'À la Pension, la recherche se vide une fois le premier parent choisi, pour voir tous ses partenaires possibles.',
+        ],
+      },
+      {
+        section: 'PC',
+        items: [
+          'Dans la fiche d’un Pokémon, le bouton « Objet » ouvre la liste des objets du sac utilisables sur lui (Capsules, Aromates, Pilule et Patch Talent), au lieu de tout afficher dans la fiche.',
+          'La description du talent ne s’affiche plus en permanence dans la fiche : survole son nom (souligné en pointillés) pour la voir.',
+        ],
+      },
+    ],
+  },
+  {
     date: '23 octobre 2026',
     title: 'Centre Pokémon, Pokémon fuyards, talents mieux affichés et formes au Pokédex',
     changes: [

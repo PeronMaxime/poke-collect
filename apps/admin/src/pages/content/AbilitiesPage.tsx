@@ -5,6 +5,7 @@ import type { GameAbility } from '@poke/content';
 import { abilities, forms as allForms, species as allSpecies } from '@poke/data';
 import type { Ability, SpeciesAbility } from '@poke/data';
 import { abilityEffectText } from '@poke/game-core';
+import { searchKey } from '@poke/shared';
 import { IssueList, VersionBanner } from '../../components/EntityPage';
 import { Field, TextInput, validate } from '../../components/forms/fields';
 import { Sprite } from '../../components/forms/pickers';
@@ -117,7 +118,7 @@ export function AbilitiesPage() {
   if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
   const w = working.data;
   const { ctx } = w;
-  const needle = search.trim().toLowerCase();
+  const needle = searchKey(search.trim());
 
   const allRows = abilityRows(ctx, regionFilter);
   const withEffect = allRows.filter((r) => hasEffect(r.entry)).length;
@@ -129,8 +130,8 @@ export function AbilitiesPage() {
     .filter(
       ({ ability, holders, description }) =>
         !needle ||
-        `${ability.nameFr} ${ability.name} ${description ?? ''}`.toLowerCase().includes(needle) ||
-        holders.some((h) => h.nameFr.toLowerCase().includes(needle)),
+        searchKey(`${ability.nameFr} ${ability.name} ${description ?? ''}`).includes(needle) ||
+        holders.some((h) => searchKey(h.nameFr).includes(needle)),
     )
     .sort((a, b) => a.ability.nameFr.localeCompare(b.ability.nameFr, 'fr'));
   const selectedRow = allRows.find((r) => r.ability.name === selected);
