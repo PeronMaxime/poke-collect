@@ -104,6 +104,26 @@ const EFFECTS: Record<
     help: 'Utilisé sur un Pokémon K.O. (depuis le sac ou sa fiche au PC) : il est aussitôt soigné, sans passer par le Centre Pokémon. Consommé.',
     create: () => ({ type: 'revive' }),
   },
+  berryPlant: {
+    label: 'Plantation (ferme)',
+    help: 'Plantée à la ferme à baies (consommée) : pousse pendant la durée donnée tant qu’un assistant Eau arrose le champ, puis donne entre le minimum et le maximum de baies de la même espèce.',
+    create: () => ({ type: 'berryPlant', minutes: 60, minYield: 1, maxYield: 3 }),
+  },
+  battleHeal: {
+    label: 'Soin en combat',
+    help: 'En combat (donjon, dresseur) : un bouton permet de la donner au Pokémon actif, qui récupère cette part de ses PV max (Baie Sitrus), au plus une fois par durée de recharge. Consommée.',
+    create: () => ({ type: 'battleHeal', fraction: 0.25, cooldownSeconds: 10 }),
+  },
+  happiness: {
+    label: 'Bonheur',
+    help: 'Utilisée sur un Pokémon (depuis le sac ou sa fiche au PC) : son bonheur augmente (Baie Grena). Consommée.',
+    create: () => ({ type: 'happiness', amount: 1 }),
+  },
+  encounterBoost: {
+    label: 'Rencontres en expédition',
+    help: 'Emportée en expédition à la place d’une baie de capture : multiplie le nombre de rencontres (Baie Nanana). Une baie par heure d’expédition, au moins une, toutes consommées.',
+    create: () => ({ type: 'encounterBoost', multiplier: 1.25 }),
+  },
 };
 
 const pokeApiById = new Map(pokeApiItems.map((i) => [i.name, i]));
@@ -310,6 +330,59 @@ function ItemForm({
                   />
                 </Field>
               )}
+              {effect.type === 'battleHeal' && (
+                <Field label="PV rendus" error={errors.get(`effects.${i}.fraction`)}>
+                  <NumberInput
+                    className="w-32"
+                    value={Math.round(effect.fraction * 100)}
+                    min={1}
+                    max={100}
+                    unit="%"
+                    disabled={disabled}
+                    onChange={(v) => update({ ...effect, fraction: v / 100 })}
+                  />
+                </Field>
+              )}
+              {effect.type === 'battleHeal' && (
+                <Field label="Recharge" error={errors.get(`effects.${i}.cooldownSeconds`)}>
+                  <NumberInput
+                    className="w-32"
+                    value={effect.cooldownSeconds}
+                    min={0}
+                    max={3600}
+                    unit="s"
+                    disabled={disabled}
+                    onChange={(v) => update({ ...effect, cooldownSeconds: v })}
+                  />
+                </Field>
+              )}
+              {effect.type === 'happiness' && (
+                <Field label="Bonheur" error={errors.get(`effects.${i}.amount`)}>
+                  <NumberInput
+                    className="w-24"
+                    value={effect.amount}
+                    min={1}
+                    max={255}
+                    unit="+"
+                    disabled={disabled}
+                    onChange={(v) => update({ ...effect, amount: v })}
+                  />
+                </Field>
+              )}
+              {effect.type === 'encounterBoost' && (
+                <Field label="Rencontres" error={errors.get(`effects.${i}.multiplier`)}>
+                  <NumberInput
+                    className="w-32"
+                    value={effect.multiplier}
+                    min={1}
+                    max={10}
+                    step={0.05}
+                    unit="×"
+                    disabled={disabled}
+                    onChange={(v) => update({ ...effect, multiplier: v })}
+                  />
+                </Field>
+              )}
               {effect.type === 'captureBoost' && (
                 <Field label="Multiplicateur" error={errors.get(`effects.${i}.multiplier`)}>
                   <NumberInput
@@ -436,6 +509,42 @@ function ItemForm({
                       disabled={disabled}
                       onChange={(v) => update({ ...effect, minutes: v })}
                     />
+                  </Field>
+                </>
+              )}
+              {effect.type === 'berryPlant' && (
+                <>
+                  <Field label="Pousse" error={errors.get(`effects.${i}.minutes`)}>
+                    <NumberInput
+                      className="w-32"
+                      value={effect.minutes}
+                      min={1}
+                      max={10_080}
+                      unit="min"
+                      disabled={disabled}
+                      onChange={(v) => update({ ...effect, minutes: v })}
+                    />
+                  </Field>
+                  <Field label="Baies récoltées" error={errors.get(`effects.${i}.minYield`)}>
+                    <span className="flex items-center gap-2">
+                      <NumberInput
+                        className="w-20"
+                        value={effect.minYield}
+                        min={1}
+                        max={99}
+                        disabled={disabled}
+                        onChange={(v) => update({ ...effect, minYield: v })}
+                      />
+                      à
+                      <NumberInput
+                        className="w-20"
+                        value={effect.maxYield}
+                        min={effect.minYield}
+                        max={99}
+                        disabled={disabled}
+                        onChange={(v) => update({ ...effect, maxYield: v })}
+                      />
+                    </span>
                   </Field>
                 </>
               )}

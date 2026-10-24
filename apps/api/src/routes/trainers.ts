@@ -1,9 +1,9 @@
 import type { FastifyInstance } from 'fastify';
-import { and, asc, eq, ilike, inArray, isNotNull, sql } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, like, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { playerProfiles, pokedex, pokedexForms, pokemon } from '@poke/db';
 import type { Db } from '@poke/db';
-import { featuredPokemonInputSchema, trainerSearchQuerySchema } from '@poke/shared';
+import { featuredPokemonInputSchema, searchKey, trainerSearchQuerySchema } from '@poke/shared';
 import type {
   FeaturedPokemonDto,
   TrainerPokedexResponse,
@@ -24,6 +24,10 @@ interface Deps {
 
 /** Résultats de recherche affichés au plus. */
 const SEARCH_LIMIT = 10;
+
+/** Lettres accentuées et leur version sans accent, pour une recherche qui les ignore. */
+const ACCENTED = 'àáâãäåçèéêëìíîïñòóôõöùúûüýÿ';
+const UNACCENTED = 'aaaaaaceeeeiiiinooooouuuuyy';
 
 const nameParams = z.object({ name: z.string().trim().min(1).max(16) });
 
@@ -48,9 +52,10 @@ export async function trainerRoutes(app: FastifyInstance, { db, content, hooks }
 
   app.get('/api/trainers', async (request): Promise<TrainerSearchResultDto[]> => {
     const { q } = trainerSearchQuerySchema.parse(request.query);
-    const lower = q.toLowerCase();
+    // Ni la casse ni les accents ne comptent : « eloise » trouve « Éloïse ».
+    const lower = searchKey(q);
     const pattern = `%${lower.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
-    const name = sql`lower(${playerProfiles.trainerName})`;
+    const name = sql<string>`translate(lower(${playerProfiles.trainerName}), ${ACCENTED}, ${UNACCENTED})`;
     return (
       db
         .select({
@@ -58,12 +63,7 @@ export async function trainerRoutes(app: FastifyInstance, { db, content, hooks }
           starterSpeciesId: playerProfiles.starterSpeciesId,
         })
         .from(playerProfiles)
-        .where(
-          and(
-            isNotNull(playerProfiles.starterSpeciesId),
-            ilike(playerProfiles.trainerName, pattern),
-          ),
-        )
+        .where(and(isNotNull(playerProfiles.starterSpeciesId), like(name, pattern)))
         // Nom exact, puis noms qui commencent par la recherche, puis ordre alphabétique.
         .orderBy(sql`${name} = ${lower} desc`, sql`starts_with(${name}, ${lower}) desc`, asc(name))
         .limit(SEARCH_LIMIT)

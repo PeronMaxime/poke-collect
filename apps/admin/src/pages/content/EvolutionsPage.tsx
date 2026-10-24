@@ -4,6 +4,7 @@ import type { EvolutionMethod, EvolutionOverride, TimeOfDay } from '@poke/conten
 import type { EvolutionDetail } from '@poke/data';
 import { evolutionOptions, pokeApiEvolutions } from '@poke/game-core';
 import type { EvolutionOption, GameContext } from '@poke/game-core';
+import { searchKey } from '@poke/shared';
 import { EntityPage, VersionBanner } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
 import {
@@ -90,7 +91,7 @@ function OverviewView() {
   const w = working.data;
   const { ctx } = w;
   const speciesIds = [...new Set(ctx.regions.flatMap((r) => r.speciesIds))].sort((a, b) => a - b);
-  const needle = search.trim().toLowerCase();
+  const needle = searchKey(search.trim());
   const rows = speciesIds
     .flatMap((from) => evolutionOptions(ctx, from).map((option) => ({ from, option })))
     .map((r) => ({ ...r, missing: missingItems(ctx, r.option.methods) }))
@@ -98,9 +99,9 @@ function OverviewView() {
       ({ from, option, missing }) =>
         (!onlyProblems || option.methods.length === 0 || missing.length > 0) &&
         (!needle ||
-          `${speciesLabel(ctx, from)} ${speciesLabel(ctx, option.toSpeciesId, option.toFormId)}`
-            .toLowerCase()
-            .includes(needle)),
+          searchKey(
+            `${speciesLabel(ctx, from)} ${speciesLabel(ctx, option.toSpeciesId, option.toFormId)}`,
+          ).includes(needle)),
     );
 
   return (

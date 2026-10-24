@@ -10,6 +10,7 @@ import { Modal } from '../components/ui';
 import { ApiError, api } from '../lib/api';
 import { authClient } from '../lib/auth-client';
 import { isIos, pushSupported, useDeviceSubscription, useInstallPrompt } from '../lib/pwa';
+import { MAIN_TAB_PROFILE, openProfileInNewTab, setTabProfile } from '../lib/tab-profile';
 
 const PUSH_KEY = ['push'] as const;
 
@@ -192,7 +193,10 @@ function BetaProfilesSection() {
     );
   const create = useMutation({
     mutationFn: () => api<BetaProfilesResponse>('/api/beta/profiles', { method: 'POST' }),
-    onSuccess: onSwitched,
+    onSuccess: (data) => {
+      setTabProfile(data.activeProfileId);
+      onSwitched();
+    },
     onError,
   });
   const select = useMutation({
@@ -201,7 +205,12 @@ function BetaProfilesSection() {
         method: 'POST',
         json: { profileId },
       }),
-    onSuccess: onSwitched,
+    // Le cookie devient le profil par défaut des nouveaux onglets ; celui-ci garde le sien.
+    onSuccess: (data) => {
+      const main = data.profiles.find((p) => p.main);
+      setTabProfile(data.activeProfileId === main?.id ? MAIN_TAB_PROFILE : data.activeProfileId);
+      onSwitched();
+    },
     onError,
   });
 
@@ -216,8 +225,9 @@ function BetaProfilesSection() {
         Profils <span className="text-xs font-normal text-amber-600">bêta</span>
       </h3>
       <p className="mt-1 text-sm text-slate-500">
-        Un profil secondaire est une nouvelle partie sur le même compte. Ces profils pourront être
-        supprimés à la fin de la bêta.
+        Un profil secondaire est une nouvelle partie sur le même compte. Chaque onglet garde son
+        profil : « Nouvel onglet » permet d’en jouer plusieurs en même temps. Ces profils pourront
+        être supprimés à la fin de la bêta.
       </p>
       <ul className="mt-2 space-y-1">
         {data.profiles.map((p) => {
@@ -233,13 +243,22 @@ function BetaProfilesSection() {
               {active ? (
                 <span className="text-xs font-semibold text-emerald-600">Actif</span>
               ) : (
-                <button
-                  className="btn-ghost"
-                  disabled={busy}
-                  onClick={() => select.mutate(p.main ? null : p.id)}
-                >
-                  Jouer
-                </button>
+                <span className="flex gap-1">
+                  <button
+                    className="btn-ghost"
+                    disabled={busy}
+                    onClick={() => select.mutate(p.main ? null : p.id)}
+                  >
+                    Jouer
+                  </button>
+                  <button
+                    className="btn-ghost"
+                    title="Jouer ce profil dans un nouvel onglet, en gardant celui-ci"
+                    onClick={() => openProfileInNewTab(p.main ? MAIN_TAB_PROFILE : p.id)}
+                  >
+                    Nouvel onglet
+                  </button>
+                </span>
               )}
             </li>
           );

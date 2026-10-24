@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { GameAbility } from '@poke/content';
 import { abilityModifier, resolveWeather } from './abilities';
-import { attackDamage, buildDungeonSetup, simulateDungeon } from './dungeon';
+import { attackDamage, buildDungeonSetup, combatWeatherSource, simulateDungeon } from './dungeon';
 import type { DungeonFighter, DungeonSetup, DungeonTraits } from './dungeon';
 import { expeditionEnv } from './expedition';
 import { member, testContext } from './test-helpers';
@@ -208,5 +208,43 @@ describe('météo des talents', () => {
     const dungeon = { ...ctx.dungeon('mega-dracaufeu-x')!, weather: 'rain' as const };
     const team = [{ ...member('a', 6, 50, { ability: 'cloud-nine' }), move: null }];
     expect(buildDungeonSetup(withAbilities, dungeon, team, 1).weather).toBeNull();
+  });
+
+  it('garde la météo du lieu et retrouve le talent qui l’a remplacée', () => {
+    const dungeon = { ...ctx.dungeon('mega-dracaufeu-x')!, weather: 'rain' as const };
+    const plain = buildDungeonSetup(
+      withAbilities,
+      dungeon,
+      [{ ...member('a', 6, 50), move: null }],
+      1,
+    );
+    expect(plain.placeWeather).toBe('rain');
+    expect(combatWeatherSource(withAbilities, plain)).toBeNull();
+
+    const sunny = buildDungeonSetup(
+      withAbilities,
+      dungeon,
+      [
+        { ...member('a', 6, 50), move: null },
+        { ...member('b', 6, 50, { ability: 'drought' }), move: null },
+      ],
+      1,
+    );
+    expect(sunny).toMatchObject({ weather: 'sun', placeWeather: 'rain' });
+    expect(combatWeatherSource(withAbilities, sunny)).toMatchObject({
+      side: 'player',
+      ability: 'drought',
+    });
+    expect(combatWeatherSource(withAbilities, sunny)?.fighter).toBe(sunny.team[1]);
+
+    const calm = buildDungeonSetup(
+      withAbilities,
+      dungeon,
+      [{ ...member('a', 6, 50, { ability: 'cloud-nine' }), move: null }],
+      1,
+    );
+    expect(combatWeatherSource(withAbilities, calm)?.ability).toBe('cloud-nine');
+    // Combat antérieur, sans météo du lieu : rien à annoncer.
+    expect(combatWeatherSource(withAbilities, { ...sunny, placeWeather: undefined })).toBeNull();
   });
 });

@@ -12,6 +12,7 @@ import {
   itemIcon,
   lineageSpeciesId,
 } from '../../lib/labels';
+import { HappinessDialog } from './HappinessDialog';
 import { ReviveDialog } from './ReviveDialog';
 
 const CATEGORY_LABELS: Record<ItemCategory, string> = {
@@ -31,6 +32,7 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
   const stacks = inventory.data ?? [];
   const candyStacks = candies.data ?? [];
   const [reviving, setReviving] = useState<string | null>(null);
+  const [cheering, setCheering] = useState<string | null>(null);
 
   if (!inventory.isPending && stacks.length === 0 && candyStacks.length === 0) {
     return (
@@ -81,6 +83,11 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
                         Utiliser
                       </button>
                     )}
+                    {s.quantity > 0 && ctx.itemEffect(s.itemId, 'happiness') && (
+                      <button className="btn-primary" onClick={() => setCheering(s.itemId)}>
+                        Utiliser
+                      </button>
+                    )}
                   </li>
                 );
               })}
@@ -89,6 +96,9 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
         );
       })}
       {reviving && <ReviveDialog ctx={ctx} itemId={reviving} onClose={() => setReviving(null)} />}
+      {cheering && (
+        <HappinessDialog ctx={ctx} itemId={cheering} onClose={() => setCheering(null)} />
+      )}
       {candyStacks.length > 0 && (
         <section>
           <h2 className="mb-2 font-semibold">Bonbons de lignée</h2>

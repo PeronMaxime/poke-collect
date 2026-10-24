@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import type { ContentEntityKind, ContentIssue } from '@poke/content';
 import type { z } from 'zod';
+import { searchKey } from '@poke/shared';
 import type { EntityCollection, WorkingVersion } from '../lib/content';
 import {
   errorMessage,
@@ -103,9 +104,9 @@ export function EntityPage<T>(props: EntityPageProps<T>) {
   if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
   const w = working.data;
   const entities = props.list(w);
-  const needle = search.trim().toLowerCase();
+  const needle = searchKey(search.trim());
   const visible = entities.filter(
-    (e) => !needle || props.searchText(e, w).toLowerCase().includes(needle),
+    (e) => !needle || searchKey(props.searchText(e, w)).includes(needle),
   );
   const issueKeys = new Set(
     w.issues

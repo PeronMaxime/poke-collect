@@ -1,3 +1,4 @@
+import { ASSISTANT_POST_PLACES, assistantSlotCount } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { PokemonDto } from '@poke/shared';
 import { PokemonSprite, useNow } from '../../components/ui';
@@ -30,22 +31,31 @@ export function CenterPage({ ctx }: { ctx: GameContext }) {
         <p className="mb-3 text-sm text-slate-500">
           Les Pokémon mis K.O. en combat le restent jusqu’à ce que tu les confies au Centre : leurs
           soins durent {formatDuration(ctx.balance.center.healMinutes)}, puis ils sont de nouveau
-          prêts.
+          prêts. L’assistant d’un Centre agit sur les soins des Pokémon qu’on y dépose.
         </p>
-        <div className="mb-3">
-          <AssistantCard ctx={ctx} post="center" />
-        </div>
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-          {Array.from({ length: slots }, (_, i) => {
-            const p = healing[i];
-            return p ? (
-              <PatientCard key={p.id} ctx={ctx} p={p} now={now} />
-            ) : (
-              <div
-                key={`empty-${i}`}
-                className="grid min-h-32 place-items-center rounded-2xl border-2 border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700"
-              >
-                Place libre
+        <div className="space-y-4">
+          {Array.from({ length: assistantSlotCount('center', slots) }, (_, center) => {
+            const size = ASSISTANT_POST_PLACES.center;
+            const first = center * size;
+            return (
+              <div key={center} className="space-y-2">
+                {slots > size && <h3 className="text-sm font-semibold">Centre {center + 1}</h3>}
+                <AssistantCard ctx={ctx} post="center" slot={center} standalone />
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  {Array.from({ length: Math.min(size, slots - first) }, (_, i) => {
+                    const p = healing.find((h) => h.healSlot === first + i);
+                    return p ? (
+                      <PatientCard key={p.id} ctx={ctx} p={p} now={now} />
+                    ) : (
+                      <div
+                        key={`empty-${i}`}
+                        className="grid min-h-32 place-items-center rounded-2xl border-2 border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700"
+                      >
+                        Place libre
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             );
           })}

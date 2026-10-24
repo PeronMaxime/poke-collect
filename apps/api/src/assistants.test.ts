@@ -90,34 +90,60 @@ describe('assistants', () => {
     starter = (await call<PokemonDto>('POST', '/api/starter', { speciesId: 1 })).body;
   });
 
-  it('affecte un Pokémon à un bâtiment, qui devient occupé', async () => {
-    const res = await call<AssistantDto>('PUT', '/api/assistants/museum', {
+  it('affecte un Pokémon à une place d’un bâtiment, qui devient occupé', async () => {
+    const res = await call<AssistantDto>('PUT', '/api/assistants/museum/0', {
       pokemonId: starter.id,
     });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect((await call<AssistantDto[]>('GET', '/api/assistants')).body).toEqual([
-      { post: 'museum', pokemonId: starter.id },
+      { post: 'museum', slot: 0, pokemonId: starter.id },
     ]);
     const list = (await call<PokemonDto[]>('GET', '/api/pokemon')).body;
     expect(list.find((p) => p.id === starter.id)).toMatchObject({
       busy: true,
       activity: 'assistant',
     });
-    // Déjà assistant : pas d'autre poste ni d'expédition.
-    expect(
-      (await call('PUT', '/api/assistants/daycare', { pokemonId: starter.id })).body,
-    ).toMatchObject({ error: 'POKEMON_BUSY' });
+    // Déjà assistant : pas d'autre place ni d'expédition.
+    for (const url of ['/api/assistants/daycare/0', '/api/assistants/museum/1']) {
+      expect((await call('PUT', url, { pokemonId: starter.id })).body).toMatchObject({
+        error: 'POKEMON_BUSY',
+      });
+    }
   });
 
-  it('remplace l’assistant d’un bâtiment, puis le libère', async () => {
+  it('un assistant par place : en remplace un, en ajoute un autre, puis les libère', async () => {
     const other = await give(userId, 4);
-    expect((await call('PUT', '/api/assistants/museum', { pokemonId: other.id })).status).toBe(200);
-    expect((await call<AssistantDto[]>('GET', '/api/assistants')).body).toEqual([
-      { post: 'museum', pokemonId: other.id },
+    const third = await give(userId, 7);
+    expect((await call('PUT', '/api/assistants/museum/0', { pokemonId: other.id })).status).toBe(
+      200,
+    );
+    expect((await call('PUT', '/api/assistants/museum/1', { pokemonId: third.id })).status).toBe(
+      200,
+    );
+    const assigned = (await call<AssistantDto[]>('GET', '/api/assistants')).body;
+    expect(assigned.sort((a, b) => a.slot - b.slot)).toEqual([
+      { post: 'museum', slot: 0, pokemonId: other.id },
+      { post: 'museum', slot: 1, pokemonId: third.id },
     ]);
-    expect((await call('DELETE', '/api/assistants/museum')).status).toBe(204);
-    expect((await call<AssistantDto[]>('GET', '/api/assistants')).body).toEqual([]);
-    expect((await call('DELETE', '/api/assistants/museum')).status).toBe(404);
-    expect((await call('PUT', '/api/assistants/gym', { pokemonId: other.id })).status).toBe(400);
+    // Postes au-delà de ceux ouverts : 2 places au Musée, 1 pension au départ, une seule
+    // couveuse et un seul Centre (6 places chacun).
+    for (const url of [
+      '/api/assistants/museum/2',
+      '/api/assistants/daycare/1',
+      '/api/assistants/incubator/1',
+      '/api/assistants/center/1',
+    ]) {
+      expect((await call('PUT', url, { pokemonId: starter.id })).body).toMatchObject({
+        error: 'NO_SUCH_SLOT',
+      });
+    }
+    expect((await call('DELETE', '/api/assistants/museum/0')).status).toBe(204);
+    expect((await call<AssistantDto[]>('GET', '/api/assistants')).body).toEqual([
+      { post: 'museum', slot: 1, pokemonId: third.id },
+    ]);
+    expect((await call('DELETE', '/api/assistants/museum/0')).status).toBe(404);
+    expect((await call('DELETE', '/api/assistants/museum/1')).status).toBe(204);
+    expect((await call('PUT', '/api/assistants/gym/0', { pokemonId: other.id })).status).toBe(400);
+    expect((await call('PUT', '/api/assistants/museum', { pokemonId: other.id })).status).toBe(404);
   });
 });

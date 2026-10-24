@@ -32,6 +32,7 @@ import type {
   AssistantDto,
   EvolveResponse,
   ExpeditionDto,
+  InventoryEntryDto,
   MegaEvolveInput,
   PokemonDto,
   TransferPokemonResponse,
@@ -40,6 +41,7 @@ import type {
 } from '@poke/shared';
 import { TRANSFER_BATCH_MAX } from '@poke/shared';
 import {
+  HoverBubble,
   Modal,
   PokemonSprite,
   ProgressBar,
@@ -165,6 +167,8 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
     const onKey = (e: KeyboardEvent) => {
       const target = e.target as HTMLElement | null;
       if (target?.closest('input, textarea, select, [contenteditable="true"]')) return;
+      // Une autre modale ouverte par-dessus la fiche (objets…) garde les flèches.
+      if (document.querySelectorAll('[role="dialog"]').length > 1) return;
       const to = e.key === 'ArrowLeft' ? previous : e.key === 'ArrowRight' ? next : undefined;
       if (!to) return;
       e.preventDefault();
@@ -582,6 +586,10 @@ function PokemonDetail({
       ),
   });
 
+  const inventory = useInventory();
+  const usable = usableItems(ctx, p, inventory.data);
+  const [itemsOpen, setItemsOpen] = useState(false);
+
   const [confirmTransfer, setConfirmTransfer] = useState(false);
   const transfer = useMutation({
     mutationFn: () =>
@@ -635,14 +643,31 @@ function PokemonDetail({
             <TypeBadge key={t} type={t} />
           ))}
         </div>
-        <button
-          className="btn-ghost mt-4"
-          disabled={toggleLock.isPending}
-          onClick={() => toggleLock.mutate()}
-        >
-          {p.locked ? '♥ Retirer des favoris' : '♡ Ajouter aux favoris'}
-        </button>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          <button
+            className="btn-ghost"
+            disabled={toggleLock.isPending}
+            onClick={() => toggleLock.mutate()}
+          >
+            {p.locked ? '♥ Retirer des favoris' : '♡ Ajouter aux favoris'}
+          </button>
+          <button
+            className="btn-ghost"
+            disabled={usable.length === 0}
+            title={usable.length === 0 ? 'Aucun objet utilisable sur ce Pokémon' : undefined}
+            onClick={() => setItemsOpen(true)}
+          >
+            Objet
+          </button>
+        </div>
         <TagPicker pokemon={p} />
+        <ItemUseDialog
+          ctx={ctx}
+          pokemon={p}
+          items={usable}
+          open={itemsOpen}
+          onClose={() => setItemsOpen(false)}
+        />
 
         {lineage !== undefined && (
           <div className="mt-4 w-full rounded-xl border border-slate-200 p-3 text-left text-xs dark:border-slate-800">
@@ -749,7 +774,6 @@ function PokemonDetail({
           onMega={(itemId) => megaEvolve.mutate({ itemId })}
           onRevert={() => megaRevert.mutate()}
         />
-        <ItemUsePanel ctx={ctx} pokemon={p} />
         <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
           <dt className="text-slate-500">Nature</dt>
           <dd>
@@ -770,23 +794,18 @@ function PokemonDetail({
           <dd>
             {p.megaStone && species.abilities[0] ? (
               <>
-                {abilityLabel(species.abilities[0].name)}
+                <AbilityName name={species.abilities[0].name} summary={abilitySummary} />
                 <span className="block text-xs text-slate-500">
                   Méga-Évolution · d’origine {abilityLabel(p.ability)}
                 </span>
               </>
             ) : (
               <>
-                {abilityLabel(p.ability)}
+                <AbilityName name={p.ability} summary={abilitySummary} />
                 {species.abilities.find((a) => a.name === p.ability)?.isHidden && (
                   <span className="ml-1 text-xs text-violet-600">(caché)</span>
                 )}
               </>
-            )}
-            {abilitySummary && (
-              <span className="block text-xs text-emerald-700 dark:text-emerald-400">
-                {abilitySummary}
-              </span>
             )}
           </dd>
           <dt className="text-slate-500">Puissance (PE)</dt>
@@ -864,6 +883,21 @@ function PokemonDetail({
         </table>
       </div>
     </div>
+  );
+}
+
+/** Nom du talent ; sa description s'affiche au survol. */
+function AbilityName({ name, summary }: { name: string; summary: string | null }) {
+  if (!summary) return <>{abilityLabel(name)}</>;
+  return (
+    <HoverBubble
+      width={240}
+      height={80}
+      className="inline-block cursor-help underline decoration-slate-400 decoration-dotted underline-offset-2"
+      content={<span className="text-emerald-700 dark:text-emerald-400">{summary}</span>}
+    >
+      {abilityLabel(name)}
+    </HoverBubble>
   );
 }
 
@@ -1076,13 +1110,37 @@ function MegaPanel({
   );
 }
 
-/**
- * Objets endgame du sac utilisables sur ce Pokémon (Capsules, Aromates, Pilule / Patch Talent) :
- * le serveur vérifie de nouveau et consomme l'objet.
- */
-function ItemUsePanel({ ctx, pokemon: p }: { ctx: GameContext; pokemon: PokemonDto }) {
+/** Objets endgame du sac utilisables sur ce Pokémon (Capsules, Aromates, Pilule / Patch Talent). */
+function usableItems(ctx: GameContext, p: PokemonDto, inventory: InventoryEntryDto[] | undefined) {
+  // Un Pokémon Méga-Évolué garde le talent de sa forme normale.
+  const target = {
+    ...p,
+    formId: p.megaStone ? null : p.formId,
+    originalNature: p.originalNature ?? p.nature,
+  };
+  return (inventory ?? [])
+    .filter((i) => i.quantity > 0)
+    .flatMap((i) => {
+      const options = itemUseOptions(ctx, target, i.itemId);
+      return options ? [{ ...i, options }] : [];
+    });
+}
+
+/** Popin « Objet » de la fiche : le serveur vérifie de nouveau et consomme l'objet. */
+function ItemUseDialog({
+  ctx,
+  pokemon: p,
+  items,
+  open,
+  onClose,
+}: {
+  ctx: GameContext;
+  pokemon: PokemonDto;
+  items: ReturnType<typeof usableItems>;
+  open: boolean;
+  onClose: () => void;
+}) {
   const queryClient = useQueryClient();
-  const inventory = useInventory();
   const [stat, setStat] = useState<StatName | ''>('');
   const [abilities, setAbilities] = useState<Record<string, string>>({});
   const use = useMutation({
@@ -1097,24 +1155,25 @@ function ItemUsePanel({ ctx, pokemon: p }: { ctx: GameContext; pokemon: PokemonD
       );
     },
   });
-  // Un Pokémon Méga-Évolué garde le talent de sa forme normale.
-  const target = {
-    ...p,
-    formId: p.megaStone ? null : p.formId,
-    originalNature: p.originalNature ?? p.nature,
-  };
-  const items = (inventory.data ?? [])
-    .filter((i) => i.quantity > 0)
-    .flatMap((i) => {
-      const options = itemUseOptions(ctx, target, i.itemId);
-      return options ? [{ ...i, options }] : [];
-    });
-  if (items.length === 0) return null;
 
   return (
-    <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-      <p className="mb-2 font-medium">Objets</p>
-      <ul className="space-y-2">
+    <Modal open={open} onClose={onClose}>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        <h3 className="font-semibold">Objet · {speciesName(ctx, p.speciesId, p.formId)}</h3>
+        <button
+          type="button"
+          className="btn-ghost px-2.5 py-1"
+          onClick={onClose}
+          aria-label="Fermer"
+          title="Fermer (Échap)"
+        >
+          ✕
+        </button>
+      </div>
+      {items.length === 0 && (
+        <p className="text-sm text-slate-500">Aucun objet utilisable sur ce Pokémon.</p>
+      )}
+      <ul className="max-h-[60dvh] space-y-2 overflow-y-auto">
         {items.map(({ itemId, quantity, options }) => {
           const { effect } = options;
           const needsStat = effect.type === 'ivCap' && !effect.all;
@@ -1179,6 +1238,6 @@ function ItemUsePanel({ ctx, pokemon: p }: { ctx: GameContext; pokemon: PokemonD
         })}
       </ul>
       {!!use.error && <p className="mt-2 text-xs text-red-600">{errorText(use.error)}</p>}
-    </div>
+    </Modal>
   );
 }

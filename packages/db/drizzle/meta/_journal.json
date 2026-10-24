@@ -456,6 +456,48 @@
       "when": 1792770135882,
       "tag": "0064_fuyards_cachette",
       "breakpoints": true
+    },
+    {
+      "idx": 65,
+      "version": "7",
+      "when": 1792844371686,
+      "tag": "0065_assistants_par_place",
+      "breakpoints": true
+    },
+    {
+      "idx": 66,
+      "version": "7",
+      "when": 1792849166666,
+      "tag": "0066_ferme_baies",
+      "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1792849167655,
+      "tag": "0067_ferme_baies_contenu",
+      "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1792851646334,
+      "tag": "0068_nouvelles_baies",
+      "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1792852581373,
+      "tag": "0069_recharge_sitrus",
+      "breakpoints": true
+    },
+    {
+      "idx": 70,
+      "version": "7",
+      "when": 1792872572681,
+      "tag": "0070_talents_ferme",
+      "breakpoints": true
     }
   ]
 }

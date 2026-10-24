@@ -30,7 +30,7 @@ import {
   transferPokemon,
   withdrawDaycare,
 } from '../game/daycare';
-import { assistantHolder } from '../game/assistants';
+import { assistantHolders } from '../game/assistants';
 import { claimedRewards, eggsHatchedCount, pokemonActivities, toPokemonDto } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
@@ -51,19 +51,19 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
   app.get('/api/daycare', async (request): Promise<DaycareResponse> => {
     const userId = request.user!.id;
     const ctx = await content.get();
-    const [{ slots, parents }, eggRows, eggsHatched, claimed, helper] = await Promise.all([
+    const [{ slots, parents }, eggRows, eggsHatched, claimed, helpers] = await Promise.all([
       loadDaycare(db, userId),
       pendingEggs(db, userId),
       eggsHatchedCount(db, userId),
       claimedRewards(db, userId),
-      assistantHolder(db, userId, 'daycare'),
+      assistantHolders(db, userId, 'daycare'),
     ]);
     return {
       slots: daycareSlotCount(ctx, claimed),
       maxEggs: ctx.balance.breeding.maxEggs,
       eggsHatched,
       serverTime: now().toISOString(),
-      pensions: slots.map((s) => toDaycareDto(ctx, s, parents, helper)),
+      pensions: slots.map((s) => toDaycareDto(ctx, s, parents, helpers.get(s.slotIndex) ?? null)),
       eggs: eggRows.map(toEggDto),
     };
   });
@@ -73,7 +73,7 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
     const userId = request.user!.id;
     const row = await depositDaycare(db, content, userId, input, now());
     const { parents } = await loadDaycare(db, userId);
-    const helper = await assistantHolder(db, userId, 'daycare');
+    const helper = (await assistantHolders(db, userId, 'daycare')).get(row.slotIndex) ?? null;
     return reply.code(201).send(toDaycareDto(await content.get(), row, parents, helper));
   });
 

@@ -6,17 +6,19 @@ import {
   STATUS_LABELS,
   WEATHER_LABELS,
   abilityEffectSummary,
+  combatWeatherSource,
   dungeonAttack,
   dungeonStatChanges,
+  healReadyAt,
   simulateDungeon,
 } from '@poke/game-core';
-import type { DungeonStat, Status } from '@poke/content';
-import type { DungeonEvent, DungeonFighter, GameContext } from '@poke/game-core';
-import type { DungeonRunDto } from '@poke/shared';
+import type { DungeonStat, Status, Weather } from '@poke/content';
+import type { DungeonCommand, DungeonEvent, DungeonFighter, GameContext } from '@poke/game-core';
+import type { CombatItemInput, DungeonRunDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar, TypeBadge } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS } from '../../lib/game';
-import { abilityLabel, errorText, formatCountdown } from '../../lib/labels';
+import { PLAYER_STATE_KEYS, keys, useInventory } from '../../lib/game';
+import { abilityLabel, errorText, formatCountdown, itemIcon, itemName } from '../../lib/labels';
 
 /** Combat en cours (tentative de donjon ou combat de dresseur) : ce qu'il faut pour le rejouer. */
 export type CombatRun = Pick<DungeonRunDto, 'id' | 'setup' | 'commands' | 'fledAtMs' | 'startedAt'>;
@@ -128,6 +130,33 @@ const STATUS_COLORS: Record<Status, string> = {
   freeze: 'bg-cyan-400 text-slate-900',
 };
 const WEATHER_ICONS = { sun: '☀️', rain: '🌧️', sand: '🌪️', hail: '🌨️' } as const;
+
+/**
+ * Météo imposée par un talent : le combat s'ouvre sur celle du lieu, qui laisse place à celle du
+ * talent après `WEATHER_CHANGE_MS`, annoncée pendant `WEATHER_BANNER_MS` (affichage seulement :
+ * le combat se joue tout entier sous la météo du talent).
+ */
+const WEATHER_CHANGE_MS = 1200;
+const WEATHER_BANNER_MS = 2600;
+const WEATHER_CHANGE_TEXTS: Record<Weather | 'clear', string> = {
+  sun: 'Le soleil brille fort !',
+  rain: 'Il commence à pleuvoir !',
+  sand: 'Une tempête de sable se lève !',
+  hail: 'Il commence à grêler !',
+  clear: 'La météo redevient normale.',
+};
+
+/** Ombres des deux Pokémon au sol. */
+const ARENA_SHADOWS =
+  'radial-gradient(ellipse 30% 9% at 22% 84%, #0002 60%, transparent 62%), radial-gradient(ellipse 26% 8% at 76% 56%, #0002 60%, transparent 62%)';
+/** Ciel et sol de l'arène selon la météo (temps clair par défaut). */
+const ARENA_BACKGROUNDS: Record<Weather | 'clear', string> = {
+  clear: 'linear-gradient(to bottom, #bfdbfe 0%, #e0f2fe 52%, #bbf7d0 52%, #86efac 100%)',
+  sun: 'radial-gradient(circle at 88% 10%, #fffbeb 0 5%, #fde68a 8%, transparent 30%), linear-gradient(to bottom, #fdba74 0%, #fef3c7 52%, #d9f99d 52%, #a3e635 100%)',
+  rain: 'linear-gradient(to bottom, #475569 0%, #94a3b8 52%, #65a30d 52%, #3f6212 100%)',
+  sand: 'linear-gradient(to bottom, #d4a373 0%, #f5deb3 52%, #e9c46a 52%, #c9953f 100%)',
+  hail: 'linear-gradient(to bottom, #94a3b8 0%, #e2e8f0 52%, #f1f5f9 52%, #cbd5e1 100%)',
+};
 
 /**
  * Ce que fait un talent en combat (donjons et dresseurs) : ses effets qui y agissent. Ceux des
@@ -420,6 +449,31 @@ function AbilityPopup({ event, age }: { event: DungeonAbilityEvent; age: number 
   );
 }
 
+type DungeonItemEvent = DungeonEvent & { kind: 'item' };
+
+/** Baie donnée au Pokémon actif : PV rendus, au-dessus de lui. */
+function ItemPopup({
+  ctx,
+  event,
+  age,
+}: {
+  ctx: GameContext;
+  event: DungeonItemEvent;
+  age: number;
+}) {
+  const t = age / ABILITY_POPUP_MS;
+  return (
+    <span
+      aria-hidden
+      className="pointer-events-none absolute flex -translate-x-1/2 items-center gap-1 rounded-lg bg-white/85 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-emerald-700 shadow dark:bg-slate-900/85 dark:text-emerald-300"
+      style={{ left: '22%', top: `calc(40% - ${t * 16}px)`, opacity: 1 - t * t }}
+    >
+      <img src={itemIcon(ctx, event.itemId)} alt="" width={18} height={18} />
+      {itemName(ctx, event.itemId)} · +{event.amount} PV
+    </span>
+  );
+}
+
 const OUTCOME_LABELS = {
   win: 'Victoire !',
   loss: 'Ton équipe est K.O.…',
@@ -445,7 +499,7 @@ export function DungeonCombat<R extends CombatRun, C>({
   ctx: GameContext;
   /** Titre de la fenêtre (« Donjon : … », « Combat contre … »). */
   title: string;
-  /** Routes du combat : `${apiBase}/${id}/switch`, `/claim`, `/flee`. */
+  /** Routes du combat : `${apiBase}/${id}/switch`, `/item`, `/claim`, `/flee`. */
   apiBase: string;
   /** Requête dont `active` est ce combat (mise à jour après un changement de Pokémon). */
   queryKey: QueryKey;
@@ -468,12 +522,12 @@ export function DungeonCombat<R extends CombatRun, C>({
   const queryClient = useQueryClient();
   const { setup } = run;
   const startedAt = Date.parse(run.startedAt);
-  // Changement demandé, en attente de la réponse du serveur (affiché tout de suite). `base` :
-  // nombre de commandes connues à la demande, pour l'ignorer dès que le cache contient la réponse
-  // (pas effacé à la réponse, sinon il disparaîtrait une image avant que le cache ne soit diffusé).
-  const [pending, setPending] = useState<{ atMs: number; member: number; base: number } | null>(
-    null,
-  );
+  // Changement ou baie demandés, en attente de la réponse du serveur (affichés tout de suite).
+  // `base` : nombre de commandes connues à la demande, pour l'ignorer dès que le cache contient la
+  // réponse (pas effacé à la réponse, sinon il disparaîtrait une image avant que le cache ne soit
+  // diffusé).
+  const [pending, setPending] = useState<{ command: DungeonCommand; base: number } | null>(null);
+  const inventory = useInventory();
   const [confirmFlee, setConfirmFlee] = useState(false);
   const [finished, setFinished] = useState(false);
   const now = useFrameNow(!finished, visible);
@@ -481,10 +535,7 @@ export function DungeonCombat<R extends CombatRun, C>({
   const displayMs = Math.max(0, elapsed - TRAVEL_MS);
   const awaiting = pending !== null && run.commands.length === pending.base;
   const commands = useMemo(
-    () =>
-      pending && awaiting
-        ? [...run.commands, { atMs: pending.atMs, member: pending.member }]
-        : run.commands,
+    () => (pending && awaiting ? [...run.commands, pending.command] : run.commands),
     [run.commands, pending, awaiting],
   );
   const live = simulateDungeon(setup, commands, run.fledAtMs, elapsed);
@@ -506,6 +557,16 @@ export function DungeonCombat<R extends CombatRun, C>({
     mutationFn: (input: { member: number; atMs: number }) =>
       api<R>(`${apiBase}/${run.id}/switch`, { method: 'POST', json: input }),
     onSuccess: (next) => updateRun(next),
+    onError: () => setPending(null),
+  });
+
+  const giveItem = useMutation({
+    mutationFn: (input: CombatItemInput) =>
+      api<R>(`${apiBase}/${run.id}/item`, { method: 'POST', json: input }),
+    onSuccess: (next) => {
+      updateRun(next);
+      return queryClient.invalidateQueries({ queryKey: keys.inventory });
+    },
     onError: () => setPending(null),
   });
 
@@ -548,6 +609,19 @@ export function DungeonCombat<R extends CombatRun, C>({
     return () => window.clearTimeout(timer);
   }, [over, fleeing, visible, claimRequested, claimMutate]);
 
+  // Météo affichée : celle du lieu au tout début si un talent impose la sienne, puis celle-ci.
+  const weatherSource = useMemo(() => combatWeatherSource(ctx, setup), [ctx, setup]);
+  const startWeather = weatherSource ? (setup.placeWeather ?? null) : (setup.weather ?? null);
+  const shownWeather =
+    weatherSource && displayMs < WEATHER_CHANGE_MS ? startWeather : (setup.weather ?? null);
+  const sinceChange = displayMs - WEATHER_CHANGE_MS;
+  const weatherBanner =
+    sinceChange < 0 || sinceChange >= WEATHER_BANNER_MS
+      ? null
+      : sinceChange >= WEATHER_BANNER_MS - 500
+        ? 'fading'
+        : 'shown';
+
   const player = setup.team[shown.active]!;
   const enemy = setup.enemies[shown.enemyIndex]!;
   const playerHp = shown.hp[shown.active] ?? 0;
@@ -567,6 +641,23 @@ export function DungeonCombat<R extends CombatRun, C>({
     (e): e is DungeonAbilityEvent =>
       e.kind === 'ability' && e.atMs <= displayMs && e.atMs > displayMs - ABILITY_POPUP_MS,
   );
+  const itemPopups = live.events.filter(
+    (e): e is DungeonItemEvent =>
+      e.kind === 'item' && e.atMs <= displayMs && e.atMs > displayMs - ABILITY_POPUP_MS,
+  );
+  // Baies de soin du sac (la baie en cours d'envoi est déjà décomptée).
+  const healItems = (inventory.data ?? []).flatMap((s) => {
+    const effect = ctx.itemEffect(s.itemId, 'battleHeal');
+    const sent =
+      awaiting && pending && 'itemId' in pending.command && pending.command.itemId === s.itemId;
+    const quantity = s.quantity - (sent ? 1 : 0);
+    if (!effect || quantity <= 0) return [];
+    // Recharge : secondes avant de pouvoir en redonner une.
+    const readyAt = healReadyAt(commands, s.itemId, effect.cooldownSeconds * 1000);
+    const cooldownLeft = Math.ceil((readyAt - displayMs) / 1000);
+    return [{ itemId: s.itemId, quantity, effect, cooldownLeft }];
+  });
+  const canHeal = outcome === null && !awaiting && playerHp > 0 && playerHp < player.maxHp;
   const hit = (side: 'player' | 'enemy') =>
     popups.some((e) => e.side !== side && displayMs - e.atMs < 220 && e.damage > 0);
   const remaining = setup.enemies.slice(shown.enemyIndex + 1);
@@ -578,8 +669,15 @@ export function DungeonCombat<R extends CombatRun, C>({
     // Daté à l'instant affiché (pas à l'instant réel, en avance de `TRAVEL_MS`) : le Pokémon
     // entre aussitôt, et le joueur agit sur ce qu'il voit. Le serveur tolère ce léger retard.
     const atMs = Math.round(displayMs);
-    setPending({ atMs, member, base: run.commands.length });
+    setPending({ command: { atMs, member }, base: run.commands.length });
     switchMember.mutate({ member, atMs });
+  }
+
+  function heal(itemId: string, fraction: number) {
+    if (!canHeal || healItems.some((h) => h.itemId === itemId && h.cooldownLeft > 0)) return;
+    const atMs = Math.round(displayMs);
+    setPending({ command: { atMs, itemId, heal: fraction }, base: run.commands.length });
+    giveItem.mutate({ itemId, atMs });
   }
 
   return (
@@ -603,13 +701,32 @@ export function DungeonCombat<R extends CombatRun, C>({
         </button>
       </div>
 
-      <div
-        className="relative h-72 overflow-hidden rounded-2xl border border-slate-200 select-none sm:h-80 dark:border-slate-800"
-        style={{
-          background:
-            'radial-gradient(ellipse 30% 9% at 22% 84%, #0002 60%, transparent 62%), radial-gradient(ellipse 26% 8% at 76% 56%, #0002 60%, transparent 62%), linear-gradient(to bottom, #bfdbfe 0%, #e0f2fe 52%, #bbf7d0 52%, #86efac 100%)',
-        }}
-      >
+      <div className="relative h-72 overflow-hidden rounded-2xl border border-slate-200 select-none sm:h-80 dark:border-slate-800">
+        {/* Décor du lieu, puis celui de la météo du talent, en fondu. */}
+        <div
+          aria-hidden
+          className="absolute inset-0"
+          style={{ background: ARENA_BACKGROUNDS[startWeather ?? 'clear'] }}
+        />
+        <div
+          aria-hidden
+          className="absolute inset-0 transition-opacity duration-1000"
+          style={{
+            background: ARENA_BACKGROUNDS[setup.weather ?? 'clear'],
+            opacity: shownWeather === (setup.weather ?? null) ? 1 : 0,
+          }}
+        />
+        <div aria-hidden className="absolute inset-0" style={{ background: ARENA_SHADOWS }} />
+        {/* Météo du combat : pluie, sable ou grêle qui tombent, reflets du soleil. */}
+        {shownWeather && (
+          <div
+            key={shownWeather}
+            aria-hidden
+            className="pointer-events-none absolute inset-0 animate-[dungeon-fade_1000ms_ease-out]"
+          >
+            <div className={`absolute inset-0 weather-${shownWeather}`} />
+          </div>
+        )}
         {/* Adversaires restants, en petit et grisés. */}
         <div className="absolute inset-x-0 top-2 flex justify-center">
           <div className="flex items-center gap-0.5 rounded-full bg-white/70 px-2 py-0.5 dark:bg-slate-900/70">
@@ -645,10 +762,38 @@ export function DungeonCombat<R extends CombatRun, C>({
         >
           ⏱ {formatCountdown(timeLeft)}
         </span>
-        {setup.weather && (
-          <span className="absolute top-2 right-2 rounded-full bg-white/85 px-2 py-0.5 text-sm font-semibold shadow dark:bg-slate-900/85">
-            {WEATHER_ICONS[setup.weather]} {WEATHER_LABELS[setup.weather]}
+        {shownWeather && (
+          <span
+            key={shownWeather}
+            className="absolute top-2 right-2 animate-[dungeon-enter_400ms_ease-out] rounded-full bg-white/85 px-2 py-0.5 text-sm font-semibold shadow dark:bg-slate-900/85"
+          >
+            {WEATHER_ICONS[shownWeather]} {WEATHER_LABELS[shownWeather]}
           </span>
+        )}
+        {weatherSource && weatherBanner && (
+          <div className="pointer-events-none absolute inset-x-0 top-[40%] z-10 flex justify-center">
+            <p
+              className="flex animate-[dungeon-enter_400ms_ease-out] items-center gap-2 rounded-2xl bg-white/90 py-1 pr-4 pl-1 text-sm shadow-lg transition-opacity duration-500 dark:bg-slate-900/90"
+              style={{ opacity: weatherBanner === 'fading' ? 0 : 1 }}
+            >
+              <PokemonSprite
+                speciesId={weatherSource.fighter.speciesId}
+                formId={weatherSource.fighter.formId}
+                shiny={weatherSource.fighter.isShiny}
+                size={40}
+                className={weatherSource.side === 'player' ? '-scale-x-100' : ''}
+              />
+              <span>
+                <span className="font-semibold text-violet-700 dark:text-violet-300">
+                  {weatherSource.side === 'enemy' && 'Adversaire : '}
+                  {fighterName(ctx, weatherSource.fighter)} · {abilityLabel(weatherSource.ability)}
+                </span>
+                <span className="block font-medium">
+                  {WEATHER_CHANGE_TEXTS[setup.weather ?? 'clear']}
+                </span>
+              </span>
+            </p>
+          </div>
         )}
 
         {/* Adversaire, à droite. */}
@@ -729,6 +874,46 @@ export function DungeonCombat<R extends CombatRun, C>({
         {popups.map((e) => (
           <DamagePopup key={`${e.side}-${e.atMs}`} event={e} age={displayMs - e.atMs} />
         ))}
+        {itemPopups.map((e, i) => (
+          <ItemPopup key={`i-${e.atMs}-${i}`} ctx={ctx} event={e} age={displayMs - e.atMs} />
+        ))}
+
+        {/* Baies de soin du sac : données au Pokémon actif. */}
+        {healItems.length > 0 && (
+          <div className="absolute bottom-2 left-2 z-10 flex gap-1.5">
+            {healItems.map(({ itemId, quantity, effect, cooldownLeft }) => (
+              <button
+                key={itemId}
+                type="button"
+                disabled={!canHeal || cooldownLeft > 0}
+                onClick={() => heal(itemId, effect.fraction)}
+                title={
+                  cooldownLeft > 0
+                    ? `${itemName(ctx, itemId)} : de nouveau possible dans ${cooldownLeft} s`
+                    : `${itemName(ctx, itemId)} : rend ${Math.round(effect.fraction * 100)} % de ses PV au Pokémon actif`
+                }
+                aria-label={`Donner une ${itemName(ctx, itemId)} (${quantity} restantes)`}
+                className="relative grid h-10 w-10 place-items-center rounded-full bg-white/85 shadow transition enabled:hover:scale-110 enabled:hover:bg-white disabled:opacity-50 dark:bg-slate-900/85"
+              >
+                <img
+                  src={itemIcon(ctx, itemId)}
+                  alt=""
+                  width={28}
+                  height={28}
+                  className="[image-rendering:pixelated]"
+                />
+                {cooldownLeft > 0 && (
+                  <span className="absolute inset-0 grid place-items-center rounded-full bg-slate-900/70 text-xs font-bold text-white tabular-nums">
+                    {cooldownLeft}
+                  </span>
+                )}
+                <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-white tabular-nums">
+                  {quantity}
+                </span>
+              </button>
+            ))}
+          </div>
+        )}
 
         {over && outcome && (
           <div className="absolute inset-0 grid place-items-center bg-slate-950/40 backdrop-blur-[1px]">
@@ -826,8 +1011,8 @@ export function DungeonCombat<R extends CombatRun, C>({
           );
         })}
       </div>
-      {switchMember.error && (
-        <p className="text-sm text-red-600">{errorText(switchMember.error)}</p>
+      {(switchMember.error || giveItem.error) && (
+        <p className="text-sm text-red-600">{errorText(switchMember.error ?? giveItem.error)}</p>
       )}
       {(claim.error || flee.error) && (
         <p className="flex items-center gap-2 text-sm text-red-600">

@@ -82,14 +82,12 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
         </div>
         <p className="mb-3 text-sm text-slate-500">
           Confie un fossile aux scientifiques du Musée : après quelques heures, il redevient un
-          Pokémon.
+          Pokémon. Chaque place a son assistant : son talent agit sur le fossile qu’on y dépose (la
+          première place libre).
         </p>
-        <div className="mb-3">
-          <AssistantCard ctx={ctx} post="museum" />
-        </div>
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
           {Array.from({ length: slots }, (_, i) => {
-            const revival = revivals[i];
+            const revival = revivals.find((r) => r.slotIndex === i);
             return revival ? (
               <RevivalCard
                 key={revival.id}
@@ -102,9 +100,12 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
             ) : (
               <div
                 key={`empty-${i}`}
-                className="grid min-h-36 place-items-center rounded-2xl border-2 border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700"
+                className="flex min-h-36 flex-col gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-4 dark:border-slate-700"
               >
-                Place libre
+                <span className="grid flex-1 place-items-center text-center text-sm text-slate-500">
+                  Place libre
+                </span>
+                <AssistantCard ctx={ctx} post="museum" slot={i} />
               </div>
             );
           })}
@@ -218,6 +219,7 @@ function RevivalCard({
           </button>
         )}
       </div>
+      <AssistantCard ctx={ctx} post="museum" slot={revival.slotIndex} />
     </div>
   );
 }

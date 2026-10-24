@@ -75,6 +75,7 @@ export function toPokemonDto(row: PokemonRow, activity: PokemonActivity | null =
     activity,
     knockedOut: row.knockedOut,
     healUntil: row.healUntil?.toISOString() ?? null,
+    healSlot: row.healUntil ? row.healSlot : null,
     tagIds: row.tagIds,
     dungeonMove: row.dungeonMove,
     megaStone: row.megaStone,

@@ -1,3 +1,5 @@
+import { tabProfile } from './tab-profile';
+
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -13,10 +15,15 @@ export async function api<T>(
   init: RequestInit & { json?: unknown } = {},
 ): Promise<T> {
   const { json, headers, ...rest } = init;
+  const profile = tabProfile();
   const res = await fetch(path, {
     credentials: 'include',
     ...rest,
-    headers: json !== undefined ? { 'content-type': 'application/json', ...headers } : headers,
+    headers: {
+      ...(json !== undefined && { 'content-type': 'application/json' }),
+      ...(profile && { 'x-dex-profile': profile }),
+      ...headers,
+    },
     body: json !== undefined ? JSON.stringify(json) : rest.body,
   });
   if (res.status === 204) return undefined as T;

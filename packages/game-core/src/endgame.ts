@@ -6,13 +6,24 @@ import { MAX_IV } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 
 /**
- * Objets endgame utilisés sur un Pokémon (PLAN.md, section 2.7) : Capsules (IV à 31), Aromates
- * (nature effective), Pilule et Patch Talent (talent). L'objet est consommé.
+ * Objets utilisés sur un Pokémon (PLAN.md, section 2.7) : Capsules (IV à 31), Aromates (nature
+ * effective), Pilule et Patch Talent (talent), Baie Grena (bonheur). L'objet est consommé.
  */
 
-export type PokemonItemEffect = Extract<ItemEffect, { type: 'ivCap' | 'mint' | 'abilityChange' }>;
+export type PokemonItemEffect = Extract<
+  ItemEffect,
+  { type: 'ivCap' | 'mint' | 'abilityChange' | 'happiness' }
+>;
 
-const POKEMON_EFFECTS = new Set<ItemEffect['type']>(['ivCap', 'mint', 'abilityChange']);
+const POKEMON_EFFECTS = new Set<ItemEffect['type']>([
+  'ivCap',
+  'mint',
+  'abilityChange',
+  'happiness',
+]);
+
+/** Bonheur maximal d'un Pokémon. */
+export const MAX_HAPPINESS = 255;
 
 /** Effet utilisable sur un Pokémon porté par l'objet (le premier). */
 export function pokemonItemEffect(ctx: GameContext, itemId: string): PokemonItemEffect | undefined {
@@ -22,7 +33,7 @@ export function pokemonItemEffect(ctx: GameContext, itemId: string): PokemonItem
 /** Pokémon visé : nature d'origine (avant Aromate) en plus de la nature effective. */
 export interface ItemTarget extends Pick<
   PokemonInstance,
-  'speciesId' | 'formId' | 'ivs' | 'nature' | 'ability'
+  'speciesId' | 'formId' | 'ivs' | 'nature' | 'ability' | 'happiness'
 > {
   originalNature: string;
 }
@@ -63,6 +74,8 @@ export function itemUseOptions(
       const names = [...new Set(abilities.map((a) => a.name))];
       return { effect, stats: [], abilities: names, usable: names.length > 0 };
     }
+    case 'happiness':
+      return { effect, stats: [], abilities: [], usable: target.happiness < MAX_HAPPINESS };
   }
 }
 
@@ -77,6 +90,7 @@ export interface PokemonPatch {
   /** Nature effective ; null = retour à la nature d'origine. */
   natureOverride?: string | null;
   ability?: string;
+  happiness?: number;
 }
 
 export type ItemUseError = 'NOT_USABLE_ON_POKEMON' | 'NO_EFFECT' | 'CHOICE_REQUIRED';
@@ -111,5 +125,9 @@ export function applyItemToPokemon(
       if (!options.abilities.includes(ability)) return { error: 'NO_EFFECT' };
       return { patch: { ability } };
     }
+    case 'happiness':
+      return {
+        patch: { happiness: Math.min(MAX_HAPPINESS, target.happiness + effect.amount) },
+      };
   }
 }

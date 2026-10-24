@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
@@ -144,7 +144,10 @@ export function ShinyStar({ className = '' }: { className?: string }) {
   );
 }
 
-/** Fenêtre modale simple (Échap ou clic à l'extérieur pour fermer). */
+/**
+ * Fenêtre modale simple (Échap ou clic à l'extérieur pour fermer). Rendue dans <body> pour pouvoir
+ * s'ouvrir depuis une autre modale : Échap ne ferme alors que celle du dessus.
+ */
 export function Modal({
   open,
   onClose,
@@ -159,14 +162,19 @@ export function Modal({
   /** Classes ajoutées à la boîte de dialogue (taille fixe, mise en page…). */
   className?: string;
 }) {
+  const dialog = useRef<HTMLDivElement>(null);
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const dialogs = document.querySelectorAll('[role="dialog"]');
+      if (dialogs[dialogs.length - 1] === dialog.current) onClose();
+    };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open, onClose]);
 
-  return (
+  return createPortal(
     <AnimatePresence>
       {open && (
         <motion.div
@@ -177,6 +185,7 @@ export function Modal({
           onClick={onClose}
         >
           <motion.div
+            ref={dialog}
             role="dialog"
             aria-modal="true"
             className={`card w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} ${className}`}
@@ -189,7 +198,8 @@ export function Modal({
           </motion.div>
         </motion.div>
       )}
-    </AnimatePresence>
+    </AnimatePresence>,
+    document.body,
   );
 }
 
@@ -369,11 +379,20 @@ export function IvHover({ ivs, children }: { ivs: Stats | undefined; children: R
   );
 }
 
-export function ProgressBar({ value, className = '' }: { value: number; className?: string }) {
+export function ProgressBar({
+  value,
+  className = '',
+  barClassName = 'bg-brand-500',
+}: {
+  value: number;
+  className?: string;
+  /** Couleur de la partie remplie. */
+  barClassName?: string;
+}) {
   return (
     <div className={`h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800 ${className}`}>
       <div
-        className="h-full rounded-full bg-brand-500 transition-[width] duration-500"
+        className={`h-full rounded-full transition-[width] duration-500 ${barClassName}`}
         style={{ width: `${Math.min(100, Math.max(0, value * 100))}%` }}
       />
     </div>

@@ -99,7 +99,10 @@ describe('Musée', () => {
     });
     const museum = await call<MuseumResponse>('GET', '/api/museum');
     expect(museum.body.slots).toBe(2);
-    expect(museum.body.revivals.map((r) => r.itemId)).toEqual(['helix-fossil', 'old-amber']);
+    expect(museum.body.revivals.map((r) => [r.itemId, r.slotIndex])).toEqual([
+      ['helix-fossil', 0],
+      ['old-amber', 1],
+    ]);
   });
 
   it('ne restaure rien avant la fin, puis donne le Pokémon', async () => {
@@ -120,6 +123,11 @@ describe('Musée', () => {
     const dex = await call<PokedexEntryDto[]>('GET', '/api/pokedex');
     expect(dex.body.find((d) => d.speciesId === 138)?.caught).toBe(true);
     expect((await call<MuseumResponse>('GET', '/api/museum')).body.revivals).toHaveLength(1);
+
+    // La place libérée reprend un fossile (repris aussitôt pour la suite).
+    const again = await call<FossilRevivalDto>('POST', '/api/museum', { itemId: 'helix-fossil' });
+    expect(again.body).toMatchObject({ slotIndex: 0 });
+    expect((await call('DELETE', `/api/museum/${again.body.id}`)).status).toBe(200);
   });
 
   it('rend le fossile repris avant la fin de la restauration', async () => {

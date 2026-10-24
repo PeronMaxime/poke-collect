@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Zone } from '@poke/content';
 import {
   WEATHER_LABELS,
+  abilityMultiplier,
   chainMultiplier,
   chainPerfectIvs,
   expeditionEnv,
@@ -11,6 +12,7 @@ import {
   isZoneUnlocked,
   regionDexProgress,
   resolveWeather,
+  shinyProbability,
   zoneWeather,
 } from '@poke/game-core';
 import type { AbilityEnv, GameContext } from '@poke/game-core';
@@ -34,12 +36,14 @@ import {
   usePokedexForms,
   usePokemon,
   useQuests,
+  useShinyCharm,
 } from '../../lib/game';
 import {
   GAME_ERRORS,
   formatCountdown,
   formatDuration,
   formatMultiplier,
+  formatShinyRate,
   itemName,
   speciesName,
   unlockConditionText,
@@ -67,6 +71,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   const pokedexForms = usePokedexForms();
   const pokemon = usePokemon();
   const quests = useQuests();
+  const charm = useShinyCharm(ctx);
   const now = useNow();
   const [launchZone, setLaunchZone] = useState<Zone | null>(null);
   const [reveal, setReveal] = useState<ClaimExpeditionResponse | null>(null);
@@ -259,6 +264,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
                 teamSpecies={exp.team.map((id) => pokemonById.get(id))}
                 team={team}
                 abilityEnv={abilityEnvOf(exp, team)}
+                charm={charm}
                 claiming={claim.isPending && claim.variables === exp.id}
                 onClaim={() =>
                   // Expédition légendaire : on découvre le légendaire avant de lancer la Ball.
@@ -359,6 +365,7 @@ function ActiveExpedition({
   teamSpecies,
   team,
   abilityEnv,
+  charm,
   claiming,
   onClaim,
   cancelling,
@@ -371,6 +378,8 @@ function ActiveExpedition({
   /** Membres de l'équipe encore au PC, dans l'ordre (ceux de `abilityEnv`). */
   team: PokemonDto[];
   abilityEnv: AbilityEnv | undefined;
+  /** Multiplicateur du Charme Chroma (compté au retour). */
+  charm: number;
   claiming: boolean;
   onClaim: () => void;
   cancelling: boolean;
@@ -387,7 +396,13 @@ function ActiveExpedition({
       className={`card group/exp relative p-4 ${done ? 'ring-2 ring-brand-500/50' : ''}`}
       tabIndex={0}
     >
-      <ExpeditionSummary ctx={ctx} expedition={expedition} team={team} abilityEnv={abilityEnv} />
+      <ExpeditionSummary
+        ctx={ctx}
+        expedition={expedition}
+        team={team}
+        abilityEnv={abilityEnv}
+        charm={charm}
+      />
       <div className="flex items-start justify-between gap-2">
         <div>
           {expedition.questId && (
@@ -463,11 +478,13 @@ function ExpeditionSummary({
   expedition: e,
   team,
   abilityEnv,
+  charm,
 }: {
   ctx: GameContext;
   expedition: ExpeditionDto;
   team: PokemonDto[];
   abilityEnv: AbilityEnv | undefined;
+  charm: number;
 }) {
   const filter = e.captureFilter;
   const time = (iso: string) =>
@@ -492,12 +509,22 @@ function ExpeditionSummary({
       e.berryItemId ? `${e.berries} × ${itemName(ctx, e.berryItemId)}` : 'aucune',
     ]);
   }
-  if (e.shinyChain > 0) {
-    rows.push([
-      'Chaîne',
-      `${e.shinyChain} (shiny ${formatMultiplier(chainMultiplier(ctx, e.shinyChain))})`,
-    ]);
-  }
+  // Comme au serveur : chaîne du départ, Charme Chroma au retour et, hors expédition
+  // légendaire, talents de l'équipe.
+  const shinyRate = Math.min(
+    1,
+    shinyProbability(ctx, { chain: e.shinyChain, charm }) *
+      (abilityEnv && !e.questId ? abilityMultiplier(ctx, abilityEnv, 'shinyChance') : 1),
+  );
+  const shinyBonuses = [
+    e.shinyChain > 0 &&
+      `chaîne ${e.shinyChain}, ${formatMultiplier(chainMultiplier(ctx, e.shinyChain))}`,
+    charm > 1 && 'Charme Chroma',
+  ].filter(Boolean);
+  rows.push([
+    'Taux shiny',
+    `${formatShinyRate(shinyRate)}${shinyBonuses.length > 0 ? ` (${shinyBonuses.join(' · ')})` : ''}`,
+  ]);
   const filters = filter
     ? [
         filter.newOnly && 'absents du Pokédex',
@@ -592,6 +619,12 @@ export function ZoneCard({
         .map((e) => [`${e.speciesId}:${e.formId ?? ''}`, e] as const),
     ).values(),
   ];
+  const caughtCount = species.filter(({ speciesId: id, formId }) =>
+    formId != null ? caughtForms.has(formId) : caught.has(id),
+  ).length;
+  const shinyCount = species.filter(({ speciesId: id, formId }) =>
+    formId != null ? caughtShinyForms.has(formId) : caughtShiny.has(id),
+  ).length;
   const unlock = zone.unlock;
   return (
     <div className={`card flex flex-col p-4 ${unlocked ? '' : 'opacity-60'}`}>
@@ -696,6 +729,20 @@ export function ZoneCard({
           );
         })}
       </div>
+      {species.length > 0 && (
+        <div className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-1 text-xs text-slate-500">
+          <span>Capturés</span>
+          <ProgressBar value={caughtCount / species.length} />
+          <span className="text-right tabular-nums">
+            {caughtCount} / {species.length}
+          </span>
+          <span className="text-amber-600 dark:text-amber-400">✦ Shiny</span>
+          <ProgressBar value={shinyCount / species.length} barClassName="bg-amber-400" />
+          <span className="text-right tabular-nums">
+            {shinyCount} / {species.length}
+          </span>
+        </div>
+      )}
       <div className="mt-auto pt-3">
         {unlocked ? (
           <button className="btn-primary w-full" disabled={!canLaunch} onClick={onLaunch}>

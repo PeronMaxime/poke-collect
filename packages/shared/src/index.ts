@@ -88,6 +88,8 @@ export interface PokemonDto {
   knockedOut: boolean;
   /** En soins au Centre Pokémon jusqu'à cette date (comparer à l'heure du serveur). */
   healUntil: string | null;
+  /** Place du Centre Pokémon occupée pendant les soins. */
+  healSlot: number | null;
   /** Étiquettes du joueur (identifiants de `PokemonTagDto`). */
   tagIds: string[];
   /** Attaque enregistrée pour les donjons ; null = choix par défaut. */
@@ -100,9 +102,14 @@ export type PokemonActivity = 'expedition' | 'battle' | 'daycare' | 'dungeon' | 
 
 // --- Assistants ------------------------------------------------------------------------
 
-/** Pokémon affecté à un bâtiment (`daycare`, `incubator`, `museum`, `center`) : son talent y agit. */
+/**
+ * Pokémon affecté à une place d'un bâtiment (`daycare`, `incubator`, `museum`, `center`, `farm`) : son
+ * talent agit sur ce qui occupe cette place.
+ */
 export interface AssistantDto {
-  post: 'daycare' | 'incubator' | 'museum' | 'center';
+  post: 'daycare' | 'incubator' | 'museum' | 'center' | 'farm' | 'harvest';
+  /** Place du bâtiment (pension, place de la couveuse, du Musée ou du Centre). */
+  slot: number;
   pokemonId: string;
 }
 
@@ -454,6 +461,8 @@ export const depositDaycareInputSchema = z.object({
   parentBId: z.uuid(),
   heldItemAId: slugSchema.nullable(),
   heldItemBId: slugSchema.nullable(),
+  /** Pension choisie ; par défaut, la première libre. */
+  slotIndex: z.int().min(0).max(30).optional(),
 });
 export type DepositDaycareInput = z.infer<typeof depositDaycareInputSchema>;
 
@@ -478,6 +487,8 @@ export interface EggDto {
   id: string;
   speciesId: number;
   formId: number | null;
+  /** Place de la couveuse. */
+  slotIndex: number;
   laidAt: string;
   hatchAt: string;
 }
@@ -522,6 +533,8 @@ export interface FossilRevivalDto {
   itemId: string;
   speciesId: number;
   formId: number | null;
+  /** Place du Musée. */
+  slotIndex: number;
   startedAt: string;
   readyAt: string;
 }
@@ -539,6 +552,39 @@ export interface ReviveFossilsResponse {
   newSpeciesIds: number[];
   /** Formes (régionales, Méga…) obtenues pour la première fois. */
   newFormIds: number[];
+}
+
+// --- Ferme à baies -----------------------------------------------------------------
+
+export const plantBerryInputSchema = z.object({
+  plotIndex: z.int().min(0).max(8),
+  itemId: slugSchema,
+});
+export type PlantBerryInput = z.infer<typeof plantBerryInputSchema>;
+
+/** Baie plantée dans une parcelle du champ. */
+export interface BerryPlotDto {
+  plotIndex: number;
+  itemId: string;
+  plantedAt: string;
+  /** Durée totale de pousse, en millisecondes, à la vitesse actuelle du champ (talent de l'arroseur). */
+  growMs: number;
+  /** Pousse restante quand elle est en pause (`readyAt` null), en millisecondes. */
+  remainingMs: number;
+  /** Maturité prévue tant que le champ est arrosé ; null = pousse en pause (pas d'assistant Eau). */
+  readyAt: string | null;
+}
+
+export interface FarmResponse {
+  /** Parcelles du champ. */
+  plots: number;
+  serverTime: string;
+  planted: BerryPlotDto[];
+}
+
+export interface HarvestBerriesResponse {
+  /** Baies récoltées, par objet (bonus de l'assistant de récolte compris). */
+  harvested: { itemId: string; quantity: number }[];
 }
 
 // --- Expéditions --------------------------------------------------------------------
@@ -785,6 +831,10 @@ export const switchDungeonInputSchema = z.object({
   atMs: z.int().min(0),
 });
 export type SwitchDungeonInput = z.infer<typeof switchDungeonInputSchema>;
+
+/** Objet de soin (Baie Sitrus) donné au Pokémon actif, `atMs` après le départ. */
+export const combatItemInputSchema = z.object({ itemId: slugSchema, atMs: z.int().min(0) });
+export type CombatItemInput = z.infer<typeof combatItemInputSchema>;
 
 export type StoredDungeonResult = DungeonResult;
 
@@ -1239,3 +1289,12 @@ export interface PushPayload {
   /** Une nouvelle notification remplace la précédente de même tag. */
   tag: string;
 }
+
+// --- Recherche --------------------------------------------------------------------------
+
+/** Texte sans accents ni majuscules, pour les recherches (« evoli » trouve « Évoli »). */
+export const searchKey = (text: string) =>
+  text
+    .normalize('NFD')
+    .replace(/\p{Diacritic}/gu, '')
+    .toLowerCase();

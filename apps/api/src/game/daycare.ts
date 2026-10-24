@@ -4,6 +4,7 @@ import type { Db } from '@poke/db';
 import {
   abilityHolder,
   applyCandies,
+  assistantSlotOf,
   breedingEnv,
   candiesToMaxLevel,
   checkBreedingPair,
@@ -19,7 +20,7 @@ import {
 import type { AbilityHolder, ClaimedRewards, DaycareParent, GameContext } from '@poke/game-core';
 import type { DaycareDto, DepositDaycareInput, EggDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
-import { assistantHolder } from './assistants';
+import { assistantHolder, assistantHolders } from './assistants';
 import { GameError, newSeed, requireStartedProfile } from './expeditions';
 import {
   addItems,
@@ -49,6 +50,7 @@ export function toEggDto(row: EggRow): EggDto {
     id: row.id,
     speciesId: row.speciesId,
     formId: row.formId,
+    slotIndex: row.slotIndex,
     laidAt: row.laidAt.toISOString(),
     hatchAt: row.hatchAt.toISOString(),
   };
@@ -117,8 +119,8 @@ export async function pendingEggs(db: Db, userId: string): Promise<EggRow[]> {
 // --- Dépôt et retrait ---------------------------------------------------------------------
 
 /**
- * Dépose un couple compatible dans une pension libre. Les objets tenus sont réservés dans
- * l'inventaire (rendus au retrait). Le cycle de ponte démarre tout de suite.
+ * Dépose un couple compatible dans une pension libre (celle demandée, ou la première). Les objets
+ * tenus sont réservés dans l'inventaire (rendus au retrait). Le cycle de ponte démarre tout de suite.
  */
 export async function depositDaycare(
   db: Db,
@@ -149,8 +151,12 @@ export async function depositDaycare(
       ).map((s) => s.slotIndex),
     );
     const slots = daycareSlotCount(ctx, await claimedRewards(tx, userId));
-    const slotIndex = Array.from({ length: slots }, (_, i) => i).find((i) => !used.has(i));
-    if (slotIndex === undefined) throw new GameError(409, 'NO_FREE_SLOT');
+    if (input.slotIndex !== undefined && input.slotIndex >= slots) {
+      throw new GameError(400, 'NO_SUCH_SLOT');
+    }
+    const slotIndex =
+      input.slotIndex ?? Array.from({ length: slots }, (_, i) => i).find((i) => !used.has(i));
+    if (slotIndex === undefined || used.has(slotIndex)) throw new GameError(409, 'NO_FREE_SLOT');
 
     const ids = [input.parentAId, input.parentBId];
     const rows = await ownedPokemon(tx, userId, ids);
@@ -207,18 +213,26 @@ async function collectInTx(
   );
   const a = parents.find((p) => p.id === slot.parentAId);
   const b = parents.find((p) => p.id === slot.parentBId);
-  const helper = await assistantHolder(tx, userId, 'daycare');
+  const helper = await assistantHolder(tx, userId, 'daycare', slot.slotIndex);
   const eggMinutes = slotEggMinutes(ctx, [a, b], helper);
   const laid = eggsLaid(ctx, slot.startedAt, now, eggMinutes);
   const waiting = Math.min(laid, maxEggs);
   const lost = laid - waiting;
   if (waiting === 0) return { eggs: [], lost: 0, laid };
 
-  const [{ value: incubating } = { value: 0 }] = await tx
-    .select({ value: count() })
-    .from(eggs)
-    .where(and(eq(eggs.ownerId, userId), eq(eggs.hatched, false)));
-  const collected = Math.min(waiting, Math.max(0, maxEggs - incubating));
+  // Places libres de la couveuse, dans l'ordre : chaque œuf en prend une.
+  const taken = new Set(
+    (
+      await tx
+        .select({ slot: eggs.slotIndex })
+        .from(eggs)
+        .where(and(eq(eggs.ownerId, userId), eq(eggs.hatched, false)))
+    ).map((r) => r.slot),
+  );
+  const places = Array.from({ length: maxEggs }, (_, i) => i)
+    .filter((i) => !taken.has(i))
+    .slice(0, waiting);
+  const collected = places.length;
   if (collected === 0) return { eggs: [], lost: 0, laid };
 
   if (!a || !b) throw new GameError(409, 'PARENT_MISSING');
@@ -244,14 +258,12 @@ async function collectInTx(
     snapshot(a, slot.heldItemAId),
     snapshot(b, slot.heldItemBId),
   ];
-  const incubator = await assistantHolder(tx, userId, 'incubator');
-  const hatchAt = new Date(
-    now.getTime() + hatchMinutes(ctx, check.eggSpeciesId, incubator) * 60_000,
-  );
+  // L'assistant de sa couveuse (6 places chacune) agit sur la durée d'éclosion de chaque œuf.
+  const incubator = await assistantHolders(tx, userId, 'incubator');
   const created = await tx
     .insert(eggs)
     .values(
-      Array.from({ length: collected }, () => ({
+      places.map((place) => ({
         ownerId: userId,
         speciesId: check.eggSpeciesId,
         formId: check.eggFormId,
@@ -259,10 +271,19 @@ async function collectInTx(
         parentBId: b.id,
         parents: parentsSnapshot,
         motherIndex: check.motherIndex,
+        slotIndex: place,
         helper,
         contentVersionId: ctx.content.versionId,
         laidAt: now,
-        hatchAt,
+        hatchAt: new Date(
+          now.getTime() +
+            hatchMinutes(
+              ctx,
+              check.eggSpeciesId,
+              incubator.get(assistantSlotOf('incubator', place)) ?? null,
+            ) *
+              60_000,
+        ),
         seed: newSeed(),
       })),
     )

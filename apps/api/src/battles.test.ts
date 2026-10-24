@@ -242,16 +242,20 @@ describe('combats de dresseurs', () => {
     const notKo = await call('POST', '/api/center', { pokemonIds: [starter.id] });
     expect(notKo).toMatchObject({ status: 409, body: { error: 'POKEMON_NOT_KO' } });
 
-    const ko = await call('PUT', '/api/assistants/daycare', { pokemonId: weak!.id });
+    const ko = await call('PUT', '/api/assistants/daycare/0', { pokemonId: weak!.id });
     expect(ko.body).toMatchObject({ error: 'POKEMON_KO' });
     const healed = await call<PokemonDto[]>('POST', '/api/center', { pokemonIds: [weak!.id] });
     expect(healed.status, JSON.stringify(healed.body)).toBe(200);
     expect(healed.body).toMatchObject([
-      { knockedOut: false, healUntil: new Date(clock.getTime() + 30 * 60_000).toISOString() },
+      {
+        knockedOut: false,
+        healUntil: new Date(clock.getTime() + 30 * 60_000).toISOString(),
+        healSlot: 0,
+      },
     ]);
     const twice = await call('POST', '/api/center', { pokemonIds: [weak!.id] });
     expect(twice.body).toMatchObject({ error: 'POKEMON_NOT_KO' });
-    const healing = await call('PUT', '/api/assistants/daycare', { pokemonId: weak!.id });
+    const healing = await call('PUT', '/api/assistants/daycare/0', { pokemonId: weak!.id });
     expect(healing.body).toMatchObject({ error: 'POKEMON_HEALING' });
 
     // 6 places : une est prise, six Pokémon K.O. de plus n'y tiennent pas.
@@ -260,14 +264,16 @@ describe('combats de dresseurs', () => {
     await handle.db.update(pokemon).set({ knockedOut: true }).where(inArray(pokemon.id, ids));
     const full = await call('POST', '/api/center', { pokemonIds: ids });
     expect(full).toMatchObject({ status: 409, body: { error: 'CENTER_FULL' } });
-    expect((await call('POST', '/api/center', { pokemonIds: ids.slice(0, 5) })).status).toBe(200);
+    const five = await call<PokemonDto[]>('POST', '/api/center', { pokemonIds: ids.slice(0, 5) });
+    expect(five.body.map((p) => p.healSlot)).toEqual([1, 2, 3, 4, 5]);
 
     // Soins terminés : de nouveau libre, et sa place se libère.
     advance(30);
-    const assigned = await call('PUT', '/api/assistants/daycare', { pokemonId: weak!.id });
+    const assigned = await call('PUT', '/api/assistants/daycare/0', { pokemonId: weak!.id });
     expect(assigned.status, JSON.stringify(assigned.body)).toBe(200);
-    await call('DELETE', '/api/assistants/daycare');
-    expect((await call('POST', '/api/center', { pokemonIds: [ids[5]] })).status).toBe(200);
+    await call('DELETE', '/api/assistants/daycare/0');
+    const last = await call<PokemonDto[]>('POST', '/api/center', { pokemonIds: [ids[5]] });
+    expect(last.body).toMatchObject([{ healSlot: 0 }]);
   });
 
   it('ranime des Pokémon K.O. avec un Rappel chacun', async () => {
@@ -338,6 +344,36 @@ describe('combats de dresseurs', () => {
     finish(sw.body);
     const claim = await call<ClaimBattleResponse>('POST', `/api/battles/${res.body.id}/claim`);
     expect(claim.status).toBe(200);
+  });
+
+  it('donne une Baie Sitrus au Pokémon actif, qui la consomme', async () => {
+    advance(5 * 60);
+    // Un autre Pokémon que le starter : s'il est mis K.O., les tests suivants n'en pâtissent pas.
+    const res = await start(call, 'gamin-tom', [await give(userId, 7, { level: 5, xp: 135 })]);
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    const battle = res.body;
+    const hit = simulateDungeon(battle.setup, [], null, battle.setup.timeLimitMs).events.find(
+      (e) => e.kind === 'attack' && e.side === 'enemy' && e.damage > 0 && !e.ko,
+    )!;
+    const atMs = hit.atMs + 1;
+    clock = new Date(Date.parse(battle.startedAt) + atMs);
+    const item = (itemId: string) =>
+      call<BattleDto>('POST', `/api/battles/${battle.id}/item`, { itemId, atMs });
+
+    expect((await item('poke-ball')).body).toMatchObject({ error: 'NOT_A_BATTLE_ITEM' });
+    expect((await item('sitrus-berry')).body).toMatchObject({ error: 'ITEM_MISSING' });
+    await addItems(handle.db, userId, [{ itemId: 'sitrus-berry', quantity: 1 }]);
+    const used = await item('sitrus-berry');
+    expect(used.status, JSON.stringify(used.body)).toBe(200);
+    expect(used.body.commands).toEqual([{ atMs, itemId: 'sitrus-berry', heal: 0.25 }]);
+    const { events } = simulateDungeon(used.body.setup, used.body.commands, null, atMs);
+    expect(events.at(-1)).toMatchObject({ kind: 'item', member: 0, itemId: 'sitrus-berry' });
+    // Une autre baie aussitôt : refusée, la Baie Sitrus se recharge pendant 10 s.
+    await addItems(handle.db, userId, [{ itemId: 'sitrus-berry', quantity: 1 }]);
+    expect((await item('sitrus-berry')).body).toMatchObject({ error: 'ITEM_COOLDOWN' });
+
+    finish(used.body);
+    expect((await call('POST', `/api/battles/${battle.id}/claim`)).status).toBe(200);
   });
 
   it('vérifie les conditions d’équipe du dresseur', async () => {

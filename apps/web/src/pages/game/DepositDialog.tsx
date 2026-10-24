@@ -3,6 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { eggGroups } from '@poke/data';
 import { checkBreedingPair, hatchMinutes, inheritanceRules, isBreedable } from '@poke/game-core';
 import type { BreedingError, GameContext } from '@poke/game-core';
+import { searchKey } from '@poke/shared';
 import type { DaycareDto, DepositDaycareInput, PokemonDto } from '@poke/shared';
 import { IvHover, Modal, PokemonSprite, ShinyStar, useNow } from '../../components/ui';
 import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
@@ -49,7 +50,16 @@ function breedingErrorText(ctx: GameContext, e: BreedingError): string {
 }
 
 /** Choix d'un couple, de leurs objets tenus, et aperçu de l'œuf avant le dépôt. */
-export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () => void }) {
+export function DepositDialog({
+  ctx,
+  slotIndex,
+  onClose,
+}: {
+  ctx: GameContext;
+  /** Pension choisie (son assistant agira sur le couple). */
+  slotIndex: number;
+  onClose: () => void;
+}) {
   const queryClient = useQueryClient();
   const pokemon = usePokemon();
   const inventory = useInventory();
@@ -86,13 +96,13 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
   const groupsInPc = [
     ...new Set(breedable.flatMap((p) => ctx.species(p.speciesId, p.formId)!.eggGroups)),
   ].sort((x, y) => eggGroupName(x).localeCompare(eggGroupName(y)));
-  const needle = search.trim().toLowerCase();
+  const needle = searchKey(search.trim());
   const available = breedable
     .filter(
       (p) =>
         parents.includes(p.id) ||
         ((!partnerOf || checkBreedingPair(ctx, partnerOf, p).ok) &&
-          (!needle || speciesName(ctx, p.speciesId, p.formId).toLowerCase().includes(needle)) &&
+          (!needle || searchKey(speciesName(ctx, p.speciesId, p.formId)).includes(needle)) &&
           (gender === 'all' || p.gender === gender) &&
           (eggGroup === 'all' ||
             ctx.species(p.speciesId, p.formId)!.eggGroups.includes(eggGroup)) &&
@@ -123,6 +133,8 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
   const notEnough = sameItemTwice && (owned.get(items[0]!) ?? 0) < 2;
 
   function pick(p: PokemonDto) {
+    // Premier parent choisi : la recherche le visait, ses partenaires peuvent avoir un autre nom.
+    if (!parents[0] && !parents[1]) setSearch('');
     setParents(([first, second]) => {
       if (first === p.id) return [second, null];
       if (second === p.id) return [first, null];
@@ -352,6 +364,7 @@ export function DepositDialog({ ctx, onClose }: { ctx: GameContext; onClose: () 
               parentBId: parents[1]!,
               heldItemAId: items[0],
               heldItemBId: items[1],
+              slotIndex,
             })
           }
         >

@@ -14,6 +14,7 @@ import {
   possibleAbilityEffects,
 } from '@poke/game-core';
 import type { AbilityEnv, ExpeditionSite, GameContext } from '@poke/game-core';
+import { searchKey } from '@poke/shared';
 import type { PokemonDto, PokemonTagDto, PokemonTeamDto } from '@poke/shared';
 import { PokemonTagBadges, TagFilterSelect, useTagFilterOver } from '../../components/tags';
 import {
@@ -68,14 +69,9 @@ export function TypeFilterSelect({
 }
 
 /** Recherche par nom, insensible à la casse et aux accents (« evoli » trouve « Évoli »). */
-const fold = (s: string) =>
-  s
-    .normalize('NFD')
-    .replace(/\p{Diacritic}/gu, '')
-    .toLowerCase();
 export function nameMatcher(search: string) {
-  const needle = fold(search.trim());
-  return (name: string) => !needle || fold(name).includes(needle);
+  const needle = searchKey(search.trim());
+  return (name: string) => !needle || searchKey(name).includes(needle);
 }
 
 /** Champ de recherche par nom des sélecteurs d'équipe. */

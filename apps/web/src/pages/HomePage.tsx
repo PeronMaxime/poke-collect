@@ -16,6 +16,7 @@ import {
   useDexCatches,
   useDungeons,
   useExpeditions,
+  useFarm,
   useGameContext,
   useMuseum,
   useNewEvolutionChecker,
@@ -31,6 +32,7 @@ import { DungeonsPage } from './game/DungeonsPage';
 import { ExpeditionsPage } from './game/ExpeditionsPage';
 import { InventoryPage } from './game/InventoryPage';
 import { LeaderboardPage } from './game/LeaderboardPage';
+import { FarmPage } from './game/FarmPage';
 import { MuseumPage } from './game/MuseumPage';
 import { PcPage } from './game/PcPage';
 import { PokedexPage } from './game/PokedexPage';
@@ -73,6 +75,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const expeditions = useExpeditions();
   const daycare = useDaycare();
   const museum = useMuseum();
+  const farm = useFarm();
   const battles = useBattles();
   const dungeons = useDungeons();
   const shop = useShop();
@@ -120,6 +123,8 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
 
   const fossilsReady =
     museum.data?.revivals.filter((r) => Date.parse(r.readyAt) <= now).length ?? 0;
+  const berriesReady =
+    farm.data?.planted.filter((p) => p.readyAt && Date.parse(p.readyAt) <= now).length ?? 0;
   // Pokémon K.O. qui attendent leurs soins (comptés seulement s'il reste de la place).
   const center = ctx && pokemon.data ? centerState(ctx, pokemon.data, now) : null;
   const koWaiting = center && center.free > 0 ? center.knockedOut.length : 0;
@@ -129,6 +134,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
     finished +
       daycareReady +
       fossilsReady +
+      berriesReady +
       koWaiting +
       questsReady +
       shopNew +
@@ -210,6 +216,11 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
         {id === 'museum' && fossilsReady > 0 && (
           <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
             {fossilsReady}
+          </span>
+        )}
+        {id === 'farm' && berriesReady > 0 && (
+          <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
+            {berriesReady}
           </span>
         )}
         {id === 'quests' && questsReady > 0 && (
@@ -400,6 +411,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
               {tab === 'center' && <CenterPage ctx={ctx} />}
               {tab === 'daycare' && <DaycarePage ctx={ctx} />}
               {tab === 'museum' && <MuseumPage ctx={ctx} />}
+              {tab === 'farm' && <FarmPage ctx={ctx} />}
               {tab === 'quests' && <QuestsPage ctx={ctx} />}
               {tab === 'shop' && <ShopPage ctx={ctx} />}
               {tab === 'pc' && <PcPage ctx={ctx} />}

@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { ACTIVE_WINDOW_MS, ONLINE_WINDOW_MS } from '@poke/shared';
+import { ACTIVE_WINDOW_MS, ONLINE_WINDOW_MS, searchKey } from '@poke/shared';
 import type {
   AdminPlayerDetailResponse,
   AdminPlayerDto,
@@ -146,14 +146,14 @@ export function PlayersPage() {
   }, [players, now]);
 
   const rows = useMemo(() => {
-    const needle = search.trim().toLowerCase();
+    const needle = searchKey(search.trim());
     const filtered = players.filter((p) => {
       const s = presence(p, now);
       if (filter === 'online' && s !== 'online') return false;
       if (filter === 'active' && s === 'inactive') return false;
       if (filter === 'inactive' && s !== 'inactive') return false;
       return (
-        !needle || [p.trainerName, p.name, p.email].some((v) => v?.toLowerCase().includes(needle))
+        !needle || [p.trainerName, p.name, p.email].some((v) => v && searchKey(v).includes(needle))
       );
     });
     const time = (iso: string | null) => (iso ? new Date(iso).getTime() : 0);

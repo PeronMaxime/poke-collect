@@ -177,7 +177,7 @@ export async function claimReward(
 }
 
 /**
- * Utilise un objet endgame sur un Pokémon (Capsule, Aromate, Pilule / Patch Talent) : refusé s'il
+ * Utilise un objet sur un Pokémon (Capsule, Aromate, Pilule / Patch Talent, Baie Grena) : refusé s'il
  * serait sans effet ; l'objet est consommé. Possible même K.O., pas pendant une activité.
  */
 export async function useItemOnPokemon(
@@ -208,7 +208,7 @@ export async function useItemOnPokemon(
     if ('error' in result) throw new GameError(400, result.error);
     if (!(await takeItems(tx, userId, input.itemId, 1))) throw new GameError(409, 'ITEM_MISSING');
 
-    const { ivs, natureOverride, ability } = result.patch;
+    const { ivs, natureOverride, ability, happiness } = result.patch;
     const [updated] = await tx
       .update(pokemon)
       .set({
@@ -222,6 +222,7 @@ export async function useItemOnPokemon(
         }),
         ...(natureOverride !== undefined && { natureOverride }),
         ...(ability && { ability }),
+        ...(happiness !== undefined && { happiness }),
       })
       .where(eq(pokemon.id, row.id))
       .returning();
