@@ -48,7 +48,10 @@ const RELEASES: Release[] = [
       },
       {
         section: 'Divers',
-        items: ['Le jeu parle désormais partout de Pokémon « chromatiques » plutôt que « shiny ».'],
+        items: [
+          'Ruines d’Alpha : on n’y rencontre plus que Zarbi, sous ses 28 formes (A à Z, ! et ?), toutes aussi fréquentes. Queulorior se trouve désormais au Parc Safari de Johto.',
+          'Le jeu parle désormais partout de Pokémon « chromatiques » plutôt que « shiny ».',
+        ],
       },
     ],
   },
