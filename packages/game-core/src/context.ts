@@ -1,8 +1,10 @@
 import type {
   BalanceSettings,
+  ChestEntry,
   Dungeon,
   GameAbility,
   GameContent,
+  GuildQuest,
   Item,
   ItemEffect,
   ItemEffectType,
@@ -50,6 +52,10 @@ export interface GameContext {
   readonly quests: readonly Quest[];
   /** Donjons triés par région puis par ordre. */
   readonly dungeons: readonly Dungeon[];
+  /** Modèles de quêtes de guilde (catalogue du tirage hebdomadaire). */
+  readonly guildQuests: readonly GuildQuest[];
+  /** Lots des coffres de guilde. */
+  readonly chestEntries: readonly ChestEntry[];
   dungeon(id: string): Dungeon | undefined;
   quest(id: string): Quest | undefined;
   region(id: string): Region | undefined;
@@ -111,6 +117,8 @@ export function createGameContext(content: GameContent): GameContext {
     shopEntries,
     quests,
     dungeons,
+    guildQuests: content.guildQuests,
+    chestEntries: content.chestEntries,
     quest: (id) => questsById.get(id),
     dungeon: (id) => dungeonsById.get(id),
     region: (id) => regionsById.get(id),

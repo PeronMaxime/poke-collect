@@ -53,7 +53,7 @@ export function PokemonRewardsEditor({
         avec la formule de capture habituelle. Les membres de l’équipe d’un type d’affinité
         augmentent la chance de capture ; par défaut, les faiblesses du Pokémon. L’équipe doit venir
         du Pokédex de la région de la quête. IV aléatoires, dont au moins le nombre indiqué à 31 ;
-        le taux shiny habituel s’applique (Charme Chroma compris). Un fuyard, lui, n’a pas
+        le taux chromatique habituel s’applique (Charme Chroma compris). Un fuyard, lui, n’a pas
         d’expédition légendaire : il change de zone à chaque heure parmi les zones ordinaires
         débloquées par le joueur dans la région de la quête (ni zones de quête, ni zones à plusieurs
         conditions), et chaque rencontre d’une expédition dans sa zone a le pourcentage indiqué de

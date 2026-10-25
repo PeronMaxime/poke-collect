@@ -84,6 +84,8 @@ export function pityMultiplier(ctx: GameContext, misses: number): number {
 export interface CaptureFactors {
   captureRate: number;
   ballMultiplier: number;
+  /** Ball à capture assurée (Master Ball). */
+  guaranteed?: boolean;
   boostMultiplier?: number;
   /** Nombre de membres de l'équipe en affinité avec la zone. */
   affinityCount?: number;
@@ -96,6 +98,7 @@ export interface CaptureFactors {
  * probabilité ≈ a / 255, puis bonus d'affinité et multiplicateur global.
  */
 export function captureProbability(ctx: GameContext, f: CaptureFactors): number {
+  if (f.guaranteed) return 1;
   const { globalMultiplier, assumedHpFraction, affinityBonusPerPokemon } = ctx.balance.capture;
   const hpFactor = (3 - 2 * assumedHpFraction) / 3;
   const affinity = 1 + affinityBonusPerPokemon * (f.affinityCount ?? 0);
@@ -578,9 +581,9 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
   const pity = new Map(Object.entries(input.pity).map(([k, v]) => [Number(k), v]));
   const touched = new Set<number>();
   const affinityCount = input.affinityCount ?? countAffinity(ctx, zone, input.team, input.hour);
-  const ballMultiplier = input.balls
-    ? (ctx.itemEffect(input.balls.itemId, 'ball')?.catchMultiplier ?? 1)
-    : 0;
+  const ball = input.balls ? ctx.itemEffect(input.balls.itemId, 'ball') : undefined;
+  const ballMultiplier = input.balls ? (ball?.catchMultiplier ?? 1) : 0;
+  const guaranteed = ball?.guaranteed === true;
   const captureBerry = input.berries
     ? ctx.itemEffect(input.berries.itemId, 'captureBoost')
     : undefined;
@@ -638,6 +641,7 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
       const captureChance = captureProbability(ctx, {
         captureRate: species.captureRate,
         ballMultiplier,
+        guaranteed,
         boostMultiplier: useBerry ? boostMultiplier : 1,
         affinityCount,
         bonusMultiplier: bonuses.capture,
@@ -686,6 +690,7 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
     const captureChance = captureProbability(ctx, {
       captureRate: species.captureRate,
       ballMultiplier,
+      guaranteed,
       boostMultiplier: useBerry ? boostMultiplier : 1,
       affinityCount,
       bonusMultiplier: bonuses.capture,

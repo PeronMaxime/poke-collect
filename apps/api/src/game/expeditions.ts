@@ -42,6 +42,7 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
+import { recordGuildActivity } from './guilds';
 import { syncQuests } from './quests';
 import {
   addItems,
@@ -732,6 +733,13 @@ export async function claimExpedition(
             team,
             captured: capturedEncounters.map((e) => e.pokemon!),
           },
+    );
+    await recordGuildActivity(
+      tx,
+      current,
+      userId,
+      { caught: captured, expeditions: zone ? 1 : 0 },
+      now,
     );
 
     let capturedIndex = 0;

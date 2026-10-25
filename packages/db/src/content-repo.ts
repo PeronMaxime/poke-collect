@@ -1,6 +1,7 @@
 import { and, asc, desc, eq } from 'drizzle-orm';
 import {
   abilitySchema,
+  chestEntrySchema,
   collectionSchema,
   contentIssues,
   dexMilestoneSchema,
@@ -9,6 +10,7 @@ import {
   findUsages,
   gameContentSchema,
   gameContentStructureSchema,
+  guildQuestSchema,
   itemSchema,
   lootTableSchema,
   questSchema,
@@ -21,6 +23,7 @@ import {
 } from '@poke/content';
 import type {
   BalanceSettings,
+  ChestEntry,
   Collection,
   ContentIssue,
   DexMilestone,
@@ -29,6 +32,7 @@ import type {
   GameAbility,
   GameContent,
   GameContentData,
+  GuildQuest,
   Item,
   LootTable,
   Quest,
@@ -44,11 +48,13 @@ import type { Db } from './client';
 import {
   abilities,
   balanceSettings,
+  chestEntries,
   collections,
   contentVersions,
   dexMilestones,
   dungeons,
   evolutionOverrides,
+  guildQuests,
   items,
   lootTables,
   quests,
@@ -141,6 +147,8 @@ const entityDefs = {
   },
   collection: { table: collections, key: 'id', schema: collectionSchema, order: collections.order },
   quest: { table: quests, key: 'id', schema: questSchema, order: quests.order },
+  guildQuest: { table: guildQuests, key: 'id', schema: guildQuestSchema, order: guildQuests.id },
+  chestEntry: { table: chestEntries, key: 'id', schema: chestEntrySchema, order: chestEntries.id },
 } as const;
 
 export type ContentEntityType = keyof typeof entityDefs;
@@ -160,6 +168,8 @@ export interface ContentEntityMap {
   dexMilestone: DexMilestone;
   collection: Collection;
   quest: Quest;
+  guildQuest: GuildQuest;
+  chestEntry: ChestEntry;
 }
 
 /** Collection de `GameContentData` correspondant à chaque type d'entité. */
@@ -178,6 +188,8 @@ const collectionOf = {
   dexMilestone: 'dexMilestones',
   collection: 'collections',
   quest: 'quests',
+  guildQuest: 'guildQuests',
+  chestEntry: 'chestEntries',
 } as const satisfies Record<ContentEntityType, keyof GameContentData>;
 
 export const contentEntitySchemas: { [K in ContentEntityType]: z.ZodType<ContentEntityMap[K]> } = {
@@ -195,6 +207,8 @@ export const contentEntitySchemas: { [K in ContentEntityType]: z.ZodType<Content
   dexMilestone: dexMilestoneSchema,
   collection: collectionSchema,
   quest: questSchema,
+  guildQuest: guildQuestSchema,
+  chestEntry: chestEntrySchema,
 };
 
 type AnyRow = Record<string, unknown>;

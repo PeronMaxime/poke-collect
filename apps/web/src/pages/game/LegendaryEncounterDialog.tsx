@@ -171,16 +171,16 @@ function EncounterContent({
             animate={{ opacity: 1, scale: [0.8, 1.08, 1] }}
             transition={{ delay: 0.4, duration: 0.5 }}
           >
-            ✨ Il est shiny ! ✨
+            ✨ Il est chromatique ! ✨
           </motion.p>
         ) : (
           <p className="mt-1 text-xs text-slate-500">
-            Pas shiny cette fois. Fuis puis relance l’expédition depuis les Quêtes pour allonger la
-            chaîne et augmenter tes chances.
+            Pas chromatique cette fois. Fuis puis relance l’expédition depuis les Quêtes pour
+            allonger la chaîne et augmenter tes chances.
           </p>
         )}
         <p className="mt-1 text-xs text-slate-500">
-          Taux shiny {formatShinyRate(e.shinyChance)}
+          Taux chromatique {formatShinyRate(e.shinyChance)}
           {e.shinyChain > 0 && ` (chaîne ${e.shinyChain})`}
         </p>
       </div>

@@ -137,7 +137,7 @@ export function MilestonesView({ ctx, progress }: { ctx: GameContext; progress: 
         {milestones.map((m) => {
           const state = milestoneState(ctx, m, progress, claimed);
           const dex = dexProgress(ctx, m.regionId, progress, m.shiny);
-          const dexName = `${m.regionId ? `Pokédex de ${ctx.region(m.regionId)?.name ?? m.regionId}` : 'Pokédex national'}${m.shiny ? ' shiny' : ''}`;
+          const dexName = `${m.regionId ? `Pokédex de ${ctx.region(m.regionId)?.name ?? m.regionId}` : 'Pokédex national'}${m.shiny ? ' chromatique' : ''}`;
           return (
             <li key={m.id} className={`card space-y-2 p-3 ${STATE_STYLES[state]}`}>
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -148,7 +148,7 @@ export function MilestonesView({ ctx, progress }: { ctx: GameContext; progress: 
                   <p className="text-xs text-slate-500">
                     {m.percent} % du {dexName} · {dex.percent.toFixed(1)} % (
                     {Math.ceil((m.percent / 100) * dex.total)} espèces requises, {dex.caught}{' '}
-                    capturées{m.shiny ? ' en shiny' : ''})
+                    capturées{m.shiny ? ' en chromatique' : ''})
                   </p>
                 </div>
                 <ClaimButton

@@ -22,6 +22,7 @@ import type { DaycareDto, DepositDaycareInput, EggDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { assistantHolder, assistantHolders } from './assistants';
 import { GameError, newSeed, requireStartedProfile } from './expeditions';
+import { recordGuildActivity } from './guilds';
 import {
   addItems,
   assertAvailable,
@@ -404,6 +405,7 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
       caught: hatched,
       at: now,
     });
+    await recordGuildActivity(tx, published, userId, { eggsHatched: hatched.length }, now);
     return { hatched, ...newInDex };
   });
 }

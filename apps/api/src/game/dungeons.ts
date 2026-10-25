@@ -21,6 +21,7 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
+import { recordGuildActivity } from './guilds';
 import { newSeed, requireStartedProfile, startHour } from './expeditions';
 import {
   addItems,
@@ -344,6 +345,8 @@ export async function claimDungeonRun(
   const ctx = await content.version(found.contentVersionId);
   const dungeon = ctx.dungeon(found.dungeonId);
   if (!dungeon) throw new GameError(500, 'DUNGEON_MISSING_IN_VERSION');
+  // Les quêtes de guilde suivent le contenu publié, pas la version de départ du donjon.
+  const published = await content.get();
 
   return db.transaction(async (tx) => {
     // Verrou : seule la première réclamation passe.
@@ -389,6 +392,13 @@ export async function claimDungeonRun(
       ...result.loot,
       ...(result.gemItemId ? [{ itemId: result.gemItemId, quantity: 1 }] : []),
     ]);
+    await recordGuildActivity(
+      tx,
+      published,
+      userId,
+      { dungeonsWon: win ? 1 : 0, money: result.money },
+      now,
+    );
     const [profile] = await tx
       .update(playerProfiles)
       .set({ currency: sql`${playerProfiles.currency} + ${result.money}` })

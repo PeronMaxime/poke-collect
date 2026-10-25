@@ -17,7 +17,7 @@ import {
 } from '@poke/db';
 import type { Db } from '@poke/db';
 import type { ItemStack } from '@poke/content';
-import { charmMultiplier, isHealing, questStepsDone } from '@poke/game-core';
+import { charmMultiplier, isHealing, NO_ABILITY, questStepsDone } from '@poke/game-core';
 import type {
   CaughtDex,
   ClaimedRewards,
@@ -146,7 +146,8 @@ export async function insertPokemon(
         ivSpd: p.ivs['special-defense'],
         ivSpe: p.ivs.speed,
         nature: p.nature,
-        ability: p.ability,
+        // Les Pokémon obtenus arrivent sans talent (Pilule / Patch Talent pour le débloquer).
+        ability: NO_ABILITY,
         isShiny: p.isShiny,
         gender: p.gender,
         happiness: p.happiness,

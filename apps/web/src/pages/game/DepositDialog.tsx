@@ -257,7 +257,7 @@ export function DepositDialog({
             checked={onlyShiny}
             onChange={(e) => setOnlyShiny(e.target.checked)}
           />
-          Shiny
+          Chromatique
         </label>
         <div className="flex items-center gap-1 text-xs">
           <span className="text-slate-500">Trier par</span>

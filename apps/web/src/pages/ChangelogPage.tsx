@@ -17,6 +17,45 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '25 octobre 2026',
+    title: 'Guildes et talents à débloquer',
+    changes: [
+      {
+        section: 'Guildes',
+        items: [
+          'Nouvel onglet « Guilde » sous la Fiche Dresseur : fonde ta guilde pour 100 000 ₽ ou rejoins-en une grâce à la recherche (jusqu’à 30 membres).',
+          'Le chef choisit si sa guilde est ouverte à tous ou sur demande ; il peut nommer des officiers, qui l’aident à accepter les candidatures et à gérer les membres.',
+          'Une discussion permet aux membres d’échanger, et la liste des membres montre ce que chacun apporte aux quêtes de la semaine.',
+          'Après avoir quitté une guilde, il faut attendre 24 h avant d’en rejoindre ou d’en fonder une autre.',
+        ],
+      },
+      {
+        section: 'Quêtes de guilde et coffres',
+        items: [
+          'Chaque semaine, 5 quêtes à réaliser tous ensemble : captures, expéditions, combats, donjons, œufs… Chaque action d’un membre les fait avancer.',
+          'Les quêtes repartent à zéro chaque lundi à minuit : une quête non terminée est perdue.',
+          'Chaque quête terminée donne un coffre Bronze, Argent ou Or à tous les membres qui l’ont fait avancer.',
+          'Ouvre tes coffres depuis le sac : Poké Balls, Super Balls et Hyper Balls par lots, Super Bonbons, pierres évolutives, Nœud Destin, Capsules d’Argent et d’Or, Aromates… et même la Master Ball. Plus tu progresses dans le jeu, plus les coffres contiennent d’objets différents.',
+        ],
+      },
+      {
+        section: 'Talents',
+        items: [
+          'Les nouveaux Pokémon (captures, œufs, fossiles, récompenses) arrivent sans talent. Ceux que tu as déjà gardent le leur.',
+          'Pilule Talent : donne au Pokémon l’un de ses talents normaux, au hasard. Une deuxième Pilule le fait passer à l’autre talent normal, s’il en a deux.',
+          'Patch Talent : donne au Pokémon son talent caché. Une Pilule Talent le ramène ensuite à un talent normal.',
+        ],
+      },
+      {
+        section: 'Divers',
+        items: [
+          'Ruines d’Alpha : on n’y rencontre plus que Zarbi, sous ses 28 formes (A à Z, ! et ?), toutes aussi fréquentes. Queulorior se trouve désormais au Parc Safari de Johto.',
+          'Le jeu parle désormais partout de Pokémon « chromatiques » plutôt que « shiny ».',
+        ],
+      },
+    ],
+  },
+  {
     date: '24 octobre 2026',
     title: 'Ferme à baies, nouvelles baies et un assistant par place',
     changes: [

@@ -796,7 +796,8 @@ function PokemonDetail({
               <>
                 <AbilityName name={species.abilities[0].name} summary={abilitySummary} />
                 <span className="block text-xs text-slate-500">
-                  Méga-Évolution · d’origine {abilityLabel(p.ability)}
+                  Méga-Évolution ·{' '}
+                  {p.ability ? `d’origine ${abilityLabel(p.ability)}` : 'sans talent d’origine'}
                 </span>
               </>
             ) : (
@@ -804,6 +805,11 @@ function PokemonDetail({
                 <AbilityName name={p.ability} summary={abilitySummary} />
                 {species.abilities.find((a) => a.name === p.ability)?.isHidden && (
                   <span className="ml-1 text-xs text-violet-600">(caché)</span>
+                )}
+                {!p.ability && (
+                  <span className="block text-xs text-slate-500">
+                    Pilule Talent ou Patch Talent pour en débloquer un
+                  </span>
                 )}
               </>
             )}
@@ -1142,7 +1148,6 @@ function ItemUseDialog({
 }) {
   const queryClient = useQueryClient();
   const [stat, setStat] = useState<StatName | ''>('');
-  const [abilities, setAbilities] = useState<Record<string, string>>({});
   const use = useMutation({
     mutationFn: (input: UseItemInput) =>
       api<UseItemResponse>(`/api/pokemon/${p.id}/use-item`, { method: 'POST', json: input }),
@@ -1177,7 +1182,6 @@ function ItemUseDialog({
         {items.map(({ itemId, quantity, options }) => {
           const { effect } = options;
           const needsStat = effect.type === 'ivCap' && !effect.all;
-          const ability = abilities[itemId] ?? options.abilities[0];
           const ready = options.usable && (!needsStat || stat !== '');
           return (
             <li key={itemId} className="flex flex-wrap items-center gap-2 text-xs">
@@ -1189,6 +1193,12 @@ function ItemUseDialog({
                 <p className="text-slate-500">
                   {options.usable ? effectText(effect) : 'Sans effet sur ce Pokémon'}
                 </p>
+                {options.usable && options.abilities.length > 0 && (
+                  <p className="text-slate-500">
+                    {options.abilities.length > 1 ? 'Au hasard : ' : 'Talent obtenu : '}
+                    {options.abilities.map(abilityLabel).join(' ou ')}
+                  </p>
+                )}
               </div>
               {options.usable && needsStat && (
                 <select
@@ -1204,19 +1214,6 @@ function ItemUseDialog({
                   ))}
                 </select>
               )}
-              {options.usable && options.abilities.length > 1 && (
-                <select
-                  className="input w-auto py-1 text-xs"
-                  value={ability}
-                  onChange={(e) => setAbilities({ ...abilities, [itemId]: e.target.value })}
-                >
-                  {options.abilities.map((a) => (
-                    <option key={a} value={a}>
-                      {abilityLabel(a)}
-                    </option>
-                  ))}
-                </select>
-              )}
               {options.usable && (
                 <button
                   className="btn-primary shrink-0 py-1"
@@ -1226,7 +1223,6 @@ function ItemUseDialog({
                     use.mutate({
                       itemId,
                       ...(needsStat && stat && { stat }),
-                      ...(effect.type === 'abilityChange' && ability && { ability }),
                     })
                   }
                 >

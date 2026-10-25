@@ -115,6 +115,12 @@ export function rollGender(rng: Rng, genderRate: number): Gender {
   return rng.next() < genderRate / 8 ? 'female' : 'male';
 }
 
+/**
+ * Talent d'un Pokémon qui n'en a pas : les Pokémon du joueur arrivent sans talent et le débloquent
+ * avec une Pilule ou un Patch Talent. Les Pokémon adverses (donjons, dresseurs) gardent le leur.
+ */
+export const NO_ABILITY = '';
+
 export function rollAbility(rng: Rng, species: Species, hiddenChance: number): string {
   const regular = species.abilities.filter((a) => !a.isHidden);
   const hidden = species.abilities.filter((a) => a.isHidden);

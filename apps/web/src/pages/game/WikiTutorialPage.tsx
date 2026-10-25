@@ -105,8 +105,8 @@ export function WikiTutorialPage({ ctx }: { ctx: GameContext }) {
             équipes aguerries.
           </li>
           <li>
-            Chaque Pokémon a un <Go href={wikiLink('talents')}>talent</Go> qui peut t’aider dans
-            certaines activités.
+            Une Pilule Talent ou un Patch Talent donne à un Pokémon un{' '}
+            <Go href={wikiLink('talents')}>talent</Go> qui peut t’aider dans certaines activités.
           </li>
         </ul>
       </Step>

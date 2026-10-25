@@ -362,8 +362,8 @@ function SpeciesView() {
               >
                 Capturé
               </th>
-              <th className="px-3 py-2 text-right" title="Dont shiny">
-                Capturé shiny
+              <th className="px-3 py-2 text-right" title="Dont chromatiques">
+                Capturé chromatique
               </th>
               <th
                 className="px-3 py-2 text-right"

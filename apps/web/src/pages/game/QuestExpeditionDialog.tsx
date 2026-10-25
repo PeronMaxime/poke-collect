@@ -83,10 +83,10 @@ export function QuestExpeditionDialog({
           <h2 className="text-xl font-bold">Expédition légendaire : {quest.name}</h2>
           <p className="text-sm text-slate-500">
             Pars à la recherche de {name} (N.{target.level}). L’expédition dure{' '}
-            {formatDuration(durationMinutes)}. Au retour, tu découvres s’il est shiny, puis tu
+            {formatDuration(durationMinutes)}. Au retour, tu découvres s’il est chromatique, puis tu
             choisis ta Ball et ta baie (<strong>une seule Ball lancée</strong>) ou tu prends la
-            fuite (sans XP pour l’équipe). Relancer de suite allonge la chaîne shiny. Une équipe en
-            affinité augmente la chance de capture.
+            fuite (sans XP pour l’équipe). Relancer de suite allonge la chaîne chromatique. Une
+            équipe en affinité augmente la chance de capture.
           </p>
         </div>
       </div>
@@ -123,7 +123,7 @@ export function QuestExpeditionDialog({
         {check.affinityCount > 0
           ? `${check.affinityCount} Pokémon en affinité`
           : 'Aucun Pokémon en affinité'}{' '}
-        · taux shiny {formatShinyRate(shinyProbability(ctx, { chain, charm }))}
+        · taux chromatique {formatShinyRate(shinyProbability(ctx, { chain, charm }))}
         {chain > 0 && (
           <>
             {' '}

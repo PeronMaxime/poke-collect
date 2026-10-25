@@ -21,7 +21,9 @@ export type EntityCollection =
   | 'evolutions'
   | 'dex-milestones'
   | 'collections'
-  | 'quests';
+  | 'quests'
+  | 'guild-quests'
+  | 'chest-entries';
 
 export const versionsQuery = {
   queryKey: ['content-versions'],

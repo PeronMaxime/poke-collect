@@ -130,6 +130,7 @@ export const MENU_TABS = [
   { id: 'shop', label: 'Boutique' },
   { id: 'bag', label: 'Sac' },
   { id: 'trainer', label: 'Fiche Dresseur' },
+  { id: 'guild', label: 'Guilde' },
   { id: 'leaderboard', label: 'Classement' },
 ] as const;
 export type MenuTabId = (typeof MENU_TABS)[number]['id'];
@@ -139,7 +140,7 @@ export const DEFAULT_MENU_GROUPS: MenuTabId[][] = [
   ['expeditions', 'battles', 'dungeons', 'quests'],
   ['center', 'daycare', 'museum', 'farm'],
   ['pc', 'teams', 'pokedex', 'shop', 'bag'],
-  ['trainer', 'leaderboard'],
+  ['trainer', 'guild', 'leaderboard'],
 ];
 
 /**
@@ -176,6 +177,36 @@ export function normalizeMenuGroups(groups: readonly (readonly string[])[] | und
   if (missing.length) result.push(missing);
   return result.filter((g) => g.length > 0);
 }
+
+/** Un nombre par rareté de coffre de guilde (bronze, argent, or). */
+const perChestRaritySchema = (min: number, max: number) =>
+  z.object({
+    bronze: z.int().min(min).max(max),
+    silver: z.int().min(min).max(max),
+    gold: z.int().min(min).max(max),
+  });
+
+/** Réglages des guildes par défaut (aussi utilisés pour les versions de contenu antérieures). */
+export const DEFAULT_GUILD_SETTINGS = {
+  creationCost: 100_000,
+  maxMembers: 30,
+  rejoinCooldownHours: 24,
+  weeklyQuests: { bronze: 2, silver: 2, gold: 1 },
+  chestRolls: { bronze: 1, silver: 2, gold: 3 },
+};
+
+export const guildSettingsSchema = z.object({
+  /** Prix de création d'une guilde, en Poké Dollars. */
+  creationCost: z.int().min(0).max(100_000_000),
+  maxMembers: z.int().min(2).max(200),
+  /** Délai après avoir quitté une guilde avant d'en rejoindre (ou d'en créer) une autre. */
+  rejoinCooldownHours: z.int().min(0).max(720),
+  /** Quêtes tirées chaque semaine, par rareté de coffre (difficulté). */
+  weeklyQuests: perChestRaritySchema(0, 10),
+  /** Lots tirés à l'ouverture d'un coffre, par rareté. */
+  chestRolls: perChestRaritySchema(1, 10),
+});
+export type GuildSettings = z.infer<typeof guildSettingsSchema>;
 
 export const balanceSettingsSchema = z.object({
   expeditions: z.object({
@@ -300,6 +331,8 @@ export const balanceSettingsSchema = z.object({
     startingCurrency: z.int().min(0),
     startingInventory: z.array(itemStackSchema),
   }),
+  /** Guildes : création, membres, quêtes hebdomadaires et coffres. */
+  guilds: guildSettingsSchema.default(DEFAULT_GUILD_SETTINGS),
   /** Menu du jeu ; absent = `DEFAULT_MENU_GROUPS`. */
   menu: menuSettingsSchema.optional(),
 });
@@ -453,7 +486,6 @@ export const ABILITY_PARAM_IDS = [
   // Élevage, couveuse, Musée et transfert
   'eggSpeed',
   'inheritedIvs',
-  'hiddenAbility',
   'perfectIvs',
   'hatchTime',
   'restoreTime',
@@ -650,15 +682,33 @@ export const ITEM_CATEGORIES = [
   'endgame',
   'fossil',
   'megaStone',
+  'chest',
   'misc',
 ] as const;
 export const itemCategorySchema = z.enum(ITEM_CATEGORIES);
 export type ItemCategory = z.infer<typeof itemCategorySchema>;
 
+/** Raretés des coffres de guilde, de la plus courante à la plus précieuse. */
+export const CHEST_RARITIES = ['bronze', 'silver', 'gold'] as const;
+export const chestRaritySchema = z.enum(CHEST_RARITIES);
+export type ChestRarity = z.infer<typeof chestRaritySchema>;
+export const CHEST_RARITY_LABELS: Record<ChestRarity, string> = {
+  bronze: 'Bronze',
+  silver: 'Argent',
+  gold: 'Or',
+};
+
 /** Effets d'objets : briques génériques paramétrées dans l'admin. */
 export const itemEffectSchema = z.discriminatedUnion('type', [
-  /** Utilisable comme Ball : multiplie la probabilité de capture. */
-  z.object({ type: z.literal('ball'), catchMultiplier: z.number().positive() }),
+  /**
+   * Utilisable comme Ball : multiplie la probabilité de capture ; `guaranteed` = capture assurée
+   * (Master Ball).
+   */
+  z.object({
+    type: z.literal('ball'),
+    catchMultiplier: z.number().positive(),
+    guaranteed: z.boolean().optional(),
+  }),
   /** Consommé à chaque tentative de capture : multiplie la probabilité de capture. */
   z.object({ type: z.literal('captureBoost'), multiplier: z.number().positive() }),
   /** Tenu par un parent en pension : nombre d'IV transmis (Nœud Destin : 5). */
@@ -672,8 +722,8 @@ export const itemEffectSchema = z.discriminatedUnion('type', [
   /** Utilisé sur un Pokémon : change sa nature effective (Aromates). */
   z.object({ type: z.literal('mint'), nature: z.string().min(1) }),
   /**
-   * Utilisé sur un Pokémon : passe à un autre talent normal (Pilule Talent) ou au talent caché
-   * (Patch Talent).
+   * Utilisé sur un Pokémon (qui arrive sans talent) : donne un talent normal au hasard, puis l'autre
+   * (Pilule Talent), ou le talent caché (Patch Talent).
    */
   z.object({ type: z.literal('abilityChange'), hidden: z.boolean() }),
   /**
@@ -715,11 +765,15 @@ export const itemEffectSchema = z.discriminatedUnion('type', [
   }),
   /** Utilisé sur un Pokémon : son bonheur augmente de `amount` (Baie Grena). */
   z.object({ type: z.literal('happiness'), amount: z.int().min(1).max(255) }),
+  /** Utilisé sur un Pokémon : il gagne `levels` niveaux, sans dépasser 100 (Super Bonbon). */
+  z.object({ type: z.literal('levelUp'), levels: z.int().min(1).max(99) }),
   /**
    * Emportée en expédition à la place d'une baie de capture : multiplie les rencontres (Baie
    * Nanana). Une baie par heure d'expédition, au moins une.
    */
   z.object({ type: z.literal('encounterBoost'), multiplier: z.number().min(1).max(10) }),
+  /** Coffre de guilde : ouvert depuis le sac, il donne des lots tirés parmi ceux de sa rareté. */
+  z.object({ type: z.literal('guildChest'), rarity: chestRaritySchema }),
 ]);
 export type ItemEffect = z.infer<typeof itemEffectSchema>;
 export type ItemEffectType = ItemEffect['type'];
@@ -1229,6 +1283,63 @@ export const questSchema = z.object({
 });
 export type Quest = z.infer<typeof questSchema>;
 
+// --- Guildes : quêtes hebdomadaires et coffres ---------------------------------------
+
+/** Objectif d'une quête de guilde : ce que chaque action des membres fait avancer. */
+export const guildObjectiveSchema = z.discriminatedUnion('type', [
+  /** Pokémon capturés (expéditions, quêtes), d'un type donné ou de tous types. */
+  z.object({ type: z.literal('catchPokemon'), pokemonType: z.string().min(1).nullable() }),
+  /** Expéditions récupérées (hors expéditions légendaires). */
+  z.object({ type: z.literal('expeditions') }),
+  /** Combats de dresseurs gagnés. */
+  z.object({ type: z.literal('battlesWon') }),
+  /** Donjons réussis. */
+  z.object({ type: z.literal('dungeonsWon') }),
+  /** Œufs éclos. */
+  z.object({ type: z.literal('eggsHatched') }),
+  /** Poké Dollars gagnés en combat de dresseur et en donjon. */
+  z.object({ type: z.literal('moneyEarned') }),
+]);
+export type GuildObjective = z.infer<typeof guildObjectiveSchema>;
+export type GuildObjectiveType = GuildObjective['type'];
+
+/**
+ * Modèle de quête de guilde : chaque semaine, des modèles sont tirés au hasard pour chaque guilde
+ * (nombre par rareté dans l'équilibrage). La quête terminée donne un coffre de sa rareté à chaque
+ * membre qui l'a fait avancer.
+ */
+export const guildQuestSchema = z.object({
+  id: slugSchema,
+  name: nameSchema,
+  description: z.string().max(500),
+  /** Difficulté = rareté du coffre gagné. */
+  rarity: chestRaritySchema,
+  objective: guildObjectiveSchema,
+  /** Objectif = ce nombre × membres de la guilde au tirage, sans descendre sous `minCount`. */
+  countPerMember: z.int().min(1).max(1_000_000),
+  minCount: z.int().min(1).max(10_000_000),
+  enabled: z.boolean(),
+});
+export type GuildQuest = z.infer<typeof guildQuestSchema>;
+
+/**
+ * Lot d'un coffre de guilde (comme un article de boutique) : à l'ouverture, chaque tirage choisit
+ * un lot parmi ceux de la rareté du coffre que le joueur a débloqués, selon leur poids.
+ */
+export const chestEntrySchema = z.object({
+  id: slugSchema,
+  rarity: chestRaritySchema,
+  itemId: slugSchema,
+  /** Nombre d'objets du lot (ex. 100 Poké Balls). */
+  lotSize: z.int().min(1).max(999),
+  /** Poids relatif dans le tirage (les lots débloqués de la rareté se partagent le total). */
+  weight: z.number().positive().max(1_000_000),
+  /** Condition pour que le lot puisse sortir (progression du joueur). */
+  unlock: unlockConditionSchema,
+  enabled: z.boolean(),
+});
+export type ChestEntry = z.infer<typeof chestEntrySchema>;
+
 // --- Contenu complet d'une version -------------------------------------------
 
 /** Structure seule : chaque entité est valide, sans vérifier les références croisées. */
@@ -1248,6 +1359,8 @@ export const gameContentStructureSchema = z.object({
   dexMilestones: z.array(dexMilestoneSchema),
   collections: z.array(collectionSchema),
   quests: z.array(questSchema),
+  guildQuests: z.array(guildQuestSchema).default([]),
+  chestEntries: z.array(chestEntrySchema).default([]),
 });
 export type GameContentData = z.infer<typeof gameContentStructureSchema>;
 

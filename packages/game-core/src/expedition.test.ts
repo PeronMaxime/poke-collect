@@ -54,6 +54,10 @@ describe('lootProbabilities', () => {
 describe('capture', () => {
   it('suit la formule (taux × Ball × PV restants / 255)', () => {
     // Rattata (255), Poké Ball, PV à 50 % : 255 × 1 × 2/3 / 255.
+    // Master Ball : capture assurée, même sur un légendaire.
+    expect(captureProbability(ctx, { captureRate: 3, ballMultiplier: 255, guaranteed: true })).toBe(
+      1,
+    );
     expect(captureProbability(ctx, { captureRate: 255, ballMultiplier: 1 })).toBeCloseTo(2 / 3);
     expect(captureProbability(ctx, { captureRate: 45, ballMultiplier: 1.5 })).toBeCloseTo(
       (45 * 1.5 * (2 / 3)) / 255,

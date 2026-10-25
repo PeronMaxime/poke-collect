@@ -94,6 +94,8 @@ const ENTITY_ROUTES: Record<string, { type: ContentEntityType; audit: string }> 
   'dex-milestones': { type: 'dexMilestone', audit: 'dex_milestone' },
   collections: { type: 'collection', audit: 'collection' },
   quests: { type: 'quest', audit: 'quest' },
+  'guild-quests': { type: 'guildQuest', audit: 'guild_quest' },
+  'chest-entries': { type: 'chestEntry', audit: 'chest_entry' },
 };
 
 const entityParams = z.object({

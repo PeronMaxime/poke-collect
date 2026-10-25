@@ -1,7 +1,7 @@
 import { STAT_NAMES } from '@poke/data';
 import type { StatName, Stats } from '@poke/data';
 import type { GameContext, GameSpecies } from './context';
-import { abilityFlat, abilityModifier, abilityMultiplier, applyWildAbilities } from './abilities';
+import { abilityFlat, abilityMultiplier, applyWildAbilities } from './abilities';
 import type { AbilityEnv, AbilityHolder } from './abilities';
 import { MAX_LEVEL, generatePokemon, levelForXp, withPerfectIvs, xpForLevel } from './pokemon';
 import type { PokemonInstance } from './pokemon';
@@ -275,10 +275,7 @@ export function resolveEgg(ctx: GameContext, input: EggInput): PokemonInstance {
   let ability: string;
   if (
     hidden.length > 0 &&
-    (regular.length === 0 ||
-      (motherHasHidden &&
-        abilityRoll <
-          breeding.hiddenAbilityInheritChance + abilityModifier(ctx, env, 'hiddenAbility') / 100))
+    (regular.length === 0 || (motherHasHidden && abilityRoll < breeding.hiddenAbilityInheritChance))
   ) {
     ability = hidden[Math.floor(abilityPick * hidden.length)]!.name;
   } else {

@@ -1,5 +1,5 @@
 import type { ItemEffect } from '@poke/content';
-import { abilityFlat, abilityModifier, abilityMultiplier, applyWildAbilities } from './abilities';
+import { abilityFlat, abilityMultiplier, applyWildAbilities } from './abilities';
 import type { AbilityEnv, AbilityHolder } from './abilities';
 import type { GameContext } from './context';
 import { generatePokemon, withPerfectIvs } from './pokemon';
@@ -62,11 +62,6 @@ export function reviveFossil(
     formId: input.formId,
   });
   // Tirages en plus seulement si un talent joue : les fossiles déjà déposés restent identiques.
-  const hiddenBonus = abilityModifier(ctx, env, 'hiddenAbility') / 100;
-  if (hiddenBonus > 0) {
-    const hidden = ctx.species(input.speciesId, input.formId)?.abilities.find((a) => a.isHidden);
-    if (hidden && rng.chance(hiddenBonus)) pokemon.ability = hidden.name;
-  }
   const perfect = abilityFlat(ctx, env, 'perfectIvs', 0, 6);
   if (perfect > 0) pokemon.ivs = withPerfectIvs(rng, pokemon.ivs, perfect);
   applyWildAbilities(ctx, env, rng, pokemon);

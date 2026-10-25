@@ -25,6 +25,8 @@ const ISSUE_SECTIONS: Record<ContentEntityKind, { path: string; label: string }>
   dexMilestone: { path: '/progression', label: 'Progression (paliers)' },
   collection: { path: '/progression', label: 'Progression (collections)' },
   quest: { path: '/quests', label: 'Quêtes' },
+  guildQuest: { path: '/guilds', label: 'Guildes (quêtes)' },
+  chestEntry: { path: '/guilds', label: 'Guildes (coffres)' },
 };
 
 const STATUS_LABELS: Record<ContentVersionStatus, string> = {

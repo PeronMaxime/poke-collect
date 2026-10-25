@@ -335,7 +335,7 @@ export function LaunchExpeditionForm({
         {plan.realDurationMinutes !== duration &&
           `Retour en ${formatDuration(plan.realDurationMinutes)} grâce aux talents. `}
         {encounters} rencontre{encounters > 1 ? 's' : ''} prévue{encounters > 1 ? 's' : ''}. Taux
-        shiny :{' '}
+        chromatique :{' '}
         {formatShinyRate(
           Math.min(
             1,
@@ -543,7 +543,7 @@ export function LaunchExpeditionForm({
                   </select>
                 </label>
                 <div className="flex items-center gap-1">
-                  <span className="mr-1 text-slate-500">Shiny</span>
+                  <span className="mr-1 text-slate-500">Chromatiques</span>
                   {(Object.keys(SHINY_MODES) as CaptureFilter['shiny'][]).map((mode) => (
                     <button
                       key={mode}
@@ -561,7 +561,7 @@ export function LaunchExpeditionForm({
                 {captureFilter.newOnly &&
                   ' Un Pokémon absent du Pokédex n’est plus visé une fois capturé.'}
                 {captureFilter.shiny === 'always' &&
-                  ' Les shiny sont tentés même hors des autres critères.'}
+                  ' Les chromatiques sont tentés même hors des autres critères.'}
               </p>
             </div>
           ) : (

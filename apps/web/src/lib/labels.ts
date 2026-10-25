@@ -8,8 +8,10 @@ import {
   types,
 } from '@poke/data';
 import type { StatName } from '@poke/data';
+import { CHEST_RARITY_LABELS } from '@poke/content';
 import type {
   EvolutionMethod,
+  GuildObjective,
   ItemEffect,
   PermanentBonus,
   ProgressReward,
@@ -30,7 +32,9 @@ const abilityNames = new Map(abilities.map((a) => [a.name, a.nameFr]));
 
 export const typeLabel = (type: string) => typeNames.get(type) ?? type;
 export const natureLabel = (nature: string) => natureNames.get(nature) ?? nature;
-export const abilityLabel = (ability: string) => abilityNames.get(ability) ?? ability;
+/** Les Pokémon du joueur arrivent sans talent (`NO_ABILITY`, chaîne vide). */
+export const abilityLabel = (ability: string) =>
+  ability ? (abilityNames.get(ability) ?? ability) : 'Aucun talent';
 
 export const STAT_LABELS: Record<StatName, string> = {
   hp: 'PV',
@@ -84,7 +88,7 @@ export const candyName = (ctx: GameContext | undefined, lineageId: number) => {
 export function effectText(effect: ItemEffect): string {
   switch (effect.type) {
     case 'ball':
-      return `Capture × ${effect.catchMultiplier}`;
+      return effect.guaranteed ? 'Capture assurée' : `Capture × ${effect.catchMultiplier}`;
     case 'captureBoost':
       return `Capture × ${effect.multiplier} (consommée à chaque tentative)`;
     case 'breedingIvs':
@@ -92,13 +96,15 @@ export function effectText(effect: ItemEffect): string {
     case 'breedingNature':
       return `Pension : transmet la nature${effect.chance < 1 ? ` (${Math.round(effect.chance * 100)} %)` : ''}`;
     case 'shinyCharm':
-      return `Dans le sac : shiny × ${effect.multiplier}`;
+      return `Dans le sac : chromatique × ${effect.multiplier}`;
     case 'ivCap':
       return effect.all ? 'Sur un Pokémon : 6 IV à 31' : 'Sur un Pokémon : 1 IV au choix à 31';
     case 'mint':
       return `Sur un Pokémon : nature ${natureLabel(effect.nature)}`;
     case 'abilityChange':
-      return effect.hidden ? 'Sur un Pokémon : talent caché' : 'Sur un Pokémon : autre talent';
+      return effect.hidden
+        ? 'Sur un Pokémon : donne son talent caché'
+        : 'Sur un Pokémon : donne un talent normal au hasard, puis l’autre';
     case 'fossil':
       return `Musée : ${getSpecies(effect.speciesId)?.nameFr ?? `#${effect.speciesId}`} en ${formatDuration(effect.minutes)}`;
     case 'megaEvolution':
@@ -111,8 +117,12 @@ export function effectText(effect: ItemEffect): string {
       }`;
     case 'happiness':
       return `Sur un Pokémon : bonheur +${effect.amount}`;
+    case 'levelUp':
+      return `Sur un Pokémon : +${effect.levels} niveau${effect.levels > 1 ? 'x' : ''}`;
     case 'encounterBoost':
       return `Expédition : rencontres ${formatMultiplier(effect.multiplier)} (une baie par heure)`;
+    case 'guildChest':
+      return `Coffre ${CHEST_RARITY_LABELS[effect.rarity]} : à ouvrir`;
     case 'berryPlant':
       return `Ferme : pousse en ${formatDuration(effect.minutes)}, donne ${yieldRange(effect)} baies`;
   }
@@ -373,6 +383,18 @@ export const GAME_ERRORS: Record<string, string> = {
   MEMBER_KO: 'Ce Pokémon est K.O.',
   MEMBER_ACTIVE: 'Ce Pokémon est déjà au combat.',
   MEMBER_RECALLED: 'Ce Pokémon vient d’être rappelé : il ne peut pas encore revenir.',
+  NOT_IN_GUILD: 'Tu ne fais partie d’aucune guilde.',
+  ALREADY_IN_GUILD: 'Tu fais déjà partie d’une guilde.',
+  GUILD_NOT_FOUND: 'Cette guilde n’existe plus.',
+  GUILD_FULL: 'Cette guilde est complète.',
+  GUILD_COOLDOWN: 'Tu as quitté une guilde il y a peu : patiente avant d’en rejoindre une autre.',
+  GUILD_NAME_TAKEN: 'Ce nom de guilde est déjà pris.',
+  GUILD_FORBIDDEN: 'Ton rôle dans la guilde ne le permet pas.',
+  REQUEST_NOT_FOUND: 'Cette candidature n’existe plus.',
+  MEMBER_NOT_FOUND: 'Ce dresseur n’est pas membre de la guilde.',
+  MESSAGE_NOT_FOUND: 'Ce message n’existe plus.',
+  NOT_A_CHEST: 'Cet objet n’est pas un coffre.',
+  CHEST_EMPTY: 'Ce coffre ne contient encore rien pour toi : progresse dans le jeu.',
 };
 
 export function formatMoney(amount: number): string {
@@ -381,3 +403,21 @@ export function formatMoney(amount: number): string {
 
 export const errorText = (err: unknown) =>
   err instanceof ApiError ? (GAME_ERRORS[err.code] ?? err.code) : 'Erreur inconnue';
+
+/** Objectif d'une quête de guilde, en clair (« Pokémon Eau capturés »). */
+export function guildObjectiveText(objective: GuildObjective): string {
+  switch (objective.type) {
+    case 'catchPokemon':
+      return `Pokémon${objective.pokemonType ? ` ${typeLabel(objective.pokemonType)}` : ''} capturés`;
+    case 'expeditions':
+      return 'Expéditions récupérées';
+    case 'battlesWon':
+      return 'Combats de dresseurs gagnés';
+    case 'dungeonsWon':
+      return 'Donjons réussis';
+    case 'eggsHatched':
+      return 'Œufs éclos';
+    case 'moneyEarned':
+      return 'Poké Dollars gagnés en combat';
+  }
+}

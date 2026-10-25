@@ -5,7 +5,14 @@ import {
   natures,
   types as typeData,
 } from '@poke/data';
-import { gameContentStructureSchema, isRoamingZone, lowestUnitPrice, unlockParts } from './schemas';
+import {
+  CHEST_RARITIES,
+  CHEST_RARITY_LABELS,
+  gameContentStructureSchema,
+  isRoamingZone,
+  lowestUnitPrice,
+  unlockParts,
+} from './schemas';
 import type {
   BaseUnlockCondition,
   GameContentData,
@@ -46,7 +53,9 @@ export type ContentEntityKind =
   | 'evolutionOverride'
   | 'dexMilestone'
   | 'collection'
-  | 'quest';
+  | 'quest'
+  | 'guildQuest'
+  | 'chestEntry';
 
 export interface ContentIssue {
   severity: 'error' | 'warning';
@@ -122,6 +131,10 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     add('error', 'quest', id, 'Identifiant de quête en double');
   for (const id of duplicates(content.dungeons.map((d) => d.id)))
     add('error', 'dungeon', id, 'Identifiant de donjon en double');
+  for (const id of duplicates(content.guildQuests.map((q) => q.id)))
+    add('error', 'guildQuest', id, 'Identifiant de quête de guilde en double');
+  for (const id of duplicates(content.chestEntries.map((e) => e.id)))
+    add('error', 'chestEntry', id, 'Identifiant de lot de coffre en double');
 
   const checkUnlockPart = (entity: ContentEntityKind, id: string, unlock: BaseUnlockCondition) => {
     if (unlock.type === 'regionDexPercent' && !regionIds.has(unlock.regionId)) {
@@ -561,6 +574,46 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     checkUnlock('shopEntry', entry.id, entry.unlock);
   }
 
+  // Guildes : quêtes hebdomadaires et lots des coffres
+  for (const quest of content.guildQuests) {
+    const { objective } = quest;
+    if (
+      objective.type === 'catchPokemon' &&
+      objective.pokemonType &&
+      !KNOWN_TYPES.has(objective.pokemonType)
+    ) {
+      add('error', 'guildQuest', quest.id, `Type « ${objective.pokemonType} » inconnu`);
+    }
+  }
+  for (const entry of content.chestEntries) {
+    if (!itemIds.has(entry.itemId)) {
+      add('error', 'chestEntry', entry.id, `Objet « ${entry.itemId} » inconnu`);
+    }
+    checkUnlock('chestEntry', entry.id, entry.unlock);
+  }
+  for (const rarity of CHEST_RARITIES) {
+    const label = `« ${CHEST_RARITY_LABELS[rarity]} »`;
+    const weekly = content.balance.guilds.weeklyQuests[rarity];
+    const quests = content.guildQuests.filter((q) => q.enabled && q.rarity === rarity).length;
+    if (quests < weekly) {
+      add(
+        'warning',
+        'guildQuest',
+        null,
+        `${weekly} quête(s) ${label} par semaine, mais ${quests} modèle(s) actif(s) : la semaine en aura moins`,
+      );
+    }
+    const entries = content.chestEntries.filter((e) => e.enabled && e.rarity === rarity);
+    if (!entries.some((e) => e.unlock.type === 'always')) {
+      add(
+        'warning',
+        'chestEntry',
+        null,
+        `Coffre ${label} : aucun lot sans condition, un débutant peut ne rien pouvoir en tirer`,
+      );
+    }
+  }
+
   // Évolutions
   for (const o of content.evolutionOverrides) {
     const report = (severity: ContentIssue['severity'], message: string) =>
@@ -672,6 +725,10 @@ const unlockables = (content: GameContentData): { unlock: QuestCondition; name: 
       unlock: e.unlock,
       name: `Article ${content.items.find((i) => i.id === e.itemId)?.name ?? e.itemId} (${e.id})`,
     })),
+    ...content.chestEntries.map((e) => ({
+      unlock: e.unlock,
+      name: `Lot de coffre ${content.items.find((i) => i.id === e.itemId)?.name ?? e.itemId} (${e.id})`,
+    })),
     ...content.quests,
     ...content.quests.flatMap((q) =>
       q.steps.map((s, i) => ({ unlock: s.condition, name: `Quête ${q.name}, étape ${i + 1}` })),
@@ -714,6 +771,9 @@ export function findUsages(
       }
       for (const d of content.dungeons) {
         if (d.gemItemId === id) usages.push(`Donjon « ${d.name} »`);
+      }
+      for (const e of content.chestEntries) {
+        if (e.itemId === id) usages.push(`Lot de coffre « ${e.id} »`);
       }
       break;
     case 'shopCategory':
@@ -787,6 +847,8 @@ export function findUsages(
     case 'dexMilestone':
     case 'collection':
     case 'dungeon':
+    case 'guildQuest':
+    case 'chestEntry':
     case 'balance':
       break;
   }

@@ -256,7 +256,7 @@ export function ExpeditionRevealView({
             {result.shinyChance !== undefined && (
               <>
                 {' '}
-                · taux shiny {formatShinyRate(result.shinyChance)}
+                · taux chromatique {formatShinyRate(result.shinyChance)}
                 {expedition.shinyChain > 0 && ` (chaîne ${expedition.shinyChain})`}
               </>
             )}
@@ -281,7 +281,7 @@ export function ExpeditionRevealView({
             animate={{ opacity: 1, scale: [0.8, 1.08, 1] }}
             transition={{ delay: delay(firstShiny) + 0.2, duration: 0.5 }}
           >
-            ✨ {shinies > 1 ? `${shinies} Pokémon shiny !` : 'Un Pokémon shiny !'} ✨
+            ✨ {shinies > 1 ? `${shinies} Pokémon chromatiques !` : 'Un Pokémon chromatique !'} ✨
           </motion.p>
         )}
 
@@ -299,7 +299,7 @@ export function ExpeditionRevealView({
             {captured > 0
               ? `${speciesName(ctx, result.encounters[0].speciesId, result.encounters[0].formId)} a été capturé !`
               : result.encounters[0].outcome === 'fled'
-                ? 'Tu as pris la fuite. Relance l’expédition légendaire depuis les Quêtes pour allonger la chaîne shiny.'
+                ? 'Tu as pris la fuite. Relance l’expédition légendaire depuis les Quêtes pour allonger la chaîne chromatique.'
                 : `${speciesName(ctx, result.encounters[0].speciesId, result.encounters[0].formId)} s’est enfui… Tu peux retenter une expédition légendaire depuis les Quêtes.`}
           </motion.p>
         )}

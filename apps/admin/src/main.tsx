@@ -21,6 +21,7 @@ import { ProgressionPage } from './pages/content/ProgressionPage';
 import { QuestsPage } from './pages/content/QuestsPage';
 import { RegionsPage } from './pages/content/RegionsPage';
 import { ShopPage } from './pages/content/ShopPage';
+import { GuildsPage } from './pages/content/GuildsPage';
 import { SpeciesPage } from './pages/content/SpeciesPage';
 import { TrainersPage } from './pages/content/TrainersPage';
 import { ZonesPage } from './pages/content/ZonesPage';
@@ -51,6 +52,7 @@ const router = createBrowserRouter([
           { path: 'items', element: <ItemsPage /> },
           { path: 'loot-tables', element: <LootTablesPage /> },
           { path: 'shop', element: <ShopPage /> },
+          { path: 'guilds', element: <GuildsPage /> },
           { path: 'evolutions', element: <EvolutionsPage /> },
           { path: 'progression', element: <ProgressionPage /> },
           { path: 'quests', element: <QuestsPage /> },

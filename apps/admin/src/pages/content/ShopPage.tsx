@@ -34,7 +34,7 @@ const PERIOD_LABELS: Record<PurchasePeriod, string> = {
 const money = (n: number) => `${n.toLocaleString('fr-FR')} ₽`;
 
 /** Condition d'apparition en clair (liste, aperçu). */
-function unlockSummary(ctx: GameContext, u: UnlockCondition): string {
+export function unlockSummary(ctx: GameContext, u: UnlockCondition): string {
   switch (u.type) {
     case 'always':
       return 'toujours';

@@ -8,6 +8,7 @@ import { expeditionBerryCount, expeditionPlan, resolveExpedition } from './exped
 import type { ExpeditionInput } from './expedition';
 import { berryGrowthSpeed, harvestBonus } from './farm';
 import { member, testContext } from './test-helpers';
+import { createRng } from './rng';
 
 const ctx = testContext();
 
@@ -98,15 +99,19 @@ describe('Baie Grena (bonheur)', () => {
     originalNature: 'hardy',
     ability: 'static',
     happiness,
+    level: 10,
+    xp: 1000,
   });
 
   it('augmente le bonheur de 1, jusqu’au maximum', () => {
-    expect(applyItemToPokemon(ctx, target(70), 'pomeg-berry', {})).toEqual({
+    expect(applyItemToPokemon(ctx, target(70), 'pomeg-berry', {}, createRng(1))).toEqual({
       patch: { happiness: 71 },
     });
-    expect(applyItemToPokemon(ctx, target(MAX_HAPPINESS), 'pomeg-berry', {})).toEqual({
-      error: 'NO_EFFECT',
-    });
+    expect(applyItemToPokemon(ctx, target(MAX_HAPPINESS), 'pomeg-berry', {}, createRng(1))).toEqual(
+      {
+        error: 'NO_EFFECT',
+      },
+    );
   });
 });
 
