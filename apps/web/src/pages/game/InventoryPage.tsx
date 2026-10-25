@@ -12,6 +12,8 @@ import {
   itemIcon,
   lineageSpeciesId,
 } from '../../lib/labels';
+import { ChestLootHover } from './ChestLootHover';
+import { ChestOpenDialog } from './ChestOpenDialog';
 import { HappinessDialog } from './HappinessDialog';
 import { ReviveDialog } from './ReviveDialog';
 
@@ -23,8 +25,12 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
   endgame: 'Objets rares',
   fossil: 'Fossiles',
   megaStone: 'Méga-Gemmes',
+  chest: 'Coffres de guilde',
   misc: 'Divers',
 };
+
+/** Coffres ouverts d'un coup au plus (« Tout ouvrir »). */
+const MAX_CHESTS = 50;
 
 export function InventoryPage({ ctx }: { ctx: GameContext }) {
   const inventory = useInventory();
@@ -33,6 +39,7 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
   const candyStacks = candies.data ?? [];
   const [reviving, setReviving] = useState<string | null>(null);
   const [cheering, setCheering] = useState<string | null>(null);
+  const [opening, setOpening] = useState<{ itemId: string; count: number } | null>(null);
 
   if (!inventory.isPending && stacks.length === 0 && candyStacks.length === 0) {
     return (
@@ -54,13 +61,23 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
             <ul className="grid gap-2 sm:grid-cols-2">
               {inCategory.map((s) => {
                 const item = ctx.item(s.itemId);
+                const chest = ctx.itemEffect(s.itemId, 'guildChest');
+                const icon = (
+                  <img
+                    src={itemIcon(ctx, s.itemId)}
+                    alt=""
+                    className="h-10 w-10 shrink-0 [image-rendering:pixelated]"
+                  />
+                );
                 return (
                   <li key={s.itemId} className="card flex items-center gap-3 p-3">
-                    <img
-                      src={itemIcon(ctx, s.itemId)}
-                      alt=""
-                      className="h-10 w-10 shrink-0 [image-rendering:pixelated]"
-                    />
+                    {chest ? (
+                      <ChestLootHover ctx={ctx} rarity={chest.rarity}>
+                        {icon}
+                      </ChestLootHover>
+                    ) : (
+                      icon
+                    )}
                     <div className="min-w-0 flex-1">
                       <p className="flex items-baseline justify-between gap-2">
                         <span className="font-medium">{item?.name ?? s.itemId}</span>
@@ -83,10 +100,35 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
                         Utiliser
                       </button>
                     )}
-                    {s.quantity > 0 && ctx.itemEffect(s.itemId, 'happiness') && (
-                      <button className="btn-primary" onClick={() => setCheering(s.itemId)}>
-                        Utiliser
-                      </button>
+                    {s.quantity > 0 &&
+                      (ctx.itemEffect(s.itemId, 'happiness') ||
+                        ctx.itemEffect(s.itemId, 'levelUp')) && (
+                        <button className="btn-primary" onClick={() => setCheering(s.itemId)}>
+                          Utiliser
+                        </button>
+                      )}
+                    {s.quantity > 0 && chest && (
+                      <span className="flex shrink-0 flex-col gap-1">
+                        <button
+                          className="btn-primary"
+                          onClick={() => setOpening({ itemId: s.itemId, count: 1 })}
+                        >
+                          Ouvrir
+                        </button>
+                        {s.quantity > 1 && (
+                          <button
+                            className="btn-ghost px-2 py-1 text-xs"
+                            onClick={() =>
+                              setOpening({
+                                itemId: s.itemId,
+                                count: Math.min(s.quantity, MAX_CHESTS),
+                              })
+                            }
+                          >
+                            Tout ouvrir
+                          </button>
+                        )}
+                      </span>
                     )}
                   </li>
                 );
@@ -98,6 +140,14 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
       {reviving && <ReviveDialog ctx={ctx} itemId={reviving} onClose={() => setReviving(null)} />}
       {cheering && (
         <HappinessDialog ctx={ctx} itemId={cheering} onClose={() => setCheering(null)} />
+      )}
+      {opening && (
+        <ChestOpenDialog
+          ctx={ctx}
+          itemId={opening.itemId}
+          count={opening.count}
+          onClose={() => setOpening(null)}
+        />
       )}
       {candyStacks.length > 0 && (
         <section>

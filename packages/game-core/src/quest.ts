@@ -249,9 +249,11 @@ export function questCaptureChance(ctx: GameContext, input: QuestCaptureInput): 
   if (!species) return 0;
   const env = expeditionEnv(target.expedition, input.team, input.hour, 'quest');
   const berry = input.berryItemId ? ctx.itemEffect(input.berryItemId, 'captureBoost') : undefined;
+  const ball = ctx.itemEffect(input.ballItemId, 'ball');
   return captureProbability(ctx, {
     captureRate: species.captureRate,
-    ballMultiplier: ctx.itemEffect(input.ballItemId, 'ball')?.catchMultiplier ?? 1,
+    ballMultiplier: ball?.catchMultiplier ?? 1,
+    guaranteed: ball?.guaranteed === true,
     boostMultiplier: berry?.multiplier ?? 1,
     affinityCount: countAffinity(ctx, target.expedition, input.team, input.hour),
     bonusMultiplier: abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES).capture,

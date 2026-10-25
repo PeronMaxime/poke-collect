@@ -272,7 +272,7 @@ function TrainerCardView({
     { label: 'Pokémon capturés', value: s?.captures, hint: 'En expédition' },
     { label: 'Pokémon possédés', value: s?.pokemonOwned, hint: 'Dans le PC' },
     { label: 'Chromatiques possédés', value: s?.shiniesOwned },
-    { label: 'Shiny ratés', value: s?.shiniesMissed, hint: 'Rencontrés, pas capturés' },
+    { label: 'Chromatiques ratés', value: s?.shiniesMissed, hint: 'Rencontrés, pas capturés' },
     { label: 'Expéditions terminées', value: s?.expeditionsCompleted },
     { label: 'Combats gagnés', value: s?.battlesWon },
     { label: 'Combats perdus', value: s?.battlesLost },

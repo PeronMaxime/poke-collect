@@ -21,7 +21,7 @@ export const SECTIONS: AdminSection[] = [
     path: '/balance',
     label: 'Équilibrage',
     description:
-      'Réglages globaux : expéditions, combats, capture, pitié, shiny, élevage, XP, pensions.',
+      'Réglages globaux : expéditions, combats, capture, pitié, chromatiques, élevage, XP, pensions.',
     phase: 1,
   },
   {
@@ -90,6 +90,12 @@ export const SECTIONS: AdminSection[] = [
     label: 'Boutique',
     description: 'Catégories, articles, conditions d’apparition, limites, dates, aperçu joueur.',
     phase: 4,
+  },
+  {
+    path: '/guilds',
+    label: 'Guildes',
+    description: 'Quêtes de guilde hebdomadaires (catalogue du tirage) et lots des coffres.',
+    phase: 8,
   },
   {
     path: '/quests',

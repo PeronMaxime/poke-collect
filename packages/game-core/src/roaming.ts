@@ -18,7 +18,7 @@ import { weatherHour, weatherHourStart } from './weather';
  */
 
 /** Hachage FNV-1a d'un texte (graine des tirages). */
-function textSeed(text: string): number {
+export function textSeed(text: string): number {
   let hash = 0x811c9dc5;
   for (let i = 0; i < text.length; i++) {
     hash = Math.imul(hash ^ text.charCodeAt(i), 0x01000193);

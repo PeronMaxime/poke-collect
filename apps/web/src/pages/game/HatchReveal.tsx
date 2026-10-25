@@ -196,7 +196,10 @@ function HatchContent({
             <span className="text-slate-600 dark:text-slate-300">
               Transférer {transferable.length} Pokémon (favoris exclus)
               {shinyCount > 0 && (
-                <strong className="text-amber-600"> dont {shinyCount} shiny</strong>
+                <strong className="text-amber-600">
+                  {' '}
+                  dont {shinyCount} chromatique{shinyCount > 1 ? 's' : ''}
+                </strong>
               )}{' '}
               ?
             </span>

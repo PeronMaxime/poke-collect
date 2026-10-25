@@ -547,7 +547,7 @@ function ZoneSimulator({ zone, working }: { zone: Zone; working: WorkingVersion 
               <strong>{result.encountersPerRun.toFixed(1)}</strong> rencontres,{' '}
               <strong>{result.capturesPerRun.toFixed(2)}</strong> captures,{' '}
               <strong>{Math.round(result.xpPerMemberPerRun)}</strong> XP par membre —{' '}
-              {result.shiniesSeen} shiny vu(s) sur {result.runs} expéditions.
+              {result.shiniesSeen} chromatique(s) vu(s) sur {result.runs} expéditions.
             </p>
             <table className="mt-2 w-full text-sm">
               <thead className="text-left text-xs text-slate-500">

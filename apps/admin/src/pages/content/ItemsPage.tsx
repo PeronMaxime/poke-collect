@@ -1,4 +1,6 @@
 import {
+  CHEST_RARITIES,
+  CHEST_RARITY_LABELS,
   ITEM_CATEGORIES,
   RARITIES,
   itemSchema,
@@ -28,6 +30,7 @@ export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   endgame: 'Endgame',
   fossil: 'Fossile',
   megaStone: 'Méga-Gemme',
+  chest: 'Coffre',
   misc: 'Divers',
 };
 
@@ -51,7 +54,7 @@ const EFFECTS: Record<
 > = {
   ball: {
     label: 'Ball',
-    help: 'Utilisable pour capturer ; multiplie la probabilité de capture.',
+    help: 'Utilisable pour capturer ; multiplie la probabilité de capture, ou capture à coup sûr (Master Ball).',
     create: () => ({ type: 'ball', catchMultiplier: 1 }),
   },
   captureBoost: {
@@ -71,7 +74,7 @@ const EFFECTS: Record<
   },
   shinyCharm: {
     label: 'Charme Chroma',
-    help: 'Possédé dans le sac (non consommé) : multiplie le taux shiny des rencontres et des éclosions. Non cumulable : le meilleur s’applique.',
+    help: 'Possédé dans le sac (non consommé) : multiplie le taux chromatique des rencontres et des éclosions. Non cumulable : le meilleur s’applique.',
     create: () => ({ type: 'shinyCharm', multiplier: 3 }),
   },
   ivCap: {
@@ -86,7 +89,7 @@ const EFFECTS: Record<
   },
   abilityChange: {
     label: 'Changement de talent',
-    help: 'Utilisé sur un Pokémon : passe à un autre talent normal (Pilule Talent) ou au talent caché (Patch Talent). Consommé.',
+    help: 'Utilisé sur un Pokémon (qui arrive sans talent) : donne un talent normal au hasard, puis l’autre (Pilule Talent), ou le talent caché (Patch Talent). Consommé.',
     create: () => ({ type: 'abilityChange', hidden: false }),
   },
   fossil: {
@@ -119,10 +122,20 @@ const EFFECTS: Record<
     help: 'Utilisée sur un Pokémon (depuis le sac ou sa fiche au PC) : son bonheur augmente (Baie Grena). Consommée.',
     create: () => ({ type: 'happiness', amount: 1 }),
   },
+  levelUp: {
+    label: 'Niveaux',
+    help: 'Utilisé sur un Pokémon (depuis le sac ou sa fiche au PC) : il gagne ce nombre de niveaux, sans dépasser 100 (Super Bonbon). Consommé.',
+    create: () => ({ type: 'levelUp', levels: 1 }),
+  },
   encounterBoost: {
     label: 'Rencontres en expédition',
     help: 'Emportée en expédition à la place d’une baie de capture : multiplie le nombre de rencontres (Baie Nanana). Une baie par heure d’expédition, au moins une, toutes consommées.',
     create: () => ({ type: 'encounterBoost', multiplier: 1.25 }),
+  },
+  guildChest: {
+    label: 'Coffre de guilde',
+    help: 'Gagné en terminant une quête de guilde : ouvert depuis le sac, il donne des lots tirés parmi ceux de sa rareté (page Guildes). Le premier objet de chaque rareté sert de récompense.',
+    create: () => ({ type: 'guildChest', rarity: 'bronze' }),
   },
 };
 
@@ -330,6 +343,21 @@ function ItemForm({
                   />
                 </Field>
               )}
+              {effect.type === 'ball' && (
+                <Field label="Capture">
+                  <SelectInput
+                    value={effect.guaranteed ? 'always' : 'chance'}
+                    disabled={disabled}
+                    onChange={(v) =>
+                      update({ ...effect, guaranteed: v === 'always' ? true : undefined })
+                    }
+                    options={[
+                      { value: 'chance', label: 'Selon le multiplicateur' },
+                      { value: 'always', label: 'Assurée (100 %)' },
+                    ]}
+                  />
+                </Field>
+              )}
               {effect.type === 'battleHeal' && (
                 <Field label="PV rendus" error={errors.get(`effects.${i}.fraction`)}>
                   <NumberInput
@@ -356,6 +384,19 @@ function ItemForm({
                   />
                 </Field>
               )}
+              {effect.type === 'levelUp' && (
+                <Field label="Niveaux" error={errors.get(`effects.${i}.levels`)}>
+                  <NumberInput
+                    className="w-24"
+                    value={effect.levels}
+                    min={1}
+                    max={99}
+                    unit="+"
+                    disabled={disabled}
+                    onChange={(v) => update({ ...effect, levels: v })}
+                  />
+                </Field>
+              )}
               {effect.type === 'happiness' && (
                 <Field label="Bonheur" error={errors.get(`effects.${i}.amount`)}>
                   <NumberInput
@@ -366,6 +407,19 @@ function ItemForm({
                     unit="+"
                     disabled={disabled}
                     onChange={(v) => update({ ...effect, amount: v })}
+                  />
+                </Field>
+              )}
+              {effect.type === 'guildChest' && (
+                <Field label="Rareté">
+                  <SelectInput
+                    value={effect.rarity}
+                    disabled={disabled}
+                    onChange={(rarity) => update({ ...effect, rarity })}
+                    options={CHEST_RARITIES.map((r) => ({
+                      value: r,
+                      label: CHEST_RARITY_LABELS[r],
+                    }))}
                   />
                 </Field>
               )}
@@ -467,7 +521,7 @@ function ItemForm({
                     disabled={disabled}
                     onChange={(v) => update({ ...effect, hidden: v === 'hidden' })}
                     options={[
-                      { value: 'regular', label: 'Autre talent normal' },
+                      { value: 'regular', label: 'Talent normal (au hasard, puis l’autre)' },
                       { value: 'hidden', label: 'Talent caché' },
                     ]}
                   />

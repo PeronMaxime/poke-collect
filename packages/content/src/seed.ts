@@ -23,6 +23,7 @@ import {
 import { combatSettings, dungeonSettings, megaStoneItems, seedDungeons } from './seed-dungeons';
 import { johtoQuests, johtoRegion, johtoTrainers, johtoZones } from './seed-johto';
 import { kantoQuests, kantoTrainers, kantoZones } from './seed-kanto';
+import { chestEntries, guildChestItems, guildQuests } from './seed-guilds';
 
 /**
  * Contenu de test, importé en base au premier lancement (version 1, publiée).
@@ -415,6 +416,13 @@ export const seedContent: GameContentData = {
       startingCurrency: 0,
       startingInventory: [{ itemId: 'poke-ball', quantity: 20 }],
     },
+    guilds: {
+      creationCost: 100_000,
+      maxMembers: 30,
+      rejoinCooldownHours: 24,
+      weeklyQuests: { bronze: 2, silver: 2, gold: 1 },
+      chestRolls: { bronze: 1, silver: 2, gold: 3 },
+    },
   },
   regions,
   speciesOverrides: [],
@@ -455,6 +463,26 @@ export const seedContent: GameContentData = {
       category: 'ball',
       rarity: 'uncommon',
       effects: [{ type: 'ball', catchMultiplier: 1 }],
+    },
+    // Pas encore obtenable : ni boutique ni butin.
+    {
+      id: 'master-ball',
+      name: 'Master Ball',
+      description: 'La meilleure Ball : elle capture à coup sûr.',
+      icon: null,
+      category: 'ball',
+      rarity: 'legendary',
+      effects: [{ type: 'ball', catchMultiplier: 255, guaranteed: true }],
+    },
+    // Pas encore obtenable : ni boutique ni butin.
+    {
+      id: 'rare-candy',
+      name: 'Super Bonbon',
+      description: 'Donné à un Pokémon : il monte d’un niveau.',
+      icon: null,
+      category: 'misc',
+      rarity: 'rare',
+      effects: [{ type: 'levelUp', levels: 1 }],
     },
     {
       id: 'razz-berry',
@@ -580,7 +608,7 @@ export const seedContent: GameContentData = {
       id: 'shiny-charm',
       name: 'Charme Chroma',
       description:
-        'Il suffit de l’avoir dans son sac : les Pokémon shiny apparaissent 3 fois plus souvent.',
+        'Il suffit de l’avoir dans son sac : les Pokémon chromatiques apparaissent 3 fois plus souvent.',
       icon: null,
       category: 'endgame',
       rarity: 'legendary',
@@ -599,7 +627,7 @@ export const seedContent: GameContentData = {
     ...fossilItems(),
     ...megaStoneItems(regions),
     ...expansionItems,
-  ]),
+  ]).concat(guildChestItems),
   lootTables: [
     {
       id: 'butin-route',
@@ -679,6 +707,8 @@ export const seedContent: GameContentData = {
   dexMilestones: [...dexMilestones, ...expansionDexMilestones],
   collections,
   quests: [...kantoQuests, ...johtoQuests],
+  guildQuests,
+  chestEntries,
 };
 
 function caveLoot(): LootEntry[] {
@@ -764,7 +794,7 @@ function endgameItems(): SeedItem[] {
     item(
       'ability-capsule',
       'Pilule Talent',
-      'Utilisée sur un Pokémon : il passe à son autre talent normal.',
+      'Utilisée sur un Pokémon : il obtient un talent normal au hasard, ou passe à l’autre s’il en a déjà un.',
       'epic',
       [{ type: 'abilityChange', hidden: false }],
     ),

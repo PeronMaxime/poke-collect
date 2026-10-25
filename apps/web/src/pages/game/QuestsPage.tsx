@@ -148,10 +148,10 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
         Les légendaires ne se rencontrent pas en expédition : chaque quête les met à ta portée. Les
         étapes se valident dans l’ordre ; captures et expéditions ne comptent qu’à partir du début
         de l’étape. Une fois la récompense réclamée, pars à la recherche du légendaire lors d’une
-        expédition légendaire : au retour, tu vois s’il est shiny avant de lancer ta Ball (une
-        seule) ou de fuir. Relancer de suite allonge la chaîne shiny. Les fuyards, eux, se cachent
-        dans les expéditions ordinaires et changent de zone à chaque heure : repère leur logo sur
-        les zones.
+        expédition légendaire : au retour, tu vois s’il est chromatique avant de lancer ta Ball (une
+        seule) ou de fuir. Relancer de suite allonge la chaîne chromatique. Les fuyards, eux, se
+        cachent dans les expéditions ordinaires et changent de zone à chaque heure : repère leur
+        logo sur les zones.
       </p>
       <RegionTabs
         ctx={ctx}

@@ -225,7 +225,7 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">Pokédex de {region.name}</h2>
           <p className="text-sm text-slate-500">
-            {shiny ? 'Shiny' : `Vus : ${seenCount} · Capturés`} :{' '}
+            {shiny ? 'Chromatiques' : `Vus : ${seenCount} · Capturés`} :{' '}
             {`${dexCaught} / ${dexTotal} (${dexPercent.toFixed(1)} %)`}
           </p>
         </div>
@@ -237,9 +237,9 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
         )}
         {shiny && !foreign && (
           <p className="mt-2 text-xs text-slate-500">
-            Taux shiny de base : {formatShinyRate(1 / ctx.balance.shiny.baseRateDenominator)}
+            Taux chromatique de base : {formatShinyRate(1 / ctx.balance.shiny.baseRateDenominator)}
             {charm > 1 && ` · Charme Chroma : × ${charm}`}. Relancer une zone de suite allonge la
-            chaîne ; des parents de régions différentes favorisent les œufs shiny.
+            chaîne ; des parents de régions différentes favorisent les œufs chromatiques.
           </p>
         )}
       </div>
@@ -257,7 +257,7 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
           onClick={() => setShiny(true)}
           aria-pressed={shiny}
         >
-          <ShinyStar className={shiny ? 'text-white' : ''} /> Shiny
+          <ShinyStar className={shiny ? 'text-white' : ''} /> Chromatique
         </button>
         <span className="mx-1 w-px bg-slate-200 dark:bg-slate-800" />
         {(
@@ -319,7 +319,7 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
                 : selected.formId === null
                   ? 'Vu, pas encore capturé'
                   : 'Forme pas encore capturée'}
-              {detailState.caughtShiny && ' · version shiny obtenue ★'}
+              {detailState.caughtShiny && ' · version chromatique obtenue ★'}
             </p>
             {/* Zones d'expédition : seulement dans son propre Pokédex (liens de départ). */}
             {!foreign && (

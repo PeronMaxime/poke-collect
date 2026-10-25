@@ -88,8 +88,10 @@ export function WikiAbilitiesPage({
       <WikiBreadcrumb items={[{ label: 'Talents' }]} />
       <div className="card space-y-2 p-4">
         <p className="text-sm text-slate-500">
-          Chaque Pokémon a un talent, tiré à sa rencontre parmi ceux de son espèce. Certains
-          agissent en expédition, d’autres en combat, en donjon ou à la Pension.
+          Les Pokémon arrivent sans talent. Une Pilule Talent leur en donne un parmi les talents
+          normaux de leur espèce, au hasard (une deuxième donne l’autre), et un Patch Talent leur
+          donne le talent caché. Certains talents agissent en expédition, d’autres en combat, en
+          donjon ou à la Pension.
         </p>
         <div className="flex flex-wrap items-center gap-2">
           <input

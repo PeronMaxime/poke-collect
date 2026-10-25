@@ -1,6 +1,16 @@
 import { useState } from 'react';
-import { NON_POKEMON_TYPES, balanceSettingsSchema } from '@poke/content';
-import type { BalanceSettings, CombatSettings, DungeonSettings } from '@poke/content';
+import {
+  CHEST_RARITIES,
+  CHEST_RARITY_LABELS,
+  NON_POKEMON_TYPES,
+  balanceSettingsSchema,
+} from '@poke/content';
+import type {
+  BalanceSettings,
+  CombatSettings,
+  DungeonSettings,
+  GuildSettings,
+} from '@poke/content';
 import { types } from '@poke/data';
 import {
   attackIntervalMs,
@@ -286,7 +296,11 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
               disabled={disabled}
             />
           </Field>
-          <Field label="Chance de talent caché" error={err('capture.hiddenAbilityChance')}>
+          <Field
+            label="Chance de talent caché"
+            hint="Pokémon adverses (donjons, dresseurs) : ceux du joueur arrivent sans talent."
+            error={err('capture.hiddenAbilityChance')}
+          >
             <NumberInput
               value={b.capture.hiddenAbilityChance}
               scale={100}
@@ -326,10 +340,10 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
         </div>
       </Section>
 
-      <Section title="Shiny">
+      <Section title="Chromatiques">
         <div className="grid gap-4 sm:grid-cols-3">
           <Field
-            label="Taux shiny de base"
+            label="Taux chromatique de base"
             hint="Rencontres d’expédition et éclosions."
             error={err('shiny.baseRateDenominator')}
           >
@@ -592,7 +606,7 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
           </Field>
           <Field
             label="Transmission du talent caché"
-            hint="Si la mère (ou le parent non Métamorph) a son talent caché."
+            hint="Sans effet : les œufs éclosent sans talent (Pilule / Patch Talent)."
             error={err('breeding.hiddenAbilityInheritChance')}
           >
             <NumberInput
@@ -704,8 +718,8 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
             />
           </Field>
           <Field
-            label="Bonus shiny"
-            hint="Bonbons en plus pour un Pokémon shiny."
+            label="Bonus chromatique"
+            hint="Bonbons en plus pour un Pokémon chromatique."
             error={err('transfer.shinyBonusCandies')}
           >
             <NumberInput
@@ -899,7 +913,96 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
         disabled={disabled}
         preview={preview?.balance.combat ?? null}
       />
+      <GuildSettingsSection s={b.guilds} set={set('guilds')} errors={errors} disabled={disabled} />
     </div>
+  );
+}
+
+/** Guildes : création, membres, quêtes hebdomadaires et tirages des coffres. */
+function GuildSettingsSection({
+  s,
+  set,
+  errors,
+  disabled,
+}: {
+  s: GuildSettings;
+  set: <K extends keyof GuildSettings>(key: K) => (v: GuildSettings[K]) => void;
+  errors: FieldErrors;
+  disabled: boolean;
+}) {
+  const err = (path: string) => errors.get(`guilds.${path}`);
+  return (
+    <Section title="Guildes">
+      <p className="text-xs text-slate-500">
+        Catalogue des quêtes et lots des coffres : page Guildes.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Prix de création" error={err('creationCost')}>
+          <NumberInput
+            value={s.creationCost}
+            min={0}
+            step={1000}
+            unit="₽"
+            onChange={set('creationCost')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Membres au maximum" error={err('maxMembers')}>
+          <NumberInput
+            value={s.maxMembers}
+            min={2}
+            max={200}
+            onChange={set('maxMembers')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Délai après un départ"
+          hint="Avant de rejoindre ou de fonder une autre guilde (pas après une exclusion)."
+          error={err('rejoinCooldownHours')}
+        >
+          <NumberInput
+            value={s.rejoinCooldownHours}
+            min={0}
+            max={720}
+            unit="h"
+            onChange={set('rejoinCooldownHours')}
+            disabled={disabled}
+          />
+        </Field>
+        {CHEST_RARITIES.map((rarity) => (
+          <Field
+            key={`q-${rarity}`}
+            label={`Quêtes ${CHEST_RARITY_LABELS[rarity]} par semaine`}
+            error={err(`weeklyQuests.${rarity}`)}
+          >
+            <NumberInput
+              value={s.weeklyQuests[rarity]}
+              min={0}
+              max={10}
+              onChange={(v) => set('weeklyQuests')({ ...s.weeklyQuests, [rarity]: v })}
+              disabled={disabled}
+            />
+          </Field>
+        ))}
+        {CHEST_RARITIES.map((rarity) => (
+          <Field
+            key={`r-${rarity}`}
+            label={`Tirages d’un coffre ${CHEST_RARITY_LABELS[rarity]}`}
+            error={err(`chestRolls.${rarity}`)}
+          >
+            <NumberInput
+              value={s.chestRolls[rarity]}
+              min={1}
+              max={10}
+              unit="lot(s)"
+              onChange={(v) => set('chestRolls')({ ...s.chestRolls, [rarity]: v })}
+              disabled={disabled}
+            />
+          </Field>
+        ))}
+      </div>
+    </Section>
   );
 }
 

@@ -112,7 +112,7 @@ describe('cohérence du contenu', () => {
     const bad = structuredClone(seedContent);
     bad.zones[0]!.lootTableId = 'inexistante';
     bad.zones[1]!.regionId = 'orre';
-    bad.lootTables[0]!.entries.push({ itemId: 'master-ball', chance: 1, min: 1, max: 1 });
+    bad.lootTables[0]!.entries.push({ itemId: 'objet-inconnu', chance: 1, min: 1, max: 1 });
     const errors = contentIssues(bad)
       .filter((i) => i.severity === 'error')
       .map((i) => `${i.entity}:${i.entityId}`);
@@ -191,6 +191,7 @@ describe('cohérence du contenu', () => {
       'Article de boutique « poke-ball »',
       'Article de boutique « poke-ball-x10 »',
       'Collection « Insectes de la Forêt de Jade »',
+      'Lot de coffre « bronze-poke-ball-x100 »',
     ]);
     expect(findUsages(seedContent, 'lootTable', 'butin-mer')).toEqual([
       'Zone « Cap Azuria »',
@@ -213,6 +214,7 @@ describe('cohérence du contenu', () => {
     // Léo et Ondine dépendent du nombre de badges, pas de Pierre directement ; la Super Ball si.
     expect(findUsages(seedContent, 'trainer', 'pierre')).toEqual([
       'Condition de déblocage de « Article Super Ball (great-ball) »',
+      'Condition de déblocage de « Lot de coffre Super Ball (bronze-great-ball-x50) »',
     ]);
     expect(findUsages(seedContent, 'trainer', 'gamin-tom')).toEqual([
       'Condition de déblocage de « Lise »',
@@ -236,6 +238,9 @@ describe('cohérence du contenu', () => {
       'Palier « Chercheur de Galar »',
       'Palier « Chercheur de Hisui »',
       'Palier « Chercheur de Paldea »',
+      'Lot de coffre « bronze-ultra-ball-x20 »',
+      'Lot de coffre « silver-ultra-ball-x20 »',
+      'Lot de coffre « gold-ultra-ball-x20 »',
     ]);
     expect(findUsages(seedContent, 'item', 'shiny-charm')).toEqual([
       'Palier « Pokédex national complet »',
@@ -246,6 +251,8 @@ describe('cohérence du contenu', () => {
     ]);
     expect(findUsages(seedContent, 'trainer', 'ondine')).toEqual([
       'Condition de déblocage de « Article Hyper Ball (ultra-ball) »',
+      'Condition de déblocage de « Lot de coffre Hyper Ball (bronze-ultra-ball-x20) »',
+      'Condition de déblocage de « Lot de coffre Hyper Ball (silver-ultra-ball-x20) »',
     ]);
     expect(findUsages(seedContent, 'trainer', 'koga')).toEqual([
       'Condition de déblocage de « Quête L’oiseau de foudre, étape 3 »',
@@ -262,7 +269,7 @@ describe('cohérence du contenu', () => {
 
   it('vérifie la boutique', () => {
     const bad = structuredClone(seedContent);
-    bad.shopEntries[0]!.itemId = 'master-ball';
+    bad.shopEntries[0]!.itemId = 'objet-inconnu';
     bad.shopEntries[1]!.categoryId = 'soins';
     bad.shopEntries[2]!.unlock = { type: 'trainerDefeated', trainerId: 'personne' };
     bad.shopEntries.push({ ...bad.shopEntries[3]! });
@@ -271,7 +278,7 @@ describe('cohérence du contenu', () => {
       .map((i) => `${i.entityId}: ${i.message}`);
     expect(messages).toEqual([
       'ultra-ball: Identifiant d’article de boutique en double',
-      'poke-ball: Objet « master-ball » inconnu',
+      'poke-ball: Objet « objet-inconnu » inconnu',
       'poke-ball-x10: Catégorie « soins » inconnue',
       'great-ball: Condition de déblocage : dresseur « personne » inconnu',
     ]);
@@ -323,14 +330,14 @@ describe('cohérence du contenu', () => {
   it('vérifie les paliers et les collections', () => {
     const bad = structuredClone(seedContent);
     bad.dexMilestones[0]!.regionId = 'orre';
-    bad.dexMilestones[1]!.rewards.items.push({ itemId: 'master-ball', quantity: 1 });
+    bad.dexMilestones[1]!.rewards.items.push({ itemId: 'objet-inconnu', quantity: 1 });
     bad.collections[0]!.speciesIds.push(9999);
     bad.collections[1]!.rewards.expeditionSlots = 3;
     const issues = contentIssues(bad).map((i) => `${i.severity}:${i.entityId}: ${i.message}`);
     expect(issues).toEqual(
       expect.arrayContaining([
         'error:kanto-10: Région « orre » inconnue',
-        'error:kanto-25: Récompense : objet « master-ball » inconnu',
+        'error:kanto-25: Récompense : objet « objet-inconnu » inconnu',
         'error:insectes-de-jade: Espèces inconnues : 9999',
         'warning:null: Progression : 3 emplacement(s) d’expédition au-delà du maximum (sans effet)',
       ]),
@@ -411,6 +418,7 @@ describe('cohérence du contenu', () => {
       'Quête « Le Pokémon génétique »',
       'Quête « Le gardien des mers »',
       'Quête « L’oiseau arc-en-ciel »',
+      'Lot de coffre « gold-gold-bottle-cap »',
     ]);
   });
 });

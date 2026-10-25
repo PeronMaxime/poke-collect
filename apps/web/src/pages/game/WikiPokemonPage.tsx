@@ -504,14 +504,6 @@ function BaseStats({ species }: { species: GameSpecies }) {
 }
 
 function Abilities({ ctx, species }: { ctx: GameContext; species: GameSpecies }) {
-  const hiddenChance = ctx.balance.capture.hiddenAbilityChance;
-  const regular = species.abilities.filter((a) => !a.isHidden);
-  const hidden = species.abilities.filter((a) => a.isHidden);
-  // Même tirage qu'à la rencontre (`rollAbility`).
-  const chance = (isHidden: boolean) =>
-    isHidden
-      ? (regular.length === 0 ? 1 : hiddenChance) / hidden.length
-      : (hidden.length === 0 ? 1 : 1 - hiddenChance) / regular.length;
   if (species.abilities.length === 0)
     return <p className="text-sm text-slate-500">Aucun talent.</p>;
   return (
@@ -531,7 +523,7 @@ function Abilities({ ctx, species }: { ctx: GameContext; species: GameSpecies })
                 <span className="text-xs text-violet-600 dark:text-violet-400">talent caché</span>
               )}
               <span className="ml-auto text-xs text-slate-400">
-                {formatPercent(chance(a.isHidden))}
+                {a.isHidden ? 'Patch Talent' : 'Pilule Talent'}
               </span>
             </p>
             <p className={effect ? 'text-slate-600 dark:text-slate-300' : 'text-slate-400 italic'}>
@@ -541,7 +533,8 @@ function Abilities({ ctx, species }: { ctx: GameContext; species: GameSpecies })
         );
       })}
       <li className="text-xs text-slate-400">
-        Pourcentages : chance d’avoir chaque talent à la rencontre.
+        Les Pokémon arrivent sans talent : une Pilule Talent donne un talent normal au hasard (puis
+        l’autre), un Patch Talent le talent caché.
       </li>
     </ul>
   );

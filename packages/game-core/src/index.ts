@@ -21,3 +21,4 @@ export * from './mega';
 export * from './abilities';
 export * from './weather';
 export * from './roaming';
+export * from './guilds';

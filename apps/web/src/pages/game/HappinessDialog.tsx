@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { MAX_HAPPINESS } from '@poke/game-core';
+import { MAX_HAPPINESS, MAX_LEVEL } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import { searchKey } from '@poke/shared';
 import type { UseItemInput, UseItemResponse } from '@poke/shared';
@@ -9,7 +9,10 @@ import { api } from '../../lib/api';
 import { keys, useInventory, usePokemon } from '../../lib/game';
 import { errorText, itemIcon, itemName, speciesName } from '../../lib/labels';
 
-/** Choix du Pokémon à qui donner une baie de bonheur (Baie Grena), depuis le sac. */
+/**
+ * Choix du Pokémon à qui donner une baie de bonheur (Baie Grena) ou un Super Bonbon, depuis le
+ * sac.
+ */
 export function HappinessDialog({
   ctx,
   itemId,
@@ -24,6 +27,7 @@ export function HappinessDialog({
   const inventory = useInventory();
   const [search, setSearch] = useState('');
   const amount = ctx.itemEffect(itemId, 'happiness')?.amount ?? 0;
+  const levels = ctx.itemEffect(itemId, 'levelUp')?.levels;
   const left = inventory.data?.find((s) => s.itemId === itemId)?.quantity ?? 0;
   const give = useMutation({
     mutationFn: ({ pokemonId, ...input }: UseItemInput & { pokemonId: string }) =>
@@ -40,7 +44,7 @@ export function HappinessDialog({
     .filter(
       (p) =>
         !p.busy &&
-        p.happiness < MAX_HAPPINESS &&
+        (levels ? p.level < MAX_LEVEL : p.happiness < MAX_HAPPINESS) &&
         (!needle || searchKey(speciesName(ctx, p.speciesId, p.formId)).includes(needle)),
     )
     .sort((a, b) => b.level - a.level)
@@ -57,7 +61,10 @@ export function HappinessDialog({
         <div>
           <h2 className="text-xl font-bold">{itemName(ctx, itemId)}</h2>
           <p className="text-sm text-slate-500">
-            Il t’en reste {left}. Le Pokémon gagne {amount} de bonheur (au plus {MAX_HAPPINESS}).
+            Il t’en reste {left}.{' '}
+            {levels
+              ? `Le Pokémon gagne ${levels} niveau${levels > 1 ? 'x' : ''} (au plus ${MAX_LEVEL}).`
+              : `Le Pokémon gagne ${amount} de bonheur (au plus ${MAX_HAPPINESS}).`}
           </p>
         </div>
       </div>

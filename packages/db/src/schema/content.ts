@@ -16,9 +16,11 @@ import type {
   AbilityEffect,
   BalanceSettings,
   BattleRules,
+  ChestRarity,
   DungeonDifficulty,
   Encounter,
   EvolutionMethod,
+  GuildObjective,
   ItemEffect,
   LootEntry,
   ProgressReward,
@@ -326,6 +328,39 @@ export const quests = pgTable(
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
 );
 
+/** Modèles de quêtes de guilde (catalogue du tirage hebdomadaire). */
+export const guildQuests = pgTable(
+  'guild_quests',
+  {
+    contentVersionId: versionId(),
+    id: text('id').notNull(),
+    name: text('name').notNull(),
+    description: text('description').notNull(),
+    rarity: text('rarity').$type<ChestRarity>().notNull(),
+    objective: jsonb('objective').$type<GuildObjective>().notNull(),
+    countPerMember: integer('count_per_member').notNull(),
+    minCount: integer('min_count').notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+  },
+  (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
+);
+
+/** Lots des coffres de guilde. */
+export const chestEntries = pgTable(
+  'chest_entries',
+  {
+    contentVersionId: versionId(),
+    id: text('id').notNull(),
+    rarity: text('rarity').$type<ChestRarity>().notNull(),
+    itemId: text('item_id').notNull(),
+    lotSize: integer('lot_size').notNull(),
+    weight: doublePrecision('weight').notNull(),
+    unlock: jsonb('unlock').$type<UnlockCondition>().notNull(),
+    enabled: boolean('enabled').notNull().default(true),
+  },
+  (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
+);
+
 /**
  * Tables versionnées : copiées en bloc lors de la création d'un brouillon.
  * Toute nouvelle table de contenu (zones, objets, quêtes…) doit être ajoutée ici.
@@ -346,4 +381,6 @@ export const versionedContentTables = [
   collections,
   quests,
   dungeons,
+  guildQuests,
+  chestEntries,
 ] as const;

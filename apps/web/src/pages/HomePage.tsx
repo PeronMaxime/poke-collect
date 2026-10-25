@@ -4,6 +4,7 @@ import type { MeResponse, PlayerProfileDto } from '@poke/shared';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useNow } from '../components/ui';
 import { authClient } from '../lib/auth-client';
+import { DEX_FORM_SECTIONS, getForm } from '@poke/data';
 import { MENU_TABS, normalizeMenuGroups } from '@poke/content';
 import type { MenuTabId as TabId } from '@poke/content';
 import { claimableRewardCount, eggsLaid } from '@poke/game-core';
@@ -20,6 +21,7 @@ import {
   useGameContext,
   useMuseum,
   useNewEvolutionChecker,
+  usePokedexForms,
   usePokemon,
   useQuests,
   useShop,
@@ -33,6 +35,7 @@ import { ExpeditionsPage } from './game/ExpeditionsPage';
 import { InventoryPage } from './game/InventoryPage';
 import { LeaderboardPage } from './game/LeaderboardPage';
 import { FarmPage } from './game/FarmPage';
+import { GuildPage } from './game/GuildPage';
 import { MuseumPage } from './game/MuseumPage';
 import { PcPage } from './game/PcPage';
 import { PokedexPage } from './game/PokedexPage';
@@ -50,6 +53,8 @@ const TAB_LABELS = Object.fromEntries(MENU_TABS.map((t) => [t.id, t.label])) as 
   TabId,
   string
 >;
+
+const DEX_FORM_KINDS = new Set<string | undefined>(DEX_FORM_SECTIONS.map((s) => s.kind));
 
 /** Onglet du menu, ou page du wiki (lien de l'en-tête). */
 type PageId = TabId | typeof WIKI_HASH;
@@ -103,7 +108,11 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const now = useNow(5000);
   const finished = expeditions.data?.active.filter((e) => Date.parse(e.endsAt) <= now).length ?? 0;
   const dexCatches = useDexCatches();
-  const caught = dexCatches.caughtSpeciesIds.size;
+  const dexForms = usePokedexForms();
+  // Même décompte que la page Pokédex : espèces et formes de ses sections (régionales, Méga…).
+  const caught =
+    dexCatches.caughtSpeciesIds.size +
+    (dexForms.data?.filter((f) => DEX_FORM_KINDS.has(getForm(f.formId)?.kind)).length ?? 0);
   // Paliers et collections à réclamer, Pokémon disponibles prêts à évoluer vers une espèce
   // ou forme qui manque encore au Pokédex (même règle que la pastille « Évol. » du PC).
   const rewardsReady = ctx ? claimableRewardCount(ctx, dexCatches, claimed) : 0;
@@ -419,6 +428,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
               {tab === 'pokedex' && <PokedexPage ctx={ctx} />}
               {tab === 'bag' && <InventoryPage ctx={ctx} />}
               {tab === 'trainer' && <TrainerCardPage ctx={ctx} profile={profile} />}
+              {tab === 'guild' && <GuildPage ctx={ctx} />}
               {tab === 'leaderboard' && <LeaderboardPage />}
               {tab === WIKI_HASH && <WikiPage ctx={ctx} />}
             </ErrorBoundary>

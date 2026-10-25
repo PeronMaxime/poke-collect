@@ -333,6 +333,7 @@ describe('quêtes', () => {
       await handle.db.insert(inventory).values([
         { ownerId: userId, itemId: 'adamant-mint', quantity: 1 },
         { ownerId: userId, itemId: 'ability-patch', quantity: 1 },
+        { ownerId: userId, itemId: 'ability-capsule', quantity: 2 },
       ]);
     });
 
@@ -367,14 +368,11 @@ describe('quêtes', () => {
           originalNature: target.nature,
         });
       }
+      // Le Pokémon reçu en récompense arrive sans talent.
+      expect(target.ability).toBe('');
       const patch = await call<UseItemResponse>('POST', `/api/pokemon/${target.id}/use-item`, {
         itemId: 'ability-patch',
       });
-      // Talent caché déjà tiré à la capture (5 %) : le Patch Talent n'a aucun effet.
-      if (target.ability === 'unnerve') {
-        expect(patch.status).toBe(400);
-        return;
-      }
       expect(patch.status).toBe(200);
       expect(patch.body.pokemon.ability).toBe('unnerve');
       const [left] = await handle.db
@@ -382,6 +380,15 @@ describe('quêtes', () => {
         .from(inventory)
         .where(and(eq(inventory.ownerId, userId), eq(inventory.itemId, 'ability-patch')));
       expect(left?.quantity).toBe(0);
+      // Pilule Talent : Mewtwo n'a qu'un talent normal, Pression ; une seconde Pilule est sans effet.
+      const pill = await call<UseItemResponse>('POST', `/api/pokemon/${target.id}/use-item`, {
+        itemId: 'ability-capsule',
+      });
+      expect(pill.body.pokemon.ability).toBe('pressure');
+      const again = await call<{ error: string }>('POST', `/api/pokemon/${target.id}/use-item`, {
+        itemId: 'ability-capsule',
+      });
+      expect(again.body.error).toBe('NO_EFFECT');
     });
 
     it('refuse un Pokémon occupé ou un objet sans effet sur les Pokémon', async () => {

@@ -1,3 +1,4 @@
+import { speciesForms } from '@poke/data';
 import type {
   BattleRules,
   Encounter,
@@ -59,6 +60,15 @@ const enc = (speciesId: number, weight: number, minLevel: number, maxLevel: numb
   minLevel,
   maxLevel,
 });
+
+/** Zarbi : les 28 formes (A, puis B à Z, ! et ?), à parts égales. */
+const unownEncounters = (weight: number, minLevel: number, maxLevel: number): Encounter[] => [
+  enc(201, weight, minLevel, maxLevel),
+  ...speciesForms(201).map((form) => ({
+    ...enc(201, weight, minLevel, maxLevel),
+    formId: form.id,
+  })),
+];
 
 /** Badges de Johto uniquement (ceux de Kanto ne comptent pas). */
 const badges = (count: number): UnlockCondition => ({
@@ -212,14 +222,7 @@ export const johtoZones: Zone[] = [
     habitat: 'rough-terrain',
     minPower: 380,
     affinityTypes: ['psychic', 'rock'],
-    encounters: [
-      enc(201, 32, 8, 12),
-      enc(177, 22, 8, 12),
-      enc(194, 14, 8, 12),
-      enc(235, 8, 9, 13),
-      enc(63, 12, 8, 12),
-      enc(54, 12, 8, 12),
-    ],
+    encounters: unownEncounters(4, 8, 12),
     lootTableId: 'butin-fouilles',
     unlock: defeated('montagnard-anthony'),
   }),
@@ -682,6 +685,7 @@ export const johtoZones: Zone[] = [
       enc(114, 10, 28, 34),
       enc(84, 10, 28, 34),
       enc(27, 8, 28, 34),
+      enc(235, 6, 28, 34),
       enc(207, 4, 28, 34),
       enc(227, 2, 30, 34),
     ],

@@ -138,7 +138,7 @@ export function GenderSymbol({ gender }: { gender: Gender }) {
 
 export function ShinyStar({ className = '' }: { className?: string }) {
   return (
-    <span className={`text-amber-400 ${className}`} title="Shiny" aria-label="Shiny">
+    <span className={`text-amber-400 ${className}`} title="Chromatique" aria-label="Chromatique">
       ★
     </span>
   );

@@ -56,7 +56,7 @@ export function ProgressionPage() {
 }
 
 const dexName = (w: WorkingVersion, regionId: string | null, shiny = false) =>
-  `${regionId ? (w.ctx.region(regionId)?.name ?? regionId) : 'National'}${shiny ? ' ★ shiny' : ''}`;
+  `${regionId ? (w.ctx.region(regionId)?.name ?? regionId) : 'National'}${shiny ? ' ★ chromatique' : ''}`;
 
 // --- Paliers --------------------------------------------------------------------------------
 
@@ -64,7 +64,7 @@ function MilestonesView() {
   return (
     <EntityPage<DexMilestone>
       title="Progression : paliers du Pokédex"
-      description="Seuil (% du Pokédex d’une région ou national, normal ou shiny) et récompenses : objets, argent, emplacements, bonus permanents."
+      description="Seuil (% du Pokédex d’une région ou national, normal ou chromatique) et récompenses : objets, argent, emplacements, bonus permanents."
       collection="dex-milestones"
       entityKind="dexMilestone"
       schema={dexMilestoneSchema}
@@ -148,7 +148,7 @@ function MilestoneForm({
               checked={m.shiny}
               onChange={(v) => set('shiny', v)}
               disabled={disabled}
-              label="Pokédex shiny (ne compte que les captures shiny)"
+              label="Pokédex chromatique (ne compte que les captures chromatiques)"
             />
           </div>
         </Field>

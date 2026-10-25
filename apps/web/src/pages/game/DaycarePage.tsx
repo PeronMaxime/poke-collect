@@ -309,7 +309,7 @@ function PensionCard({
           </p>
           {shinyRate !== null && (
             <p title="Le Charme Chroma compte s’il est dans le sac à l’éclosion ; l’assistant, s’il est en poste au ramassage.">
-              <ShinyStar /> Chance shiny : {formatShinyRate(shinyRate)}
+              <ShinyStar /> Chance chromatique : {formatShinyRate(shinyRate)}
               {shinyBonuses.length > 0 && ` (${shinyBonuses.join(', ')})`}
             </p>
           )}

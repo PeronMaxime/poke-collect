@@ -6,6 +6,7 @@ import {
   checkEvolution,
   checkMegaEvolution,
   collectionProgress,
+  createRng,
   evolutionOptions,
   evolvePokemon,
   isMilestoneReached,
@@ -17,7 +18,7 @@ import type { ProgressReward } from '@poke/content';
 import type { ClaimRewardInput, EvolveInput, MegaEvolveInput, UseItemInput } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
-import { requireStartedProfile } from './expeditions';
+import { newSeed, requireStartedProfile } from './expeditions';
 import {
   addItems,
   assertAvailable,
@@ -177,8 +178,8 @@ export async function claimReward(
 }
 
 /**
- * Utilise un objet sur un Pokémon (Capsule, Aromate, Pilule / Patch Talent, Baie Grena) : refusé s'il
- * serait sans effet ; l'objet est consommé. Possible même K.O., pas pendant une activité.
+ * Utilise un objet sur un Pokémon (Capsule, Aromate, Pilule / Patch Talent, Baie Grena, Super
+ * Bonbon) : refusé s'il serait sans effet ; l'objet est consommé. Talent tiré au hasard. Possible même K.O., pas pendant une activité.
  */
 export async function useItemOnPokemon(
   db: Db,
@@ -203,12 +204,13 @@ export async function useItemOnPokemon(
       ctx,
       { ...toInstance(row), formId: row.megaStone ? null : row.formId, originalNature: row.nature },
       input.itemId,
-      { stat: input.stat, ability: input.ability },
+      { stat: input.stat },
+      createRng(newSeed()),
     );
     if ('error' in result) throw new GameError(400, result.error);
     if (!(await takeItems(tx, userId, input.itemId, 1))) throw new GameError(409, 'ITEM_MISSING');
 
-    const { ivs, natureOverride, ability, happiness } = result.patch;
+    const { ivs, natureOverride, ability, happiness, level, xp } = result.patch;
     const [updated] = await tx
       .update(pokemon)
       .set({
@@ -223,6 +225,7 @@ export async function useItemOnPokemon(
         ...(natureOverride !== undefined && { natureOverride }),
         ...(ability && { ability }),
         ...(happiness !== undefined && { happiness }),
+        ...(level !== undefined && { level, xp }),
       })
       .where(eq(pokemon.id, row.id))
       .returning();

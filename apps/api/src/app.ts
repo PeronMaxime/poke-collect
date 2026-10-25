@@ -31,6 +31,7 @@ import { playerRoutes } from './routes/player';
 import { progressionRoutes } from './routes/progression';
 import { pushRoutes } from './routes/push';
 import { shopRoutes } from './routes/shop';
+import { guildRoutes } from './routes/guilds';
 import { spriteRoutes } from './routes/sprites';
 
 export interface AppOptions {
@@ -119,6 +120,7 @@ export async function buildApp({
   await app.register(battleRoutes, { db, content, hooks, now });
   await app.register(dungeonRoutes, { db, content, hooks, now });
   await app.register(shopRoutes, { db, content, hooks, now });
+  await app.register(guildRoutes, { db, content, hooks, now });
   await app.register(progressionRoutes, { db, content, hooks, now });
   await app.register(leaderboardRoutes, { db, content, hooks });
   await app.register(trainerRoutes, { db, content, hooks });

@@ -327,7 +327,7 @@ function PlayerCardDialog({ userId, onClose }: { userId: string; onClose: () => 
         { label: 'Pokémon capturés', value: card.captures },
         { label: 'Pokémon possédés', value: card.pokemonOwned },
         { label: 'Chromatiques possédés', value: card.shiniesOwned },
-        { label: 'Shiny ratés', value: card.shiniesMissed },
+        { label: 'Chromatiques ratés', value: card.shiniesMissed },
         { label: 'Expéditions terminées', value: card.expeditionsCompleted },
         { label: 'Combats gagnés', value: card.battlesWon },
         { label: 'Combats perdus', value: card.battlesLost },
@@ -543,7 +543,7 @@ function TestPokemonSection({ userId }: { userId: string }) {
       <p className="mb-3 text-sm text-slate-500">
         Compte admin uniquement. Ajoute au PC les lignées des donjons de la région et les deux plus
         forts Pokémon de chaque type de son Pokédex régional (origine « Lot de test »), un sur deux
-        en shiny, et les inscrit au Pokédex pour rendre les donjons visibles.
+        en chromatique, et les inscrit au Pokédex pour rendre les donjons visibles.
       </p>
       <div className="flex flex-wrap items-end gap-3 text-sm">
         <label className="space-y-1">

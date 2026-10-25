@@ -1,6 +1,14 @@
 import { z } from 'zod';
 import { slugSchema } from '@poke/content';
-import type { ContentIssue, GameContent, ProgressReward, QuestReward } from '@poke/content';
+import type {
+  ChestRarity,
+  ContentIssue,
+  GameContent,
+  GuildObjective,
+  ItemStack,
+  ProgressReward,
+  QuestReward,
+} from '@poke/content';
 import { STAT_NAMES } from '@poke/data';
 import type { StatName, Stats } from '@poke/data';
 import type {
@@ -17,13 +25,22 @@ import type {
   ExpeditionError,
   ExpeditionResult,
   Gender,
+  GuildJoinMode,
+  GuildRole,
   PlayerBonuses,
   PlayerSlots,
   QuestStatus,
   RewardKind,
   ShopEntryState,
 } from '@poke/game-core';
-import { MAX_LOTS_PER_PURCHASE, MOVE_CATEGORIES } from '@poke/game-core';
+import {
+  GUILD_DESCRIPTION_MAX,
+  GUILD_MESSAGE_MAX,
+  GUILD_NAME_MAX,
+  GUILD_NAME_MIN,
+  MAX_LOTS_PER_PURCHASE,
+  MOVE_CATEGORIES,
+} from '@poke/game-core';
 
 /** Schémas et types de l'API, partagés entre `apps/api`, `apps/web` et `apps/admin`. */
 
@@ -414,8 +431,6 @@ export const useItemInputSchema = z.object({
   itemId: slugSchema,
   /** Capsule d'Argent : statistique à monter à 31. */
   stat: z.enum(STAT_NAMES as [StatName, ...StatName[]]).optional(),
-  /** Pilule / Patch Talent : talent visé (facultatif s'il n'y a qu'un choix). */
-  ability: z.string().min(1).max(64).optional(),
 });
 export type UseItemInput = z.infer<typeof useItemInputSchema>;
 
@@ -1298,3 +1313,128 @@ export const searchKey = (text: string) =>
     .normalize('NFD')
     .replace(/\p{Diacritic}/gu, '')
     .toLowerCase();
+
+// --- Guildes ---------------------------------------------------------------------------
+
+export type { GuildJoinMode, GuildRole };
+
+export const guildNameSchema = z
+  .string()
+  .trim()
+  .min(GUILD_NAME_MIN, `Au moins ${GUILD_NAME_MIN} caractères`)
+  .max(GUILD_NAME_MAX, `Au plus ${GUILD_NAME_MAX} caractères`)
+  .regex(/^[\p{L}\p{N} '’_-]+$/u, 'Lettres, chiffres, espaces, apostrophes, - et _ uniquement');
+
+const guildJoinModeSchema = z.enum(['open', 'request']);
+const guildDescriptionSchema = z.string().trim().max(GUILD_DESCRIPTION_MAX);
+
+export const createGuildInputSchema = z.object({
+  name: guildNameSchema,
+  description: guildDescriptionSchema,
+  joinMode: guildJoinModeSchema,
+});
+export type CreateGuildInput = z.infer<typeof createGuildInputSchema>;
+
+export const updateGuildInputSchema = z.object({
+  description: guildDescriptionSchema.optional(),
+  joinMode: guildJoinModeSchema.optional(),
+});
+export type UpdateGuildInput = z.infer<typeof updateGuildInputSchema>;
+
+export const guildRoleInputSchema = z.object({ role: z.enum(['leader', 'officer', 'member']) });
+export type GuildRoleInput = z.infer<typeof guildRoleInputSchema>;
+
+export const guildMessageInputSchema = z.object({
+  body: z.string().trim().min(1).max(GUILD_MESSAGE_MAX),
+});
+export type GuildMessageInput = z.infer<typeof guildMessageInputSchema>;
+
+/** Guilde dans les résultats de recherche. */
+export interface GuildSummaryDto {
+  id: string;
+  name: string;
+  description: string;
+  joinMode: GuildJoinMode;
+  memberCount: number;
+  maxMembers: number;
+  leaderName: string | null;
+  /** Le joueur a déjà demandé à la rejoindre. */
+  requested: boolean;
+}
+
+export interface GuildMemberDto {
+  trainerName: string;
+  role: GuildRole;
+  joinedAt: string;
+  /** Avancée apportée aux quêtes de la semaine. */
+  weekContribution: number;
+  isMe: boolean;
+}
+
+export interface GuildQuestDto {
+  slot: number;
+  name: string;
+  description: string;
+  rarity: ChestRarity;
+  objective: GuildObjective;
+  target: number;
+  progress: number;
+  completedAt: string | null;
+  myContribution: number;
+  contributors: number;
+}
+
+export interface GuildDto {
+  id: string;
+  name: string;
+  description: string;
+  joinMode: GuildJoinMode;
+  createdAt: string;
+  maxMembers: number;
+  myRole: GuildRole;
+  /** Chef, officiers puis membres, par ancienneté. */
+  members: GuildMemberDto[];
+  /** Candidatures en attente (chef et officiers seulement). */
+  requests: { trainerName: string; createdAt: string }[];
+  week: { id: string; endsAt: string };
+  quests: GuildQuestDto[];
+}
+
+export interface GuildStateResponse {
+  serverTime: string;
+  currency: number;
+  guild: GuildDto | null;
+  /** Départ récent : date à partir de laquelle le joueur peut rejoindre une guilde. */
+  cooldownUntil: string | null;
+  /** Candidatures en attente du joueur (sans guilde). */
+  myRequests: GuildSummaryDto[];
+}
+
+export interface GuildSearchResponse {
+  guilds: GuildSummaryDto[];
+}
+
+export interface GuildMessageDto {
+  id: string;
+  /** null = message du jeu (quête terminée, arrivée d'un membre…). */
+  trainerName: string | null;
+  body: string;
+  createdAt: string;
+  mine: boolean;
+}
+
+export interface GuildMessagesResponse {
+  messages: GuildMessageDto[];
+}
+
+export const openChestInputSchema = z.object({
+  itemId: slugSchema,
+  count: z.int().min(1).max(50),
+});
+export type OpenChestInput = z.infer<typeof openChestInputSchema>;
+
+export interface OpenChestResponse {
+  itemId: string;
+  opened: number;
+  loot: ItemStack[];
+}

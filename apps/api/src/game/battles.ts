@@ -20,6 +20,7 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
+import { recordGuildActivity } from './guilds';
 import { combatHealCommand, commandAtMs } from './dungeons';
 import { newSeed, requireStartedProfile, startHour } from './expeditions';
 import {
@@ -303,6 +304,8 @@ export async function claimBattle(
   const ctx = await content.version(found.contentVersionId);
   const trainer = ctx.trainer(found.trainerId);
   if (!trainer) throw new GameError(500, 'TRAINER_MISSING_IN_VERSION');
+  // Les quêtes de guilde suivent le contenu publié, pas la version de départ du combat.
+  const published = await content.get();
 
   return db.transaction(async (tx) => {
     // Verrou : seule la première réclamation passe.
@@ -374,6 +377,13 @@ export async function claimBattle(
         .where(eq(pokemon.id, m.id));
     }
     await addItems(tx, userId, result.loot);
+    await recordGuildActivity(
+      tx,
+      published,
+      userId,
+      { battlesWon: win ? 1 : 0, money: result.money },
+      now,
+    );
     const [profile] = await tx
       .update(playerProfiles)
       .set({ currency: sql`${playerProfiles.currency} + ${result.money}` })

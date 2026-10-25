@@ -2,17 +2,19 @@ import { STAT_NAMES } from '@poke/data';
 import type { StatName, Stats } from '@poke/data';
 import type { ItemEffect } from '@poke/content';
 import type { GameContext } from './context';
-import { MAX_IV } from './pokemon';
+import { MAX_IV, MAX_LEVEL, xpForLevel } from './pokemon';
+import type { Rng } from './rng';
 import type { PokemonInstance } from './pokemon';
 
 /**
  * Objets utilisés sur un Pokémon (PLAN.md, section 2.7) : Capsules (IV à 31), Aromates (nature
- * effective), Pilule et Patch Talent (talent), Baie Grena (bonheur). L'objet est consommé.
+ * effective), Pilule et Patch Talent (talent), Baie Grena (bonheur), Super Bonbon (niveau). L'objet
+ * est consommé.
  */
 
 export type PokemonItemEffect = Extract<
   ItemEffect,
-  { type: 'ivCap' | 'mint' | 'abilityChange' | 'happiness' }
+  { type: 'ivCap' | 'mint' | 'abilityChange' | 'happiness' | 'levelUp' }
 >;
 
 const POKEMON_EFFECTS = new Set<ItemEffect['type']>([
@@ -20,6 +22,7 @@ const POKEMON_EFFECTS = new Set<ItemEffect['type']>([
   'mint',
   'abilityChange',
   'happiness',
+  'levelUp',
 ]);
 
 /** Bonheur maximal d'un Pokémon. */
@@ -33,7 +36,7 @@ export function pokemonItemEffect(ctx: GameContext, itemId: string): PokemonItem
 /** Pokémon visé : nature d'origine (avant Aromate) en plus de la nature effective. */
 export interface ItemTarget extends Pick<
   PokemonInstance,
-  'speciesId' | 'formId' | 'ivs' | 'nature' | 'ability' | 'happiness'
+  'speciesId' | 'formId' | 'ivs' | 'nature' | 'ability' | 'happiness' | 'level' | 'xp'
 > {
   originalNature: string;
 }
@@ -43,7 +46,7 @@ export interface ItemUseOptions {
   effect: PokemonItemEffect;
   /** Capsule d'Argent : statistiques dont l'IV n'est pas encore à 31. */
   stats: StatName[];
-  /** Pilule / Patch Talent : talents accessibles. */
+  /** Pilule / Patch Talent : talents possibles, l'un d'eux tiré au hasard. */
   abilities: string[];
   /** L'objet aurait un effet. */
   usable: boolean;
@@ -64,24 +67,27 @@ export function itemUseOptions(
     case 'mint':
       return { effect, stats: [], abilities: [], usable: target.nature !== effect.nature };
     case 'abilityChange': {
+      // Sans talent ou avec le talent caché, la Pilule donne un talent normal au hasard ; avec un
+      // talent normal, l'autre. Le Patch donne le talent caché.
       const all = species?.abilities ?? [];
-      const current = all.find((a) => a.name === target.ability);
-      // Comme dans les jeux : la Pilule ne touche pas au talent caché, le Patch le donne.
-      const abilities =
-        current?.isHidden === true
-          ? []
-          : all.filter((a) => a.isHidden === effect.hidden && a.name !== target.ability);
-      const names = [...new Set(abilities.map((a) => a.name))];
+      const names = [
+        ...new Set(
+          all
+            .filter((a) => a.isHidden === effect.hidden && a.name !== target.ability)
+            .map((a) => a.name),
+        ),
+      ];
       return { effect, stats: [], abilities: names, usable: names.length > 0 };
     }
     case 'happiness':
       return { effect, stats: [], abilities: [], usable: target.happiness < MAX_HAPPINESS };
+    case 'levelUp':
+      return { effect, stats: [], abilities: [], usable: !!species && target.level < MAX_LEVEL };
   }
 }
 
 export interface ItemUseChoice {
   stat?: StatName;
-  ability?: string;
 }
 
 /** Modifications à appliquer au Pokémon. */
@@ -91,6 +97,8 @@ export interface PokemonPatch {
   natureOverride?: string | null;
   ability?: string;
   happiness?: number;
+  level?: number;
+  xp?: number;
 }
 
 export type ItemUseError = 'NOT_USABLE_ON_POKEMON' | 'NO_EFFECT' | 'CHOICE_REQUIRED';
@@ -100,6 +108,7 @@ export function applyItemToPokemon(
   target: ItemTarget,
   itemId: string,
   choice: ItemUseChoice,
+  rng: Rng,
 ): { patch: PokemonPatch } | { error: ItemUseError } {
   const options = itemUseOptions(ctx, target, itemId);
   if (!options) return { error: 'NOT_USABLE_ON_POKEMON' };
@@ -118,16 +127,17 @@ export function applyItemToPokemon(
       return {
         patch: { natureOverride: effect.nature === target.originalNature ? null : effect.nature },
       };
-    case 'abilityChange': {
-      const ability =
-        choice.ability ?? (options.abilities.length === 1 ? options.abilities[0] : undefined);
-      if (!ability) return { error: 'CHOICE_REQUIRED' };
-      if (!options.abilities.includes(ability)) return { error: 'NO_EFFECT' };
-      return { patch: { ability } };
-    }
+    case 'abilityChange':
+      return { patch: { ability: options.abilities[rng.int(0, options.abilities.length - 1)]! } };
     case 'happiness':
       return {
         patch: { happiness: Math.min(MAX_HAPPINESS, target.happiness + effect.amount) },
       };
+    case 'levelUp': {
+      // Comme dans les jeux : l'XP passe au début du nouveau niveau.
+      const level = Math.min(MAX_LEVEL, target.level + effect.levels);
+      const { growthRate } = ctx.species(target.speciesId, target.formId)!;
+      return { patch: { level, xp: Math.max(target.xp, xpForLevel(growthRate, level)) } };
+    }
   }
 }

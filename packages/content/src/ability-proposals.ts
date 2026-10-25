@@ -110,7 +110,7 @@ const PROPOSALS: Record<string, AbilityEffect[]> = {
   'flash-fire': [immune('fire'), self('damageDealt', 25, when.attack('fire'))],
   forewarn: [self('damageTaken', -10), team('restoreTime', -15)],
   'friend-guard': [team('damageTaken', -15)],
-  frisk: [team('lootRolls', 15), team('hiddenAbility', 10)],
+  frisk: [team('lootRolls', 15)],
   gluttony: [team('capture', 10)],
   guts: [self('damageDealt', 50, when.statused)],
   harvest: [team('lootRolls', 25)],

@@ -162,7 +162,7 @@ describe('boutique', () => {
       status: 403,
       body: { error: 'ENTRY_LOCKED' },
     });
-    expect(await buy('master-ball', 1)).toMatchObject({
+    expect(await buy('objet-inconnu', 1)).toMatchObject({
       status: 404,
       body: { error: 'SHOP_ENTRY_NOT_FOUND' },
     });
@@ -269,7 +269,7 @@ describe('boutique', () => {
       status: 409,
       body: { error: 'NOT_SELLABLE' },
     });
-    expect(await sell('master-ball', 1)).toMatchObject({
+    expect(await sell('objet-inconnu', 1)).toMatchObject({
       status: 404,
       body: { error: 'ITEM_NOT_FOUND' },
     });

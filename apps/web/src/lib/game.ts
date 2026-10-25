@@ -16,6 +16,7 @@ import type {
   DaycareResponse,
   ExpeditionsResponse,
   FarmResponse,
+  GuildStateResponse,
   InventoryEntryDto,
   LeaderboardKind,
   LeaderboardResponse,
@@ -56,6 +57,7 @@ export const keys = {
   progression: ['progression'],
   quests: ['quests'],
   trainerCard: ['trainer-card'],
+  guild: ['guild'],
   /** Profil (argent) : voir `App`. */
   me: ['me'],
 } as const;
@@ -77,6 +79,7 @@ export const PLAYER_STATE_KEYS = [
   keys.progression,
   keys.quests,
   keys.trainerCard,
+  keys.guild,
   keys.me,
 ];
 
@@ -147,6 +150,10 @@ export const useDungeons = () =>
 
 export const useShop = () =>
   useQuery({ queryKey: keys.shop, queryFn: () => api<ShopResponse>('/api/shop') });
+
+/** Guilde du joueur (membres, quêtes de la semaine), ou ses candidatures s'il n'en a pas. */
+export const useGuild = () =>
+  useQuery({ queryKey: keys.guild, queryFn: () => api<GuildStateResponse>('/api/guild') });
 
 /** Quêtes visibles et leur avancement (calculé et enregistré par le serveur). */
 export const useQuests = () =>

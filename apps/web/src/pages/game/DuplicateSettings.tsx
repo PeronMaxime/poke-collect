@@ -219,8 +219,8 @@ function SettingsForm({
       </div>
 
       <p className="text-xs text-slate-500">
-        Les favoris, les légendaires et fabuleux, les shiny, les Méga-Évolués et les Pokémon occupés
-        ne sont jamais proposés.
+        Les favoris, les légendaires et fabuleux, les chromatiques, les Méga-Évolués et les Pokémon
+        occupés ne sont jamais proposés.
       </p>
 
       <div className="flex justify-end gap-2">

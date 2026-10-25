@@ -191,7 +191,7 @@ export function PcFilterBar({
             checked={b.onlyShiny}
             onChange={(e) => b.setOnlyShiny(e.target.checked)}
           />
-          Shiny
+          Chromatique
         </label>
         <label
           className="flex items-center gap-1 text-sm"
@@ -229,9 +229,10 @@ function AbilityFilterSelect({
   onChange: (value: string) => void;
 }) {
   const counts = new Map<string, number>();
-  for (const { ability } of list) if (ability) counts.set(ability, (counts.get(ability) ?? 0) + 1);
-  const abilities = [...counts.keys()].sort((a, b) =>
-    abilityLabel(a).localeCompare(abilityLabel(b), 'fr'),
+  for (const { ability } of list) counts.set(ability, (counts.get(ability) ?? 0) + 1);
+  // « Aucun talent » (NO_ABILITY, chaîne vide) en tête.
+  const abilities = [...counts.keys()].sort(
+    (a, b) => Number(!!a) - Number(!!b) || abilityLabel(a).localeCompare(abilityLabel(b), 'fr'),
   );
   return (
     <select

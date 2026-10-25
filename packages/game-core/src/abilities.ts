@@ -263,12 +263,12 @@ export const ABILITY_PARAMS: Record<AbilityParam, AbilityParamInfo> = {
   },
   shinyChance: {
     group: 'Expéditions',
-    label: 'Chance shiny',
+    label: 'Chance chromatique',
     kind: 'percent',
     unit: '%',
     selfScope: false,
     activities: ['expedition', 'breeding', 'museum'],
-    help: 'Probabilité qu’une rencontre, un œuf ou un fossile ranimé soit shiny.',
+    help: 'Probabilité qu’une rencontre, un œuf ou un fossile ranimé soit chromatique.',
   },
   koDuration: {
     group: 'Combats',
@@ -368,15 +368,6 @@ export const ABILITY_PARAMS: Record<AbilityParam, AbilityParamInfo> = {
     selfScope: false,
     activities: ['breeding'],
     help: 'IV transmis par les parents en plus (6 au plus).',
-  },
-  hiddenAbility: {
-    group: 'Élevage et Musée',
-    label: 'Chance de talent caché',
-    kind: 'flat',
-    unit: 'pts',
-    selfScope: false,
-    activities: ['breeding', 'museum'],
-    help: 'Points de % ajoutés à la chance du talent caché (héritage de la mère, fossile ranimé).',
   },
   perfectIvs: {
     group: 'Élevage et Musée',

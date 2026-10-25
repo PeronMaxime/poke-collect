@@ -10,7 +10,6 @@ import {
   isUnlocked,
   isUnlockedSoon,
   isZoneUnlocked,
-  regionDexProgress,
   resolveWeather,
   shinyProbability,
   zoneWeather,
@@ -204,7 +203,6 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   };
   const regionId = currentRegionTab(ctx, progress, selectedRegion);
   const region = ctx.region(regionId);
-  const dex = regionDexProgress(ctx, regionId, progress);
   // Zones débloquées et celles du prochain badge ; les autres apparaîtront plus tard.
   const regionZones = ctx.zones
     .filter((z) => z.regionId === regionId)
@@ -314,12 +312,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
         />
         {region && (
           <>
-            <div className="flex items-baseline justify-between">
-              <h2 className="text-lg font-semibold">Zones de {region.name}</h2>
-              <span className="text-sm text-slate-500">
-                Pokédex : {dex.caught} / {dex.total}
-              </span>
-            </div>
+            <h2 className="text-lg font-semibold">Zones de {region.name}</h2>
             {needsStarter(region.id) && <RegionStarterCard ctx={ctx} region={region} />}
             <div className="grid gap-3 md:grid-cols-2">
               {visibleZones.map(({ zone, unlocked }) => zoneCard(zone, unlocked))}
@@ -465,8 +458,8 @@ function ActiveExpedition({
 
 const SHINY_FILTER_LABELS = {
   any: null,
-  always: 'shiny toujours tentés',
-  only: 'shiny uniquement',
+  always: 'chromatiques toujours tentés',
+  only: 'chromatiques uniquement',
 } as const;
 
 /**
@@ -522,7 +515,7 @@ function ExpeditionSummary({
     charm > 1 && 'Charme Chroma',
   ].filter(Boolean);
   rows.push([
-    'Taux shiny',
+    'Taux chromatique',
     `${formatShinyRate(shinyRate)}${shinyBonuses.length > 0 ? ` (${shinyBonuses.join(' · ')})` : ''}`,
   ]);
   const filters = filter
@@ -682,7 +675,7 @@ export function ZoneCard({
           className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
           title="Relance la zone avant la fin du délai pour allonger la chaîne."
         >
-          ✦ Chaîne {chain.chain} : shiny {formatMultiplier(chainMultiplier(ctx, chain.chain))}
+          ✦ Chaîne {chain.chain} : chromatique {formatMultiplier(chainMultiplier(ctx, chain.chain))}
           {perfectIvs > 0 && ` · ${perfectIvs} IV parfait${perfectIvs > 1 ? 's' : ''}`}
           {expiresIn !== null && ` · à relancer sous ${formatCountdown(expiresIn)}`}
         </p>
@@ -719,13 +712,16 @@ export function ZoneCard({
             />
           );
           const key = `${id}:${formId ?? ''}`;
-          return shiny ? (
-            <span key={key} className="relative flex" title="Shiny capturé">
+          const name = seen.has(id) ? speciesName(ctx, id, formId) : '?';
+          return (
+            <span
+              key={key}
+              className="relative flex"
+              title={shiny ? `${name} (chromatique capturé)` : name}
+            >
               {sprite}
-              <ShinySparkles />
+              {shiny && <ShinySparkles />}
             </span>
-          ) : (
-            <Fragment key={key}>{sprite}</Fragment>
           );
         })}
       </div>
@@ -736,7 +732,7 @@ export function ZoneCard({
           <span className="text-right tabular-nums">
             {caughtCount} / {species.length}
           </span>
-          <span className="text-amber-600 dark:text-amber-400">✦ Shiny</span>
+          <span className="text-amber-600 dark:text-amber-400">✦ Chromatique</span>
           <ProgressBar value={shinyCount / species.length} barClassName="bg-amber-400" />
           <span className="text-right tabular-nums">
             {shinyCount} / {species.length}
