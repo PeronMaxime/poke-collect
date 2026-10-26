@@ -1,5 +1,13 @@
-import { CHEST_RARITIES } from '@poke/content';
-import type { ChestEntry, ChestRarity, GuildObjective, GuildQuest, ItemStack } from '@poke/content';
+import { GUILD_QUEST_DIFFICULTIES } from '@poke/content';
+import type {
+  ChestEntry,
+  ChestRarity,
+  GuildObjective,
+  GuildQuestDifficulty,
+  GuildQuestGoal,
+  GuildQuestPeriod,
+  ItemStack,
+} from '@poke/content';
 import type { GameContext } from './context';
 import { isUnlocked } from './progress';
 import type { PlayerProgress } from './progress';
@@ -7,11 +15,11 @@ import { createRng } from './rng';
 import { textSeed } from './roaming';
 
 /**
- * Guildes : semaine des quêtes (du lundi 0 h au lundi suivant, heure de Paris), tirage des quêtes
- * de la semaine, progression des objectifs et ouverture des coffres.
+ * Guildes : jour et semaine des quêtes (de minuit à minuit, du lundi 0 h au lundi suivant, heure de
+ * Paris), tirage des quêtes, progression des objectifs et ouverture des coffres.
  */
 
-/** Fuseau horaire des semaines de guilde : la remise à zéro a lieu le lundi à minuit à Paris. */
+/** Fuseau horaire des quêtes de guilde : remise à zéro à minuit (et le lundi à minuit) à Paris. */
 export const GUILD_TIME_ZONE = 'Europe/Paris';
 
 export const GUILD_NAME_MIN = 3;
@@ -57,68 +65,106 @@ function zoneMidnight(localDay: number): Date {
   return new Date(localDay - zoneOffset(guess));
 }
 
-export interface GuildWeek {
-  /** Lundi de la semaine (AAAA-MM-JJ, heure de Paris) : identifiant de la semaine. */
+export interface GuildPeriod {
+  /** Jour, ou lundi de la semaine (AAAA-MM-JJ, heure de Paris) : identifiant de la période. */
   id: string;
   startsAt: Date;
-  /** Lundi suivant à minuit : remise à zéro des quêtes. */
+  /** Minuit suivant, ou lundi suivant à minuit : remise à zéro des quêtes. */
   endsAt: Date;
 }
 
-/** Semaine de guilde contenant cet instant. */
-export function guildWeek(now: Date | number): GuildWeek {
+/** Jour (heure de Paris) contenant cet instant, à minuit UTC, et son jour de la semaine. */
+function localDay(now: Date | number): { day: number; weekday: number } {
   const at = new Date(now).getTime();
   const local = new Date(at + zoneOffset(at));
-  const day = Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate());
-  const monday = day - ((local.getUTCDay() + 6) % 7) * DAY_MS;
   return {
-    id: new Date(monday).toISOString().slice(0, 10),
-    startsAt: zoneMidnight(monday),
-    endsAt: zoneMidnight(monday + 7 * DAY_MS),
+    day: Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()),
+    weekday: local.getUTCDay(),
   };
 }
 
-/** Objectif d'une quête pour une guilde de `memberCount` membres. */
-export function guildQuestTarget(quest: GuildQuest, memberCount: number): number {
-  return Math.max(quest.minCount, quest.countPerMember * Math.max(1, memberCount));
+function period(start: number, days: number): GuildPeriod {
+  return {
+    id: new Date(start).toISOString().slice(0, 10),
+    startsAt: zoneMidnight(start),
+    endsAt: zoneMidnight(start + days * DAY_MS),
+  };
 }
 
-/** Quête tirée pour la semaine (figée : les retouches de l'admin valent à partir du tirage suivant). */
+/** Semaine de guilde contenant cet instant. */
+export function guildWeek(now: Date | number): GuildPeriod {
+  const { day, weekday } = localDay(now);
+  return period(day - ((weekday + 6) % 7) * DAY_MS, 7);
+}
+
+/** Jour de guilde contenant cet instant. */
+export function guildDay(now: Date | number): GuildPeriod {
+  return period(localDay(now).day, 1);
+}
+
+/** Jour ou semaine de guilde contenant cet instant. */
+export function guildPeriod(kind: GuildQuestPeriod, now: Date | number): GuildPeriod {
+  return kind === 'daily' ? guildDay(now) : guildWeek(now);
+}
+
+/** Objectif d'une quête (pour sa période) pour une guilde de `memberCount` membres. */
+export function guildQuestTarget(goal: GuildQuestGoal, memberCount: number): number {
+  return Math.max(goal.minCount, goal.countPerMember * Math.max(1, memberCount));
+}
+
+/** Coffre gagné par une quête de cette période et de cette difficulté. */
+export function guildQuestChest(
+  ctx: GameContext,
+  period: GuildQuestPeriod,
+  difficulty: GuildQuestDifficulty,
+): ChestRarity {
+  return ctx.balance.guilds.quests[period][difficulty].chest;
+}
+
+/** Quête tirée pour la période (figée : les retouches de l'admin valent au tirage suivant). */
 export interface GuildQuestDraw {
+  period: GuildQuestPeriod;
   slot: number;
   questId: string;
   name: string;
   description: string;
+  difficulty: GuildQuestDifficulty;
+  /** Coffre gagné. */
   rarity: ChestRarity;
   objective: GuildObjective;
   target: number;
 }
 
 /**
- * Quêtes de la semaine d'une guilde : pour chaque rareté (bronze, argent, or), autant de modèles
- * actifs que l'équilibrage en demande, tirés sans remise. Le tirage ne dépend que de la guilde et
- * de la semaine : deux demandes simultanées donnent les mêmes quêtes.
+ * Quêtes du jour ou de la semaine d'une guilde : pour chaque difficulté (facile, difficile),
+ * autant de modèles actifs (avec un objectif pour la période) que l'équilibrage en demande, tirés
+ * sans remise. Le tirage ne dépend que de la guilde et de la période : deux demandes simultanées
+ * donnent les mêmes quêtes.
  */
 export function drawGuildQuests(
   ctx: GameContext,
   guildId: string,
-  weekId: string,
+  kind: GuildQuestPeriod,
+  periodId: string,
   memberCount: number,
 ): GuildQuestDraw[] {
-  const rng = createRng(textSeed(`${guildId}:${weekId}`));
+  const rng = createRng(textSeed(`${guildId}:${kind}:${periodId}`));
   const draws: GuildQuestDraw[] = [];
-  for (const rarity of CHEST_RARITIES) {
-    const pool = ctx.guildQuests.filter((q) => q.enabled && q.rarity === rarity);
-    for (let i = 0; i < ctx.balance.guilds.weeklyQuests[rarity] && pool.length > 0; i++) {
+  for (const difficulty of GUILD_QUEST_DIFFICULTIES) {
+    const pool = ctx.guildQuests.filter((q) => q.enabled && q.difficulty === difficulty && q[kind]);
+    const { count, chest } = ctx.balance.guilds.quests[kind][difficulty];
+    for (let i = 0; i < count && pool.length > 0; i++) {
       const [quest] = pool.splice(rng.int(0, pool.length - 1), 1);
       draws.push({
+        period: kind,
         slot: draws.length,
         questId: quest!.id,
         name: quest!.name,
         description: quest!.description,
-        rarity,
+        difficulty,
+        rarity: chest,
         objective: quest!.objective,
-        target: guildQuestTarget(quest!, memberCount),
+        target: guildQuestTarget(quest![kind]!, memberCount),
       });
     }
   }

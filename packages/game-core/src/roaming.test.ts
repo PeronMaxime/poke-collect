@@ -3,6 +3,7 @@ import { resolveExpedition } from './expedition';
 import type { ExpeditionInput } from './expedition';
 import type { PlayerProgress } from './progress';
 import {
+  roamerEncounterChance,
   roamerFleeZoneId,
   roamerMeetChance,
   roamerPositions,
@@ -33,6 +34,14 @@ describe('Pokémon fuyards', () => {
     expect(roamingTarget(ctx.quest('lugia')!, 0)).toBeUndefined();
     // Une fois capturé, plus de fuyard.
     expect(roamingTarget(raikou, 1)).toBeUndefined();
+  });
+
+  it('est attiré par les talents qui attirent son type', () => {
+    expect(roamerEncounterChance(ctx, target, 3, new Map())).toBe(3);
+    // Raikou (Électrik) : Statik à +100 % double ses chances, pas un talent Feu.
+    expect(roamerEncounterChance(ctx, target, 3, new Map([['electric', 2]]))).toBe(6);
+    expect(roamerEncounterChance(ctx, target, 3, new Map([['fire', 2]]))).toBe(3);
+    expect(roamerEncounterChance(ctx, target, 60, new Map([['electric', 2]]))).toBe(100);
   });
 
   it('change de zone à chaque heure, sans jamais rester sur place', () => {

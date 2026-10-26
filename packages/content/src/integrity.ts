@@ -8,6 +8,9 @@ import {
 import {
   CHEST_RARITIES,
   CHEST_RARITY_LABELS,
+  GUILD_QUEST_DIFFICULTIES,
+  GUILD_QUEST_DIFFICULTY_LABELS,
+  GUILD_QUEST_PERIODS,
   gameContentStructureSchema,
   isRoamingZone,
   lowestUnitPrice,
@@ -574,7 +577,7 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     checkUnlock('shopEntry', entry.id, entry.unlock);
   }
 
-  // Guildes : quêtes hebdomadaires et lots des coffres
+  // Guildes : quêtes (du jour et de la semaine) et lots des coffres
   for (const quest of content.guildQuests) {
     const { objective } = quest;
     if (
@@ -584,6 +587,9 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     ) {
       add('error', 'guildQuest', quest.id, `Type « ${objective.pokemonType} » inconnu`);
     }
+    if (quest.enabled && !quest.daily && !quest.weekly) {
+      add('warning', 'guildQuest', quest.id, 'Ni quête du jour ni de la semaine : jamais tirée');
+    }
   }
   for (const entry of content.chestEntries) {
     if (!itemIds.has(entry.itemId)) {
@@ -591,18 +597,25 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     }
     checkUnlock('chestEntry', entry.id, entry.unlock);
   }
+  for (const difficulty of GUILD_QUEST_DIFFICULTIES) {
+    const label = GUILD_QUEST_DIFFICULTY_LABELS[difficulty].toLowerCase();
+    for (const period of GUILD_QUEST_PERIODS) {
+      const quests = content.guildQuests.filter(
+        (q) => q.enabled && q.difficulty === difficulty && q[period],
+      ).length;
+      const wanted = content.balance.guilds.quests[period][difficulty].count;
+      if (quests < wanted) {
+        add(
+          'warning',
+          'guildQuest',
+          null,
+          `${wanted} quête(s) ${label}(s) ${period === 'daily' ? 'par jour' : 'par semaine'}, mais ${quests} modèle(s) actif(s) : il y en aura moins`,
+        );
+      }
+    }
+  }
   for (const rarity of CHEST_RARITIES) {
     const label = `« ${CHEST_RARITY_LABELS[rarity]} »`;
-    const weekly = content.balance.guilds.weeklyQuests[rarity];
-    const quests = content.guildQuests.filter((q) => q.enabled && q.rarity === rarity).length;
-    if (quests < weekly) {
-      add(
-        'warning',
-        'guildQuest',
-        null,
-        `${weekly} quête(s) ${label} par semaine, mais ${quests} modèle(s) actif(s) : la semaine en aura moins`,
-      );
-    }
     const entries = content.chestEntries.filter((e) => e.enabled && e.rarity === rarity);
     if (!entries.some((e) => e.unlock.type === 'always')) {
       add(

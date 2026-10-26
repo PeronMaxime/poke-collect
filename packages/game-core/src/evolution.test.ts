@@ -59,6 +59,13 @@ describe('évolutions possibles', () => {
     expect(targets(150)).toEqual([]);
   });
 
+  it('garde le niveau le plus bas quand PokéAPI mélange les jeux', () => {
+    // Héricendre → Feurisson : niveau 14, ou 17 dans Légendes Pokémon : Arceus.
+    expect(evolutionOptions(ctx, 155)[0]?.methods).toEqual([
+      { minLevel: 14, itemId: null, minHappiness: null, timeOfDay: null },
+    ]);
+  });
+
   it('remplace l’échange par le Câble Link', () => {
     const [kadabra] = evolutionOptions(ctx, 64);
     expect(kadabra?.methods).toEqual([

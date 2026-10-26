@@ -4,6 +4,8 @@ import {
   eggs,
   expeditions,
   fossilRevivals,
+  guildMembers,
+  guilds,
   inventory,
   playerProfiles,
   pokemon,
@@ -36,6 +38,7 @@ export async function trainerCard(
     bagGems,
     heldGems,
     featured,
+    guild,
   ] = await Promise.all([
     // Rencontres capturées de chaque expédition réclamée (les Pokémon transférés comptent).
     db
@@ -109,6 +112,11 @@ export async function trainerCard(
       .from(pokemon)
       .where(and(eq(pokemon.ownerId, ownerId), isNotNull(pokemon.megaStone))),
     featuredPokemon(db, ownerId),
+    db
+      .select({ id: guilds.id, name: guilds.name })
+      .from(guildMembers)
+      .innerJoin(guilds, eq(guilds.id, guildMembers.guildId))
+      .where(eq(guildMembers.userId, ownerId)),
   ]);
   return {
     captures: captures[0]?.n ?? 0,
@@ -126,6 +134,7 @@ export async function trainerCard(
     dungeonsCleared: dungeons[0]?.n ?? 0,
     megaStonesOwned: new Set([...bagGems, ...heldGems].map((g) => g.itemId)).size,
     featured,
+    guild: guild[0] ?? null,
   };
 }
 

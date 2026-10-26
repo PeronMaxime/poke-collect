@@ -11,7 +11,7 @@ import type {
   ShopCategory,
   ShopEntry,
 } from './schemas';
-import { suggestedSellPrice } from './schemas';
+import { DEFAULT_GUILD_QUEST_TIERS, suggestedSellPrice } from './schemas';
 import {
   expansionDexMilestones,
   expansionItems,
@@ -47,6 +47,22 @@ const MINTS = [
   ['timid', 'Timide'],
   ['bold', 'Assuré'],
   ['calm', 'Calme'],
+  ['lonely', 'Solo'],
+  ['naughty', 'Mauvais'],
+  ['brave', 'Brave'],
+  ['impish', 'Malin'],
+  ['lax', 'Lâche'],
+  ['relaxed', 'Relax'],
+  ['mild', 'Doux'],
+  ['rash', 'Foufou'],
+  ['quiet', 'Discret'],
+  ['gentle', 'Gentil'],
+  ['careful', 'Prudent'],
+  ['sassy', 'Malpoli'],
+  ['hasty', 'Pressé'],
+  ['naive', 'Naïf'],
+  // Aromate Sérieux : nature neutre, comme les quatre autres (Hardi, Docile, Pudique, Bizarre).
+  ['serious', 'Sérieux'],
 ] as const;
 
 const shopCategories: ShopCategory[] = [
@@ -141,10 +157,10 @@ const shopEntries: ShopEntry[] = [
       unlock: { type: 'badgeCount', count: 2 },
     }),
   ),
-  article('ability-capsule', 'ability-capsule', 'rare', 10, 30_000, {
+  article('ability-capsule', 'ability-capsule', 'rare', 2 + MINTS.length, 30_000, {
     unlock: { type: 'trainerDefeated', trainerId: 'olga' },
   }),
-  article('ability-patch', 'ability-patch', 'rare', 11, 150_000, {
+  article('ability-patch', 'ability-patch', 'rare', 3 + MINTS.length, 150_000, {
     unlock: { type: 'trainerDefeated', trainerId: 'maitre-blue' },
     purchaseLimit: { lots: 1, period: 'week' },
   }),
@@ -420,7 +436,7 @@ export const seedContent: GameContentData = {
       creationCost: 100_000,
       maxMembers: 30,
       rejoinCooldownHours: 24,
-      weeklyQuests: { bronze: 2, silver: 2, gold: 1 },
+      quests: DEFAULT_GUILD_QUEST_TIERS,
       chestRolls: { bronze: 1, silver: 2, gold: 3 },
     },
   },

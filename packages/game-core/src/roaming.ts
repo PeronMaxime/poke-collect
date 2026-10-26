@@ -131,6 +131,21 @@ export function roamerFleeZoneId(
   return others[createRng(seed ^ 0x27d4eb2f).int(0, others.length - 1)]!.id;
 }
 
+/**
+ * Chances (%) par rencontre de croiser un fuyard qui en a `chance` % de base, avec les types
+ * qu'attirent les talents de l'équipe (`attractedTypes`) : Magnépiège attire aussi Raikou.
+ */
+export function roamerEncounterChance(
+  ctx: GameContext,
+  roamer: { speciesId: number; formId?: number | null },
+  chance: number,
+  attracted: ReadonlyMap<string, number>,
+): number {
+  const types = ctx.species(roamer.speciesId, roamer.formId)?.types ?? [];
+  const factor = types.reduce((f, t) => f * (attracted.get(t) ?? 1), 1);
+  return Math.min(100, chance * factor);
+}
+
 /** Chances de croiser un fuyard (`chance` % par rencontre) en `encounters` rencontres. */
 export function roamerMeetChance(chance: number, encounters: number): number {
   return 1 - (1 - chance / 100) ** encounters;

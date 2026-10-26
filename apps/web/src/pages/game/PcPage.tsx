@@ -6,10 +6,11 @@ import {
   ASSISTANT_POST_INFO,
   MAX_IV,
   MAX_LEVEL,
-  abilityEffectSummary,
+  abilityEffectText,
   applyCandies,
   candiesToMaxLevel,
   computeStats,
+  effectActivities,
   effectiveAbility,
   expeditionPower,
   getNature,
@@ -553,7 +554,7 @@ function PokemonDetail({
   });
   const species = ctx.species(p.speciesId, p.formId)!;
   const stats = computeStats(species, p);
-  const abilitySummary = abilityEffectSummary(
+  const abilitySummary = abilityDetails(
     ctx,
     effectiveAbility(ctx, p),
     busyAbilityActivities(p, assistants.data, expeditions.data?.active),
@@ -892,15 +893,62 @@ function PokemonDetail({
   );
 }
 
-/** Nom du talent ; sa description s'affiche au survol. */
-function AbilityName({ name, summary }: { name: string; summary: string | null }) {
+/** Description du talent et chacun de ses effets ; `active` : agit dans l'activité en cours. */
+interface AbilityDetails {
+  description: string;
+  effects: { text: string; active: boolean }[];
+}
+
+/**
+ * Tous les effets du talent, même ceux d'autres activités : un Pokémon occupé (en expédition…)
+ * voit les autres grisés au lieu de les perdre.
+ */
+function abilityDetails(
+  ctx: GameContext,
+  ability: string,
+  activities: readonly AbilityActivity[] | undefined,
+): AbilityDetails | null {
+  const entry = ctx.ability(ability);
+  if (!entry) return null;
+  const effects = entry.effects.map((e) => ({
+    text: abilityEffectText(e),
+    active: !activities || activities.some((a) => effectActivities(e).includes(a)),
+  }));
+  const description = entry.description.trim();
+  return description || effects.length > 0 ? { description, effects } : null;
+}
+
+/** Nom du talent ; sa description et ses effets s'affichent au survol. */
+function AbilityName({ name, summary }: { name: string; summary: AbilityDetails | null }) {
   if (!summary) return <>{abilityLabel(name)}</>;
   return (
     <HoverBubble
-      width={240}
-      height={80}
+      width={260}
+      // Une ligne par effet (souvent sur deux lignes), plus la description.
+      height={16 + 30 * summary.effects.length + (summary.description ? 30 : 0)}
       className="inline-block cursor-help underline decoration-slate-400 decoration-dotted underline-offset-2"
-      content={<span className="text-emerald-700 dark:text-emerald-400">{summary}</span>}
+      content={
+        <span className="block space-y-1">
+          {summary.description && (
+            <span className="block text-slate-600 dark:text-slate-300">{summary.description}</span>
+          )}
+          {summary.effects.map((e, i) => (
+            <span
+              key={i}
+              className={`block ${
+                e.active ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'
+              }`}
+            >
+              {e.text}
+            </span>
+          ))}
+          {summary.effects.some((e) => !e.active) && (
+            <span className="block text-slate-400 italic">
+              Grisés : sans effet sur son activité en cours
+            </span>
+          )}
+        </span>
+      }
     >
       {abilityLabel(name)}
     </HoverBubble>

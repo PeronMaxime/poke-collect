@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
+import { useBodyScrollLock } from '../../components/ui';
 
 /**
  * Fenêtre d'un combat en temps réel (donjon ou dresseur) et rappel du combat en cours, communs
@@ -52,6 +53,7 @@ export function CombatWindow({
   onClose: () => void;
   children: ReactNode;
 }) {
+  useBodyScrollLock(open);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && onClose();
@@ -63,7 +65,7 @@ export function CombatWindow({
     <div
       className={
         open
-          ? 'fixed inset-0 z-50 grid animate-[dungeon-fade_150ms_ease-out] place-items-center overflow-y-auto bg-slate-950/60 p-4'
+          ? 'fixed inset-0 z-50 grid animate-[dungeon-fade_150ms_ease-out] place-items-center overflow-y-auto overscroll-contain bg-slate-950/60 p-4'
           : 'hidden'
       }
       onClick={onClose}

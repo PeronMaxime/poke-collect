@@ -2,7 +2,7 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
-import { expeditionEnv, expeditionPlan, zoneWeather } from '@poke/game-core';
+import { expeditionBerryCount, expeditionEnv, expeditionPlan, zoneWeather } from '@poke/game-core';
 import type { GameContext, PokemonInstance } from '@poke/game-core';
 import type { ClaimExpeditionResponse, ExpeditionDto, StartExpeditionInput } from '@poke/shared';
 import {
@@ -127,8 +127,13 @@ function RevealContent({
     return owned < needed ? { itemId, owned, needed } : null;
   };
   const ballsShort = shortage(ballItemId, ballsNeeded);
-  // Une baie par tentative de capture, autant que de rencontres au plus.
-  const berriesShort = shortage(berryItemId, berries > 0 ? encounters : 0);
+  // Baie de capture : une par rencontre au plus ; Baie Nanana : une par heure d'expédition.
+  const berriesShort = shortage(
+    berryItemId,
+    berryItemId && berries > 0
+      ? expeditionBerryCount(ctx, berryItemId, data.expedition.durationMinutes, encounters)
+      : 0,
+  );
 
   return (
     <ExpeditionRevealView
@@ -156,9 +161,11 @@ function RevealContent({
                 <p>
                   Stock de {itemName(ctx, berriesShort.itemId)} insuffisant pour relancer à
                   l’identique :{' '}
-                  {berriesShort.owned === 0
-                    ? 'il n’en reste aucune, l’expédition partirait sans baie.'
-                    : `${berriesShort.owned} / ${berriesShort.needed} seraient emportées.`}
+                  {ctx.itemEffect(berriesShort.itemId, 'encounterBoost')
+                    ? `il en faut ${berriesShort.needed} (une par heure), il t’en reste ${berriesShort.owned}.`
+                    : berriesShort.owned === 0
+                      ? 'il n’en reste aucune, l’expédition partirait sans baie.'
+                      : `${berriesShort.owned} / ${berriesShort.needed} seraient emportées.`}
                 </p>
               )}
             </div>

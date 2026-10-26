@@ -396,8 +396,9 @@ function ActiveExpedition({
         abilityEnv={abilityEnv}
         charm={charm}
       />
-      <div className="flex items-start justify-between gap-2">
-        <div>
+      {/* Équipe de 6 trop large sur mobile : elle passe sous le titre au lieu de déborder. */}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0">
           {expedition.questId && (
             <p className="text-xs font-medium text-amber-600">✦ Expédition légendaire</p>
           )}
@@ -425,7 +426,7 @@ function ActiveExpedition({
             {expedition.captureFilter && ' · captures filtrées'}
           </p>
         </div>
-        <div className="flex -space-x-3">
+        <div className="ml-auto flex -space-x-3">
           {teamSpecies.map((p, i) =>
             p ? (
               <PokemonSprite

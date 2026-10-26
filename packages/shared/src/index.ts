@@ -5,6 +5,8 @@ import type {
   ContentIssue,
   GameContent,
   GuildObjective,
+  GuildQuestDifficulty,
+  GuildQuestPeriod,
   ItemStack,
   ProgressReward,
   QuestReward,
@@ -312,6 +314,8 @@ export interface TrainerCardResponse {
   megaStonesOwned: number;
   /** Pokémon mis en avant, dans l'ordre choisi (les Pokémon transférés en sont retirés). */
   featured: FeaturedPokemonDto[];
+  /** Guilde du dresseur. */
+  guild: { id: string; name: string } | null;
 }
 
 export const FEATURED_POKEMON_MAX = 6;
@@ -1253,6 +1257,12 @@ export interface AdminTestQuestsResponse {
   total: number;
 }
 
+/** Remise à zéro des quêtes de guilde en cours (toutes guildes). */
+export interface AdminGuildQuestsResetResponse {
+  /** Quêtes du jour et de la semaine effacées. */
+  quests: number;
+}
+
 /** Suppression du lot de test : les Pokémon occupés (expédition, donjon…) sont gardés. */
 export interface AdminTestPokemonDeleteResponse {
   deleted: number;
@@ -1366,15 +1376,18 @@ export interface GuildMemberDto {
   trainerName: string;
   role: GuildRole;
   joinedAt: string;
-  /** Avancée apportée aux quêtes de la semaine. */
+  /** Avancée apportée aux quêtes de la semaine (dont celles du jour). */
   weekContribution: number;
   isMe: boolean;
 }
 
 export interface GuildQuestDto {
+  period: GuildQuestPeriod;
   slot: number;
   name: string;
   description: string;
+  difficulty: GuildQuestDifficulty;
+  /** Coffre gagné. */
   rarity: ChestRarity;
   objective: GuildObjective;
   target: number;
@@ -1396,7 +1409,9 @@ export interface GuildDto {
   members: GuildMemberDto[];
   /** Candidatures en attente (chef et officiers seulement). */
   requests: { trainerName: string; createdAt: string }[];
+  day: { id: string; endsAt: string };
   week: { id: string; endsAt: string };
+  /** Quêtes du jour puis de la semaine. */
   quests: GuildQuestDto[];
 }
 
@@ -1412,6 +1427,36 @@ export interface GuildStateResponse {
 
 export interface GuildSearchResponse {
   guilds: GuildSummaryDto[];
+}
+
+/** Fiche publique d'une guilde (depuis la fiche d'un dresseur ou le classement). */
+export interface GuildProfileResponse extends GuildSummaryDto {
+  createdAt: string;
+  /** Quêtes de guilde terminées depuis sa création. */
+  questsCompleted: number;
+  /** Chef, officiers puis membres, par ancienneté. */
+  members: { trainerName: string; role: GuildRole; starterSpeciesId: number | null }[];
+  /** Le joueur en fait partie. */
+  isMine: boolean;
+}
+
+/** Classement des guildes : quêtes de guilde terminées depuis leur création. */
+export interface GuildLeaderboardEntryDto {
+  rank: number;
+  id: string;
+  name: string;
+  memberCount: number;
+  questsCompleted: number;
+  isMine: boolean;
+}
+
+export interface GuildLeaderboardResponse {
+  /** Premières guildes du classement. */
+  entries: GuildLeaderboardEntryDto[];
+  /** Place de la guilde du joueur, même hors des premières (null sans guilde). */
+  me: GuildLeaderboardEntryDto | null;
+  /** Guildes classées. */
+  total: number;
 }
 
 export interface GuildMessageDto {

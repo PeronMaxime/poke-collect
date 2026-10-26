@@ -144,6 +144,32 @@ export function ShinyStar({ className = '' }: { className?: string }) {
   );
 }
 
+/** Modales ouvertes qui bloquent le défilement de la page (elles peuvent s'empiler). */
+let scrollLocks = 0;
+
+/**
+ * Bloque le défilement de la page tant que `active` : la molette ou le doigt dans une modale ne
+ * fait plus défiler la page en dessous.
+ */
+export function useBodyScrollLock(active: boolean) {
+  useEffect(() => {
+    if (!active) return;
+    const root = document.documentElement;
+    if (scrollLocks++ === 0) {
+      // Compense la barre de défilement qui disparaît, pour que la page ne saute pas de côté.
+      const scrollbar = window.innerWidth - root.clientWidth;
+      root.style.overflow = 'hidden';
+      if (scrollbar > 0) root.style.paddingRight = `${scrollbar}px`;
+    }
+    return () => {
+      if (--scrollLocks === 0) {
+        root.style.overflow = '';
+        root.style.paddingRight = '';
+      }
+    };
+  }, [active]);
+}
+
 /**
  * Fenêtre modale simple (Échap ou clic à l'extérieur pour fermer). Rendue dans <body> pour pouvoir
  * s'ouvrir depuis une autre modale : Échap ne ferme alors que celle du dessus.
@@ -163,6 +189,7 @@ export function Modal({
   className?: string;
 }) {
   const dialog = useRef<HTMLDivElement>(null);
+  useBodyScrollLock(open);
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -178,7 +205,7 @@ export function Modal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 grid place-items-center overflow-y-auto bg-slate-950/60 p-4"
+          className="fixed inset-0 z-50 grid place-items-center overflow-y-auto overscroll-contain bg-slate-950/60 p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}

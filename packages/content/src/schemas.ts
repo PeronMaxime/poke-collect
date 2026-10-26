@@ -186,12 +186,55 @@ const perChestRaritySchema = (min: number, max: number) =>
     gold: z.int().min(min).max(max),
   });
 
+/** Périodes des quêtes de guilde : du jour (minuit) et de la semaine (lundi minuit), heure de Paris. */
+export const GUILD_QUEST_PERIODS = ['daily', 'weekly'] as const;
+export const guildQuestPeriodSchema = z.enum(GUILD_QUEST_PERIODS);
+export type GuildQuestPeriod = z.infer<typeof guildQuestPeriodSchema>;
+export const GUILD_QUEST_PERIOD_LABELS: Record<GuildQuestPeriod, string> = {
+  daily: 'Quotidienne',
+  weekly: 'Hebdomadaire',
+};
+
+/** Difficultés des quêtes de guilde. */
+export const GUILD_QUEST_DIFFICULTIES = ['easy', 'hard'] as const;
+export const guildQuestDifficultySchema = z.enum(GUILD_QUEST_DIFFICULTIES);
+export type GuildQuestDifficulty = z.infer<typeof guildQuestDifficultySchema>;
+export const GUILD_QUEST_DIFFICULTY_LABELS: Record<GuildQuestDifficulty, string> = {
+  easy: 'Facile',
+  hard: 'Difficile',
+};
+
+/** Quêtes d'une période et d'une difficulté : combien, coffre gagné. */
+const guildQuestTierSchema = z.object({
+  /** Quêtes tirées à chaque période. */
+  count: z.int().min(0).max(10),
+  /** Coffre donné à chaque participant. */
+  chest: z.enum(['bronze', 'silver', 'gold']),
+});
+export type GuildQuestTier = z.infer<typeof guildQuestTierSchema>;
+
+const guildQuestPeriodTiersSchema = z.object({
+  easy: guildQuestTierSchema,
+  hard: guildQuestTierSchema,
+});
+
+export const DEFAULT_GUILD_QUEST_TIERS = {
+  daily: {
+    easy: { count: 2, chest: 'bronze' },
+    hard: { count: 1, chest: 'silver' },
+  },
+  weekly: {
+    easy: { count: 2, chest: 'silver' },
+    hard: { count: 1, chest: 'gold' },
+  },
+} satisfies Record<GuildQuestPeriod, Record<GuildQuestDifficulty, GuildQuestTier>>;
+
 /** Réglages des guildes par défaut (aussi utilisés pour les versions de contenu antérieures). */
 export const DEFAULT_GUILD_SETTINGS = {
   creationCost: 100_000,
   maxMembers: 30,
   rejoinCooldownHours: 24,
-  weeklyQuests: { bronze: 2, silver: 2, gold: 1 },
+  quests: DEFAULT_GUILD_QUEST_TIERS,
   chestRolls: { bronze: 1, silver: 2, gold: 3 },
 };
 
@@ -201,8 +244,10 @@ export const guildSettingsSchema = z.object({
   maxMembers: z.int().min(2).max(200),
   /** Délai après avoir quitté une guilde avant d'en rejoindre (ou d'en créer) une autre. */
   rejoinCooldownHours: z.int().min(0).max(720),
-  /** Quêtes tirées chaque semaine, par rareté de coffre (difficulté). */
-  weeklyQuests: perChestRaritySchema(0, 10),
+  /** Quêtes tirées chaque jour et chaque semaine, par difficulté. */
+  quests: z
+    .object({ daily: guildQuestPeriodTiersSchema, weekly: guildQuestPeriodTiersSchema })
+    .default(DEFAULT_GUILD_QUEST_TIERS),
   /** Lots tirés à l'ouverture d'un coffre, par rareté. */
   chestRolls: perChestRaritySchema(1, 10),
 });
@@ -331,7 +376,7 @@ export const balanceSettingsSchema = z.object({
     startingCurrency: z.int().min(0),
     startingInventory: z.array(itemStackSchema),
   }),
-  /** Guildes : création, membres, quêtes hebdomadaires et coffres. */
+  /** Guildes : création, membres, quêtes quotidiennes et hebdomadaires, coffres. */
   guilds: guildSettingsSchema.default(DEFAULT_GUILD_SETTINGS),
   /** Menu du jeu ; absent = `DEFAULT_MENU_GROUPS`. */
   menu: menuSettingsSchema.optional(),
@@ -1283,7 +1328,7 @@ export const questSchema = z.object({
 });
 export type Quest = z.infer<typeof questSchema>;
 
-// --- Guildes : quêtes hebdomadaires et coffres ---------------------------------------
+// --- Guildes : quêtes quotidiennes et hebdomadaires, coffres ------------------------
 
 /** Objectif d'une quête de guilde : ce que chaque action des membres fait avancer. */
 export const guildObjectiveSchema = z.discriminatedUnion('type', [
@@ -1303,21 +1348,29 @@ export const guildObjectiveSchema = z.discriminatedUnion('type', [
 export type GuildObjective = z.infer<typeof guildObjectiveSchema>;
 export type GuildObjectiveType = GuildObjective['type'];
 
+/** Objectif d'une quête de guilde pour une période : ce nombre × membres, sans descendre sous `minCount`. */
+export const guildQuestGoalSchema = z.object({
+  countPerMember: z.int().min(1).max(1_000_000),
+  minCount: z.int().min(1).max(10_000_000),
+});
+export type GuildQuestGoal = z.infer<typeof guildQuestGoalSchema>;
+
 /**
- * Modèle de quête de guilde : chaque semaine, des modèles sont tirés au hasard pour chaque guilde
- * (nombre par rareté dans l'équilibrage). La quête terminée donne un coffre de sa rareté à chaque
- * membre qui l'a fait avancer.
+ * Modèle de quête de guilde : chaque jour et chaque semaine, des modèles sont tirés au hasard pour
+ * chaque guilde (nombre par difficulté dans l'équilibrage), parmi ceux qui ont un objectif pour la
+ * période. L'équilibrage fixe le coffre donné à chaque membre qui a fait avancer la quête.
  */
 export const guildQuestSchema = z.object({
   id: slugSchema,
   name: nameSchema,
   description: z.string().max(500),
-  /** Difficulté = rareté du coffre gagné. */
-  rarity: chestRaritySchema,
+  /** Tirée parmi les quêtes faciles ou difficiles (du jour comme de la semaine). */
+  difficulty: guildQuestDifficultySchema,
   objective: guildObjectiveSchema,
-  /** Objectif = ce nombre × membres de la guilde au tirage, sans descendre sous `minCount`. */
-  countPerMember: z.int().min(1).max(1_000_000),
-  minCount: z.int().min(1).max(10_000_000),
+  /** Objectif en quête du jour ; null = jamais tirée chaque jour. */
+  daily: guildQuestGoalSchema.nullable(),
+  /** Objectif en quête de la semaine ; null = jamais tirée chaque semaine. */
+  weekly: guildQuestGoalSchema.nullable(),
   enabled: z.boolean(),
 });
 export type GuildQuest = z.infer<typeof guildQuestSchema>;

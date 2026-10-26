@@ -1,7 +1,12 @@
 import { useMemo, useState } from 'react';
+import { useMutation } from '@tanstack/react-query';
 import {
   CHEST_RARITIES,
   CHEST_RARITY_LABELS,
+  GUILD_QUEST_DIFFICULTIES,
+  GUILD_QUEST_DIFFICULTY_LABELS,
+  GUILD_QUEST_PERIODS,
+  GUILD_QUEST_PERIOD_LABELS,
   chestEntrySchema,
   guildQuestSchema,
 } from '@poke/content';
@@ -11,10 +16,13 @@ import type {
   GuildObjective,
   GuildObjectiveType,
   GuildQuest,
+  GuildQuestGoal,
+  GuildQuestPeriod,
 } from '@poke/content';
 import { chestCandidates, guildQuestTarget } from '@poke/game-core';
 import type { GameContext, PlayerProgress } from '@poke/game-core';
 import { types } from '@poke/data';
+import type { AdminGuildQuestsResetResponse } from '@poke/shared';
 import { EntityPage, VersionBanner } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
 import {
@@ -26,6 +34,7 @@ import {
   Toggle,
 } from '../../components/forms/fields';
 import { ItemIcon, ItemSelect, TypeSelect, UnlockEditor } from '../../components/forms/pickers';
+import { api } from '../../lib/api';
 import { errorMessage, useWorkingVersion } from '../../lib/content';
 import type { WorkingVersion } from '../../lib/content';
 import { unlockSummary } from './ShopPage';
@@ -38,6 +47,10 @@ const VIEWS = [
 type View = (typeof VIEWS)[number]['id'];
 
 const RARITY_OPTIONS = CHEST_RARITIES.map((r) => ({ value: r, label: CHEST_RARITY_LABELS[r] }));
+const DIFFICULTY_OPTIONS = GUILD_QUEST_DIFFICULTIES.map((d) => ({
+  value: d,
+  label: GUILD_QUEST_DIFFICULTY_LABELS[d],
+}));
 
 const OBJECTIVE_LABELS: Record<GuildObjectiveType, string> = {
   catchPokemon: 'Pokémon capturés',
@@ -55,6 +68,12 @@ function objectiveText(o: GuildObjective): string {
     ? `Pokémon ${typeName(o.pokemonType)} capturés`
     : OBJECTIVE_LABELS[o.type];
 }
+
+/** « 400/membre (min. 800) », ou « — » sans objectif pour la période. */
+const goalText = (goal: GuildQuestGoal | null) =>
+  goal
+    ? `${goal.countPerMember.toLocaleString('fr-FR')}/membre (min. ${goal.minCount.toLocaleString('fr-FR')})`
+    : '—';
 
 const newObjective = (type: GuildObjectiveType): GuildObjective =>
   type === 'catchPokemon' ? { type, pokemonType: null } : { type };
@@ -89,29 +108,85 @@ export function GuildsPage() {
 
 function QuestsView() {
   return (
+    <div className="space-y-4">
+      <ResetQuestsPanel />
+      <QuestsCatalog />
+    </div>
+  );
+}
+
+/** Efface les quêtes en cours de toutes les guildes : retirées au prochain besoin. */
+function ResetQuestsPanel() {
+  const [confirm, setConfirm] = useState(false);
+  const reset = useMutation({
+    mutationFn: () =>
+      api<AdminGuildQuestsResetResponse>('/api/admin/guild-quests/reset', { method: 'POST' }),
+    onSettled: () => setConfirm(false),
+  });
+  return (
+    <section className="rounded-xl border border-dashed border-red-500/40 p-4">
+      <h3 className="font-semibold">Réinitialiser les quêtes en cours</h3>
+      <p className="mb-3 text-sm text-slate-500">
+        Efface les quêtes du jour et de la semaine de toutes les guildes, avec leur progression et
+        les contributions des membres. Elles sont retirées à la prochaine visite, d’après le contenu
+        publié et le nombre de membres actuel ; les coffres déjà gagnés restent acquis (une quête
+        terminée peut donc l’être à nouveau).
+      </p>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        {confirm ? (
+          <>
+            <button
+              className="btn-danger"
+              disabled={reset.isPending}
+              onClick={() => reset.mutate()}
+            >
+              {reset.isPending ? 'Réinitialisation…' : 'Confirmer la réinitialisation'}
+            </button>
+            <button className="btn-ghost" onClick={() => setConfirm(false)}>
+              Annuler
+            </button>
+          </>
+        ) : (
+          <button className="btn-ghost text-red-600" onClick={() => setConfirm(true)}>
+            Réinitialiser les quêtes de guilde
+          </button>
+        )}
+      </div>
+      {reset.error && <p className="mt-2 text-sm text-red-600">{errorMessage(reset.error)}</p>}
+      {reset.data && (
+        <p className="mt-2 text-sm text-green-700 dark:text-green-400">
+          {reset.data.quests.toLocaleString('fr-FR')} quête(s) effacée(s).
+        </p>
+      )}
+    </section>
+  );
+}
+
+function QuestsCatalog() {
+  return (
     <EntityPage<GuildQuest>
       title="Guildes : quêtes"
-      description="Catalogue des quêtes hebdomadaires. Chaque lundi à minuit (heure de Paris), chaque guilde tire des quêtes actives par rareté (nombre réglé dans l’équilibrage). Objectif = nombre par membre × membres au tirage, sans descendre sous le minimum."
+      description="Catalogue des quêtes. Chaque jour à minuit et chaque lundi à minuit (heure de Paris), chaque guilde tire des quêtes actives par difficulté, parmi celles qui ont un objectif pour la période. Objectif = nombre par membre × membres de la guilde, sans descendre sous le minimum. Nombre de quêtes et coffres : équilibrage."
       collection="guild-quests"
       entityKind="guildQuest"
       schema={guildQuestSchema}
       list={(w) =>
         [...w.ctx.guildQuests].sort(
           (a, b) =>
-            CHEST_RARITIES.indexOf(a.rarity) - CHEST_RARITIES.indexOf(b.rarity) ||
-            a.name.localeCompare(b.name),
+            GUILD_QUEST_DIFFICULTIES.indexOf(a.difficulty) -
+              GUILD_QUEST_DIFFICULTIES.indexOf(b.difficulty) || a.name.localeCompare(b.name),
         )
       }
       getKey={(q) => q.id}
-      searchText={(q) => `${q.id} ${q.name} ${CHEST_RARITY_LABELS[q.rarity]}`}
+      searchText={(q) => `${q.id} ${q.name} ${GUILD_QUEST_DIFFICULTY_LABELS[q.difficulty]}`}
       renderListItem={(q) => (
         <>
           <span className={`block truncate font-medium ${q.enabled ? '' : 'line-through'}`}>
             {q.name}
           </span>
           <span className="block truncate text-xs text-slate-500">
-            {CHEST_RARITY_LABELS[q.rarity]} · {objectiveText(q.objective)} · {q.countPerMember}
-            /membre (min. {q.minCount})
+            {GUILD_QUEST_DIFFICULTY_LABELS[q.difficulty]} · {objectiveText(q.objective)} · jour{' '}
+            {goalText(q.daily)} · semaine {goalText(q.weekly)}
           </span>
         </>
       )}
@@ -119,10 +194,10 @@ function QuestsView() {
         id: '',
         name: '',
         description: '',
-        rarity: 'bronze',
+        difficulty: 'easy',
         objective: { type: 'catchPokemon', pokemonType: null },
-        countPerMember: 10,
-        minCount: 20,
+        daily: { countPerMember: 40, minCount: 80 },
+        weekly: { countPerMember: 500, minCount: 1000 },
         enabled: true,
       })}
       duplicate={(q) => ({ ...structuredClone(q), id: `${q.id}-copie`, name: `${q.name} (copie)` })}
@@ -132,7 +207,14 @@ function QuestsView() {
   );
 }
 
-function QuestForm({ value: q, onChange, errors, isNew, editable }: EntityFormProps<GuildQuest>) {
+function QuestForm({
+  value: q,
+  onChange,
+  errors,
+  isNew,
+  editable,
+  working,
+}: EntityFormProps<GuildQuest>) {
   const set = <K extends keyof GuildQuest>(key: K, v: GuildQuest[K]) =>
     onChange({ ...q, [key]: v });
   const disabled = !editable;
@@ -157,11 +239,15 @@ function QuestForm({ value: q, onChange, errors, isNew, editable }: EntityFormPr
             disabled={disabled}
           />
         </Field>
-        <Field label="Difficulté (coffre gagné)" error={errors.get('rarity')}>
+        <Field
+          label="Difficulté"
+          hint="Tirée parmi les quêtes de cette difficulté, du jour comme de la semaine."
+          error={errors.get('difficulty')}
+        >
           <SelectInput
-            value={q.rarity}
-            onChange={(v) => set('rarity', v)}
-            options={RARITY_OPTIONS}
+            value={q.difficulty}
+            onChange={(v) => set('difficulty', v)}
+            options={DIFFICULTY_OPTIONS}
             disabled={disabled}
           />
         </Field>
@@ -204,33 +290,82 @@ function QuestForm({ value: q, onChange, errors, isNew, editable }: EntityFormPr
               )}
             </Field>
           )}
-          <Field label="Par membre" error={errors.get('countPerMember')}>
-            <NumberInput
-              value={q.countPerMember}
-              min={1}
-              onChange={(v) => set('countPerMember', v)}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Minimum"
-            hint="Objectif des petites guildes."
-            error={errors.get('minCount')}
-          >
-            <NumberInput
-              value={q.minCount}
-              min={1}
-              onChange={(v) => set('minCount', v)}
-              disabled={disabled}
-            />
-          </Field>
         </div>
-        <p className="text-xs text-slate-500">
-          Objectif : {[1, 5, 10, 30].map((n) => `${guildQuestTarget(q, n)} à ${n}`).join(' · ')}{' '}
-          membre(s).
-        </p>
       </Section>
+      {GUILD_QUEST_PERIODS.map((period) => (
+        <GoalSection
+          key={period}
+          period={period}
+          goal={q[period]}
+          onChange={(goal) => set(period, goal)}
+          errors={errors}
+          disabled={disabled}
+          chest={working.ctx.balance.guilds.quests[period][q.difficulty].chest}
+        />
+      ))}
     </div>
+  );
+}
+
+/** Objectif de la quête pour une période : désactivé = jamais tirée pour cette période. */
+function GoalSection({
+  period,
+  goal,
+  onChange,
+  errors,
+  disabled,
+  chest,
+}: {
+  period: GuildQuestPeriod;
+  goal: GuildQuestGoal | null;
+  onChange: (goal: GuildQuestGoal | null) => void;
+  errors: EntityFormProps<GuildQuest>['errors'];
+  disabled: boolean;
+  chest: ChestRarity;
+}) {
+  const label = GUILD_QUEST_PERIOD_LABELS[period].toLowerCase();
+  return (
+    <Section title={`Quête ${label}`}>
+      <Toggle
+        checked={goal !== null}
+        onChange={(on) => onChange(on ? { countPerMember: 10, minCount: 20 } : null)}
+        label={`Tirée en quête ${label}`}
+        disabled={disabled}
+      />
+      {goal && (
+        <>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Par membre" error={errors.get(`${period}.countPerMember`)}>
+              <NumberInput
+                value={goal.countPerMember}
+                min={1}
+                onChange={(countPerMember) => onChange({ ...goal, countPerMember })}
+                disabled={disabled}
+              />
+            </Field>
+            <Field
+              label="Minimum"
+              hint="Objectif des petites guildes."
+              error={errors.get(`${period}.minCount`)}
+            >
+              <NumberInput
+                value={goal.minCount}
+                min={1}
+                onChange={(minCount) => onChange({ ...goal, minCount })}
+                disabled={disabled}
+              />
+            </Field>
+          </div>
+          <p className="text-xs text-slate-500">
+            Objectif de{' '}
+            {[1, 5, 10, 30]
+              .map((n) => `${guildQuestTarget(goal, n).toLocaleString('fr-FR')} à ${n}`)
+              .join(' · ')}{' '}
+            membre(s), coffre {CHEST_RARITY_LABELS[chest]}.
+          </p>
+        </>
+      )}
+    </Section>
   );
 }
 

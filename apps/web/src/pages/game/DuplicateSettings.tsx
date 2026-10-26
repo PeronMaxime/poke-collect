@@ -57,10 +57,11 @@ export const perfectIvCount = (p: PokemonDto) =>
   STAT_NAMES.filter((s) => p.ivs[s] === MAX_IV).length;
 
 /**
- * Doublons à transférer : pour chaque espèce (et forme) ou chaque lignée selon les réglages, on
- * garde le Pokémon de plus forte PE, les favoris, les légendaires et fabuleux, les shiny, les Méga-Évolués, les Pokémon occupés,
- * ceux qui ont trop d'IV parfaits et ceux qui portent une étiquette non incluse ; tous les autres
- * sont proposés.
+ * Doublons à transférer : pour chaque espèce (et forme) ou chaque lignée selon les réglages, les
+ * chromatiques comptant à part (comme une autre espèce), on garde le Pokémon de plus forte PE, les
+ * favoris, les légendaires et fabuleux, les shiny, les Méga-Évolués, les Pokémon occupés, ceux qui
+ * ont trop d'IV parfaits et ceux qui portent une étiquette non incluse ; tous les autres sont
+ * proposés.
  */
 export function duplicates(
   ctx: GameContext,
@@ -68,10 +69,11 @@ export function duplicates(
   settings: DuplicateSettings,
 ): string[] {
   const included = new Set(settings.includedTagIds);
+  // Chromatiques à part : un Roucool chromatique ne fait pas d'un Roucool normal un doublon.
   const groupKey = (p: PokemonDto) =>
-    settings.keep === 'lineage'
+    (settings.keep === 'lineage'
       ? `l:${lineageId(ctx, p.speciesId) ?? p.speciesId}`
-      : `${p.speciesId}:${p.formId ?? ''}`;
+      : `${p.speciesId}:${p.formId ?? ''}`) + (p.isShiny ? ':shiny' : '');
   const groups = new Map<string, PokemonDto[]>();
   for (const p of list) groups.set(groupKey(p), [...(groups.get(groupKey(p)) ?? []), p]);
   const power = (p: PokemonDto) => memberPower(ctx, p);
