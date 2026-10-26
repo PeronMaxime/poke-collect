@@ -34,6 +34,9 @@ import { visibleRegions } from './RegionTabs';
 export const trainerLink = (name: string, pokedex = false) =>
   `#trainer/${encodeURIComponent(name)}${pokedex ? '/pokedex' : ''}`;
 
+/** Fiche publique d'une guilde (`#guild/<id>`), depuis une fiche dresseur ou le classement. */
+export const guildLink = (id: string) => `#guild/${encodeURIComponent(id)}`;
+
 interface Route {
   /** Dresseur consulté ; null = sa propre fiche. */
   name: string | null;
@@ -295,6 +298,17 @@ function TrainerCardView({
         <div className="min-w-0 flex-1">
           <p className="text-xs text-slate-500">Dresseur</p>
           <h2 className="text-2xl font-bold">{trainer.trainerName}</h2>
+          {s?.guild && (
+            <p className="text-sm">
+              Guilde :{' '}
+              <a
+                href={guildLink(s.guild.id)}
+                className="font-medium text-brand-600 hover:underline dark:text-brand-500"
+              >
+                {s.guild.name}
+              </a>
+            </p>
+          )}
           <p className="text-sm text-slate-500">
             Aventure commencée le{' '}
             {new Date(trainer.createdAt).toLocaleDateString('fr-FR', { dateStyle: 'long' })}

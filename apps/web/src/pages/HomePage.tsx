@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { MeResponse, PlayerProfileDto } from '@poke/shared';
 import { ErrorBoundary } from '../components/ErrorBoundary';
-import { useNow } from '../components/ui';
+import { useBodyScrollLock, useNow } from '../components/ui';
 import { authClient } from '../lib/auth-client';
 import { DEX_FORM_SECTIONS, getForm } from '@poke/data';
 import { MENU_TABS, normalizeMenuGroups } from '@poke/content';
@@ -98,6 +98,15 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
     return () => window.removeEventListener('hashchange', onHash);
   }, []);
 
+  // Chaque onglet s'ouvre en haut de page, au lieu de reprendre le défilement du précédent.
+  const shownTab = useRef(tab);
+  useEffect(() => {
+    if (shownTab.current === tab) return;
+    shownTab.current = tab;
+    window.scrollTo(0, 0);
+  }, [tab]);
+
+  useBodyScrollLock(menuOpen);
   useEffect(() => {
     if (!menuOpen) return;
     const onKey = (e: KeyboardEvent) => e.key === 'Escape' && setMenuOpen(false);
@@ -373,7 +382,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
         {menuOpen && (
           <div className="fixed inset-0 z-40 md:hidden">
             <div className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
-            <nav className="absolute inset-y-0 left-0 flex w-64 max-w-[80vw] flex-col gap-0.5 overflow-y-auto bg-slate-50 p-3 shadow-xl dark:bg-slate-950">
+            <nav className="absolute inset-y-0 left-0 flex w-64 max-w-[80vw] flex-col gap-0.5 overflow-y-auto overscroll-contain bg-slate-50 p-3 shadow-xl dark:bg-slate-950">
               <div className="mb-2 flex items-center justify-between px-3 py-1">
                 <span className="text-sm font-semibold text-slate-400">Menu</span>
                 <button

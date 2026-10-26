@@ -94,7 +94,8 @@ export const SECTIONS: AdminSection[] = [
   {
     path: '/guilds',
     label: 'Guildes',
-    description: 'Quêtes de guilde hebdomadaires (catalogue du tirage) et lots des coffres.',
+    description:
+      'Quêtes de guilde du jour et de la semaine (catalogue du tirage) et lots des coffres.',
     phase: 8,
   },
   {

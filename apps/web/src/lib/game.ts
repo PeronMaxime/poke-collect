@@ -16,6 +16,8 @@ import type {
   DaycareResponse,
   ExpeditionsResponse,
   FarmResponse,
+  GuildLeaderboardResponse,
+  GuildProfileResponse,
   GuildStateResponse,
   InventoryEntryDto,
   LeaderboardKind,
@@ -151,9 +153,25 @@ export const useDungeons = () =>
 export const useShop = () =>
   useQuery({ queryKey: keys.shop, queryFn: () => api<ShopResponse>('/api/shop') });
 
-/** Guilde du joueur (membres, quêtes de la semaine), ou ses candidatures s'il n'en a pas. */
+/** Guilde du joueur (membres, quêtes du jour et de la semaine), ou ses candidatures s'il n'en a pas. */
 export const useGuild = () =>
   useQuery({ queryKey: keys.guild, queryFn: () => api<GuildStateResponse>('/api/guild') });
+
+/** Fiche publique d'une guilde. */
+export const useGuildProfile = (id: string) =>
+  useQuery({
+    queryKey: [...keys.guild, 'profile', id],
+    queryFn: () => api<GuildProfileResponse>(`/api/guilds/${encodeURIComponent(id)}`),
+  });
+
+/** Classement des guildes (rafraîchi au plus toutes les minutes). */
+export const useGuildLeaderboard = (enabled: boolean) =>
+  useQuery({
+    queryKey: ['leaderboard', 'guilds'],
+    queryFn: () => api<GuildLeaderboardResponse>('/api/guilds/leaderboard'),
+    staleTime: 60_000,
+    enabled,
+  });
 
 /** Quêtes visibles et leur avancement (calculé et enregistré par le serveur). */
 export const useQuests = () =>
@@ -167,11 +185,12 @@ export const useTrainerCard = () =>
   });
 
 /** Classement entre joueurs (rafraîchi au plus toutes les minutes). */
-export const useLeaderboard = (kind: LeaderboardKind) =>
+export const useLeaderboard = (kind: LeaderboardKind, enabled = true) =>
   useQuery({
     queryKey: ['leaderboard', kind],
     queryFn: () => api<LeaderboardResponse>(`/api/leaderboard/${kind}`),
     staleTime: 60_000,
+    enabled,
   });
 
 /** Fiche Dresseur d'un joueur, retrouvé par son nom. */

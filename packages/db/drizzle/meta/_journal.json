@@ -547,6 +547,48 @@
       "when": 1792972884653,
       "tag": "0077_charme_chroma_chromatique",
       "breakpoints": true
+    },
+    {
+      "idx": 78,
+      "version": "7",
+      "when": 1793046594495,
+      "tag": "0078_aromates",
+      "breakpoints": true
+    },
+    {
+      "idx": 79,
+      "version": "7",
+      "when": 1793046721376,
+      "tag": "0079_objectifs_quetes_guilde",
+      "breakpoints": true
+    },
+    {
+      "idx": 80,
+      "version": "7",
+      "when": 1793049272569,
+      "tag": "0080_quetes_guilde_quotidiennes",
+      "breakpoints": true
+    },
+    {
+      "idx": 81,
+      "version": "7",
+      "when": 1793055016914,
+      "tag": "0081_objectifs_quetes_par_periode",
+      "breakpoints": true
+    },
+    {
+      "idx": 82,
+      "version": "7",
+      "when": 1793056316719,
+      "tag": "0082_objectifs_quetes_guilde_ajustes",
+      "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1793057346614,
+      "tag": "0083_coffres_guilde_fin_de_periode",
+      "breakpoints": true
     }
   ]
 }

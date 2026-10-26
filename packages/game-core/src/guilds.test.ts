@@ -4,6 +4,7 @@ import { createGameContext } from './context';
 import {
   chestCandidates,
   drawGuildQuests,
+  guildDay,
   guildObjectiveAmount,
   guildQuestTarget,
   guildWeek,
@@ -36,27 +37,54 @@ describe('semaine de guilde', () => {
     expect(week.startsAt).toEqual(new Date('2026-07-12T22:00:00Z'));
     expect(week.endsAt).toEqual(new Date('2026-07-19T22:00:00Z'));
   });
+
+  it('change de jour à minuit, heure de Paris', () => {
+    expect(guildDay(new Date('2026-10-26T22:59:00Z'))).toEqual({
+      id: '2026-10-26',
+      startsAt: new Date('2026-10-25T23:00:00Z'),
+      endsAt: new Date('2026-10-26T23:00:00Z'),
+    });
+    expect(guildDay(new Date('2026-10-26T23:00:00Z')).id).toBe('2026-10-27');
+    // Jour du passage à l'heure d'hiver : 25 heures.
+    const day = guildDay(new Date('2026-10-25T12:00:00Z'));
+    expect(day.endsAt.getTime() - day.startsAt.getTime()).toBe(25 * 3_600_000);
+  });
 });
 
 describe('quêtes de guilde', () => {
-  it('tire les quêtes par rareté, toujours les mêmes pour une guilde et une semaine', () => {
-    const draws = drawGuildQuests(ctx, 'guilde-a', '2026-10-26', 4);
-    expect(draws.map((d) => d.rarity)).toEqual(['bronze', 'bronze', 'silver', 'silver', 'gold']);
-    expect(new Set(draws.map((d) => d.questId)).size).toBe(5);
-    expect(draws.map((d) => d.slot)).toEqual([0, 1, 2, 3, 4]);
-    expect(drawGuildQuests(ctx, 'guilde-a', '2026-10-26', 4)).toEqual(draws);
+  it('tire deux quêtes faciles et une difficile, toujours les mêmes pour une guilde et une période', () => {
+    const draws = drawGuildQuests(ctx, 'guilde-a', 'weekly', '2026-10-26', 4);
+    expect(draws.map((d) => d.difficulty)).toEqual(['easy', 'easy', 'hard']);
+    expect(draws.map((d) => d.rarity)).toEqual(['silver', 'silver', 'gold']);
+    expect(new Set(draws.map((d) => d.questId)).size).toBe(3);
+    expect(draws.map((d) => d.slot)).toEqual([0, 1, 2]);
+    expect(drawGuildQuests(ctx, 'guilde-a', 'weekly', '2026-10-26', 4)).toEqual(draws);
+    const daily = drawGuildQuests(ctx, 'guilde-a', 'daily', '2026-10-26', 4);
+    expect(daily.map((d) => d.rarity)).toEqual(['bronze', 'bronze', 'silver']);
+    expect(daily.every((d) => d.period === 'daily')).toBe(true);
     const other = Array.from({ length: 10 }, (_, i) =>
-      drawGuildQuests(ctx, `guilde-${i}`, '2026-10-26', 4)
+      drawGuildQuests(ctx, `guilde-${i}`, 'weekly', '2026-10-26', 4)
         .map((d) => d.questId)
         .join(),
     );
     expect(new Set(other).size).toBeGreaterThan(1);
   });
 
-  it('adapte l’objectif au nombre de membres, sans descendre sous le minimum', () => {
-    const quest = ctx.guildQuests.find((q) => q.id === 'captures')!;
-    expect(guildQuestTarget(quest, 1)).toBe(50);
-    expect(guildQuestTarget(quest, 10)).toBe(250);
+  it('adapte l’objectif de la période au nombre de membres', () => {
+    const goal = { countPerMember: 100, minCount: 200 };
+    expect(guildQuestTarget(goal, 0)).toBe(200);
+    expect(guildQuestTarget(goal, 1)).toBe(200);
+    expect(guildQuestTarget(goal, 10)).toBe(1000);
+  });
+
+  it('ne tire une quête que pour les périodes où elle a un objectif', () => {
+    const weeklyOnly = createGameContext({
+      versionId: 1,
+      ...seedContent,
+      guildQuests: seedContent.guildQuests.map((q) => ({ ...q, daily: null })),
+    });
+    expect(drawGuildQuests(weeklyOnly, 'guilde-a', 'daily', '2026-10-26', 4)).toEqual([]);
+    expect(drawGuildQuests(weeklyOnly, 'guilde-a', 'weekly', '2026-10-26', 4)).toHaveLength(3);
   });
 
   it('compte les actions selon l’objectif', () => {

@@ -3,6 +3,7 @@ import { createDb, ensureSeedContent } from '@poke/db';
 import { buildApp } from './app';
 import { loadEnv } from './env';
 import { readContentSnapshot, writeContentSnapshot } from './content-snapshot';
+import { startGuildRewards } from './game/guilds';
 import { startPushNotifier } from './game/push';
 import { consoleMailer, smtpMailer } from './mail';
 
@@ -57,8 +58,17 @@ const stopPush =
       })
     : () => {};
 
+// Coffres des quêtes de guilde terminées, distribués à la fin du jour ou de la semaine.
+const stopGuildRewards = startGuildRewards({
+  db: handle.db,
+  content,
+  intervalSeconds: 60,
+  onError: (err) => app.log.error(err, 'Coffres de guilde'),
+});
+
 const shutdown = async () => {
   stopPush();
+  stopGuildRewards();
   await app.close();
   await handle.close();
   process.exit(0);

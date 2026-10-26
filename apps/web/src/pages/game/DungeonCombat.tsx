@@ -720,7 +720,7 @@ export function DungeonCombat<R extends CombatRun, C>({
         {/* Météo du combat : pluie, sable ou grêle qui tombent, reflets du soleil. */}
         {shownWeather && (
           <div
-            key={shownWeather}
+            key={`fx-${shownWeather}`}
             aria-hidden
             className="pointer-events-none absolute inset-0 animate-[dungeon-fade_1000ms_ease-out]"
           >
@@ -764,7 +764,7 @@ export function DungeonCombat<R extends CombatRun, C>({
         </span>
         {shownWeather && (
           <span
-            key={shownWeather}
+            key={`label-${shownWeather}`}
             className="absolute top-2 right-2 animate-[dungeon-enter_400ms_ease-out] rounded-full bg-white/85 px-2 py-0.5 text-sm font-semibold shadow dark:bg-slate-900/85"
           >
             {WEATHER_ICONS[shownWeather]} {WEATHER_LABELS[shownWeather]}

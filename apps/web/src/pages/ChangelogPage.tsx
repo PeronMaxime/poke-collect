@@ -17,6 +17,59 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '27 octobre 2026',
+    title: 'Classement des guildes et tous les Aromates',
+    changes: [
+      {
+        section: 'Guildes',
+        items: [
+          'Nouveau classement « Guildes » : les guildes y sont rangées selon le nombre de quêtes de guilde terminées depuis leur création.',
+          'Chaque guilde a sa fiche, avec sa présentation et la liste de ses membres. On y accède depuis le classement, la recherche de guildes ou la fiche d’un dresseur, qui affiche désormais sa guilde.',
+          'L’arrivée d’un nouveau membre relève l’objectif des quêtes en cours, comme s’il était là au tirage.',
+        ],
+      },
+      {
+        section: 'Quêtes de guilde',
+        items: [
+          'Nouvelles quêtes du jour : chaque jour à minuit, ta guilde reçoit deux quêtes faciles (coffre Bronze) et une difficile (coffre Argent).',
+          'Les quêtes de la semaine changent aussi : deux faciles (coffre Argent) et une difficile (coffre Or), renouvelées le lundi à minuit.',
+          'Les objectifs sont bien plus grands : il faudra que toute la guilde s’y mette !',
+          'Une quête dont l’objectif est atteint continue d’avancer jusqu’à la fin de la journée ou de la semaine : tout le monde peut encore y participer. Les coffres sont distribués à la fin de la période, à chaque membre qui l’a fait avancer.',
+        ],
+      },
+      {
+        section: 'Objets',
+        items: [
+          'Tous les Aromates sont là : un pour chacune des 20 natures qui modifient les statistiques, plus l’Aromate Sérieux pour une nature neutre. On les trouve en boutique, dans le butin d’élite et dans les coffres de guilde Argent et Or.',
+        ],
+      },
+      {
+        section: 'Expéditions',
+        items: [
+          'Les talents qui attirent un type de Pokémon (Statik, Magnépiège…) attirent aussi les Pokémon fuyards de ce type.',
+          'Après une expédition avec des Baies Nanana, « Relancer » ne t’avertit plus à tort d’un manque de baies : il en compte bien une par heure, et non une par rencontre.',
+        ],
+      },
+      {
+        section: 'Interface',
+        items: [
+          'Au PC, la bulle d’un talent affiche sa description et tous ses effets ; ceux qui n’agissent pas sur l’activité en cours du Pokémon sont grisés.',
+          'À la ferme, la description de chaque baie s’affiche au survol, dans la liste comme sur les parcelles.',
+          'Chaque onglet s’ouvre désormais en haut de page.',
+          'Une fenêtre ouverte (ou le menu sur mobile) ne fait plus défiler la page en dessous.',
+        ],
+      },
+      {
+        section: 'Corrections',
+        items: [
+          'Héricendre n’affiche plus deux niveaux d’évolution : il évolue au niveau 14.',
+          '« Sélectionner les doublons » compte les chromatiques à part : avec un Roucool chromatique et un Roucool normal, aucun des deux n’est sélectionné.',
+          'Sur mobile, le sac, les coffres et les équipes de 6 des expéditions en cours ne dépassent plus de l’écran.',
+        ],
+      },
+    ],
+  },
+  {
     date: '25 octobre 2026',
     title: 'Guildes et talents à débloquer',
     changes: [

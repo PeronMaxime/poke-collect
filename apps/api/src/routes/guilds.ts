@@ -9,7 +9,9 @@ import {
   updateGuildInputSchema,
 } from '@poke/shared';
 import type {
+  GuildLeaderboardResponse,
   GuildMessagesResponse,
+  GuildProfileResponse,
   GuildSearchResponse,
   GuildStateResponse,
   OpenChestResponse,
@@ -20,7 +22,9 @@ import {
   cancelJoinRequest,
   createGuild,
   deleteGuildMessage,
+  guildLeaderboard,
   guildMessagesOf,
+  guildProfile,
   guildState,
   joinGuild,
   kickMember,
@@ -56,6 +60,15 @@ export async function guildRoutes(app: FastifyInstance, { db, content, hooks, no
   app.get('/api/guilds', async (request): Promise<GuildSearchResponse> => {
     const { q } = searchQuery.parse(request.query);
     return searchGuilds(db, content, request.user!.id, q);
+  });
+
+  app.get('/api/guilds/leaderboard', async (request): Promise<GuildLeaderboardResponse> =>
+    guildLeaderboard(db, request.user!.id),
+  );
+
+  app.get('/api/guilds/:id', async (request): Promise<GuildProfileResponse> => {
+    const { id } = guildParams.parse(request.params);
+    return guildProfile(db, content, request.user!.id, id);
   });
 
   app.post('/api/guilds', async (request, reply): Promise<GuildStateResponse> => {

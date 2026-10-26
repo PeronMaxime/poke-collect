@@ -17,6 +17,7 @@ import {
   expeditionPlan,
   lootProbabilities,
   resolveWeather,
+  roamerEncounterChance,
   roamerMeetChance,
   zoneWeather,
   nextChainPerfectIvThreshold,
@@ -189,7 +190,7 @@ export function LaunchExpeditionForm({
   unlimitedItems = false,
   bonuses,
   weather: forcedWeather,
-  roamers = [],
+  roamers: roamersHere = [],
   team,
   members,
   renderTeam,
@@ -285,7 +286,13 @@ export function LaunchExpeditionForm({
   const boost = berryId ? ctx.itemEffect(berryId, 'captureBoost')?.multiplier : undefined;
   // Bonus permanents et talents de l'équipe, comme au serveur.
   const captureBonus = abilityBonuses(ctx, env, bonuses ?? NO_BONUSES).capture;
-  const possibleEncounters = encounterProbabilities(ctx, zone, undefined, attractedTypes(ctx, env));
+  const attracted = attractedTypes(ctx, env);
+  const possibleEncounters = encounterProbabilities(ctx, zone, undefined, attracted);
+  // Les talents qui attirent un type attirent aussi les fuyards de ce type.
+  const roamers = roamersHere.map((r) => ({
+    ...r,
+    encounterChance: roamerEncounterChance(ctx, r, r.encounterChance, attracted),
+  }));
   // Fuyards dans le même pool que les autres, comme au serveur : chacun est tiré avant les
   // Pokémon de la zone, qui se partagent le reste. Une fois croisé, il en sort et les autres
   // retrouvent leur part entière.

@@ -58,7 +58,7 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
         return (
           <section key={category}>
             <h2 className="mb-2 font-semibold">{CATEGORY_LABELS[category]}</h2>
-            <ul className="grid gap-2 sm:grid-cols-2">
+            <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               {inCategory.map((s) => {
                 const item = ctx.item(s.itemId);
                 const chest = ctx.itemEffect(s.itemId, 'guildChest');
@@ -156,7 +156,7 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
             Obtenus en transférant des Pokémon (PC). Donne-les à un Pokémon de la même lignée pour
             lui faire gagner {ctx.balance.transfer.xpPerCandy} XP chacun.
           </p>
-          <ul className="grid gap-2 sm:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-3">
             {candyStacks.map((c) => {
               const speciesId = lineageSpeciesId(c.lineageId);
               return (

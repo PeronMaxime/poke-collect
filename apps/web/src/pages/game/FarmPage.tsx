@@ -4,7 +4,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { berryPlantEffect } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { BerryPlotDto, HarvestBerriesResponse, PlantBerryInput } from '@poke/shared';
-import { ProgressBar, useNow } from '../../components/ui';
+import { HoverBubble, ProgressBar, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
 import {
   PLAYER_STATE_KEYS,
@@ -22,6 +22,12 @@ import {
   yieldRange,
 } from '../../lib/labels';
 import { AssistantCard } from './AssistantCard';
+
+/** Nom de la baie suivi de sa description (bulle native des parcelles). */
+const berryTitle = (ctx: GameContext, itemId: string) => {
+  const description = ctx.item(itemId)?.description;
+  return description ? `${itemName(ctx, itemId)} : ${description}` : itemName(ctx, itemId);
+};
 
 /** Pousse restante d'une parcelle (0 = mûre), à l'heure du serveur. */
 const remainingOf = (plot: BerryPlotDto, serverNow: number) =>
@@ -208,30 +214,39 @@ export function FarmPage({ ctx }: { ctx: GameContext }) {
               const selected = s.itemId === seed?.itemId;
               return (
                 <li key={s.itemId}>
-                  <button
-                    type="button"
-                    onClick={() => setChosen(s.itemId)}
-                    aria-pressed={selected}
-                    className={`card flex w-full items-center gap-3 p-3 text-left ${
-                      selected ? 'ring-2 ring-brand-500' : ''
-                    }`}
+                  <HoverBubble
+                    width={240}
+                    height={60}
+                    className="block"
+                    focusable={false}
+                    content={ctx.item(s.itemId)?.description || itemName(ctx, s.itemId)}
                   >
-                    <img
-                      src={itemIcon(ctx, s.itemId)}
-                      alt=""
-                      className="h-10 w-10 shrink-0 [image-rendering:pixelated]"
-                    />
-                    <span className="min-w-0 flex-1 text-sm">
-                      <span className="flex items-baseline justify-between gap-2">
-                        <span className="font-medium">{itemName(ctx, s.itemId)}</span>
-                        <span className="font-mono">× {s.quantity}</span>
+                    <button
+                      type="button"
+                      onClick={() => setChosen(s.itemId)}
+                      aria-pressed={selected}
+                      className={`card flex w-full items-center gap-3 p-3 text-left ${
+                        selected ? 'ring-2 ring-brand-500' : ''
+                      }`}
+                    >
+                      <img
+                        src={itemIcon(ctx, s.itemId)}
+                        alt=""
+                        className="h-10 w-10 shrink-0 [image-rendering:pixelated]"
+                      />
+                      <span className="min-w-0 flex-1 text-sm">
+                        <span className="flex items-baseline justify-between gap-2">
+                          <span className="font-medium">{itemName(ctx, s.itemId)}</span>
+                          <span className="font-mono">× {s.quantity}</span>
+                        </span>
+                        <span className="block text-xs text-slate-500">
+                          Pousse en {formatDuration(effect.minutes)} · donne {yieldRange(effect)}{' '}
+                          baie
+                          {effect.maxYield > 1 ? 's' : ''}
+                        </span>
                       </span>
-                      <span className="block text-xs text-slate-500">
-                        Pousse en {formatDuration(effect.minutes)} · donne {yieldRange(effect)} baie
-                        {effect.maxYield > 1 ? 's' : ''}
-                      </span>
-                    </span>
-                  </button>
+                    </button>
+                  </HoverBubble>
                 </li>
               );
             })}
@@ -283,7 +298,7 @@ function PlotCard({
         type="button"
         disabled={busy}
         onClick={onHarvest}
-        title={`Récolter : ${itemName(ctx, plot.itemId)}`}
+        title={`Récolter : ${berryTitle(ctx, plot.itemId)}`}
         className="flex size-24 flex-col items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1.5 ring-2 ring-brand-500/50 transition enabled:hover:ring-brand-500 disabled:cursor-default dark:border-slate-800 dark:bg-slate-800/50"
       >
         <span className="grid flex-1 place-items-center">{berry}</span>
@@ -294,7 +309,7 @@ function PlotCard({
   return (
     <div
       className="relative flex size-24 flex-col items-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1.5 dark:border-slate-800 dark:bg-slate-800/50"
-      title={itemName(ctx, plot.itemId)}
+      title={berryTitle(ctx, plot.itemId)}
     >
       <button
         className="absolute top-0.5 right-1.5 text-xs text-slate-400 hover:text-red-600 disabled:opacity-50"

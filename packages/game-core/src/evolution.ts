@@ -73,14 +73,18 @@ export function methodFromDetail(
   return hasCondition ? method : null;
 }
 
+/**
+ * Retire les doublons et les méthodes qui ne diffèrent que par un niveau plus haut : PokéAPI
+ * mélange les jeux (Héricendre → Feurisson au niveau 14, ou 17 dans Légendes Pokémon : Arceus).
+ */
 function dedupe(methods: readonly EvolutionMethod[]): EvolutionMethod[] {
-  const seen = new Set<string>();
-  return methods.filter((m) => {
-    const key = JSON.stringify([m.minLevel, m.itemId, m.minHappiness, m.timeOfDay]);
-    if (seen.has(key)) return false;
-    seen.add(key);
-    return true;
-  });
+  const lowest = new Map<string, EvolutionMethod>();
+  for (const m of methods) {
+    const key = JSON.stringify([m.itemId, m.minHappiness, m.timeOfDay]);
+    const kept = lowest.get(key);
+    if (!kept || (m.minLevel ?? 0) < (kept.minLevel ?? 0)) lowest.set(key, m);
+  }
+  return [...lowest.values()];
 }
 
 export interface EvolutionOption {

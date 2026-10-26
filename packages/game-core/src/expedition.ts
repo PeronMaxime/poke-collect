@@ -29,6 +29,7 @@ import {
 } from './abilities';
 import type { AbilityEnv } from './abilities';
 import { generateQuestPokemon } from './quest';
+import { roamerEncounterChance } from './roaming';
 import { createRng } from './rng';
 import type { Rng } from './rng';
 import { chainPerfectIvs, shinyProbability } from './shiny';
@@ -617,7 +618,9 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
   // Sans fuyard, aucun tirage en plus : les seeds restent inchangés.
   const roamers = [...(input.roamers ?? [])];
   for (let i = 0; i < plan.encounters; i++) {
-    const roamerIndex = roamers.findIndex((r) => rng.chance((r.target.roaming ?? 0) / 100));
+    const roamerIndex = roamers.findIndex((r) =>
+      rng.chance(roamerEncounterChance(ctx, r.target, r.target.roaming ?? 0, attracted) / 100),
+    );
     if (roamerIndex >= 0) {
       // Fuyard : toujours tenté s'il reste une Ball, quel que soit le filtre ; pas de pitié.
       const [{ questId, target }] = roamers.splice(roamerIndex, 1) as [ExpeditionRoamer];

@@ -9,7 +9,7 @@ import {
   playerProfiles,
   users,
 } from '@poke/db';
-import { createGameContext } from '@poke/game-core';
+import { createGameContext, guildQuestTarget } from '@poke/game-core';
 import type { GuildActivity } from '@poke/game-core';
 import type {
   GuildMessagesResponse,
@@ -20,7 +20,7 @@ import type {
 } from '@poke/shared';
 import { buildApp } from './app';
 import { loadEnv } from './env';
-import { recordGuildActivity } from './game/guilds';
+import { recordGuildActivity, resetGuildQuests, settleGuildQuests } from './game/guilds';
 
 const handle = createDb({ pgliteDataDir: 'memory://' });
 const env = loadEnv({ NODE_ENV: 'test' });
@@ -131,13 +131,22 @@ describe('guildes', () => {
     expect(created.status).toBe(201);
     expect(created.body.currency).toBe(50_000);
     expect(created.body.guild).toMatchObject({ name: 'Les Explorateurs', myRole: 'leader' });
-    expect(created.body.guild!.quests.map((q) => q.rarity)).toEqual([
-      'bronze',
-      'bronze',
-      'silver',
-      'silver',
-      'gold',
+    // Du jour : deux faciles (Bronze) et une difficile (Argent) ; de la semaine : deux faciles
+    // (Argent) et une difficile (Or).
+    expect(
+      created.body.guild!.quests.map((q) => [q.period, q.difficulty, q.rarity].join(' ')),
+    ).toEqual([
+      'daily easy bronze',
+      'daily easy bronze',
+      'daily hard silver',
+      'weekly easy silver',
+      'weekly easy silver',
+      'weekly hard gold',
     ]);
+    expect(created.body.guild!.day).toEqual({
+      id: '2026-10-28',
+      endsAt: '2026-10-28T23:00:00.000Z',
+    });
     expect(created.body.guild!.week).toEqual({
       id: '2026-10-26',
       endsAt: '2026-11-01T23:00:00.000Z',
@@ -199,46 +208,107 @@ describe('guildes', () => {
     expect((await ash.call('DELETE', `/api/guild/messages/${mine.id}`)).status).toBe(204);
   });
 
-  it('les quêtes avancent avec les actions des membres ; coffres aux contributeurs', async () => {
+  it("les quêtes avancent au-delà de l'objectif ; personne n'a de coffre avant la fin", async () => {
     await handle.db
       .update(guildWeeklyQuests)
       .set({ target: 3 })
       .where(eq(guildWeeklyQuests.guildId, guildId));
     await recordGuildActivity(handle.db, ctx, misty.userId, everything(), clock);
-    const s = await state(ash);
-    expect(s.guild!.quests.every((q) => q.completedAt && q.progress === 3)).toBe(true);
-    // Contribution plafonnée à l'avancée réelle : 3 par quête.
-    expect(s.guild!.members.find((m) => m.trainerName === 'Ondine')!.weekContribution).toBe(15);
-    expect(s.guild!.quests.every((q) => q.myContribution === 0 && q.contributors === 1)).toBe(true);
-    expect(await quantity(misty.userId, 'guild-chest-bronze')).toBe(2);
-    expect(await quantity(misty.userId, 'guild-chest-silver')).toBe(2);
-    expect(await quantity(misty.userId, 'guild-chest-gold')).toBe(1);
+    let s = await state(ash);
+    expect(s.guild!.quests.every((q) => q.completedAt && q.progress > q.target)).toBe(true);
+    const reached = s.guild!.quests.map((q) => q.progress);
+    // Objectif atteint : Sacha peut encore participer.
+    await recordGuildActivity(handle.db, ctx, ash.userId, everything(), clock);
+    s = await state(ash);
+    expect(s.guild!.quests.map((q) => q.progress)).toEqual(reached.map((p) => p * 2));
+    expect(s.guild!.quests.every((q) => q.myContribution > 0 && q.contributors === 2)).toBe(true);
+    for (const p of [misty, ash]) {
+      for (const chest of ['bronze', 'silver', 'gold']) {
+        expect(await quantity(p.userId, `guild-chest-${chest}`)).toBe(0);
+      }
+    }
+    expect(await settleGuildQuests(handle.db, ctx, clock)).toBe(0);
+  });
+
+  it('à minuit (heure de Paris) : coffres des quêtes du jour, nouvelles quêtes du jour', async () => {
+    clock = new Date('2026-10-28T22:59:00Z'); // mercredi, 23 h 59
+    expect((await state(ash)).guild!.quests.every((q) => q.completedAt)).toBe(true);
     expect(await quantity(ash.userId, 'guild-chest-bronze')).toBe(0);
+    clock = new Date('2026-10-28T23:00:00Z'); // jeudi, minuit
+    const s = await state(ash);
+    expect(s.guild!.day.id).toBe('2026-10-29');
+    expect(s.guild!.week.id).toBe('2026-10-26');
+    // Quêtes du jour : 2 faciles (Bronze) et 1 difficile (Argent) à chaque participant.
+    for (const p of [misty, ash]) {
+      expect(await quantity(p.userId, 'guild-chest-bronze')).toBe(2);
+      expect(await quantity(p.userId, 'guild-chest-silver')).toBe(1);
+      expect(await quantity(p.userId, 'guild-chest-gold')).toBe(0);
+    }
+    expect(await quantity(brock.userId, 'guild-chest-bronze')).toBe(0);
+    // Distribués une seule fois.
+    expect(await settleGuildQuests(handle.db, ctx, clock)).toBe(0);
+    await state(misty);
+    expect(await quantity(misty.userId, 'guild-chest-bronze')).toBe(2);
+
+    const daily = s.guild!.quests.filter((q) => q.period === 'daily');
+    expect(daily.every((q) => q.progress === 0 && !q.completedAt)).toBe(true);
+    expect(s.guild!.quests.filter((q) => q.period === 'weekly').every((q) => q.completedAt)).toBe(
+      true,
+    );
+    // 3 membres : l'objectif du jour du modèle suit le nombre de membres.
+    const quest = daily[0]!;
+    const { daily: goal } = ctx.guildQuests.find((q) => q.name === quest.name)!;
+    expect(quest.target).toBe(guildQuestTarget(goal!, 3));
+    expect(quest.target).toBe(Math.max(goal!.minCount, goal!.countPerMember * 3));
 
     const opened = await misty.call<OpenChestResponse>('POST', '/api/items/open-chest', {
-      itemId: 'guild-chest-silver',
+      itemId: 'guild-chest-bronze',
       count: 2,
     });
     expect(opened.status).toBe(200);
     expect(opened.body.loot.length).toBeGreaterThan(0);
-    expect(await quantity(misty.userId, 'guild-chest-silver')).toBe(0);
+    expect(await quantity(misty.userId, 'guild-chest-bronze')).toBe(0);
     const again = await misty.call('POST', '/api/items/open-chest', {
-      itemId: 'guild-chest-silver',
-      count: 1,
+      itemId: 'guild-chest-bronze',
+      count: 2,
     });
     expect(again.body).toMatchObject({ error: 'NOT_ENOUGH_ITEMS' });
   });
 
-  it('les quêtes se renouvellent le lundi à minuit (heure de Paris)', async () => {
+  it('le lundi à minuit (heure de Paris) : coffres et nouvelles quêtes de la semaine', async () => {
     clock = new Date('2026-11-01T22:59:00Z'); // dimanche, 23 h 59
     expect((await state(ash)).guild!.week.id).toBe('2026-10-26');
+    expect(await quantity(ash.userId, 'guild-chest-gold')).toBe(0);
     clock = new Date('2026-11-01T23:00:00Z'); // lundi, minuit
+    // Distribution par le serveur, sans attendre qu'un membre ouvre la guilde.
+    expect(await settleGuildQuests(handle.db, ctx, clock)).toBe(3);
+    // Quêtes de la semaine : 2 faciles (Argent) et 1 difficile (Or).
+    expect(await quantity(ash.userId, 'guild-chest-silver')).toBe(3);
+    expect(await quantity(ash.userId, 'guild-chest-gold')).toBe(1);
     const s = await state(ash);
     expect(s.guild!.week.id).toBe('2026-11-02');
+    expect(s.guild!.quests).toHaveLength(6);
     expect(s.guild!.quests.every((q) => q.progress === 0 && !q.completedAt)).toBe(true);
-    // 3 membres : l'objectif suit le nombre de membres.
-    const first = ctx.guildQuests.find((q) => q.name === s.guild!.quests[0]!.name)!;
-    expect(s.guild!.quests[0]!.target).toBe(Math.max(first.minCount, first.countPerMember * 3));
+    const quest = s.guild!.quests.find((q) => q.period === 'weekly')!;
+    const { weekly: goal } = ctx.guildQuests.find((q) => q.name === quest.name)!;
+    expect(quest.target).toBe(Math.max(goal!.minCount, goal!.countPerMember * 3));
+  });
+
+  it("l'administration réinitialise les quêtes en cours (coffres des quêtes terminées distribués)", async () => {
+    await handle.db
+      .update(guildWeeklyQuests)
+      .set({ target: 3 })
+      .where(eq(guildWeeklyQuests.guildId, guildId));
+    await recordGuildActivity(handle.db, ctx, brock.userId, everything(), clock);
+    expect((await state(ash)).guild!.quests.every((q) => q.completedAt)).toBe(true);
+    expect(await quantity(brock.userId, 'guild-chest-gold')).toBe(0);
+
+    expect(await resetGuildQuests(handle.db, ctx, clock)).toEqual({ quests: 6 });
+    const s = await state(ash);
+    expect(s.guild!.quests).toHaveLength(6);
+    expect(s.guild!.quests.every((q) => q.progress === 0 && !q.completedAt)).toBe(true);
+    expect(s.guild!.quests.every((q) => q.contributors === 0 && q.target > 3)).toBe(true);
+    expect(await quantity(brock.userId, 'guild-chest-gold')).toBe(1);
   });
 
   it('rôles : un officier exclut les membres mais pas le chef', async () => {

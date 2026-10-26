@@ -52,7 +52,7 @@ export function ChestOpenDialog({
         {open.isPending && <p className="text-sm text-slate-500">Ouverture…</p>}
         {open.error && <p className="text-sm text-red-600">{errorText(open.error)}</p>}
         {open.data && (
-          <ul className="grid gap-2 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {open.data.loot.map((s, i) => (
               <motion.li
                 key={s.itemId}
@@ -66,7 +66,7 @@ export function ChestOpenDialog({
                   alt=""
                   className="h-10 w-10 shrink-0 [image-rendering:pixelated]"
                 />
-                <span className="flex-1 font-medium">{itemName(ctx, s.itemId)}</span>
+                <span className="min-w-0 flex-1 font-medium">{itemName(ctx, s.itemId)}</span>
                 <span className="font-mono text-sm">× {s.quantity}</span>
               </motion.li>
             ))}

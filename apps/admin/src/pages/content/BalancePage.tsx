@@ -2,6 +2,9 @@ import { useState } from 'react';
 import {
   CHEST_RARITIES,
   CHEST_RARITY_LABELS,
+  GUILD_QUEST_DIFFICULTIES,
+  GUILD_QUEST_DIFFICULTY_LABELS,
+  GUILD_QUEST_PERIODS,
   NON_POKEMON_TYPES,
   balanceSettingsSchema,
 } from '@poke/content';
@@ -9,6 +12,7 @@ import type {
   BalanceSettings,
   CombatSettings,
   DungeonSettings,
+  GuildQuestTier,
   GuildSettings,
 } from '@poke/content';
 import { types } from '@poke/data';
@@ -25,6 +29,7 @@ import {
   Field,
   NumberInput,
   Section,
+  SelectInput,
   TextInput,
   Toggle,
   errorsUnder,
@@ -918,7 +923,7 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
   );
 }
 
-/** Guildes : création, membres, quêtes hebdomadaires et tirages des coffres. */
+/** Guildes : création, membres, quêtes du jour et de la semaine, tirages des coffres. */
 function GuildSettingsSection({
   s,
   set,
@@ -972,21 +977,6 @@ function GuildSettingsSection({
         </Field>
         {CHEST_RARITIES.map((rarity) => (
           <Field
-            key={`q-${rarity}`}
-            label={`Quêtes ${CHEST_RARITY_LABELS[rarity]} par semaine`}
-            error={err(`weeklyQuests.${rarity}`)}
-          >
-            <NumberInput
-              value={s.weeklyQuests[rarity]}
-              min={0}
-              max={10}
-              onChange={(v) => set('weeklyQuests')({ ...s.weeklyQuests, [rarity]: v })}
-              disabled={disabled}
-            />
-          </Field>
-        ))}
-        {CHEST_RARITIES.map((rarity) => (
-          <Field
             key={`r-${rarity}`}
             label={`Tirages d’un coffre ${CHEST_RARITY_LABELS[rarity]}`}
             error={err(`chestRolls.${rarity}`)}
@@ -1002,6 +992,44 @@ function GuildSettingsSection({
           </Field>
         ))}
       </div>
+      <p className="text-xs text-slate-500">
+        Quêtes tirées chaque jour (minuit) et chaque semaine (lundi minuit), heure de Paris, parmi
+        les modèles qui ont un objectif pour la période (Contenu → Guildes).
+      </p>
+      {GUILD_QUEST_PERIODS.map((period) => (
+        <div key={period} className="grid gap-4 sm:grid-cols-2">
+          {GUILD_QUEST_DIFFICULTIES.map((difficulty) => {
+            const tier = s.quests[period][difficulty];
+            const path = `quests.${period}.${difficulty}`;
+            const setTier = (patch: Partial<GuildQuestTier>) =>
+              set('quests')({
+                ...s.quests,
+                [period]: { ...s.quests[period], [difficulty]: { ...tier, ...patch } },
+              });
+            const label = `${period === 'daily' ? 'Du jour' : 'De la semaine'}, ${GUILD_QUEST_DIFFICULTY_LABELS[difficulty].toLowerCase()}s`;
+            return [
+              <Field key={`${difficulty}-count`} label={label} error={err(`${path}.count`)}>
+                <NumberInput
+                  value={tier.count}
+                  min={0}
+                  max={10}
+                  unit="quête(s)"
+                  onChange={(count) => setTier({ count })}
+                  disabled={disabled}
+                />
+              </Field>,
+              <Field key={`${difficulty}-chest`} label="Coffre gagné" error={err(`${path}.chest`)}>
+                <SelectInput
+                  value={tier.chest}
+                  onChange={(chest) => setTier({ chest })}
+                  options={CHEST_RARITIES.map((r) => ({ value: r, label: CHEST_RARITY_LABELS[r] }))}
+                  disabled={disabled}
+                />
+              </Field>,
+            ];
+          })}
+        </div>
+      ))}
     </Section>
   );
 }

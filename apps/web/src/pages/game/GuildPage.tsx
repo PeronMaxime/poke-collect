@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { CHEST_RARITY_LABELS } from '@poke/content';
-import type { ChestRarity } from '@poke/content';
+import { CHEST_RARITY_LABELS, GUILD_QUEST_DIFFICULTY_LABELS } from '@poke/content';
+import type { ChestRarity, GuildQuestDifficulty, GuildQuestPeriod } from '@poke/content';
 import { GUILD_DESCRIPTION_MAX, GUILD_MESSAGE_MAX, GUILD_NAME_MAX } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type {
@@ -10,17 +10,18 @@ import type {
   GuildJoinMode,
   GuildMemberDto,
   GuildMessagesResponse,
+  GuildQuestDto,
   GuildRole,
   GuildSearchResponse,
   GuildStateResponse,
   GuildSummaryDto,
 } from '@poke/shared';
-import { ProgressBar, useNow } from '../../components/ui';
+import { PokemonSprite, ProgressBar, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, useGuild } from '../../lib/game';
+import { keys, useGuild, useGuildProfile } from '../../lib/game';
 import { errorText, formatMoney, guildObjectiveText, itemIcon } from '../../lib/labels';
 import { ChestLootHover } from './ChestLootHover';
-import { trainerLink } from './TrainerCardPage';
+import { guildLink, trainerLink } from './TrainerCardPage';
 
 /** Rafraîchissement de la discussion tant que la page est ouverte. */
 const CHAT_REFRESH_MS = 5000;
@@ -40,6 +41,11 @@ const RARITY_STYLES: Record<ChestRarity, string> = {
   bronze: 'text-amber-700 dark:text-amber-500',
   silver: 'text-slate-500 dark:text-slate-300',
   gold: 'text-yellow-600 dark:text-yellow-400',
+};
+
+const DIFFICULTY_STYLES: Record<GuildQuestDifficulty, string> = {
+  easy: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-400',
+  hard: 'bg-rose-500/10 text-rose-700 dark:text-rose-400',
 };
 
 const chestIcon = (ctx: GameContext, rarity: ChestRarity) => itemIcon(ctx, `guild-chest-${rarity}`);
@@ -68,9 +74,24 @@ function useGuildAction<T>(fn: (arg: T) => Promise<unknown>) {
 
 /**
  * Guilde : sans guilde, recherche et création ; sinon, la guilde (membres, discussion) et ses
- * quêtes de la semaine.
+ * quêtes du jour et de la semaine.
  */
 export function GuildPage({ ctx }: { ctx: GameContext }) {
+  const [profileId, setProfileId] = useState(profileIdFromHash);
+  useEffect(() => {
+    const onHash = () => setProfileId(profileIdFromHash());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  return profileId ? <GuildProfile key={profileId} id={profileId} /> : <MyGuild ctx={ctx} />;
+}
+
+function profileIdFromHash(): string | null {
+  const [, id] = window.location.hash.slice(1).split('/');
+  return id ? decodeURIComponent(id) : null;
+}
+
+function MyGuild({ ctx }: { ctx: GameContext }) {
   const guild = useGuild();
   if (guild.isPending) return <p className="text-sm text-slate-500">Chargement…</p>;
   if (!guild.data) return <p className="text-sm text-red-600">{errorText(guild.error)}</p>;
@@ -92,8 +113,8 @@ function NoGuild({ ctx, state }: { ctx: GameContext; state: GuildStateResponse }
         <h2 className="text-lg font-semibold">Les guildes</h2>
         <p className="text-sm text-slate-500">
           Une guilde rassemble des dresseurs : discutez entre membres et relevez ensemble 5 quêtes
-          chaque semaine. Chaque quête terminée donne un coffre à tous les membres qui l’ont fait
-          avancer. Les quêtes repartent à zéro chaque lundi à minuit.
+          chaque semaine. Chaque quête terminée donne un coffre, à la fin de sa période, à tous les
+          membres qui l’ont fait avancer. Les quêtes repartent à zéro chaque lundi à minuit.
         </p>
         {cooldown > 0 && (
           <p className="text-sm text-amber-700 dark:text-amber-400">
@@ -105,7 +126,7 @@ function NoGuild({ ctx, state }: { ctx: GameContext; state: GuildStateResponse }
       {state.myRequests.length > 0 && (
         <section className="space-y-2">
           <h2 className="font-semibold">Mes candidatures</h2>
-          <ul className="grid gap-2 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             {state.myRequests.map((g) => (
               <GuildCard key={g.id} guild={g} />
             ))}
@@ -146,7 +167,7 @@ function GuildSearch() {
             : 'Aucune guilde pour l’instant : fonde la première !'}
         </p>
       )}
-      <ul className="grid gap-2 sm:grid-cols-2">
+      <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
         {results.data?.guilds.map((g) => (
           <GuildCard key={g.id} guild={g} />
         ))}
@@ -156,47 +177,123 @@ function GuildSearch() {
 }
 
 function GuildCard({ guild: g }: { guild: GuildSummaryDto }) {
-  const join = useGuildAction(() =>
-    api<{ joined: boolean }>(`/api/guilds/${g.id}/join`, { method: 'POST' }),
-  );
-  const cancel = useGuildAction(() => api(`/api/guilds/${g.id}/request`, { method: 'DELETE' }));
-  const full = g.memberCount >= g.maxMembers;
   return (
-    <li className="card space-y-2 p-4">
+    <li className="card min-w-0 space-y-2 p-4">
       <div className="flex items-baseline justify-between gap-2">
-        <span className="truncate font-semibold">{g.name}</span>
+        <a href={guildLink(g.id)} className="truncate font-semibold hover:underline">
+          {g.name}
+        </a>
         <span className="shrink-0 text-xs text-slate-500">
           {g.memberCount}/{g.maxMembers} membres · {JOIN_MODE_LABELS[g.joinMode]}
         </span>
       </div>
       {g.leaderName && <p className="text-xs text-slate-500">Chef : {g.leaderName}</p>}
       {g.description && <p className="text-sm whitespace-pre-line">{g.description}</p>}
-      <div className="flex flex-wrap items-center gap-2">
-        {g.requested ? (
-          <>
-            <span className="text-sm text-slate-500">Candidature envoyée</span>
-            <button
-              className="btn-ghost"
-              disabled={cancel.isPending}
-              onClick={() => cancel.mutate(undefined)}
-            >
-              Retirer
-            </button>
-          </>
-        ) : (
-          <button
-            className="btn-primary"
-            disabled={join.isPending || full}
-            onClick={() => join.mutate(undefined)}
-          >
-            {full ? 'Complète' : g.joinMode === 'open' ? 'Rejoindre' : 'Postuler'}
-          </button>
-        )}
-        {(join.error || cancel.error) && (
-          <span className="text-sm text-red-600">{errorText(join.error ?? cancel.error)}</span>
-        )}
-      </div>
+      <JoinButtons guild={g} />
     </li>
+  );
+}
+
+/** Rejoindre la guilde, y postuler ou retirer sa candidature. */
+function JoinButtons({ guild: g }: { guild: GuildSummaryDto }) {
+  const join = useGuildAction(() =>
+    api<{ joined: boolean }>(`/api/guilds/${g.id}/join`, { method: 'POST' }),
+  );
+  const cancel = useGuildAction(() => api(`/api/guilds/${g.id}/request`, { method: 'DELETE' }));
+  const full = g.memberCount >= g.maxMembers;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {g.requested ? (
+        <>
+          <span className="text-sm text-slate-500">Candidature envoyée</span>
+          <button
+            className="btn-ghost"
+            disabled={cancel.isPending}
+            onClick={() => cancel.mutate(undefined)}
+          >
+            Retirer
+          </button>
+        </>
+      ) : (
+        <button
+          className="btn-primary"
+          disabled={join.isPending || full}
+          onClick={() => join.mutate(undefined)}
+        >
+          {full ? 'Complète' : g.joinMode === 'open' ? 'Rejoindre' : 'Postuler'}
+        </button>
+      )}
+      {(join.error || cancel.error) && (
+        <span className="text-sm text-red-600">{errorText(join.error ?? cancel.error)}</span>
+      )}
+    </div>
+  );
+}
+
+// --- Fiche publique d'une guilde ------------------------------------------------------------------
+
+function GuildProfile({ id }: { id: string }) {
+  const profile = useGuildProfile(id);
+  const mine = useGuild().data;
+  const g = profile.data;
+  const back = (
+    <a className="btn-ghost inline-block" href="#guild">
+      ← {mine?.guild ? 'Ma guilde' : 'Les guildes'}
+    </a>
+  );
+  if (profile.isError) {
+    return (
+      <div className="card space-y-2 p-5">
+        <p>{errorText(profile.error)}</p>
+        {back}
+      </div>
+    );
+  }
+  if (!g) return <p className="text-sm text-slate-500">Chargement…</p>;
+  const quests = g.questsCompleted;
+  return (
+    <div className="space-y-4">
+      {back}
+      <section className="card space-y-2 p-5">
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-xl font-bold">{g.name}</h2>
+          <span className="text-sm text-slate-500">
+            {g.memberCount}/{g.maxMembers} membres · {JOIN_MODE_LABELS[g.joinMode]}
+          </span>
+        </div>
+        {g.description && <p className="text-sm whitespace-pre-line">{g.description}</p>}
+        <p className="text-sm text-slate-500">
+          Fondée le {new Date(g.createdAt).toLocaleDateString('fr-FR', { dateStyle: 'long' })} ·{' '}
+          {quests.toLocaleString('fr-FR')} quête{quests > 1 ? 's' : ''} de guilde terminée
+          {quests > 1 ? 's' : ''}
+        </p>
+        {g.isMine ? (
+          <p className="text-sm text-brand-600 dark:text-brand-500">C’est ta guilde.</p>
+        ) : (
+          mine && !mine.guild && <JoinButtons guild={g} />
+        )}
+      </section>
+      <section className="card space-y-2 p-4">
+        <h3 className="font-semibold">Membres</h3>
+        <ul className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
+          {g.members.map((m) => (
+            <li key={m.trainerName} className="flex min-w-0 items-center gap-2 py-1 text-sm">
+              {m.starterSpeciesId !== null && (
+                <PokemonSprite speciesId={m.starterSpeciesId} size={32} />
+              )}
+              <a href={trainerLink(m.trainerName)} className="truncate font-medium hover:underline">
+                {m.trainerName}
+              </a>
+              {m.role !== 'member' && (
+                <span className="rounded-full bg-brand-500/10 px-2 text-xs text-brand-600 dark:text-brand-500">
+                  {ROLE_LABELS[m.role]}
+                </span>
+              )}
+            </li>
+          ))}
+        </ul>
+      </section>
+    </div>
   );
 }
 
@@ -358,7 +455,9 @@ function MemberList({ guild }: { guild: GuildDto }) {
           <MemberRow key={m.trainerName} member={m} myRole={guild.myRole} />
         ))}
       </ul>
-      <p className="text-xs text-slate-500">Avancée apportée aux quêtes de la semaine à droite.</p>
+      <p className="text-xs text-slate-500">
+        Avancée apportée aux quêtes cette semaine (quêtes du jour comprises) à droite.
+      </p>
     </section>
   );
 }
@@ -389,7 +488,7 @@ function MemberRow({ member: m, myRole }: { member: GuildMemberDto; myRole: Guil
         )}
         <span
           className="ml-auto font-mono text-xs text-slate-500"
-          title="Avancée apportée cette semaine"
+          title="Avancée apportée cette semaine (quêtes du jour comprises)"
         >
           {m.weekContribution.toLocaleString('fr-FR')}
         </span>
@@ -550,7 +649,7 @@ function LeaveGuild({ guild }: { guild: GuildDto }) {
               ? 'Tu es le dernier membre : la guilde sera dissoute.'
               : guild.myRole === 'leader'
                 ? 'Le rôle de chef passera à l’officier le plus ancien (ou au membre le plus ancien).'
-                : 'Tu ne recevras pas les coffres des quêtes terminées après ton départ.'}{' '}
+                : 'Tu ne recevras pas les coffres pas encore distribués.'}{' '}
             Tu devras attendre avant de rejoindre une autre guilde.
           </p>
           <div className="flex gap-2">
@@ -681,59 +780,93 @@ function formatTime(iso: string): string {
 
 function GuildQuests({ ctx, guild }: { ctx: GameContext; guild: GuildDto }) {
   const now = useNow(30_000);
+  const periods: { period: GuildQuestPeriod; title: string; reset: string; endsAt: string }[] = [
+    { period: 'daily', title: 'Quêtes du jour', reset: 'à minuit', endsAt: guild.day.endsAt },
+    {
+      period: 'weekly',
+      title: 'Quêtes de la semaine',
+      reset: 'lundi à minuit',
+      endsAt: guild.week.endsAt,
+    },
+  ];
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <p className="text-sm text-slate-500">
         Les quêtes avancent avec les actions de tous les membres (expéditions, combats, donjons,
-        éclosions). Chaque quête terminée donne un coffre à ceux qui l’ont fait avancer : ouvre-le
-        depuis ton sac. Nouvelles quêtes lundi à minuit, dans{' '}
-        <span className="font-medium">{formatRemaining(Date.parse(guild.week.endsAt) - now)}</span>{' '}
-        : les quêtes non terminées sont alors perdues.
+        éclosions). Une fois l’objectif atteint, la quête continue d’avancer : à la fin de la
+        journée ou de la semaine, chacun de ceux qui l’ont fait avancer reçoit un coffre, à ouvrir
+        depuis ton sac. Les quêtes non terminées à la fin de leur période sont perdues.
       </p>
-      {guild.quests.length === 0 && (
-        <p className="text-sm text-slate-500">Aucune quête de guilde cette semaine.</p>
-      )}
-      <ul className="grid gap-3 sm:grid-cols-2">
-        {guild.quests.map((q) => (
-          <li key={q.slot} className={`card space-y-2 p-4 ${q.completedAt ? 'opacity-80' : ''}`}>
-            <div className="flex items-start gap-3">
-              <ChestLootHover ctx={ctx} rarity={q.rarity}>
-                <img
-                  src={chestIcon(ctx, q.rarity)}
-                  alt=""
-                  className="h-10 w-10 [image-rendering:pixelated]"
-                />
-              </ChestLootHover>
-              <div className="min-w-0 flex-1">
-                <p className="flex items-baseline justify-between gap-2">
-                  <span className="font-semibold">{q.name}</span>
-                  <span className={`shrink-0 text-xs font-medium ${RARITY_STYLES[q.rarity]}`}>
-                    Coffre {CHEST_RARITY_LABELS[q.rarity]}
-                  </span>
-                </p>
-                {q.description && <p className="text-sm text-slate-500">{q.description}</p>}
-              </div>
+      {periods.map(({ period, title, reset, endsAt }) => {
+        const quests = guild.quests.filter((q) => q.period === period);
+        return (
+          <section key={period} className="space-y-3">
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4">
+              <h3 className="font-semibold">{title}</h3>
+              <p className="text-xs text-slate-500">
+                Nouvelles quêtes {reset}, dans{' '}
+                <span className="font-medium">{formatRemaining(Date.parse(endsAt) - now)}</span>
+              </p>
             </div>
-            <div className="flex items-baseline justify-between gap-2 text-sm">
-              <span>{guildObjectiveText(q.objective)}</span>
-              <span className="font-mono">
-                {q.progress.toLocaleString('fr-FR')} / {q.target.toLocaleString('fr-FR')}
-              </span>
-            </div>
-            <ProgressBar
-              value={q.progress / q.target}
-              barClassName={q.completedAt ? 'bg-emerald-500' : 'bg-brand-500'}
-            />
-            <p className="text-xs text-slate-500">
-              {q.completedAt
-                ? `Terminée ! ${q.myContribution > 0 ? 'Ton coffre t’attend dans le sac.' : 'Tu n’y as pas participé : pas de coffre.'}`
-                : q.myContribution > 0
-                  ? `Ta contribution : ${q.myContribution.toLocaleString('fr-FR')} · ${q.contributors} participant(s)`
-                  : `Fais-la avancer pour recevoir le coffre · ${q.contributors} participant(s)`}
-            </p>
-          </li>
-        ))}
-      </ul>
+            {quests.length === 0 ? (
+              <p className="text-sm text-slate-500">Aucune quête de guilde pour le moment.</p>
+            ) : (
+              <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {quests.map((q) => (
+                  <GuildQuestCard key={q.slot} ctx={ctx} quest={q} />
+                ))}
+              </ul>
+            )}
+          </section>
+        );
+      })}
     </div>
+  );
+}
+
+function GuildQuestCard({ ctx, quest: q }: { ctx: GameContext; quest: GuildQuestDto }) {
+  return (
+    <li className={`card space-y-2 p-4 ${q.completedAt ? 'opacity-80' : ''}`}>
+      <div className="flex items-start gap-3">
+        <ChestLootHover ctx={ctx} rarity={q.rarity}>
+          <img
+            src={chestIcon(ctx, q.rarity)}
+            alt=""
+            className="h-10 w-10 [image-rendering:pixelated]"
+          />
+        </ChestLootHover>
+        <div className="min-w-0 flex-1">
+          <p className="font-semibold">{q.name}</p>
+          <p className="flex flex-wrap items-center gap-x-2 text-xs font-medium">
+            <span className={`rounded-full px-2 ${DIFFICULTY_STYLES[q.difficulty]}`}>
+              {GUILD_QUEST_DIFFICULTY_LABELS[q.difficulty]}
+            </span>
+            <span className={RARITY_STYLES[q.rarity]}>Coffre {CHEST_RARITY_LABELS[q.rarity]}</span>
+          </p>
+          {q.description && <p className="mt-1 text-sm text-slate-500">{q.description}</p>}
+        </div>
+      </div>
+      <div className="flex items-baseline justify-between gap-2 text-sm">
+        <span>{guildObjectiveText(q.objective)}</span>
+        <span className="font-mono">
+          {q.progress.toLocaleString('fr-FR')} / {q.target.toLocaleString('fr-FR')}
+        </span>
+      </div>
+      <ProgressBar
+        value={Math.min(1, q.progress / q.target)}
+        barClassName={q.completedAt ? 'bg-emerald-500' : 'bg-brand-500'}
+      />
+      <p className="text-xs text-slate-500">
+        {q.completedAt
+          ? `Objectif atteint ! ${
+              q.myContribution > 0
+                ? `Ton coffre arrivera dans le sac ${q.period === 'daily' ? 'à minuit' : 'lundi à minuit'}.`
+                : 'Fais-la avancer d’ici la fin de la période pour recevoir le coffre.'
+            } · ${q.contributors} participant(s)`
+          : q.myContribution > 0
+            ? `Ta contribution : ${q.myContribution.toLocaleString('fr-FR')} · ${q.contributors} participant(s)`
+            : `Fais-la avancer pour recevoir le coffre · ${q.contributors} participant(s)`}
+      </p>
+    </li>
   );
 }

@@ -21,6 +21,8 @@ import type {
   Encounter,
   EvolutionMethod,
   GuildObjective,
+  GuildQuestDifficulty,
+  GuildQuestGoal,
   ItemEffect,
   LootEntry,
   ProgressReward,
@@ -328,7 +330,7 @@ export const quests = pgTable(
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
 );
 
-/** Modèles de quêtes de guilde (catalogue du tirage hebdomadaire). */
+/** Modèles de quêtes de guilde (catalogue des tirages du jour et de la semaine). */
 export const guildQuests = pgTable(
   'guild_quests',
   {
@@ -336,10 +338,10 @@ export const guildQuests = pgTable(
     id: text('id').notNull(),
     name: text('name').notNull(),
     description: text('description').notNull(),
-    rarity: text('rarity').$type<ChestRarity>().notNull(),
+    difficulty: text('difficulty').$type<GuildQuestDifficulty>().notNull(),
     objective: jsonb('objective').$type<GuildObjective>().notNull(),
-    countPerMember: integer('count_per_member').notNull(),
-    minCount: integer('min_count').notNull(),
+    daily: jsonb('daily').$type<GuildQuestGoal | null>(),
+    weekly: jsonb('weekly').$type<GuildQuestGoal | null>(),
     enabled: boolean('enabled').notNull().default(true),
   },
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],

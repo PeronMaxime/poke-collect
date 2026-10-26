@@ -26,6 +26,7 @@ import {
   telemetryQuerySchema,
 } from '@poke/shared';
 import type {
+  AdminGuildQuestsResetResponse,
   AdminPlayerDetailResponse,
   AdminPlayerDto,
   AdminSpeciesStatsDto,
@@ -51,6 +52,7 @@ import {
   speciesStats,
   unlockTestTrainers,
 } from '../game/admin-players';
+import { resetGuildQuests } from '../game/guilds';
 import { telemetry } from '../game/telemetry';
 import type { sessionHooks } from '../plugins/session';
 
@@ -428,6 +430,23 @@ export async function adminRoutes(
       action: 'player.test_pokemon_delete',
       entity: 'user',
       entityId: userId,
+      after: result,
+    });
+    return result;
+  });
+
+  /** Efface les quêtes de guilde en cours : retirées au prochain besoin avec le contenu publié. */
+  app.post('/api/admin/guild-quests/reset', async (request) => {
+    const result: AdminGuildQuestsResetResponse = await resetGuildQuests(
+      db,
+      await content.get(),
+      now(),
+    );
+    await logAdminAction(db, {
+      adminId: request.user!.id,
+      action: 'guild_quests.reset',
+      entity: 'guild_quest',
+      entityId: 'current',
       after: result,
     });
     return result;
