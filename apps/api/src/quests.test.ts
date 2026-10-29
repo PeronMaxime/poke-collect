@@ -57,6 +57,7 @@ content.quests.push({
     items: [{ itemId: 'bottle-cap', quantity: 1 }],
     expeditionSlots: 1,
     daycareSlots: 0,
+    incubators: 0,
     bonuses: [],
     pokemon: [
       {
@@ -307,18 +308,18 @@ describe('quêtes', () => {
   it('cache les régions, zones et quêtes désactivées', async () => {
     const res = await app.inject({ method: 'GET', url: '/api/content' });
     const playable = res.json<typeof content>();
-    expect(playable.regions.map((r) => r.id)).toEqual(['kanto', 'johto']);
-    expect(playable.zones.map((z) => z.id)).not.toContain('route-101');
+    expect(playable.regions.map((r) => r.id)).toEqual(['kanto', 'johto', 'hoenn']);
+    expect(playable.zones.map((z) => z.id)).not.toContain('route-201');
     expect(playable.quests.map((q) => q.id)).not.toContain('quete-desactivee');
 
-    const hoenn = await call('POST', '/api/expeditions', {
-      zoneId: 'route-101',
+    const sinnoh = await call('POST', '/api/expeditions', {
+      zoneId: 'route-201',
       durationMinutes: 15,
       team: [starter.id],
       ballItemId: null,
       berryItemId: null,
     });
-    expect(hoenn.status).toBe(404);
+    expect(sinnoh.status).toBe(404);
     const { body } = await call<QuestsResponse>('GET', '/api/quests');
     expect(body.quests.map((q) => q.questId)).not.toContain('quete-desactivee');
     expect((await call('POST', '/api/quests/quete-desactivee/claim')).status).toBe(404);

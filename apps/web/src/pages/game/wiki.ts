@@ -33,6 +33,10 @@ export function wikiEntries(ctx: GameContext): WikiEntry[] {
       else if (!list.includes(region.id)) list.push(region.id);
     }
   }
+  // Formes des rencontres spéciales (Pikachu à casquette…), hors des sections du Pokédex.
+  const specialFormIds = new Set(
+    ctx.zones.flatMap((z) => z.specialEncounters.flatMap((s) => s.formId ?? [])),
+  );
   return [...regionsOf.keys()]
     .sort((a, b) => a - b)
     .flatMap((speciesId) => {
@@ -42,7 +46,7 @@ export function wikiEntries(ctx: GameContext): WikiEntry[] {
       return [
         { speciesId, formId: null, species, regionIds },
         ...speciesForms(speciesId)
-          .filter((f) => FORM_KINDS.has(f.kind))
+          .filter((f) => FORM_KINDS.has(f.kind) || specialFormIds.has(f.id))
           .map((f) => ({
             speciesId,
             formId: f.id,

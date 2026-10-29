@@ -1,7 +1,6 @@
 import type {
   Collection,
   Region,
-  DexMilestone,
   EvolutionMethod,
   EvolutionOverride,
   GameContentData,
@@ -11,9 +10,10 @@ import type {
   ShopCategory,
   ShopEntry,
 } from './schemas';
+import { forms, getSpecies } from '@poke/data';
+import type { PokemonForm } from '@poke/data';
 import { DEFAULT_GUILD_QUEST_TIERS, suggestedSellPrice } from './schemas';
 import {
-  expansionDexMilestones,
   expansionItems,
   expansionRegions,
   expansionShopEntries,
@@ -21,8 +21,10 @@ import {
   expansionZones,
 } from './seed-expansion';
 import { combatSettings, dungeonSettings, megaStoneItems, seedDungeons } from './seed-dungeons';
+import { hoennQuests, hoennRegion, hoennTrainers, hoennZones } from './seed-hoenn';
 import { johtoQuests, johtoRegion, johtoTrainers, johtoZones } from './seed-johto';
 import { kantoQuests, kantoTrainers, kantoZones } from './seed-kanto';
+import { withSpecialEncounters } from './seed-special-encounters';
 import { chestEntries, guildChestItems, guildQuests } from './seed-guilds';
 
 /**
@@ -237,128 +239,83 @@ const reward = (r: Partial<ProgressReward>): ProgressReward => ({
   items: [],
   expeditionSlots: 0,
   daycareSlots: 0,
+  incubators: 0,
   bonuses: [],
   ...r,
 });
 
-/** Paliers du Pokédex de Kanto : emplacements, Balls, argent (PLAN.md, section 2.8). */
-const dexMilestones: DexMilestone[] = [
-  {
-    id: 'kanto-10',
-    order: 0,
-    name: 'Apprenti de Kanto',
-    regionId: 'kanto',
-    shiny: false,
-    percent: 10,
-    rewards: reward({ expeditionSlots: 1, items: [{ itemId: 'great-ball', quantity: 5 }] }),
-  },
-  {
-    id: 'kanto-25',
-    order: 1,
-    name: 'Explorateur de Kanto',
-    regionId: 'kanto',
-    shiny: false,
-    percent: 25,
-    rewards: reward({ daycareSlots: 1, currency: 3000 }),
-  },
-  {
-    id: 'kanto-50',
-    order: 2,
-    name: 'Chercheur de Kanto',
-    regionId: 'kanto',
-    shiny: false,
-    percent: 50,
-    rewards: reward({
-      expeditionSlots: 1,
-      items: [
-        { itemId: 'ultra-ball', quantity: 5 },
-        { itemId: 'linking-cord', quantity: 1 },
-      ],
-    }),
-  },
-  {
-    id: 'kanto-75',
-    order: 3,
-    name: 'Expert de Kanto',
-    regionId: 'kanto',
-    shiny: false,
-    percent: 75,
-    rewards: reward({ daycareSlots: 1, currency: 10_000 }),
-  },
-  {
-    id: 'kanto-100',
-    order: 4,
-    name: 'Maître du Pokédex de Kanto',
-    regionId: 'kanto',
-    shiny: false,
-    percent: 100,
-    rewards: reward({
-      expeditionSlots: 1,
-      daycareSlots: 1,
-      currency: 50_000,
-      items: [{ itemId: 'destiny-knot', quantity: 1 }],
-    }),
-  },
-  {
-    id: 'national-100',
-    order: 0,
-    name: 'Pokédex national complet',
-    regionId: null,
-    shiny: false,
-    percent: 100,
-    rewards: reward({ items: [{ itemId: 'shiny-charm', quantity: 1 }] }),
-  },
-  // Pokédex shiny (PLAN.md, section 2.6) : récompenses à part.
-  {
-    id: 'kanto-shiny-5',
-    order: 10,
-    name: 'Premiers éclats de Kanto',
-    regionId: 'kanto',
-    shiny: true,
-    percent: 5,
-    rewards: reward({ currency: 20_000, items: [{ itemId: 'ultra-ball', quantity: 10 }] }),
-  },
-  {
-    id: 'kanto-shiny-25',
-    order: 11,
-    name: 'Chasseur chromatique de Kanto',
-    regionId: 'kanto',
-    shiny: true,
-    percent: 25,
-    rewards: reward({ currency: 100_000, bonuses: [{ type: 'capture', percent: 10 }] }),
-  },
+/** Région de chaque génération (collections dont l'espèce n'est dans aucun Pokédex régional). */
+const GENERATION_REGIONS = [
+  'kanto',
+  'johto',
+  'hoenn',
+  'sinnoh',
+  'unys',
+  'kalos',
+  'alola',
+  'galar',
+  'paldea',
 ];
 
-/** Collections thématiques : bonus permanents (PLAN.md, section 2.8). */
-const collections: Collection[] = [
-  {
-    id: 'insectes-de-jade',
-    order: 0,
-    name: 'Insectes de la Forêt de Jade',
-    description: 'Chenipan, Aspicot et toutes leurs évolutions.',
-    speciesIds: [10, 11, 12, 13, 14, 15],
-    rewards: reward({
-      items: [{ itemId: 'poke-ball', quantity: 10 }],
-      bonuses: [{ type: 'capture', percent: 5 }],
-    }),
-  },
-  {
-    id: 'famille-nidoran',
-    order: 1,
-    name: 'La famille Nidoran',
-    description: 'Les deux lignées de Nidoran, jusqu’à Nidoqueen et Nidoking.',
-    speciesIds: [29, 30, 31, 32, 33, 34],
-    rewards: reward({ bonuses: [{ type: 'money', percent: 10 }] }),
-  },
-  {
-    id: 'starters-de-kanto',
-    order: 2,
-    name: 'Starters de Kanto',
-    description: 'Bulbizarre, Salamèche, Carapuce et leurs évolutions.',
-    speciesIds: [1, 2, 3, 4, 5, 6, 7, 8, 9],
-    rewards: reward({ expeditionSlots: 1, bonuses: [{ type: 'xp', percent: 10 }] }),
-  },
-];
+/** « A », « A et B », « A, B et C ». */
+const frenchList = (names: string[]) =>
+  names.length < 2 ? names.join('') : `${names.slice(0, -1).join(', ')} et ${names.at(-1)}`;
+
+const slugify = (name: string) =>
+  name
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-|-$/g, '');
+
+/**
+ * Collections des formes naturelles (variantes d'apparence et variétés : Zarbi, Prismillon,
+ * Motisma…) : une par lignée, avec ses espèces (forme par défaut) et toutes leurs formes, même
+ * celles qu'on ne peut pas encore obtenir. Région : la première dont le Pokédex contient l'espèce
+ * de base, sinon celle de sa génération ; ordre : 100 × ordre de la région + rang dans la région.
+ * Uniquement de petits bonus permanents, de 1 à 3 % selon la taille.
+ */
+function naturalFormCollections(regions: Region[]): Collection[] {
+  const sorted = [...regions].sort((a, b) => a.order - b.order);
+  const lines = new Map<number, PokemonForm[]>();
+  for (const form of forms) {
+    if (form.kind !== 'cosmetic' && form.kind !== 'alternate') continue;
+    const chain = getSpecies(form.speciesId)!.evolutionChainId;
+    lines.set(chain, [...(lines.get(chain) ?? []), form]);
+  }
+  const groups = [...lines.values()]
+    .map((lineForms) => {
+      const speciesIds = [...new Set(lineForms.map((f) => f.speciesId))].sort((a, b) => a - b);
+      const base = getSpecies(speciesIds[0]!)!;
+      const region =
+        sorted.find((r) => r.speciesIds.includes(base.id)) ??
+        sorted.find((r) => r.id === GENERATION_REGIONS[base.generation - 1])!;
+      return { speciesIds, formIds: lineForms.map((f) => f.id), region };
+    })
+    .sort((a, b) => a.region.order - b.region.order || a.speciesIds[0]! - b.speciesIds[0]!);
+
+  const rank = new Map<string, number>();
+  return groups.map(({ speciesIds, formIds, region }, i): Collection => {
+    const names = speciesIds.map((id) => getSpecies(id)!.nameFr);
+    const total = speciesIds.length + formIds.length;
+    const index = rank.get(region.id) ?? 0;
+    rank.set(region.id, index + 1);
+    const type = (['capture', 'money', 'xp'] as const)[i % 3]!;
+    return {
+      id: `formes-${slugify(names[0]!)}`,
+      order: region.order * 100 + index,
+      name: `Formes ${/^[aeiouyéèê]/i.test(names[0]!) ? 'd’' : 'de '}${frenchList(names)}`,
+      description: `${total} formes à capturer, ${
+        names.length > 1 ? 'formes par défaut comprises' : 'forme par défaut comprise'
+      }.`,
+      speciesIds,
+      rewards: reward({ bonuses: [{ type, percent: total <= 4 ? 1 : total <= 15 ? 2 : 3 }] }),
+      regionId: region.id,
+      formIds,
+    };
+  });
+}
 
 const regions: Region[] = [
   {
@@ -372,6 +329,7 @@ const regions: Region[] = [
     unlock: { type: 'always' },
   },
   johtoRegion,
+  hoennRegion,
   ...expansionRegions,
 ];
 
@@ -379,7 +337,7 @@ export const seedContent: GameContentData = {
   balance: {
     expeditions: {
       initialSlots: 2,
-      maxSlots: 6,
+      maxSlots: 9,
       maxTeamSize: 6,
       durationsMinutes: ALL_DURATIONS,
       encountersPerHour: 20,
@@ -413,7 +371,7 @@ export const seedContent: GameContentData = {
       eggLevel: 1,
     },
     transfer: { candiesPerPokemon: 1, shinyBonusCandies: 10, xpPerCandy: 500 },
-    daycare: { initialSlots: 1, maxSlots: 4 },
+    daycare: { initialSlots: 1 },
     museum: { slots: 2 },
     center: { slots: 6, healMinutes: 30 },
     battles: {
@@ -439,6 +397,64 @@ export const seedContent: GameContentData = {
       quests: DEFAULT_GUILD_QUEST_TIERS,
       chestRolls: { bronze: 1, silver: 2, gold: 3 },
     },
+    // Emplacements d'expédition et pensions en plus au fil du Pokédex de Kanto.
+    facilityUnlocks: {
+      expedition: [10, 50, 100].map((percent) => ({
+        amount: 1,
+        unlock: { type: 'regionDexPercent' as const, regionId: 'kanto', percent },
+      })),
+      daycare: [25, 75, 100].map((percent) => ({
+        amount: 1,
+        unlock: { type: 'regionDexPercent' as const, regionId: 'kanto', percent },
+      })),
+      incubator: [],
+      museum: [],
+      farm: [],
+      center: [],
+    },
+    tabUnlocks: {
+      daycare: { type: 'badgeCount', count: 2, regionId: 'kanto' },
+      museum: { type: 'badgeCount', count: 3, regionId: 'kanto' },
+      quests: { type: 'trainerDefeated', trainerId: 'maitre-blue' },
+      dungeons: { type: 'badgeCount', count: 1, regionId: 'kalos' },
+      farm: { type: 'regionUnlocked', regionId: 'hoenn' },
+    },
+    // Une couveuse par région entièrement complétée, +1 % de chromatique par expédition
+    // complétée en chromatique.
+    expeditionCompletions: [
+      {
+        id: 'region-complete',
+        name: 'Région complétée',
+        scope: 'region',
+        regionId: null,
+        zoneId: null,
+        shiny: false,
+        rewards: {
+          currency: 0,
+          items: [],
+          expeditionSlots: 0,
+          daycareSlots: 0,
+          incubators: 1,
+          bonuses: [],
+        },
+      },
+      {
+        id: 'expedition-chromatique',
+        name: 'Expédition chromatique',
+        scope: 'zone',
+        regionId: null,
+        zoneId: null,
+        shiny: true,
+        rewards: {
+          currency: 0,
+          items: [],
+          expeditionSlots: 0,
+          daycareSlots: 0,
+          incubators: 0,
+          bonuses: [{ type: 'shiny', percent: 1 }],
+        },
+      },
+    ],
   },
   regions,
   speciesOverrides: [],
@@ -714,15 +730,14 @@ export const seedContent: GameContentData = {
       ],
     },
   ],
-  zones: [...kantoZones, ...johtoZones, ...expansionZones],
-  trainers: [...kantoTrainers, ...johtoTrainers, ...expansionTrainers],
+  zones: withSpecialEncounters([...kantoZones, ...johtoZones, ...hoennZones, ...expansionZones]),
+  trainers: [...kantoTrainers, ...johtoTrainers, ...hoennTrainers, ...expansionTrainers],
   dungeons: seedDungeons(regions),
   shopCategories,
   shopEntries: [...shopEntries, ...expansionShopEntries],
   evolutionOverrides,
-  dexMilestones: [...dexMilestones, ...expansionDexMilestones],
-  collections,
-  quests: [...kantoQuests, ...johtoQuests],
+  collections: naturalFormCollections(regions),
+  quests: [...kantoQuests, ...johtoQuests, ...hoennQuests],
   guildQuests,
   chestEntries,
 };

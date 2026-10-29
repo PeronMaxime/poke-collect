@@ -2,9 +2,10 @@ import { ASSISTANT_POST_PLACES, assistantSlotCount } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { PokemonDto } from '@poke/shared';
 import { PokemonSprite, useNow } from '../../components/ui';
-import { centerState, useHeal, usePokemon } from '../../lib/game';
+import { centerState, useHeal, usePlayerProgress, usePokemon } from '../../lib/game';
 import { errorText, formatCountdown, formatDuration, speciesName } from '../../lib/labels';
 import { AssistantCard } from './AssistantCard';
+import { FacilityLocks } from './FacilityLocks';
 
 /**
  * Centre Pokémon : les Pokémon mis K.O. en combat y sont soignés, quelques-uns à la fois. Une fois
@@ -14,7 +15,10 @@ export function CenterPage({ ctx }: { ctx: GameContext }) {
   const pokemon = usePokemon();
   const now = useNow();
   const heal = useHeal();
-  const { slots, healing, knockedOut, free } = centerState(ctx, pokemon.data ?? [], now);
+  const progress = usePlayerProgress();
+  const { slots, healing, knockedOut, free } = centerState(ctx, pokemon.data ?? [], now, progress);
+  // Places affichées : ouvertes, plus celles encore en soins au-delà (réglage baissé).
+  const shown = Math.max(slots, ...healing.map((p) => (p.healSlot ?? 0) + 1));
   const waiting = [...knockedOut].sort((a, b) => b.level - a.level);
 
   return (
@@ -34,15 +38,15 @@ export function CenterPage({ ctx }: { ctx: GameContext }) {
           prêts. L’assistant d’un Centre agit sur les soins des Pokémon qu’on y dépose.
         </p>
         <div className="space-y-4">
-          {Array.from({ length: assistantSlotCount('center', slots) }, (_, center) => {
+          {Array.from({ length: assistantSlotCount('center', shown) }, (_, center) => {
             const size = ASSISTANT_POST_PLACES.center;
             const first = center * size;
             return (
               <div key={center} className="space-y-2">
-                {slots > size && <h3 className="text-sm font-semibold">Centre {center + 1}</h3>}
+                {shown > size && <h3 className="text-sm font-semibold">Centre {center + 1}</h3>}
                 <AssistantCard ctx={ctx} post="center" slot={center} standalone />
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {Array.from({ length: Math.min(size, slots - first) }, (_, i) => {
+                  {Array.from({ length: Math.min(size, shown - first) }, (_, i) => {
                     const p = healing.find((h) => h.healSlot === first + i);
                     return p ? (
                       <PatientCard key={p.id} ctx={ctx} p={p} now={now} />
@@ -60,6 +64,7 @@ export function CenterPage({ ctx }: { ctx: GameContext }) {
             );
           })}
         </div>
+        <FacilityLocks ctx={ctx} facility="center" />
       </section>
 
       <section>

@@ -178,6 +178,10 @@ export const zones = pgTable(
     unlock: jsonb('unlock').$type<UnlockCondition>().notNull(),
     weatherChangeChance: doublePrecision('weather_change_chance').notNull().default(0),
     weathers: jsonb('weathers').$type<Zone['weathers']>().notNull().default([]),
+    specialEncounters: jsonb('special_encounters')
+      .$type<Zone['specialEncounters']>()
+      .notNull()
+      .default([]),
   },
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
 );
@@ -283,21 +287,6 @@ export const evolutionOverrides = pgTable(
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
 );
 
-export const dexMilestones = pgTable(
-  'dex_milestones',
-  {
-    contentVersionId: versionId(),
-    id: text('id').notNull(),
-    order: integer('order').notNull(),
-    name: text('name').notNull(),
-    regionId: text('region_id'),
-    shiny: boolean('shiny').notNull().default(false),
-    percent: doublePrecision('percent').notNull(),
-    rewards: jsonb('rewards').$type<ProgressReward>().notNull(),
-  },
-  (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
-);
-
 export const collections = pgTable(
   'collections',
   {
@@ -308,6 +297,8 @@ export const collections = pgTable(
     description: text('description').notNull(),
     speciesIds: jsonb('species_ids').$type<number[]>().notNull(),
     rewards: jsonb('rewards').$type<ProgressReward>().notNull(),
+    regionId: text('region_id'),
+    formIds: jsonb('form_ids').$type<number[]>().notNull().default([]),
   },
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
 );
@@ -379,7 +370,6 @@ export const versionedContentTables = [
   shopCategories,
   shopEntries,
   evolutionOverrides,
-  dexMilestones,
   collections,
   quests,
   dungeons,

@@ -29,7 +29,7 @@ function fight(
   trainer: Trainer,
   team: TeamMember[],
   seed = 42,
-  extra: { bonuses?: { capture: number; xp: number; money: number } } = {},
+  extra: { bonuses?: { capture: number; xp: number; money: number; shiny: number } } = {},
 ) {
   const setup = buildBattleSetup(
     c,

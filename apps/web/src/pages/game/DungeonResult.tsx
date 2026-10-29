@@ -5,7 +5,7 @@ import type { DungeonOutcome, GameContext, TeamMemberResult } from '@poke/game-c
 import type { ItemStack } from '@poke/content';
 import type { DungeonRunDto } from '@poke/shared';
 import { Modal, PokemonSprite, ShinySparkles, ShinyStar, useNow } from '../../components/ui';
-import { centerState, useHeal, usePokemon } from '../../lib/game';
+import { centerState, useHeal, usePlayerProgress, usePokemon } from '../../lib/game';
 import { errorText, formatMoney, itemIcon, itemName, speciesName } from '../../lib/labels';
 
 /** Issue d'un combat en temps réel (donjon ou dresseur). */
@@ -155,10 +155,11 @@ export function CombatResultDetails({
   const now = useNow();
   const pokemon = usePokemon();
   const heal = useHeal();
+  const progress = usePlayerProgress();
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
   const win = result.outcome === 'win';
   const knockedOut = new Set(result.knockedOut);
-  const { free } = centerState(ctx, pokemon.data ?? [], now);
+  const { free } = centerState(ctx, pokemon.data ?? [], now, progress);
   // K.O. du combat qui attendent encore leurs soins, les plus hauts niveaux d'abord.
   const waiting = result.knockedOut
     .flatMap((id) => pokemonById.get(id) ?? [])

@@ -5,9 +5,9 @@ import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useBodyScrollLock, useNow } from '../components/ui';
 import { authClient } from '../lib/auth-client';
 import { DEX_FORM_SECTIONS, getForm } from '@poke/data';
-import { MENU_TABS, normalizeMenuGroups } from '@poke/content';
+import { MENU_TABS, normalizeMenuGroups, tabUnlock } from '@poke/content';
 import type { MenuTabId as TabId } from '@poke/content';
-import { claimableRewardCount, eggsLaid } from '@poke/game-core';
+import { claimableRewardCount, eggsLaid, isTabUnlocked } from '@poke/game-core';
 import {
   centerState,
   isUsable,
@@ -21,12 +21,14 @@ import {
   useGameContext,
   useMuseum,
   useNewEvolutionChecker,
+  usePlayerProgress,
+  usePokedex,
   usePokedexForms,
   usePokemon,
   useQuests,
   useShop,
 } from '../lib/game';
-import { formatMoney } from '../lib/labels';
+import { formatMoney, unlockConditionText } from '../lib/labels';
 import { BattlesPage } from './game/BattlesPage';
 import { CenterPage } from './game/CenterPage';
 import { DaycarePage } from './game/DaycarePage';
@@ -71,7 +73,7 @@ function tabFromHash(): PageId {
 export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfileDto }) {
   const queryClient = useQueryClient();
   const ctx = useGameContext();
-  const [tab, setTab] = useState<PageId>(tabFromHash);
+  const [hashTab, setTab] = useState<PageId>(tabFromHash);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // Groupes d'onglets réglés dans l'admin (Menu du jeu), séparés par un trait.
@@ -88,6 +90,38 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const pokemon = usePokemon();
   const claimed = useClaimedRewards();
   const hasNewEvolution = useNewEvolutionChecker(ctx);
+  const pokedex = usePokedex();
+  const progress = usePlayerProgress();
+
+  // Onglets verrouillés (condition réglée dans l'admin). Un onglet où le joueur a encore quelque
+  // chose en cours reste ouvert, pour le récupérer ; rien n'est verrouillé avant le chargement.
+  const lockedTabs = useMemo(() => {
+    const locked = new Set<TabId>();
+    if (!ctx || !pokedex.data || !battles.data || !daycare.data || !quests.data) return locked;
+    const ongoing: Partial<Record<TabId, boolean>> = {
+      daycare: daycare.data.pensions.length > 0 || daycare.data.eggs.length > 0,
+      museum: (museum.data?.revivals.length ?? 0) > 0,
+      farm: (farm.data?.planted.length ?? 0) > 0,
+      dungeons: !!dungeons.data?.active,
+      quests: quests.data.quests.some(
+        (q) => q.status === 'completed' || (q.status === 'active' && (q.step > 0 || q.count > 0)),
+      ),
+    };
+    for (const { id } of MENU_TABS) {
+      if (!ongoing[id] && !isTabUnlocked(ctx, id, progress)) locked.add(id);
+    }
+    return locked;
+  }, [
+    ctx,
+    progress,
+    pokedex.data,
+    battles.data,
+    daycare.data,
+    quests.data,
+    museum.data,
+    farm.data,
+    dungeons.data,
+  ]);
 
   useEffect(() => {
     const onHash = () => {
@@ -99,6 +133,15 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   }, []);
 
   // Chaque onglet s'ouvre en haut de page, au lieu de reprendre le défilement du précédent.
+  // Un onglet verrouillé ne s'ouvre pas, même par son adresse : les expéditions à la place.
+  const tab: PageId = hashTab !== WIKI_HASH && lockedTabs.has(hashTab) ? 'expeditions' : hashTab;
+  useEffect(() => {
+    if (tab === hashTab) return;
+    // Remplace l'adresse, puis la relit (sinon l'onglet verrouillé s'ouvrirait à son déblocage).
+    window.history.replaceState(null, '', '#expeditions');
+    window.dispatchEvent(new HashChangeEvent('hashchange'));
+  }, [tab, hashTab]);
+
   const shownTab = useRef(tab);
   useEffect(() => {
     if (shownTab.current === tab) return;
@@ -122,7 +165,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const caught =
     dexCatches.caughtSpeciesIds.size +
     (dexForms.data?.filter((f) => DEX_FORM_KINDS.has(getForm(f.formId)?.kind)).length ?? 0);
-  // Paliers et collections à réclamer, Pokémon disponibles prêts à évoluer vers une espèce
+  // Collections et complétions à réclamer, Pokémon disponibles prêts à évoluer vers une espèce
   // ou forme qui manque encore au Pokédex (même règle que la pastille « Évol. » du PC).
   const rewardsReady = ctx ? claimableRewardCount(ctx, dexCatches, claimed) : 0;
   const evolutionsReady =
@@ -144,7 +187,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const berriesReady =
     farm.data?.planted.filter((p) => p.readyAt && Date.parse(p.readyAt) <= now).length ?? 0;
   // Pokémon K.O. qui attendent leurs soins (comptés seulement s'il reste de la place).
-  const center = ctx && pokemon.data ? centerState(ctx, pokemon.data, now) : null;
+  const center = ctx && pokemon.data ? centerState(ctx, pokemon.data, now, progress) : null;
   const koWaiting = center && center.free > 0 ? center.knockedOut.length : 0;
 
   // Une action attend le joueur quelque part : point sur le bouton du menu mobile.
@@ -163,31 +206,81 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
     !!battles.data?.active ||
     unseenChangelog;
 
+  // Nom d'un onglet verrouillé caché (« ??? ») pour ne rien dévoiler trop tôt ; pendant le
+  // chargement de l'avancement, caché aussi s'il a une condition.
+  const progressLoaded = !!(pokedex.data && battles.data && daycare.data && quests.data);
+  const tabLabel = (id: TabId) =>
+    lockedTabs.has(id) ||
+    (!progressLoaded && ctx && tabUnlock(ctx.content.balance, id).type !== 'always')
+      ? '???'
+      : TAB_LABELS[id];
+
+  // Condition d'un onglet verrouillé affichée au toucher ; un toucher ailleurs la referme.
+  const [hint, setHint] = useState<TabId | null>(null);
+  useEffect(() => {
+    if (!hint) return;
+    const close = (e: PointerEvent) => {
+      if (!(e.target as Element).closest('[data-tab-hint]')) setHint(null);
+    };
+    document.addEventListener('pointerdown', close);
+    return () => document.removeEventListener('pointerdown', close);
+  }, [hint]);
+  // Onglet à condition : rien d'affiché tant que l'avancement du joueur n'est pas chargé.
+  const gated = tab !== WIKI_HASH && !!ctx && tabUnlock(ctx.content.balance, tab).type !== 'always';
+
   /** Liens des onglets, partagés par la barre latérale et le menu mobile. */
   function tabLinks() {
+    // Sans le contenu, on ne sait pas encore quels onglets sont verrouillés.
+    if (!ctx) return null;
     return menuGroups.map((group, i) => (
       <div
         key={i}
         className={`flex flex-col gap-0.5 ${i > 0 ? 'mt-2 border-t border-slate-200 pt-2 dark:border-slate-800' : ''}`}
       >
-        {group.map((id) => (
-          <a
-            key={id}
-            href={`#${id}`}
-            onClick={() => setMenuOpen(false)}
-            className={`relative flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition md:py-2 ${
-              tab === id
-                ? 'bg-brand-500/10 text-brand-600 dark:text-brand-500'
-                : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-900 dark:hover:bg-slate-800/60 dark:hover:text-slate-100'
-            }`}
-          >
-            {TAB_LABELS[id]}
-            {tabBadges(id)}
-            {tab === id && (
-              <span className="absolute inset-y-2 left-0 w-0.5 rounded bg-brand-500" />
-            )}
-          </a>
-        ))}
+        {group.map((id) =>
+          lockedTabs.has(id) ? (
+            // Onglet verrouillé : pas de page, sa condition au survol (au toucher sur mobile).
+            <div key={id} className="group relative" data-tab-hint>
+              <button
+                type="button"
+                // Au toucher seulement : à la souris, le survol suffit et le clic ne fait rien.
+                onPointerUp={(e) => e.pointerType !== 'mouse' && setHint(hint === id ? null : id)}
+                aria-expanded={hint === id}
+                className="flex w-full cursor-default items-center rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-400 md:py-2 dark:text-slate-600"
+              >
+                {tabLabel(id)}
+                <span className="ml-auto text-xs" aria-label="Verrouillé">
+                  🔒
+                </span>
+              </button>
+              <p
+                role="tooltip"
+                className={`absolute top-full left-3 z-20 mt-1 w-56 rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-lg md:top-1/2 md:left-full md:mt-0 md:ml-2 md:-translate-y-1/2 dark:bg-slate-700 ${
+                  hint === id ? 'block' : 'hidden group-hover:block'
+                }`}
+              >
+                {unlockConditionText(ctx, tabUnlock(ctx.content.balance, id)) ?? 'Bientôt'}
+              </p>
+            </div>
+          ) : (
+            <a
+              key={id}
+              href={`#${id}`}
+              onClick={() => setMenuOpen(false)}
+              className={`relative flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition md:py-2 ${
+                tab === id
+                  ? 'bg-brand-500/10 text-brand-600 dark:text-brand-500'
+                  : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-900 dark:hover:bg-slate-800/60 dark:hover:text-slate-100'
+              }`}
+            >
+              {tabLabel(id)}
+              {tabBadges(id)}
+              {tab === id && (
+                <span className="absolute inset-y-2 left-0 w-0.5 rounded bg-brand-500" />
+              )}
+            </a>
+          ),
+        )}
       </div>
     ));
   }
@@ -370,7 +463,9 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
               <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-slate-50 dark:ring-slate-950" />
             )}
           </button>
-          <span className="min-w-0 flex-1 truncate font-semibold">{PAGE_LABELS[tab]}</span>
+          <span className="min-w-0 flex-1 truncate font-semibold">
+            {tab === WIKI_HASH ? PAGE_LABELS[tab] : tabLabel(tab)}
+          </span>
           <span
             className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-sm font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300"
             title="Poké Dollars"
@@ -423,23 +518,29 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
           ) : (
             // Une erreur dans un onglet n'emporte pas la navigation ; changer d'onglet la réinitialise.
             <ErrorBoundary key={tab}>
-              {tab === 'expeditions' && <ExpeditionsPage ctx={ctx} profile={profile} />}
-              {tab === 'battles' && <BattlesPage ctx={ctx} />}
-              {tab === 'dungeons' && <DungeonsPage ctx={ctx} />}
-              {tab === 'center' && <CenterPage ctx={ctx} />}
-              {tab === 'daycare' && <DaycarePage ctx={ctx} />}
-              {tab === 'museum' && <MuseumPage ctx={ctx} />}
-              {tab === 'farm' && <FarmPage ctx={ctx} />}
-              {tab === 'quests' && <QuestsPage ctx={ctx} />}
-              {tab === 'shop' && <ShopPage ctx={ctx} />}
-              {tab === 'pc' && <PcPage ctx={ctx} />}
-              {tab === 'teams' && <TeamsPage ctx={ctx} />}
-              {tab === 'pokedex' && <PokedexPage ctx={ctx} />}
-              {tab === 'bag' && <InventoryPage ctx={ctx} />}
-              {tab === 'trainer' && <TrainerCardPage ctx={ctx} profile={profile} />}
-              {tab === 'guild' && <GuildPage ctx={ctx} />}
-              {tab === 'leaderboard' && <LeaderboardPage />}
-              {tab === WIKI_HASH && <WikiPage ctx={ctx} />}
+              {gated && !progressLoaded ? (
+                <p className="text-slate-500">Chargement…</p>
+              ) : (
+                <>
+                  {tab === 'expeditions' && <ExpeditionsPage ctx={ctx} profile={profile} />}
+                  {tab === 'battles' && <BattlesPage ctx={ctx} />}
+                  {tab === 'dungeons' && <DungeonsPage ctx={ctx} />}
+                  {tab === 'center' && <CenterPage ctx={ctx} />}
+                  {tab === 'daycare' && <DaycarePage ctx={ctx} />}
+                  {tab === 'museum' && <MuseumPage ctx={ctx} />}
+                  {tab === 'farm' && <FarmPage ctx={ctx} />}
+                  {tab === 'quests' && <QuestsPage ctx={ctx} />}
+                  {tab === 'shop' && <ShopPage ctx={ctx} />}
+                  {tab === 'pc' && <PcPage ctx={ctx} />}
+                  {tab === 'teams' && <TeamsPage ctx={ctx} />}
+                  {tab === 'pokedex' && <PokedexPage ctx={ctx} />}
+                  {tab === 'bag' && <InventoryPage ctx={ctx} />}
+                  {tab === 'trainer' && <TrainerCardPage ctx={ctx} profile={profile} />}
+                  {tab === 'guild' && <GuildPage ctx={ctx} />}
+                  {tab === 'leaderboard' && <LeaderboardPage />}
+                  {tab === WIKI_HASH && <WikiPage ctx={ctx} />}
+                </>
+              )}
             </ErrorBoundary>
           )}
         </main>

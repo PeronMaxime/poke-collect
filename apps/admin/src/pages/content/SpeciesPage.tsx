@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RARITIES, speciesOverrideSchema } from '@poke/content';
-import type { Item, Quest, SpeciesOverride, Zone } from '@poke/content';
+import type { Item, Quest, SpecialEncounter, SpeciesOverride, Zone } from '@poke/content';
 import {
   DEX_FORM_SECTIONS,
   STAT_NAMES,
@@ -32,6 +32,8 @@ interface SpeciesLocation {
   /** Fossiles qui redonnent vie à l'espèce (ou à la forme) au Musée. */
   fossils: Item[];
   starter: boolean;
+  /** Rencontres spéciales (formes événementielles) et le Pokémon requis dans l'équipe. */
+  specials?: { zone: Zone; active: boolean; special: SpecialEncounter }[];
 }
 
 /**
@@ -66,7 +68,10 @@ function locateSpecies(w: WorkingVersion): Map<number, SpeciesLocation> {
 
 const hasActiveZone = (loc: SpeciesLocation | undefined) => !!loc?.zones.some((z) => z.active);
 
-/** Où chaque forme s'obtient : zones qui la rencontrent, quêtes qui l'offrent, fossiles. */
+/**
+ * Où chaque forme s'obtient : zones qui la rencontrent, rencontres spéciales, quêtes qui l'offrent,
+ * fossiles.
+ */
 function locateForms(w: WorkingVersion): Map<number, SpeciesLocation> {
   const result = new Map<number, SpeciesLocation>();
   const entry = (id: number) => {
@@ -79,6 +84,11 @@ function locateForms(w: WorkingVersion): Map<number, SpeciesLocation> {
     for (const id of new Set(zone.encounters.flatMap((e) => (e.formId ? [e.formId] : [])))) {
       entry(id).zones.push({ zone, active });
     }
+    for (const special of zone.specialEncounters) {
+      if (!special.formId) continue;
+      const loc = entry(special.formId);
+      (loc.specials ??= []).push({ zone, active, special });
+    }
   }
   for (const quest of w.content.quests) {
     for (const p of quest.rewards.pokemon) if (p.formId) entry(p.formId).quests.push(quest);
@@ -90,12 +100,25 @@ function locateForms(w: WorkingVersion): Map<number, SpeciesLocation> {
   return result;
 }
 
-const VIEWS: { id: 'species' | FormKind; label: string; count: number }[] = [
+/**
+ * Sections de formes de l'admin : celles du Pokédex, puis les formes naturelles (variétés et
+ * variantes d'apparence : Zarbi, Prismillon, Motisma…), listées pour information seulement.
+ */
+const FORM_SECTIONS: { id: string; label: string; kinds: FormKind[] }[] = [
+  ...DEX_FORM_SECTIONS.map((s) => ({ id: s.kind, label: s.label, kinds: [s.kind] })),
+  { id: 'natural', label: 'Formes naturelles', kinds: ['cosmetic', 'alternate'] },
+];
+const NATURAL_KIND_LABELS: Partial<Record<FormKind, string>> = {
+  cosmetic: 'Apparence',
+  alternate: 'Variété',
+};
+
+const VIEWS: { id: string; label: string; count: number }[] = [
   { id: 'species', label: 'Espèces', count: allSpecies.length },
-  ...DEX_FORM_SECTIONS.map((s) => ({
-    id: s.kind,
+  ...FORM_SECTIONS.map((s) => ({
+    id: s.id,
     label: s.label,
-    count: allForms.filter((f) => f.kind === s.kind).length,
+    count: allForms.filter((f) => s.kinds.includes(f.kind)).length,
   })),
 ];
 type View = (typeof VIEWS)[number]['id'];
@@ -120,16 +143,20 @@ export function SpeciesPage() {
           </button>
         ))}
       </nav>
-      {view === 'species' ? <SpeciesView /> : <FormsView key={view} kind={view} />}
+      {view === 'species' ? (
+        <SpeciesView />
+      ) : (
+        <FormsView key={view} section={FORM_SECTIONS.find((s) => s.id === view)!} />
+      )}
     </div>
   );
 }
 
 /**
- * Formes d'un type : données PokéAPI en lecture seule. Les surcharges (activation, nom,
+ * Formes d'une section : données PokéAPI en lecture seule. Les surcharges (activation, nom,
  * habitat…) se règlent sur l'espèce de base, ouverte au clic.
  */
-function FormsView({ kind }: { kind: FormKind }) {
+function FormsView({ section }: { section: (typeof FORM_SECTIONS)[number] }) {
   const working = useWorkingVersion();
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<number | null>(null);
@@ -139,10 +166,10 @@ function FormsView({ kind }: { kind: FormKind }) {
   const w = working.data;
   const overrides = new Map(w.content.speciesOverrides.map((o) => [o.speciesId, o]));
   const locations = locateForms(w);
-  const section = DEX_FORM_SECTIONS.find((s) => s.kind === kind)!;
+  const showKind = section.kinds.length > 1;
   const needle = searchKey(search.trim());
   const rows = allForms.filter((f: PokemonForm) => {
-    if (f.kind !== kind) return false;
+    if (!section.kinds.includes(f.kind)) return false;
     if (!needle) return true;
     return (
       String(f.speciesId) === needle ||
@@ -161,6 +188,13 @@ function FormsView({ kind }: { kind: FormKind }) {
           Données PokéAPI en lecture seule. Cliquer sur une forme ouvre son espèce de base, qui
           porte les surcharges.
         </p>
+        {showKind && (
+          <p className="mt-1 text-sm text-slate-500">
+            Liste indicative : la plupart de ces formes n'ont pas encore de comportement propre en
+            jeu. Les formes spéciales (✧) s'obtiennent par une rencontre spéciale, réglée dans la
+            zone.
+          </p>
+        )}
       </div>
       <VersionBanner working={w} />
 
@@ -191,6 +225,7 @@ function FormsView({ kind }: { kind: FormKind }) {
               <th className="px-3 py-2">N°</th>
               <th className="px-3 py-2">Forme</th>
               <th className="px-3 py-2">Espèce de base</th>
+              {showKind && <th className="px-3 py-2">Nature</th>}
               <th className="px-3 py-2">Types</th>
               <th className="px-3 py-2">Localisation</th>
               <th className="px-3 py-2">Talents</th>
@@ -222,6 +257,11 @@ function FormsView({ kind }: { kind: FormKind }) {
                       {base.nameFr}
                     </span>
                   </td>
+                  {showKind && (
+                    <td className="px-3 py-1 text-xs text-slate-500">
+                      {NATURAL_KIND_LABELS[f.kind]}
+                    </td>
+                  )}
                   <td className="px-3 py-1">
                     <span className="flex gap-1">
                       {f.types.map((t) => (
@@ -230,6 +270,22 @@ function FormsView({ kind }: { kind: FormKind }) {
                     </span>
                   </td>
                   <td className="px-3 py-1 text-xs">
+                    {location?.specials?.map(({ zone, active, special }) => (
+                      <span
+                        key={zone.id}
+                        className={`block ${active ? 'text-violet-700 dark:text-violet-300' : 'text-slate-400 line-through'}`}
+                        title={`Rencontre spéciale : ${special.chance} % par rencontre, N.${special.minLevel}–${special.maxLevel}${
+                          special.hint
+                            ? `
+« ${special.hint} »`
+                            : ''
+                        }`}
+                      >
+                        ✧ {zone.name} ({w.ctx.region(zone.regionId)?.name ?? zone.regionId}), avec{' '}
+                        {w.ctx.species(special.requiredSpeciesId, special.requiredFormId)?.nameFr ??
+                          `#${special.requiredSpeciesId}`}
+                      </span>
+                    ))}
                     {location?.zones.length ? (
                       <span
                         className={hasActiveZone(location) ? '' : 'text-slate-400 line-through'}
@@ -244,7 +300,7 @@ function FormsView({ kind }: { kind: FormKind }) {
                       <span className="text-slate-500">
                         Fossile : {location.fossils.map((i) => i.name).join(', ')}
                       </span>
-                    ) : (
+                    ) : location?.specials?.length ? null : (
                       <span className="text-slate-400">—</span>
                     )}
                   </td>

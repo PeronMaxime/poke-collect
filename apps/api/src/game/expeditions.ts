@@ -12,7 +12,6 @@ import {
   legendarySite,
   localHour,
   playerBonuses,
-  playerSlots,
   questEncounter,
   resolveExpedition,
   resolveQuestExpedition,
@@ -25,7 +24,6 @@ import {
   zoneWeather,
 } from '@poke/game-core';
 import type {
-  ClaimedRewards,
   ExpeditionResult,
   ExpeditionRoamer,
   GameContext,
@@ -49,6 +47,7 @@ import {
   assertAvailable,
   caughtDex,
   claimedRewards,
+  playerFacilityPlaces,
   insertPokemon,
   itemQuantity,
   playerProgress,
@@ -82,9 +81,12 @@ export function startHour(now: Date, utcOffsetMinutes: number | undefined): numb
   return utcOffsetMinutes === undefined ? null : localHour(now, utcOffsetMinutes);
 }
 
-/** Nombre d'emplacements d'expédition du joueur (départ + paliers et collections réclamés). */
-export function expeditionSlots(ctx: GameContext, claimed: ClaimedRewards): number {
-  return playerSlots(ctx, claimed).expeditions;
+/**
+ * Nombre d'emplacements d'expédition du joueur : départ + récompenses réclamées + paliers remplis
+ * (Bâtiments), dans la limite du maximum.
+ */
+export function expeditionSlots(db: Db, ctx: GameContext, userId: string): Promise<number> {
+  return playerFacilityPlaces(db, ctx, userId, 'expedition');
 }
 
 export async function requireStartedProfile(db: Db, userId: string) {
@@ -183,7 +185,7 @@ async function freeSlot(db: Db, ctx: GameContext, userId: string): Promise<numbe
     .from(expeditions)
     .where(and(eq(expeditions.ownerId, userId), isNull(expeditions.claimedAt)));
   const used = new Set(active.map((e) => e.slotIndex));
-  const slots = expeditionSlots(ctx, await claimedRewards(db, userId));
+  const slots = await expeditionSlots(db, ctx, userId);
   const slotIndex = Array.from({ length: slots }, (_, i) => i).find((i) => !used.has(i));
   if (slotIndex === undefined) throw new GameError(409, 'NO_FREE_SLOT');
   return slotIndex;
@@ -495,11 +497,15 @@ export async function legendaryEncounter(
   if (!awaitsDecision(found)) throw new GameError(409, 'NOT_A_LEGENDARY_EXPEDITION');
   const { target } = await legendaryTarget(db, ctx, userId, found.questId!);
   if (!target) throw new GameError(409, 'QUEST_POKEMON_CAUGHT');
-  const charm = await shinyCharm(db, ctx, userId);
+  const [charm, claimed] = await Promise.all([
+    shinyCharm(db, ctx, userId),
+    claimedRewards(db, userId),
+  ]);
+  // Mêmes facteurs qu'à la résolution : le shiny annoncé est celui qui sera capturé.
   const { pokemon: wild, shinyChance } = questEncounter(ctx, {
     target,
     seed: found.seed,
-    shiny: { chain: found.shinyChain, charm },
+    shiny: { chain: found.shinyChain, charm, bonus: playerBonuses(ctx, claimed).shiny },
   });
   return {
     expeditionId: found.id,
@@ -600,7 +606,7 @@ export async function claimExpedition(
               ballItemId,
               berryItemId,
               bonuses,
-              shiny: { chain: found.shinyChain, charm },
+              shiny: { chain: found.shinyChain, charm, bonus: bonuses.shiny },
               hour: found.localHour,
             })
           : EMPTY_RESULT; // plus rien à capturer (quête modifiée) : Ball et baie rendues
@@ -620,7 +626,7 @@ export async function claimExpedition(
         pity: Object.fromEntries(pityRows.map((r) => [r.speciesId, r.misses])),
         bonuses,
         // Chaîne figée au départ ; Charme Chroma possédé à la réclamation.
-        shiny: { chain: found.shinyChain, charm },
+        shiny: { chain: found.shinyChain, charm, bonus: bonuses.shiny },
         captureFilter: found.captureFilter,
         ...(found.captureFilter?.newOnly && { caught: await caughtDex(tx, userId) }),
         hour: found.localHour,
@@ -689,8 +695,7 @@ export async function claimExpedition(
       }
     }
     const newInDex = await recordPokedex(tx, userId, {
-      seen: result.encounters.map((e) => e.speciesId),
-      seenShiny: result.encounters.filter((e) => e.isShiny).map((e) => e.speciesId),
+      met: result.encounters,
       caught: captured,
       at: now,
     });

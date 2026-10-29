@@ -4,7 +4,7 @@ import type { GameContext, PlayerBonuses, TeamMember } from '@poke/game-core';
 import { PokemonSprite } from '../../components/ui';
 import { useClaimedRewards } from '../../lib/game';
 
-/** Bonus permanents du joueur (paliers, collections), pour les aperçus. */
+/** Bonus permanents du joueur (collections, quêtes, complétions), pour les aperçus. */
 export function usePlayerBonuses(ctx: GameContext): PlayerBonuses {
   return playerBonuses(ctx, useClaimedRewards());
 }

@@ -23,6 +23,7 @@ import {
   toDungeonRunDto,
 } from '../game/dungeons';
 import { requireStartedProfile } from '../game/expeditions';
+import { assertTabUnlocked } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
@@ -56,6 +57,7 @@ export async function dungeonRoutes(app: FastifyInstance, { db, content, hooks, 
   app.post('/api/dungeons', async (request, reply) => {
     const input = startDungeonInputSchema.parse(request.body);
     const userId = request.user!.id;
+    await assertTabUnlocked(db, await content.get(), userId, 'dungeons');
     // Une tentative terminée pendant l'absence du joueur ne bloque pas la suivante.
     await settleFinishedDungeonRun(db, content, userId, now());
     const row = await startDungeon(db, content, userId, input, now());

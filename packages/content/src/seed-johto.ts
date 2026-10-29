@@ -17,6 +17,7 @@ import {
   DEFAULT_ROAMING_CHANCE,
   defaultLegendaryExpedition,
   defaultTrainerTimeLimitSeconds,
+  zoneAffinityTypes,
 } from './schemas';
 import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
 
@@ -87,26 +88,32 @@ const allOf = (...conditions: UnlockCondition[]): UnlockCondition => ({
   conditions: conditions.flatMap((c) => (c.type === 'allOf' ? c.conditions : [c])),
 });
 
-const zone = (
-  z: Omit<
-    Zone,
-    | 'regionId'
-    | 'image'
-    | 'enabled'
-    | 'requiredTypes'
-    | 'durationsMinutes'
-    | 'weatherChangeChance'
-    | 'weathers'
-  > &
-    Partial<Zone>,
-): Zone => ({
+/** `weatherTypes` : types de la zone d'où le seed tire ses météos ; affinités calculées. */
+const zone = ({
+  weatherTypes,
+  ...z
+}: Omit<
+  Zone,
+  | 'regionId'
+  | 'image'
+  | 'enabled'
+  | 'requiredTypes'
+  | 'durationsMinutes'
+  | 'weatherChangeChance'
+  | 'weathers'
+  | 'specialEncounters'
+  | 'affinityTypes'
+> &
+  Partial<Zone> & { weatherTypes: string[] }): Zone => ({
   regionId: 'johto',
   image: null,
   enabled: true,
   requiredTypes: [],
   durationsMinutes: ALL_DURATIONS,
   weatherChangeChance: ZONE_WEATHER_CHANGE_CHANCE,
-  weathers: seedZoneWeathers(z.habitat, z.affinityTypes),
+  weathers: seedZoneWeathers(z.habitat, weatherTypes),
+  specialEncounters: [],
+  affinityTypes: zoneAffinityTypes(z.encounters),
   ...z,
 });
 
@@ -119,7 +126,7 @@ export const johtoZones: Zone[] = [
     description: 'Le chemin herbeux qui relie Bourg Geon à Ville Griotte. Idéal pour débuter.',
     habitat: 'grassland',
     minPower: 0,
-    affinityTypes: ['normal', 'flying'],
+    weatherTypes: ['normal', 'flying'],
     encounters: [
       enc(161, 30, 2, 4),
       enc(163, 25, 2, 4),
@@ -138,7 +145,7 @@ export const johtoZones: Zone[] = [
       'Les sentiers boisés au nord de Ville Griotte, où Coxy et Mimigal se relaient jour et nuit.',
     habitat: 'forest',
     minPower: 100,
-    affinityTypes: ['bug', 'grass'],
+    weatherTypes: ['bug', 'grass'],
     encounters: [
       enc(165, 25, 3, 6),
       enc(167, 25, 3, 6),
@@ -158,7 +165,7 @@ export const johtoZones: Zone[] = [
     description: 'Une vieille tour de bois qui oscille doucement. Des ombres y rôdent la nuit.',
     habitat: 'urban',
     minPower: 180,
-    affinityTypes: ['ghost', 'grass', 'normal'],
+    weatherTypes: ['ghost', 'grass', 'normal'],
     encounters: [
       enc(163, 25, 4, 7),
       enc(198, 8, 5, 8),
@@ -179,7 +186,7 @@ export const johtoZones: Zone[] = [
       'La longue route qui descend de Mauville vers les Caves Jumelles, bordée d’étangs.',
     habitat: 'grassland',
     minPower: 250,
-    affinityTypes: ['electric', 'grass', 'water'],
+    weatherTypes: ['electric', 'grass', 'water'],
     encounters: [
       enc(179, 25, 6, 9),
       enc(187, 18, 6, 9),
@@ -200,7 +207,7 @@ export const johtoZones: Zone[] = [
     description: 'Un réseau de galeries humides sous la Route 32, où barbotent les Axoloto.',
     habitat: 'cave',
     minPower: 300,
-    affinityTypes: ['rock', 'ground', 'water'],
+    weatherTypes: ['rock', 'ground', 'water'],
     encounters: [
       enc(194, 25, 7, 10),
       enc(41, 22, 6, 10),
@@ -221,7 +228,7 @@ export const johtoZones: Zone[] = [
       'Des ruines millénaires couvertes d’inscriptions. Les Zarbi semblent former des lettres.',
     habitat: 'rough-terrain',
     minPower: 380,
-    affinityTypes: ['psychic', 'rock'],
+    weatherTypes: ['psychic', 'rock'],
     encounters: unownEncounters(4, 8, 12),
     lootTableId: 'butin-fouilles',
     unlock: defeated('montagnard-anthony'),
@@ -234,7 +241,7 @@ export const johtoZones: Zone[] = [
       'Le puits d’Écorcia, où la Team Rocket coupe la queue des Ramoloss pour la revendre.',
     habitat: 'cave',
     minPower: 420,
-    affinityTypes: ['water', 'psychic'],
+    weatherTypes: ['water', 'psychic'],
     encounters: [
       enc(79, 40, 9, 13),
       enc(41, 25, 9, 13),
@@ -254,7 +261,7 @@ export const johtoZones: Zone[] = [
       'Une forêt si dense que le soleil n’y perce jamais. Un petit autel y est dédié au protecteur des bois.',
     habitat: 'forest',
     minPower: 480,
-    affinityTypes: ['bug', 'grass'],
+    weatherTypes: ['bug', 'grass'],
     encounters: [
       enc(204, 18, 10, 14),
       enc(165, 12, 10, 14),
@@ -277,7 +284,7 @@ export const johtoZones: Zone[] = [
       'Les prés qui entourent Doublonville et sa Pension. Un Métamorph s’y cache parfois.',
     habitat: 'grassland',
     minPower: 520,
-    affinityTypes: ['normal', 'fairy', 'grass'],
+    weatherTypes: ['normal', 'fairy', 'grass'],
     encounters: [
       enc(209, 18, 12, 16),
       enc(191, 15, 12, 16),
@@ -302,7 +309,7 @@ export const johtoZones: Zone[] = [
       'Une grotte plongée dans le noir complet. On y bute sur des Insolourdo et des Qulbutoké.',
     habitat: 'cave',
     minPower: 560,
-    affinityTypes: ['normal', 'psychic', 'rock'],
+    weatherTypes: ['normal', 'psychic', 'rock'],
     encounters: [
       enc(216, 14, 13, 17),
       enc(206, 10, 13, 17),
@@ -323,7 +330,7 @@ export const johtoZones: Zone[] = [
     description: 'Les routes qui mènent à Rosalia, où paissent les Cerfrousse à la nuit tombée.',
     habitat: 'grassland',
     minPower: 800,
-    affinityTypes: ['normal', 'psychic', 'dark'],
+    weatherTypes: ['normal', 'psychic', 'dark'],
     encounters: [
       enc(234, 14, 16, 20),
       enc(198, 10, 16, 20),
@@ -348,7 +355,7 @@ export const johtoZones: Zone[] = [
       'Les ruines calcinées d’une tour de Rosalia. Trois Pokémon légendaires y seraient nés des flammes.',
     habitat: 'urban',
     minPower: 850,
-    affinityTypes: ['fire', 'dark', 'poison'],
+    weatherTypes: ['fire', 'dark', 'poison'],
     encounters: [
       enc(218, 18, 16, 21),
       enc(228, 12, 16, 21),
@@ -368,7 +375,7 @@ export const johtoZones: Zone[] = [
     description: 'Les pâturages de la Ferme Meuh Meuh, entre Rosalia et Oliville.',
     habitat: 'grassland',
     minPower: 900,
-    affinityTypes: ['normal', 'electric', 'water'],
+    weatherTypes: ['normal', 'electric', 'water'],
     encounters: [
       enc(241, 12, 18, 22),
       enc(209, 8, 18, 22),
@@ -393,7 +400,7 @@ export const johtoZones: Zone[] = [
       'Les routes de montagne qui relient Rosalia, Acajou et Ebenelle, au pied du Mont Creuset.',
     habitat: 'mountain',
     minPower: 1300,
-    affinityTypes: ['normal', 'electric', 'water'],
+    weatherTypes: ['normal', 'electric', 'water'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(190, 12, 22, 28),
@@ -418,7 +425,7 @@ export const johtoZones: Zone[] = [
     description: 'Une montagne creusée de cascades et de galeries. Un Maître Karaté s’y entraîne.',
     habitat: 'cave',
     minPower: 1400,
-    affinityTypes: ['fighting', 'rock', 'water'],
+    weatherTypes: ['fighting', 'rock', 'water'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(183, 16, 22, 28),
@@ -442,7 +449,7 @@ export const johtoZones: Zone[] = [
     habitat: 'sea',
     minPower: 1500,
     requiredTypes: [{ type: 'water', count: 1 }],
-    affinityTypes: ['water'],
+    weatherTypes: ['water'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(170, 16, 22, 28),
@@ -469,7 +476,7 @@ export const johtoZones: Zone[] = [
       'Le grand phare du port, dont la lumière vient d’un Pharamp malade. Des Magnéti y grésillent.',
     habitat: 'urban',
     minPower: 2000,
-    affinityTypes: ['electric', 'steel', 'water'],
+    weatherTypes: ['electric', 'steel', 'water'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(180, 16, 28, 34),
@@ -495,7 +502,7 @@ export const johtoZones: Zone[] = [
     habitat: 'waters-edge',
     minPower: 2400,
     requiredTypes: [{ type: 'water', count: 1 }],
-    affinityTypes: ['water', 'bug'],
+    weatherTypes: ['water', 'bug'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(129, 32, 28, 38),
@@ -520,7 +527,7 @@ export const johtoZones: Zone[] = [
       'Un passage gelé entre Acajou et Ebenelle, où l’on glisse d’un bout à l’autre de la grotte.',
     habitat: 'cave',
     minPower: 2800,
-    affinityTypes: ['ice', 'water', 'dark'],
+    weatherTypes: ['ice', 'water', 'dark'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(220, 24, 32, 38),
@@ -544,7 +551,7 @@ export const johtoZones: Zone[] = [
     description: 'Un sentier de montagne abrupt au sud d’Ebenelle, où dévalent les Phanpy.',
     habitat: 'mountain',
     minPower: 3200,
-    affinityTypes: ['ground', 'rock', 'normal'],
+    weatherTypes: ['ground', 'rock', 'normal'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(231, 18, 36, 42),
@@ -569,7 +576,7 @@ export const johtoZones: Zone[] = [
       'Les routes côtières qui mènent au Plateau Indigo. Les dresseurs y sont tous aguerris.',
     habitat: 'waters-edge',
     minPower: 3600,
-    affinityTypes: ['normal', 'water', 'psychic'],
+    weatherTypes: ['normal', 'water', 'psychic'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(164, 10, 40, 46),
@@ -597,7 +604,7 @@ export const johtoZones: Zone[] = [
       'Le Prof. Orme élève des Germignon, Héricendre et Kaiminus, et étudie un mystérieux œuf de Togepi. Il ouvre son labo aux dresseurs confirmés.',
     habitat: 'grassland',
     minPower: 1000,
-    affinityTypes: ['grass', 'fire', 'water'],
+    weatherTypes: ['grass', 'fire', 'water'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(161, 22, 14, 18),
@@ -622,7 +629,7 @@ export const johtoZones: Zone[] = [
     habitat: 'forest',
     minPower: 1400,
     requiredTypes: [{ type: 'water', count: 1 }],
-    affinityTypes: ['grass', 'rock', 'water'],
+    weatherTypes: ['grass', 'rock', 'water'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(191, 16, 18, 22),
@@ -646,7 +653,7 @@ export const johtoZones: Zone[] = [
     habitat: 'grassland',
     minPower: 1800,
     requiredTypes: [{ type: 'bug', count: 2 }],
-    affinityTypes: ['bug', 'grass'],
+    weatherTypes: ['bug', 'grass'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(165, 12, 20, 26),
@@ -673,7 +680,7 @@ export const johtoZones: Zone[] = [
       'La réserve ouverte au-delà d’Irisia, sur des terres arides et rocheuses. Scorplane et Airmure ne se montrent qu’aux dresseurs patients.',
     habitat: 'rough-terrain',
     minPower: 2600,
-    affinityTypes: ['ground', 'rock', 'flying'],
+    weatherTypes: ['ground', 'rock', 'flying'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(231, 14, 28, 34),
@@ -700,7 +707,7 @@ export const johtoZones: Zone[] = [
       'La montagne interdite entre Johto et Kanto, réservée aux Maîtres. Un dresseur silencieux attendrait au sommet.',
     habitat: 'mountain',
     minPower: 5000,
-    affinityTypes: ['rock', 'ghost', 'ground'],
+    weatherTypes: ['rock', 'ghost', 'ground'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(217, 12, 45, 52),
@@ -729,7 +736,7 @@ export const johtoZones: Zone[] = [
     habitat: 'sea',
     minPower: 3000,
     requiredTypes: [{ type: 'water', count: 2 }],
-    affinityTypes: ['water', 'psychic'],
+    weatherTypes: ['water', 'psychic'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(72, 18, 38, 44),
@@ -755,7 +762,7 @@ export const johtoZones: Zone[] = [
       'La tour à neuf étages de Rosalia. Ses cloches sonnent pour accueillir l’oiseau arc-en-ciel.',
     habitat: 'urban',
     minPower: 4000,
-    affinityTypes: ['fire', 'psychic', 'ghost'],
+    weatherTypes: ['fire', 'psychic', 'ghost'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(198, 12, 45, 50),
@@ -780,7 +787,7 @@ export const johtoZones: Zone[] = [
       'Le petit autel de bois, au cœur de la forêt. On raconte qu’un voyageur du temps y apparaît.',
     habitat: 'forest',
     minPower: 3600,
-    affinityTypes: ['grass', 'bug', 'psychic'],
+    weatherTypes: ['grass', 'bug', 'psychic'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(204, 14, 40, 46),
@@ -1268,6 +1275,7 @@ const reward = (r: Partial<ProgressReward>): ProgressReward => ({
   items: [],
   expeditionSlots: 0,
   daycareSlots: 0,
+  incubators: 0,
   bonuses: [],
   ...r,
 });
@@ -1326,7 +1334,7 @@ export const johtoQuests: Quest[] = [
     order: 0,
     name: 'La bête du tonnerre',
     description: 'Un grondement de tonnerre résonne sous la Tour Cendrée.',
-    unlock: badges(4),
+    unlock: defeated('maitre-peter'),
     steps: [
       step('Orage', 'Capture 10 Pokémon Électrik.', catchOf(10, 'electric')),
       step('Les cendres', 'Capture 5 Pokémon Feu.', catchOf(5, 'fire')),
@@ -1343,7 +1351,7 @@ export const johtoQuests: Quest[] = [
     order: 1,
     name: 'La bête du volcan',
     description: 'Une bête de feu aurait fui la Tour Cendrée en faisant trembler la terre.',
-    unlock: badges(5),
+    unlock: defeated('maitre-peter'),
     steps: [
       step('Braises', 'Capture 10 Pokémon Feu.', catchOf(10, 'fire')),
       step('Sur ses traces', 'Capture 40 % du Pokédex de Johto.', johtoDex(40)),
@@ -1360,7 +1368,7 @@ export const johtoQuests: Quest[] = [
     order: 2,
     name: 'La bête des aurores',
     description: 'Une bête aux reflets de cristal court sur l’eau du Lac Colère.',
-    unlock: badges(6),
+    unlock: defeated('maitre-peter'),
     steps: [
       step('Eaux pures', 'Capture 15 Pokémon Eau.', catchOf(15, 'water')),
       step('Le vent du nord', 'Bats Frédo, le Champion d’Acajou.', defeated('fredo')),
@@ -1377,7 +1385,7 @@ export const johtoQuests: Quest[] = [
     order: 3,
     name: 'Le gardien des mers',
     description: 'Les tourbillons des Tourb’Îles cacheraient un Pokémon aux ailes d’argent.',
-    unlock: badges(7),
+    unlock: defeated('maitre-peter'),
     steps: [
       step(
         'Plongée',
@@ -1402,7 +1410,7 @@ export const johtoQuests: Quest[] = [
     order: 4,
     name: 'L’oiseau arc-en-ciel',
     description: 'Les cloches de la Tour Carillon attendent un dresseur digne de l’oiseau sacré.',
-    unlock: badges(8),
+    unlock: defeated('maitre-peter'),
     steps: [
       step(
         'Les trois bêtes',

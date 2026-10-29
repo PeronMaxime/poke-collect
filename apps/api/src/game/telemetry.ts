@@ -325,18 +325,6 @@ export async function telemetry(
         ),
       ),
     step('dungeon', 'first-dungeon', 'Premier donjon réussi', dungeonFirstWins),
-    ...[...ctx.content.dexMilestones]
-      .sort((a, b) => Number(a.shiny) - Number(b.shiny) || a.order - b.order)
-      .map((m) =>
-        step(
-          'reward',
-          `milestone:${m.id}`,
-          `Palier : ${m.name}`,
-          claims
-            .filter((c) => c.kind === 'milestone' && c.rewardId === m.id)
-            .map((c) => ({ ownerId: c.ownerId, at: c.claimedAt })),
-        ),
-      ),
     ...[...ctx.content.collections]
       .sort((a, b) => a.order - b.order)
       .map((c) =>

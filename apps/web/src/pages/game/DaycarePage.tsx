@@ -32,12 +32,14 @@ import {
   useAssistants,
   useDaycare,
   usePokemon,
+  useShinyBonus,
   useShinyCharm,
 } from '../../lib/game';
 import {
   errorText,
   formatCountdown,
   formatDuration,
+  formatPercentBonus,
   formatShinyRate,
   itemIcon,
   itemName,
@@ -45,6 +47,7 @@ import {
 } from '../../lib/labels';
 import { AbilityLine, AssistantCard } from './AssistantCard';
 import { DepositDialog } from './DepositDialog';
+import { FacilityLocks } from './FacilityLocks';
 import { HatchReveal } from './HatchReveal';
 
 export function DaycarePage({ ctx }: { ctx: GameContext }) {
@@ -96,6 +99,11 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
   const data = daycare.data;
   const serverNow = now + serverOffset(data, daycare.dataUpdatedAt);
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
+  // Pensions affichées : ouvertes, plus celles encore occupées au-delà (réglage baissé).
+  const shownSlots = Math.max(
+    data?.slots ?? 0,
+    ...(data?.pensions ?? []).map((p) => p.slotIndex + 1),
+  );
   // Assistant d'une pension : son talent est figé dans ses œufs au ramassage.
   const helperOf = (slot: number) => {
     const id = assistants.data?.find((a) => a.post === 'daycare' && a.slot === slot)?.pokemonId;
@@ -121,7 +129,7 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
           moins vite selon leurs talents et celui de l’assistant de la pension).
         </p>
         <div className="grid gap-3 md:grid-cols-2">
-          {Array.from({ length: data?.slots ?? 0 }, (_, slot) => {
+          {Array.from({ length: shownSlots }, (_, slot) => {
             const pension = data?.pensions.find((p) => p.slotIndex === slot);
             return pension ? (
               <PensionCard
@@ -158,6 +166,7 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
             <p className="text-sm text-slate-500">Aucune pension débloquée pour l’instant.</p>
           )}
         </div>
+        <FacilityLocks ctx={ctx} facility="daycare" />
       </section>
 
       <section>
@@ -211,6 +220,7 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
             );
           })}
         </div>
+        <FacilityLocks ctx={ctx} facility="incubator" />
       </section>
 
       {notice && <p className="text-sm text-emerald-600">{notice}</p>}
@@ -245,6 +255,7 @@ function PensionCard({
   onCollect: () => void;
   onWithdraw: () => void;
 }) {
+  const shinyBonus = useShinyBonus();
   const { maxEggs } = ctx.balance.breeding;
   const start = Date.parse(pension.startedAt);
   const laid = eggsLaid(ctx, new Date(start), new Date(serverNow), pension.eggMinutes);
@@ -254,10 +265,12 @@ function PensionCard({
   const held = [pension.heldItemAId, pension.heldItemBId];
   const rules = inheritanceRules(ctx, [pension.heldItemAId, pension.heldItemBId]);
   const [pa, pb] = parents;
-  const shinyRate = pa && pb ? eggShinyProbability(ctx, [pa, pb], charm, helper) : null;
+  const shinyRate =
+    pa && pb ? eggShinyProbability(ctx, [pa, pb], charm * shinyBonus, helper) : null;
   const shinyBonuses = [
     pa && pb && isMasudaPair(pa, pb) && 'Masuda',
     charm > 1 && 'Charme Chroma',
+    shinyBonus > 1 && `bonus +${formatPercentBonus(shinyBonus)}`,
   ].filter(Boolean);
 
   return (

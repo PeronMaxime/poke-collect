@@ -1,5 +1,13 @@
 import { STAT_NAMES } from '@poke/data';
-import type { Encounter, ItemStack, LootTable, QuestPokemon, Weather, Zone } from '@poke/content';
+import type {
+  Encounter,
+  ItemStack,
+  LootTable,
+  QuestPokemon,
+  SpecialEncounter,
+  Weather,
+  Zone,
+} from '@poke/content';
 import type { GameContext } from './context';
 import {
   MAX_IV,
@@ -137,6 +145,25 @@ export function weightedEncounters(
       value: e,
       weight: e.weight * pityMultiplier(ctx, pity.get(e.speciesId) ?? 0) * typeFactor(e),
     }));
+}
+
+/**
+ * Rencontres spéciales qu'ouvrent des Pokémon (l'équipe d'une expédition, ou ceux du joueur pour
+ * l'affichage) : il faut le Pokémon requis exact, espèce et forme, pas une évolution.
+ */
+export function specialEncountersFor(
+  ctx: GameContext,
+  zone: Pick<Zone, 'specialEncounters'>,
+  pokemon: readonly Pick<PokemonInstance, 'speciesId' | 'formId'>[],
+): SpecialEncounter[] {
+  return zone.specialEncounters.filter(
+    (s) =>
+      ctx.species(s.speciesId)?.enabled &&
+      pokemon.some(
+        (p) =>
+          p.speciesId === s.requiredSpeciesId && (p.formId ?? null) === (s.requiredFormId ?? null),
+      ),
+  );
 }
 
 /** Probabilité d'apparition de chaque espèce (pour l'admin et l'affichage). */
@@ -476,6 +503,8 @@ export interface EncounterResult {
   pokemon?: PokemonInstance;
   /** Fuyard de cette quête (absent pour une rencontre ordinaire). */
   questId?: string;
+  /** Rencontre spéciale, ouverte par un Pokémon de l'équipe. */
+  special?: true;
 }
 
 /** XP de base que rapporte un Pokémon vaincu (ou rencontré), avant multiplicateur. */
@@ -617,6 +646,8 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
   let xpPerMember = 0;
   // Sans fuyard, aucun tirage en plus : les seeds restent inchangés.
   const roamers = [...(input.roamers ?? [])];
+  // Idem sans rencontre spéciale ouverte par l'équipe.
+  const specials = specialEncountersFor(ctx, zone, input.team);
   for (let i = 0; i < plan.encounters; i++) {
     const roamerIndex = roamers.findIndex((r) =>
       rng.chance(roamerEncounterChance(ctx, r.target, r.target.roaming ?? 0, attracted) / 100),
@@ -652,6 +683,50 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
       ballsLeft--;
       if (useBerry) berriesLeft--;
       const captured = rng.chance(captureChance);
+      encounters.push({
+        ...base,
+        outcome: captured ? 'captured' : 'escaped',
+        captureChance,
+        ...(captured && { pokemon: wild }),
+      });
+      continue;
+    }
+    const specialIndex = specials.findIndex((s) => rng.chance(s.chance / 100));
+    if (specialIndex >= 0) {
+      // Rencontre spéciale : une fois au plus, jamais chromatique ; toujours tentée s'il reste une
+      // Ball, quel que soit le filtre ; pas de pitié.
+      const [special] = specials.splice(specialIndex, 1) as [SpecialEncounter];
+      const species = ctx.species(special.speciesId, special.formId)!;
+      const formId = species.form?.id ?? null;
+      const level = Math.min(
+        MAX_LEVEL,
+        Math.max(1, rng.int(special.minLevel, special.maxLevel) + extraLevels),
+      );
+      const wild = generatePokemon(ctx, rng, species.id, level, { shinyProbability: 0, formId });
+      if (perfectIvs > 0) wild.ivs = withPerfectIvs(rng, wild.ivs, perfectIvs);
+      applyWildAbilities(ctx, env, rng, wild);
+      xpPerMember += Math.floor(defeatXp(species, level) * ctx.balance.xp.multiplier * bonuses.xp);
+      const base = { speciesId: species.id, formId, level, isShiny: false, special: true as const };
+      if (ballsLeft <= 0) {
+        encounters.push({ ...base, outcome: 'noBall', captureChance: 0 });
+        continue;
+      }
+      const useBerry = berriesLeft > 0;
+      const captureChance = captureProbability(ctx, {
+        captureRate: species.captureRate,
+        ballMultiplier,
+        guaranteed,
+        boostMultiplier: useBerry ? boostMultiplier : 1,
+        affinityCount,
+        bonusMultiplier: bonuses.capture,
+      });
+      ballsLeft--;
+      if (useBerry) berriesLeft--;
+      const captured = rng.chance(captureChance);
+      if (captured) {
+        caught.speciesIds.add(species.id);
+        if (formId != null) caught.formIds.add(formId);
+      }
       encounters.push({
         ...base,
         outcome: captured ? 'captured' : 'escaped',

@@ -55,6 +55,12 @@ export const SECTIONS: AdminSection[] = [
     phase: 1,
   },
   {
+    path: '/power-calculator',
+    label: 'Calculateur de PE',
+    description: 'Équipes de test, PE par zone et niveau requis pour équilibrer les expéditions.',
+    phase: 1,
+  },
+  {
     path: '/trainers',
     label: 'Dresseurs',
     description: 'Équipe, PE, conditions, récompenses, badges, rejouabilité.',
@@ -107,13 +113,14 @@ export const SECTIONS: AdminSection[] = [
   {
     path: '/progression',
     label: 'Progression',
-    description: 'Paliers du Pokédex et collections thématiques.',
+    description: 'Collections thématiques, complétion des expéditions et bâtiments.',
     phase: 5,
   },
   {
     path: '/menu',
     label: 'Menu du jeu',
-    description: 'Ordre des onglets et groupes du menu, par glisser-déposer.',
+    description:
+      'Ordre des onglets et groupes du menu, et condition de déblocage de chaque onglet.',
     phase: 0,
   },
   {

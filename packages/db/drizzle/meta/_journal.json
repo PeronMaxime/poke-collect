@@ -589,6 +589,97 @@
       "when": 1793057346614,
       "tag": "0083_coffres_guilde_fin_de_periode",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1793096546339,
+      "tag": "0084_hoenn",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1793197136494,
+      "tag": "0085_deblocage_onglets",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1793269314302,
+      "tag": "0086_affinites_zones",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1793300000000,
+      "tag": "0087_retrait_dominants",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1793350000000,
+      "tag": "0088_formes_vues",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1793360000000,
+      "tag": "0089_neuf_expeditions",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1793400000000,
+      "tag": "0090_collections_regions",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1793440000000,
+      "tag": "0091_collections_formes",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1793450000000,
+      "tag": "0092_completion_recompenses",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1793450001000,
+      "tag": "0093_completion_expeditions",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1793460000000,
+      "tag": "0094_retrait_paliers_pokedex",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1793470002000,
+      "tag": "0095_ajustements_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1793480000000,
+      "tag": "0096_rencontres_speciales",
+      "breakpoints": true
     }
   ]
 }

@@ -335,10 +335,14 @@ export function ExpeditionRevealView({
                   <span className="absolute -top-2 rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white">
                     Nouveau !
                   </span>
+                ) : e.questId ? (
+                  <span className="absolute -top-2 rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
+                    Fuyard !
+                  </span>
                 ) : (
-                  e.questId && (
-                    <span className="absolute -top-2 rounded-full bg-amber-500 px-1.5 text-[10px] font-bold text-white">
-                      Fuyard !
+                  e.special && (
+                    <span className="absolute -top-2 rounded-full bg-violet-500 px-1.5 text-[10px] font-bold text-white">
+                      Spécial !
                     </span>
                   )
                 )}

@@ -19,7 +19,6 @@ import type {
 import type { ContentCache } from '../content-cache';
 import {
   collectEggs,
-  daycareSlotCount,
   depositDaycare,
   feedCandies,
   hatchEggs,
@@ -31,7 +30,13 @@ import {
   withdrawDaycare,
 } from '../game/daycare';
 import { assistantHolders } from '../game/assistants';
-import { claimedRewards, eggsHatchedCount, pokemonActivities, toPokemonDto } from '../game/store';
+import {
+  assertTabUnlocked,
+  eggsHatchedCount,
+  playerFacilityPlaces,
+  pokemonActivities,
+  toPokemonDto,
+} from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
@@ -41,7 +46,7 @@ interface Deps {
   now: () => Date;
 }
 
-const slotParams = z.object({ slot: z.coerce.number().int().min(0).max(30) });
+const slotParams = z.object({ slot: z.coerce.number().int().min(0).max(999) });
 const uuidParams = z.object({ id: z.uuid() });
 
 /** Pension, œufs, transfert de Pokémon et Bonbons de lignée. */
@@ -51,16 +56,18 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
   app.get('/api/daycare', async (request): Promise<DaycareResponse> => {
     const userId = request.user!.id;
     const ctx = await content.get();
-    const [{ slots, parents }, eggRows, eggsHatched, claimed, helpers] = await Promise.all([
-      loadDaycare(db, userId),
-      pendingEggs(db, userId),
-      eggsHatchedCount(db, userId),
-      claimedRewards(db, userId),
-      assistantHolders(db, userId, 'daycare'),
-    ]);
+    const [{ slots, parents }, eggRows, eggsHatched, places, eggPlaces, helpers] =
+      await Promise.all([
+        loadDaycare(db, userId),
+        pendingEggs(db, userId),
+        eggsHatchedCount(db, userId),
+        playerFacilityPlaces(db, ctx, userId, 'daycare'),
+        playerFacilityPlaces(db, ctx, userId, 'incubator'),
+        assistantHolders(db, userId, 'daycare'),
+      ]);
     return {
-      slots: daycareSlotCount(ctx, claimed),
-      maxEggs: ctx.balance.breeding.maxEggs,
+      slots: places,
+      maxEggs: eggPlaces,
       eggsHatched,
       serverTime: now().toISOString(),
       pensions: slots.map((s) => toDaycareDto(ctx, s, parents, helpers.get(s.slotIndex) ?? null)),
@@ -71,6 +78,7 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
   app.post('/api/daycare', async (request, reply) => {
     const input = depositDaycareInputSchema.parse(request.body);
     const userId = request.user!.id;
+    await assertTabUnlocked(db, await content.get(), userId, 'daycare');
     const row = await depositDaycare(db, content, userId, input, now());
     const { parents } = await loadDaycare(db, userId);
     const helper = (await assistantHolders(db, userId, 'daycare')).get(row.slotIndex) ?? null;

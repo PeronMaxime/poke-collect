@@ -47,6 +47,7 @@ content.quests.push({
     items: [],
     expeditionSlots: 0,
     daycareSlots: 0,
+    incubators: 0,
     bonuses: [],
     pokemon: [{ ...raikou, roaming: 100 }],
   },

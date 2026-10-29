@@ -7,7 +7,7 @@ import type { Ability, SpeciesAbility } from '@poke/data';
 import { abilityEffectText } from '@poke/game-core';
 import { searchKey } from '@poke/shared';
 import { IssueList, VersionBanner } from '../../components/EntityPage';
-import { Field, TextInput, validate } from '../../components/forms/fields';
+import { Field, TextInput, Toggle, validate } from '../../components/forms/fields';
 import { Sprite } from '../../components/forms/pickers';
 import type { GameContext } from '@poke/game-core';
 import type { WorkingVersion } from '../../lib/content';
@@ -105,6 +105,19 @@ function abilityRows(ctx: GameContext, regionFilter: string) {
     .filter(({ holders }) => holders.length > 0);
 }
 
+/**
+ * Talents qu'aucun Pokémon des régions précédentes (d'ordre inférieur) ne possède : ceux qui
+ * apparaissent avec cette région.
+ */
+function isNewInRegion(ctx: GameContext, regionId: string, abilityName: string) {
+  const region = ctx.region(regionId);
+  if (!region) return true;
+  const earlier = new Set(
+    ctx.regions.filter((r) => r.order < region.order).flatMap((r) => r.speciesIds),
+  );
+  return !(HOLDERS.get(abilityName) ?? []).some((h) => earlier.has(h.speciesId));
+}
+
 export function AbilitiesPage() {
   const working = useWorkingVersion();
   const [search, setSearch] = useState('');
@@ -112,6 +125,8 @@ export function AbilitiesPage() {
   const [effectFilter, setEffectFilter] = useState<EffectFilter>('all');
   // 'game' = toutes les régions du jeu ; 'all' = tous les Pokémon ; sinon l'id d'une région.
   const [regionFilter, setRegionFilter] = useState('game');
+  // Avec une région choisie : seulement les talents absents des régions précédentes.
+  const [newOnly, setNewOnly] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
   const [summaryOpen, setSummaryOpen] = useState(false);
   if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
@@ -120,9 +135,14 @@ export function AbilitiesPage() {
   const { ctx } = w;
   const needle = searchKey(search.trim());
 
+  const regionSelected = !!ctx.region(regionFilter);
   const allRows = abilityRows(ctx, regionFilter);
-  const withEffect = allRows.filter((r) => hasEffect(r.entry)).length;
-  const rows = allRows
+  const scopedRows =
+    regionSelected && newOnly
+      ? allRows.filter((r) => isNewInRegion(ctx, regionFilter, r.ability.name))
+      : allRows;
+  const withEffect = scopedRows.filter((r) => hasEffect(r.entry)).length;
+  const rows = scopedRows
     .filter(({ holders }) =>
       kind === 'all' ? true : holders.some((h) => h.isHidden === (kind === 'hidden')),
     )
@@ -179,8 +199,11 @@ export function AbilitiesPage() {
           ))}
           <option value="all">Tous les Pokémon (hors jeu compris)</option>
         </select>
+        {regionSelected && (
+          <Toggle checked={newOnly} onChange={setNewOnly} label="Nouveau talent" />
+        )}
         <span className="text-sm text-slate-500">
-          {rows.length} talent(s) · {withEffect} / {allRows.length} avec un effet
+          {rows.length} talent(s) · {withEffect} / {scopedRows.length} avec un effet
         </span>
       </div>
       <div className="card overflow-x-auto p-0">
@@ -256,7 +279,7 @@ export function AbilitiesPage() {
 }
 
 /**
- * Ajoute au brouillon les effets proposés (Kanto et Johto) des talents encore sans réglage :
+ * Ajoute au brouillon les effets proposés (Kanto, Johto et Hoenn) des talents encore sans réglage :
  * un talent déjà réglé, même sans effet, n'est jamais modifié.
  */
 function PrefillPanel({ working }: { working: WorkingVersion }) {
@@ -278,9 +301,9 @@ function PrefillPanel({ working }: { working: WorkingVersion }) {
   return (
     <div className="card flex flex-wrap items-center gap-3 p-3 text-sm">
       <p className="min-w-0 flex-1 text-slate-600 dark:text-slate-300">
-        {missing.length} talent(s) de Kanto et Johto n’ont encore aucun réglage : une proposition
-        d’effet inspirée du jeu d’origine est prête pour chacun. Les talents déjà réglés ne sont pas
-        modifiés.
+        {missing.length} talent(s) de Kanto, Johto et Hoenn n’ont encore aucun réglage : une
+        proposition d’effet inspirée du jeu d’origine est prête pour chacun. Les talents déjà réglés
+        ne sont pas modifiés.
       </p>
       {prefill.error && <p className="text-red-600">{errorMessage(prefill.error)}</p>}
       <button className="btn-primary" disabled={prefill.isPending} onClick={() => prefill.mutate()}>

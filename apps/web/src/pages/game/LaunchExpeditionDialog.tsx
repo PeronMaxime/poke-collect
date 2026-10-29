@@ -19,6 +19,7 @@ import {
   resolveWeather,
   roamerEncounterChance,
   roamerMeetChance,
+  specialEncountersFor,
   zoneWeather,
   nextChainPerfectIvThreshold,
   shinyProbability,
@@ -37,6 +38,7 @@ import {
   PLAYER_STATE_KEYS,
   useExpeditions,
   useInventory,
+  useShinyBonus,
   useShinyCharm,
   utcOffsetMinutes,
 } from '../../lib/game';
@@ -44,6 +46,7 @@ import {
   GAME_ERRORS,
   formatDuration,
   formatMultiplier,
+  formatPercentBonus,
   formatShinyRate,
   itemIcon,
   itemName,
@@ -230,6 +233,7 @@ export function LaunchExpeditionForm({
   onCancel: () => void;
   onSubmit: (input: StartExpeditionInput) => void;
 }) {
+  const shinyBonus = useShinyBonus();
   const perfectIvs = chainPerfectIvs(ctx, chain);
   const nextIvThreshold = nextChainPerfectIvThreshold(ctx, chain);
   const [duration, setDuration] = useState(zone.durationsMinutes[0]!);
@@ -293,13 +297,20 @@ export function LaunchExpeditionForm({
     ...r,
     encounterChance: roamerEncounterChance(ctx, r, r.encounterChance, attracted),
   }));
-  // Fuyards dans le même pool que les autres, comme au serveur : chacun est tiré avant les
-  // Pokémon de la zone, qui se partagent le reste. Une fois croisé, il en sort et les autres
-  // retrouvent leur part entière.
+  // Rencontres spéciales qu'ouvre l'équipe (Pokémon requis exact).
+  const specials = specialEncountersFor(ctx, zone, members);
+  // Fuyards puis rencontres spéciales dans le même pool que les autres, comme au serveur : chacun
+  // est tiré avant les Pokémon de la zone, qui se partagent le reste. Une fois croisé, il en sort
+  // et les autres retrouvent leur part entière.
+  const extraChances = [
+    ...roamers.map((r) => r.encounterChance),
+    ...specials.map((sp) => sp.chance),
+  ];
   const missedAll = (n: number) =>
-    roamers.slice(0, n).reduce((rest, r) => rest * (1 - r.encounterChance / 100), 1);
+    extraChances.slice(0, n).reduce((rest, chance) => rest * (1 - chance / 100), 1);
   const roamerShares = roamers.map((r, i) => missedAll(i) * (r.encounterChance / 100));
-  const normalShare = missedAll(roamers.length);
+  const specialShares = specials.map((sp, i) => missedAll(roamers.length + i) * (sp.chance / 100));
+  const normalShare = missedAll(extraChances.length);
   const zoneSpeciesIds = [...new Set(possibleEncounters.map((e) => e.speciesId))];
   const updateFilter = (patch: Partial<CaptureFilter>) =>
     setCaptureFilter((f) => ({ ...(f ?? NO_FILTER), ...patch }));
@@ -346,11 +357,16 @@ export function LaunchExpeditionForm({
         {formatShinyRate(
           Math.min(
             1,
-            shinyProbability(ctx, { chain, charm }) * abilityMultiplier(ctx, env, 'shinyChance'),
+            shinyProbability(ctx, { chain, charm, bonus: shinyBonus }) *
+              abilityMultiplier(ctx, env, 'shinyChance'),
           ),
         )}
-        {(chain > 0 || charm > 1) &&
-          ` (${[chain > 0 && `chaîne ${chain}`, charm > 1 && 'Charme Chroma']
+        {(chain > 0 || charm > 1 || shinyBonus > 1) &&
+          ` (${[
+            chain > 0 && `chaîne ${chain}`,
+            charm > 1 && 'Charme Chroma',
+            shinyBonus > 1 && `bonus +${formatPercentBonus(shinyBonus)}`,
+          ]
             .filter(Boolean)
             .join(', ')})`}
         .
@@ -371,6 +387,21 @@ export function LaunchExpeditionForm({
             {formatChance(roamerMeetChance(r.encounterChance, encounters))}. S’il reste une Ball,
             elle lui est lancée quel que soit le filtre de capture. L’expédition l’emmène avec elle
             : il n’apparaît plus ailleurs jusqu’à son retour.
+          </span>
+        </p>
+      ))}
+      {specials.map((sp) => (
+        <p
+          key={`special:${sp.speciesId}:${sp.formId ?? ''}`}
+          className="mt-2 flex items-center gap-2 rounded-lg bg-violet-50 px-2 py-1 text-xs text-violet-800 dark:bg-violet-950/40 dark:text-violet-300"
+        >
+          <PokemonSprite speciesId={sp.speciesId} formId={sp.formId} size={40} />
+          <span>
+            ✧ Grâce à <strong>{speciesName(ctx, sp.requiredSpeciesId, sp.requiredFormId)}</strong>,{' '}
+            <strong>{speciesName(ctx, sp.speciesId, sp.formId)}</strong> peut apparaître ! Chances
+            de le croiser pendant cette expédition :{' '}
+            {formatChance(roamerMeetChance(sp.chance, encounters))}. S’il reste une Ball, elle lui
+            est lancée quel que soit le filtre de capture.
           </span>
         </p>
       ))}
@@ -607,6 +638,36 @@ export function LaunchExpeditionForm({
               />
               <span className="min-w-0 truncate">✦ {species.nameFr}</span>
               <span className="shrink-0">· {formatChance(roamerShares[i]!)}</span>
+              <CaptureChance chance={chance} />
+            </li>
+          );
+        })}
+        {specials.map((sp, i) => {
+          const species = ctx.species(sp.speciesId, sp.formId)!;
+          // Toujours visée, quel que soit le filtre de capture.
+          const chance = ballEffect
+            ? captureProbability(ctx, {
+                captureRate: species.captureRate,
+                ballMultiplier: ballEffect.catchMultiplier,
+                boostMultiplier: boost,
+                affinityCount: check.affinityCount,
+                bonusMultiplier: captureBonus,
+              })
+            : 0;
+          return (
+            <li
+              key={`special:${sp.speciesId}:${sp.formId ?? ''}`}
+              className="flex min-w-0 items-center gap-1 text-violet-800 dark:text-violet-300"
+              title={`Rencontre spéciale : ${formatChance(roamerMeetChance(sp.chance, encounters))} de chances de la croiser pendant l’expédition, une fois au plus. Jamais chromatique.`}
+            >
+              <PokemonSprite
+                speciesId={sp.speciesId}
+                formId={sp.formId}
+                size={32}
+                className="shrink-0"
+              />
+              <span className="min-w-0 truncate">✧ {species.nameFr}</span>
+              <span className="shrink-0">· {formatChance(specialShares[i]!)}</span>
               <CaptureChance chance={chance} />
             </li>
           );

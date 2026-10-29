@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { IMPOSED_WEATHERS, zoneSchema } from '@poke/content';
-import type { Encounter, ImposedWeather, Zone } from '@poke/content';
+import { DEFAULT_SPECIAL_ENCOUNTER_CHANCE, IMPOSED_WEATHERS, zoneSchema } from '@poke/content';
+import type { Encounter, ImposedWeather, SpecialEncounter, Zone } from '@poke/content';
 import { habitats } from '@poke/data';
 import { WEATHER_LABELS, simulateZone, weatherHour, zoneWeatherAtHour } from '@poke/game-core';
 import type { ZoneSimulation } from '@poke/game-core';
@@ -71,6 +71,7 @@ export function ZonesPage() {
         unlock: { type: 'always' },
         weatherChangeChance: 0,
         weathers: [],
+        specialEncounters: [],
       })}
       duplicate={(z) => ({ ...structuredClone(z), id: `${z.id}-copie`, name: `${z.name} (copie)` })}
       renderForm={(p) => <ZoneForm {...p} />}
@@ -287,6 +288,16 @@ function ZoneForm({ value: z, onChange, errors, isNew, editable, working }: Enti
         />
       </Section>
 
+      <Section title="Rencontres spéciales">
+        <SpecialEncounterEditor
+          working={working}
+          specials={z.specialEncounters}
+          onChange={(v) => set('specialEncounters', v)}
+          errors={errors}
+          disabled={disabled}
+        />
+      </Section>
+
       <Section title="Météo">
         <ZoneWeatherEditor
           zone={z}
@@ -449,6 +460,168 @@ function EncounterTable({
           }
         >
           + Rencontre
+        </button>
+      )}
+    </div>
+  );
+}
+
+/**
+ * Rencontres spéciales (formes événementielles) : possibles seulement avec le Pokémon requis exact
+ * dans l'équipe ; jamais chromatiques, une fois au plus par expédition.
+ */
+function SpecialEncounterEditor({
+  working,
+  specials,
+  onChange,
+  errors,
+  disabled,
+}: {
+  working: WorkingVersion;
+  specials: SpecialEncounter[];
+  onChange: (v: SpecialEncounter[]) => void;
+  errors: ReadonlyMap<string, string>;
+  disabled: boolean;
+}) {
+  const { ctx } = working;
+  const update = (i: number, patch: Partial<SpecialEncounter>) =>
+    onChange(specials.map((s, j) => (j === i ? { ...s, ...patch } : s)));
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-slate-500">
+        Le Pokémon n’apparaît que si l’équipe compte le Pokémon requis exact (espèce et forme, pas
+        une évolution). Chaque rencontre a alors les chances indiquées d’être lui, une fois au plus
+        par expédition ; il n’est jamais chromatique et une Ball lui est toujours lancée. Quand le
+        joueur possède le Pokémon requis, la phrase énigmatique s’affiche sur la zone et il rejoint
+        la liste de ses Pokémon.
+      </p>
+      {specials.map((s, i) => {
+        const rowErrors = errorsUnder(errors as Map<string, string>, `specialEncounters.${i}`);
+        return (
+          <div
+            key={i}
+            className="space-y-3 rounded-xl border border-slate-200 p-3 dark:border-slate-800"
+          >
+            <div className="flex items-start gap-3">
+              <Sprite id={s.speciesId} formId={s.formId} size={56} />
+              <div className="grid flex-1 gap-3 sm:grid-cols-2">
+                <Field label="Pokémon rencontré">
+                  <SpeciesSelect
+                    ctx={ctx}
+                    value={s.speciesId}
+                    disabled={disabled}
+                    onChange={(speciesId) => update(i, { speciesId, formId: null })}
+                  />
+                  <FormSelect
+                    speciesId={s.speciesId}
+                    value={s.formId}
+                    disabled={disabled}
+                    onChange={(formId) => update(i, { formId })}
+                  />
+                </Field>
+                <Field
+                  label="Pokémon requis dans l’équipe"
+                  hint="Ce Pokémon exact, dans cette forme."
+                >
+                  <SpeciesSelect
+                    ctx={ctx}
+                    value={s.requiredSpeciesId}
+                    disabled={disabled}
+                    onChange={(requiredSpeciesId) =>
+                      update(i, { requiredSpeciesId, requiredFormId: null })
+                    }
+                  />
+                  <FormSelect
+                    speciesId={s.requiredSpeciesId}
+                    value={s.requiredFormId}
+                    disabled={disabled}
+                    onChange={(requiredFormId) => update(i, { requiredFormId })}
+                  />
+                </Field>
+              </div>
+              {!disabled && (
+                <button
+                  type="button"
+                  className="text-slate-400 hover:text-red-600"
+                  onClick={() => onChange(specials.filter((_, j) => j !== i))}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+            <div className="grid gap-3 sm:grid-cols-3">
+              <Field label="Niv. min">
+                <NumberInput
+                  value={s.minLevel}
+                  min={1}
+                  max={100}
+                  disabled={disabled}
+                  onChange={(minLevel) => update(i, { minLevel })}
+                />
+              </Field>
+              <Field label="Niv. max">
+                <NumberInput
+                  value={s.maxLevel}
+                  min={1}
+                  max={100}
+                  disabled={disabled}
+                  onChange={(maxLevel) => update(i, { maxLevel })}
+                />
+              </Field>
+              <Field label="Chances par rencontre">
+                <NumberInput
+                  value={s.chance}
+                  min={0.01}
+                  max={100}
+                  step={0.5}
+                  unit="%"
+                  disabled={disabled}
+                  onChange={(chance) => update(i, { chance })}
+                />
+              </Field>
+            </div>
+            <Field
+              label="Phrase énigmatique"
+              hint="Affichée sur la fiche de la zone, si le joueur possède le Pokémon requis."
+            >
+              <TextInput
+                multiline
+                value={s.hint}
+                onChange={(hint) => update(i, { hint })}
+                disabled={disabled}
+                maxLength={300}
+              />
+            </Field>
+            {rowErrors.map((m) => (
+              <p key={m} className="text-xs text-red-600">
+                {m}
+              </p>
+            ))}
+          </div>
+        );
+      })}
+      {!disabled && (
+        <button
+          type="button"
+          className="btn-ghost py-1 text-xs"
+          onClick={() =>
+            onChange([
+              ...specials,
+              {
+                speciesId: 25,
+                formId: null,
+                minLevel: 5,
+                maxLevel: 10,
+                requiredSpeciesId: 133,
+                requiredFormId: null,
+                chance: DEFAULT_SPECIAL_ENCOUNTER_CHANCE,
+                hint: '',
+              },
+            ])
+          }
+        >
+          + Rencontre spéciale
         </button>
       )}
     </div>

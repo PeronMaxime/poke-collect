@@ -560,10 +560,11 @@ export const shopSeen = pgTable(
   (t) => [primaryKey({ columns: [t.ownerId, t.shopEntryId] })],
 );
 
-export const rewardKind = pgEnum('reward_kind', ['milestone', 'collection']);
+export const rewardKind = pgEnum('reward_kind', ['collection', 'completion']);
 
 /**
- * Récompenses de progression réclamées (paliers du Pokédex, collections) : une seule fois chacune.
+ * Récompenses de progression réclamées (collections, complétions d'expédition
+ * par expédition ou région : `complétion:cible`) : une seule fois chacune.
  * Les emplacements et bonus permanents en découlent.
  */
 export const rewardClaims = pgTable(
@@ -600,6 +601,13 @@ export const pokedex = pgTable(
     caughtShiny: boolean('caught_shiny').notNull().default(false),
     /** Version shiny rencontrée (capturée ou non) : la case du Pokédex shiny se dévoile. */
     seenShiny: boolean('seen_shiny').notNull().default(false),
+    /**
+     * Formes de l'espèce rencontrées (expédition, combat), capturées ou non : voir la forme
+     * normale ne dévoile pas les formes alternatives.
+     */
+    seenFormIds: integer('seen_form_ids').array().notNull().default([]),
+    /** Formes rencontrées en version shiny. */
+    seenShinyFormIds: integer('seen_shiny_form_ids').array().notNull().default([]),
     firstCaughtAt: timestamp('first_caught_at', { withTimezone: true }),
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.speciesId] })],

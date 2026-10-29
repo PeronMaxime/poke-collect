@@ -1,14 +1,14 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { playerProfiles, questProgress } from '@poke/db';
 import type { Db } from '@poke/db';
-import { NEW_QUEST, advanceQuest, playerSlots, questStatus, questStepsDone } from '@poke/game-core';
+import { NEW_QUEST, advanceQuest, questStatus, questStepsDone } from '@poke/game-core';
 import type { GameContext, PlayerSlots, QuestEvent } from '@poke/game-core';
 import type { QuestReward } from '@poke/content';
 import type { QuestProgressDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
 import { requireStartedProfile } from './expeditions';
-import { addItems, baseProgress, claimedRewards, questRecords, questRows } from './store';
+import { addItems, baseProgress, playerSlotsNow, questRecords, questRows } from './store';
 import type { QuestProgressRow } from './store';
 
 /**
@@ -140,7 +140,7 @@ export async function claimQuest(
       .where(eq(playerProfiles.userId, userId))
       .returning({ currency: playerProfiles.currency });
 
-    const slots = playerSlots(ctx, await claimedRewards(tx, userId));
+    const slots = await playerSlotsNow(tx, ctx, userId);
     return { rewards, currency: profile?.currency ?? 0, slots };
   });
 }

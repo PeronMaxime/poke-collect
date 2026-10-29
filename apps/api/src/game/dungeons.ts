@@ -28,6 +28,7 @@ import {
   assertAvailable,
   claimedRewards,
   playerProgress,
+  recordPokedex,
   takeItems,
   toInstance,
 } from './store';
@@ -55,6 +56,14 @@ export function commandAtMs(
 ): number {
   const last = commands.at(-1)?.atMs ?? 0;
   return Math.min(elapsed, Math.max(requested, last, elapsed - SWITCH_TOLERANCE_MS));
+}
+
+/**
+ * Adversaires rencontrés pendant un combat terminé : ceux vaincus et celui qui se battait à la
+ * fin (le premier est rencontré dès le départ).
+ */
+export function metEnemies(setup: DungeonSetup, defeated: number) {
+  return setup.enemies.slice(0, Math.min(defeated + 1, setup.enemies.length));
 }
 
 /**
@@ -388,6 +397,11 @@ export async function claimDungeonRun(
         })
         .where(eq(pokemon.id, m.id));
     }
+    await recordPokedex(tx, userId, {
+      met: metEnemies(found.setup, result.defeated),
+      caught: [],
+      at: now,
+    });
     await addItems(tx, userId, [
       ...result.loot,
       ...(result.gemItemId ? [{ itemId: result.gemItemId, quantity: 1 }] : []),

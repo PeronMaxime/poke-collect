@@ -135,6 +135,10 @@ export const yieldRange = (effect: { minYield: number; maxYield: number }) =>
     : `${effect.minYield}`;
 
 /** Probabilité shiny lisible : « 1 / 4 096 ». */
+/** Bonus d'un multiplicateur : 1.01 → « 1 % », 1.255 → « 25,5 % ». */
+export const formatPercentBonus = (multiplier: number) =>
+  `${(Math.round((multiplier - 1) * 1000) / 10).toLocaleString('fr-FR')} %`;
+
 export function formatShinyRate(probability: number): string {
   if (probability >= 1) return '100 %';
   if (probability <= 0) return '0';
@@ -145,19 +149,28 @@ export function formatShinyRate(probability: number): string {
 export const formatMultiplier = (m: number) =>
   `× ${m.toLocaleString('fr-FR', { maximumFractionDigits: 2 })}`;
 
+/**
+ * Nom d'une région ; une région pas encore ouverte aux joueurs n'est pas dans le contexte : son
+ * identifiant avec une majuscule (« kalos » → « Kalos »).
+ */
+const regionName = (ctx: GameContext, id: string) =>
+  ctx.region(id)?.name ?? id.charAt(0).toUpperCase() + id.slice(1);
+
 /** Condition de déblocage en clair (null pour « toujours ») : à afficher avec un cadenas. */
 export function unlockConditionText(ctx: GameContext, u: UnlockCondition): string | null {
   switch (u.type) {
     case 'always':
       return null;
     case 'regionDexPercent':
-      return `Capture ${u.percent} % du Pokédex de ${ctx.region(u.regionId)?.name ?? u.regionId}`;
+      return `Capture ${u.percent} % du Pokédex de ${regionName(ctx, u.regionId)}`;
     case 'trainerDefeated': {
       const other = ctx.trainer(u.trainerId);
       return `Bats ${other ? `${other.trainerClass} ${other.name}` : u.trainerId}`;
     }
+    case 'regionUnlocked':
+      return `Débloque la région ${regionName(ctx, u.regionId)}`;
     case 'badgeCount': {
-      const region = u.regionId && (ctx.region(u.regionId)?.name ?? u.regionId);
+      const region = u.regionId && regionName(ctx, u.regionId);
       return `Obtiens ${u.count} badge${u.count > 1 ? 's' : ''}${region ? ` de ${region}` : ''}`;
     }
     case 'speciesCaught':
@@ -240,6 +253,7 @@ const BONUS_LABELS: Record<PermanentBonus['type'], string> = {
   capture: 'capture en expédition',
   xp: 'XP gagnée',
   money: 'Poké Dollars gagnés en combat',
+  shiny: 'chance de chromatique',
 };
 
 export const bonusText = (b: PermanentBonus) => `+${b.percent} % ${BONUS_LABELS[b.type]}`;
@@ -251,6 +265,7 @@ export function rewardLines(r: ProgressReward): string[] {
     r.currency > 0 && formatMoney(r.currency),
     r.expeditionSlots > 0 && plural(r.expeditionSlots, 'emplacement') + ' d’expédition',
     r.daycareSlots > 0 && plural(r.daycareSlots, 'pension'),
+    r.incubators > 0 && plural(r.incubators, 'couveuse'),
     ...r.bonuses.map(bonusText),
   ].filter((line): line is string => typeof line === 'string');
 }
@@ -376,6 +391,7 @@ export const GAME_ERRORS: Record<string, string> = {
   POKEMON_IN_OTHER_TEAM: 'Un de ces Pokémon fait déjà partie d’une autre équipe.',
   DUNGEON_NOT_FOUND: 'Ce donjon n’existe plus.',
   DUNGEON_LOCKED: 'Ce donjon n’est pas encore ouvert.',
+  TAB_LOCKED: 'Cette partie du jeu n’est pas encore débloquée.',
   DUNGEON_COOLDOWN: 'Ce donjon se referme pour l’instant : reviens plus tard.',
   DUNGEON_BUSY: 'Tu explores déjà un donjon.',
   DUNGEON_FINISHED: 'Le combat est déjà terminé.',

@@ -5,6 +5,34 @@ import { defaultLegendaryExpedition } from './schemas';
 import { seedContent } from './seed';
 import { formIdOf } from './seed-expansion';
 
+/** Espèces obtenables : rencontres de toutes les régions (sans formes), fossiles et quêtes, puis
+ * leurs évolutions et leurs œufs (les bébés : Pichu, Azurill…), jusqu'à stabilité. */
+function obtainableSpecies(): Set<number> {
+  const obtainable = new Set([
+    ...seedContent.zones.flatMap((z) =>
+      z.encounters.filter((e) => !e.formId).map((e) => e.speciesId),
+    ),
+    ...seedContent.items.flatMap((i) =>
+      i.effects.flatMap((e) => (e.type === 'fossil' ? [e.speciesId] : [])),
+    ),
+    ...seedContent.quests.flatMap((q) => q.rewards.pokemon.map((p) => p.speciesId)),
+  ]);
+  const bySpecies = new Map(species.map((s) => [s.id, s]));
+  const base = (id: number): number => {
+    const from = bySpecies.get(id)?.evolvesFromSpeciesId;
+    return from ? base(from) : id;
+  };
+  let size = 0;
+  while (size !== obtainable.size) {
+    size = obtainable.size;
+    for (const s of species) {
+      if (s.evolvesFromSpeciesId && obtainable.has(s.evolvesFromSpeciesId)) obtainable.add(s.id);
+      if (obtainable.has(s.id) && !s.eggGroups.includes('no-eggs')) obtainable.add(base(s.id));
+    }
+  }
+  return obtainable;
+}
+
 describe('seedContent', () => {
   it('respecte le schéma du contenu, sans erreur de cohérence', () => {
     expect(gameContentSchema.parse(seedContent)).toEqual(seedContent);
@@ -31,33 +59,18 @@ describe('seedContent', () => {
   });
 
   it('rend obtenables les 100 espèces de Johto', () => {
-    // Rencontres de toutes les régions (sans formes), fossiles et quêtes…
-    const obtainable = new Set([
-      ...seedContent.zones.flatMap((z) =>
-        z.encounters.filter((e) => !e.formId).map((e) => e.speciesId),
-      ),
-      ...seedContent.items.flatMap((i) =>
-        i.effects.flatMap((e) => (e.type === 'fossil' ? [e.speciesId] : [])),
-      ),
-      ...seedContent.quests.flatMap((q) => q.rewards.pokemon.map((p) => p.speciesId)),
-    ]);
-    // … puis leurs évolutions et leurs œufs (les bébés : Pichu, Debugant…), jusqu'à stabilité.
-    const bySpecies = new Map(species.map((s) => [s.id, s]));
-    const base = (id: number): number => {
-      const from = bySpecies.get(id)?.evolvesFromSpeciesId;
-      return from ? base(from) : id;
-    };
-    let size = 0;
-    while (size !== obtainable.size) {
-      size = obtainable.size;
-      for (const s of species) {
-        if (s.evolvesFromSpeciesId && obtainable.has(s.evolvesFromSpeciesId)) obtainable.add(s.id);
-        if (obtainable.has(s.id) && !s.eggGroups.includes('no-eggs')) obtainable.add(base(s.id));
-      }
-    }
+    const obtainable = obtainableSpecies();
     const johto = seedContent.regions.find((r) => r.id === 'johto')!;
     expect(johto.speciesIds).toHaveLength(100);
     expect(johto.speciesIds.filter((id) => !obtainable.has(id))).toEqual([]);
+  });
+
+  it('rend obtenables les 135 espèces de Hoenn', () => {
+    const obtainable = obtainableSpecies();
+    const hoenn = seedContent.regions.find((r) => r.id === 'hoenn')!;
+    expect(hoenn.speciesIds).toHaveLength(135);
+    expect(hoenn.enabled).toBe(true);
+    expect(hoenn.speciesIds.filter((id) => !obtainable.has(id))).toEqual([]);
   });
 
   it('ne compte que les badges de la région demandée', () => {
@@ -83,7 +96,7 @@ describe('seedContent', () => {
     bad.zones.find((z) => z.id === 'dojo-karate')!.unlock = {
       type: 'allOf',
       conditions: [
-        { type: 'badgeCount', count: 30 },
+        { type: 'badgeCount', count: 40 },
         { type: 'trainerDefeated', trainerId: 'personne' },
       ],
     };
@@ -91,7 +104,7 @@ describe('seedContent', () => {
       .filter((i) => i.severity === 'error')
       .map((i) => `${i.entityId}: ${i.message}`);
     expect(messages).toEqual([
-      'dojo-karate: Condition de déblocage : 30 badge(s) requis, 24 existent',
+      'dojo-karate: Condition de déblocage : 40 badge(s) requis, 31 existent',
       'dojo-karate: Condition de déblocage : dresseur « personne » inconnu',
     ]);
     const single = {
@@ -156,7 +169,7 @@ describe('cohérence du contenu', () => {
     tom.rules.requiredTypes = [{ type: 'fire', count: 1 }];
     tom.rules.forbiddenTypes = ['fire'];
     bad.trainers[1]!.unlock = { type: 'trainerDefeated', trainerId: 'personne' };
-    bad.trainers[2]!.unlock = { type: 'badgeCount', count: 30 };
+    bad.trainers[2]!.unlock = { type: 'badgeCount', count: 40 };
     const messages = contentIssues(bad)
       .filter((i) => i.severity === 'error' && i.entity === 'trainer')
       .map((i) => `${i.entityId}: ${i.message}`);
@@ -165,7 +178,7 @@ describe('cohérence du contenu', () => {
       'gamin-tom: Nature « grincheuse » inconnue',
       'gamin-tom: Un type est à la fois imposé et interdit',
       'fillette-lise: Condition de déblocage : dresseur « personne » inconnu',
-      'scout-rick: Condition de déblocage : 30 badge(s) requis, 24 existent',
+      'scout-rick: Condition de déblocage : 40 badge(s) requis, 31 existent',
     ]);
     expect(
       gameContentSchema.safeParse({ ...seedContent, trainers: [{ ...tom, team: [] }] }).success,
@@ -190,7 +203,6 @@ describe('cohérence du contenu', () => {
       'Table de butin « Butin des berges »',
       'Article de boutique « poke-ball »',
       'Article de boutique « poke-ball-x10 »',
-      'Collection « Insectes de la Forêt de Jade »',
       'Lot de coffre « bronze-poke-ball-x100 »',
     ]);
     expect(findUsages(seedContent, 'lootTable', 'butin-mer')).toEqual([
@@ -201,6 +213,11 @@ describe('cohérence du contenu', () => {
       'Zone « Phare d’Oliville »',
       'Zone « Lac Colère »',
       'Zone « Tourb’Îles »',
+      'Zone « Route 104 »',
+      'Zone « Plage de Poivressel »',
+      'Zone « Routes 105 à 108 »',
+      'Zone « Épave Abandonnée »',
+      'Zone « Grotte Sous-Marine »',
       'Zone « Archipel Lointain »',
       'Zone « Lac Salinas »',
       'Dresseur « Ondine »',
@@ -209,6 +226,10 @@ describe('cohérence du contenu', () => {
       'Dresseur « Raoul »',
       'Dresseur « Marina »',
       'Dresseur « Gilles »',
+      'Dresseur « Sbire »',
+      'Dresseur « Sbire »',
+      'Dresseur « Maëva »',
+      'Dresseur « Tomas »',
       'Dresseur « Maya »',
     ]);
     // Léo et Ondine dépendent du nombre de badges, pas de Pierre directement ; la Super Ball si.
@@ -227,23 +248,11 @@ describe('cohérence du contenu', () => {
       'Table de butin « Butin des berges »',
       'Table de butin « Butin d’élite »',
       'Article de boutique « ultra-ball »',
-      'Palier « Chercheur de Kanto »',
-      'Palier « Premiers éclats de Kanto »',
-      'Palier « Chercheur de Johto »',
-      'Palier « Chercheur de Hoenn »',
-      'Palier « Chercheur de Sinnoh »',
-      'Palier « Chercheur d’Unys »',
-      'Palier « Chercheur de Kalos »',
-      'Palier « Chercheur d’Alola »',
-      'Palier « Chercheur de Galar »',
-      'Palier « Chercheur de Hisui »',
-      'Palier « Chercheur de Paldea »',
       'Lot de coffre « bronze-ultra-ball-x20 »',
       'Lot de coffre « silver-ultra-ball-x20 »',
       'Lot de coffre « gold-ultra-ball-x20 »',
     ]);
     expect(findUsages(seedContent, 'item', 'shiny-charm')).toEqual([
-      'Palier « Pokédex national complet »',
     ]);
     expect(findUsages(seedContent, 'shopCategory', 'elevage')).toEqual([
       'Article de boutique « everstone »',
@@ -311,7 +320,6 @@ describe('cohérence du contenu', () => {
       'Équilibrage : objet qui remplace l’échange',
       'Évolution « 588-589 »',
       'Évolution « 616-617 »',
-      'Palier « Chercheur de Kanto »',
     ]);
     expect(findUsages(seedContent, 'item', 'dawn-stone')).toContain('Évolution « 281-475 »');
   });
@@ -327,22 +335,26 @@ describe('cohérence du contenu', () => {
     expect(gameContentSchema.safeParse(empty).success).toBe(true);
   });
 
-  it('vérifie les paliers et les collections', () => {
+  it('vérifie les collections', () => {
     const bad = structuredClone(seedContent);
-    bad.dexMilestones[0]!.regionId = 'orre';
-    bad.dexMilestones[1]!.rewards.items.push({ itemId: 'objet-inconnu', quantity: 1 });
+    bad.collections[2]!.rewards.items.push({ itemId: 'objet-inconnu', quantity: 1 });
     bad.collections[0]!.speciesIds.push(9999);
-    bad.collections[1]!.rewards.expeditionSlots = 3;
+    bad.collections[0]!.formIds.push(999_999);
+    bad.collections[0]!.regionId = 'orre';
+    bad.collections[1]!.rewards.expeditionSlots = 6;
     const issues = contentIssues(bad).map((i) => `${i.severity}:${i.entityId}: ${i.message}`);
     expect(issues).toEqual(
       expect.arrayContaining([
-        'error:kanto-10: Région « orre » inconnue',
-        'error:kanto-25: Récompense : objet « objet-inconnu » inconnu',
-        'error:insectes-de-jade: Espèces inconnues : 9999',
-        'warning:null: Progression : 3 emplacement(s) d’expédition au-delà du maximum (sans effet)',
+        `error:${bad.collections[2]!.id}: Récompense : objet « objet-inconnu » inconnu`,
+        'error:formes-pikachu: Espèces inconnues : 9999',
+        'error:formes-pikachu: Formes inconnues : 999999',
+        'error:formes-pikachu: Région « orre » inconnue',
+        'warning:null: Progression : 2 emplacement(s) d’expédition au-delà du maximum (sans effet)',
       ]),
     );
-    expect(findUsages(seedContent, 'region', 'kanto')).toContain('Palier « Apprenti de Kanto »');
+    expect(findUsages(seedContent, 'region', 'kanto')).toContain(
+      'Condition de déblocage de « Emplacements d’expédition (+1) »',
+    );
   });
 
   it('vérifie les formes des rencontres, dresseurs et récompenses', () => {
@@ -418,6 +430,9 @@ describe('cohérence du contenu', () => {
       'Quête « Le Pokémon génétique »',
       'Quête « Le gardien des mers »',
       'Quête « L’oiseau arc-en-ciel »',
+      'Quête « Le maître des océans »',
+      'Quête « Le maître des continents »',
+      'Quête « Le gardien du ciel »',
       'Lot de coffre « gold-gold-bottle-cap »',
     ]);
   });

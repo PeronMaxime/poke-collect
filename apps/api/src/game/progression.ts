@@ -6,12 +6,14 @@ import {
   checkEvolution,
   checkMegaEvolution,
   collectionProgress,
+  completionRewardId,
+  completionTargets,
   createRng,
   evolutionOptions,
   evolvePokemon,
-  isMilestoneReached,
+  expeditionCompletions,
+  isCompletionReached,
   localHour,
-  playerSlots,
 } from '@poke/game-core';
 import type { GameContext, PlayerSlots } from '@poke/game-core';
 import type { ProgressReward } from '@poke/content';
@@ -22,9 +24,9 @@ import { newSeed, requireStartedProfile } from './expeditions';
 import {
   addItems,
   assertAvailable,
-  claimedRewards,
   dexCatches,
   itemQuantity,
+  playerSlotsNow,
   pokemonActivities,
   recordPokedex,
   takeItems,
@@ -32,7 +34,7 @@ import {
 } from './store';
 import type { PokemonRow } from './store';
 
-/** Évolutions et récompenses de progression (paliers du Pokédex, collections). */
+/** Évolutions et récompenses de progression (collections, complétions d'expédition). */
 
 /**
  * Fait évoluer un Pokémon disponible : vérifie l'évolution choisie (niveau, objet, bonheur,
@@ -122,8 +124,7 @@ export async function evolve(
 }
 
 /**
- * Réclame la récompense d'un palier du Pokédex atteint ou d'une collection complète (une seule
- * fois) : objets et argent crédités, emplacements et bonus permanents actifs dès maintenant.
+ * Réclame la récompense d'une collection ou d'une complétion d'expédition (une seule fois) : objets et argent crédités, emplacements et bonus permanents actifs dès maintenant.
  */
 export async function claimReward(
   db: Db,
@@ -134,21 +135,26 @@ export async function claimReward(
 ): Promise<{ rewards: ProgressReward; currency: number; slots: PlayerSlots }> {
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
-  const milestone =
-    input.kind === 'milestone'
-      ? ctx.content.dexMilestones.find((m) => m.id === input.rewardId)
-      : undefined;
   const collection =
     input.kind === 'collection'
       ? ctx.content.collections.find((c) => c.id === input.rewardId)
       : undefined;
-  const reward = milestone ?? collection;
+  const completion =
+    input.kind === 'completion'
+      ? expeditionCompletions(ctx).find((c) => c.id === input.rewardId)
+      : undefined;
+  const reward = collection ?? completion;
   if (!reward) throw new GameError(404, 'REWARD_NOT_FOUND');
+  // Complétion : une récompense par expédition ou région complétée.
+  const targetId = completion ? input.targetId : undefined;
+  if (completion && !completionTargets(ctx, completion).some((t) => t.id === targetId)) {
+    throw new GameError(404, 'REWARD_NOT_FOUND');
+  }
 
   return db.transaction(async (tx) => {
     const progress = await dexCatches(tx, userId);
-    const reached = milestone
-      ? isMilestoneReached(ctx, milestone, progress)
+    const reached = completion
+      ? isCompletionReached(ctx, completion, targetId!, progress)
       : collectionProgress(collection!, progress).complete;
     if (!reached) throw new GameError(409, 'REWARD_LOCKED');
 
@@ -157,7 +163,7 @@ export async function claimReward(
       .values({
         ownerId: userId,
         kind: input.kind,
-        rewardId: reward.id,
+        rewardId: completion ? completionRewardId(completion.id, targetId!) : reward.id,
         contentVersionId: ctx.content.versionId,
         claimedAt: now,
       })
@@ -172,7 +178,7 @@ export async function claimReward(
       .set({ currency: sql`${playerProfiles.currency} + ${rewards.currency}` })
       .where(eq(playerProfiles.userId, userId))
       .returning({ currency: playerProfiles.currency });
-    const slots = playerSlots(ctx, await claimedRewards(tx, userId));
+    const slots = await playerSlotsNow(tx, ctx, userId);
     return { rewards, currency: profile?.currency ?? 0, slots };
   });
 }

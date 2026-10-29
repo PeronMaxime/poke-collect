@@ -106,9 +106,12 @@ describe('avancement des quêtes', () => {
     expect(steps.get('mewtwo')).toBe(4);
     // Mew se débloque quand Mewtwo est terminé ; son étape 1 (20 œufs) n'est pas remplie.
     expect(steps.get('mew')).toBe(0);
-    // Électhor s'ouvre au 4e badge (étape 1 : des captures), Artikodin au 5e.
-    expect(steps.get('electhor')).toBe(0);
-    expect(steps.has('artikodin')).toBe(false);
+    // Les oiseaux s'ouvrent après la victoire contre le Maître de la Ligue (étape 1 : des captures).
+    expect(steps.has('electhor')).toBe(false);
+    const afterLeague = progress({
+      defeatedTrainerIds: new Set([...fourBadges.defeatedTrainerIds, 'maitre-blue']),
+    });
+    expect(questStepsDone(ctx, afterLeague, records).get('electhor')).toBe(0);
     expect(questStepsDone(ctx, progress(), new Map()).size).toBe(0);
   });
 
@@ -149,7 +152,7 @@ describe('récompenses de quête', () => {
     const custom = testContext((c) => {
       c.quests[0]!.rewards.expeditionSlots = 1;
     });
-    const base = { milestoneIds: new Set<string>(), collectionIds: new Set<string>() };
+    const base = { collectionIds: new Set<string>() };
     const before = playerSlots(custom, base).expeditions;
     expect(playerSlots(custom, { ...base, questIds: new Set(['artikodin']) }).expeditions).toBe(
       before + 1,

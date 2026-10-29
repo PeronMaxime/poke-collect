@@ -11,7 +11,7 @@ import type { GameContext } from '@poke/game-core';
 import type { ExpeditionDto, StartQuestExpeditionInput } from '@poke/shared';
 import { Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, useShinyCharm, utcOffsetMinutes } from '../../lib/game';
+import { PLAYER_STATE_KEYS, useShinyBonus, useShinyCharm, utcOffsetMinutes } from '../../lib/game';
 import {
   GAME_ERRORS,
   formatDuration,
@@ -45,6 +45,7 @@ export function QuestExpeditionDialog({
 }) {
   const queryClient = useQueryClient();
   const charm = useShinyCharm(ctx);
+  const shinyBonus = useShinyBonus();
   const zone = legendarySite(quest, target);
   const { durationMinutes } = target.expedition;
   const picker = useTeamPicker(ctx, zone);
@@ -123,7 +124,8 @@ export function QuestExpeditionDialog({
         {check.affinityCount > 0
           ? `${check.affinityCount} Pokémon en affinité`
           : 'Aucun Pokémon en affinité'}{' '}
-        · taux chromatique {formatShinyRate(shinyProbability(ctx, { chain, charm }))}
+        · taux chromatique{' '}
+        {formatShinyRate(shinyProbability(ctx, { chain, charm, bonus: shinyBonus }))}
         {chain > 0 && (
           <>
             {' '}

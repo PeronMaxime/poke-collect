@@ -66,6 +66,7 @@ import {
   useRevive,
   useReviveStacks,
   useInventory,
+  usePlayerProgress,
   usePokedex,
   usePokedexForms,
   usePokemon,
@@ -438,8 +439,9 @@ function KoDetail({ ctx, p }: { ctx: GameContext; p: PokemonDto }) {
   const heal = useHeal();
   const revive = useRevive();
   const [reviveStack] = useReviveStacks(ctx);
+  const progress = usePlayerProgress();
   if (p.knockedOut) {
-    const { free } = centerState(ctx, pokemon.data ?? [], now);
+    const { free } = centerState(ctx, pokemon.data ?? [], now, progress);
     const pending = heal.isPending || revive.isPending;
     const error = heal.error ?? revive.error;
     return (

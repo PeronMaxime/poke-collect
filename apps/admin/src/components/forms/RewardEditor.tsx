@@ -1,4 +1,5 @@
 import type { PermanentBonus, PermanentBonusType, ProgressReward } from '@poke/content';
+import { ASSISTANT_POST_PLACES } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import { Field, NumberInput, SelectInput } from './fields';
 import type { FieldErrors } from './fields';
@@ -8,6 +9,7 @@ export const BONUS_LABELS: Record<PermanentBonusType, string> = {
   capture: 'Capture en expédition',
   xp: 'XP gagnée (expéditions et combats)',
   money: 'Poké Dollars gagnés en combat',
+  shiny: 'Chance de chromatique (expéditions, œufs, fossiles)',
 };
 
 export const emptyReward = (): ProgressReward => ({
@@ -15,6 +17,7 @@ export const emptyReward = (): ProgressReward => ({
   items: [],
   expeditionSlots: 0,
   daycareSlots: 0,
+  incubators: 0,
   bonuses: [],
 });
 
@@ -25,7 +28,8 @@ export function rewardSummary(r: ProgressReward): string {
     r.items.length > 0 && `${r.items.length} objet(s)`,
     r.expeditionSlots > 0 && `+${r.expeditionSlots} exp.`,
     r.daycareSlots > 0 && `+${r.daycareSlots} pension`,
-    ...r.bonuses.map((b) => `+${b.percent} % ${b.type === 'capture' ? 'capture' : b.type}`),
+    r.incubators > 0 && `+${r.incubators} couveuse`,
+    ...r.bonuses.map((b) => `+${b.percent} % ${b.type === 'shiny' ? 'chromatique' : b.type}`),
   ].filter(Boolean);
   return parts.length ? parts.join(' · ') : 'aucune récompense';
 }
@@ -92,7 +96,7 @@ export function RewardEditor({
         </Field>
         <Field
           label="Pensions"
-          hint={`Départ ${balance.daycare.initialSlots}, max ${balance.daycare.maxSlots}`}
+          hint={`Départ ${balance.daycare.initialSlots}, sans maximum`}
           error={err('daycareSlots')}
         >
           <NumberInput
@@ -101,6 +105,20 @@ export function RewardEditor({
             max={10}
             unit="+"
             onChange={(v) => set('daycareSlots', v)}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Couveuses"
+          hint={`${ASSISTANT_POST_PLACES.incubator} places et un assistant chacune`}
+          error={err('incubators')}
+        >
+          <NumberInput
+            value={value.incubators}
+            min={0}
+            max={10}
+            unit="+"
+            onChange={(v) => set('incubators', v)}
             disabled={disabled}
           />
         </Field>

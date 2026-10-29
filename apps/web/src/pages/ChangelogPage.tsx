@@ -18,6 +18,64 @@ interface Release {
 const RELEASES: Release[] = [
   {
     date: '27 octobre 2026',
+    title: 'La région de Hoenn',
+    changes: [
+      {
+        section: 'Hoenn',
+        items: [
+          'Une troisième région s’ouvre quand tu as complété la moitié du Pokédex de Johto : Hoenn et ses 135 Pokémon, légendaires compris.',
+          'Comme à Johto, tu y repars de zéro : choisis Arcko, Poussifeu ou Gobou, puis monte une équipe de Pokémon de Hoenn. Seuls eux partent en expédition et combattent dans la région.',
+          'Trente zones d’expédition, des Routes 101 à 103 jusqu’à la Zone de Combat, avec une difficulté qui monte comme à Kanto et Johto. Des Pokémon de Kanto et de Johto s’y montrent aussi.',
+          'Huit Champions à battre (Roxanne, Bastien, Voltère, Adriane, Norman, Alizée, Lévy et Tatia, Juan), puis le Conseil 4 et le Maître Marc. Un ancien Maître t’attend ensuite à la Zone de Combat…',
+          'Des zones spéciales cachent des Pokémon introuvables ailleurs : le Labo du Prof. Seko, les Chutes Météore, l’Épave Abandonnée, le Parc Safari de Hoenn et la Zone de Combat.',
+          'Lilia et Anorith renaissent au Musée, à partir des fossiles déterrés dans le désert.',
+        ],
+      },
+      {
+        section: 'Quêtes',
+        items: [
+          'Dix quêtes légendaires : Regirock, Registeel, Regice, Kyogre, Groudon, Rayquaza, Jirachi et Deoxys.',
+          'Latias et Latios sont des fuyards : une fois leur quête terminée, ils changent de zone de Hoenn à chaque heure, comme les bêtes de Johto.',
+        ],
+      },
+      {
+        section: 'Rencontres spéciales',
+        items: [
+          'Certaines zones d’expédition cachent des Pokémon spéciaux, qu’on ne croise qu’avec le bon Pokémon dans l’équipe. Le Pokémon exact, pas une de ses évolutions !',
+          'Treize formes spéciales à trouver de Kanto à Hoenn : Pikachu et Évoli Partenaires, les casquettes de Pikachu, Pikachu Cosplayeur et ses costumes de Concours, et Pichu Troizépi.',
+          'Quand tu possèdes le Pokémon qu’il faut, une phrase énigmatique apparaît sur la zone et la forme spéciale rejoint la liste de ses Pokémon. Elle reste rare, n’est jamais chromatique, ne peut pas évoluer, et une Ball lui est toujours lancée.',
+          'Le wiki indique où et comment trouver chacune d’elles.',
+        ],
+      },
+      {
+        section: 'Donjons',
+        items: ['Trois nouveaux donjons extrêmes : Méga-Latias, Méga-Latios et Méga-Rayquaza.'],
+      },
+      {
+        section: 'Talents',
+        items: [
+          'Les talents des Pokémon de Hoenn ont maintenant un effet : Garde Mystik, Peau Dure, Lavabo, Air Lock, Force Pure…',
+        ],
+      },
+      {
+        section: 'Pokédex',
+        items: [
+          'La section des Pokémon Dominants disparaît : ils ne feront pas partie du jeu.',
+          'Les collections sont refaites : chacune réunit un Pokémon et toutes ses formes (l’alphabet des Zarbi, les motifs de Prismillon, les fleurs de Flabébé, les appareils de Motisma…). Chacune rapporte un petit bonus permanent d’XP, de Poké Dollars ou de capture.',
+          'L’onglet Collections ne montre plus que les collections des régions que tu as débloquées, rangées par région.',
+          'Les anciennes collections (Insectes de la Forêt de Jade, Famille Nidoran, Starters de Kanto) disparaissent, avec leurs récompenses.',
+        ],
+      },
+      {
+        section: 'Compte',
+        items: [
+          'Mot de passe oublié ? Tu peux désormais le réinitialiser depuis l’écran de connexion : un lien t’est envoyé par e-mail.',
+        ],
+      },
+    ],
+  },
+  {
+    date: '27 octobre 2026',
     title: 'Classement des guildes et tous les Aromates',
     changes: [
       {

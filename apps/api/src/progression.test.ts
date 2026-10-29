@@ -1,7 +1,21 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
-import { createDb, ensureSeedContent, inventory, pokedex, pokemon, users } from '@poke/db';
+import {
+  completableZones,
+  createGameContext,
+  playableContent,
+  zoneCompletionPokemon,
+} from '@poke/game-core';
+import {
+  createDb,
+  ensureSeedContent,
+  inventory,
+  pokedex,
+  pokedexForms,
+  pokemon,
+  users,
+} from '@poke/db';
 import type {
   BattleDto,
   ClaimBattleResponse,
@@ -193,11 +207,11 @@ describe('évolutions', () => {
   });
 });
 
-describe('paliers et collections', () => {
+describe('emplacements et collections', () => {
   let call: Awaited<ReturnType<typeof newPlayer>>['call'];
   let userId: string;
   let starter: PokemonDto;
-  const claim = (kind: 'milestone' | 'collection', rewardId: string) =>
+  const claim = (kind: 'collection', rewardId: string) =>
     call<ClaimRewardResponse & { error?: string }>('POST', '/api/progression/claim', {
       kind,
       rewardId,
@@ -212,45 +226,46 @@ describe('paliers et collections', () => {
     expect(res.body).toEqual({
       claims: [],
       slots: { expeditions: 2, daycare: 1 },
-      bonuses: { capture: 1, xp: 1, money: 1 },
+      facilities: { expedition: 2, daycare: 1, incubator: 6, museum: 2, farm: 9, center: 6 },
+      bonuses: { capture: 1, xp: 1, money: 1, shiny: 1 },
     });
   });
 
-  it('refuse un palier non atteint ou inconnu', async () => {
-    expect((await claim('milestone', 'kanto-10')).body.error).toBe('REWARD_LOCKED');
-    expect((await claim('milestone', 'inconnu')).status).toBe(404);
+  it('refuse une récompense inconnue', async () => {
+    expect((await claim('collection', 'inconnu')).status).toBe(404);
   });
 
-  it('accorde la récompense une seule fois et débloque les emplacements', async () => {
+  it('débloque les emplacements des bâtiments au fil du Pokédex, sans rien réclamer', async () => {
+    // Seed : un emplacement d'expédition à 10 % du Pokédex de Kanto, une pension à 25 %.
     await catchSpecies(userId, range(1, 16));
-    const res = await claim('milestone', 'kanto-10');
-    expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.slots).toEqual({ expeditions: 3, daycare: 1 });
-    expect(await itemCount(userId, 'great-ball')).toBe(5);
-    expect((await claim('milestone', 'kanto-10')).body.error).toBe('ALREADY_CLAIMED');
-
     const expeditions = await call<ExpeditionsResponse>('GET', '/api/expeditions');
     expect(expeditions.body.slots).toBe(3);
+    expect((await call<DaycareResponse>('GET', '/api/daycare')).body.slots).toBe(1);
 
     await catchSpecies(userId, range(17, 38));
-    const quarter = await claim('milestone', 'kanto-25');
-    expect(quarter.body.currency).toBe(3000);
     expect((await call<DaycareResponse>('GET', '/api/daycare')).body.slots).toBe(2);
+    const res = await call<ProgressionResponse>('GET', '/api/progression');
+    expect(res.body.slots).toEqual({ expeditions: 3, daycare: 2 });
   });
 
   it('active les bonus permanents des collections', async () => {
-    expect((await claim('collection', 'famille-nidoran')).status).toBe(200);
-    expect((await claim('collection', 'insectes-de-jade')).status).toBe(200);
+    // Formes d'Évoli : l'espèce et sa forme Partenaire (Pokédex des formes).
+    const evoli = seedContent.collections.find((c) => c.id === 'formes-evoli')!;
+    await catchSpecies(userId, [133]);
+    expect((await claim('collection', 'formes-evoli')).body.error).toBe('REWARD_LOCKED');
+    await handle.db
+      .insert(pokedexForms)
+      .values(
+        evoli.formIds.map((formId) => ({ ownerId: userId, formId, firstCaughtAt: new Date() })),
+      );
+    expect((await claim('collection', 'formes-evoli')).status).toBe(200);
     const res = await call<ProgressionResponse>('GET', '/api/progression');
-    expect(res.body.bonuses).toEqual({ capture: 1.05, xp: 1, money: 1.1 });
+    expect(res.body.bonuses).toEqual({ capture: 1, xp: 1, money: 1.01, shiny: 1 });
     expect(res.body.claims.map((c) => `${c.kind}:${c.rewardId}`).sort()).toEqual([
-      'collection:famille-nidoran',
-      'collection:insectes-de-jade',
-      'milestone:kanto-10',
-      'milestone:kanto-25',
+      'collection:formes-evoli',
     ]);
 
-    // Bonus d'argent (+10 %) appliqué aux gains de combat.
+    // Bonus d'argent (+1 %) appliqué aux gains de combat.
     await setLevel(starter.id, 60);
     const start = await call<BattleDto>('POST', '/api/battles', {
       trainerId: 'gamin-tom',
@@ -263,6 +278,88 @@ describe('paliers et collections', () => {
     const result = await call<ClaimBattleResponse>('POST', `/api/battles/${start.body.id}/claim`);
     expect(result.body.battle.outcome).toBe('win');
     const tom = seedContent.trainers.find((t) => t.id === 'gamin-tom')!;
-    expect(result.body.battle.result?.money).toBe(Math.floor(tom.money * 1.1));
+    expect(result.body.battle.result?.money).toBe(Math.floor(tom.money * 1.01));
+  });
+});
+
+describe('complétion des expéditions', () => {
+  const ctx = createGameContext(playableContent({ versionId: 1, ...seedContent }));
+  const kantoZones = completableZones(ctx, 'kanto');
+  const zone = kantoZones[0]!;
+  let call: Awaited<ReturnType<typeof newPlayer>>['call'];
+  let userId: string;
+  const claim = (rewardId: string, targetId?: string) =>
+    call<ClaimRewardResponse & { error?: string }>('POST', '/api/progression/claim', {
+      kind: 'completion',
+      rewardId,
+      targetId,
+    });
+  /** Marque au Pokédex chaque Pokémon des expéditions (espèces et formes), en shiny au besoin. */
+  async function catchZones(zones: typeof kantoZones, caughtShiny: boolean) {
+    const list = zones.flatMap((z) => zoneCompletionPokemon(ctx, z));
+    const species = [...new Set(list.map((p) => p.speciesId))];
+    await handle.db
+      .insert(pokedex)
+      .values(
+        species.map((speciesId) => ({
+          ownerId: userId,
+          speciesId,
+          seen: true,
+          caught: true,
+          caughtShiny,
+        })),
+      )
+      .onConflictDoUpdate({
+        target: [pokedex.ownerId, pokedex.speciesId],
+        set: { caught: true, caughtShiny },
+      });
+    const forms = [...new Set(list.flatMap((p) => (p.formId == null ? [] : [p.formId])))];
+    if (forms.length > 0) {
+      await handle.db
+        .insert(pokedexForms)
+        .values(
+          forms.map((formId) => ({
+            ownerId: userId,
+            formId,
+            caughtShiny,
+            firstCaughtAt: new Date(),
+          })),
+        )
+        .onConflictDoNothing();
+    }
+  }
+
+  beforeAll(async () => {
+    ({ call, userId } = await newPlayer('completion@example.com', 'Lyra', 1));
+  });
+
+  it('refuse une complétion inconnue, une cible inconnue ou pas encore complétée', async () => {
+    expect((await claim('inconnue', zone.id)).status).toBe(404);
+    expect((await claim('expedition-chromatique', 'zone-inconnue')).status).toBe(404);
+    expect((await claim('expedition-chromatique')).status).toBe(404);
+    expect((await claim('expedition-chromatique', zone.id)).body.error).toBe('REWARD_LOCKED');
+  });
+
+  it('une expédition complétée en chromatique donne +1 % de chance shiny, une seule fois', async () => {
+    await catchZones([zone], true);
+    const res = await claim('expedition-chromatique', zone.id);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.targetId).toBe(zone.id);
+    expect((await claim('expedition-chromatique', zone.id)).body.error).toBe('ALREADY_CLAIMED');
+    const progression = await call<ProgressionResponse>('GET', '/api/progression');
+    expect(progression.body.bonuses.shiny).toBeCloseTo(1.01);
+    expect(progression.body.claims.map((c) => `${c.kind}:${c.rewardId}`)).toEqual([
+      `completion:expedition-chromatique:${zone.id}`,
+    ]);
+  });
+
+  it('toutes les expéditions d’une région complétées donnent une couveuse', async () => {
+    expect((await claim('region-complete', 'kanto')).body.error).toBe('REWARD_LOCKED');
+    await catchZones(kantoZones.slice(1), false);
+    expect((await claim('region-complete', 'kanto')).status).toBe(200);
+    const progression = await call<ProgressionResponse>('GET', '/api/progression');
+    expect(progression.body.facilities.incubator).toBe(seedContent.balance.breeding.maxEggs + 6);
+    const daycare = await call<DaycareResponse>('GET', '/api/daycare');
+    expect(daycare.body.maxEggs).toBe(seedContent.balance.breeding.maxEggs + 6);
   });
 });

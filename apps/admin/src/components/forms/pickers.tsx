@@ -34,7 +34,6 @@ const FORM_KINDS: [FormKind, string][] = [
   ['primal', 'Primo-Résurgences'],
   ['gmax', 'Gigamax'],
   ['battle', 'Formes de combat'],
-  ['totem', 'Pokémon Dominants'],
 ];
 
 const typeNames = new Map(types.map((t) => [t.name, t.nameFr]));
@@ -420,6 +419,8 @@ export function UnlockEditor({
         return { type, regionId: regions[0]?.id ?? '', percent: 10 };
       case 'trainerDefeated':
         return { type, trainerId: trainers[0]?.id ?? '' };
+      case 'regionUnlocked':
+        return { type, regionId: regions[0]?.id ?? '' };
       case 'badgeCount':
       case 'speciesCaught':
       case 'eggsHatched':
@@ -455,6 +456,7 @@ export function UnlockEditor({
         <option value="trainerDefeated" disabled={trainers.length === 0}>
           Avoir battu un dresseur
         </option>
+        <option value="regionUnlocked">Région débloquée</option>
         <option value="badgeCount">Nombre de badges</option>
         <option value="speciesCaught">Nombre d’espèces capturées</option>
         <option value="eggsHatched">Nombre d’œufs éclos</option>
@@ -560,6 +562,24 @@ export function UnlockEditor({
             ))}
           </select>
         </>
+      )}
+      {value.type === 'regionUnlocked' && (
+        <select
+          className="input w-auto"
+          value={value.regionId}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...value, regionId: e.target.value })}
+        >
+          {!regions.some((r) => r.id === value.regionId) && (
+            <option value={value.regionId}>{value.regionId || '—'} (inconnue)</option>
+          )}
+          {regions.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+              {r.enabled ? '' : ' (désactivée)'}
+            </option>
+          ))}
+        </select>
       )}
       {value.type === 'trainerDefeated' && (
         <select

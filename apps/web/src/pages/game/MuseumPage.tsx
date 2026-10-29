@@ -15,6 +15,7 @@ import {
   speciesName,
 } from '../../lib/labels';
 import { AssistantCard } from './AssistantCard';
+import { FacilityLocks } from './FacilityLocks';
 import { HatchReveal } from './HatchReveal';
 
 /** Musée : les fossiles trouvés en expédition y redeviennent des Pokémon, après un délai. */
@@ -86,30 +87,34 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
           première place libre).
         </p>
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-          {Array.from({ length: slots }, (_, i) => {
-            const revival = revivals.find((r) => r.slotIndex === i);
-            return revival ? (
-              <RevivalCard
-                key={revival.id}
-                ctx={ctx}
-                revival={revival}
-                serverNow={serverNow}
-                busy={pending}
-                onCancel={() => cancel.mutate(revival.id)}
-              />
-            ) : (
-              <div
-                key={`empty-${i}`}
-                className="flex min-h-36 flex-col gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-4 dark:border-slate-700"
-              >
-                <span className="grid flex-1 place-items-center text-center text-sm text-slate-500">
-                  Place libre
-                </span>
-                <AssistantCard ctx={ctx} post="museum" slot={i} />
-              </div>
-            );
-          })}
+          {Array.from(
+            { length: Math.max(slots, ...revivals.map((r) => r.slotIndex + 1)) },
+            (_, i) => {
+              const revival = revivals.find((r) => r.slotIndex === i);
+              return revival ? (
+                <RevivalCard
+                  key={revival.id}
+                  ctx={ctx}
+                  revival={revival}
+                  serverNow={serverNow}
+                  busy={pending}
+                  onCancel={() => cancel.mutate(revival.id)}
+                />
+              ) : (
+                <div
+                  key={`empty-${i}`}
+                  className="flex min-h-36 flex-col gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-4 dark:border-slate-700"
+                >
+                  <span className="grid flex-1 place-items-center text-center text-sm text-slate-500">
+                    Place libre
+                  </span>
+                  <AssistantCard ctx={ctx} post="museum" slot={i} />
+                </div>
+              );
+            },
+          )}
         </div>
+        <FacilityLocks ctx={ctx} facility="museum" />
       </section>
 
       <section>

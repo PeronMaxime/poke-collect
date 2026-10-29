@@ -13,7 +13,7 @@ https://admin.dexpedition.fr).
 - [ ] **Supervision** : moniteur UptimeRobot sur `https://dexpedition.fr/api/health`
       (voir [INSTALLATION-SERVEUR.md](INSTALLATION-SERVEUR.md) étape 11)
 - [ ] Tester sur téléphone : expédition, installation PWA, notifications push
-- [ ] E-mails « Mot de passe oublié ? » : remplir `SMTP_URL` et `MAIL_FROM` avec la boîte
+- [x] E-mails « Mot de passe oublié ? » : remplir `SMTP_URL` et `MAIL_FROM` avec la boîte
       e-mail OVH, puis tester (voir [INSTALLATION-SERVEUR.md](INSTALLATION-SERVEUR.md) étape 6)
 - [ ] Adresse **contact@dexpedition.fr** (publiée dans les pages légales) : redirection e-mail
       chez le registrar vers une boîte lue ; coordonnées complètes de l'éditeur données à OVH
@@ -119,7 +119,8 @@ Contraintes qui découlent du code actuel :
 - [x] Secrets de production documentés dans `.env.production.example` (génération :
       `openssl rand -hex 32`, `npx web-push generate-vapid-keys`)
 - [x] Service d'envoi d'e-mails : la boîte e-mail OVH du domaine (SMTP `ssl0.ovh.net:465`)
-- [ ] Remplir `SMTP_URL` et `MAIL_FROM` sur le serveur, puis tester « Mot de passe oublié ? »
+- [x] Remplir `SMTP_URL` et `MAIL_FROM` sur le serveur, puis tester « Mot de passe oublié ? »
+      (27 octobre)
 - [x] Remplir le `.env` du serveur (phase 3)
 - [x] Premier compte admin : inscription dans le jeu, puis sur le serveur
       `docker compose -f docker-compose.prod.yml exec api pnpm admin:promote <email>`

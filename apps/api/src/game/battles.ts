@@ -21,13 +21,14 @@ import type {
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
 import { recordGuildActivity } from './guilds';
-import { combatHealCommand, commandAtMs } from './dungeons';
+import { combatHealCommand, commandAtMs, metEnemies } from './dungeons';
 import { newSeed, requireStartedProfile, startHour } from './expeditions';
 import {
   addItems,
   assertAvailable,
   claimedRewards,
   playerProgress,
+  recordPokedex,
   takeItems,
   toInstance,
 } from './store';
@@ -376,6 +377,11 @@ export async function claimBattle(
         })
         .where(eq(pokemon.id, m.id));
     }
+    await recordPokedex(tx, userId, {
+      met: metEnemies(found.setup, result.defeated),
+      caught: [],
+      at: now,
+    });
     await addItems(tx, userId, result.loot);
     await recordGuildActivity(
       tx,

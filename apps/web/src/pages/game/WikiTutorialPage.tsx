@@ -109,6 +109,10 @@ export function WikiTutorialPage({ ctx }: { ctx: GameContext }) {
             <Go href={wikiLink('talents')}>talent</Go> qui peut t’aider dans certaines activités.
           </li>
         </ul>
+        <p className="mt-2">
+          Certaines parties du jeu se débloquent au fil de l’aventure : un cadenas les marque dans
+          le menu, avec ce qu’il te reste à faire pour les ouvrir.
+        </p>
       </Step>
     </div>
   );

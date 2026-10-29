@@ -17,8 +17,19 @@ const STRICT_KINDS: ReadonlySet<FormKind> = new Set([
   'primal',
   'gmax',
   'battle',
-  'totem',
 ]);
+
+/**
+ * Formes événementielles (Pikachu Partenaire, à casquette ou Cosplay, Évoli Partenaire, Pichu
+ * Troizépi) : comme dans la série, elles n'évoluent pas et un œuf donne la forme par défaut.
+ */
+const EVENT_FORM_NAME =
+  /^(pikachu-(.+-cap|rock-star|belle|pop-star|phd|libre|cosplay|starter)|eevee-starter|pichu-spiky-eared)$/;
+
+export function isEventForm(formId: number | null | undefined): boolean {
+  const form = formId != null ? getForm(formId) : undefined;
+  return !!form && EVENT_FORM_NAME.test(form.name);
+}
 
 /** Forme de même suffixe chez une autre espèce, ou null (forme par défaut). */
 export function counterpartFormId(

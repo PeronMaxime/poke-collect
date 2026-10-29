@@ -1,9 +1,7 @@
 import { evolutionChains, forms, getSpecies, items as dataItems } from '@poke/data';
 import type { EvolutionNode } from '@poke/data';
-import { johtoRegion } from './seed-johto';
 import type {
   BattleRules,
-  DexMilestone,
   Item,
   Region,
   ShopEntry,
@@ -11,12 +9,12 @@ import type {
   TrainerPokemon,
   Zone,
 } from './schemas';
-import { defaultTrainerTimeLimitSeconds } from './schemas';
+import { defaultTrainerTimeLimitSeconds, zoneAffinityTypes } from './schemas';
 import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
 
 /**
- * Contenu de test de l'expansion : les régions de Hoenn à Paldea (et Hisui), débloquées l'une
- * après l'autre par le Pokédex de la région précédente (Johto a son propre fichier), l'Archipel Lointain de Kanto, peuplé de
+ * Contenu de test de l'expansion : les régions de Sinnoh à Paldea (et Hisui), débloquées l'une
+ * après l'autre par le Pokédex de la région précédente (Johto et Hoenn ont leur propre fichier), l'Archipel Lointain de Kanto, peuplé de
  * formes régionales, et des zones à Méga-Évolutions (Kalos) et à Gigamax (Galar). Les légendaires
  * et mythiques des nouvelles régions sont exclus de leur Pokédex tant qu'aucune quête ne permet
  * de les obtenir.
@@ -100,16 +98,6 @@ const region = (
 
 export const expansionRegions: Region[] = [
   {
-    id: 'hoenn',
-    order: 2,
-    name: 'Hoenn',
-    image: null,
-    speciesIds: dexRange(252, 386),
-    starterSpeciesIds: [],
-    enabled: false,
-    unlock: { type: 'regionDexPercent', regionId: 'johto', percent: 50 },
-  },
-  {
     id: 'sinnoh',
     order: 3,
     name: 'Sinnoh',
@@ -134,19 +122,30 @@ export const expansionRegions: Region[] = [
   region('paldea', 9, 'Paldea', dexRange(906, 1025), 'hisui'),
 ];
 
-const zone = (
-  z: Omit<
-    Zone,
-    'image' | 'enabled' | 'requiredTypes' | 'durationsMinutes' | 'weatherChangeChance' | 'weathers'
-  > &
-    Partial<Zone>,
-): Zone => ({
+/** `weatherTypes` : types de la zone d'où le seed tire ses météos ; affinités calculées. */
+const zone = ({
+  weatherTypes,
+  ...z
+}: Omit<
+  Zone,
+  | 'image'
+  | 'enabled'
+  | 'requiredTypes'
+  | 'durationsMinutes'
+  | 'weatherChangeChance'
+  | 'weathers'
+  | 'specialEncounters'
+  | 'affinityTypes'
+> &
+  Partial<Zone> & { weatherTypes: string[] }): Zone => ({
   image: null,
   enabled: true,
   requiredTypes: [],
   durationsMinutes: ALL_DURATIONS,
   weatherChangeChance: ZONE_WEATHER_CHANGE_CHANCE,
-  weathers: seedZoneWeathers(z.habitat, z.affinityTypes),
+  weathers: seedZoneWeathers(z.habitat, weatherTypes),
+  specialEncounters: [],
+  affinityTypes: zoneAffinityTypes(z.encounters),
   ...z,
 });
 
@@ -160,7 +159,7 @@ export const expansionZones: Zone[] = [
       'Des îles au climat étrange, au large de Kanto : les Pokémon y ont pris d’autres formes.',
     habitat: 'waters-edge',
     minPower: 400,
-    affinityTypes: ['ice', 'dark', 'psychic'],
+    weatherTypes: ['ice', 'dark', 'psychic'],
     encounters: [
       enc(19, 20, 18, 22, 'rattata-alola'),
       enc(37, 12, 18, 22, 'vulpix-alola'),
@@ -178,44 +177,6 @@ export const expansionZones: Zone[] = [
     unlock: { type: 'regionDexPercent', regionId: 'kanto', percent: 50 },
   }),
   zone({
-    id: 'route-101',
-    regionId: 'hoenn',
-    order: 0,
-    name: 'Route 101',
-    description: 'Les herbes folles au nord de Bourg-en-Vol, là où tout commence à Hoenn.',
-    habitat: 'grassland',
-    minPower: 0,
-    affinityTypes: ['normal', 'bug', 'dark'],
-    encounters: [
-      enc(263, 30, 4, 7),
-      enc(263, 3, 4, 7, 'zigzagoon-galar'),
-      enc(265, 25, 4, 7),
-      enc(261, 25, 4, 7),
-      enc(276, 12, 5, 8),
-    ],
-    lootTableId: 'butin-route',
-    unlock: { type: 'always' },
-  }),
-  zone({
-    id: 'grotte-granite',
-    regionId: 'hoenn',
-    order: 1,
-    name: 'Grotte Granite',
-    description: 'Une grotte de l’île de Village Myokara, aux parois couvertes de fresques.',
-    habitat: 'cave',
-    minPower: 300,
-    affinityTypes: ['rock', 'fighting', 'steel'],
-    encounters: [
-      enc(296, 25, 10, 14),
-      enc(304, 25, 10, 14),
-      enc(302, 10, 12, 15),
-      enc(299, 15, 12, 15),
-      enc(293, 25, 10, 13),
-    ],
-    lootTableId: 'butin-fouilles-hoenn',
-    unlock: { type: 'regionDexPercent', regionId: 'hoenn', percent: 5 },
-  }),
-  zone({
     id: 'route-201',
     regionId: 'sinnoh',
     order: 0,
@@ -223,7 +184,7 @@ export const expansionZones: Zone[] = [
     description: 'Un sentier tranquille entre Bonaugure et Littorella, battu par le vent du lac.',
     habitat: 'grassland',
     minPower: 0,
-    affinityTypes: ['normal', 'flying', 'bug'],
+    weatherTypes: ['normal', 'flying', 'bug'],
     encounters: [enc(396, 30, 4, 7), enc(399, 30, 4, 7), enc(401, 20, 4, 7), enc(403, 20, 5, 8)],
     lootTableId: 'butin-route',
     unlock: { type: 'always' },
@@ -236,7 +197,7 @@ export const expansionZones: Zone[] = [
     description: 'La montagne qui coupe Sinnoh en deux. Ses grottes cachent des Pokémon rares.',
     habitat: 'mountain',
     minPower: 600,
-    affinityTypes: ['rock', 'steel', 'ice', 'dragon'],
+    weatherTypes: ['rock', 'steel', 'ice', 'dragon'],
     encounters: [
       enc(436, 25, 20, 25),
       enc(459, 20, 20, 25),
@@ -256,7 +217,7 @@ export const expansionZones: Zone[] = [
     description: 'Le chemin qui part de Renouet, entre la mer et les grands arbres.',
     habitat: 'grassland',
     minPower: 0,
-    affinityTypes: ['normal', 'grass', 'dark'],
+    weatherTypes: ['normal', 'grass', 'dark'],
     encounters: [
       enc(504, 30, 4, 7),
       enc(506, 30, 4, 7),
@@ -275,7 +236,7 @@ export const expansionZones: Zone[] = [
     description: 'Une tempête de sable permanente souffle sur ce désert et ses ruines anciennes.',
     habitat: 'rough-terrain',
     minPower: 700,
-    affinityTypes: ['ground', 'rock', 'fire'],
+    weatherTypes: ['ground', 'rock', 'fire'],
     encounters: [
       enc(551, 25, 22, 26),
       enc(554, 20, 22, 26),
@@ -295,7 +256,7 @@ export const expansionZones: Zone[] = [
     description: 'Des prés fleuris où butinent des Flabébé de toutes les couleurs.',
     habitat: 'grassland',
     minPower: 0,
-    affinityTypes: ['normal', 'bug', 'fairy'],
+    weatherTypes: ['normal', 'bug', 'fairy'],
     encounters: [
       enc(659, 25, 4, 7),
       enc(661, 20, 4, 7),
@@ -316,7 +277,7 @@ export const expansionZones: Zone[] = [
       'La tour de Yantreizh, berceau de la Méga-Évolution. On y croise, très rarement, des Pokémon méga-évolués.',
     habitat: 'urban',
     minPower: 2500,
-    affinityTypes: ['fighting', 'steel', 'psychic'],
+    weatherTypes: ['fighting', 'steel', 'psychic'],
     encounters: [
       enc(447, 25, 30, 35),
       enc(280, 20, 30, 35),
@@ -340,7 +301,7 @@ export const expansionZones: Zone[] = [
     description: 'Les chemins ensoleillés de l’île de Mele-Mele.',
     habitat: 'grassland',
     minPower: 0,
-    affinityTypes: ['normal', 'flying', 'bug'],
+    weatherTypes: ['normal', 'flying', 'bug'],
     encounters: [
       enc(731, 25, 4, 7),
       enc(734, 25, 4, 7),
@@ -356,11 +317,10 @@ export const expansionZones: Zone[] = [
     regionId: 'alola',
     order: 1,
     name: 'Mont Lanakila',
-    description:
-      'Le sommet enneigé d’Ula-Ula. Les formes d’Alola y abondent, et un Pokémon Dominant y règne.',
+    description: 'Le sommet enneigé d’Ula-Ula. Les formes d’Alola y abondent.',
     habitat: 'mountain',
     minPower: 1200,
-    affinityTypes: ['ice', 'rock', 'dark'],
+    weatherTypes: ['ice', 'rock', 'dark'],
     encounters: [
       enc(27, 20, 28, 32, 'sandshrew-alola'),
       enc(37, 20, 28, 32, 'vulpix-alola'),
@@ -368,7 +328,6 @@ export const expansionZones: Zone[] = [
       enc(74, 15, 28, 32, 'geodude-alola'),
       enc(88, 10, 28, 32, 'grimer-alola'),
       enc(105, 5, 30, 34, 'marowak-alola'),
-      enc(20, 1, 40, 40, 'raticate-totem-alola'),
     ],
     lootTableId: 'butin-grotte',
     unlock: { type: 'trainerDefeated', trainerId: 'ilima' },
@@ -381,7 +340,7 @@ export const expansionZones: Zone[] = [
     description: 'Les champs paisibles qui bordent Paddoxton.',
     habitat: 'grassland',
     minPower: 0,
-    affinityTypes: ['normal', 'flying', 'bug'],
+    weatherTypes: ['normal', 'flying', 'bug'],
     encounters: [
       enc(819, 30, 4, 7),
       enc(821, 25, 4, 7),
@@ -400,7 +359,7 @@ export const expansionZones: Zone[] = [
     description: 'Une immense étendue sauvage au cœur de Galar, où vivent ses formes régionales.',
     habitat: 'rough-terrain',
     minPower: 1000,
-    affinityTypes: ['fighting', 'ghost', 'psychic'],
+    weatherTypes: ['fighting', 'ghost', 'psychic'],
     encounters: [
       enc(77, 20, 25, 30, 'ponyta-galar'),
       enc(83, 15, 25, 30, 'farfetchd-galar'),
@@ -421,7 +380,7 @@ export const expansionZones: Zone[] = [
       'Des colonnes d’énergie rouge jaillissent des tanières : des Pokémon Gigamax s’y terrent.',
     habitat: 'cave',
     minPower: 3000,
-    affinityTypes: ['dragon', 'steel', 'fighting'],
+    weatherTypes: ['dragon', 'steel', 'fighting'],
     encounters: [
       enc(143, 10, 45, 50, 'snorlax-gmax'),
       enc(68, 10, 45, 50, 'machamp-gmax'),
@@ -445,7 +404,7 @@ export const expansionZones: Zone[] = [
     description: 'Les vastes plaines de l’ancienne Hisui, autour du Village Rusti.',
     habitat: 'grassland',
     minPower: 0,
-    affinityTypes: ['normal', 'fire', 'electric'],
+    weatherTypes: ['normal', 'fire', 'electric'],
     encounters: [
       enc(399, 25, 5, 9),
       enc(396, 20, 5, 9),
@@ -467,7 +426,7 @@ export const expansionZones: Zone[] = [
     description: 'Les collines douces autour de Mesada, où commence la Chasse au Trésor.',
     habitat: 'grassland',
     minPower: 0,
-    affinityTypes: ['normal', 'bug', 'electric'],
+    weatherTypes: ['normal', 'bug', 'electric'],
     encounters: [
       enc(915, 25, 3, 6),
       enc(919, 20, 3, 6),
@@ -487,7 +446,7 @@ export const expansionZones: Zone[] = [
       'Les rives du grand lac de Paldea : des Tauros de trois races y galopent, des Nigirigon s’y cachent.',
     habitat: 'waters-edge',
     minPower: 1200,
-    affinityTypes: ['water', 'fire', 'fighting'],
+    weatherTypes: ['water', 'fire', 'fighting'],
     encounters: [
       enc(128, 15, 30, 34, 'tauros-paldea-combat-breed'),
       enc(128, 8, 30, 34, 'tauros-paldea-blaze-breed'),
@@ -539,34 +498,6 @@ export const expansionTrainers: Trainer[] = [
     lootTableId: 'butin-mer',
     lootRolls: 2,
     unlock: { type: 'regionDexPercent', regionId: 'kanto', percent: 50 },
-  }),
-  trainer({
-    id: 'montagnard-bruno',
-    regionId: 'hoenn',
-    zoneId: 'grotte-granite',
-    order: 0,
-    name: 'Bruno',
-    trainerClass: 'Montagnard',
-    sprite: `${TRAINER_SPRITES}/hiker-gen3.png`,
-    team: [mon(296, 13), mon(304, 14)],
-    money: 400,
-    lootTableId: 'butin-grotte',
-  }),
-  trainer({
-    id: 'roxanne',
-    regionId: 'hoenn',
-    zoneId: null,
-    order: 1,
-    name: 'Roxanne',
-    trainerClass: 'Championne d’arène',
-    sprite: `${TRAINER_SPRITES}/roxanne.png`,
-    team: [mon(74, 15), mon(74, 15), mon(299, 18)],
-    money: 2400,
-    lootTableId: 'butin-grotte',
-    lootRolls: 3,
-    badge: { name: 'Badge Rocher', image: null },
-    repeatable: false,
-    unlock: { type: 'trainerDefeated', trainerId: 'montagnard-bruno' },
   }),
   trainer({
     id: 'pierrick',
@@ -714,25 +645,6 @@ export const expansionTrainers: Trainer[] = [
     unlock: { type: 'regionDexPercent', regionId: 'paldea', percent: 5 },
   }),
 ];
-
-/** Un palier « 50 % » par nouvelle région. */
-export const expansionDexMilestones: DexMilestone[] = [johtoRegion, ...expansionRegions].map(
-  (region, i) => ({
-    id: `${region.id}-50`,
-    order: 5 + i,
-    name: `Chercheur ${/^[AEIOUY]/.test(region.name) ? 'd’' : 'de '}${region.name}`,
-    regionId: region.id,
-    shiny: false,
-    percent: 50,
-    rewards: {
-      currency: 10_000 * (i + 1),
-      items: [{ itemId: 'ultra-ball', quantity: 10 }],
-      expeditionSlots: 0,
-      daycareSlots: 0,
-      bonuses: [],
-    },
-  }),
-);
 
 // --- Objets d'évolution des autres régions --------------------------------------------------
 

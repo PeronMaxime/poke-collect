@@ -11,8 +11,8 @@ import { assertAvailable, toInstance } from './store';
 /**
  * Assistants : un Pokémon affecté à une place de la Pension (une pension), de la couveuse, du
  * Musée ou du Centre Pokémon y apporte les effets de son talent, pour ce qui occupe cette place.
- * Il est occupé tant qu'il y reste ; un seul assistant par place. L'assistant de la ferme (type
- * Eau exigé) arrose le champ : sans lui, les baies ne poussent pas.
+ * Il est occupé tant qu'il y reste ; un seul assistant par place. L'assistant d'un champ de la
+ * ferme (type Eau exigé) l'arrose : sans lui, ses baies ne poussent pas.
  */
 
 export async function listAssistants(db: Db, userId: string): Promise<AssistantDto[]> {
@@ -75,13 +75,13 @@ export async function assignAssistant(
       );
     }
     // Changement d'arroseur : les pousses s'arrêtent à la vitesse de l'ancien, puis reprennent.
-    if (post === 'farm') await pauseFarm(tx, ctx, userId, now);
+    if (post === 'farm') await pauseFarm(tx, ctx, userId, slot, now);
     await tx.delete(assistants).where(slotOf(userId, post, slot));
     await assertAvailable(tx, userId, [row], now);
     await tx
       .insert(assistants)
       .values({ ownerId: userId, post, slotIndex: slot, pokemonId, assignedAt: now });
-    if (post === 'farm') await resumeFarm(tx, ctx, userId, now);
+    if (post === 'farm') await resumeFarm(tx, ctx, userId, slot, now);
     return { post, slot, pokemonId };
   });
 }
@@ -95,7 +95,7 @@ export async function removeAssistant(
   now: Date,
 ) {
   await db.transaction(async (tx) => {
-    if (post === 'farm') await pauseFarm(tx, ctx, userId, now);
+    if (post === 'farm') await pauseFarm(tx, ctx, userId, slot, now);
     const deleted = await tx
       .delete(assistants)
       .where(slotOf(userId, post, slot))

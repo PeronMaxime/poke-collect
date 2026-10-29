@@ -6,6 +6,7 @@ import {
   abilityEffectSummary,
   baseSpeciesId,
   counterpartFormId,
+  isEventForm,
   dungeonTypeEffectiveness,
   encounterProbabilities,
   evolutionOptions,
@@ -611,6 +612,9 @@ function Locations({ ctx, entry }: { ctx: GameContext; entry: WikiEntry }) {
     const max = Math.max(...encounters.map((e) => e.maxLevel));
     return [{ zone, probability, levels: min === max ? `N.${min}` : `N.${min}–${max}` }];
   });
+  const specials = ctx.zones.flatMap((zone) =>
+    zone.specialEncounters.filter(same).map((special) => ({ zone, special })),
+  );
   const quests = ctx.quests.flatMap((q) =>
     q.rewards.pokemon
       .filter(same)
@@ -657,6 +661,22 @@ function Locations({ ctx, entry }: { ctx: GameContext; entry: WikiEntry }) {
           ))}
         </ul>
       </div>,
+    );
+  }
+  for (const { zone, special } of specials) {
+    const levels =
+      special.minLevel === special.maxLevel
+        ? `N.${special.minLevel}`
+        : `N.${special.minLevel}–${special.maxLevel}`;
+    lines.push(
+      <p key={`s-${zone.id}`}>
+        Rencontre spéciale en expédition à <strong>{zone.name}</strong>{' '}
+        <span className="text-slate-400">({ctx.region(zone.regionId)?.name ?? zone.regionId})</span>{' '}
+        ({levels}), avec{' '}
+        <strong>{ctx.species(special.requiredSpeciesId, special.requiredFormId)?.nameFr}</strong>{' '}
+        dans l’équipe (ce Pokémon exact, pas une évolution) : {special.chance} % de chances par
+        rencontre, une fois au plus par expédition. Jamais chromatique ; n’évolue pas.
+      </p>,
     );
   }
   for (const { quest, level, roaming } of quests) {
@@ -726,6 +746,9 @@ function Evolutions({
   const megas = megaOptions(ctx, entry.speciesId);
   const hasEvolutions = evolutionOptions(ctx, rootId, rootForm).length > 0;
 
+  if (isEventForm(entry.formId)) {
+    return <p className="text-sm text-slate-500">Cette forme spéciale n’évolue pas.</p>;
+  }
   return (
     <div className="space-y-3">
       {hasEvolutions ? (

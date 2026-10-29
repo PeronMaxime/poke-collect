@@ -11,7 +11,7 @@ import {
   reviveFossils,
   toFossilRevivalDto,
 } from '../game/museum';
-import { toPokemonDto } from '../game/store';
+import { assertTabUnlocked, playerFacilityPlaces, toPokemonDto } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
@@ -29,9 +29,13 @@ export async function museumRoutes(app: FastifyInstance, { db, content, hooks, n
 
   app.get('/api/museum', async (request): Promise<MuseumResponse> => {
     const ctx = await content.get();
-    const rows = await activeRevivals(db, request.user!.id);
+    const userId = request.user!.id;
+    const [rows, slots] = await Promise.all([
+      activeRevivals(db, userId),
+      playerFacilityPlaces(db, ctx, userId, 'museum'),
+    ]);
     return {
-      slots: ctx.balance.museum.slots,
+      slots,
       serverTime: now().toISOString(),
       revivals: rows.map(toFossilRevivalDto),
     };
@@ -39,6 +43,7 @@ export async function museumRoutes(app: FastifyInstance, { db, content, hooks, n
 
   app.post('/api/museum', async (request, reply) => {
     const { itemId } = depositFossilInputSchema.parse(request.body);
+    await assertTabUnlocked(db, await content.get(), request.user!.id, 'museum');
     const row = await depositFossil(db, content, request.user!.id, itemId, now());
     return reply.code(201).send(toFossilRevivalDto(row) satisfies FossilRevivalDto);
   });

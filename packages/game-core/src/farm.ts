@@ -5,12 +5,15 @@ import type { GameContext } from './context';
 import type { Rng } from './rng';
 
 /**
- * Ferme à baies : un champ de 3 × 3 parcelles où le joueur plante des baies (consommées). Une baie
- * ne pousse que si elle est arrosée, c'est-à-dire tant qu'un assistant de type Eau est au poste de
- * la ferme ; mûre, elle rapporte quelques baies de la même espèce.
+ * Ferme à baies : des champs de 3 × 3 parcelles où le joueur plante des baies (consommées). Une
+ * baie ne pousse que si elle est arrosée, c'est-à-dire tant qu'un assistant de type Eau est au
+ * poste de son champ ; mûre, elle rapporte quelques baies de la même espèce.
  */
 
-/** Parcelles du champ (3 × 3). */
+/**
+ * Parcelles d'un champ (3 × 3), et au départ par défaut. Les paliers de déblocage en ajoutent sans
+ * limite : au-delà de 9, elles forment un nouveau champ, avec ses propres assistants.
+ */
 export const FARM_PLOTS = 9;
 
 export type BerryPlantEffect = Extract<ItemEffect, { type: 'berryPlant' }>;

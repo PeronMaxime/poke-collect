@@ -15,6 +15,7 @@ import {
   DEFAULT_ROAMING_CHANCE,
   defaultLegendaryExpedition,
   defaultTrainerTimeLimitSeconds,
+  zoneAffinityTypes,
 } from './schemas';
 import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
 
@@ -58,26 +59,32 @@ const allOf = (...conditions: UnlockCondition[]): UnlockCondition => ({
   conditions: conditions.flatMap((c) => (c.type === 'allOf' ? c.conditions : [c])),
 });
 
-const zone = (
-  z: Omit<
-    Zone,
-    | 'regionId'
-    | 'image'
-    | 'enabled'
-    | 'requiredTypes'
-    | 'durationsMinutes'
-    | 'weatherChangeChance'
-    | 'weathers'
-  > &
-    Partial<Zone>,
-): Zone => ({
+/** `weatherTypes` : types de la zone d'où le seed tire ses météos ; affinités calculées. */
+const zone = ({
+  weatherTypes,
+  ...z
+}: Omit<
+  Zone,
+  | 'regionId'
+  | 'image'
+  | 'enabled'
+  | 'requiredTypes'
+  | 'durationsMinutes'
+  | 'weatherChangeChance'
+  | 'weathers'
+  | 'specialEncounters'
+  | 'affinityTypes'
+> &
+  Partial<Zone> & { weatherTypes: string[] }): Zone => ({
   regionId: 'kanto',
   image: null,
   enabled: true,
   requiredTypes: [],
   durationsMinutes: ALL_DURATIONS,
   weatherChangeChance: ZONE_WEATHER_CHANGE_CHANCE,
-  weathers: seedZoneWeathers(z.habitat, z.affinityTypes),
+  weathers: seedZoneWeathers(z.habitat, weatherTypes),
+  specialEncounters: [],
+  affinityTypes: zoneAffinityTypes(z.encounters),
   ...z,
 });
 
@@ -90,7 +97,7 @@ export const kantoZones: Zone[] = [
     description: 'Les hautes herbes entre Bourg Palette et Jadielle. Idéal pour débuter.',
     habitat: 'grassland',
     minPower: 0,
-    affinityTypes: ['normal', 'flying'],
+    weatherTypes: ['normal', 'flying'],
     encounters: [
       enc(19, 30, 2, 4),
       enc(16, 30, 2, 4),
@@ -109,7 +116,7 @@ export const kantoZones: Zone[] = [
     description: 'Une forêt dense où grouillent les insectes. On y aperçoit parfois un Pikachu.',
     habitat: 'forest',
     minPower: 100,
-    affinityTypes: ['bug', 'grass'],
+    weatherTypes: ['bug', 'grass'],
     encounters: [
       enc(10, 28, 3, 6),
       enc(13, 28, 3, 6),
@@ -130,7 +137,7 @@ export const kantoZones: Zone[] = [
     description: 'Un sentier escarpé au pied du Mont Sélénite, fréquenté par les Piafabec.',
     habitat: 'rough-terrain',
     minPower: 250,
-    affinityTypes: ['normal', 'fighting', 'flying'],
+    weatherTypes: ['normal', 'fighting', 'flying'],
     encounters: [
       enc(21, 28, 6, 10),
       enc(56, 20, 7, 11),
@@ -149,7 +156,7 @@ export const kantoZones: Zone[] = [
     description: 'Une grotte sombre, réputée pour ses météorites, ses fossiles… et ses Mélofée.',
     habitat: 'cave',
     minPower: 300,
-    affinityTypes: ['rock', 'ground'],
+    weatherTypes: ['rock', 'ground'],
     encounters: [
       enc(41, 38, 7, 11),
       enc(74, 28, 7, 11),
@@ -168,7 +175,7 @@ export const kantoZones: Zone[] = [
       'Le pont au nord d’Azuria et les prés de la Route 25. Un Abra s’y téléporte parfois.',
     habitat: 'grassland',
     minPower: 380,
-    affinityTypes: ['grass', 'psychic'],
+    weatherTypes: ['grass', 'psychic'],
     encounters: [
       enc(43, 20, 10, 14),
       enc(69, 20, 10, 14),
@@ -190,7 +197,7 @@ export const kantoZones: Zone[] = [
     habitat: 'waters-edge',
     minPower: 480,
     requiredTypes: [{ type: 'water', count: 1 }],
-    affinityTypes: ['water'],
+    weatherTypes: ['water'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(129, 30, 10, 18),
@@ -210,7 +217,7 @@ export const kantoZones: Zone[] = [
     description: 'Les chemins qui relient Azuria à Carmin, au pied de Safrania.',
     habitat: 'grassland',
     minPower: 520,
-    affinityTypes: ['normal', 'grass'],
+    weatherTypes: ['normal', 'grass'],
     encounters: [
       enc(16, 20, 13, 17),
       enc(52, 18, 12, 17),
@@ -232,7 +239,7 @@ export const kantoZones: Zone[] = [
     description: 'Un long tunnel creusé par des Taupiqueur, entre Carmin et Argenta.',
     habitat: 'cave',
     minPower: 560,
-    affinityTypes: ['ground'],
+    weatherTypes: ['ground'],
     encounters: [enc(50, 75, 15, 22), enc(74, 15, 15, 20), enc(51, 10, 26, 31)],
     lootTableId: 'butin-grotte',
     unlock: badges(2),
@@ -245,7 +252,7 @@ export const kantoZones: Zone[] = [
     description: 'Le plateau aride qui mène au Tunnel Roche et à la Centrale abandonnée.',
     habitat: 'rough-terrain',
     minPower: 800,
-    affinityTypes: ['poison', 'ground', 'electric'],
+    weatherTypes: ['poison', 'ground', 'electric'],
     encounters: [
       enc(21, 16, 16, 22),
       enc(23, 15, 16, 22),
@@ -267,7 +274,7 @@ export const kantoZones: Zone[] = [
     description: 'Un tunnel sans lumière. Mieux vaut une équipe solide pour en voir le bout.',
     habitat: 'cave',
     minPower: 850,
-    affinityTypes: ['rock', 'fighting', 'ground'],
+    weatherTypes: ['rock', 'fighting', 'ground'],
     encounters: [
       enc(41, 28, 16, 22),
       enc(74, 25, 16, 22),
@@ -286,7 +293,7 @@ export const kantoZones: Zone[] = [
     description: 'Les routes de Céladopole et de Lavanville, où rôdent Caninos et Goupix.',
     habitat: 'grassland',
     minPower: 900,
-    affinityTypes: ['fire', 'normal'],
+    weatherTypes: ['fire', 'normal'],
     encounters: [
       enc(16, 15, 18, 24),
       enc(19, 12, 18, 24),
@@ -310,7 +317,7 @@ export const kantoZones: Zone[] = [
     description: 'Le cimetière de Lavanville. Des Spectres y hantent les étages supérieurs.',
     habitat: 'urban',
     minPower: 1300,
-    affinityTypes: ['ghost', 'psychic'],
+    weatherTypes: ['ghost', 'psychic'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(92, 60, 22, 29),
@@ -328,7 +335,7 @@ export const kantoZones: Zone[] = [
     description: 'Le Pont Silence et les sentiers fleuris qui descendent vers Parmanie.',
     habitat: 'grassland',
     minPower: 1400,
-    affinityTypes: ['grass', 'bug', 'normal'],
+    weatherTypes: ['grass', 'bug', 'normal'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(43, 14, 22, 28),
@@ -352,7 +359,7 @@ export const kantoZones: Zone[] = [
     description: 'Les Routes 16 à 18, longue descente vers Parmanie prisée des motards.',
     habitat: 'urban',
     minPower: 1500,
-    affinityTypes: ['flying', 'poison', 'normal'],
+    weatherTypes: ['flying', 'poison', 'normal'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(84, 28, 22, 28),
@@ -377,7 +384,7 @@ export const kantoZones: Zone[] = [
     habitat: 'sea',
     minPower: 2000,
     requiredTypes: [{ type: 'water', count: 2 }],
-    affinityTypes: ['water'],
+    weatherTypes: ['water'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(72, 26, 28, 36),
@@ -405,7 +412,7 @@ export const kantoZones: Zone[] = [
       'Les ruines d’un laboratoire de Cramois’Île. Des expériences y auraient mal tourné.',
     habitat: 'urban',
     minPower: 2400,
-    affinityTypes: ['fire', 'poison'],
+    weatherTypes: ['fire', 'poison'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(109, 18, 30, 36),
@@ -429,7 +436,7 @@ export const kantoZones: Zone[] = [
     description: 'La route des badges, gardée par des dresseurs qui vérifient chaque insigne.',
     habitat: 'grassland',
     minPower: 2800,
-    affinityTypes: ['normal', 'fighting', 'poison'],
+    weatherTypes: ['normal', 'fighting', 'poison'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(22, 18, 38, 44),
@@ -451,7 +458,7 @@ export const kantoZones: Zone[] = [
     description: 'La grotte qui mène à la Ligue Pokémon. Seuls les dresseurs aguerris en sortent.',
     habitat: 'cave',
     minPower: 3200,
-    affinityTypes: ['fighting', 'rock', 'ground'],
+    weatherTypes: ['fighting', 'rock', 'ground'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(67, 18, 42, 48),
@@ -476,7 +483,7 @@ export const kantoZones: Zone[] = [
       'Le Prof. Chen y étudie des Pokémon rares, dont Bulbizarre, Salamèche, Carapuce et Évoli. Il n’en ouvre l’accès qu’aux dresseurs confirmés.',
     habitat: 'grassland',
     minPower: 1000,
-    affinityTypes: ['grass', 'fire', 'water'],
+    weatherTypes: ['grass', 'fire', 'water'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(16, 26, 12, 16),
@@ -501,7 +508,7 @@ export const kantoZones: Zone[] = [
     habitat: 'mountain',
     minPower: 2000,
     requiredTypes: [{ type: 'fighting', count: 1 }],
-    affinityTypes: ['fighting', 'normal'],
+    weatherTypes: ['fighting', 'normal'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(43, 18, 26, 30),
@@ -523,7 +530,7 @@ export const kantoZones: Zone[] = [
       'La réserve de Parmanie. Ses Pokémon farouches ne se montrent qu’aux dresseurs patients : Kangourex, Tauros, Leveinard, Minidraco…',
     habitat: 'grassland',
     minPower: 2400,
-    affinityTypes: ['normal', 'bug', 'grass', 'ground'],
+    weatherTypes: ['normal', 'bug', 'grass', 'ground'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(111, 14, 25, 32),
@@ -555,7 +562,7 @@ export const kantoZones: Zone[] = [
     habitat: 'urban',
     minPower: 2600,
     requiredTypes: [{ type: 'fighting', count: 2 }],
-    affinityTypes: ['fighting'],
+    weatherTypes: ['fighting'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(56, 30, 30, 36),
@@ -577,7 +584,7 @@ export const kantoZones: Zone[] = [
     habitat: 'urban',
     minPower: 3000,
     requiredTypes: [{ type: 'psychic', count: 1 }],
-    affinityTypes: ['electric', 'psychic', 'poison'],
+    weatherTypes: ['electric', 'psychic', 'poison'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(81, 16, 32, 38),
@@ -605,7 +612,7 @@ export const kantoZones: Zone[] = [
       'Une centrale électrique abandonnée où crépitent les Pokémon Électrik. Un Élektek y rôde.',
     habitat: 'urban',
     minPower: 1800,
-    affinityTypes: ['electric'],
+    weatherTypes: ['electric'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(100, 26, 28, 34),
@@ -628,7 +635,7 @@ export const kantoZones: Zone[] = [
     habitat: 'sea',
     minPower: 2600,
     requiredTypes: [{ type: 'water', count: 2 }],
-    affinityTypes: ['ice', 'water'],
+    weatherTypes: ['ice', 'water'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(86, 24, 32, 38),
@@ -654,7 +661,7 @@ export const kantoZones: Zone[] = [
     habitat: 'mountain',
     minPower: 3000,
     requiredTypes: [{ type: 'fire', count: 1 }],
-    affinityTypes: ['fire', 'rock'],
+    weatherTypes: ['fire', 'rock'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(77, 22, 36, 42),
@@ -677,7 +684,7 @@ export const kantoZones: Zone[] = [
     description: 'La caverne interdite d’Azuria, peuplée de Pokémon redoutables.',
     habitat: 'cave',
     minPower: 4500,
-    affinityTypes: ['psychic', 'ground'],
+    weatherTypes: ['psychic', 'ground'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(42, 12, 52, 58),
@@ -702,7 +709,7 @@ export const kantoZones: Zone[] = [
     description: 'Une île couverte de hautes herbes, absente des cartes. Quelque chose y joue…',
     habitat: 'grassland',
     minPower: 3600,
-    affinityTypes: ['grass', 'bug', 'psychic'],
+    weatherTypes: ['grass', 'bug', 'psychic'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(114, 20, 45, 50),
@@ -1176,6 +1183,7 @@ const reward = (r: Partial<ProgressReward>): ProgressReward => ({
   items: [],
   expeditionSlots: 0,
   daycareSlots: 0,
+  incubators: 0,
   bonuses: [],
   ...r,
 });
@@ -1234,7 +1242,7 @@ export const kantoQuests: Quest[] = [
     image: null,
     regionId: 'kanto',
     enabled: true,
-    unlock: badges(5),
+    unlock: defeated('maitre-blue'),
     steps: [
       step(
         'Les pieds dans l’eau',
@@ -1261,7 +1269,7 @@ export const kantoQuests: Quest[] = [
     image: null,
     regionId: 'kanto',
     enabled: true,
-    unlock: badges(4),
+    unlock: defeated('maitre-blue'),
     steps: [
       step(
         'Haute tension',
@@ -1289,7 +1297,7 @@ export const kantoQuests: Quest[] = [
     image: null,
     regionId: 'kanto',
     enabled: true,
-    unlock: badges(7),
+    unlock: defeated('maitre-blue'),
     steps: [
       step('Explorateur', 'Capture 80 espèces différentes.', { type: 'speciesCaught', count: 80 }),
       step('Coulées de lave', 'Capture 8 Pokémon Feu au Mont Braise.', catchOf(8, 'fire')),
@@ -1313,7 +1321,7 @@ export const kantoQuests: Quest[] = [
     image: null,
     regionId: 'kanto',
     enabled: true,
-    unlock: badges(8),
+    unlock: defeated('maitre-blue'),
     steps: [
       step('Maître de la Ligue', 'Bats le Maître de la Ligue Pokémon.', defeated('maitre-blue')),
       step(

@@ -9,6 +9,7 @@ import { DashboardPage } from './pages/DashboardPage';
 import { ExpeditionSimulatorPage } from './pages/ExpeditionSimulatorPage';
 import { PlaceholderPage } from './pages/PlaceholderPage';
 import { PlayersPage } from './pages/PlayersPage';
+import { PowerCalculatorPage } from './pages/PowerCalculatorPage';
 import { TelemetryPage } from './pages/TelemetryPage';
 import { AbilitiesPage } from './pages/content/AbilitiesPage';
 import { BalancePage } from './pages/content/BalancePage';
@@ -46,6 +47,7 @@ const router = createBrowserRouter([
           { path: 'species', element: <SpeciesPage /> },
           { path: 'zones', element: <ZonesPage /> },
           { path: 'expedition-simulator', element: <ExpeditionSimulatorPage /> },
+          { path: 'power-calculator', element: <PowerCalculatorPage /> },
           { path: 'trainers', element: <TrainersPage /> },
           { path: 'dungeons', element: <DungeonsPage /> },
           { path: 'abilities', element: <AbilitiesPage /> },

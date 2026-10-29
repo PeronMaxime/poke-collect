@@ -127,6 +127,7 @@ describe('talents : expéditions', () => {
       capture: 1,
       xp: 1.1,
       money: 1.5,
+      shiny: 1,
     });
     // L'argent ne compte pas en expédition.
     expect(abilityBonuses(ctx, expeditionEnv(zone, team), NO_BONUSES).money).toBe(1);

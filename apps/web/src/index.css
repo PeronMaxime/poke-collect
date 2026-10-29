@@ -10,6 +10,43 @@ body {
   @apply bg-slate-50 text-slate-900 antialiased dark:bg-slate-950 dark:text-slate-100;
 }
 
+/*
+ * Cases à cocher dessinées à la main : la case native cochée et désactivée (contenu en lecture
+ * seule) est presque invisible. Dans la couche de base pour que les tailles utilitaires (h-5 w-5) priment.
+ */
+@layer base {
+  input[type='checkbox'] {
+    appearance: none;
+    flex-shrink: 0;
+    width: 1rem;
+    height: 1rem;
+    border: 1px solid var(--color-slate-400);
+    border-radius: 0.25rem;
+    background: #fff center / 80% no-repeat;
+    cursor: pointer;
+    @variant dark {
+      border-color: var(--color-slate-500);
+      background-color: var(--color-slate-950);
+    }
+  }
+  input[type='checkbox']:checked {
+    border-color: var(--color-brand-600);
+    background-color: var(--color-brand-600);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='white' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M3.5 8.5l3 3 6-7'/%3E%3C/svg%3E");
+  }
+  input[type='checkbox']:disabled {
+    cursor: not-allowed;
+  }
+  input[type='checkbox']:disabled:checked {
+    border-color: var(--color-slate-600);
+    background-color: var(--color-slate-600);
+  }
+  input[type='checkbox']:focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}
+
 @utility card {
   @apply rounded-2xl border border-slate-200 bg-white p-6 shadow-sm dark:border-slate-800 dark:bg-slate-900;
 }

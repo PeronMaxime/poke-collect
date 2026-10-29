@@ -4,7 +4,6 @@ import {
   chestEntrySchema,
   collectionSchema,
   contentIssues,
-  dexMilestoneSchema,
   dungeonSchema,
   evolutionOverrideSchema,
   findUsages,
@@ -26,7 +25,6 @@ import type {
   ChestEntry,
   Collection,
   ContentIssue,
-  DexMilestone,
   Dungeon,
   EvolutionOverride,
   GameAbility,
@@ -51,7 +49,6 @@ import {
   chestEntries,
   collections,
   contentVersions,
-  dexMilestones,
   dungeons,
   evolutionOverrides,
   guildQuests,
@@ -139,12 +136,6 @@ const entityDefs = {
     schema: evolutionOverrideSchema,
     order: evolutionOverrides.fromSpeciesId,
   },
-  dexMilestone: {
-    table: dexMilestones,
-    key: 'id',
-    schema: dexMilestoneSchema,
-    order: dexMilestones.order,
-  },
   collection: { table: collections, key: 'id', schema: collectionSchema, order: collections.order },
   quest: { table: quests, key: 'id', schema: questSchema, order: quests.order },
   guildQuest: { table: guildQuests, key: 'id', schema: guildQuestSchema, order: guildQuests.id },
@@ -165,7 +156,6 @@ export interface ContentEntityMap {
   shopCategory: ShopCategory;
   shopEntry: ShopEntry;
   evolutionOverride: EvolutionOverride;
-  dexMilestone: DexMilestone;
   collection: Collection;
   quest: Quest;
   guildQuest: GuildQuest;
@@ -185,7 +175,6 @@ const collectionOf = {
   shopCategory: 'shopCategories',
   shopEntry: 'shopEntries',
   evolutionOverride: 'evolutionOverrides',
-  dexMilestone: 'dexMilestones',
   collection: 'collections',
   quest: 'quests',
   guildQuest: 'guildQuests',
@@ -204,7 +193,6 @@ export const contentEntitySchemas: { [K in ContentEntityType]: z.ZodType<Content
   shopCategory: shopCategorySchema,
   shopEntry: shopEntrySchema,
   evolutionOverride: evolutionOverrideSchema,
-  dexMilestone: dexMilestoneSchema,
   collection: collectionSchema,
   quest: questSchema,
   guildQuest: guildQuestSchema,
@@ -215,11 +203,13 @@ type AnyRow = Record<string, unknown>;
 
 async function selectEntities(db: Db, type: ContentEntityType, versionId: number) {
   const def = entityDefs[type];
+  // Départage par la clé : plusieurs régions ont des entités de même rang (zone n° 0…).
+  const keyColumn = (def.table as unknown as Record<string, Parameters<typeof asc>[0]>)[def.key]!;
   const rows = (await db
     .select()
     .from(def.table)
     .where(eq(def.table.contentVersionId, versionId))
-    .orderBy(asc(def.order))) as AnyRow[];
+    .orderBy(asc(def.order), asc(keyColumn))) as AnyRow[];
   return rows.map(({ contentVersionId: _, ...entity }) => entity);
 }
 

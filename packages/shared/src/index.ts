@@ -3,6 +3,7 @@ import { slugSchema } from '@poke/content';
 import type {
   ChestRarity,
   ContentIssue,
+  FacilityId,
   GameContent,
   GuildObjective,
   GuildQuestDifficulty,
@@ -138,7 +139,7 @@ export type AssignAssistantInput = z.infer<typeof assignAssistantInputSchema>;
 // --- Centre Pokémon ----------------------------------------------------------------------
 
 /** Pokémon K.O. à soigner (dans la limite des places libres du Centre). */
-export const healPokemonInputSchema = z.object({ pokemonIds: z.array(z.uuid()).min(1).max(30) });
+export const healPokemonInputSchema = z.object({ pokemonIds: z.array(z.uuid()).min(1).max(999) });
 export type HealPokemonInput = z.infer<typeof healPokemonInputSchema>;
 
 /** Pokémon K.O. ranimés par un objet `revive` (un objet par Pokémon). */
@@ -212,6 +213,10 @@ export interface PokedexEntryDto {
   caughtShiny: boolean;
   /** Version shiny déjà rencontrée (capturée ou non). */
   seenShiny: boolean;
+  /** Formes de l'espèce déjà rencontrées (capturées ou non). */
+  seenFormIds: number[];
+  /** Formes déjà rencontrées en version shiny. */
+  seenShinyFormIds: number[];
   firstCaughtAt: string | null;
 }
 
@@ -256,7 +261,7 @@ export interface EvolveResponse {
   newFormIds: number[];
 }
 
-// --- Progression : paliers du Pokédex et collections -----------------------------------
+// --- Progression : collections et complétions d'expédition -----------------------------
 
 export interface RewardClaimDto {
   kind: RewardKind;
@@ -266,21 +271,29 @@ export interface RewardClaimDto {
 
 export interface ProgressionResponse {
   claims: RewardClaimDto[];
-  /** Emplacements débloqués (départ + récompenses réclamées). */
+  /** Emplacements débloqués (départ + récompenses réclamées et paliers des bâtiments). */
   slots: PlayerSlots;
+  /**
+   * Places ouvertes de chaque bâtiment (départ + paliers remplis, + récompenses pour les
+   * expéditions, les pensions et les couveuses).
+   */
+  facilities: Record<FacilityId, number>;
   /** Multiplicateurs permanents (1 = aucun bonus). */
   bonuses: PlayerBonuses;
 }
 
 export const claimRewardInputSchema = z.object({
-  kind: z.enum(['milestone', 'collection']),
+  kind: z.enum(['collection', 'completion']),
   rewardId: slugSchema,
+  /** Complétion d'expédition : l'expédition ou la région complétée. */
+  targetId: slugSchema.optional(),
 });
 export type ClaimRewardInput = z.infer<typeof claimRewardInputSchema>;
 
 export interface ClaimRewardResponse {
   kind: RewardKind;
   rewardId: string;
+  targetId?: string;
   rewards: ProgressReward;
   /** Solde après la récompense. */
   currency: number;
@@ -481,7 +494,7 @@ export const depositDaycareInputSchema = z.object({
   heldItemAId: slugSchema.nullable(),
   heldItemBId: slugSchema.nullable(),
   /** Pension choisie ; par défaut, la première libre. */
-  slotIndex: z.int().min(0).max(30).optional(),
+  slotIndex: z.int().min(0).max(999).optional(),
 });
 export type DepositDaycareInput = z.infer<typeof depositDaycareInputSchema>;
 
@@ -576,7 +589,7 @@ export interface ReviveFossilsResponse {
 // --- Ferme à baies -----------------------------------------------------------------
 
 export const plantBerryInputSchema = z.object({
-  plotIndex: z.int().min(0).max(8),
+  plotIndex: z.int().min(0).max(999),
   itemId: slugSchema,
 });
 export type PlantBerryInput = z.infer<typeof plantBerryInputSchema>;
@@ -1376,9 +1389,9 @@ export interface GuildMemberDto {
   trainerName: string;
   role: GuildRole;
   joinedAt: string;
-  /** Avancée apportée aux quêtes de la semaine (dont celles du jour). */
-  weekContribution: number;
   isMe: boolean;
+  /** Vu il y a moins de `ONLINE_WINDOW_MS` (le jeu ouvert envoie un signal par minute). */
+  online: boolean;
 }
 
 export interface GuildQuestDto {

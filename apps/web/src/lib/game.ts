@@ -1,6 +1,12 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { charmMultiplier, createGameContext, isHealing, pokemonEvolutions } from '@poke/game-core';
+import {
+  charmMultiplier,
+  createGameContext,
+  facilityPlaces,
+  isHealing,
+  pokemonEvolutions,
+} from '@poke/game-core';
 import type {
   ClaimedRewards,
   DexCatches,
@@ -155,7 +161,12 @@ export const useShop = () =>
 
 /** Guilde du joueur (membres, quêtes du jour et de la semaine), ou ses candidatures s'il n'en a pas. */
 export const useGuild = () =>
-  useQuery({ queryKey: keys.guild, queryFn: () => api<GuildStateResponse>('/api/guild') });
+  useQuery({
+    queryKey: keys.guild,
+    queryFn: () => api<GuildStateResponse>('/api/guild'),
+    // Garde à jour la présence des membres.
+    refetchInterval: 60_000,
+  });
 
 /** Fiche publique d'une guilde. */
 export const useGuildProfile = (id: string) =>
@@ -240,17 +251,20 @@ export function usePlayerProgress(): PlayerProgress {
   );
 }
 
-/** Pokédex normal et shiny (paliers et collections). */
+/** Pokédex normal et shiny et formes capturées (collections, complétions d'expédition). */
 export function useDexCatches(): Required<DexCatches> {
   const pokedex = usePokedex();
+  const forms = usePokedexForms();
   return useMemo(
     () => ({
       caughtSpeciesIds: new Set(pokedex.data?.filter((d) => d.caught).map((d) => d.speciesId)),
       caughtShinySpeciesIds: new Set(
         pokedex.data?.filter((d) => d.caughtShiny).map((d) => d.speciesId),
       ),
+      caughtFormIds: new Set(forms.data?.map((f) => f.formId)),
+      caughtShinyFormIds: new Set(forms.data?.filter((f) => f.caughtShiny).map((f) => f.formId)),
     }),
-    [pokedex.data],
+    [pokedex.data, forms.data],
   );
 }
 
@@ -277,12 +291,17 @@ export const isUsable = (p: PokemonDto, now: number) =>
  * Centre Pokémon : Pokémon en soins (par fin de soins), Pokémon K.O. qui attendent et places
  * libres (affichage : le serveur vérifie de nouveau).
  */
-export function centerState(ctx: GameContext, pokemon: readonly PokemonDto[], now: number) {
+export function centerState(
+  ctx: GameContext,
+  pokemon: readonly PokemonDto[],
+  now: number,
+  progress: PlayerProgress,
+) {
   const healing = pokemon
     .filter((p) => isHealing(p.healUntil, now))
     .sort((a, b) => Date.parse(a.healUntil!) - Date.parse(b.healUntil!));
   const knockedOut = pokemon.filter((p) => p.knockedOut);
-  const { slots } = ctx.balance.center;
+  const slots = facilityPlaces(ctx, 'center', progress);
   return { slots, healing, knockedOut, free: Math.max(0, slots - healing.length) };
 }
 
@@ -320,14 +339,22 @@ export const useProgression = () =>
     queryFn: () => api<ProgressionResponse>('/api/progression'),
   });
 
-/** Récompenses de progression déjà réclamées (paliers, collections). */
+/** Bonus permanent de chance shiny (récompenses réclamées : complétions…), 1 = aucun. */
+export function useShinyBonus(): number {
+  return useProgression().data?.bonuses.shiny ?? 1;
+}
+
+/** Récompenses de progression déjà réclamées (collections, complétions d'expédition). */
 export function useClaimedRewards(): ClaimedRewards {
   const progression = useProgression();
   return useMemo(() => {
     const claims = progression.data?.claims ?? [];
     const ids = (kind: string) =>
       new Set(claims.filter((c) => c.kind === kind).map((c) => c.rewardId));
-    return { milestoneIds: ids('milestone'), collectionIds: ids('collection') };
+    return {
+      collectionIds: ids('collection'),
+      completionIds: ids('completion'),
+    };
   }, [progression.data]);
 }
 

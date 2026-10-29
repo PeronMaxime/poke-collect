@@ -26,7 +26,11 @@ let app: Awaited<ReturnType<typeof buildApp>>['app'];
 
 beforeAll(async () => {
   await handle.migrate();
-  await ensureSeedContent(handle.db, seedContent);
+  // Onglets tous ouverts : leurs conditions de déblocage sont testées à part (museum.test.ts).
+  await ensureSeedContent(handle.db, {
+    ...seedContent,
+    balance: { ...seedContent.balance, tabUnlocks: {} },
+  });
   ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
 });
 afterAll(async () => {

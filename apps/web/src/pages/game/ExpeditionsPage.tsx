@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import type { Zone } from '@poke/content';
+import type { SpecialEncounter, Zone } from '@poke/content';
 import {
   WEATHER_LABELS,
   abilityMultiplier,
@@ -12,6 +12,7 @@ import {
   isZoneUnlocked,
   resolveWeather,
   shinyProbability,
+  specialEncountersFor,
   zoneWeather,
 } from '@poke/game-core';
 import type { AbilityEnv, GameContext } from '@poke/game-core';
@@ -35,6 +36,7 @@ import {
   usePokedexForms,
   usePokemon,
   useQuests,
+  useShinyBonus,
   useShinyCharm,
 } from '../../lib/game';
 import {
@@ -42,12 +44,14 @@ import {
   formatCountdown,
   formatDuration,
   formatMultiplier,
+  formatPercentBonus,
   formatShinyRate,
   itemName,
   speciesName,
   unlockConditionText,
 } from '../../lib/labels';
 import { ActiveAbilities } from './ActiveAbilities';
+import { FacilityLocks } from './FacilityLocks';
 import { LaunchExpeditionDialog } from './LaunchExpeditionDialog';
 import { LegendaryEncounterDialog } from './LegendaryEncounterDialog';
 import { LootReveal } from './LootReveal';
@@ -225,6 +229,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
       canLaunch={freeSlots > 0}
       chain={chains.get(zone.id)}
       roamers={roamers.filter((r) => r.zoneId === zone.id)}
+      specials={specialEncountersFor(ctx, zone, pokemon.data ?? [])}
       serverNow={serverNow}
       onLaunch={() => setLaunchZone(zone)}
       favorite={favoriteIds.has(zone.id)}
@@ -281,6 +286,9 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
             );
           })}
         </div>
+        {slots < ctx.balance.expeditions.maxSlots && (
+          <FacilityLocks ctx={ctx} facility="expedition" />
+        )}
         {[claim.error, cancel.error, favorite.error].map(
           (error, i) =>
             error && (
@@ -480,6 +488,7 @@ function ExpeditionSummary({
   abilityEnv: AbilityEnv | undefined;
   charm: number;
 }) {
+  const shinyBonus = useShinyBonus();
   const filter = e.captureFilter;
   const time = (iso: string) =>
     new Date(iso).toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
@@ -503,17 +512,18 @@ function ExpeditionSummary({
       e.berryItemId ? `${e.berries} × ${itemName(ctx, e.berryItemId)}` : 'aucune',
     ]);
   }
-  // Comme au serveur : chaîne du départ, Charme Chroma au retour et, hors expédition
-  // légendaire, talents de l'équipe.
+  // Comme au serveur : chaîne du départ, Charme Chroma et bonus permanent au retour et, hors
+  // expédition légendaire, talents de l'équipe.
   const shinyRate = Math.min(
     1,
-    shinyProbability(ctx, { chain: e.shinyChain, charm }) *
+    shinyProbability(ctx, { chain: e.shinyChain, charm, bonus: shinyBonus }) *
       (abilityEnv && !e.questId ? abilityMultiplier(ctx, abilityEnv, 'shinyChance') : 1),
   );
   const shinyBonuses = [
     e.shinyChain > 0 &&
       `chaîne ${e.shinyChain}, ${formatMultiplier(chainMultiplier(ctx, e.shinyChain))}`,
     charm > 1 && 'Charme Chroma',
+    shinyBonus > 1 && `bonus +${formatPercentBonus(shinyBonus)}`,
   ].filter(Boolean);
   rows.push([
     'Taux chromatique',
@@ -578,6 +588,7 @@ export function ZoneCard({
   canLaunch,
   chain,
   roamers = [],
+  specials = [],
   serverNow,
   onLaunch,
   favorite,
@@ -597,6 +608,8 @@ export function ZoneCard({
   chain: ShinyChainDto | undefined;
   /** Pokémon fuyards cachés dans la zone en ce moment. */
   roamers?: RoamerDto[];
+  /** Rencontres spéciales qu'ouvrent les Pokémon du joueur (affichées avec les autres). */
+  specials?: SpecialEncounter[];
   serverNow: number;
   onLaunch: () => void;
   favorite: boolean;
@@ -671,6 +684,14 @@ export function ZoneCard({
         </span>
       </div>
       <p className="mt-1 text-sm text-slate-500">{zone.description}</p>
+      {/* Phrase énigmatique : seulement quand le joueur possède le Pokémon requis. */}
+      {specials
+        .filter((s) => s.hint)
+        .map((s, i) => (
+          <p key={i} className="mt-1 text-xs text-violet-700 italic dark:text-violet-300">
+            ✧ {s.hint}
+          </p>
+        ))}
       {chain && (expiresIn === null || expiresIn > 0) && (
         <p
           className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
@@ -722,6 +743,25 @@ export function ZoneCard({
             >
               {sprite}
               {shiny && <ShinySparkles />}
+            </span>
+          );
+        })}
+        {specials.map((s) => {
+          const own = s.formId != null ? caughtForms.has(s.formId) : caught.has(s.speciesId);
+          const name = speciesName(ctx, s.speciesId, s.formId);
+          return (
+            <span
+              key={`special:${s.speciesId}:${s.formId ?? ''}`}
+              className="relative flex rounded-full ring-2 ring-violet-400/70"
+              title={`Rencontre spéciale : ${name}, avec ${speciesName(ctx, s.requiredSpeciesId, s.requiredFormId)} dans l’équipe (${s.chance} % de chances par rencontre)`}
+            >
+              <PokemonSprite
+                speciesId={s.speciesId}
+                formId={s.formId}
+                size={40}
+                className={own ? '' : 'opacity-50 grayscale'}
+                alt={name}
+              />
             </span>
           );
         })}
