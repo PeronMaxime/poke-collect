@@ -56,7 +56,8 @@ function unlockedPlaces(ctx: GameContext, facility: FacilityId, progress: Player
 
 /**
  * Places ouvertes au joueur : départ + paliers remplis (+ récompenses réclamées pour les
- * expéditions, les pensions et les couveuses) ; seules les expéditions ont un maximum.
+ * expéditions, les pensions et les couveuses, + parcelles achetées pour la ferme) ; seules les
+ * expéditions ont un maximum.
  */
 export function facilityPlaces(
   ctx: GameContext,
@@ -74,15 +75,7 @@ export function facilityPlaces(
       : basePlaces(ctx, facility) +
         (facility === 'incubator'
           ? claimedIncubators(ctx, claimed) * FACILITY_UNIT_PLACES.incubator
-          : 0);
+          : 0) +
+        (facility === 'farm' ? (claimed.farmPlots ?? 0) : 0);
   return base + unlockedPlaces(ctx, facility, progress);
-}
-
-/** Paliers pas encore remplis (à afficher verrouillés), dans l'ordre de l'admin. */
-export function lockedFacilityUnlocks(
-  ctx: GameContext,
-  facility: FacilityId,
-  progress: PlayerProgress,
-): FacilityUnlock[] {
-  return facilityUnlocks(ctx, facility).filter((step) => !isUnlocked(ctx, step.unlock, progress));
 }

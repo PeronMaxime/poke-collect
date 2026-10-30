@@ -3,10 +3,13 @@ import { isUnlocked } from './progress';
 import type { PlayerProgress } from './progress';
 import {
   checkPurchase,
+  escalatedPrice,
   maxPurchasableLots,
+  nextLotPrice,
   purchaseLimitStatus,
   purchaseGift,
   purchaseQuote,
+  roundPrice,
   shopEntryStatus,
 } from './shop';
 import { testContext } from './test-helpers';
@@ -172,5 +175,57 @@ describe('achat', () => {
     expect(maxPurchasableLots(balls, { remainingLots: 2 }, 1000)).toBe(2);
     expect(maxPurchasableLots(balls, { remainingLots: null }, 10_000_000)).toBe(99);
     expect(maxPurchasableLots({ ...balls, price: 0 }, { remainingLots: null }, 0)).toBe(99);
+  });
+});
+
+describe('parcelles de ferme', () => {
+  // Article ouvert d'emblée (dans le contenu, il suit l'onglet Ferme).
+  const ctx = testContext((c) => {
+    c.shopEntries.find((e) => e.id === 'parcelle-ferme')!.unlock = { type: 'always' };
+  });
+  const plot = ctx.shopEntry('parcelle-ferme')!;
+  const bought = (lots: number) => [{ entryId: plot.id, lots, at: NOW }];
+
+  it('arrondit les prix à 3 chiffres significatifs', () => {
+    expect(roundPrice(950.4)).toBe(950);
+    expect(roundPrice(12_345)).toBe(12_300);
+    expect(roundPrice(2_178_406)).toBe(2_180_000);
+  });
+
+  it('multiplie le prix à chaque achat, un lot à la fois', () => {
+    expect(escalatedPrice(10_000, 1.4, 0)).toBe(10_000);
+    expect(escalatedPrice(10_000, 1.4, 1)).toBe(14_000);
+    expect(escalatedPrice(10_000, 1.4, 3)).toBe(27_400);
+    expect(nextLotPrice(ctx, plot, bought(2))).toBe(19_600);
+    // Les autres articles gardent leur prix.
+    expect(nextLotPrice(ctx, entry('poke-ball'), bought(2))).toBe(200);
+
+    const status = shopEntryStatus(ctx, plot, progress(), bought(1), NOW);
+    expect(status).toMatchObject({ price: 14_000, maxLotsPerPurchase: 1 });
+    expect(maxPurchasableLots(plot, status, 1_000_000)).toBe(1);
+    expect(maxPurchasableLots(plot, status, 13_999)).toBe(0);
+    const input = { entry: plot, progress: progress(), purchases: bought(1), now: NOW };
+    expect(checkPurchase(ctx, { ...input, lots: 2, currency: 1_000_000 })).toMatchObject({
+      error: 'LIMIT_REACHED',
+      remainingLots: 1,
+    });
+    expect(checkPurchase(ctx, { ...input, lots: 1, currency: 13_999 })).toMatchObject({
+      error: 'NOT_ENOUGH_MONEY',
+      totalPrice: 14_000,
+    });
+    expect(checkPurchase(ctx, { ...input, lots: 1, currency: 14_000 })).toMatchObject({
+      ok: true,
+      totalPrice: 14_000,
+      stack: { itemId: 'parcelle-ferme', quantity: 1 },
+    });
+  });
+
+  it('s’arrête à 17 achats (ferme de 18 parcelles)', () => {
+    expect(shopEntryStatus(ctx, plot, progress(), bought(16), NOW)).toMatchObject({
+      state: 'available',
+      remainingLots: 1,
+      price: 2_180_000,
+    });
+    expect(shopEntryStatus(ctx, plot, progress(), bought(17), NOW).state).toBe('soldOut');
   });
 });

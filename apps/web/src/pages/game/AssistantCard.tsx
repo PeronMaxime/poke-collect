@@ -59,6 +59,7 @@ export function AssistantCard({
   post,
   slot,
   standalone = false,
+  closed = false,
 }: {
   ctx: GameContext;
   post: AssistantPost;
@@ -66,6 +67,8 @@ export function AssistantCard({
   slot: number;
   /** Carte à part (couveuse, Centre) plutôt qu'en bas d'une carte. */
   standalone?: boolean;
+  /** Poste au-delà de ceux ouverts (réglage baissé) : l'assistant peut seulement être libéré. */
+  closed?: boolean;
 }) {
   const queryClient = useQueryClient();
   const assistants = useAssistants();
@@ -129,13 +132,15 @@ export function AssistantCard({
           )}
         </div>
         <div className="flex shrink-0 gap-1">
-          <button
-            className="btn-ghost px-2 py-0.5 text-xs"
-            onClick={() => setPicking(true)}
-            title={info.help}
-          >
-            {p ? 'Changer' : 'Choisir'}
-          </button>
+          {!closed && (
+            <button
+              className="btn-ghost px-2 py-0.5 text-xs"
+              onClick={() => setPicking(true)}
+              title={info.help}
+            >
+              {p ? 'Changer' : 'Choisir'}
+            </button>
+          )}
           {p && (
             <button
               className="btn-ghost px-2 py-0.5 text-xs"

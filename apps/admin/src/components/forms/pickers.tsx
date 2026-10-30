@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { WEATHERS } from '@poke/content';
+import { ITEM_CATEGORIES, WEATHERS } from '@poke/content';
 import type {
   BaseUnlockCondition,
+  ItemCategory,
   Quest,
   Region,
   Trainer,
@@ -347,7 +348,23 @@ export function TypeSelect({
   );
 }
 
-/** Objet du catalogue du contenu (optionnellement filtré, ex. Balls uniquement). */
+/** Séparateurs du sélecteur d'objets, dans l'ordre des catégories du contenu. */
+const ITEM_GROUP_LABELS: Record<ItemCategory, string> = {
+  ball: 'Balls',
+  berry: 'Baies',
+  evolution: 'Évolution',
+  breeding: 'Élevage',
+  endgame: 'Endgame',
+  fossil: 'Fossiles',
+  megaStone: 'Méga-Gemmes',
+  chest: 'Coffres',
+  misc: 'Divers',
+};
+
+/**
+ * Objet du catalogue du contenu (optionnellement filtré, ex. Balls uniquement),
+ * regroupé par catégorie et trié par ordre alphabétique.
+ */
 export function ItemSelect({
   ctx,
   value,
@@ -378,11 +395,22 @@ export function ItemSelect({
           <option value="">{allowNone ? 'Aucun' : 'Choisir…'}</option>
         )}
         {!known && <option value={value}>{value} (inconnu)</option>}
-        {items.map((i) => (
-          <option key={i.id} value={i.id}>
-            {i.name} ({i.id})
-          </option>
-        ))}
+        {ITEM_CATEGORIES.map((category) => {
+          const group = items
+            .filter((i) => i.category === category)
+            .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+          return (
+            group.length > 0 && (
+              <optgroup key={category} label={ITEM_GROUP_LABELS[category]}>
+                {group.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name} ({i.id})
+                  </option>
+                ))}
+              </optgroup>
+            )
+          );
+        })}
       </select>
     </div>
   );

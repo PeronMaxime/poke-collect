@@ -323,7 +323,7 @@ function QuestConditionEditor({
   const initial = (m: ConditionMode): QuestCondition => {
     switch (m) {
       case 'catchPokemon':
-        return { type: m, count: 10, pokemonType: null, speciesId: null };
+        return { type: m, count: 10, pokemonType: null, speciesId: null, zoneId: null };
       case 'expedition':
         return {
           type: m,
@@ -388,6 +388,24 @@ function QuestConditionEditor({
                 </button>
               )}
             </div>
+          </Field>
+          <Field label="Zone" error={err('zoneId')}>
+            <select
+              className="input w-auto"
+              value={value.zoneId ?? ''}
+              disabled={disabled}
+              onChange={(e) => onChange({ ...value, zoneId: e.target.value || null })}
+            >
+              <option value="">Toute la région de la quête</option>
+              {value.zoneId && !ctx.zone(value.zoneId) && (
+                <option value={value.zoneId}>{value.zoneId} (inconnue)</option>
+              )}
+              {ctx.zones.map((z) => (
+                <option key={z.id} value={z.id}>
+                  {z.name}
+                </option>
+              ))}
+            </select>
           </Field>
         </div>
       )}

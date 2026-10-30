@@ -30,6 +30,7 @@ import {
   withdrawDaycare,
 } from '../game/daycare';
 import { assistantHolders } from '../game/assistants';
+import { settleClosedPlaces } from '../game/closed-places';
 import {
   assertTabUnlocked,
   eggsHatchedCount,
@@ -56,6 +57,7 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
   app.get('/api/daycare', async (request): Promise<DaycareResponse> => {
     const userId = request.user!.id;
     const ctx = await content.get();
+    await settleClosedPlaces(db, content, userId, now());
     const [{ slots, parents }, eggRows, eggsHatched, places, eggPlaces, helpers] =
       await Promise.all([
         loadDaycare(db, userId),
@@ -88,13 +90,13 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
   app.post('/api/daycare/:slot/collect', async (request): Promise<CollectEggsResponse> => {
     const { slot } = slotParams.parse(request.params);
     const result = await collectEggs(db, content, request.user!.id, slot, now());
-    return { eggs: result.eggs.map(toEggDto), lost: result.lost };
+    return { eggs: result.eggs.map(toEggDto), waiting: result.waiting };
   });
 
   app.delete('/api/daycare/:slot', async (request): Promise<CollectEggsResponse> => {
     const { slot } = slotParams.parse(request.params);
     const result = await withdrawDaycare(db, content, request.user!.id, slot, now());
-    return { eggs: result.eggs.map(toEggDto), lost: result.lost };
+    return { eggs: result.eggs.map(toEggDto), waiting: result.waiting };
   });
 
   app.post('/api/eggs/hatch', async (request): Promise<HatchEggsResponse> => {

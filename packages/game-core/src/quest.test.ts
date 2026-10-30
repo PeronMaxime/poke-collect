@@ -64,6 +64,53 @@ describe('avancement des quêtes', () => {
     });
   });
 
+  it('ne compte les captures d’une étape sans zone que dans la région de la quête', () => {
+    const electhor = quest('electhor');
+    const captured = [25, 81].map((speciesId) => ({ speciesId }));
+    expect(
+      advanceQuest(
+        ctx,
+        electhor,
+        NEW_QUEST,
+        progress(),
+        expedition({ captured, zoneId: 'route-29' }),
+      ),
+    ).toEqual(NEW_QUEST);
+    expect(
+      advanceQuest(
+        ctx,
+        electhor,
+        NEW_QUEST,
+        progress(),
+        expedition({ captured, zoneId: 'route-1' }),
+      ),
+    ).toEqual({ step: 0, count: 2 });
+  });
+
+  it('ne compte les captures d’une étape limitée à une zone que dans cette zone', () => {
+    const electhor = quest('electhor');
+    const captured = [25, 81, 19].map((speciesId) => ({ speciesId }));
+    const atStep2 = { step: 1, count: 0 };
+    // Étape 1 (toutes zones) : les captures comptent partout.
+    expect(advanceQuest(ctx, electhor, NEW_QUEST, progress(), expedition({ captured }))).toEqual({
+      step: 0,
+      count: 2,
+    });
+    // Étape 2 (Centrale) : rien ailleurs, seulement le bon type à la Centrale.
+    expect(advanceQuest(ctx, electhor, atStep2, progress(), expedition({ captured }))).toEqual(
+      atStep2,
+    );
+    expect(
+      advanceQuest(
+        ctx,
+        electhor,
+        atStep2,
+        progress(),
+        expedition({ captured, zoneId: 'centrale' }),
+      ),
+    ).toEqual({ step: 1, count: 2 });
+  });
+
   it('valide une expédition avec assez de Pokémon du type et de la PE demandés', () => {
     const condition = quest('artikodin').steps[2]!.condition;
     if (condition.type !== 'expedition') throw new Error('étape inattendue');
@@ -71,7 +118,7 @@ describe('avancement des quêtes', () => {
     const weak = member('b', 87, 5);
     expect(pokemonPower(ctx.species(87)!, strong)).toBeGreaterThanOrEqual(400);
     const at = (team: QuestEvent['team'], zoneId = 'iles-ecume') =>
-      eventProgress(ctx, condition, expedition({ zoneId, team }));
+      eventProgress(ctx, condition, expedition({ zoneId, team }), 'kanto');
     expect(at([strong, member('c', 91, 50)])).toBe(1);
     expect(at([strong, weak])).toBe(0);
     expect(at([strong, member('d', 129, 50)])).toBe(0);

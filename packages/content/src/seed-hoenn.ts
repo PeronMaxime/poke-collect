@@ -148,7 +148,7 @@ export const hoennZones: Zone[] = [
     description:
       'Une forêt humide entre Clémenti-Ville et Mérouville, tapissée de champignons et de cocons.',
     habitat: 'forest',
-    minPower: 100,
+    minPower: 170,
     weatherTypes: ['bug', 'grass'],
     encounters: [
       enc(265, 24, 3, 6),
@@ -169,7 +169,7 @@ export const hoennZones: Zone[] = [
     description:
       'La côte sableuse au nord de Clémenti-Ville, où les Goélise tournoient au-dessus des pêcheurs.',
     habitat: 'waters-edge',
-    minPower: 180,
+    minPower: 300,
     weatherTypes: ['water', 'flying', 'normal'],
     encounters: [
       enc(276, 20, 4, 7),
@@ -190,7 +190,7 @@ export const hoennZones: Zone[] = [
     name: 'Route 116',
     description: 'La route à l’est de Mérouville, qui bute sur un tunnel inachevé.',
     habitat: 'grassland',
-    minPower: 250,
+    minPower: 450,
     weatherTypes: ['normal', 'bug'],
     encounters: [
       enc(290, 20, 6, 9),
@@ -212,7 +212,7 @@ export const hoennZones: Zone[] = [
     description:
       'Un tunnel creusé à la main vers Vergazon. Le vacarme des Chuchmur résonne sur ses parois.',
     habitat: 'cave',
-    minPower: 300,
+    minPower: 500,
     weatherTypes: ['normal', 'rock', 'ground'],
     encounters: [
       enc(293, 30, 7, 10),
@@ -232,7 +232,7 @@ export const hoennZones: Zone[] = [
     description:
       'Une grotte de l’île de Village Myokara, aux parois couvertes de fresques. Ténéfix et Mysdibule s’y cachent dans le noir.',
     habitat: 'cave',
-    minPower: 380,
+    minPower: 700,
     weatherTypes: ['rock', 'fighting', 'steel'],
     encounters: [
       enc(296, 20, 8, 12),
@@ -254,7 +254,7 @@ export const hoennZones: Zone[] = [
     description:
       'La plage de la Route 109, devant le grand port de Poivressel. Les Écrapince y pincent les orteils.',
     habitat: 'waters-edge',
-    minPower: 420,
+    minPower: 800,
     weatherTypes: ['water', 'flying'],
     encounters: [
       enc(278, 30, 9, 13),
@@ -276,7 +276,7 @@ export const hoennZones: Zone[] = [
     description:
       'La route qui longe la Piste Cyclable jusqu’à Lavandia. Ça grésille dans les hautes herbes.',
     habitat: 'grassland',
-    minPower: 480,
+    minPower: 950,
     weatherTypes: ['electric', 'normal', 'poison'],
     encounters: [
       enc(309, 20, 10, 14),
@@ -300,7 +300,7 @@ export const hoennZones: Zone[] = [
     description:
       'Les prés fleuris autour de la Pension de Hoenn. Muciole et Lumivole y dansent à la nuit tombée.',
     habitat: 'grassland',
-    minPower: 520,
+    minPower: 1000,
     weatherTypes: ['bug', 'grass', 'water'],
     encounters: [
       enc(313, 12, 12, 16),
@@ -325,7 +325,7 @@ export const hoennZones: Zone[] = [
     description:
       'Un passage brûlant creusé sous le Mont Chimnée. Des Chartor y crachent leur fumée noire.',
     habitat: 'cave',
-    minPower: 560,
+    minPower: 1050,
     weatherTypes: ['fire', 'poison', 'ground'],
     encounters: [
       enc(322, 24, 13, 17),
@@ -348,7 +348,7 @@ export const hoennZones: Zone[] = [
     description:
       'Les routes qui contournent le Mont Chimnée, sous une pluie de cendres qui recouvre les herbes.',
     habitat: 'grassland',
-    minPower: 800,
+    minPower: 1650,
     weatherTypes: ['normal', 'ground', 'fire'],
     encounters: [
       enc(327, 14, 16, 20),
@@ -372,7 +372,7 @@ export const hoennZones: Zone[] = [
     description:
       'Le volcan qui domine Vermilava. Ses pentes escarpées mènent à un cratère encore fumant.',
     habitat: 'mountain',
-    minPower: 850,
+    minPower: 1725,
     weatherTypes: ['fire', 'psychic', 'fighting'],
     encounters: [
       enc(322, 18, 16, 21),
@@ -393,7 +393,7 @@ export const hoennZones: Zone[] = [
     description:
       'Des prairies coupées de rivières, au nord d’Autéquia. Mangriff et Séviper s’y livrent une guerre sans fin.',
     habitat: 'grassland',
-    minPower: 900,
+    minPower: 1800,
     weatherTypes: ['normal', 'poison', 'flying'],
     encounters: [
       enc(335, 10, 18, 22),
@@ -419,7 +419,7 @@ export const hoennZones: Zone[] = [
     description:
       'Une tempête de sable permanente souffle sur ce désert. On y déterre parfois des fossiles très anciens.',
     habitat: 'rough-terrain',
-    minPower: 1300,
+    minPower: 1950,
     weatherTypes: ['ground', 'grass', 'rock'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -442,7 +442,7 @@ export const hoennZones: Zone[] = [
     description:
       'Une centrale abandonnée sous la Route 110, où les générateurs n’ont jamais cessé de tourner.',
     habitat: 'urban',
-    minPower: 1400,
+    minPower: 2025,
     weatherTypes: ['electric', 'steel'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -465,7 +465,7 @@ export const hoennZones: Zone[] = [
     description:
       'La mer au sud de Clémenti-Ville, semée d’îlots jusqu’à Village Myokara. Il faut un Pokémon Eau pour la traverser.',
     habitat: 'sea',
-    minPower: 1500,
+    minPower: 2100,
     requiredTypes: [{ type: 'water', count: 1 }],
     weatherTypes: ['water'],
     durationsMinutes: LONG_DURATIONS,
@@ -490,7 +490,7 @@ export const hoennZones: Zone[] = [
     description:
       'Une jungle détrempée où il pleut presque sans arrêt. Un Absol rôderait près de Cimetronelle.',
     habitat: 'forest',
-    minPower: 2000,
+    minPower: 2750,
     weatherTypes: ['grass', 'dark', 'water'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -518,7 +518,7 @@ export const hoennZones: Zone[] = [
     description:
       'La montagne sacrée où reposent les Pokémon disparus. Des esprits errent entre les tombes, jusqu’au sommet venteux.',
     habitat: 'mountain',
-    minPower: 2400,
+    minPower: 3150,
     weatherTypes: ['ghost', 'psychic'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -542,7 +542,7 @@ export const hoennZones: Zone[] = [
     description:
       'Une grotte au large de Nénucrique que la marée remplit et vide chaque jour. Le fond est couvert de glace.',
     habitat: 'cave',
-    minPower: 2800,
+    minPower: 3350,
     weatherTypes: ['ice', 'water'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -567,7 +567,7 @@ export const hoennZones: Zone[] = [
     description:
       'La dernière grotte avant la Ligue d’Éternara. Seuls les dresseurs aux huit badges en ressortent.',
     habitat: 'cave',
-    minPower: 3200,
+    minPower: 3600,
     weatherTypes: ['rock', 'fighting', 'steel'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -592,7 +592,7 @@ export const hoennZones: Zone[] = [
     description:
       'La haute mer autour d’Atalanopolis et d’Algatia. Les dresseurs qui y naviguent sont tous aguerris.',
     habitat: 'waters-edge',
-    minPower: 3600,
+    minPower: 3650,
     weatherTypes: ['water', 'dark', 'ice'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -619,7 +619,7 @@ export const hoennZones: Zone[] = [
     description:
       'Le Prof. Seko étudie Arcko, Poussifeu et Gobou sur le terrain, et un Tarsal timide vit près du labo. Il ouvre ses enclos aux dresseurs confirmés.',
     habitat: 'grassland',
-    minPower: 1000,
+    minPower: 1850,
     weatherTypes: ['grass', 'fire', 'water'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
@@ -643,7 +643,7 @@ export const hoennZones: Zone[] = [
     description:
       'Une grotte de cascades, creusée par une pluie de météorites. Il faut un Pokémon Eau pour remonter le courant jusqu’au repaire des Draby.',
     habitat: 'cave',
-    minPower: 1400,
+    minPower: 2025,
     requiredTypes: [{ type: 'water', count: 1 }],
     weatherTypes: ['dragon', 'rock', 'water'],
     durationsMinutes: SPECIAL_DURATIONS,
@@ -668,7 +668,7 @@ export const hoennZones: Zone[] = [
     description:
       'Un paquebot échoué entre Poivressel et Nénucrique, à moitié englouti. Seules les équipes d’au moins deux Pokémon Eau peuvent explorer ses cales ; un Relicanth s’y montre parfois.',
     habitat: 'sea',
-    minPower: 1800,
+    minPower: 2500,
     requiredTypes: [{ type: 'water', count: 2 }],
     weatherTypes: ['water', 'ghost'],
     durationsMinutes: SPECIAL_DURATIONS,
@@ -693,7 +693,7 @@ export const hoennZones: Zone[] = [
     description:
       'La réserve au nord de Nénucrique, où vivent des Pokémon venus d’autres régions. Un Morphéo y change d’apparence au gré du temps.',
     habitat: 'grassland',
-    minPower: 2600,
+    minPower: 3250,
     weatherTypes: ['normal', 'psychic', 'ground'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
@@ -746,7 +746,7 @@ export const hoennZones: Zone[] = [
     description:
       'Une grotte noyée sous la Route 128, qu’on n’atteint qu’en plongée. Le maître des océans y dormirait.',
     habitat: 'sea',
-    minPower: 3000,
+    minPower: 3500,
     requiredTypes: [{ type: 'water', count: 2 }],
     weatherTypes: ['water', 'dark'],
     durationsMinutes: SPECIAL_DURATIONS,
@@ -762,7 +762,7 @@ export const hoennZones: Zone[] = [
       enc(129, 8, 35, 45),
     ],
     lootTableId: 'butin-mer',
-    unlock: { type: 'questStepsDone', questId: 'kyogre', count: 1 },
+    unlock: { type: 'questStepsDone', questId: 'kyogre', count: 2 },
   }),
   zone({
     id: 'grotte-originelle',
@@ -817,7 +817,7 @@ export const hoennZones: Zone[] = [
     description:
       'Une île triangulaire perdue au large de Hoenn, née d’une météorite. Une étrange pyramide s’y dresse.',
     habitat: 'waters-edge',
-    minPower: 3600,
+    minPower: 3650,
     weatherTypes: ['psychic', 'rock'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
@@ -878,7 +878,6 @@ const trainer = (
 
 /**
  * Champion d'arène : unique, combat à effectif égal (autant de Pokémon que lui), badge.
- * PE minimale ≈ 55 à 60 % de la sienne, pour éviter les combats perdus d'avance.
  */
 const gymLeader = (
   id: string,
@@ -889,9 +888,8 @@ const gymLeader = (
   badge: string,
   team: TrainerPokemon[],
   unlock: UnlockCondition,
-  extra: Partial<Trainer> & { minPower: number },
+  extra: Partial<Trainer>,
 ): Trainer => {
-  const { minPower, ...rest } = extra;
   return trainer({
     id,
     zoneId: null,
@@ -901,13 +899,13 @@ const gymLeader = (
     spriteName,
     team,
     unlock,
-    rules: { ...noRules(), teamSize: team.length, minPower },
-    money: Math.max(...team.map((m) => m.level)) * 100,
+    rules: { ...noRules(), teamSize: team.length },
+    money: Math.max(...team.map((m) => m.level)) * 150,
     lootTableId: 'butin-grotte',
     lootRolls: 3,
     badge: { name: badge, image: null },
     repeatable: false,
-    ...rest,
+    ...extra,
   });
 };
 
@@ -923,8 +921,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'Calvin',
     trainerClass: 'Gamin',
     spriteName: 'youngster-gen3',
-    team: [mon(263, 4), mon(261, 4)],
-    money: 80,
+    team: [mon(263, 5), mon(261, 5)],
+    money: 120,
     unlock: { type: 'always' },
   }),
   trainer({
@@ -934,8 +932,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'Arthur',
     trainerClass: 'Scout',
     spriteName: 'bugcatcher-gen3',
-    team: [mon(265, 5), mon(285, 5), mon(266, 6)],
-    money: 150,
+    team: [mon(265, 6), mon(285, 6), mon(266, 7)],
+    money: 225,
     lootTableId: 'butin-foret',
     unlock: hoennDex(3),
   }),
@@ -946,8 +944,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'Sbire',
     trainerClass: 'Team Aqua',
     spriteName: 'aquagrunt',
-    team: [mon(261, 7), mon(278, 7), mon(318, 10)],
-    money: 200,
+    team: [mon(261, 8), mon(278, 8), mon(318, 11)],
+    money: 300,
     lootTableId: 'butin-mer',
     lootRolls: 2,
     unlock: defeated('scout-arthur'),
@@ -959,9 +957,9 @@ export const hoennTrainers: Trainer[] = [
     GYM_F,
     'roxanne',
     'Badge Rocher',
-    [mon(74, 11), mon(299, 15)],
+    [mon(74, 12), mon(299, 16)],
     defeated('sbire-aqua-clementi'),
-    { minPower: 160 },
+    { money: 2250 },
   ),
   // Badge Rocher → Badge Poing
   trainer({
@@ -971,8 +969,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'José',
     trainerClass: 'Campeur',
     spriteName: 'camper-gen3',
-    team: [mon(276, 10), mon(300, 12), mon(290, 11)],
-    money: 300,
+    team: [mon(276, 12), mon(300, 14), mon(290, 13)],
+    money: 450,
     lootRolls: 2,
     unlock: badges(1),
   }),
@@ -983,8 +981,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'Bruno',
     trainerClass: 'Montagnard',
     spriteName: 'hiker-gen3',
-    team: [mon(74, 12), mon(293, 12), mon(296, 13)],
-    money: 360,
+    team: [mon(74, 14), mon(293, 14), mon(296, 15)],
+    money: 540,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: defeated('campeur-jose'),
@@ -996,8 +994,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'Sbire',
     trainerClass: 'Team Magma',
     spriteName: 'magmagrunt',
-    team: [mon(261, 13), mon(322, 14), mon(41, 15)],
-    money: 450,
+    team: [mon(261, 15), mon(322, 16), mon(41, 17)],
+    money: 675,
     lootTableId: 'butin-mer',
     lootRolls: 2,
     unlock: defeated('montagnard-bruno'),
@@ -1009,9 +1007,9 @@ export const hoennTrainers: Trainer[] = [
     GYM,
     'brawly',
     'Badge Poing',
-    [mon(66, 16), mon(307, 16), mon(296, 18)],
+    [mon(66, 18), mon(307, 18), mon(296, 20)],
     defeated('sbire-magma-poivressel'),
-    { minPower: 290 },
+    { money: 2700 },
   ),
   // Badge Poing → Badge Dynamo
   trainer({
@@ -1021,8 +1019,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'Ludo',
     trainerClass: 'Cycliste',
     spriteName: 'cyclist',
-    team: [mon(309, 16), mon(316, 17), mon(264, 17)],
-    money: 500,
+    team: [mon(309, 19), mon(316, 20), mon(264, 20)],
+    money: 750,
     lootRolls: 2,
     unlock: badges(2),
   }),
@@ -1033,8 +1031,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'Lina',
     trainerClass: 'Pique-niqueuse',
     spriteName: 'picnicker-gen3',
-    team: [mon(313, 17), mon(314, 17), mon(315, 18)],
-    money: 550,
+    team: [mon(313, 20), mon(314, 20), mon(315, 21)],
+    money: 825,
     lootRolls: 2,
     unlock: defeated('cycliste-ludo'),
   }),
@@ -1045,9 +1043,9 @@ export const hoennTrainers: Trainer[] = [
     GYM,
     'wattson',
     'Badge Dynamo',
-    [mon(100, 20), mon(309, 21), mon(82, 24)],
+    [mon(100, 23), mon(309, 24), mon(82, 27)],
     defeated('pique-niqueuse-lina'),
-    { minPower: 400 },
+    { money: 3600 },
   ),
   // Badge Dynamo → Badge Chaleur
   trainer({
@@ -1057,8 +1055,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'Sbire',
     trainerClass: 'Team Magma',
     spriteName: 'magmagruntf',
-    team: [mon(322, 20), mon(88, 20), mon(262, 22), mon(324, 22)],
-    money: 900,
+    team: [mon(322, 24), mon(88, 24), mon(262, 26), mon(324, 26)],
+    money: 1350,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: badges(3),
@@ -1070,9 +1068,9 @@ export const hoennTrainers: Trainer[] = [
     GYM_F,
     'flannery',
     'Badge Chaleur',
-    [mon(322, 23), mon(218, 23), mon(322, 25), mon(324, 27)],
+    [mon(322, 27), mon(218, 27), mon(322, 29), mon(324, 31)],
     defeated('sbire-magma-chimnee'),
-    { minPower: 640 },
+    { money: 4050 },
   ),
   // Badge Chaleur → Badge Balance
   trainer({
@@ -1082,8 +1080,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'Maëva',
     trainerClass: 'Nageuse',
     spriteName: 'swimmerf-gen3',
-    team: [mon(72, 26), mon(278, 26), mon(320, 27), mon(318, 28)],
-    money: 1300,
+    team: [mon(72, 31), mon(278, 31), mon(320, 32), mon(318, 33)],
+    money: 1950,
     lootTableId: 'butin-mer',
     lootRolls: 2,
     unlock: badges(4),
@@ -1095,9 +1093,9 @@ export const hoennTrainers: Trainer[] = [
     GYM,
     'norman',
     'Badge Balance',
-    [mon(327, 30), mon(288, 30), mon(264, 32), mon(289, 34)],
+    [mon(327, 35), mon(288, 35), mon(264, 37), mon(289, 39)],
     defeated('nageuse-maeva'),
-    { minPower: 780 },
+    { money: 5100 },
   ),
   // Badge Balance → Badge Plume
   trainer({
@@ -1107,8 +1105,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'Élie',
     trainerClass: 'Ornithologue',
     spriteName: 'birdkeeper-gen3',
-    team: [mon(277, 30), mon(333, 30), mon(357, 31), mon(279, 32)],
-    money: 1600,
+    team: [mon(277, 36), mon(333, 36), mon(357, 37), mon(279, 38)],
+    money: 2400,
     lootTableId: 'butin-foret',
     lootRolls: 2,
     unlock: badges(5),
@@ -1120,9 +1118,9 @@ export const hoennTrainers: Trainer[] = [
     GYM_F,
     'winona',
     'Badge Plume',
-    [mon(277, 34, 18), mon(279, 35, 18), mon(357, 35, 18), mon(334, 39, 18)],
+    [mon(277, 40, 18), mon(279, 41, 18), mon(357, 41, 18), mon(334, 45, 18)],
     defeated('ornithologue-elie'),
-    { minPower: 970 },
+    { money: 5850 },
   ),
   // Badge Plume → Badge Esprit
   trainer({
@@ -1132,8 +1130,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'Sbire',
     trainerClass: 'Team Aqua',
     spriteName: 'aquagruntf',
-    team: [mon(319, 33), mon(42, 33), mon(262, 34), mon(73, 34)],
-    money: 1800,
+    team: [mon(319, 40), mon(42, 40), mon(262, 41), mon(73, 41)],
+    money: 2700,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: badges(6),
@@ -1145,9 +1143,9 @@ export const hoennTrainers: Trainer[] = [
     'Champions d’arène',
     'tateandliza-gen3',
     'Badge Esprit',
-    [mon(337, 36, 20), mon(338, 37, 20), mon(344, 37, 20), mon(178, 38, 20), mon(326, 40, 20)],
+    [mon(337, 43, 20), mon(338, 44, 20), mon(344, 44, 20), mon(178, 45, 20), mon(326, 47, 20)],
     defeated('sbire-aqua-memoria'),
-    { minPower: 1290 },
+    { money: 6000 },
   ),
   // Badge Esprit → Badge Pluie
   trainer({
@@ -1157,8 +1155,8 @@ export const hoennTrainers: Trainer[] = [
     name: 'Tomas',
     trainerClass: 'Pêcheur',
     spriteName: 'fisherman-gen3',
-    team: [mon(361, 35), mon(363, 35), mon(341, 36), mon(319, 37), mon(364, 37)],
-    money: 2200,
+    team: [mon(361, 43), mon(363, 43), mon(341, 44), mon(319, 45), mon(364, 45)],
+    money: 3300,
     lootTableId: 'butin-mer',
     lootRolls: 2,
     unlock: badges(7),
@@ -1170,9 +1168,9 @@ export const hoennTrainers: Trainer[] = [
     GYM,
     'juan',
     'Badge Pluie',
-    [mon(370, 40, 25), mon(340, 40, 25), mon(364, 40, 25), mon(342, 41, 25), mon(230, 44, 25)],
+    [mon(370, 48, 25), mon(340, 48, 25), mon(364, 48, 25), mon(342, 49, 25), mon(230, 52, 25)],
     defeated('pecheur-tomas'),
-    { minPower: 1480, lootTableId: 'butin-elite' },
+    { money: 6600, lootTableId: 'butin-elite' },
   ),
   // Route Victoire, puis la Ligue
   trainer({
@@ -1183,13 +1181,13 @@ export const hoennTrainers: Trainer[] = [
     trainerClass: 'Topdresseuse',
     spriteName: 'acetrainerf-gen3',
     team: [
-      mon(282, 44, 20),
-      mon(295, 44, 20),
-      mon(297, 43, 20),
-      mon(306, 44, 20),
-      mon(308, 43, 20),
+      mon(282, 52, 20),
+      mon(295, 52, 20),
+      mon(297, 51, 20),
+      mon(306, 52, 20),
+      mon(308, 51, 20),
     ],
-    money: 3500,
+    money: 5250,
     lootTableId: 'butin-elite',
     lootRolls: 2,
     unlock: badges(8),
@@ -1203,14 +1201,14 @@ export const hoennTrainers: Trainer[] = [
     trainerClass: 'Ancien Maître',
     spriteName: 'steven',
     team: [
-      mon(227, 77, 31),
-      mon(344, 73, 31),
-      mon(346, 75, 31),
-      mon(348, 77, 31),
-      mon(306, 77, 31),
-      mon(376, 81, 31),
+      mon(227, 87, 31),
+      mon(344, 83, 31),
+      mon(346, 85, 31),
+      mon(348, 87, 31),
+      mon(306, 87, 31),
+      mon(376, 91, 31),
     ],
-    money: 30_000,
+    money: 45_000,
     lootTableId: 'butin-elite',
     lootRolls: 6,
     repeatable: false,
@@ -1238,7 +1236,7 @@ function league(): Trainer[] {
       spriteName,
       team,
       unlock,
-      money: 7000,
+      money: 10_500,
       lootTableId: 'butin-elite',
       lootRolls: 3,
       repeatable: false,
@@ -1250,7 +1248,7 @@ function league(): Trainer[] {
       22,
       'Damien',
       'sidney',
-      [mon(262, 50, 25), mon(275, 51, 25), mon(332, 51, 25), mon(342, 51, 25), mon(359, 53, 25)],
+      [mon(262, 60, 25), mon(275, 61, 25), mon(332, 61, 25), mon(342, 61, 25), mon(359, 63, 25)],
       allOf(badges(8), defeated('topdresseuse-vanessa')),
     ),
     member(
@@ -1258,7 +1256,7 @@ function league(): Trainer[] {
       23,
       'Spectra',
       'phoebe-gen3',
-      [mon(356, 51, 25), mon(354, 52, 25), mon(302, 54, 25), mon(354, 53, 25), mon(356, 55, 25)],
+      [mon(356, 61, 25), mon(354, 62, 25), mon(302, 64, 25), mon(354, 63, 25), mon(356, 65, 25)],
       defeated('damien'),
     ),
     member(
@@ -1266,7 +1264,7 @@ function league(): Trainer[] {
       24,
       'Glacia',
       'glacia',
-      [mon(362, 53, 25), mon(364, 53, 25), mon(362, 53, 25), mon(364, 54, 25), mon(365, 57, 25)],
+      [mon(362, 63, 25), mon(364, 63, 25), mon(362, 63, 25), mon(364, 64, 25), mon(365, 67, 25)],
       defeated('spectra'),
     ),
     member(
@@ -1274,7 +1272,7 @@ function league(): Trainer[] {
       25,
       'Aragon',
       'drake-gen3',
-      [mon(372, 54, 25), mon(330, 54, 25), mon(334, 56, 25), mon(230, 57, 25), mon(373, 59, 25)],
+      [mon(372, 64, 25), mon(330, 64, 25), mon(334, 66, 25), mon(230, 67, 25), mon(373, 69, 25)],
       defeated('glacia'),
     ),
     member(
@@ -1283,15 +1281,15 @@ function league(): Trainer[] {
       'Marc',
       'wallace',
       [
-        mon(321, 58, 31),
-        mon(73, 60, 31),
-        mon(272, 60, 31),
-        mon(340, 59, 31),
-        mon(130, 59, 31),
-        mon(350, 63, 31),
+        mon(321, 70, 31),
+        mon(73, 72, 31),
+        mon(272, 72, 31),
+        mon(340, 71, 31),
+        mon(130, 71, 31),
+        mon(350, 75, 31),
       ],
       defeated('aragon'),
-      { trainerClass: 'Maître de la Ligue', money: 18_000, lootRolls: 5 },
+      { trainerClass: 'Maître de la Ligue', money: 27_000, lootRolls: 5 },
     ),
   ];
 }
@@ -1325,17 +1323,16 @@ const step = (name: string, description: string, condition: QuestCondition): Que
   description,
   condition,
 });
-const catchOf = (count: number, pokemonType: string | null): QuestCondition => ({
+const catchOf = (
+  count: number,
+  pokemonType: string | null,
+  zoneId: string | null = null,
+): QuestCondition => ({
   type: 'catchPokemon',
   count,
   pokemonType,
   speciesId: null,
-});
-const catchSpecies = (speciesId: number): QuestCondition => ({
-  type: 'catchPokemon',
-  count: 1,
-  pokemonType: null,
-  speciesId,
+  zoneId,
 });
 /** Expédition réussie dans une zone, avec des Pokémon d'un type et d'une PE donnés. */
 const questExpedition = (
@@ -1358,8 +1355,8 @@ const quest = (q: Omit<Quest, 'image' | 'regionId' | 'enabled'>): Quest => ({
   enabled: true,
   ...q,
 });
-const EON_REWARD = reward({ currency: 12_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] });
-const REGI_REWARD = reward({ currency: 15_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] });
+const EON_REWARD = reward({ currency: 15_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] });
+const REGI_REWARD = reward({ currency: 10_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] });
 
 /**
  * Quêtes des légendaires de Hoenn : les deux éons (fuyards), les trois colosses, les maîtres de la
@@ -1373,12 +1370,11 @@ export const hoennQuests: Quest[] = [
     description: 'Un oiseau rouge aux reflets de verre aurait été aperçu au-dessus de la mer.',
     unlock: defeated('maitre-marc'),
     steps: [
-      step('Ondes psychiques', 'Capture 10 Pokémon Psy.', catchOf(10, 'psychic')),
-      step('Vol plané', 'Capture 10 Pokémon Vol.', catchOf(10, 'flying')),
+      step('Ondes psychiques', 'Capture 50 Pokémon Psy.', catchOf(50, 'psychic')),
       step(
         'Au-dessus des vagues',
-        'Réussis une expédition sur les Routes 105 à 108 avec 2 Pokémon Psy de PE 350 ou plus.',
-        questExpedition('routes-105-108', 'psychic', 2, 350),
+        'Réussis une expédition sur les Routes 105 à 108 avec 2 Pokémon Psy de PE 600 ou plus.',
+        questExpedition('routes-105-108', 'psychic', 2, 600),
       ),
     ],
     rewards: { ...EON_REWARD, pokemon: [roamer(380, 50)] },
@@ -1390,12 +1386,11 @@ export const hoennQuests: Quest[] = [
     description: 'Un oiseau bleu fend le ciel de Hoenn plus vite qu’un avion de ligne.',
     unlock: defeated('maitre-marc'),
     steps: [
-      step('Courants marins', 'Capture 15 Pokémon Eau.', catchOf(15, 'water')),
-      step('Sur ses traces', 'Capture 40 % du Pokédex de Hoenn.', hoennDex(40)),
+      step('Courants marins', 'Capture 50 Pokémon Eau.', catchOf(50, 'water')),
       step(
         'Sous la pluie',
-        'Réussis une expédition sur les Routes 119 et 120 avec 2 Pokémon Psy de PE 450 ou plus.',
-        questExpedition('routes-119-120', 'psychic', 2, 450),
+        'Réussis une expédition sur les Routes 119 et 120 avec 2 Pokémon Psy de PE 600 ou plus.',
+        questExpedition('routes-119-120', 'psychic', 2, 600),
       ),
     ],
     rewards: { ...EON_REWARD, pokemon: [roamer(381, 50)] },
@@ -1407,19 +1402,19 @@ export const hoennQuests: Quest[] = [
     description: 'Des inscriptions en braille, sous le désert, parlent d’un géant fait de pierres.',
     unlock: defeated('maitre-marc'),
     steps: [
-      step('Roches anciennes', 'Capture 10 Pokémon Roche.', catchOf(10, 'rock')),
+      step('Roches anciennes', 'Capture 50 Pokémon Roche.', catchOf(50, 'rock')),
       step(
-        'Le Pokémon des abysses',
-        'Capture un Relicanth, le seul à savoir lire les inscriptions.',
-        catchSpecies(369),
+        'Éboulements',
+        'Capture 75 Pokémon Roche au Désert de la Route 111.',
+        catchOf(75, 'rock', 'desert-hoenn'),
       ),
       step(
         'Le tombeau du désert',
-        'Réussis une expédition au Désert de la Route 111 avec 2 Pokémon Roche de PE 450 ou plus.',
-        questExpedition('desert-hoenn', 'rock', 2, 450),
+        'Réussis une expédition au Désert de la Route 111 avec 2 Pokémon Roche de PE 600 ou plus.',
+        questExpedition('desert-hoenn', 'rock', 2, 600),
       ),
     ],
-    rewards: { ...REGI_REWARD, pokemon: [legendary(377, 50, 2400)] },
+    rewards: { ...REGI_REWARD, pokemon: [legendary(377, 50, 3000)] },
   }),
   quest({
     id: 'registeel',
@@ -1428,19 +1423,19 @@ export const hoennQuests: Quest[] = [
     description: 'Un tombeau caché près de Cimetronelle abriterait un géant au corps de métal.',
     unlock: defeated('maitre-marc'),
     steps: [
-      step('Métal', 'Capture 10 Pokémon Acier.', catchOf(10, 'steel')),
+      step('Métal', 'Capture 50 Pokémon Acier.', catchOf(50, 'steel')),
       step(
-        'Le Pokémon géant',
-        'Capture un Wailmer, dont le cri ouvre le tombeau.',
-        catchSpecies(320),
+        'Champ magnétique',
+        'Capture 75 Pokémon Acier à New Lavandia.',
+        catchOf(75, 'steel', 'new-lavandia'),
       ),
       step(
         'Le tombeau de la forêt',
-        'Réussis une expédition à New Lavandia avec 2 Pokémon Acier de PE 500 ou plus.',
-        questExpedition('new-lavandia', 'steel', 2, 500),
+        'Réussis une expédition à New Lavandia avec 2 Pokémon Acier de PE 600 ou plus.',
+        questExpedition('new-lavandia', 'steel', 2, 600),
       ),
     ],
-    rewards: { ...REGI_REWARD, pokemon: [legendary(379, 50, 2800)] },
+    rewards: { ...REGI_REWARD, pokemon: [legendary(379, 50, 3000)] },
   }),
   quest({
     id: 'regice',
@@ -1449,16 +1444,16 @@ export const hoennQuests: Quest[] = [
     description: 'Un tombeau gelé sur une île de la Route 105 renfermerait un géant de glace.',
     unlock: defeated('maitre-marc'),
     steps: [
-      step('Glace éternelle', 'Capture 10 Pokémon Glace.', catchOf(10, 'ice')),
+      step('Glace éternelle', 'Capture 50 Pokémon Glace.', catchOf(50, 'ice')),
       step(
         'Le froid des profondeurs',
-        'Bats Lévy et Tatia, les Champions d’Algatia.',
-        defeated('levy-tatia'),
+        'Capture 75 Pokémon Glace à la Grotte Tréfonds.',
+        catchOf(75, 'ice', 'grotte-trefonds'),
       ),
       step(
         'Le tombeau de l’île',
-        'Réussis une expédition à la Grotte Tréfonds avec 2 Pokémon Glace de PE 500 ou plus.',
-        questExpedition('grotte-trefonds', 'ice', 2, 500),
+        'Réussis une expédition à la Grotte Tréfonds avec 2 Pokémon Glace de PE 600 ou plus.',
+        questExpedition('grotte-trefonds', 'ice', 2, 600),
       ),
     ],
     rewards: { ...REGI_REWARD, pokemon: [legendary(378, 50, 3000)] },
@@ -1471,9 +1466,17 @@ export const hoennQuests: Quest[] = [
       'La Team Aqua chercherait à réveiller le Pokémon qui a créé les mers, endormi sous la Route 128.',
     unlock: defeated('maitre-marc'),
     steps: [
-      step('Plongée', 'Capture 20 Pokémon Eau pour atteindre la grotte.', catchOf(20, 'water')),
-      step('La pluie', 'Bats Juan, le Champion d’Atalanopolis.', defeated('juan')),
-      step('Les ténèbres', 'Capture 10 Pokémon Ténèbres.', catchOf(10, 'dark')),
+      step(
+        'Les trois colosses',
+        'Termine les quêtes de Regirock, de Registeel et de Regice.',
+        allOf(
+          { type: 'questCompleted', questId: 'regirock' },
+          { type: 'questCompleted', questId: 'registeel' },
+          { type: 'questCompleted', questId: 'regice' },
+        ),
+      ),
+      step('Plongée', 'Capture 30 Pokémon Eau pour atteindre la grotte.', catchOf(30, 'water')),
+      step('Les ténèbres', 'Capture 30 Pokémon Ténèbres.', catchOf(30, 'dark')),
       step(
         'La grotte noyée',
         'Réussis une expédition à la Grotte Sous-Marine avec 2 Pokémon Eau de PE 600 ou plus.',
@@ -1481,8 +1484,8 @@ export const hoennQuests: Quest[] = [
       ),
     ],
     rewards: {
-      ...reward({ currency: 40_000, items: [{ itemId: 'gold-bottle-cap', quantity: 1 }] }),
-      pokemon: [legendary(382, 70, 3000)],
+      ...reward({ currency: 50_000, items: [{ itemId: 'gold-bottle-cap', quantity: 1 }] }),
+      pokemon: [legendary(382, 70, 4500)],
     },
   }),
   quest({
@@ -1502,17 +1505,17 @@ export const hoennQuests: Quest[] = [
           { type: 'questCompleted', questId: 'regice' },
         ),
       ),
-      step('La terre tremble', 'Capture 20 Pokémon Sol.', catchOf(20, 'ground')),
-      step('Maître de Hoenn', 'Bats Marc, le Maître de la Ligue.', defeated('maitre-marc')),
+      step('La terre tremble', 'Capture 30 Pokémon Sol.', catchOf(30, 'ground')),
+      step('Le magma', 'Capture 30 Pokémon Feu.', catchOf(30, 'fire')),
       step(
         'Le cœur de la grotte',
-        'Réussis une expédition à la Grotte Originelle avec 3 Pokémon Sol de PE 750 ou plus.',
-        questExpedition('grotte-originelle', 'ground', 3, 750),
+        'Réussis une expédition à la Grotte Originelle avec 3 Pokémon Sol de PE 600 ou plus.',
+        questExpedition('grotte-originelle', 'ground', 3, 600),
       ),
     ],
     rewards: {
       ...reward({ currency: 50_000, items: [{ itemId: 'gold-bottle-cap', quantity: 1 }] }),
-      pokemon: [legendary(383, 70, 4000)],
+      pokemon: [legendary(383, 70, 4500)],
     },
   }),
   quest({
@@ -1546,19 +1549,22 @@ export const hoennQuests: Quest[] = [
     name: 'L’étoile des vœux',
     description:
       'Une comète ne passe qu’une fois tous les mille ans au-dessus de Hoenn. Celui qui la voit pourrait faire un vœu.',
-    unlock: defeated('maitre-marc'),
+    unlock: allOf(
+      { type: 'questCompleted', questId: 'kyogre' },
+      { type: 'questCompleted', questId: 'groudon' },
+    ),
     steps: [
-      step('Patience', 'Fais éclore 30 œufs.', { type: 'eggsHatched', count: 30 }),
-      step('Étoiles d’acier', 'Capture 15 Pokémon Acier.', catchOf(15, 'steel')),
+      step('Presque complet', 'Capture 95 % du Pokédex de Hoenn.', hoennDex(95)),
+      step('Étoiles d’acier', 'Capture 50 Pokémon Acier.', catchOf(50, 'steel')),
       step(
         'La pluie d’étoiles',
-        'Réussis une expédition aux Chutes Météore avec 2 Pokémon Acier de PE 600 ou plus.',
-        questExpedition('chutes-meteore', 'steel', 2, 600),
+        'Réussis 3 expéditions aux Chutes Météore avec 3 Pokémon de PE 800 ou plus.',
+        questExpedition('chutes-meteore', null, 3, 800, 3),
       ),
     ],
     rewards: {
-      ...reward({ items: [{ itemId: 'ability-patch', quantity: 1 }] }),
-      pokemon: [legendary(385, 30, 3600)],
+      ...reward({ currency: 75_000, items: [{ itemId: 'gold-bottle-cap', quantity: 1 }] }),
+      pokemon: [legendary(385, 50, 4500)],
     },
   }),
   quest({

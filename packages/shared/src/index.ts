@@ -537,8 +537,8 @@ export interface DaycareResponse {
 
 export interface CollectEggsResponse {
   eggs: EggDto[];
-  /** Œufs perdus faute de place dans la couveuse. */
-  lost: number;
+  /** Œufs restés en attente dans la pension, faute de place dans la couveuse. */
+  waiting: number;
 }
 
 export interface HatchEggsResponse {
@@ -923,6 +923,10 @@ export interface DungeonTeamErrorBody {
 export interface ShopEntryStatusDto {
   entryId: string;
   state: Exclude<ShopEntryState, 'hidden'>;
+  /** Prix du prochain lot (il augmente à chaque achat d'une parcelle de ferme). */
+  price: number;
+  /** Lots achetables d'un coup : un seul quand le prix augmente à chaque achat. */
+  maxLotsPerPurchase: number;
   /** Lots encore achetables ; null = illimité. */
   remainingLots: number | null;
   /** Limite par période : date où des lots se libèrent. */
@@ -957,6 +961,8 @@ export interface PurchaseResponse {
   currency: number;
   /** Quantité de l'objet dans le sac après l'achat. */
   inventoryQuantity: number;
+  /** Parcelle de ferme (rien n'entre dans le sac) : parcelles de la ferme après l'achat ; null sinon. */
+  farmPlots: number | null;
 }
 
 export const sellInputSchema = z.object({

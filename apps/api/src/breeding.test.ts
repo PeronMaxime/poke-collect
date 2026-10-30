@@ -201,7 +201,7 @@ describe('pension et œufs', () => {
     expect(res.body.eggs).toHaveLength(2);
     // Une place de la couveuse chacun.
     expect(res.body.eggs.map((e) => e.slotIndex)).toEqual([0, 1]);
-    expect(res.body.lost).toBe(0);
+    expect(res.body.waiting).toBe(0);
     // Bulbizarre : 20 cycles × 2 min.
     expect(Date.parse(res.body.eggs[0]!.hatchAt) - clock.getTime()).toBe(40 * 60_000);
 
@@ -234,12 +234,15 @@ describe('pension et œufs', () => {
     expect(dex.body.find((d) => d.speciesId === 1)?.caught).toBe(true);
   });
 
-  it('limite la couveuse et garde les œufs en attente dans la pension', async () => {
-    // 5 + 40 + 600 min depuis le début du cycle : 32 œufs ; 6 attendent, 26 sont perdus.
+  it('limite la couveuse et arrête la ponte quand la pension est pleine', async () => {
+    // 5 + 40 + 600 min depuis le début du cycle : la pension s'est arrêtée à 6 œufs.
     advance(10 * 60);
     const res = await call<CollectEggsResponse>('POST', '/api/daycare/0/collect');
     expect(res.body.eggs.map((e) => e.slotIndex)).toEqual([0, 1, 2, 3, 4, 5]);
-    expect(res.body.lost).toBe(26);
+    expect(res.body.waiting).toBe(0);
+    // La ponte reprend au ramassage, sans temps entamé.
+    const daycare = await call<DaycareResponse>('GET', '/api/daycare');
+    expect(Date.parse(daycare.body.pensions[0]!.startedAt)).toBe(clock.getTime());
     advance(20);
     const full = await call('POST', '/api/daycare/0/collect');
     expect(full.body).toMatchObject({ error: 'INCUBATOR_FULL' });

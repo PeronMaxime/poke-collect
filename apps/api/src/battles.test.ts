@@ -180,13 +180,13 @@ describe('combats de dresseurs', () => {
     expect(claim.status, JSON.stringify(claim.body)).toBe(200);
     expect(claim.body.battle.outcome).toBe('win');
     expect(claim.body.battle.result).toMatchObject({
-      money: 80,
+      money: 120,
       knockedOut: [],
       badgeEarned: false,
       defeated: 1,
     });
     expect(claim.body.battle.result!.xpPerMember).toBeGreaterThan(0);
-    expect(claim.body.currency).toBe(80);
+    expect(claim.body.currency).toBe(120);
     const again = await call('POST', `/api/battles/${battle.id}/claim`);
     expect(again.body).toMatchObject({ error: 'ALREADY_CLAIMED' });
 
@@ -220,7 +220,7 @@ describe('combats de dresseurs', () => {
     const claim = await call<ClaimBattleResponse>('POST', `/api/battles/${res.body.id}/claim`);
     expect(claim.body.battle.outcome).toBe('loss');
     expect(claim.body.battle.result).toMatchObject({ money: 0, loot: [], knockedOut: [weak.id] });
-    expect(claim.body.currency).toBe(80);
+    expect(claim.body.currency).toBe(120);
 
     const ko = (await call<PokemonDto[]>('GET', '/api/pokemon')).body.find(
       (p) => p.id === weak.id,
@@ -377,14 +377,8 @@ describe('combats de dresseurs', () => {
   });
 
   it('vérifie les conditions d’équipe du dresseur', async () => {
-    // Léo exige des Pokémon de niveau 15 au plus et un badge pour être débloqué.
+    // Léo exige un badge pour être débloqué.
     await defeated(userId, ['pierre']);
-    const strong = await give(userId, 8);
-    const res = await start(call, 'campeur-leo', [strong]);
-    expect(res).toMatchObject({
-      status: 400,
-      body: { error: 'TEAM_INVALID', errors: [{ code: 'LEVEL_TOO_HIGH', maxLevel: 15 }] },
-    });
     const badMove = await call('POST', '/api/battles', {
       trainerId: 'campeur-leo',
       team: [starter.id],
@@ -418,14 +412,6 @@ describe('dresseurs uniques', () => {
   it('se retentent aussitôt après une défaite, donnent un badge à la première victoire', async () => {
     const { call, userId } = await newPlayer('green@example.com', 'Green');
     await defeated(userId, ['scout-rick']);
-    const weak = [
-      await give(userId, 10, { level: 1, xp: 0 }),
-      await give(userId, 13, { level: 1, xp: 0 }),
-    ];
-    // PE minimale de Pierre : 150.
-    const tooWeak = await start(call, 'pierre', weak);
-    expect(tooWeak.body).toMatchObject({ error: 'TEAM_INVALID' });
-
     const team = [
       await give(userId, 8, { level: 40 }),
       await give(userId, 2, { level: 40, gender: 'female' }),
@@ -440,7 +426,7 @@ describe('dresseurs uniques', () => {
     expect(rematch.status, JSON.stringify(rematch.body)).toBe(201);
     expect(finish(rematch.body).outcome).toBe('win');
     const claim = await call<ClaimBattleResponse>('POST', `/api/battles/${rematch.body.id}/claim`);
-    expect(claim.body.battle.result).toMatchObject({ badgeEarned: true, money: 1400 });
+    expect(claim.body.battle.result).toMatchObject({ badgeEarned: true, money: 2100 });
 
     advance(24 * 60);
     const again = await start(call, 'pierre', team);

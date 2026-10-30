@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
+  ASSISTANT_POST_PLACES,
   charmMultiplier,
   createGameContext,
   facilityPlaces,
@@ -8,6 +9,7 @@ import {
   pokemonEvolutions,
 } from '@poke/game-core';
 import type {
+  AssistantPost,
   ClaimedRewards,
   DexCatches,
   EvolutionCheck,
@@ -302,8 +304,25 @@ export function centerState(
     .sort((a, b) => Date.parse(a.healUntil!) - Date.parse(b.healUntil!));
   const knockedOut = pokemon.filter((p) => p.knockedOut);
   const slots = facilityPlaces(ctx, 'center', progress);
-  return { slots, healing, knockedOut, free: Math.max(0, slots - healing.length) };
+  const takenOpen = healing.filter((p) => (p.healSlot ?? 0) < slots).length;
+  return { slots, healing, knockedOut, free: slots - takenOpen };
 }
+
+/**
+ * Places à afficher : ouvertes, plus celles encore occupées au-delà (réglage baissé), pour que le
+ * joueur puisse toujours les récupérer.
+ */
+export const shownPlaces = (open: number, taken: readonly number[]) =>
+  Math.max(open, ...taken.map((place) => place + 1));
+
+/** Première place couverte par chaque assistant d'un poste (voir `shownPlaces`). */
+export const assistantPlaces = (
+  assistants: readonly AssistantDto[] | undefined,
+  post: AssistantPost,
+) =>
+  (assistants ?? [])
+    .filter((a) => a.post === post)
+    .map((a) => a.slot * ASSISTANT_POST_PLACES[post]);
 
 /** Envoie des Pokémon K.O. au Centre Pokémon. */
 export function useHeal() {

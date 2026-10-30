@@ -24,6 +24,7 @@ import { combatSettings, dungeonSettings, megaStoneItems, seedDungeons } from '.
 import { hoennQuests, hoennRegion, hoennTrainers, hoennZones } from './seed-hoenn';
 import { johtoQuests, johtoRegion, johtoTrainers, johtoZones } from './seed-johto';
 import { kantoQuests, kantoTrainers, kantoZones } from './seed-kanto';
+import { withOwnLootTables } from './seed-loot';
 import { withSpecialEncounters } from './seed-special-encounters';
 import { chestEntries, guildChestItems, guildQuests } from './seed-guilds';
 
@@ -74,6 +75,7 @@ const shopCategories: ShopCategory[] = [
   { id: 'evolution', name: 'Évolution', icon: null, order: 3 },
   { id: 'rare', name: 'Rare', icon: null, order: 4 },
   { id: 'soin', name: 'Soins', icon: null, order: 5 },
+  { id: 'ferme', name: 'Ferme', icon: null, order: 6 },
 ];
 
 const article = (
@@ -115,6 +117,13 @@ const shopEntries: ShopEntry[] = [
   }),
   article('revive', 'revive', 'soin', 0, 2000, {
     unlock: { type: 'badgeCount', count: 4, regionId: 'kanto' },
+  }),
+  // Parcelle de ferme : débloquée à l'achat, 10 000 ₽ puis × 1,4 à chaque achat ; 17 au plus
+  // (ferme de 18 parcelles).
+  article('parcelle-ferme', 'parcelle-ferme', 'ferme', 0, 10_000, {
+    unlock: { type: 'regionUnlocked', regionId: 'hoenn' },
+    lockedVisibility: 'hidden',
+    purchaseLimit: { lots: 17, period: 'total' },
   }),
   // Baies : plus vendues, on les trouve en expédition puis on les cultive à la ferme.
   article('razz-berry', 'razz-berry', 'baies', 0, 150, { enabled: false }),
@@ -333,7 +342,7 @@ const regions: Region[] = [
   ...expansionRegions,
 ];
 
-export const seedContent: GameContentData = {
+export const seedContent: GameContentData = withOwnLootTables({
   balance: {
     expeditions: {
       initialSlots: 2,
@@ -659,7 +668,20 @@ export const seedContent: GameContentData = {
     ...fossilItems(),
     ...megaStoneItems(regions),
     ...expansionItems,
-  ]).concat(guildChestItems),
+  ]).concat(guildChestItems, [
+    {
+      id: 'parcelle-ferme',
+      name: 'Parcelle de ferme',
+      description:
+        'Agrandit aussitôt la ferme à baies d’une parcelle. Son prix augmente à chaque achat.',
+      icon: '/api/sprites/items/growth-mulch.png',
+      category: 'misc',
+      rarity: 'rare',
+      // Jamais dans le sac : débloquée à l'achat.
+      sellPrice: null,
+      effects: [{ type: 'farmPlot', priceGrowth: 1.4 }],
+    },
+  ]),
   lootTables: [
     {
       id: 'butin-route',
@@ -740,7 +762,7 @@ export const seedContent: GameContentData = {
   quests: [...kantoQuests, ...johtoQuests, ...hoennQuests],
   guildQuests,
   chestEntries,
-};
+});
 
 function caveLoot(): LootEntry[] {
   return [

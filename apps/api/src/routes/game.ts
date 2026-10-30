@@ -40,6 +40,7 @@ import {
   startExpedition,
 } from '../game/expeditions';
 import { settleFinishedBattle } from '../game/battles';
+import { settleClosedPlaces } from '../game/closed-places';
 import { settleFinishedDungeonRun } from '../game/dungeons';
 import { pokemonActivities, toExpeditionDto, toPokemonDto } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
@@ -62,6 +63,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     // Combat terminé pendant l'absence du joueur : son équipe redevient disponible.
     await settleFinishedDungeonRun(db, content, userId, now());
     await settleFinishedBattle(db, content, userId, now());
+    await settleClosedPlaces(db, content, userId, now());
     const [rows, busy] = await Promise.all([
       db
         .select()

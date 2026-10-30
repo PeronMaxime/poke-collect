@@ -680,6 +680,97 @@
       "when": 1793480000000,
       "tag": "0096_rencontres_speciales",
       "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1793490000000,
+      "tag": "0097_parcelles_boutique",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1793500000000,
+      "tag": "0098_max_parcelles",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1793510000000,
+      "tag": "0099_butin_par_zone_et_dresseur",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1793520000000,
+      "tag": "0100_dresseurs_sans_butin",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1793530000000,
+      "tag": "0101_argent_dresseurs",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1793540000000,
+      "tag": "0102_zone_etapes_captures",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1793550000000,
+      "tag": "0103_quetes_hoenn",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1793560000000,
+      "tag": "0104_reglages_quetes",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1793570000000,
+      "tag": "0105_niveaux_dresseurs",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1793580000000,
+      "tag": "0106_dresseurs_sans_pe_minimale",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1793590000000,
+      "tag": "0107_dresseurs_sans_niveau_maximal",
+      "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1793600000000,
+      "tag": "0108_courbe_pe_expeditions",
+      "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1793610000000,
+      "tag": "0109_ajustements_butin_boutique",
+      "breakpoints": true
     }
   ]
 }

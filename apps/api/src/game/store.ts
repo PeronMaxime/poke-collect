@@ -6,6 +6,7 @@ import {
   eggs,
   expeditions,
   inventory,
+  playerProfiles,
   pokedex,
   pokedexForms,
   pokemon,
@@ -263,7 +264,7 @@ export async function assertTabUnlocked(
 /**
  * Places ouvertes d'un bâtiment (emplacements d'expédition, pensions, couveuses, places du Musée,
  * parcelles, Centres) : départ + paliers remplis, + récompenses réclamées pour les expéditions,
- * les pensions et les couveuses.
+ * les pensions et les couveuses, + parcelles achetées pour la ferme.
  */
 export async function playerFacilityPlaces(
   db: Db,
@@ -281,7 +282,9 @@ export async function playerFacilityPlaces(
         },
     facility === 'expedition' || facility === 'daycare' || facility === 'incubator'
       ? claimedRewards(db, ownerId)
-      : NO_CLAIMS,
+      : facility === 'farm'
+        ? boughtFarmPlots(db, ownerId).then((farmPlots) => ({ ...NO_CLAIMS, farmPlots }))
+        : NO_CLAIMS,
   ]);
   return facilityPlaces(ctx, facility, progress, claimed);
 }
@@ -324,12 +327,21 @@ export function questRecords(rows: readonly QuestProgressRow[]): Map<string, Que
   return new Map(rows.map((r) => [r.questId, { step: r.step, count: r.progress.count ?? 0 }]));
 }
 
+/** Parcelles de la ferme achetées à la boutique. */
+export async function boughtFarmPlots(db: Db, ownerId: string): Promise<number> {
+  const [row] = await db
+    .select({ farmPlots: playerProfiles.farmPlots })
+    .from(playerProfiles)
+    .where(eq(playerProfiles.userId, ownerId));
+  return row?.farmPlots ?? 0;
+}
+
 /**
  * Récompenses de progression réclamées : collections, quêtes et complétions d'expédition
- * (emplacements et bonus permanents en découlent).
+ * (emplacements et bonus permanents en découlent), et parcelles achetées.
  */
 export async function claimedRewards(db: Db, ownerId: string): Promise<ClaimedRewards> {
-  const [rows, quests] = await Promise.all([
+  const [rows, quests, farmPlots] = await Promise.all([
     db
       .select({ kind: rewardClaims.kind, rewardId: rewardClaims.rewardId })
       .from(rewardClaims)
@@ -338,12 +350,14 @@ export async function claimedRewards(db: Db, ownerId: string): Promise<ClaimedRe
       .select({ questId: questProgress.questId })
       .from(questProgress)
       .where(and(eq(questProgress.ownerId, ownerId), isNotNull(questProgress.claimedAt))),
+    boughtFarmPlots(db, ownerId),
   ]);
   const ids = (kind: string) => new Set(rows.filter((r) => r.kind === kind).map((r) => r.rewardId));
   return {
     collectionIds: ids('collection'),
     questIds: new Set(quests.map((q) => q.questId)),
     completionIds: ids('completion'),
+    farmPlots,
   };
 }
 

@@ -1,7 +1,14 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
-import { createDb, ensureSeedContent, pokemon, users } from '@poke/db';
+import {
+  createDb,
+  ensureSeedContent,
+  guildMembers,
+  playerProfiles,
+  pokemon,
+  users,
+} from '@poke/db';
 import type { BetaProfilesResponse, MeResponse } from '@poke/shared';
 import { buildApp } from './app';
 import { loadEnv } from './env';
@@ -22,7 +29,7 @@ afterAll(async () => {
 });
 
 const request = (
-  method: 'GET' | 'POST',
+  method: 'GET' | 'POST' | 'DELETE',
   url: string,
   cookie: string,
   payload?: unknown,
@@ -128,6 +135,109 @@ describe('profils secondaires (bêta)', () => {
     // Un profil d'un autre compte dans l'en-tête ramène au profil principal du compte connecté.
     const thief = await newPlayer('sbire@example.com', 'Sbire');
     expect(await nameOf(thief, altId)).toBe('Sbire');
+  });
+
+  it('suppression : partie effacée, retour au principal si actif, numéro réutilisable', async () => {
+    const session = await newPlayer('agatha@example.com', 'Agatha');
+    const created = await request('POST', '/api/beta/profiles', session);
+    const altId = created.json<BetaProfilesResponse>().activeProfileId;
+    const onAlt = `${session}; ${cookieOf(created)}`;
+    const starter = seedContent.regions[0]!.starterSpeciesIds[0]!;
+    await request('POST', '/api/starter', onAlt, { speciesId: starter });
+
+    const removed = await request('DELETE', `/api/beta/profiles/${altId}`, onAlt);
+    expect(removed.statusCode, removed.body).toBe(200);
+    const list = removed.json<BetaProfilesResponse>();
+    expect(list.profiles.map((p) => p.trainerName)).toEqual(['Agatha']);
+    expect(list.activeProfileId).toBe(list.profiles[0]!.id);
+    expect(String(removed.headers['set-cookie'])).toContain('Max-Age=0');
+    expect(await handle.db.select().from(pokemon).where(eq(pokemon.ownerId, altId))).toEqual([]);
+    expect((await request('GET', '/api/me', onAlt)).json<MeResponse>().profile?.trainerName).toBe(
+      'Agatha',
+    );
+
+    const again = await request('POST', '/api/beta/profiles', session);
+    expect(again.json<BetaProfilesResponse>().profiles.map((p) => p.trainerName)).toEqual([
+      'Agatha',
+      'Alt1_Agatha',
+    ]);
+  });
+
+  it('suppression d’un autre profil : le profil actif ne change pas', async () => {
+    const session = await newPlayer('olga@example.com', 'Olga');
+    const altId = (
+      await request('POST', '/api/beta/profiles', session)
+    ).json<BetaProfilesResponse>().activeProfileId;
+    const removed = await request(
+      'DELETE',
+      `/api/beta/profiles/${altId}`,
+      session,
+      undefined,
+      'main',
+    );
+    expect(removed.statusCode, removed.body).toBe(200);
+    const created = await request('POST', '/api/beta/profiles', session);
+    const secondId = created.json<BetaProfilesResponse>().activeProfileId;
+    const thirdId = (
+      await request('POST', '/api/beta/profiles', session)
+    ).json<BetaProfilesResponse>().activeProfileId;
+    const kept = await request(
+      'DELETE',
+      `/api/beta/profiles/${thirdId}`,
+      session,
+      undefined,
+      secondId,
+    );
+    expect(kept.json<BetaProfilesResponse>().activeProfileId).toBe(secondId);
+  });
+
+  it('ni le profil principal ni celui d’un autre compte ne peuvent être supprimés', async () => {
+    const owner = await newPlayer('koga@example.com', 'Koga');
+    const created = await request('POST', '/api/beta/profiles', owner);
+    const list = created.json<BetaProfilesResponse>();
+    const mainId = list.profiles.find((p) => p.main)!.id;
+    expect((await request('DELETE', `/api/beta/profiles/${mainId}`, owner)).statusCode).toBe(404);
+
+    const thief = await newPlayer('sabrina@example.com', 'Sabrina');
+    const stolen = await request('DELETE', `/api/beta/profiles/${list.activeProfileId}`, thief);
+    expect(stolen.statusCode).toBe(404);
+    expect(
+      await handle.db.select().from(users).where(eq(users.id, list.activeProfileId)),
+    ).toHaveLength(1);
+  });
+
+  it('un chef de guilde supprimé passe la main', async () => {
+    const leader = await newPlayer('blue@example.com', 'Blue');
+    const created = await request('POST', '/api/beta/profiles', leader);
+    const altId = created.json<BetaProfilesResponse>().activeProfileId;
+    const onAlt = `${leader}; ${cookieOf(created)}`;
+    const starter = seedContent.regions[0]!.starterSpeciesIds[0]!;
+    await request('POST', '/api/starter', onAlt, { speciesId: starter });
+    await handle.db
+      .update(playerProfiles)
+      .set({ currency: 1_000_000 })
+      .where(eq(playerProfiles.userId, altId));
+    const guild = await request('POST', '/api/guilds', onAlt, {
+      name: 'Bourg Palette',
+      description: '',
+      joinMode: 'open',
+    });
+    expect(guild.statusCode, guild.body).toBe(201);
+    const guildId = (
+      await handle.db.select().from(guildMembers).where(eq(guildMembers.userId, altId))
+    )[0]!.guildId;
+
+    const heir = await newPlayer('red@example.com', 'Red');
+    const joined = await request('POST', `/api/guilds/${guildId}/join`, heir);
+    expect(joined.statusCode, joined.body).toBeLessThan(300);
+
+    const removed = await request('DELETE', `/api/beta/profiles/${altId}`, onAlt);
+    expect(removed.statusCode, removed.body).toBe(200);
+    const members = await handle.db
+      .select()
+      .from(guildMembers)
+      .where(eq(guildMembers.guildId, guildId));
+    expect(members.map((m) => m.role)).toEqual(['leader']);
   });
 
   it('supprimés avec le compte principal', async () => {

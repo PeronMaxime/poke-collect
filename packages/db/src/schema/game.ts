@@ -68,6 +68,8 @@ export const playerProfiles = pgTable(
       .default(sql`'{}'::uuid[]`),
     /** Départ volontaire de sa dernière guilde : délai avant d'en rejoindre une autre. */
     guildLeftAt: timestamp('guild_left_at', { withTimezone: true }),
+    /** Parcelles de la ferme achetées à la boutique (en plus du départ et des paliers). */
+    farmPlots: integer('farm_plots').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('player_profiles_trainer_name_lower').on(sql`lower(${t.trainerName})`)],

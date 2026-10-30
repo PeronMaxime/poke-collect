@@ -8,7 +8,9 @@ import { HoverBubble, Modal, ProgressBar, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
 import {
   PLAYER_STATE_KEYS,
+  assistantPlaces,
   serverOffset,
+  shownPlaces,
   useAssistants,
   useFarm,
   useInventory,
@@ -22,7 +24,6 @@ import {
   yieldRange,
 } from '../../lib/labels';
 import { AssistantCard } from './AssistantCard';
-import { FacilityLocks } from './FacilityLocks';
 
 /** Nom de la baie suivi de sa description (bulle native des parcelles). */
 const berryTitle = (ctx: GameContext, itemId: string) => {
@@ -80,8 +81,11 @@ export function FarmPage({ ctx }: { ctx: GameContext }) {
   const serverNow = now + serverOffset(data, farm.dataUpdatedAt);
   const planted = data?.planted ?? [];
   const plots = data?.plots ?? 0;
-  // Parcelles affichées : ouvertes, plus celles encore plantées au-delà (réglage baissé).
-  const shown = Math.max(plots, ...planted.map((p) => p.plotIndex + 1));
+  const shown = shownPlaces(plots, [
+    ...planted.map((p) => p.plotIndex),
+    ...assistantPlaces(assistants.data, 'farm'),
+    ...assistantPlaces(assistants.data, 'harvest'),
+  ]);
   const ripe = planted.filter((p) => remainingOf(p, serverNow) === 0).length;
   const fields = Math.ceil(Math.max(shown, FARM_PLOTS) / FARM_PLOTS);
   const seeds = (inventory.data ?? []).filter(
@@ -157,7 +161,13 @@ export function FarmPage({ ctx }: { ctx: GameContext }) {
                       <p className="mb-1 text-xs font-semibold tracking-wide text-slate-400 uppercase">
                         Arrosage
                       </p>
-                      <AssistantCard ctx={ctx} post="farm" slot={field} standalone />
+                      <AssistantCard
+                        ctx={ctx}
+                        post="farm"
+                        slot={field}
+                        standalone
+                        closed={first >= plots}
+                      />
                       {!watered && growing && (
                         <p className="mt-2 text-sm text-amber-700 dark:text-amber-400">
                           Le champ n’est pas arrosé : ses baies ne poussent pas.
@@ -168,7 +178,13 @@ export function FarmPage({ ctx }: { ctx: GameContext }) {
                       <p className="mb-1 text-xs font-semibold tracking-wide text-slate-400 uppercase">
                         Récolte
                       </p>
-                      <AssistantCard ctx={ctx} post="harvest" slot={field} standalone />
+                      <AssistantCard
+                        ctx={ctx}
+                        post="harvest"
+                        slot={field}
+                        standalone
+                        closed={first >= plots}
+                      />
                     </div>
                   </div>
                 </div>
@@ -282,7 +298,6 @@ export function FarmPage({ ctx }: { ctx: GameContext }) {
             );
           })}
         </div>
-        <FacilityLocks ctx={ctx} facility="farm" />
       </section>
 
       {error && <p className="text-sm text-red-600">{errorText(error)}</p>}

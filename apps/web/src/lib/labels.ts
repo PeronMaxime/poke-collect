@@ -123,6 +123,8 @@ export function effectText(effect: ItemEffect): string {
       return `Expédition : rencontres ${formatMultiplier(effect.multiplier)} (une baie par heure)`;
     case 'guildChest':
       return `Coffre ${CHEST_RARITY_LABELS[effect.rarity]} : à ouvrir`;
+    case 'farmPlot':
+      return `Ferme : une parcelle de plus, aussitôt (prix ${formatMultiplier(effect.priceGrowth)} à chaque achat)`;
     case 'berryPlant':
       return `Ferme : pousse en ${formatDuration(effect.minutes)}, donne ${yieldRange(effect)} baies`;
   }
@@ -205,7 +207,8 @@ export function questConditionText(ctx: GameContext, c: QuestCondition): string 
       const what = c.speciesId
         ? speciesName(ctx, c.speciesId)
         : `Pokémon${c.pokemonType ? ` ${typeLabel(c.pokemonType)}` : ''}`;
-      return `Capture ${c.count} ${what}`;
+      const zone = c.zoneId ? ` (${ctx.zone(c.zoneId)?.name ?? c.zoneId})` : '';
+      return `Capture ${c.count} ${what}${zone}`;
     }
     case 'expedition': {
       const zone = ctx.zone(c.zoneId)?.name ?? c.zoneId;

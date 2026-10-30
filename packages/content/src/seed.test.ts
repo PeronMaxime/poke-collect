@@ -192,7 +192,16 @@ describe('cohérence du contenu', () => {
   });
 
   it('liste les usages avant suppression', () => {
-    expect(findUsages(seedContent, 'item', 'poke-ball')).toEqual([
+    // Les tables propres à chaque zone sont vérifiées à part.
+    const sharedUsages = (id: string) =>
+      findUsages(seedContent, 'item', id).filter((u) => !u.startsWith('Table de butin « Butin — '));
+    expect(findUsages(seedContent, 'item', 'poke-ball')).toEqual(
+      expect.arrayContaining([
+        'Table de butin « Butin — Route 1 »',
+        'Table de butin « Butin — Forêt de Jade »',
+      ]),
+    );
+    expect(sharedUsages('poke-ball')).toEqual([
       'Équilibrage : inventaire de départ',
       'Table de butin « Butin de route »',
       'Table de butin « Butin de forêt »',
@@ -205,33 +214,11 @@ describe('cohérence du contenu', () => {
       'Article de boutique « poke-ball-x10 »',
       'Lot de coffre « bronze-poke-ball-x100 »',
     ]);
-    expect(findUsages(seedContent, 'lootTable', 'butin-mer')).toEqual([
+    expect(findUsages(seedContent, 'lootTable', 'butin-mer')).toEqual([]);
+    expect(findUsages(seedContent, 'lootTable', 'butin-zone-cap-azuria')).toEqual([
       'Zone « Cap Azuria »',
-      'Zone « Routes maritimes »',
-      'Zone « Îles Écume »',
-      'Zone « Routes 40 et 41 »',
-      'Zone « Phare d’Oliville »',
-      'Zone « Lac Colère »',
-      'Zone « Tourb’Îles »',
-      'Zone « Route 104 »',
-      'Zone « Plage de Poivressel »',
-      'Zone « Routes 105 à 108 »',
-      'Zone « Épave Abandonnée »',
-      'Zone « Grotte Sous-Marine »',
-      'Zone « Archipel Lointain »',
-      'Zone « Lac Salinas »',
-      'Dresseur « Ondine »',
-      'Dresseur « Hugo »',
-      'Dresseur « Léna »',
-      'Dresseur « Raoul »',
-      'Dresseur « Marina »',
-      'Dresseur « Gilles »',
-      'Dresseur « Sbire »',
-      'Dresseur « Sbire »',
-      'Dresseur « Maëva »',
-      'Dresseur « Tomas »',
-      'Dresseur « Maya »',
     ]);
+    expect(seedContent.trainers.every((t) => !t.lootTableId && t.lootRolls === 0)).toBe(true);
     // Léo et Ondine dépendent du nombre de badges, pas de Pierre directement ; la Super Ball si.
     expect(findUsages(seedContent, 'trainer', 'pierre')).toEqual([
       'Condition de déblocage de « Article Super Ball (great-ball) »',
@@ -244,7 +231,7 @@ describe('cohérence du contenu', () => {
       'Dresseur « Tom »',
       'Dresseur « Lise »',
     ]);
-    expect(findUsages(seedContent, 'item', 'ultra-ball')).toEqual([
+    expect(sharedUsages('ultra-ball')).toEqual([
       'Table de butin « Butin des berges »',
       'Table de butin « Butin d’élite »',
       'Article de boutique « ultra-ball »',
@@ -252,8 +239,7 @@ describe('cohérence du contenu', () => {
       'Lot de coffre « silver-ultra-ball-x20 »',
       'Lot de coffre « gold-ultra-ball-x20 »',
     ]);
-    expect(findUsages(seedContent, 'item', 'shiny-charm')).toEqual([
-    ]);
+    expect(findUsages(seedContent, 'item', 'shiny-charm')).toEqual([]);
     expect(findUsages(seedContent, 'shopCategory', 'elevage')).toEqual([
       'Article de boutique « everstone »',
       'Article de boutique « destiny-knot »',
@@ -382,6 +368,7 @@ describe('cohérence du contenu', () => {
       count: 3,
       pokemonType: 'water',
       speciesId: 25,
+      zoneId: 'atlantide',
     };
     artikodin!.steps[2]!.condition = {
       type: 'expedition',
@@ -406,6 +393,7 @@ describe('cohérence du contenu', () => {
     expect(messages).toEqual(
       expect.arrayContaining([
         'artikodin: Condition de déblocage : la quête dépend d’elle-même',
+        'artikodin: Étape 1 : zone « atlantide » inconnue',
         'artikodin: Étape 1 : Pikachu n’est pas du type demandé',
         'artikodin: Étape 3 : zone « atlantide » inconnue',
         'artikodin: Étape 3 : type « glace » inconnu',
@@ -423,6 +411,7 @@ describe('cohérence du contenu', () => {
       'Condition de « L’oiseau aux flammes sombres »',
     ]);
     expect(findUsages(seedContent, 'zone', 'iles-ecume')).toEqual([
+      'Quête L’oiseau des glaces, étape 2',
       'Quête L’oiseau des glaces, étape 3',
     ]);
     expect(findUsages(seedContent, 'item', 'gold-bottle-cap')).toEqual([
@@ -433,6 +422,7 @@ describe('cohérence du contenu', () => {
       'Quête « Le maître des océans »',
       'Quête « Le maître des continents »',
       'Quête « Le gardien du ciel »',
+      'Quête « L’étoile des vœux »',
       'Lot de coffre « gold-gold-bottle-cap »',
     ]);
   });

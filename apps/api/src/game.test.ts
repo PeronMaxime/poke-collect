@@ -515,21 +515,13 @@ describe('admin : entités de contenu', () => {
   it('refuse de supprimer une table de butin utilisée et liste ses usages', async () => {
     const res = await call(
       'DELETE',
-      `/api/admin/content/versions/${draftId}/loot-tables/butin-mer`,
+      `/api/admin/content/versions/${draftId}/loot-tables/butin-zone-cap-azuria`,
     );
     expect(res).toMatchObject({
       status: 409,
       body: {
         error: 'IN_USE',
-        // L'ordre dépend du stockage en base.
-        details: expect.arrayContaining([
-          'Zone « Cap Azuria »',
-          'Zone « Îles Écume »',
-          'Zone « Archipel Lointain »',
-          'Zone « Lac Colère »',
-          'Dresseur « Ondine »',
-          'Dresseur « Maya »',
-        ]),
+        details: ['Zone « Cap Azuria »'],
       },
     });
   });

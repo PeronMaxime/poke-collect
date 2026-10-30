@@ -72,9 +72,12 @@ export function ShopPage({ ctx }: { ctx: GameContext }) {
     onSuccess: (data) => {
       setReceipt(data);
       return Promise.all(
-        [keys.shop, keys.inventory, keys.me].map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey }),
-        ),
+        [
+          keys.shop,
+          keys.inventory,
+          keys.me,
+          ...(data.farmPlots !== null ? [keys.farm, keys.progression] : []),
+        ].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
       );
     },
   });
@@ -196,6 +199,7 @@ function ShopEntryCard({
   const chosen = Math.min(Math.max(1, lots), Math.max(1, max));
   const gift = purchaseGift(entry, entry.lotSize * chosen);
   const limit = entry.purchaseLimit;
+  const { price } = status;
 
   return (
     <li
@@ -230,7 +234,7 @@ function ShopEntryCard({
                 <span className="ml-1 text-xs font-normal text-slate-500">(sac : {owned})</span>
               )}
             </span>
-            <span className="shrink-0 font-semibold">{formatMoney(entry.price)}</span>
+            <span className="shrink-0 font-semibold">{formatMoney(price)}</span>
           </p>
           {item && (
             <p className={`text-xs ${RARITY_STYLES[item.rarity]}`}>
@@ -240,7 +244,7 @@ function ShopEntryCard({
           )}
           {entry.lotSize > 1 && (
             <p className="text-xs text-slate-500">
-              soit {formatMoney(Math.round(entry.price / entry.lotSize))} l’unité
+              soit {formatMoney(Math.round(price / entry.lotSize))} l’unité
             </p>
           )}
           {item?.description && <p className="mt-1 text-xs text-slate-500">{item.description}</p>}
@@ -275,13 +279,17 @@ function ShopEntryCard({
           </p>
         ) : status.state === 'soldOut' ? (
           <p className="text-center text-sm text-slate-500">
-            Limite atteinte
+            {item?.effects.some((e) => e.type === 'farmPlot')
+              ? 'Ta ferme a toutes ses parcelles'
+              : 'Limite atteinte'}
             {status.nextLotsAt &&
               ` — de nouveau dans ${formatWait(Date.parse(status.nextLotsAt) - serverNow)}`}
           </p>
         ) : (
           <div className="flex items-center gap-2">
-            <Stepper value={chosen} max={max} onChange={setLots} unit="lot" />
+            {status.maxLotsPerPurchase > 1 && (
+              <Stepper value={chosen} max={max} onChange={setLots} unit="lot" />
+            )}
             <button
               className="btn-primary flex-1"
               disabled={max === 0 || buying}
@@ -291,7 +299,7 @@ function ShopEntryCard({
                 ? 'Pas assez de ₽'
                 : buying
                   ? 'Achat…'
-                  : `Acheter · ${formatMoney(entry.price * chosen)}`}
+                  : `Acheter · ${formatMoney(price * chosen)}`}
             </button>
           </div>
         )}
@@ -524,7 +532,7 @@ function SellCard({
   );
 }
 
-/** Animation d'achat : l'objet tombe dans le sac. */
+/** Animation d'achat : l'objet tombe dans le sac (ou la parcelle rejoint la ferme). */
 function PurchaseReceipt({
   ctx,
   receipt,
@@ -552,7 +560,9 @@ function PurchaseReceipt({
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.25 }}
           >
-            + {receipt.quantity} {itemName(ctx, receipt.itemId)}
+            {receipt.farmPlots !== null
+              ? `${receipt.quantity > 1 ? `${receipt.quantity} nouvelles parcelles débloquées` : 'Nouvelle parcelle débloquée'} !`
+              : `+ ${receipt.quantity} ${itemName(ctx, receipt.itemId)}`}
           </motion.p>
           <motion.p
             className="text-sm text-slate-500"
@@ -565,8 +575,10 @@ function PurchaseReceipt({
                 🎁 + {receipt.gift.quantity} {itemName(ctx, receipt.gift.itemId)} en cadeau !
               </span>
             )}
-            − {formatMoney(receipt.totalPrice)} · solde {formatMoney(receipt.currency)} · tu en as{' '}
-            {receipt.inventoryQuantity} dans ton sac
+            − {formatMoney(receipt.totalPrice)} · solde {formatMoney(receipt.currency)} ·{' '}
+            {receipt.farmPlots !== null
+              ? `ta ferme compte ${receipt.farmPlots} parcelle${receipt.farmPlots > 1 ? 's' : ''}`
+              : `tu en as ${receipt.inventoryQuantity} dans ton sac`}
           </motion.p>
           <button className="btn-primary mt-2" onClick={onClose}>
             Merci !

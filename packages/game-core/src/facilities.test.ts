@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { facilityPlaces, lockedFacilityUnlocks } from './facilities';
+import { facilityPlaces } from './facilities';
 import { FARM_PLOTS } from './farm';
 import { testContext } from './test-helpers';
 
@@ -54,8 +54,5 @@ describe('bâtiments à débloquer', () => {
     expect(facilityPlaces(ctx, 'farm', hatched(2))).toBe(15);
     expect(facilityPlaces(ctx, 'daycare', hatched(1))).toBe(2);
     expect(facilityPlaces(ctx, 'daycare', hatched(2))).toBe(7);
-    expect(lockedFacilityUnlocks(ctx, 'museum', hatched(1))).toEqual([
-      { amount: 2, unlock: { type: 'eggsHatched', count: 5 } },
-    ]);
   });
 });

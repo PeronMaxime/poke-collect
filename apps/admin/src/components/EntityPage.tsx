@@ -92,6 +92,16 @@ interface EntityPageProps<T> {
   /** Panneau supplémentaire sous le formulaire (simulateur…). */
   renderExtra?: (entity: T, working: WorkingVersion) => ReactNode;
   newLabel?: string;
+  /** Menu de filtre en plus de la recherche (ex. par région). */
+  listFilter?: ListFilter<T>;
+}
+
+export interface ListFilter<T> {
+  label: string;
+  /** Première option, sans filtre (« Toutes les régions »). */
+  allLabel: string;
+  options: (working: WorkingVersion) => { value: string; label: string }[];
+  matches: (entity: T, value: string, working: WorkingVersion) => boolean;
 }
 
 /** Page type d'une section de contenu : liste filtrable à gauche, fiche d'édition à droite. */
@@ -99,14 +109,18 @@ export function EntityPage<T>(props: EntityPageProps<T>) {
   const working = useWorkingVersion();
   const [selection, setSelection] = useState<{ key: string | null; initial: T } | null>(null);
   const [search, setSearch] = useState('');
+  const [filterValue, setFilterValue] = useState('');
 
   if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
   if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
   const w = working.data;
   const entities = props.list(w);
   const needle = searchKey(search.trim());
+  const { listFilter } = props;
   const visible = entities.filter(
-    (e) => !needle || searchKey(props.searchText(e, w)).includes(needle),
+    (e) =>
+      (!needle || searchKey(props.searchText(e, w)).includes(needle)) &&
+      (!listFilter || !filterValue || listFilter.matches(e, filterValue, w)),
   );
   const issueKeys = new Set(
     w.issues
@@ -144,6 +158,21 @@ export function EntityPage<T>(props: EntityPageProps<T>) {
               </button>
             )}
           </div>
+          {listFilter && (
+            <select
+              className="input"
+              aria-label={listFilter.label}
+              value={filterValue}
+              onChange={(e) => setFilterValue(e.target.value)}
+            >
+              <option value="">{listFilter.allLabel}</option>
+              {listFilter.options(w).map((o) => (
+                <option key={o.value} value={o.value}>
+                  {o.label}
+                </option>
+              ))}
+            </select>
+          )}
           <ul className="space-y-0.5">
             {visible.map((e) => {
               const key = props.getKey(e);

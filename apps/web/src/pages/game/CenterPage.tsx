@@ -2,10 +2,17 @@ import { ASSISTANT_POST_PLACES, assistantSlotCount } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { PokemonDto } from '@poke/shared';
 import { PokemonSprite, useNow } from '../../components/ui';
-import { centerState, useHeal, usePlayerProgress, usePokemon } from '../../lib/game';
+import {
+  assistantPlaces,
+  centerState,
+  shownPlaces,
+  useAssistants,
+  useHeal,
+  usePlayerProgress,
+  usePokemon,
+} from '../../lib/game';
 import { errorText, formatCountdown, formatDuration, speciesName } from '../../lib/labels';
 import { AssistantCard } from './AssistantCard';
-import { FacilityLocks } from './FacilityLocks';
 
 /**
  * Centre Pokémon : les Pokémon mis K.O. en combat y sont soignés, quelques-uns à la fois. Une fois
@@ -16,9 +23,12 @@ export function CenterPage({ ctx }: { ctx: GameContext }) {
   const now = useNow();
   const heal = useHeal();
   const progress = usePlayerProgress();
+  const assistants = useAssistants();
   const { slots, healing, knockedOut, free } = centerState(ctx, pokemon.data ?? [], now, progress);
-  // Places affichées : ouvertes, plus celles encore en soins au-delà (réglage baissé).
-  const shown = Math.max(slots, ...healing.map((p) => (p.healSlot ?? 0) + 1));
+  const shown = shownPlaces(slots, [
+    ...healing.map((p) => p.healSlot ?? 0),
+    ...assistantPlaces(assistants.data, 'center'),
+  ]);
   const waiting = [...knockedOut].sort((a, b) => b.level - a.level);
 
   return (
@@ -44,7 +54,13 @@ export function CenterPage({ ctx }: { ctx: GameContext }) {
             return (
               <div key={center} className="space-y-2">
                 {shown > size && <h3 className="text-sm font-semibold">Centre {center + 1}</h3>}
-                <AssistantCard ctx={ctx} post="center" slot={center} standalone />
+                <AssistantCard
+                  ctx={ctx}
+                  post="center"
+                  slot={center}
+                  standalone
+                  closed={first >= slots}
+                />
                 <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                   {Array.from({ length: Math.min(size, shown - first) }, (_, i) => {
                     const p = healing.find((h) => h.healSlot === first + i);
@@ -55,7 +71,7 @@ export function CenterPage({ ctx }: { ctx: GameContext }) {
                         key={`empty-${i}`}
                         className="grid min-h-32 place-items-center rounded-2xl border-2 border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700"
                       >
-                        Place libre
+                        {first + i < slots ? 'Place libre' : 'Place fermée'}
                       </div>
                     );
                   })}
@@ -64,7 +80,6 @@ export function CenterPage({ ctx }: { ctx: GameContext }) {
             );
           })}
         </div>
-        <FacilityLocks ctx={ctx} facility="center" />
       </section>
 
       <section>

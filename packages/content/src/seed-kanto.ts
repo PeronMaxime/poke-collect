@@ -115,7 +115,7 @@ export const kantoZones: Zone[] = [
     name: 'Forêt de Jade',
     description: 'Une forêt dense où grouillent les insectes. On y aperçoit parfois un Pikachu.',
     habitat: 'forest',
-    minPower: 100,
+    minPower: 170,
     weatherTypes: ['bug', 'grass'],
     encounters: [
       enc(10, 28, 3, 6),
@@ -136,7 +136,7 @@ export const kantoZones: Zone[] = [
     name: 'Route 3',
     description: 'Un sentier escarpé au pied du Mont Sélénite, fréquenté par les Piafabec.',
     habitat: 'rough-terrain',
-    minPower: 250,
+    minPower: 450,
     weatherTypes: ['normal', 'fighting', 'flying'],
     encounters: [
       enc(21, 28, 6, 10),
@@ -155,7 +155,7 @@ export const kantoZones: Zone[] = [
     name: 'Mont Sélénite',
     description: 'Une grotte sombre, réputée pour ses météorites, ses fossiles… et ses Mélofée.',
     habitat: 'cave',
-    minPower: 300,
+    minPower: 500,
     weatherTypes: ['rock', 'ground'],
     encounters: [
       enc(41, 38, 7, 11),
@@ -174,7 +174,7 @@ export const kantoZones: Zone[] = [
     description:
       'Le pont au nord d’Azuria et les prés de la Route 25. Un Abra s’y téléporte parfois.',
     habitat: 'grassland',
-    minPower: 380,
+    minPower: 700,
     weatherTypes: ['grass', 'psychic'],
     encounters: [
       enc(43, 20, 10, 14),
@@ -195,7 +195,7 @@ export const kantoZones: Zone[] = [
     name: 'Cap Azuria',
     description: 'Les berges au nord d’Azuria. Il faut au moins un Pokémon Eau pour s’y aventurer.',
     habitat: 'waters-edge',
-    minPower: 480,
+    minPower: 950,
     requiredTypes: [{ type: 'water', count: 1 }],
     weatherTypes: ['water'],
     durationsMinutes: LONG_DURATIONS,
@@ -216,7 +216,7 @@ export const kantoZones: Zone[] = [
     name: 'Routes 5 et 6',
     description: 'Les chemins qui relient Azuria à Carmin, au pied de Safrania.',
     habitat: 'grassland',
-    minPower: 520,
+    minPower: 1000,
     weatherTypes: ['normal', 'grass'],
     encounters: [
       enc(16, 20, 13, 17),
@@ -238,7 +238,7 @@ export const kantoZones: Zone[] = [
     name: 'Cave Taupiqueur',
     description: 'Un long tunnel creusé par des Taupiqueur, entre Carmin et Argenta.',
     habitat: 'cave',
-    minPower: 560,
+    minPower: 1050,
     weatherTypes: ['ground'],
     encounters: [enc(50, 75, 15, 22), enc(74, 15, 15, 20), enc(51, 10, 26, 31)],
     lootTableId: 'butin-grotte',
@@ -251,7 +251,7 @@ export const kantoZones: Zone[] = [
     name: 'Routes 9 et 10',
     description: 'Le plateau aride qui mène au Tunnel Roche et à la Centrale abandonnée.',
     habitat: 'rough-terrain',
-    minPower: 800,
+    minPower: 1650,
     weatherTypes: ['poison', 'ground', 'electric'],
     encounters: [
       enc(21, 16, 16, 22),
@@ -273,7 +273,7 @@ export const kantoZones: Zone[] = [
     name: 'Tunnel Roche',
     description: 'Un tunnel sans lumière. Mieux vaut une équipe solide pour en voir le bout.',
     habitat: 'cave',
-    minPower: 850,
+    minPower: 1725,
     weatherTypes: ['rock', 'fighting', 'ground'],
     encounters: [
       enc(41, 28, 16, 22),
@@ -292,7 +292,7 @@ export const kantoZones: Zone[] = [
     name: 'Routes 7 et 8',
     description: 'Les routes de Céladopole et de Lavanville, où rôdent Caninos et Goupix.',
     habitat: 'grassland',
-    minPower: 900,
+    minPower: 1800,
     weatherTypes: ['fire', 'normal'],
     encounters: [
       enc(16, 15, 18, 24),
@@ -316,7 +316,7 @@ export const kantoZones: Zone[] = [
     name: 'Tour Pokémon',
     description: 'Le cimetière de Lavanville. Des Spectres y hantent les étages supérieurs.',
     habitat: 'urban',
-    minPower: 1300,
+    minPower: 1950,
     weatherTypes: ['ghost', 'psychic'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -334,7 +334,7 @@ export const kantoZones: Zone[] = [
     name: 'Routes 12 à 15',
     description: 'Le Pont Silence et les sentiers fleuris qui descendent vers Parmanie.',
     habitat: 'grassland',
-    minPower: 1400,
+    minPower: 2025,
     weatherTypes: ['grass', 'bug', 'normal'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -358,7 +358,7 @@ export const kantoZones: Zone[] = [
     name: 'Piste Cyclable',
     description: 'Les Routes 16 à 18, longue descente vers Parmanie prisée des motards.',
     habitat: 'urban',
-    minPower: 1500,
+    minPower: 2100,
     weatherTypes: ['flying', 'poison', 'normal'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -382,7 +382,7 @@ export const kantoZones: Zone[] = [
     name: 'Routes maritimes',
     description: 'Les Routes 19 à 21, en pleine mer. Il faut deux Pokémon Eau pour nager si loin.',
     habitat: 'sea',
-    minPower: 2000,
+    minPower: 2750,
     requiredTypes: [{ type: 'water', count: 2 }],
     weatherTypes: ['water'],
     durationsMinutes: LONG_DURATIONS,
@@ -411,7 +411,7 @@ export const kantoZones: Zone[] = [
     description:
       'Les ruines d’un laboratoire de Cramois’Île. Des expériences y auraient mal tourné.',
     habitat: 'urban',
-    minPower: 2400,
+    minPower: 3150,
     weatherTypes: ['fire', 'poison'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -435,7 +435,7 @@ export const kantoZones: Zone[] = [
     name: 'Route 23',
     description: 'La route des badges, gardée par des dresseurs qui vérifient chaque insigne.',
     habitat: 'grassland',
-    minPower: 2800,
+    minPower: 3350,
     weatherTypes: ['normal', 'fighting', 'poison'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -457,7 +457,7 @@ export const kantoZones: Zone[] = [
     name: 'Route Victoire',
     description: 'La grotte qui mène à la Ligue Pokémon. Seuls les dresseurs aguerris en sortent.',
     habitat: 'cave',
-    minPower: 3200,
+    minPower: 3600,
     weatherTypes: ['fighting', 'rock', 'ground'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
@@ -482,7 +482,7 @@ export const kantoZones: Zone[] = [
     description:
       'Le Prof. Chen y étudie des Pokémon rares, dont Bulbizarre, Salamèche, Carapuce et Évoli. Il n’en ouvre l’accès qu’aux dresseurs confirmés.',
     habitat: 'grassland',
-    minPower: 1000,
+    minPower: 1850,
     weatherTypes: ['grass', 'fire', 'water'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
@@ -506,7 +506,7 @@ export const kantoZones: Zone[] = [
     description:
       'Un Ronflex bloque la Route 12. Le réveiller demande de la force : un Pokémon Combat est indispensable. Un Excelangue rôde dans les parages.',
     habitat: 'mountain',
-    minPower: 2000,
+    minPower: 2750,
     requiredTypes: [{ type: 'fighting', count: 1 }],
     weatherTypes: ['fighting', 'normal'],
     durationsMinutes: SPECIAL_DURATIONS,
@@ -529,7 +529,7 @@ export const kantoZones: Zone[] = [
     description:
       'La réserve de Parmanie. Ses Pokémon farouches ne se montrent qu’aux dresseurs patients : Kangourex, Tauros, Leveinard, Minidraco…',
     habitat: 'grassland',
-    minPower: 2400,
+    minPower: 3150,
     weatherTypes: ['normal', 'bug', 'grass', 'ground'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
@@ -560,7 +560,7 @@ export const kantoZones: Zone[] = [
     description:
       'Le dojo voisin de l’arène de Safrania. Seule une équipe d’au moins deux Pokémon Combat y est admise ; les disciples du maître, Kicklee et Tygnon, s’y entraînent.',
     habitat: 'urban',
-    minPower: 2600,
+    minPower: 3250,
     requiredTypes: [{ type: 'fighting', count: 2 }],
     weatherTypes: ['fighting'],
     durationsMinutes: SPECIAL_DURATIONS,
@@ -582,7 +582,7 @@ export const kantoZones: Zone[] = [
     description:
       'Le siège de Sylphe SARL, libéré de la Team Rocket. Ses laboratoires cachent un Porygon et un M. Mime évadé. Un Pokémon Psy aide à se repérer entre les téléporteurs.',
     habitat: 'urban',
-    minPower: 3000,
+    minPower: 3500,
     requiredTypes: [{ type: 'psychic', count: 1 }],
     weatherTypes: ['electric', 'psychic', 'poison'],
     durationsMinutes: SPECIAL_DURATIONS,
@@ -611,7 +611,7 @@ export const kantoZones: Zone[] = [
     description:
       'Une centrale électrique abandonnée où crépitent les Pokémon Électrik. Un Élektek y rôde.',
     habitat: 'urban',
-    minPower: 1800,
+    minPower: 2500,
     weatherTypes: ['electric'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
@@ -633,7 +633,7 @@ export const kantoZones: Zone[] = [
     description:
       'Deux îles glacées au large de Parmanie. Un oiseau légendaire y aurait son nid ; Lokhlass et Lippoutou y vivent cachés.',
     habitat: 'sea',
-    minPower: 2600,
+    minPower: 3250,
     requiredTypes: [{ type: 'water', count: 2 }],
     weatherTypes: ['ice', 'water'],
     durationsMinutes: SPECIAL_DURATIONS,
@@ -659,7 +659,7 @@ export const kantoZones: Zone[] = [
     description:
       'Un volcan des Îles Sevii. La lave y garde au chaud un oiseau de feu… et un Magmar.',
     habitat: 'mountain',
-    minPower: 3000,
+    minPower: 3500,
     requiredTypes: [{ type: 'fire', count: 1 }],
     weatherTypes: ['fire', 'rock'],
     durationsMinutes: SPECIAL_DURATIONS,
@@ -708,7 +708,7 @@ export const kantoZones: Zone[] = [
     name: 'Île Lointaine',
     description: 'Une île couverte de hautes herbes, absente des cartes. Quelque chose y joue…',
     habitat: 'grassland',
-    minPower: 3600,
+    minPower: 3650,
     weatherTypes: ['grass', 'bug', 'psychic'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
@@ -769,7 +769,6 @@ const trainer = (
 
 /**
  * Champion d'arène : unique, combat à effectif égal (autant de Pokémon que lui), badge.
- * PE minimale ≈ 55 à 60 % de la sienne, pour éviter les combats perdus d'avance.
  */
 const gymLeader = (
   id: string,
@@ -780,9 +779,8 @@ const gymLeader = (
   badge: string,
   team: TrainerPokemon[],
   unlock: UnlockCondition,
-  extra: Partial<Trainer> & { minPower: number },
+  extra: Partial<Trainer>,
 ): Trainer => {
-  const { minPower, ...rest } = extra;
   return trainer({
     id,
     zoneId: null,
@@ -792,13 +790,13 @@ const gymLeader = (
     spriteName,
     team,
     unlock,
-    rules: { ...noRules(), teamSize: team.length, minPower },
-    money: Math.max(...team.map((m) => m.level)) * 100,
+    rules: { ...noRules(), teamSize: team.length },
+    money: Math.max(...team.map((m) => m.level)) * 150,
     lootTableId: 'butin-grotte',
     lootRolls: 3,
     badge: { name: badge, image: null },
     repeatable: false,
-    ...rest,
+    ...extra,
   });
 };
 
@@ -814,8 +812,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Tom',
     trainerClass: 'Gamin',
     spriteName: 'youngster',
-    team: [mon(19, 4)],
-    money: 80,
+    team: [mon(19, 5)],
+    money: 120,
     unlock: { type: 'always' },
   }),
   trainer({
@@ -825,8 +823,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Lise',
     trainerClass: 'Fillette',
     spriteName: 'lass',
-    team: [mon(16, 4), mon(29, 5)],
-    money: 120,
+    team: [mon(16, 5), mon(29, 6)],
+    money: 180,
     unlock: defeated('gamin-tom'),
   }),
   trainer({
@@ -836,8 +834,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Rick',
     trainerClass: 'Scout',
     spriteName: 'bugcatcher',
-    team: [mon(10, 6), mon(13, 6), mon(14, 7)],
-    money: 180,
+    team: [mon(10, 7), mon(13, 7), mon(14, 8)],
+    money: 270,
     lootTableId: 'butin-foret',
     lootRolls: 2,
     unlock: { type: 'regionDexPercent', regionId: 'kanto', percent: 3 },
@@ -849,9 +847,9 @@ export const kantoTrainers: Trainer[] = [
     GYM,
     'brock',
     'Badge Roche',
-    [mon(74, 12), mon(95, 14)],
+    [mon(74, 13), mon(95, 15)],
     defeated('scout-rick'),
-    { minPower: 150 },
+    { money: 2100 },
   ),
   // Badge Roche → Badge Cascade
   trainer({
@@ -861,9 +859,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Léo',
     trainerClass: 'Campeur',
     spriteName: 'camper',
-    team: [mon(27, 10), mon(23, 11)],
-    rules: { ...noRules(), maxLevel: 15 },
-    money: 300,
+    team: [mon(27, 12), mon(23, 13)],
+    money: 450,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: badges(1),
@@ -875,8 +872,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Miguel',
     trainerClass: 'Intello',
     spriteName: 'supernerd',
-    team: [mon(88, 12), mon(100, 12), mon(109, 12)],
-    money: 360,
+    team: [mon(88, 14), mon(100, 14), mon(109, 14)],
+    money: 540,
     lootTableId: 'butin-fouilles',
     lootRolls: 2,
     unlock: defeated('campeur-leo'),
@@ -888,8 +885,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Ali',
     trainerClass: 'Pique-niqueuse',
     spriteName: 'picnicker',
-    team: [mon(43, 14), mon(69, 14), mon(16, 15)],
-    money: 420,
+    team: [mon(43, 16), mon(69, 16), mon(16, 17)],
+    money: 630,
     lootTableId: 'butin-foret',
     lootRolls: 2,
     unlock: defeated('intello-miguel'),
@@ -901,9 +898,9 @@ export const kantoTrainers: Trainer[] = [
     GYM_F,
     'misty',
     'Badge Cascade',
-    [mon(120, 18), mon(121, 21)],
+    [mon(120, 20), mon(121, 23)],
     defeated('pique-niqueuse-ali'),
-    { minPower: 280, lootTableId: 'butin-mer' },
+    { money: 3150, lootTableId: 'butin-mer' },
   ),
   // Badge Cascade → Badge Foudre
   trainer({
@@ -913,8 +910,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Hugo',
     trainerClass: 'Marin',
     spriteName: 'sailor',
-    team: [mon(72, 18), mon(66, 18), mon(98, 20)],
-    money: 600,
+    team: [mon(72, 21), mon(66, 21), mon(98, 23)],
+    money: 900,
     lootTableId: 'butin-mer',
     lootRolls: 2,
     unlock: badges(2),
@@ -926,9 +923,9 @@ export const kantoTrainers: Trainer[] = [
     GYM,
     'ltsurge',
     'Badge Foudre',
-    [mon(100, 21), mon(25, 18), mon(26, 24)],
+    [mon(100, 24), mon(25, 21), mon(26, 27)],
     defeated('marin-hugo'),
-    { minPower: 420 },
+    { money: 3600 },
   ),
   // Badge Foudre → Badge Prisme
   trainer({
@@ -938,8 +935,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Ivan',
     trainerClass: 'Montagnard',
     spriteName: 'hiker-gen3',
-    team: [mon(74, 20), mon(66, 21), mon(95, 22), mon(75, 24)],
-    money: 900,
+    team: [mon(74, 24), mon(66, 25), mon(95, 26), mon(75, 28)],
+    money: 1350,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: badges(3),
@@ -951,9 +948,9 @@ export const kantoTrainers: Trainer[] = [
     GYM_F,
     'erika',
     'Badge Prisme',
-    [mon(71, 29), mon(114, 24), mon(45, 29)],
+    [mon(71, 33), mon(114, 28), mon(45, 33)],
     defeated('montagnard-ivan'),
-    { minPower: 600, lootTableId: 'butin-foret' },
+    { money: 4350, lootTableId: 'butin-foret' },
   ),
   // Badge Prisme → Badge Âme
   trainer({
@@ -963,8 +960,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Paula',
     trainerClass: 'Médium',
     spriteName: 'channeler-gen3',
-    team: [mon(92, 26), mon(92, 26), mon(104, 27), mon(93, 28)],
-    money: 1100,
+    team: [mon(92, 31), mon(92, 31), mon(104, 32), mon(93, 33)],
+    money: 1650,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: badges(4),
@@ -976,8 +973,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Rex',
     trainerClass: 'Motard',
     spriteName: 'biker',
-    team: [mon(109, 28), mon(88, 28), mon(110, 30), mon(89, 30)],
-    money: 1300,
+    team: [mon(109, 33), mon(88, 33), mon(110, 35), mon(89, 35)],
+    money: 1950,
     lootRolls: 2,
     unlock: defeated('mediume-paula'),
   }),
@@ -988,9 +985,9 @@ export const kantoTrainers: Trainer[] = [
     GYM,
     'koga',
     'Badge Âme',
-    [mon(109, 37, 18), mon(89, 39, 18), mon(109, 37, 18), mon(110, 43, 18)],
+    [mon(109, 42, 18), mon(89, 44, 18), mon(109, 42, 18), mon(110, 48, 18)],
     defeated('motard-rex'),
-    { minPower: 1050 },
+    { money: 6450 },
   ),
   // Badge Âme → Badge Marais
   trainer({
@@ -1000,8 +997,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Kiyo',
     trainerClass: 'Maître Karaté',
     spriteName: 'blackbelt',
-    team: [mon(106, 37), mon(107, 37), mon(57, 38), mon(68, 40)],
-    money: 2500,
+    team: [mon(106, 43), mon(107, 43), mon(57, 44), mon(68, 46)],
+    money: 3750,
     lootTableId: 'butin-elite',
     lootRolls: 2,
     repeatable: false,
@@ -1014,8 +1011,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Sbire',
     trainerClass: 'Team Rocket',
     spriteName: 'rocketgrunt',
-    team: [mon(24, 36), mon(42, 36), mon(110, 38), mon(53, 38)],
-    money: 1800,
+    team: [mon(24, 42), mon(42, 42), mon(110, 44), mon(53, 44)],
+    money: 2700,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: badges(5),
@@ -1027,9 +1024,9 @@ export const kantoTrainers: Trainer[] = [
     GYM_F,
     'sabrina',
     'Badge Marais',
-    [mon(64, 38, 20), mon(122, 37, 20), mon(49, 38, 20), mon(65, 43, 20)],
+    [mon(64, 44, 20), mon(122, 43, 20), mon(49, 44, 20), mon(65, 49, 20)],
     defeated('sbire-rocket'),
-    { minPower: 1100 },
+    { money: 6450 },
   ),
   // Badge Marais → Badge Volcan
   trainer({
@@ -1039,8 +1036,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Léna',
     trainerClass: 'Nageuse',
     spriteName: 'swimmerf',
-    team: [mon(120, 37), mon(117, 38), mon(119, 38), mon(121, 40)],
-    money: 1600,
+    team: [mon(120, 44), mon(117, 45), mon(119, 45), mon(121, 47)],
+    money: 2400,
     lootTableId: 'butin-mer',
     lootRolls: 2,
     unlock: badges(6),
@@ -1052,9 +1049,9 @@ export const kantoTrainers: Trainer[] = [
     GYM,
     'blaine',
     'Badge Volcan',
-    [mon(58, 42, 22), mon(77, 40, 22), mon(78, 42, 22), mon(59, 47, 22)],
+    [mon(58, 49, 22), mon(77, 47, 22), mon(78, 49, 22), mon(59, 54, 22)],
     defeated('nageuse-lena'),
-    { minPower: 1250 },
+    { money: 7050 },
   ),
   // Badge Volcan → Badge Terre
   trainer({
@@ -1064,8 +1061,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Hector',
     trainerClass: 'Scientifique',
     spriteName: 'scientist',
-    team: [mon(101, 42), mon(82, 42), mon(89, 43), mon(110, 44), mon(137, 44)],
-    money: 2200,
+    team: [mon(101, 50), mon(82, 50), mon(89, 51), mon(110, 52), mon(137, 52)],
+    money: 3300,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: badges(7),
@@ -1077,9 +1074,9 @@ export const kantoTrainers: Trainer[] = [
     GYM,
     'giovanni',
     'Badge Terre',
-    [mon(111, 45, 25), mon(51, 42, 25), mon(31, 44, 25), mon(34, 45, 25), mon(112, 50, 25)],
+    [mon(111, 53, 25), mon(51, 50, 25), mon(31, 52, 25), mon(34, 53, 25), mon(112, 58, 25)],
     defeated('scientifique-hector'),
-    { minPower: 1650, lootTableId: 'butin-elite' },
+    { money: 7500, lootTableId: 'butin-elite' },
   ),
   // Route Victoire, puis la Ligue
   trainer({
@@ -1089,8 +1086,8 @@ export const kantoTrainers: Trainer[] = [
     name: 'Alice',
     trainerClass: 'Topdresseuse',
     spriteName: 'acetrainerf',
-    team: [mon(112, 48, 20), mon(26, 47, 20), mon(62, 48, 20), mon(121, 48, 20), mon(36, 47, 20)],
-    money: 3500,
+    team: [mon(112, 56, 20), mon(26, 55, 20), mon(62, 56, 20), mon(121, 56, 20), mon(36, 55, 20)],
+    money: 5250,
     lootTableId: 'butin-elite',
     lootRolls: 2,
     unlock: badges(8),
@@ -1118,7 +1115,7 @@ function league(): Trainer[] {
       spriteName,
       team,
       unlock,
-      money: 6000,
+      money: 9000,
       lootTableId: 'butin-elite',
       lootRolls: 3,
       repeatable: false,
@@ -1130,7 +1127,7 @@ function league(): Trainer[] {
       23,
       'Olga',
       'lorelei-gen3',
-      [mon(87, 54, 25), mon(91, 53, 25), mon(80, 54, 25), mon(124, 56, 25), mon(131, 56, 25)],
+      [mon(87, 64, 25), mon(91, 63, 25), mon(80, 64, 25), mon(124, 66, 25), mon(131, 66, 25)],
       allOf(badges(8), defeated('topdresseuse-alice')),
     ),
     member(
@@ -1138,7 +1135,7 @@ function league(): Trainer[] {
       24,
       'Aldo',
       'bruno',
-      [mon(95, 53, 25), mon(107, 55, 25), mon(106, 55, 25), mon(95, 56, 25), mon(68, 58, 25)],
+      [mon(95, 63, 25), mon(107, 65, 25), mon(106, 65, 25), mon(95, 66, 25), mon(68, 68, 25)],
       defeated('olga'),
     ),
     member(
@@ -1146,7 +1143,7 @@ function league(): Trainer[] {
       25,
       'Agatha',
       'agatha-gen3',
-      [mon(94, 56, 25), mon(42, 56, 25), mon(93, 55, 25), mon(24, 58, 25), mon(94, 60, 25)],
+      [mon(94, 66, 25), mon(42, 66, 25), mon(93, 65, 25), mon(24, 68, 25), mon(94, 70, 25)],
       defeated('aldo'),
     ),
     member(
@@ -1154,7 +1151,7 @@ function league(): Trainer[] {
       26,
       'Peter',
       'lance',
-      [mon(130, 56, 25), mon(148, 54, 25), mon(148, 54, 25), mon(142, 58, 25), mon(149, 60, 25)],
+      [mon(130, 66, 25), mon(148, 64, 25), mon(148, 64, 25), mon(142, 68, 25), mon(149, 70, 25)],
       defeated('agatha'),
     ),
     member(
@@ -1163,15 +1160,15 @@ function league(): Trainer[] {
       'Blue',
       'blue',
       [
-        mon(18, 61, 31),
-        mon(65, 59, 31),
-        mon(112, 61, 31),
-        mon(103, 61, 31),
-        mon(130, 63, 31),
-        mon(6, 65, 31),
+        mon(18, 73, 31),
+        mon(65, 71, 31),
+        mon(112, 73, 31),
+        mon(103, 73, 31),
+        mon(130, 75, 31),
+        mon(6, 77, 31),
       ],
       defeated('peter'),
-      { trainerClass: 'Maître de la Ligue', money: 15_000, lootRolls: 5 },
+      { trainerClass: 'Maître de la Ligue', money: 22_500, lootRolls: 5 },
     ),
   ];
 }
@@ -1210,11 +1207,16 @@ const step = (name: string, description: string, condition: QuestCondition): Que
   description,
   condition,
 });
-const catchOf = (count: number, pokemonType: string | null): QuestCondition => ({
+const catchOf = (
+  count: number,
+  pokemonType: string | null,
+  zoneId: string | null = null,
+): QuestCondition => ({
   type: 'catchPokemon',
   count,
   pokemonType,
   speciesId: null,
+  zoneId,
 });
 /** Expédition réussie dans une zone de quête, avec des Pokémon d'un type et d'une PE donnés. */
 const questExpedition = (
@@ -1249,7 +1251,11 @@ export const kantoQuests: Quest[] = [
         'Capture 15 Pokémon Eau pour préparer la traversée.',
         catchOf(15, 'water'),
       ),
-      step('Le froid des îles', 'Capture 5 Pokémon Glace aux Îles Écume.', catchOf(5, 'ice')),
+      step(
+        'Le froid des îles',
+        'Capture 5 Pokémon Glace aux Îles Écume.',
+        catchOf(5, 'ice', 'iles-ecume'),
+      ),
       step(
         'Le nid d’Artikodin',
         'Réussis une expédition aux Îles Écume avec 2 Pokémon Glace de PE 450 ou plus.',
@@ -1276,7 +1282,11 @@ export const kantoQuests: Quest[] = [
         'Capture 10 Pokémon Électrik pour trouver l’entrée de la Centrale.',
         catchOf(10, 'electric'),
       ),
-      step('Courts-circuits', 'Capture 8 Pokémon Électrik à la Centrale.', catchOf(8, 'electric')),
+      step(
+        'Courts-circuits',
+        'Capture 8 Pokémon Électrik à la Centrale.',
+        catchOf(8, 'electric', 'centrale'),
+      ),
       step('Prouver sa valeur', 'Bats Koga, le Champion de Parmanie.', defeated('koga')),
       step(
         'Le cœur de la Centrale',
@@ -1300,7 +1310,11 @@ export const kantoQuests: Quest[] = [
     unlock: defeated('maitre-blue'),
     steps: [
       step('Explorateur', 'Capture 80 espèces différentes.', { type: 'speciesCaught', count: 80 }),
-      step('Coulées de lave', 'Capture 8 Pokémon Feu au Mont Braise.', catchOf(8, 'fire')),
+      step(
+        'Coulées de lave',
+        'Capture 8 Pokémon Feu au Mont Braise.',
+        catchOf(8, 'fire', 'mont-braise'),
+      ),
       step(
         'Le sommet du volcan',
         'Réussis une expédition au Mont Braise avec 2 Pokémon Feu de PE 500 ou plus.',

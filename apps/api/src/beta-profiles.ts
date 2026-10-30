@@ -1,11 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { and, asc, eq, sql } from 'drizzle-orm';
-import { playerProfiles, users } from '@poke/db';
+import { guildMembers, playerProfiles, users } from '@poke/db';
 import type { Db } from '@poke/db';
 import { selectBetaProfileInputSchema } from '@poke/shared';
 import type { BetaProfilesResponse } from '@poke/shared';
 import type { ContentCache } from './content-cache';
+import { leaveGuild } from './game/guilds';
 import type { sessionHooks } from './plugins/session';
 
 /**
@@ -176,6 +177,34 @@ export async function betaProfileRoutes(
       }
       setCookie(reply, null);
       return list(accountUserId, accountUserId);
+    },
+  );
+
+  /**
+   * Supprime un profil secondaire et sa partie (cascade de la base). Il quitte d'abord sa guilde,
+   * pour qu'elle garde un chef ou soit dissoute. Supprimé alors qu'il est actif : retour au principal.
+   */
+  app.delete<{ Params: { profileId: string } }>(
+    '/api/beta/profiles/:profileId',
+    { preHandler: hooks.requireUser },
+    async (request, reply) => {
+      const { profileId } = request.params;
+      const { accountUserId, id: activeId } = request.user!;
+      const [owned] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(and(eq(users.id, profileId), eq(users.parentUserId, accountUserId)));
+      if (!owned) return reply.code(404).send({ error: 'PROFILE_NOT_FOUND' });
+
+      const [member] = await db
+        .select({ userId: guildMembers.userId })
+        .from(guildMembers)
+        .where(eq(guildMembers.userId, profileId));
+      if (member) await leaveGuild(db, profileId, now());
+      await db.delete(users).where(eq(users.id, profileId));
+
+      if (readCookie(request, BETA_PROFILE_COOKIE) === profileId) setCookie(reply, null);
+      return list(accountUserId, activeId === profileId ? accountUserId : activeId);
     },
   );
 }

@@ -20,6 +20,8 @@ export interface ClaimedRewards {
   questIds?: ReadonlySet<string>;
   /** Complétions d'expédition réclamées (`completion:expédition|région`) ; absent : aucune. */
   completionIds?: ReadonlySet<string>;
+  /** Parcelles de la ferme achetées à la boutique ; absent : aucune. */
+  farmPlots?: number;
 }
 
 /** Espèces capturées (Pokédex normal) et capturées en version shiny (Pokédex shiny). */

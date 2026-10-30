@@ -30,6 +30,7 @@ import { ApiError, api } from '../../lib/api';
 import {
   PLAYER_STATE_KEYS,
   keys,
+  shownPlaces,
   useExpeditions,
   usePlayerProgress,
   usePokedex,
@@ -51,7 +52,6 @@ import {
   unlockConditionText,
 } from '../../lib/labels';
 import { ActiveAbilities } from './ActiveAbilities';
-import { FacilityLocks } from './FacilityLocks';
 import { LaunchExpeditionDialog } from './LaunchExpeditionDialog';
 import { LegendaryEncounterDialog } from './LegendaryEncounterDialog';
 import { LootReveal } from './LootReveal';
@@ -128,7 +128,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   const serverNow = now + offset;
   const active = expeditions.data?.active ?? [];
   const slots = expeditions.data?.slots ?? 0;
-  const freeSlots = slots - active.length;
+  const freeSlots = slots - active.filter((e) => e.slotIndex < slots).length;
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
   const questStates = new Map(quests.data?.quests.map((q) => [q.questId, q]));
   /**
@@ -255,40 +255,47 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
           </p>
         )}
         <div className="grid gap-3 sm:grid-cols-2">
-          {Array.from({ length: slots }, (_, slot) => {
-            const exp = active.find((e) => e.slotIndex === slot);
-            const team = exp?.team.flatMap((id) => pokemonById.get(id) ?? []) ?? [];
-            return exp ? (
-              <ActiveExpedition
-                key={exp.id}
-                ctx={ctx}
-                expedition={exp}
-                serverNow={serverNow}
-                teamSpecies={exp.team.map((id) => pokemonById.get(id))}
-                team={team}
-                abilityEnv={abilityEnvOf(exp, team)}
-                charm={charm}
-                claiming={claim.isPending && claim.variables === exp.id}
-                onClaim={() =>
-                  // Expédition légendaire : on découvre le légendaire avant de lancer la Ball.
-                  exp.questId && exp.balls === 0 ? setEncounter(exp) : claim.mutate(exp.id)
-                }
-                cancelling={cancel.isPending && cancel.variables === exp.id}
-                onCancel={() => cancel.mutate(exp.id)}
-              />
-            ) : (
-              <div
-                key={slot}
-                className="grid min-h-32 place-items-center rounded-2xl border-2 border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700"
-              >
-                Emplacement libre — choisis une zone ci-dessous.
-              </div>
-            );
-          })}
+          {Array.from(
+            {
+              length: shownPlaces(
+                slots,
+                active.map((e) => e.slotIndex),
+              ),
+            },
+            (_, slot) => {
+              const exp = active.find((e) => e.slotIndex === slot);
+              const team = exp?.team.flatMap((id) => pokemonById.get(id) ?? []) ?? [];
+              return exp ? (
+                <ActiveExpedition
+                  key={exp.id}
+                  ctx={ctx}
+                  expedition={exp}
+                  serverNow={serverNow}
+                  teamSpecies={exp.team.map((id) => pokemonById.get(id))}
+                  team={team}
+                  abilityEnv={abilityEnvOf(exp, team)}
+                  charm={charm}
+                  claiming={claim.isPending && claim.variables === exp.id}
+                  onClaim={() =>
+                    // Expédition légendaire : on découvre le légendaire avant de lancer la Ball.
+                    exp.questId && exp.balls === 0 ? setEncounter(exp) : claim.mutate(exp.id)
+                  }
+                  cancelling={cancel.isPending && cancel.variables === exp.id}
+                  onCancel={() => cancel.mutate(exp.id)}
+                />
+              ) : (
+                <div
+                  key={slot}
+                  className="grid min-h-32 place-items-center rounded-2xl border-2 border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700"
+                >
+                  {slot < slots
+                    ? 'Emplacement libre — choisis une zone ci-dessous.'
+                    : 'Emplacement fermé.'}
+                </div>
+              );
+            },
+          )}
         </div>
-        {slots < ctx.balance.expeditions.maxSlots && (
-          <FacilityLocks ctx={ctx} facility="expedition" />
-        )}
         {[claim.error, cancel.error, favorite.error].map(
           (error, i) =>
             error && (

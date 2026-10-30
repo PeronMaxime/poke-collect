@@ -948,6 +948,11 @@ export const itemEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('encounterBoost'), multiplier: z.number().min(1).max(10) }),
   /** Coffre de guilde : ouvert depuis le sac, il donne des lots tirés parmi ceux de sa rareté. */
   z.object({ type: z.literal('guildChest'), rarity: chestRaritySchema }),
+  /**
+   * Acheté en boutique : débloque aussitôt une parcelle de la ferme par objet, sans passer par le
+   * sac. Le prix de l'article est multiplié par `priceGrowth` à chaque achat.
+   */
+  z.object({ type: z.literal('farmPlot'), priceGrowth: z.number().min(1).max(10) }),
 ]);
 export type ItemEffect = z.infer<typeof itemEffectSchema>;
 export type ItemEffectType = ItemEffect['type'];
@@ -1231,7 +1236,7 @@ export const shopEntrySchema = z
     itemId: slugSchema,
     categoryId: slugSchema,
     order: z.int().min(0),
-    /** Prix d'un lot, en Poké Dollars. */
+    /** Prix d'un lot, en Poké Dollars (premier achat pour un objet `farmPlot`). */
     price: z.int().min(0).max(100_000_000),
     /** Nombre d'objets par lot (ex. 10 Poké Balls). */
     lotSize: z.int().min(1).max(999),
@@ -1332,12 +1337,13 @@ export type Collection = z.infer<typeof collectionSchema>;
 
 /** Conditions d'étape propres aux quêtes, comptées à partir du début de l'étape. */
 const questActionConditions = [
-  /** Capturer N Pokémon en expédition (filtrés par type et / ou espèce). */
+  /** Capturer N Pokémon en expédition (filtrés par type et / ou espèce), dans la zone indiquée ou, sans zone, dans la région de la quête. */
   z.object({
     type: z.literal('catchPokemon'),
     count: z.int().min(1).max(10_000),
     pokemonType: z.string().min(1).nullable(),
     speciesId: z.int().positive().nullable(),
+    zoneId: slugSchema.nullable().default(null),
   }),
   /**
    * Réussir N expéditions dans une zone, avec au moins `memberCount` Pokémon (du type demandé,

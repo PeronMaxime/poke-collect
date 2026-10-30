@@ -3,6 +3,7 @@ import {
   getForm,
   getSpecies,
   natures,
+  pokemonTypes,
   types as typeData,
 } from '@poke/data';
 import {
@@ -212,7 +213,12 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   const { balance } = content;
 
   /** Condition d'étape de quête : brique de déblocage ou action (captures, expédition). */
-  const checkQuestCondition = (id: string, step: number, condition: QuestCondition) => {
+  const checkQuestCondition = (
+    id: string,
+    regionId: string | null,
+    step: number,
+    condition: QuestCondition,
+  ) => {
     const report = (severity: ContentIssue['severity'], message: string) =>
       add(severity, 'quest', id, `Étape ${step + 1} : ${message}`);
     switch (condition.type) {
@@ -220,16 +226,43 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
         if (condition.pokemonType && !KNOWN_TYPES.has(condition.pokemonType)) {
           report('error', `type « ${condition.pokemonType} » inconnu`);
         }
-        if (condition.speciesId === null) break;
+        const zone = condition.zoneId
+          ? content.zones.find((z) => z.id === condition.zoneId)
+          : undefined;
+        if (condition.zoneId && !zone) report('error', `zone « ${condition.zoneId} » inconnue`);
+        // Sans zone précise, les captures ne comptent que dans la région de la quête.
+        const places = zone
+          ? [zone]
+          : content.zones.filter((z) => regionId === null || z.regionId === regionId);
+        const where = zone
+          ? zone.name
+          : regionId === null
+            ? 'aucune zone'
+            : `la région ${regionId}`;
+        if (condition.speciesId === null) {
+          if (
+            (zone || !condition.zoneId) &&
+            condition.pokemonType &&
+            !places.some((z) =>
+              z.encounters.some((e) =>
+                pokemonTypes(e.speciesId, e.formId).includes(condition.pokemonType!),
+              ),
+            )
+          ) {
+            report('warning', `aucun Pokémon du type demandé n’apparaît dans ${where}`);
+          }
+          break;
+        }
         const species = getSpecies(condition.speciesId);
         if (!species) {
           report('error', `espèce ${condition.speciesId} inconnue`);
         } else if (condition.pokemonType && !species.types.includes(condition.pokemonType)) {
           report('error', `${species.nameFr} n’est pas du type demandé`);
         } else if (
-          !content.zones.some((z) => z.encounters.some((e) => e.speciesId === species.id))
+          (zone || !condition.zoneId) &&
+          !places.some((z) => z.encounters.some((e) => e.speciesId === species.id))
         ) {
-          report('warning', `${species.nameFr} n’apparaît dans aucune zone`);
+          report('warning', `${species.nameFr} n’apparaît pas dans ${where}`);
         }
         break;
       }
@@ -718,7 +751,9 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
       add('error', 'quest', quest.id, `Région « ${quest.regionId} » inconnue`);
     }
     checkUnlock('quest', quest.id, quest.unlock);
-    quest.steps.forEach((step, i) => checkQuestCondition(quest.id, i, step.condition));
+    quest.steps.forEach((step, i) =>
+      checkQuestCondition(quest.id, quest.regionId, i, step.condition),
+    );
     checkQuestReward(quest.id, quest.rewards);
     if (quest.rewards.pokemon.some((p) => p.roaming !== null)) {
       if (!quest.regionId) {
@@ -890,7 +925,9 @@ export function findUsages(
         if (t.zoneId === id) usages.push(`Dresseur « ${t.name} »`);
       }
       const steps = unlockables(content).filter(
-        (e) => e.unlock.type === 'expedition' && e.unlock.zoneId === id,
+        (e) =>
+          (e.unlock.type === 'expedition' || e.unlock.type === 'catchPokemon') &&
+          e.unlock.zoneId === id,
       );
       for (const e of steps) usages.push(e.name);
       break;

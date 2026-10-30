@@ -79,9 +79,16 @@ export function eventProgress(
   ctx: GameContext,
   condition: QuestActionCondition,
   event: QuestEvent,
+  questRegionId: string | null,
 ): number {
   switch (condition.type) {
     case 'catchPokemon':
+      // Sans zone précise, les captures comptent dans toute la région de la quête.
+      if (condition.zoneId) {
+        if (condition.zoneId !== event.zoneId) return 0;
+      } else if (questRegionId && ctx.zone(event.zoneId)?.regionId !== questRegionId) {
+        return 0;
+      }
       return event.captured.filter((c) => matchesCatch(ctx, condition, c)).length;
     case 'expedition':
       return event.zoneId === condition.zoneId &&
@@ -110,7 +117,7 @@ export function advanceQuest(
   while (step < total) {
     const condition = quest.steps[step]!.condition;
     if (isActionCondition(condition)) {
-      if (event && step === eventStep) count += eventProgress(ctx, condition, event);
+      if (event && step === eventStep) count += eventProgress(ctx, condition, event, quest.regionId);
       if (count < condition.count) break;
     } else if (!isUnlocked(ctx, condition, progress)) {
       break;

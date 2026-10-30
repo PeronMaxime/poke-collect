@@ -11,6 +11,19 @@
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-title" content="Dexpedition" />
     <title>Dexpedition</title>
+    <script>
+      // Thème enregistré appliqué avant le premier affichage (voir src/lib/theme.ts).
+      (function () {
+        var saved = null;
+        try {
+          saved = localStorage.getItem('theme');
+        } catch (e) {}
+        var dark =
+          saved === 'dark' ||
+          (saved !== 'light' && matchMedia('(prefers-color-scheme: dark)').matches);
+        document.documentElement.classList.toggle('dark', dark);
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
