@@ -187,8 +187,9 @@ function FacilitiesEditor({ working }: { working: WorkingVersion }) {
           <h1 className="text-2xl font-bold">Progression : bâtiments</h1>
           <p className="mt-1 text-slate-500">
             Emplacements d’expédition, pensions, couveuses, places du Musée, parcelles de la ferme
-            et Centres Pokémon en plus au fil de l’aventure : chaque palier s’ajoute dès que sa condition est remplie (rien à
-            réclamer). Le joueur voit les paliers verrouillés et leur condition dans le bâtiment.
+            et Centres Pokémon en plus au fil de l’aventure : chaque palier s’ajoute dès que sa
+            condition est remplie (rien à réclamer). Le joueur voit les paliers verrouillés et leur
+            condition dans le bâtiment.
           </p>
         </div>
         {editable && (

@@ -117,7 +117,8 @@ export function advanceQuest(
   while (step < total) {
     const condition = quest.steps[step]!.condition;
     if (isActionCondition(condition)) {
-      if (event && step === eventStep) count += eventProgress(ctx, condition, event, quest.regionId);
+      if (event && step === eventStep)
+        count += eventProgress(ctx, condition, event, quest.regionId);
       if (count < condition.count) break;
     } else if (!isUnlocked(ctx, condition, progress)) {
       break;

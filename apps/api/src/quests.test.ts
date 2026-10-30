@@ -37,7 +37,13 @@ content.quests.push({
     {
       name: 'Capturer',
       description: '',
-      condition: { type: 'catchPokemon', count: 1, pokemonType: null, speciesId: null, zoneId: null },
+      condition: {
+        type: 'catchPokemon',
+        count: 1,
+        pokemonType: null,
+        speciesId: null,
+        zoneId: null,
+      },
     },
     {
       name: 'Explorer',
