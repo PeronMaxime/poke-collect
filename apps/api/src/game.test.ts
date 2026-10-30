@@ -435,6 +435,46 @@ describe('Pokédex des formes', () => {
       caughtShiny: false,
     });
   });
+
+  it('ne dévoile une forme alternative qu’une fois elle-même rencontrée', async () => {
+    const call = client(await signUp('sarah@example.com'));
+    expect((await call('POST', '/api/profile', { trainerName: 'Sarah' })).status).toBe(201);
+    const [user] = await handle.db.select().from(users).where(eq(users.email, 'sarah@example.com'));
+    const at = new Date('2026-10-29T12:00:00Z');
+    await recordPokedex(handle.db, user!.id, {
+      met: [{ speciesId: 19, formId: null, isShiny: false }],
+      caught: [],
+      at,
+    });
+    let dex = await call<PokedexEntryDto[]>('GET', '/api/pokedex');
+    expect(dex.body.find((d) => d.speciesId === 19)).toMatchObject({
+      seen: true,
+      seenFormIds: [],
+    });
+
+    await recordPokedex(handle.db, user!.id, {
+      met: [
+        { speciesId: 19, formId: 10091, isShiny: true },
+        { speciesId: 19, formId: 10091, isShiny: false },
+      ],
+      caught: [],
+      at,
+    });
+    await recordPokedex(handle.db, user!.id, {
+      met: [{ speciesId: 19, formId: 10091, isShiny: false }],
+      caught: [],
+      at,
+    });
+    dex = await call<PokedexEntryDto[]>('GET', '/api/pokedex');
+    expect(dex.body.find((d) => d.speciesId === 19)).toMatchObject({
+      caught: false,
+      seenShiny: true,
+      seenFormIds: [10091],
+      seenShinyFormIds: [10091],
+    });
+    const forms = await call<PokedexFormEntryDto[]>('GET', '/api/pokedex/forms');
+    expect(forms.body).toEqual([]);
+  });
 });
 
 describe('admin : entités de contenu', () => {
@@ -475,21 +515,13 @@ describe('admin : entités de contenu', () => {
   it('refuse de supprimer une table de butin utilisée et liste ses usages', async () => {
     const res = await call(
       'DELETE',
-      `/api/admin/content/versions/${draftId}/loot-tables/butin-mer`,
+      `/api/admin/content/versions/${draftId}/loot-tables/butin-zone-cap-azuria`,
     );
     expect(res).toMatchObject({
       status: 409,
       body: {
         error: 'IN_USE',
-        // L'ordre dépend du stockage en base.
-        details: expect.arrayContaining([
-          'Zone « Cap Azuria »',
-          'Zone « Îles Écume »',
-          'Zone « Archipel Lointain »',
-          'Zone « Lac Colère »',
-          'Dresseur « Ondine »',
-          'Dresseur « Maya »',
-        ]),
+        details: ['Zone « Cap Azuria »'],
       },
     });
   });

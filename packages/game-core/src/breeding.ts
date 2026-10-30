@@ -6,7 +6,7 @@ import type { AbilityEnv, AbilityHolder } from './abilities';
 import { MAX_LEVEL, generatePokemon, levelForXp, withPerfectIvs, xpForLevel } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import { createRng } from './rng';
-import { counterpartFormId } from './forms';
+import { counterpartFormId, isEventForm } from './forms';
 import { isMasudaPair, shinyProbability } from './shiny';
 
 // --- Compatibilité ------------------------------------------------------------------
@@ -96,7 +96,11 @@ export function checkBreedingPair(
 
 function eggOf(ctx: GameContext, mother: BreedingParent) {
   const eggSpeciesId = baseSpeciesId(ctx, mother.speciesId);
-  return { eggSpeciesId, eggFormId: counterpartFormId(mother.formId, eggSpeciesId) };
+  // Une forme événementielle (Évoli Partenaire) ne se transmet pas : œuf de forme par défaut.
+  const eggFormId = isEventForm(mother.formId)
+    ? null
+    : counterpartFormId(mother.formId, eggSpeciesId);
+  return { eggSpeciesId, eggFormId };
 }
 
 // --- Objets tenus et règles d'héritage ------------------------------------------------

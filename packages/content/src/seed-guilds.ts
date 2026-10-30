@@ -130,8 +130,8 @@ export const guildQuests: GuildQuest[] = [
     'Couvée de la semaine',
     'Faites éclore des œufs.',
     { type: 'eggsHatched' },
-    [12, 20],
-    [150, 250],
+    [40, 60],
+    [300, 450],
   ),
   quest(
     'captures-normal',

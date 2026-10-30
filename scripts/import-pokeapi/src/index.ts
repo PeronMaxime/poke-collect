@@ -59,7 +59,6 @@ const REGIONAL_FORMS: Record<string, string> = {
 const COSMETIC_FORM_ID_OFFSET = 100_000;
 
 function formKind(formName: string, f: ApiPokemonForm, isVariety: boolean): FormKind {
-  if (/(^|-)totem(-|$)/.test(formName)) return 'totem';
   if (/(^|-)(gmax|eternamax)(-|$)/.test(formName)) return 'gmax';
   if (f.is_mega) return 'mega';
   if (formName === 'primal') return 'primal';
@@ -90,8 +89,6 @@ function fallbackFormNames(
       return { nameFr: `Primo-${baseName}`, formNameFr: 'Primo-Résurgence' };
     case 'gmax':
       return { nameFr: `${baseName} Gigamax`, formNameFr: 'Forme Gigamax' };
-    case 'totem':
-      return { nameFr: `${baseName} Dominant`, formNameFr: 'Pokémon Dominant' };
     case 'regional': {
       const region = REGIONAL_FORMS[formName.split('-')[0]!]!;
       return { nameFr: `${baseName} ${region}`, formNameFr: `Forme ${region}` };
@@ -376,6 +373,8 @@ async function main() {
   ): PokemonForm | null => {
     if (f.is_default && !isVariety) return null;
     const formName = f.form_name || p.name.replace(`${s.name}-`, '');
+    // Pokémon Dominants d'Alola : pas dans le jeu.
+    if (/(^|-)totem(-|$)/.test(formName)) return null;
     const kind = formKind(formName, f, isVariety);
     const baseName = frName(s.names, s.name);
     const formNameFr = f.form_names.find((n) => n.language.name === 'fr')?.name ?? null;

@@ -159,6 +159,7 @@ describe('boutique', () => {
       gift: { itemId: 'premier-ball', quantity: 2 },
       currency: 1400,
       inventoryQuantity: 40,
+      farmPlots: null,
     });
     const inventory = await call<InventoryEntryDto[]>('GET', '/api/inventory');
     expect(inventory.body).toContainEqual({ itemId: 'poke-ball', quantity: 40 });

@@ -137,6 +137,11 @@ const EFFECTS: Record<
     help: 'Gagné en terminant une quête de guilde : ouvert depuis le sac, il donne des lots tirés parmi ceux de sa rareté (page Guildes). Le premier objet de chaque rareté sert de récompense.',
     create: () => ({ type: 'guildChest', rarity: 'bronze' }),
   },
+  farmPlot: {
+    label: 'Parcelle de ferme',
+    help: 'Achetée en boutique : débloque aussitôt une parcelle de la ferme par objet, sans passer par le sac. Le prix de l’article (premier achat) est multiplié par ce facteur à chaque achat, arrondi à 3 chiffres ; un seul lot par achat.',
+    create: () => ({ type: 'farmPlot', priceGrowth: 1.4 }),
+  },
 };
 
 const pokeApiById = new Map(pokeApiItems.map((i) => [i.name, i]));
@@ -420,6 +425,20 @@ function ItemForm({
                       value: r,
                       label: CHEST_RARITY_LABELS[r],
                     }))}
+                  />
+                </Field>
+              )}
+              {effect.type === 'farmPlot' && (
+                <Field label="Prix à chaque achat" error={errors.get(`effects.${i}.priceGrowth`)}>
+                  <NumberInput
+                    className="w-32"
+                    value={effect.priceGrowth}
+                    min={1}
+                    max={10}
+                    step={0.05}
+                    unit="×"
+                    disabled={disabled}
+                    onChange={(v) => update({ ...effect, priceGrowth: v })}
                   />
                 </Field>
               )}

@@ -32,5 +32,4 @@ export const DEX_FORM_SECTIONS = [
   { kind: 'primal', label: 'Primo-Résurgences' },
   { kind: 'gmax', label: 'Formes Gigamax' },
   { kind: 'battle', label: 'Formes de combat' },
-  { kind: 'totem', label: 'Pokémon Dominants' },
 ] as const satisfies readonly { kind: FormKind; label: string }[];

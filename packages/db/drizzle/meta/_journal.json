@@ -589,6 +589,188 @@
       "when": 1793057346614,
       "tag": "0083_coffres_guilde_fin_de_periode",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1793096546339,
+      "tag": "0084_hoenn",
+      "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1793197136494,
+      "tag": "0085_deblocage_onglets",
+      "breakpoints": true
+    },
+    {
+      "idx": 86,
+      "version": "7",
+      "when": 1793269314302,
+      "tag": "0086_affinites_zones",
+      "breakpoints": true
+    },
+    {
+      "idx": 87,
+      "version": "7",
+      "when": 1793300000000,
+      "tag": "0087_retrait_dominants",
+      "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1793350000000,
+      "tag": "0088_formes_vues",
+      "breakpoints": true
+    },
+    {
+      "idx": 89,
+      "version": "7",
+      "when": 1793360000000,
+      "tag": "0089_neuf_expeditions",
+      "breakpoints": true
+    },
+    {
+      "idx": 90,
+      "version": "7",
+      "when": 1793400000000,
+      "tag": "0090_collections_regions",
+      "breakpoints": true
+    },
+    {
+      "idx": 91,
+      "version": "7",
+      "when": 1793440000000,
+      "tag": "0091_collections_formes",
+      "breakpoints": true
+    },
+    {
+      "idx": 92,
+      "version": "7",
+      "when": 1793450000000,
+      "tag": "0092_completion_recompenses",
+      "breakpoints": true
+    },
+    {
+      "idx": 93,
+      "version": "7",
+      "when": 1793450001000,
+      "tag": "0093_completion_expeditions",
+      "breakpoints": true
+    },
+    {
+      "idx": 94,
+      "version": "7",
+      "when": 1793460000000,
+      "tag": "0094_retrait_paliers_pokedex",
+      "breakpoints": true
+    },
+    {
+      "idx": 95,
+      "version": "7",
+      "when": 1793470002000,
+      "tag": "0095_ajustements_admin",
+      "breakpoints": true
+    },
+    {
+      "idx": 96,
+      "version": "7",
+      "when": 1793480000000,
+      "tag": "0096_rencontres_speciales",
+      "breakpoints": true
+    },
+    {
+      "idx": 97,
+      "version": "7",
+      "when": 1793490000000,
+      "tag": "0097_parcelles_boutique",
+      "breakpoints": true
+    },
+    {
+      "idx": 98,
+      "version": "7",
+      "when": 1793500000000,
+      "tag": "0098_max_parcelles",
+      "breakpoints": true
+    },
+    {
+      "idx": 99,
+      "version": "7",
+      "when": 1793510000000,
+      "tag": "0099_butin_par_zone_et_dresseur",
+      "breakpoints": true
+    },
+    {
+      "idx": 100,
+      "version": "7",
+      "when": 1793520000000,
+      "tag": "0100_dresseurs_sans_butin",
+      "breakpoints": true
+    },
+    {
+      "idx": 101,
+      "version": "7",
+      "when": 1793530000000,
+      "tag": "0101_argent_dresseurs",
+      "breakpoints": true
+    },
+    {
+      "idx": 102,
+      "version": "7",
+      "when": 1793540000000,
+      "tag": "0102_zone_etapes_captures",
+      "breakpoints": true
+    },
+    {
+      "idx": 103,
+      "version": "7",
+      "when": 1793550000000,
+      "tag": "0103_quetes_hoenn",
+      "breakpoints": true
+    },
+    {
+      "idx": 104,
+      "version": "7",
+      "when": 1793560000000,
+      "tag": "0104_reglages_quetes",
+      "breakpoints": true
+    },
+    {
+      "idx": 105,
+      "version": "7",
+      "when": 1793570000000,
+      "tag": "0105_niveaux_dresseurs",
+      "breakpoints": true
+    },
+    {
+      "idx": 106,
+      "version": "7",
+      "when": 1793580000000,
+      "tag": "0106_dresseurs_sans_pe_minimale",
+      "breakpoints": true
+    },
+    {
+      "idx": 107,
+      "version": "7",
+      "when": 1793590000000,
+      "tag": "0107_dresseurs_sans_niveau_maximal",
+      "breakpoints": true
+    },
+    {
+      "idx": 108,
+      "version": "7",
+      "when": 1793600000000,
+      "tag": "0108_courbe_pe_expeditions",
+      "breakpoints": true
+    },
+    {
+      "idx": 109,
+      "version": "7",
+      "when": 1793610000000,
+      "tag": "0109_ajustements_butin_boutique",
+      "breakpoints": true
     }
   ]
 }

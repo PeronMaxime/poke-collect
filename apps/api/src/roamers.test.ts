@@ -39,7 +39,13 @@ content.quests.push({
     {
       name: 'Capturer',
       description: '',
-      condition: { type: 'catchPokemon', count: 1, pokemonType: null, speciesId: null },
+      condition: {
+        type: 'catchPokemon',
+        count: 1,
+        pokemonType: null,
+        speciesId: null,
+        zoneId: null,
+      },
     },
   ],
   rewards: {
@@ -47,6 +53,7 @@ content.quests.push({
     items: [],
     expeditionSlots: 0,
     daycareSlots: 0,
+    incubators: 0,
     bonuses: [],
     pokemon: [{ ...raikou, roaming: 100 }],
   },

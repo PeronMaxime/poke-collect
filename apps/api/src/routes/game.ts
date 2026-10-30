@@ -40,8 +40,9 @@ import {
   startExpedition,
 } from '../game/expeditions';
 import { settleFinishedBattle } from '../game/battles';
+import { settleClosedPlaces } from '../game/closed-places';
 import { settleFinishedDungeonRun } from '../game/dungeons';
-import { claimedRewards, pokemonActivities, toExpeditionDto, toPokemonDto } from '../game/store';
+import { pokemonActivities, toExpeditionDto, toPokemonDto } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
@@ -62,6 +63,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     // Combat terminé pendant l'absence du joueur : son équipe redevient disponible.
     await settleFinishedDungeonRun(db, content, userId, now());
     await settleFinishedBattle(db, content, userId, now());
+    await settleClosedPlaces(db, content, userId, now());
     const [rows, busy] = await Promise.all([
       db
         .select()
@@ -133,13 +135,13 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     const ctx = await content.get();
     const userId = request.user!.id;
     const at = now();
-    const [rows, claimed, chains, [profile], roamers] = await Promise.all([
+    const [rows, slots, chains, [profile], roamers] = await Promise.all([
       db
         .select()
         .from(expeditions)
         .where(and(eq(expeditions.ownerId, userId), isNull(expeditions.claimedAt)))
         .orderBy(asc(expeditions.slotIndex)),
-      claimedRewards(db, userId),
+      expeditionSlots(db, ctx, userId),
       shinyChains(db, ctx, userId, at),
       db
         .select({ favoriteZoneIds: playerProfiles.favoriteZoneIds })
@@ -152,7 +154,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
       expiresAt: s.expiresAt?.toISOString() ?? null,
     });
     return {
-      slots: expeditionSlots(ctx, claimed),
+      slots,
       serverTime: at.toISOString(),
       active: rows.map(toExpeditionDto),
       chains: ctx.zones.flatMap((z) => {

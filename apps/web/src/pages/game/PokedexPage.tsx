@@ -1,11 +1,11 @@
 import { useState } from 'react';
 import { DEX_FORM_SECTIONS, speciesForms } from '@poke/data';
 import {
+  claimableCompletionCount,
   collectionState,
   dexProgress,
   isUnlocked,
   isZoneUnlocked,
-  milestoneState,
 } from '@poke/game-core';
 import type { DexCatches, GameContext, PlayerProgress } from '@poke/game-core';
 import type { PokedexEntryDto, PokedexFormEntryDto } from '@poke/shared';
@@ -16,11 +16,12 @@ import {
   usePokedex,
   usePokedexForms,
   usePlayerProgress,
+  useShinyBonus,
   useShinyCharm,
 } from '../../lib/game';
-import { formatShinyRate, unlockConditionText } from '../../lib/labels';
+import { formatPercentBonus, formatShinyRate, unlockConditionText } from '../../lib/labels';
 import { zoneLink } from './ExpeditionsPage';
-import { CollectionsView, MilestonesView } from './ProgressionViews';
+import { CollectionsView, CompletionsView, useVisibleCollections } from './ProgressionViews';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 
 type Filter = 'all' | 'caught' | 'missing';
@@ -42,24 +43,22 @@ interface SlotState {
 
 const VIEWS = [
   { id: 'dex', label: 'Pokédex' },
-  { id: 'milestones', label: 'Paliers' },
   { id: 'collections', label: 'Collections' },
+  { id: 'completions', label: 'Expéditions' },
 ] as const;
 type View = (typeof VIEWS)[number]['id'];
 
-/** Pokédex, paliers de récompenses et collections thématiques. */
+/** Pokédex, collections thématiques et complétion des expéditions. */
 export function PokedexPage({ ctx }: { ctx: GameContext }) {
   const claimed = useClaimedRewards();
   const [view, setView] = useState<View>('dex');
   const progress = useDexCatches();
+  const collections = useVisibleCollections(ctx);
   const claimable = {
     dex: 0,
-    milestones: ctx.content.dexMilestones.filter(
-      (m) => milestoneState(ctx, m, progress, claimed) === 'claimable',
-    ).length,
-    collections: ctx.content.collections.filter(
-      (c) => collectionState(c, progress, claimed) === 'claimable',
-    ).length,
+    collections: collections.filter((c) => collectionState(c, progress, claimed) === 'claimable')
+      .length,
+    completions: claimableCompletionCount(ctx, progress, claimed),
   };
 
   return (
@@ -81,8 +80,8 @@ export function PokedexPage({ ctx }: { ctx: GameContext }) {
         ))}
       </nav>
       {view === 'dex' && <DexView ctx={ctx} />}
-      {view === 'milestones' && <MilestonesView ctx={ctx} progress={progress} />}
       {view === 'collections' && <CollectionsView ctx={ctx} progress={progress} />}
+      {view === 'completions' && <CompletionsView ctx={ctx} progress={progress} />}
     </div>
   );
 }
@@ -103,6 +102,7 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
   const pokedex = usePokedex();
   const ownCatches = useDexCatches();
   const charm = useShinyCharm(ctx);
+  const shinyBonus = useShinyBonus();
   const [savedRegion, setRegionId] = useSavedRegionTab(foreign ? 'pokedex-other' : 'pokedex');
   const [filter, setFilter] = useState<Filter>('all');
   const [shiny, setShiny] = useState(false);
@@ -116,6 +116,10 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
         caughtSpeciesIds: new Set(entryList?.filter((e) => e.caught).map((e) => e.speciesId)),
         caughtShinySpeciesIds: new Set(
           entryList?.filter((e) => e.caughtShiny).map((e) => e.speciesId),
+        ),
+        caughtFormIds: new Set(foreign.forms.map((f) => f.formId)),
+        caughtShinyFormIds: new Set(
+          foreign.forms.filter((f) => f.caughtShiny).map((f) => f.formId),
         ),
       }
     : ownCatches;
@@ -151,10 +155,12 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
         caughtShiny: entry?.caughtShiny ?? false,
       };
     }
-    // Une forme est connue dès que son espèce a été vue.
+    // Une forme se dévoile quand elle-même a été rencontrée ou capturée : avoir vu la forme
+    // normale de l'espèce ne suffit pas.
     const formEntry = formEntries.get(formId);
+    const formSeen = (shiny ? entry?.seenShinyFormIds : entry?.seenFormIds)?.includes(formId);
     return {
-      seen: (shiny ? !!formEntry?.caughtShiny : !!formEntry) || seen,
+      seen: (shiny ? !!formEntry?.caughtShiny : !!formEntry) || !!formSeen,
       caught: shiny ? !!formEntry?.caughtShiny : !!formEntry,
       caughtAt: formEntry?.firstCaughtAt ?? null,
       caughtShiny: formEntry?.caughtShiny ?? false,
@@ -238,8 +244,10 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
         {shiny && !foreign && (
           <p className="mt-2 text-xs text-slate-500">
             Taux chromatique de base : {formatShinyRate(1 / ctx.balance.shiny.baseRateDenominator)}
-            {charm > 1 && ` · Charme Chroma : × ${charm}`}. Relancer une zone de suite allonge la
-            chaîne ; des parents de régions différentes favorisent les œufs chromatiques.
+            {charm > 1 && ` · Charme Chroma : × ${charm}`}
+            {shinyBonus > 1 && ` · bonus permanent : +${formatPercentBonus(shinyBonus)}`}. Relancer
+            une zone de suite allonge la chaîne ; des parents de régions différentes favorisent les
+            œufs chromatiques.
           </p>
         )}
       </div>
@@ -409,15 +417,7 @@ function DexTile({
         className={seen && !caught ? 'opacity-50 grayscale' : ''}
       />
       <span className="w-full truncate text-center">{seen ? species?.nameFr : '???'}</span>
-      {caught &&
-        (shiny ? (
-          <ShinyStar className="absolute top-0.5 right-1 text-xs" />
-        ) : (
-          <span
-            className="absolute top-1 right-1 h-2 w-2 rounded-full bg-brand-500"
-            title="Capturé"
-          />
-        ))}
+      {caught && shiny && <ShinyStar className="absolute top-0.5 right-1 text-xs" />}
     </button>
   );
 }

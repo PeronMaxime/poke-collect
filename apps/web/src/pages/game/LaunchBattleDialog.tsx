@@ -11,7 +11,6 @@ import {
   imposedWeather,
   pokemonPower,
   trainerEnemies,
-  trainerPower,
   zoneWeather,
 } from '@poke/game-core';
 import type { BattleError, DungeonMove, ExpeditionSite, GameContext } from '@poke/game-core';
@@ -136,8 +135,7 @@ export function LaunchBattleDialog({
           </h2>
           <p className="text-sm text-slate-500">
             {zone ? `${zone.name} · ` : ''}
-            {enemies.length} Pokémon · PE {trainerPower(ctx, trainer)} ·{' '}
-            {formatTimeLimit(trainer.timeLimitSeconds)} pour gagner
+            {enemies.length} Pokémon · {formatTimeLimit(trainer.timeLimitSeconds)} pour gagner
           </p>
           <TrainerRules rules={trainer.rules} className="mt-1" />
         </div>

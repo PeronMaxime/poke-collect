@@ -17,6 +17,7 @@ import {
   DEFAULT_ROAMING_CHANCE,
   defaultLegendaryExpedition,
   defaultTrainerTimeLimitSeconds,
+  zoneAffinityTypes,
 } from './schemas';
 import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
 
@@ -87,26 +88,32 @@ const allOf = (...conditions: UnlockCondition[]): UnlockCondition => ({
   conditions: conditions.flatMap((c) => (c.type === 'allOf' ? c.conditions : [c])),
 });
 
-const zone = (
-  z: Omit<
-    Zone,
-    | 'regionId'
-    | 'image'
-    | 'enabled'
-    | 'requiredTypes'
-    | 'durationsMinutes'
-    | 'weatherChangeChance'
-    | 'weathers'
-  > &
-    Partial<Zone>,
-): Zone => ({
+/** `weatherTypes` : types de la zone d'où le seed tire ses météos ; affinités calculées. */
+const zone = ({
+  weatherTypes,
+  ...z
+}: Omit<
+  Zone,
+  | 'regionId'
+  | 'image'
+  | 'enabled'
+  | 'requiredTypes'
+  | 'durationsMinutes'
+  | 'weatherChangeChance'
+  | 'weathers'
+  | 'specialEncounters'
+  | 'affinityTypes'
+> &
+  Partial<Zone> & { weatherTypes: string[] }): Zone => ({
   regionId: 'johto',
   image: null,
   enabled: true,
   requiredTypes: [],
   durationsMinutes: ALL_DURATIONS,
   weatherChangeChance: ZONE_WEATHER_CHANGE_CHANCE,
-  weathers: seedZoneWeathers(z.habitat, z.affinityTypes),
+  weathers: seedZoneWeathers(z.habitat, weatherTypes),
+  specialEncounters: [],
+  affinityTypes: zoneAffinityTypes(z.encounters),
   ...z,
 });
 
@@ -119,7 +126,7 @@ export const johtoZones: Zone[] = [
     description: 'Le chemin herbeux qui relie Bourg Geon à Ville Griotte. Idéal pour débuter.',
     habitat: 'grassland',
     minPower: 0,
-    affinityTypes: ['normal', 'flying'],
+    weatherTypes: ['normal', 'flying'],
     encounters: [
       enc(161, 30, 2, 4),
       enc(163, 25, 2, 4),
@@ -137,8 +144,8 @@ export const johtoZones: Zone[] = [
     description:
       'Les sentiers boisés au nord de Ville Griotte, où Coxy et Mimigal se relaient jour et nuit.',
     habitat: 'forest',
-    minPower: 100,
-    affinityTypes: ['bug', 'grass'],
+    minPower: 170,
+    weatherTypes: ['bug', 'grass'],
     encounters: [
       enc(165, 25, 3, 6),
       enc(167, 25, 3, 6),
@@ -157,8 +164,8 @@ export const johtoZones: Zone[] = [
     name: 'Tour Chétiflor',
     description: 'Une vieille tour de bois qui oscille doucement. Des ombres y rôdent la nuit.',
     habitat: 'urban',
-    minPower: 180,
-    affinityTypes: ['ghost', 'grass', 'normal'],
+    minPower: 300,
+    weatherTypes: ['ghost', 'grass', 'normal'],
     encounters: [
       enc(163, 25, 4, 7),
       enc(198, 8, 5, 8),
@@ -178,8 +185,8 @@ export const johtoZones: Zone[] = [
     description:
       'La longue route qui descend de Mauville vers les Caves Jumelles, bordée d’étangs.',
     habitat: 'grassland',
-    minPower: 250,
-    affinityTypes: ['electric', 'grass', 'water'],
+    minPower: 450,
+    weatherTypes: ['electric', 'grass', 'water'],
     encounters: [
       enc(179, 25, 6, 9),
       enc(187, 18, 6, 9),
@@ -199,8 +206,8 @@ export const johtoZones: Zone[] = [
     name: 'Caves Jumelles',
     description: 'Un réseau de galeries humides sous la Route 32, où barbotent les Axoloto.',
     habitat: 'cave',
-    minPower: 300,
-    affinityTypes: ['rock', 'ground', 'water'],
+    minPower: 500,
+    weatherTypes: ['rock', 'ground', 'water'],
     encounters: [
       enc(194, 25, 7, 10),
       enc(41, 22, 6, 10),
@@ -220,8 +227,8 @@ export const johtoZones: Zone[] = [
     description:
       'Des ruines millénaires couvertes d’inscriptions. Les Zarbi semblent former des lettres.',
     habitat: 'rough-terrain',
-    minPower: 380,
-    affinityTypes: ['psychic', 'rock'],
+    minPower: 700,
+    weatherTypes: ['psychic', 'rock'],
     encounters: unownEncounters(4, 8, 12),
     lootTableId: 'butin-fouilles',
     unlock: defeated('montagnard-anthony'),
@@ -233,8 +240,8 @@ export const johtoZones: Zone[] = [
     description:
       'Le puits d’Écorcia, où la Team Rocket coupe la queue des Ramoloss pour la revendre.',
     habitat: 'cave',
-    minPower: 420,
-    affinityTypes: ['water', 'psychic'],
+    minPower: 800,
+    weatherTypes: ['water', 'psychic'],
     encounters: [
       enc(79, 40, 9, 13),
       enc(41, 25, 9, 13),
@@ -253,8 +260,8 @@ export const johtoZones: Zone[] = [
     description:
       'Une forêt si dense que le soleil n’y perce jamais. Un petit autel y est dédié au protecteur des bois.',
     habitat: 'forest',
-    minPower: 480,
-    affinityTypes: ['bug', 'grass'],
+    minPower: 950,
+    weatherTypes: ['bug', 'grass'],
     encounters: [
       enc(204, 18, 10, 14),
       enc(165, 12, 10, 14),
@@ -276,8 +283,8 @@ export const johtoZones: Zone[] = [
     description:
       'Les prés qui entourent Doublonville et sa Pension. Un Métamorph s’y cache parfois.',
     habitat: 'grassland',
-    minPower: 520,
-    affinityTypes: ['normal', 'fairy', 'grass'],
+    minPower: 1000,
+    weatherTypes: ['normal', 'fairy', 'grass'],
     encounters: [
       enc(209, 18, 12, 16),
       enc(191, 15, 12, 16),
@@ -301,8 +308,8 @@ export const johtoZones: Zone[] = [
     description:
       'Une grotte plongée dans le noir complet. On y bute sur des Insolourdo et des Qulbutoké.',
     habitat: 'cave',
-    minPower: 560,
-    affinityTypes: ['normal', 'psychic', 'rock'],
+    minPower: 1050,
+    weatherTypes: ['normal', 'psychic', 'rock'],
     encounters: [
       enc(216, 14, 13, 17),
       enc(206, 10, 13, 17),
@@ -322,8 +329,8 @@ export const johtoZones: Zone[] = [
     name: 'Routes 36 et 37',
     description: 'Les routes qui mènent à Rosalia, où paissent les Cerfrousse à la nuit tombée.',
     habitat: 'grassland',
-    minPower: 800,
-    affinityTypes: ['normal', 'psychic', 'dark'],
+    minPower: 1650,
+    weatherTypes: ['normal', 'psychic', 'dark'],
     encounters: [
       enc(234, 14, 16, 20),
       enc(198, 10, 16, 20),
@@ -347,8 +354,8 @@ export const johtoZones: Zone[] = [
     description:
       'Les ruines calcinées d’une tour de Rosalia. Trois Pokémon légendaires y seraient nés des flammes.',
     habitat: 'urban',
-    minPower: 850,
-    affinityTypes: ['fire', 'dark', 'poison'],
+    minPower: 1725,
+    weatherTypes: ['fire', 'dark', 'poison'],
     encounters: [
       enc(218, 18, 16, 21),
       enc(228, 12, 16, 21),
@@ -367,8 +374,8 @@ export const johtoZones: Zone[] = [
     name: 'Routes 38 et 39',
     description: 'Les pâturages de la Ferme Meuh Meuh, entre Rosalia et Oliville.',
     habitat: 'grassland',
-    minPower: 900,
-    affinityTypes: ['normal', 'electric', 'water'],
+    minPower: 1800,
+    weatherTypes: ['normal', 'electric', 'water'],
     encounters: [
       enc(241, 12, 18, 22),
       enc(209, 8, 18, 22),
@@ -392,8 +399,8 @@ export const johtoZones: Zone[] = [
     description:
       'Les routes de montagne qui relient Rosalia, Acajou et Ebenelle, au pied du Mont Creuset.',
     habitat: 'mountain',
-    minPower: 1300,
-    affinityTypes: ['normal', 'electric', 'water'],
+    minPower: 1950,
+    weatherTypes: ['normal', 'electric', 'water'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(190, 12, 22, 28),
@@ -417,8 +424,8 @@ export const johtoZones: Zone[] = [
     name: 'Mont Creuset',
     description: 'Une montagne creusée de cascades et de galeries. Un Maître Karaté s’y entraîne.',
     habitat: 'cave',
-    minPower: 1400,
-    affinityTypes: ['fighting', 'rock', 'water'],
+    minPower: 2025,
+    weatherTypes: ['fighting', 'rock', 'water'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(183, 16, 22, 28),
@@ -440,9 +447,9 @@ export const johtoZones: Zone[] = [
     description:
       'Le bras de mer entre Oliville et Irisia, semé d’îlots. Il faut un Pokémon Eau pour le traverser.',
     habitat: 'sea',
-    minPower: 1500,
+    minPower: 2100,
     requiredTypes: [{ type: 'water', count: 1 }],
-    affinityTypes: ['water'],
+    weatherTypes: ['water'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(170, 16, 22, 28),
@@ -468,8 +475,8 @@ export const johtoZones: Zone[] = [
     description:
       'Le grand phare du port, dont la lumière vient d’un Pharamp malade. Des Magnéti y grésillent.',
     habitat: 'urban',
-    minPower: 2000,
-    affinityTypes: ['electric', 'steel', 'water'],
+    minPower: 2750,
+    weatherTypes: ['electric', 'steel', 'water'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(180, 16, 28, 34),
@@ -493,9 +500,9 @@ export const johtoZones: Zone[] = [
     description:
       'Un grand lac agité au nord d’Acajou. On murmure qu’un Léviator rouge y aurait été aperçu.',
     habitat: 'waters-edge',
-    minPower: 2400,
+    minPower: 3150,
     requiredTypes: [{ type: 'water', count: 1 }],
-    affinityTypes: ['water', 'bug'],
+    weatherTypes: ['water', 'bug'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(129, 32, 28, 38),
@@ -519,8 +526,8 @@ export const johtoZones: Zone[] = [
     description:
       'Un passage gelé entre Acajou et Ebenelle, où l’on glisse d’un bout à l’autre de la grotte.',
     habitat: 'cave',
-    minPower: 2800,
-    affinityTypes: ['ice', 'water', 'dark'],
+    minPower: 3350,
+    weatherTypes: ['ice', 'water', 'dark'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(220, 24, 32, 38),
@@ -543,8 +550,8 @@ export const johtoZones: Zone[] = [
     name: 'Routes 45 et 46',
     description: 'Un sentier de montagne abrupt au sud d’Ebenelle, où dévalent les Phanpy.',
     habitat: 'mountain',
-    minPower: 3200,
-    affinityTypes: ['ground', 'rock', 'normal'],
+    minPower: 3600,
+    weatherTypes: ['ground', 'rock', 'normal'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(231, 18, 36, 42),
@@ -568,8 +575,8 @@ export const johtoZones: Zone[] = [
     description:
       'Les routes côtières qui mènent au Plateau Indigo. Les dresseurs y sont tous aguerris.',
     habitat: 'waters-edge',
-    minPower: 3600,
-    affinityTypes: ['normal', 'water', 'psychic'],
+    minPower: 3650,
+    weatherTypes: ['normal', 'water', 'psychic'],
     durationsMinutes: LONG_DURATIONS,
     encounters: [
       enc(164, 10, 40, 46),
@@ -596,8 +603,8 @@ export const johtoZones: Zone[] = [
     description:
       'Le Prof. Orme élève des Germignon, Héricendre et Kaiminus, et étudie un mystérieux œuf de Togepi. Il ouvre son labo aux dresseurs confirmés.',
     habitat: 'grassland',
-    minPower: 1000,
-    affinityTypes: ['grass', 'fire', 'water'],
+    minPower: 1850,
+    weatherTypes: ['grass', 'fire', 'water'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(161, 22, 14, 18),
@@ -620,9 +627,9 @@ export const johtoZones: Zone[] = [
     description:
       'Un arbre bloque la Route 36… et il bouge quand on l’arrose. Il faut un Pokémon Eau pour le déloger.',
     habitat: 'forest',
-    minPower: 1400,
+    minPower: 2025,
     requiredTypes: [{ type: 'water', count: 1 }],
-    affinityTypes: ['grass', 'rock', 'water'],
+    weatherTypes: ['grass', 'rock', 'water'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(191, 16, 18, 22),
@@ -644,9 +651,9 @@ export const johtoZones: Zone[] = [
     description:
       'Le parc de Doublonville et son Concours de Capture d’insectes. Seules les équipes d’au moins deux Pokémon Insecte y participent ; un Scarhino s’y montre parfois.',
     habitat: 'grassland',
-    minPower: 1800,
+    minPower: 2500,
     requiredTypes: [{ type: 'bug', count: 2 }],
-    affinityTypes: ['bug', 'grass'],
+    weatherTypes: ['bug', 'grass'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(165, 12, 20, 26),
@@ -672,8 +679,8 @@ export const johtoZones: Zone[] = [
     description:
       'La réserve ouverte au-delà d’Irisia, sur des terres arides et rocheuses. Scorplane et Airmure ne se montrent qu’aux dresseurs patients.',
     habitat: 'rough-terrain',
-    minPower: 2600,
-    affinityTypes: ['ground', 'rock', 'flying'],
+    minPower: 3250,
+    weatherTypes: ['ground', 'rock', 'flying'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(231, 14, 28, 34),
@@ -700,7 +707,7 @@ export const johtoZones: Zone[] = [
       'La montagne interdite entre Johto et Kanto, réservée aux Maîtres. Un dresseur silencieux attendrait au sommet.',
     habitat: 'mountain',
     minPower: 5000,
-    affinityTypes: ['rock', 'ghost', 'ground'],
+    weatherTypes: ['rock', 'ghost', 'ground'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(217, 12, 45, 52),
@@ -727,9 +734,9 @@ export const johtoZones: Zone[] = [
     description:
       'Quatre îles cernées de tourbillons, au large d’Irisia. Un gardien des mers dormirait dans leurs profondeurs ; des Corayon s’y accrochent aux rochers.',
     habitat: 'sea',
-    minPower: 3000,
+    minPower: 3500,
     requiredTypes: [{ type: 'water', count: 2 }],
-    affinityTypes: ['water', 'psychic'],
+    weatherTypes: ['water', 'psychic'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(72, 18, 38, 44),
@@ -755,7 +762,7 @@ export const johtoZones: Zone[] = [
       'La tour à neuf étages de Rosalia. Ses cloches sonnent pour accueillir l’oiseau arc-en-ciel.',
     habitat: 'urban',
     minPower: 4000,
-    affinityTypes: ['fire', 'psychic', 'ghost'],
+    weatherTypes: ['fire', 'psychic', 'ghost'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(198, 12, 45, 50),
@@ -779,8 +786,8 @@ export const johtoZones: Zone[] = [
     description:
       'Le petit autel de bois, au cœur de la forêt. On raconte qu’un voyageur du temps y apparaît.',
     habitat: 'forest',
-    minPower: 3600,
-    affinityTypes: ['grass', 'bug', 'psychic'],
+    minPower: 3650,
+    weatherTypes: ['grass', 'bug', 'psychic'],
     durationsMinutes: SPECIAL_DURATIONS,
     encounters: [
       enc(204, 14, 40, 46),
@@ -841,7 +848,6 @@ const trainer = (
 
 /**
  * Champion d'arène : unique, combat à effectif égal (autant de Pokémon que lui), badge.
- * PE minimale ≈ 55 à 60 % de la sienne, pour éviter les combats perdus d'avance.
  */
 const gymLeader = (
   id: string,
@@ -852,9 +858,8 @@ const gymLeader = (
   badge: string,
   team: TrainerPokemon[],
   unlock: UnlockCondition,
-  extra: Partial<Trainer> & { minPower: number },
+  extra: Partial<Trainer>,
 ): Trainer => {
-  const { minPower, ...rest } = extra;
   return trainer({
     id,
     zoneId: null,
@@ -864,13 +869,13 @@ const gymLeader = (
     spriteName,
     team,
     unlock,
-    rules: { ...noRules(), teamSize: team.length, minPower },
-    money: Math.max(...team.map((m) => m.level)) * 100,
+    rules: { ...noRules(), teamSize: team.length },
+    money: Math.max(...team.map((m) => m.level)) * 150,
     lootTableId: 'butin-grotte',
     lootRolls: 3,
     badge: { name: badge, image: null },
     repeatable: false,
-    ...rest,
+    ...extra,
   });
 };
 
@@ -886,8 +891,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Joey',
     trainerClass: 'Gamin',
     spriteName: 'youngster-gen4',
-    team: [mon(161, 4), mon(19, 4)],
-    money: 80,
+    team: [mon(161, 5), mon(19, 5)],
+    money: 120,
     unlock: { type: 'always' },
   }),
   trainer({
@@ -897,8 +902,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Willy',
     trainerClass: 'Scout',
     spriteName: 'bugcatcher-gen3',
-    team: [mon(165, 5), mon(167, 5), mon(13, 6)],
-    money: 150,
+    team: [mon(165, 6), mon(167, 6), mon(13, 7)],
+    money: 225,
     lootTableId: 'butin-foret',
     unlock: johtoDex(3),
   }),
@@ -909,8 +914,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Li',
     trainerClass: 'Sage',
     spriteName: 'sage',
-    team: [mon(69, 7), mon(69, 7), mon(163, 10)],
-    money: 200,
+    team: [mon(69, 8), mon(69, 8), mon(163, 11)],
+    money: 300,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: defeated('scout-willy'),
@@ -922,9 +927,9 @@ export const johtoTrainers: Trainer[] = [
     GYM,
     'falkner',
     'Badge Zéphyr',
-    [mon(16, 11), mon(17, 15)],
+    [mon(16, 12), mon(17, 16)],
     defeated('sage-li'),
-    { minPower: 160, lootTableId: 'butin-route' },
+    { money: 2250, lootTableId: 'butin-route' },
   ),
   // Badge Zéphyr → Badge Essaim
   trainer({
@@ -934,8 +939,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Raoul',
     trainerClass: 'Pêcheur',
     spriteName: 'fisherman',
-    team: [mon(129, 10), mon(211, 12), mon(72, 11)],
-    money: 300,
+    team: [mon(129, 12), mon(211, 14), mon(72, 13)],
+    money: 450,
     lootTableId: 'butin-mer',
     lootRolls: 2,
     unlock: badges(1),
@@ -947,8 +952,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Anthony',
     trainerClass: 'Montagnard',
     spriteName: 'hiker-gen4',
-    team: [mon(74, 12), mon(41, 12), mon(95, 13)],
-    money: 360,
+    team: [mon(74, 14), mon(41, 14), mon(95, 15)],
+    money: 540,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: defeated('pecheur-raoul'),
@@ -960,8 +965,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Sbire',
     trainerClass: 'Team Rocket',
     spriteName: 'rocketgrunt',
-    team: [mon(19, 13), mon(23, 14), mon(41, 15)],
-    money: 450,
+    team: [mon(19, 15), mon(23, 16), mon(41, 17)],
+    money: 675,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: defeated('montagnard-anthony'),
@@ -973,9 +978,9 @@ export const johtoTrainers: Trainer[] = [
     GYM,
     'bugsy',
     'Badge Essaim',
-    [mon(11, 16), mon(14, 16), mon(123, 18)],
+    [mon(11, 18), mon(14, 18), mon(123, 20)],
     defeated('sbire-puits'),
-    { minPower: 290, lootTableId: 'butin-foret' },
+    { money: 2700, lootTableId: 'butin-foret' },
   ),
   // Badge Essaim → Badge Plaine
   trainer({
@@ -985,8 +990,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Hugo',
     trainerClass: 'Scout',
     spriteName: 'bugcatcher-gen3',
-    team: [mon(204, 16), mon(166, 17), mon(168, 17)],
-    money: 500,
+    team: [mon(204, 19), mon(166, 20), mon(168, 20)],
+    money: 750,
     lootTableId: 'butin-foret',
     lootRolls: 2,
     unlock: badges(2),
@@ -998,8 +1003,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Gina',
     trainerClass: 'Pique-niqueuse',
     spriteName: 'picnicker',
-    team: [mon(209, 17), mon(191, 17), mon(39, 18)],
-    money: 550,
+    team: [mon(209, 20), mon(191, 20), mon(39, 21)],
+    money: 825,
     lootRolls: 2,
     unlock: defeated('scout-hugo'),
   }),
@@ -1010,9 +1015,9 @@ export const johtoTrainers: Trainer[] = [
     GYM_F,
     'whitney',
     'Badge Plaine',
-    [mon(39, 20), mon(35, 21), mon(241, 24)],
+    [mon(39, 23), mon(35, 24), mon(241, 27)],
     defeated('pique-niqueuse-gina'),
-    { minPower: 400 },
+    { money: 3600 },
   ),
   // Badge Plaine → Badge Brume
   trainer({
@@ -1022,8 +1027,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Édith',
     trainerClass: 'Médium',
     spriteName: 'medium',
-    team: [mon(92, 20), mon(92, 20), mon(93, 22), mon(228, 22)],
-    money: 900,
+    team: [mon(92, 24), mon(92, 24), mon(93, 26), mon(228, 26)],
+    money: 1350,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: badges(3),
@@ -1035,9 +1040,9 @@ export const johtoTrainers: Trainer[] = [
     GYM,
     'morty',
     'Badge Brume',
-    [mon(92, 23), mon(93, 23), mon(93, 25), mon(94, 27)],
+    [mon(92, 27), mon(93, 27), mon(93, 29), mon(94, 31)],
     defeated('mediume-edith'),
-    { minPower: 640 },
+    { money: 4050 },
   ),
   // Badge Brume → Badge Choc
   trainer({
@@ -1047,8 +1052,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Marina',
     trainerClass: 'Nageuse',
     spriteName: 'swimmerf-gen4',
-    team: [mon(170, 26), mon(72, 26), mon(116, 27), mon(226, 28)],
-    money: 1300,
+    team: [mon(170, 31), mon(72, 31), mon(116, 32), mon(226, 33)],
+    money: 1950,
     lootTableId: 'butin-mer',
     lootRolls: 2,
     unlock: badges(4),
@@ -1060,9 +1065,9 @@ export const johtoTrainers: Trainer[] = [
     GYM,
     'chuck',
     'Badge Choc',
-    [mon(56, 30), mon(66, 30), mon(57, 32), mon(62, 34)],
+    [mon(56, 35), mon(66, 35), mon(57, 37), mon(62, 39)],
     defeated('nageuse-marina'),
-    { minPower: 780 },
+    { money: 5100 },
   ),
   // Badge Choc → Badge Minéral
   trainer({
@@ -1072,8 +1077,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Gilles',
     trainerClass: 'Marin',
     spriteName: 'sailor',
-    team: [mon(72, 30), mon(81, 30), mon(171, 31), mon(82, 32)],
-    money: 1600,
+    team: [mon(72, 36), mon(81, 36), mon(171, 37), mon(82, 38)],
+    money: 2400,
     lootTableId: 'butin-mer',
     lootRolls: 2,
     unlock: badges(5),
@@ -1085,9 +1090,9 @@ export const johtoTrainers: Trainer[] = [
     GYM_F,
     'jasmine',
     'Badge Minéral',
-    [mon(81, 34, 18), mon(82, 35, 18), mon(205, 35, 18), mon(208, 39, 18)],
+    [mon(81, 40, 18), mon(82, 41, 18), mon(205, 41, 18), mon(208, 45, 18)],
     defeated('marin-gilles'),
-    { minPower: 970 },
+    { money: 5850 },
   ),
   // Badge Minéral → Badge Glacier
   trainer({
@@ -1097,8 +1102,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Sbire',
     trainerClass: 'Team Rocket',
     spriteName: 'rocketgrunt',
-    team: [mon(24, 33), mon(89, 33), mon(110, 34), mon(20, 34)],
-    money: 1800,
+    team: [mon(24, 40), mon(89, 40), mon(110, 41), mon(20, 41)],
+    money: 2700,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: badges(6),
@@ -1110,9 +1115,9 @@ export const johtoTrainers: Trainer[] = [
     GYM,
     'pryce',
     'Badge Glacier',
-    [mon(86, 36, 20), mon(124, 37, 20), mon(91, 37, 20), mon(87, 38, 20), mon(221, 40, 20)],
+    [mon(86, 43, 20), mon(124, 44, 20), mon(91, 44, 20), mon(87, 45, 20), mon(221, 47, 20)],
     defeated('sbire-qg-rocket'),
-    { minPower: 1290 },
+    { money: 6000 },
   ),
   // Badge Glacier → Badge Lever
   trainer({
@@ -1122,8 +1127,8 @@ export const johtoTrainers: Trainer[] = [
     name: 'Rosa',
     trainerClass: 'Skieuse',
     spriteName: 'skier',
-    team: [mon(220, 35), mon(86, 35), mon(225, 36), mon(215, 37), mon(87, 37)],
-    money: 2200,
+    team: [mon(220, 43), mon(86, 43), mon(225, 44), mon(215, 45), mon(87, 45)],
+    money: 3300,
     lootTableId: 'butin-grotte',
     lootRolls: 2,
     unlock: badges(7),
@@ -1135,9 +1140,9 @@ export const johtoTrainers: Trainer[] = [
     GYM_F,
     'clair',
     'Badge Lever',
-    [mon(148, 40, 25), mon(148, 40, 25), mon(148, 40, 25), mon(130, 41, 25), mon(230, 44, 25)],
+    [mon(148, 48, 25), mon(148, 48, 25), mon(148, 48, 25), mon(130, 49, 25), mon(230, 52, 25)],
     defeated('skieuse-rosa'),
-    { minPower: 1480, lootTableId: 'butin-elite' },
+    { money: 6600, lootTableId: 'butin-elite' },
   ),
   // Routes 26 et 27, puis la Ligue
   trainer({
@@ -1148,13 +1153,13 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Topdresseur',
     spriteName: 'acetrainer-gen4',
     team: [
-      mon(181, 44, 20),
-      mon(229, 44, 20),
-      mon(195, 43, 20),
-      mon(232, 44, 20),
-      mon(164, 43, 20),
+      mon(181, 52, 20),
+      mon(229, 52, 20),
+      mon(195, 51, 20),
+      mon(232, 52, 20),
+      mon(164, 51, 20),
     ],
-    money: 3500,
+    money: 5250,
     lootTableId: 'butin-elite',
     lootRolls: 2,
     unlock: badges(8),
@@ -1168,14 +1173,14 @@ export const johtoTrainers: Trainer[] = [
     trainerClass: 'Dresseur légendaire',
     spriteName: 'red',
     team: [
-      mon(25, 81, 31),
-      mon(196, 73, 31),
-      mon(143, 75, 31),
-      mon(3, 77, 31),
-      mon(6, 77, 31),
-      mon(9, 77, 31),
+      mon(25, 91, 31),
+      mon(196, 83, 31),
+      mon(143, 85, 31),
+      mon(3, 87, 31),
+      mon(6, 87, 31),
+      mon(9, 87, 31),
     ],
-    money: 30_000,
+    money: 45_000,
     lootTableId: 'butin-elite',
     lootRolls: 6,
     repeatable: false,
@@ -1203,7 +1208,7 @@ function league(): Trainer[] {
       spriteName,
       team,
       unlock,
-      money: 7000,
+      money: 10_500,
       lootTableId: 'butin-elite',
       lootRolls: 3,
       repeatable: false,
@@ -1215,7 +1220,7 @@ function league(): Trainer[] {
       22,
       'Clément',
       'will',
-      [mon(178, 50, 25), mon(124, 51, 25), mon(103, 51, 25), mon(80, 51, 25), mon(178, 53, 25)],
+      [mon(178, 60, 25), mon(124, 61, 25), mon(103, 61, 25), mon(80, 61, 25), mon(178, 63, 25)],
       allOf(badges(8), defeated('topdresseur-gaston')),
     ),
     member(
@@ -1223,7 +1228,7 @@ function league(): Trainer[] {
       23,
       'Koga',
       'koga',
-      [mon(168, 51, 25), mon(49, 52, 25), mon(205, 54, 25), mon(89, 53, 25), mon(169, 55, 25)],
+      [mon(168, 61, 25), mon(49, 62, 25), mon(205, 64, 25), mon(89, 63, 25), mon(169, 65, 25)],
       defeated('clement'),
     ),
     member(
@@ -1231,7 +1236,7 @@ function league(): Trainer[] {
       24,
       'Aldo',
       'bruno',
-      [mon(237, 53, 25), mon(106, 53, 25), mon(107, 53, 25), mon(95, 54, 25), mon(68, 57, 25)],
+      [mon(237, 63, 25), mon(106, 63, 25), mon(107, 63, 25), mon(95, 64, 25), mon(68, 67, 25)],
       defeated('koga-conseil'),
     ),
     member(
@@ -1239,7 +1244,7 @@ function league(): Trainer[] {
       25,
       'Marion',
       'karen',
-      [mon(197, 54, 25), mon(45, 54, 25), mon(198, 56, 25), mon(94, 57, 25), mon(229, 59, 25)],
+      [mon(197, 64, 25), mon(45, 64, 25), mon(198, 66, 25), mon(94, 67, 25), mon(229, 69, 25)],
       defeated('aldo-johto'),
     ),
     member(
@@ -1248,15 +1253,15 @@ function league(): Trainer[] {
       'Peter',
       'lance',
       [
-        mon(130, 58, 31),
-        mon(149, 60, 31),
-        mon(149, 60, 31),
-        mon(142, 59, 31),
-        mon(6, 59, 31),
-        mon(149, 63, 31),
+        mon(130, 70, 31),
+        mon(149, 72, 31),
+        mon(149, 72, 31),
+        mon(142, 71, 31),
+        mon(6, 71, 31),
+        mon(149, 75, 31),
       ],
       defeated('marion'),
-      { trainerClass: 'Maître de la Ligue', money: 18_000, lootRolls: 5 },
+      { trainerClass: 'Maître de la Ligue', money: 27_000, lootRolls: 5 },
     ),
   ];
 }
@@ -1268,6 +1273,7 @@ const reward = (r: Partial<ProgressReward>): ProgressReward => ({
   items: [],
   expeditionSlots: 0,
   daycareSlots: 0,
+  incubators: 0,
   bonuses: [],
   ...r,
 });
@@ -1295,6 +1301,7 @@ const catchOf = (count: number, pokemonType: string | null): QuestCondition => (
   count,
   pokemonType,
   speciesId: null,
+  zoneId: null,
 });
 /** Expédition réussie dans une zone de quête, avec des Pokémon d'un type et d'une PE donnés. */
 const questExpedition = (
@@ -1326,7 +1333,7 @@ export const johtoQuests: Quest[] = [
     order: 0,
     name: 'La bête du tonnerre',
     description: 'Un grondement de tonnerre résonne sous la Tour Cendrée.',
-    unlock: badges(4),
+    unlock: defeated('maitre-peter'),
     steps: [
       step('Orage', 'Capture 10 Pokémon Électrik.', catchOf(10, 'electric')),
       step('Les cendres', 'Capture 5 Pokémon Feu.', catchOf(5, 'fire')),
@@ -1343,7 +1350,7 @@ export const johtoQuests: Quest[] = [
     order: 1,
     name: 'La bête du volcan',
     description: 'Une bête de feu aurait fui la Tour Cendrée en faisant trembler la terre.',
-    unlock: badges(5),
+    unlock: defeated('maitre-peter'),
     steps: [
       step('Braises', 'Capture 10 Pokémon Feu.', catchOf(10, 'fire')),
       step('Sur ses traces', 'Capture 40 % du Pokédex de Johto.', johtoDex(40)),
@@ -1360,7 +1367,7 @@ export const johtoQuests: Quest[] = [
     order: 2,
     name: 'La bête des aurores',
     description: 'Une bête aux reflets de cristal court sur l’eau du Lac Colère.',
-    unlock: badges(6),
+    unlock: defeated('maitre-peter'),
     steps: [
       step('Eaux pures', 'Capture 15 Pokémon Eau.', catchOf(15, 'water')),
       step('Le vent du nord', 'Bats Frédo, le Champion d’Acajou.', defeated('fredo')),
@@ -1377,7 +1384,7 @@ export const johtoQuests: Quest[] = [
     order: 3,
     name: 'Le gardien des mers',
     description: 'Les tourbillons des Tourb’Îles cacheraient un Pokémon aux ailes d’argent.',
-    unlock: badges(7),
+    unlock: defeated('maitre-peter'),
     steps: [
       step(
         'Plongée',
@@ -1402,7 +1409,7 @@ export const johtoQuests: Quest[] = [
     order: 4,
     name: 'L’oiseau arc-en-ciel',
     description: 'Les cloches de la Tour Carillon attendent un dresseur digne de l’oiseau sacré.',
-    unlock: badges(8),
+    unlock: defeated('maitre-peter'),
     steps: [
       step(
         'Les trois bêtes',

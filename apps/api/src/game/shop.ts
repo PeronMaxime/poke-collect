@@ -1,7 +1,8 @@
 import { and, eq, gt, inArray, isNull, or, sql } from 'drizzle-orm';
 import { playerProfiles, shopPurchases, shopSales, shopSeen } from '@poke/db';
 import type { Db } from '@poke/db';
-import { checkPurchase, shopEntryStatus } from '@poke/game-core';
+import type { ShopEntry } from '@poke/content';
+import { checkPurchase, farmPlotEffect, shopEntryStatus } from '@poke/game-core';
 import type { GameContext, ShopPurchaseRecord } from '@poke/game-core';
 import type {
   PurchaseInput,
@@ -14,7 +15,7 @@ import type {
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
 import { requireStartedProfile } from './expeditions';
-import { addItems, itemQuantity, playerProgress, takeItems } from './store';
+import { addItems, itemQuantity, playerFacilityPlaces, playerProgress, takeItems } from './store';
 
 /**
  * Boutique : état des articles pour un joueur (évalué paresseusement à l'ouverture), achats et
@@ -23,16 +24,21 @@ import { addItems, itemQuantity, playerProgress, takeItems } from './store';
 
 const WEEK_MS = 7 * 24 * 3_600_000;
 
-/** Achats comptant pour les limites : tous pour une limite totale, 7 jours sinon. */
+/**
+ * Achats comptant pour les limites et les prix : tous pour une limite totale ou un prix croissant
+ * (parcelles de ferme), 7 jours sinon.
+ */
 async function limitedPurchases(
   db: Db,
   ctx: GameContext,
   userId: string,
   now: Date,
 ): Promise<ShopPurchaseRecord[]> {
-  const limited = ctx.shopEntries.filter((e) => e.purchaseLimit);
-  const totalIds = limited.filter((e) => e.purchaseLimit!.period === 'total').map((e) => e.id);
-  const periodIds = limited.filter((e) => e.purchaseLimit!.period !== 'total').map((e) => e.id);
+  const allTime = (e: ShopEntry) =>
+    e.purchaseLimit?.period === 'total' || !!farmPlotEffect(ctx, e.itemId);
+  const limited = ctx.shopEntries.filter((e) => e.purchaseLimit || allTime(e));
+  const totalIds = limited.filter(allTime).map((e) => e.id);
+  const periodIds = limited.filter((e) => !allTime(e)).map((e) => e.id);
   if (limited.length === 0) return [];
   const rows = await db
     .select({
@@ -88,6 +94,8 @@ export async function shopState(
     entries.push({
       entryId: entry.id,
       state: status.state,
+      price: status.price,
+      maxLotsPerPurchase: status.maxLotsPerPurchase,
       remainingLots: status.remainingLots,
       nextLotsAt: status.nextLotsAt?.toISOString() ?? null,
       isNew: unlocked && !row?.seenAt,
@@ -120,8 +128,8 @@ export async function markShopSeen(db: Db, userId: string, entryIds: string[], n
 
 /**
  * Achat : dans une seule transaction, vérifie la condition d'apparition, la limite d'achat et le
- * solde, débite les Poké Dollars, crédite l'inventaire et enregistre l'achat. Le prix vient
- * toujours du contenu publié.
+ * solde, débite les Poké Dollars, crédite l'inventaire (ou la ferme d'une parcelle) et enregistre
+ * l'achat. Le prix vient toujours du contenu publié.
  */
 export async function purchase(
   db: Db,
@@ -185,7 +193,18 @@ export async function purchase(
       .returning({ currency: playerProfiles.currency });
     if (!debited) throw new GameError(409, 'NOT_ENOUGH_MONEY');
 
-    await addItems(tx, userId, [check.stack, ...(check.gift ? [check.gift] : [])]);
+    // Parcelle de ferme : débloquée aussitôt, rien n'entre dans le sac (sauf un cadeau).
+    const farmPlot = !!farmPlotEffect(ctx, entry.itemId);
+    if (farmPlot) {
+      await tx
+        .update(playerProfiles)
+        .set({ farmPlots: sql`${playerProfiles.farmPlots} + ${check.stack.quantity}` })
+        .where(eq(playerProfiles.userId, userId));
+    }
+    await addItems(tx, userId, [
+      ...(farmPlot ? [] : [check.stack]),
+      ...(check.gift ? [check.gift] : []),
+    ]);
     await tx.insert(shopPurchases).values({
       ownerId: userId,
       shopEntryId: entry.id,
@@ -214,6 +233,7 @@ export async function purchase(
       gift: check.gift,
       currency: debited.currency,
       inventoryQuantity: await itemQuantity(tx, userId, entry.itemId),
+      farmPlots: farmPlot ? await playerFacilityPlaces(tx, ctx, userId, 'farm') : null,
     };
   });
 }

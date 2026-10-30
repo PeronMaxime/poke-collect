@@ -1,5 +1,5 @@
-import { unlockParts } from '@poke/content';
-import type { UnlockCondition, Zone } from '@poke/content';
+import { tabUnlock, unlockParts } from '@poke/content';
+import type { MenuTabId, UnlockCondition, Zone } from '@poke/content';
 import type { GameContext } from './context';
 
 /** Avancement du joueur utile aux conditions de déblocage. */
@@ -62,10 +62,14 @@ export function earnedBadges(
   );
 }
 
+/** Régions imbriquées au plus (« région débloquée » d'une région elle-même conditionnée…). */
+const MAX_REGION_DEPTH = 10;
+
 export function isUnlocked(
   ctx: GameContext,
   condition: UnlockCondition,
   progress: PlayerProgress,
+  depth = 0,
 ): boolean {
   switch (condition.type) {
     case 'always':
@@ -74,6 +78,13 @@ export function isUnlocked(
       return regionDexProgress(ctx, condition.regionId, progress).percent >= condition.percent;
     case 'trainerDefeated':
       return progress.defeatedTrainerIds.has(condition.trainerId);
+    case 'regionUnlocked': {
+      // Le contexte ne contient que les régions actives : une région désactivée reste fermée.
+      const region = ctx.region(condition.regionId);
+      return (
+        !!region && depth < MAX_REGION_DEPTH && isUnlocked(ctx, region.unlock, progress, depth + 1)
+      );
+    }
     case 'badgeCount':
       return earnedBadges(ctx, progress, condition.regionId).length >= condition.count;
     case 'speciesCaught':
@@ -87,8 +98,13 @@ export function isUnlocked(
       return !!quest && (progress.questSteps?.get(quest.id) ?? 0) >= quest.steps.length;
     }
     case 'allOf':
-      return condition.conditions.every((c) => isUnlocked(ctx, c, progress));
+      return condition.conditions.every((c) => isUnlocked(ctx, c, progress, depth));
   }
+}
+
+/** Onglet du menu ouvert au joueur (condition réglée dans l'admin, « toujours » sans réglage). */
+export function isTabUnlocked(ctx: GameContext, tab: MenuTabId, progress: PlayerProgress): boolean {
+  return isUnlocked(ctx, tabUnlock(ctx.content.balance, tab), progress);
 }
 
 /** Une zone est accessible si sa région et elle-même sont débloquées. */
@@ -142,6 +158,10 @@ export function isUnlockedSoon(
         return badgeGated || part.count - progress.caughtSpeciesIds.size <= SOON_GAP.species;
       case 'eggsHatched':
         return badgeGated || part.count - progress.eggsHatched <= SOON_GAP.eggs;
+      case 'regionUnlocked': {
+        const region = ctx.region(part.regionId);
+        return !!region && lookahead && isUnlockedSoon(ctx, region.unlock, progress, false);
+      }
       case 'always':
         return true;
     }

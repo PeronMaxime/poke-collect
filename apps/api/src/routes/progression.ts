@@ -1,10 +1,10 @@
 import type { FastifyInstance } from 'fastify';
 import { eq } from 'drizzle-orm';
 import { z } from 'zod';
-import { slugSchema } from '@poke/content';
+import { FACILITIES, slugSchema } from '@poke/content';
 import { rewardClaims } from '@poke/db';
 import type { Db } from '@poke/db';
-import { playerBonuses, playerSlots } from '@poke/game-core';
+import { facilityPlaces, playerBonuses } from '@poke/game-core';
 import {
   claimRewardInputSchema,
   evolveInputSchema,
@@ -27,7 +27,13 @@ import { startQuestExpedition } from '../game/expeditions';
 import { claimReward, evolve, megaEvolve, megaRevert, useItemOnPokemon } from '../game/progression';
 import { claimQuest, questsState } from '../game/quests';
 import { trainerCard } from '../game/stats';
-import { claimedRewards, pokemonActivities, toExpeditionDto, toPokemonDto } from '../game/store';
+import {
+  claimedRewards,
+  playerProgress,
+  pokemonActivities,
+  toExpeditionDto,
+  toPokemonDto,
+} from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
@@ -40,7 +46,7 @@ interface Deps {
 const uuidParams = z.object({ id: z.uuid() });
 const questParams = z.object({ id: slugSchema });
 
-/** Évolutions, objets endgame, paliers du Pokédex, collections thématiques et quêtes. */
+/** Évolutions, objets endgame, collections thématiques, complétions d'expédition et quêtes. */
 export async function progressionRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
   app.addHook('preHandler', hooks.requireUser);
 
@@ -86,7 +92,7 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
   app.get('/api/progression', async (request): Promise<ProgressionResponse> => {
     const userId = request.user!.id;
     const ctx = await content.get();
-    const [rows, claimed] = await Promise.all([
+    const [rows, claimed, progress] = await Promise.all([
       db
         .select({
           kind: rewardClaims.kind,
@@ -96,10 +102,15 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
         .from(rewardClaims)
         .where(eq(rewardClaims.ownerId, userId)),
       claimedRewards(db, userId),
+      playerProgress(db, ctx, userId),
     ]);
+    const facilities = Object.fromEntries(
+      FACILITIES.map(({ id }) => [id, facilityPlaces(ctx, id, progress, claimed)]),
+    ) as ProgressionResponse['facilities'];
     return {
       claims: rows.map((r) => ({ ...r, claimedAt: r.claimedAt.toISOString() })),
-      slots: playerSlots(ctx, claimed),
+      slots: { expeditions: facilities.expedition, daycare: facilities.daycare },
+      facilities,
       bonuses: playerBonuses(ctx, claimed),
     };
   });
@@ -107,7 +118,7 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
   app.post('/api/progression/claim', async (request): Promise<ClaimRewardResponse> => {
     const input = claimRewardInputSchema.parse(request.body);
     const result = await claimReward(db, content, request.user!.id, input, now());
-    return { kind: input.kind, rewardId: input.rewardId, ...result };
+    return { kind: input.kind, rewardId: input.rewardId, targetId: input.targetId, ...result };
   });
 
   /** Capsule, Aromate, Pilule / Patch Talent utilisés sur un Pokémon. */

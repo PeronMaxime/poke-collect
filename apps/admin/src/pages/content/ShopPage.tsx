@@ -44,6 +44,8 @@ export function unlockSummary(ctx: GameContext, u: UnlockCondition): string {
       const t = ctx.trainer(u.trainerId);
       return `victoire contre ${t ? `${t.trainerClass} ${t.name}` : u.trainerId}`;
     }
+    case 'regionUnlocked':
+      return `région ${ctx.region(u.regionId)?.name ?? u.regionId} débloquée`;
     case 'badgeCount':
       return `${u.count} badge(s)${u.regionId ? ` de ${ctx.region(u.regionId)?.name ?? u.regionId}` : ''}`;
     case 'speciesCaught':

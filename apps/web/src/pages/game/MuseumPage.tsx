@@ -5,7 +5,15 @@ import type { GameContext } from '@poke/game-core';
 import type { FossilRevivalDto, ReviveFossilsResponse } from '@poke/shared';
 import { PokemonSprite, ProgressBar, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, serverOffset, useInventory, useMuseum } from '../../lib/game';
+import {
+  PLAYER_STATE_KEYS,
+  assistantPlaces,
+  serverOffset,
+  shownPlaces,
+  useAssistants,
+  useInventory,
+  useMuseum,
+} from '../../lib/game';
 import {
   errorText,
   formatCountdown,
@@ -22,6 +30,7 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const museum = useMuseum();
   const inventory = useInventory();
+  const assistants = useAssistants();
   const now = useNow();
   const [revived, setRevived] = useState<ReviveFossilsResponse | null>(null);
 
@@ -48,7 +57,11 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
   const serverNow = now + serverOffset(data, museum.dataUpdatedAt);
   const revivals = data?.revivals ?? [];
   const slots = data?.slots ?? 0;
-  const full = revivals.length >= slots;
+  const shown = shownPlaces(slots, [
+    ...revivals.map((r) => r.slotIndex),
+    ...assistantPlaces(assistants.data, 'museum'),
+  ]);
+  const full = revivals.filter((r) => r.slotIndex < slots).length >= slots;
   const ready = revivals.filter((r) => Date.parse(r.readyAt) <= serverNow).length;
   const fossils = (inventory.data ?? []).filter(
     (s) => s.quantity > 0 && fossilEffect(ctx, s.itemId),
@@ -86,13 +99,14 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
           première place libre).
         </p>
         <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-          {Array.from({ length: slots }, (_, i) => {
+          {Array.from({ length: shown }, (_, i) => {
             const revival = revivals.find((r) => r.slotIndex === i);
             return revival ? (
               <RevivalCard
                 key={revival.id}
                 ctx={ctx}
                 revival={revival}
+                closed={i >= slots}
                 serverNow={serverNow}
                 busy={pending}
                 onCancel={() => cancel.mutate(revival.id)}
@@ -103,9 +117,9 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
                 className="flex min-h-36 flex-col gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-4 dark:border-slate-700"
               >
                 <span className="grid flex-1 place-items-center text-center text-sm text-slate-500">
-                  Place libre
+                  {i < slots ? 'Place libre' : 'Place fermée'}
                 </span>
-                <AssistantCard ctx={ctx} post="museum" slot={i} />
+                <AssistantCard ctx={ctx} post="museum" slot={i} closed={i >= slots} />
               </div>
             );
           })}
@@ -172,12 +186,14 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
 function RevivalCard({
   ctx,
   revival,
+  closed,
   serverNow,
   busy,
   onCancel,
 }: {
   ctx: GameContext;
   revival: FossilRevivalDto;
+  closed: boolean;
   serverNow: number;
   busy: boolean;
   onCancel: () => void;
@@ -219,7 +235,7 @@ function RevivalCard({
           </button>
         )}
       </div>
-      <AssistantCard ctx={ctx} post="museum" slot={revival.slotIndex} />
+      <AssistantCard ctx={ctx} post="museum" slot={revival.slotIndex} closed={closed} />
     </div>
   );
 }

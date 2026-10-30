@@ -6,6 +6,7 @@ import {
   eggs,
   expeditions,
   inventory,
+  playerProfiles,
   pokedex,
   pokedexForms,
   pokemon,
@@ -16,14 +17,26 @@ import {
   trainerRuns,
 } from '@poke/db';
 import type { Db } from '@poke/db';
-import type { ItemStack } from '@poke/content';
-import { charmMultiplier, isHealing, NO_ABILITY, questStepsDone } from '@poke/game-core';
+import { tabUnlock } from '@poke/content';
+import type { FacilityId, ItemStack, MenuTabId } from '@poke/content';
+import {
+  charmMultiplier,
+  facilityPlaces,
+  facilityUnlocks,
+  isHealing,
+  isTabUnlocked,
+  NO_ABILITY,
+  NO_CLAIMS,
+  playerBonuses,
+  questStepsDone,
+} from '@poke/game-core';
 import type {
   CaughtDex,
   ClaimedRewards,
   DexCatches,
   GameContext,
   PlayerProgress,
+  PlayerSlots,
   PokemonInstance,
   QuestRecord,
   TeamMember,
@@ -232,6 +245,63 @@ export async function playerProgress(
   return { ...base, questSteps: questStepsDone(ctx, base, questRecords(rows)) };
 }
 
+/**
+ * Refuse de commencer quelque chose dans un onglet pas encore débloqué (déposer, planter, lancer).
+ * Récupérer ou annuler ce qui est déjà en cours reste permis.
+ */
+export async function assertTabUnlocked(
+  db: Db,
+  ctx: GameContext,
+  ownerId: string,
+  tab: MenuTabId,
+): Promise<void> {
+  if (tabUnlock(ctx.content.balance, tab).type === 'always') return;
+  if (!isTabUnlocked(ctx, tab, await playerProgress(db, ctx, ownerId))) {
+    throw new GameError(403, 'TAB_LOCKED', { tab });
+  }
+}
+
+/**
+ * Places ouvertes d'un bâtiment (emplacements d'expédition, pensions, couveuses, places du Musée,
+ * parcelles, Centres) : départ + paliers remplis, + récompenses réclamées pour les expéditions,
+ * les pensions et les couveuses, + parcelles achetées pour la ferme.
+ */
+export async function playerFacilityPlaces(
+  db: Db,
+  ctx: GameContext,
+  ownerId: string,
+  facility: FacilityId,
+): Promise<number> {
+  const [progress, claimed] = await Promise.all([
+    facilityUnlocks(ctx, facility).length > 0
+      ? playerProgress(db, ctx, ownerId)
+      : {
+          caughtSpeciesIds: new Set<number>(),
+          defeatedTrainerIds: new Set<string>(),
+          eggsHatched: 0,
+        },
+    facility === 'expedition' || facility === 'daycare' || facility === 'incubator'
+      ? claimedRewards(db, ownerId)
+      : facility === 'farm'
+        ? boughtFarmPlots(db, ownerId).then((farmPlots) => ({ ...NO_CLAIMS, farmPlots }))
+        : NO_CLAIMS,
+  ]);
+  return facilityPlaces(ctx, facility, progress, claimed);
+}
+
+/** Emplacements d'expédition et pensions ouverts au joueur (récompenses et paliers des bâtiments). */
+export async function playerSlotsNow(
+  db: Db,
+  ctx: GameContext,
+  ownerId: string,
+): Promise<PlayerSlots> {
+  const [expeditions, daycare] = await Promise.all([
+    playerFacilityPlaces(db, ctx, ownerId, 'expedition'),
+    playerFacilityPlaces(db, ctx, ownerId, 'daycare'),
+  ]);
+  return { expeditions, daycare };
+}
+
 /** Avancement hors quêtes. */
 export async function baseProgress(db: Db, ownerId: string): Promise<PlayerProgress> {
   const [caught, defeated, hatched] = await Promise.all([
@@ -257,12 +327,21 @@ export function questRecords(rows: readonly QuestProgressRow[]): Map<string, Que
   return new Map(rows.map((r) => [r.questId, { step: r.step, count: r.progress.count ?? 0 }]));
 }
 
+/** Parcelles de la ferme achetées à la boutique. */
+export async function boughtFarmPlots(db: Db, ownerId: string): Promise<number> {
+  const [row] = await db
+    .select({ farmPlots: playerProfiles.farmPlots })
+    .from(playerProfiles)
+    .where(eq(playerProfiles.userId, ownerId));
+  return row?.farmPlots ?? 0;
+}
+
 /**
- * Récompenses de progression réclamées : paliers, collections et quêtes (emplacements et bonus
- * permanents en découlent).
+ * Récompenses de progression réclamées : collections, quêtes et complétions d'expédition
+ * (emplacements et bonus permanents en découlent), et parcelles achetées.
  */
 export async function claimedRewards(db: Db, ownerId: string): Promise<ClaimedRewards> {
-  const [rows, quests] = await Promise.all([
+  const [rows, quests, farmPlots] = await Promise.all([
     db
       .select({ kind: rewardClaims.kind, rewardId: rewardClaims.rewardId })
       .from(rewardClaims)
@@ -271,12 +350,14 @@ export async function claimedRewards(db: Db, ownerId: string): Promise<ClaimedRe
       .select({ questId: questProgress.questId })
       .from(questProgress)
       .where(and(eq(questProgress.ownerId, ownerId), isNotNull(questProgress.claimedAt))),
+    boughtFarmPlots(db, ownerId),
   ]);
   const ids = (kind: string) => new Set(rows.filter((r) => r.kind === kind).map((r) => r.rewardId));
   return {
-    milestoneIds: ids('milestone'),
     collectionIds: ids('collection'),
     questIds: new Set(quests.map((q) => q.questId)),
+    completionIds: ids('completion'),
+    farmPlots,
   };
 }
 
@@ -332,6 +413,18 @@ export async function shinyCharm(db: Db, ctx: GameContext, ownerId: string): Pro
   );
 }
 
+/**
+ * Multiplicateur shiny des œufs et des fossiles : Charme Chroma possédé × bonus permanent de
+ * chance shiny (récompenses réclamées).
+ */
+export async function shinyBoost(db: Db, ctx: GameContext, ownerId: string): Promise<number> {
+  const [charm, claimed] = await Promise.all([
+    shinyCharm(db, ctx, ownerId),
+    claimedRewards(db, ownerId),
+  ]);
+  return charm * playerBonuses(ctx, claimed).shiny;
+}
+
 export async function itemQuantity(db: Db, ownerId: string, itemId: string): Promise<number> {
   const [row] = await db
     .select({ quantity: inventory.quantity })
@@ -346,31 +439,50 @@ export interface NewInDex {
   newFormIds: number[];
 }
 
+/** Pokémon rencontré (expédition, combat) : son espèce, sa forme et sa version shiny sont vues. */
+export type SeenPokemon = Pick<PokemonInstance, 'speciesId' | 'formId' | 'isShiny'>;
+
 /**
- * Met à jour le Pokédex : espèces vues, Pokémon capturés (espèce, forme, shiny).
+ * Met à jour le Pokédex : espèces et formes vues, Pokémon capturés (espèce, forme, shiny).
  * Retourne les espèces et les formes capturées pour la première fois.
  */
 export async function recordPokedex(
   db: Db,
   ownerId: string,
   {
-    seen,
+    seen = [],
     seenShiny = [],
+    met = [],
     caught,
     at,
   }: {
-    seen: Iterable<number>;
+    seen?: Iterable<number>;
     /** Espèces rencontrées en version shiny (capturées ou non). */
     seenShiny?: Iterable<number>;
+    /** Pokémon rencontrés, capturés ou non : espèce, forme et version shiny vues. */
+    met?: readonly SeenPokemon[];
     caught: readonly Pick<PokemonInstance, 'speciesId' | 'formId' | 'isShiny'>[];
     at: Date;
   },
 ): Promise<NewInDex> {
   const caughtSet = new Set(caught.map((p) => p.speciesId));
   const shinySet = new Set(caught.filter((p) => p.isShiny).map((p) => p.speciesId));
-  const seenShinySet = new Set([...seenShiny, ...shinySet]);
-  const all = new Set([...seen, ...seenShinySet, ...caughtSet]);
+  const seenShinySet = new Set([
+    ...seenShiny,
+    ...shinySet,
+    ...met.filter((p) => p.isShiny).map((p) => p.speciesId),
+  ]);
+  const all = new Set([...seen, ...met.map((p) => p.speciesId), ...seenShinySet, ...caughtSet]);
   if (all.size === 0) return { newSpeciesIds: [], newFormIds: [] };
+  // Formes vues par espèce (rencontrées ou capturées).
+  const seenForms = new Map<number, { all: Set<number>; shiny: Set<number> }>();
+  for (const p of [...met, ...caught]) {
+    if (p.formId == null) continue;
+    const forms = seenForms.get(p.speciesId) ?? { all: new Set(), shiny: new Set() };
+    forms.all.add(p.formId);
+    if (p.isShiny) forms.shiny.add(p.formId);
+    seenForms.set(p.speciesId, forms);
+  }
 
   const before = await db
     .select({ speciesId: pokedex.speciesId })
@@ -387,6 +499,7 @@ export async function recordPokedex(
   for (const speciesId of all) {
     const isCaught = caughtSet.has(speciesId);
     const isShiny = shinySet.has(speciesId);
+    const forms = seenForms.get(speciesId);
     await db
       .insert(pokedex)
       .values({
@@ -396,6 +509,8 @@ export async function recordPokedex(
         caught: isCaught,
         caughtShiny: isShiny,
         seenShiny: seenShinySet.has(speciesId),
+        seenFormIds: [...(forms?.all ?? [])],
+        seenShinyFormIds: [...(forms?.shiny ?? [])],
         firstCaughtAt: isCaught ? at : null,
       })
       .onConflictDoUpdate({
@@ -405,6 +520,8 @@ export async function recordPokedex(
           caught: sql`${pokedex.caught} or excluded.caught`,
           caughtShiny: sql`${pokedex.caughtShiny} or excluded.caught_shiny`,
           seenShiny: sql`${pokedex.seenShiny} or excluded.seen_shiny`,
+          seenFormIds: sql`array(select distinct unnest(${pokedex.seenFormIds} || excluded.seen_form_ids) order by 1)`,
+          seenShinyFormIds: sql`array(select distinct unnest(${pokedex.seenShinyFormIds} || excluded.seen_shiny_form_ids) order by 1)`,
           firstCaughtAt: sql`coalesce(${pokedex.firstCaughtAt}, excluded.first_caught_at)`,
         },
       });
@@ -443,15 +560,21 @@ export async function recordPokedex(
   };
 }
 
-/** Pokédex normal et shiny (paliers du Pokédex). */
+/** Pokédex normal et shiny et formes capturées (collections, complétions d'expédition). */
 export async function dexCatches(db: Db, ownerId: string): Promise<Required<DexCatches>> {
   const rows = await db
     .select({ speciesId: pokedex.speciesId, shiny: pokedex.caughtShiny })
     .from(pokedex)
     .where(and(eq(pokedex.ownerId, ownerId), eq(pokedex.caught, true)));
+  const forms = await db
+    .select({ formId: pokedexForms.formId, shiny: pokedexForms.caughtShiny })
+    .from(pokedexForms)
+    .where(eq(pokedexForms.ownerId, ownerId));
   return {
     caughtSpeciesIds: new Set(rows.map((r) => r.speciesId)),
     caughtShinySpeciesIds: new Set(rows.filter((r) => r.shiny).map((r) => r.speciesId)),
+    caughtFormIds: new Set(forms.map((r) => r.formId)),
+    caughtShinyFormIds: new Set(forms.filter((r) => r.shiny).map((r) => r.formId)),
   };
 }
 

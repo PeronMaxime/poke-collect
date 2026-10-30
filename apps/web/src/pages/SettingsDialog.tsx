@@ -11,6 +11,7 @@ import { ApiError, api } from '../lib/api';
 import { authClient } from '../lib/auth-client';
 import { isIos, pushSupported, useDeviceSubscription, useInstallPrompt } from '../lib/pwa';
 import { MAIN_TAB_PROFILE, openProfileInNewTab, setTabProfile } from '../lib/tab-profile';
+import { loadThemePreference, setThemePreference, type ThemePreference } from '../lib/theme';
 
 const PUSH_KEY = ['push'] as const;
 
@@ -20,13 +21,20 @@ const TYPES: { key: keyof NotificationSettings; label: string }[] = [
   { key: 'fossils', label: 'Fossile restauré au Musée' },
 ];
 
-/** Réglages : installation du jeu (PWA), notifications push et compte. */
+const THEMES: { value: ThemePreference; label: string }[] = [
+  { value: 'system', label: 'Comme l’appareil' },
+  { value: 'light', label: 'Clair' },
+  { value: 'dark', label: 'Sombre' },
+];
+
+/** Réglages : thème, installation du jeu (PWA), notifications push et compte. */
 export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
     <Modal open={open} onClose={onClose}>
       <h2 className="text-xl font-bold">Réglages</h2>
       {open && (
         <>
+          <ThemeSection />
           <InstallSection />
           <NotificationSection />
           <BetaProfilesSection />
@@ -39,6 +47,32 @@ export function SettingsDialog({ open, onClose }: { open: boolean; onClose: () =
         </button>
       </div>
     </Modal>
+  );
+}
+
+function ThemeSection() {
+  const [theme, setTheme] = useState(loadThemePreference);
+  return (
+    <section className="mt-5">
+      <label className="flex items-center justify-between gap-3">
+        <span className="text-sm font-semibold">Thème</span>
+        <select
+          className="input w-auto py-1"
+          value={theme}
+          onChange={(e) => {
+            const next = e.target.value as ThemePreference;
+            setTheme(next);
+            setThemePreference(next);
+          }}
+        >
+          {THEMES.map(({ value, label }) => (
+            <option key={value} value={value}>
+              {label}
+            </option>
+          ))}
+        </select>
+      </label>
+    </section>
   );
 }
 
@@ -178,6 +212,7 @@ function NotificationSection() {
  * après la bêta (voir `apps/api/src/beta-profiles.ts`).
  */
 function BetaProfilesSection() {
+  const queryClient = useQueryClient();
   const profiles = useQuery({
     queryKey: ['beta-profiles'],
     queryFn: () => api<BetaProfilesResponse>('/api/beta/profiles'),
@@ -213,11 +248,36 @@ function BetaProfilesSection() {
     },
     onError,
   });
+  // Suppression volontairement à l'écart : choisir le profil puis recopier son nom.
+  const [deleting, setDeleting] = useState(false);
+  const [targetId, setTargetId] = useState('');
+  const [typedName, setTypedName] = useState('');
+  const closeDeletion = () => {
+    setDeleting(false);
+    setTargetId('');
+    setTypedName('');
+    setError(null);
+  };
+  const remove = useMutation({
+    mutationFn: (profileId: string) =>
+      api<BetaProfilesResponse>(`/api/beta/profiles/${profileId}`, { method: 'DELETE' }),
+    onSuccess: (data, profileId) => {
+      closeDeletion();
+      if (profileId === profiles.data?.activeProfileId) {
+        setTabProfile(MAIN_TAB_PROFILE);
+        onSwitched();
+      } else {
+        queryClient.setQueryData(['beta-profiles'], data);
+      }
+    },
+    onError,
+  });
 
   const data = profiles.data;
   if (!data) return null;
   const secondary = data.profiles.filter((p) => !p.main).length;
-  const busy = create.isPending || select.isPending;
+  const busy = create.isPending || select.isPending || remove.isPending;
+  const target = data.profiles.find((p) => p.id === targetId && !p.main);
 
   return (
     <section className="mt-5">
@@ -268,6 +328,71 @@ function BetaProfilesSection() {
         <button className="btn-ghost mt-2" disabled={busy} onClick={() => create.mutate()}>
           Créer un profil secondaire
         </button>
+      )}
+      {secondary > 0 && !deleting && (
+        <button
+          className="mt-3 block text-xs text-slate-500 underline"
+          onClick={() => setDeleting(true)}
+        >
+          Supprimer un profil secondaire…
+        </button>
+      )}
+      {deleting && (
+        <form
+          className="mt-3 space-y-2 rounded-lg border border-red-300 p-3 dark:border-red-900"
+          onSubmit={(e) => {
+            e.preventDefault();
+            if (target && typedName === target.trainerName) remove.mutate(target.id);
+          }}
+        >
+          <p className="text-sm">
+            La partie de ce profil (Pokémon, objets, Pokédex…) sera{' '}
+            <strong>supprimée définitivement</strong>. Cette action est irréversible.
+          </p>
+          <label className="block text-sm">
+            Profil à supprimer
+            <select
+              className="input mt-1"
+              value={targetId}
+              onChange={(e) => {
+                setTargetId(e.target.value);
+                setTypedName('');
+              }}
+            >
+              <option value="">Choisir…</option>
+              {data.profiles
+                .filter((p) => !p.main)
+                .map((p) => (
+                  <option key={p.id} value={p.id}>
+                    {p.trainerName}
+                  </option>
+                ))}
+            </select>
+          </label>
+          {target && (
+            <label className="block text-sm">
+              Écris « {target.trainerName} » pour confirmer
+              <input
+                className="input mt-1"
+                autoComplete="off"
+                value={typedName}
+                onChange={(e) => setTypedName(e.target.value)}
+              />
+            </label>
+          )}
+          <div className="flex justify-end gap-2">
+            <button type="button" className="btn-ghost" onClick={closeDeletion}>
+              Annuler
+            </button>
+            <button
+              type="submit"
+              className="btn-danger"
+              disabled={busy || !target || typedName !== target.trainerName}
+            >
+              Supprimer définitivement
+            </button>
+          </div>
+        </form>
       )}
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
     </section>

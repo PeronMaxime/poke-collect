@@ -58,7 +58,7 @@ describe('données PokéAPI importées', () => {
     expect(getFormByName('kyogre-primal')?.kind).toBe('primal');
     expect(getFormByName('pikachu-alola-cap')?.kind).toBe('alternate');
     expect(getFormByName('darmanitan-zen')?.kind).toBe('battle');
-    expect(getFormByName('raticate-totem-alola')?.kind).toBe('totem');
+    expect(getFormByName('raticate-totem-alola')).toBeUndefined();
     // Formes d'apparence : identifiant décalé, sprite propre, types propres (Arceus).
     const unownB = getFormByName('unown-b')!;
     expect(unownB).toMatchObject({ kind: 'cosmetic', sprite: '201-b' });

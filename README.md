@@ -92,7 +92,7 @@ scripts/
 ## Élevage (phase 2)
 
 1. `POST /api/daycare` : le joueur dépose deux Pokémon compatibles (même groupe d'œufs et sexes opposés, ou un Métamorph ; jamais le groupe `no-eggs`, sauf surcharge « élevable » dans l'admin). Les objets tenus (Nœud Destin, Pierre Stase…) sont réservés dans l'inventaire et rendus au retrait. Les parents sont occupés, comme en expédition.
-2. Le couple pond un œuf toutes les `breeding.eggMinutes` minutes, calculé paresseusement depuis `started_at`. `POST /api/daycare/:slot/collect` place les œufs dans la couveuse (capacité `breeding.maxEggs`) ; au-delà de cette capacité, les œufs en attente sont perdus.
+2. Le couple pond un œuf toutes les `breeding.eggMinutes` minutes, calculé paresseusement depuis `started_at`. `POST /api/daycare/:slot/collect` place les œufs dans la couveuse (capacité `breeding.maxEggs`) ; ceux qui n'y tiennent pas restent en attente dans la pension (jusqu'à `breeding.maxEggs`), qui arrête de pondre une fois pleine et reprend au ramassage.
 3. Chaque œuf fige ses parents, la version de contenu et un seed. Il éclot après `hatch_counter × breeding.hatchMinutesPerCounter` minutes : `POST /api/eggs/hatch` calcule le bébé avec `game-core` (forme de base de la mère, IV hérités, nature, talent caché).
 4. `POST /api/pokemon/transfer` échange des Pokémon (ni favoris, ni occupés) contre des Bonbons de lignée (une lignée = une chaîne d'évolution PokéAPI) ; `POST /api/pokemon/:id/candies` les convertit en XP.
 

@@ -4,7 +4,6 @@ import { seedContent } from '@poke/content';
 import { createDb, ensureSeedContent, inventory, pokedex, users } from '@poke/db';
 import type {
   ClaimExpeditionResponse,
-  ClaimRewardResponse,
   ExpeditionDto,
   ExpeditionsResponse,
   PokemonDto,
@@ -130,26 +129,5 @@ describe('shinies', () => {
     for (const e of captured) {
       expect(dex.find((d) => d.speciesId === e.speciesId)?.caughtShiny).toBe(true);
     }
-  });
-
-  it('accorde les paliers shiny sur le Pokédex shiny seulement', async () => {
-    const ids = Array.from({ length: 8 }, (_, i) => i + 10);
-    await handle.db
-      .insert(pokedex)
-      .values(ids.map((speciesId) => ({ ownerId: userId, speciesId, seen: true, caught: true })))
-      .onConflictDoNothing();
-    const claim = () =>
-      call<ClaimRewardResponse & { error?: string }>('POST', '/api/progression/claim', {
-        kind: 'milestone',
-        rewardId: 'kanto-shiny-5',
-      });
-    const locked = await claim();
-    expect(locked.status).toBe(409);
-    expect(locked.body.error).toBe('REWARD_LOCKED');
-
-    await handle.db.update(pokedex).set({ caughtShiny: true }).where(eq(pokedex.ownerId, userId));
-    const ok = await claim();
-    expect(ok.status, JSON.stringify(ok.body)).toBe(200);
-    expect(ok.body.rewards.currency).toBe(20_000);
   });
 });

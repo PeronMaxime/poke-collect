@@ -21,6 +21,7 @@ describe('createGameContext', () => {
       'paldea',
     ]);
     expect(ctx.region('johto')?.speciesIds).toHaveLength(100);
+    expect(ctx.region('hoenn')?.speciesIds).toHaveLength(135);
     expect(ctx.region('orre')).toBeUndefined();
     expect(ctx.zones.map((z) => z.id)).toEqual([
       'route-1',
@@ -82,7 +83,35 @@ describe('createGameContext', () => {
       'tour-carillon',
       'autel-bois-aux-chenes',
       'route-101',
+      'bois-clementi',
+      'route-104',
+      'route-116',
+      'tunnel-merazon',
       'grotte-granite',
+      'route-109',
+      'route-110',
+      'routes-117-118',
+      'chemin-ardent',
+      'routes-111-113',
+      'mont-chimnee',
+      'routes-114-115',
+      'desert-hoenn',
+      'new-lavandia',
+      'routes-105-108',
+      'routes-119-120',
+      'mont-memoria',
+      'grotte-trefonds',
+      'route-victoire-hoenn',
+      'routes-124-128',
+      'labo-seko',
+      'chutes-meteore',
+      'epave-abandonnee',
+      'parc-safari-hoenn',
+      'zone-de-combat',
+      'grotte-sous-marine',
+      'grotte-originelle',
+      'pilier-celeste',
+      'ile-aurore',
       'route-201',
       'mont-couronne',
       'route-1-unys',
@@ -113,6 +142,16 @@ describe('createGameContext', () => {
       'lugia',
       'ho-oh',
       'celebi',
+      'latias',
+      'latios',
+      'regirock',
+      'registeel',
+      'regice',
+      'kyogre',
+      'groudon',
+      'rayquaza',
+      'jirachi',
+      'deoxys',
     ]);
   });
 
@@ -144,18 +183,18 @@ describe('createGameContext', () => {
 });
 
 describe('playableContent', () => {
-  it('ne garde que Kanto et Johto avec le seed (autres régions désactivées)', () => {
+  it('ne garde que Kanto, Johto et Hoenn avec le seed (autres régions désactivées)', () => {
     const { content } = testContext();
     const playable = playableContent(content);
-    const open = ['kanto', 'johto'];
+    const open = ['kanto', 'johto', 'hoenn'];
     expect(playable.regions.map((r) => r.id)).toEqual(open);
     expect(playable.zones.every((z) => open.includes(z.regionId))).toBe(true);
     expect(playable.zones.length).toBeGreaterThan(0);
     expect(playable.trainers.every((t) => open.includes(t.regionId))).toBe(true);
     expect(
-      playable.dexMilestones.every((m) => m.regionId === null || open.includes(m.regionId)),
+      playable.collections.every((c) => c.regionId === null || open.includes(c.regionId)),
     ).toBe(true);
-    expect(content.zones.some((z) => z.regionId === 'hoenn')).toBe(true);
+    expect(content.zones.some((z) => z.regionId === 'sinnoh')).toBe(true);
   });
 
   it('retire les zones, dresseurs et quêtes désactivés un par un', () => {

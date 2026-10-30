@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { pokemonTypes, typeWeaknesses } from '@poke/data';
+import { pokemonTypes, types, typeWeaknesses } from '@poke/data';
 
 /**
  * Schémas du contenu configurable (édité dans le panneau d'admin, stocké en base).
@@ -112,6 +112,56 @@ export const dungeonSettingsSchema = z.object({
 });
 export type DungeonSettings = z.infer<typeof dungeonSettingsSchema>;
 
+// --- Conditions de déblocage (briques génériques) ----------------------------
+
+const baseUnlockConditions = [
+  z.object({ type: z.literal('always') }),
+  z.object({
+    type: z.literal('regionDexPercent'),
+    regionId: slugSchema,
+    percent: z.number().min(0).max(100),
+  }),
+  /** Avoir battu un dresseur donné au moins une fois. */
+  z.object({ type: z.literal('trainerDefeated'), trainerId: slugSchema }),
+  /** Avoir débloqué une région (sa condition remplie ; une région désactivée ne l'est jamais). */
+  z.object({ type: z.literal('regionUnlocked'), regionId: slugSchema }),
+  /**
+   * Posséder au moins N badges (victoires contre des dresseurs qui en donnent un), ceux d'une
+   * région donnée ou de toutes les régions.
+   */
+  z.object({
+    type: z.literal('badgeCount'),
+    count: z.int().min(1).max(100),
+    regionId: slugSchema.optional(),
+  }),
+  /** Avoir capturé au moins N espèces différentes (Pokédex national). */
+  z.object({ type: z.literal('speciesCaught'), count: z.int().min(1).max(10_000) }),
+  /** Avoir fait éclore au moins N œufs. */
+  z.object({ type: z.literal('eggsHatched'), count: z.int().min(1).max(100_000) }),
+  /** Avoir validé au moins N étapes d'une quête (ex. zone ouverte pendant une quête). */
+  z.object({
+    type: z.literal('questStepsDone'),
+    questId: slugSchema,
+    count: z.int().min(1).max(20),
+  }),
+  /** Avoir validé toutes les étapes d'une quête. */
+  z.object({ type: z.literal('questCompleted'), questId: slugSchema }),
+] as const;
+
+/** Condition simple (une seule brique). */
+export const baseUnlockConditionSchema = z.discriminatedUnion('type', [...baseUnlockConditions]);
+export type BaseUnlockCondition = z.infer<typeof baseUnlockConditionSchema>;
+
+export const unlockConditionSchema = z.discriminatedUnion('type', [
+  ...baseUnlockConditions,
+  /** Toutes les conditions de la liste à la fois (ex. 5 badges et 50 espèces capturées). */
+  z.object({
+    type: z.literal('allOf'),
+    conditions: z.array(baseUnlockConditionSchema).min(2, 'Au moins deux conditions').max(5),
+  }),
+]);
+export type UnlockCondition = z.infer<typeof unlockConditionSchema>;
+
 // --- Menu du jeu ---------------------------------------------------------------
 
 /** Onglets du jeu (l'identifiant est aussi l'ancre de l'URL : `#pc`). */
@@ -151,6 +201,114 @@ export const menuSettingsSchema = z.object({
   groups: z.array(z.array(z.string())),
 });
 export type MenuSettings = z.infer<typeof menuSettingsSchema>;
+
+/**
+ * Condition de déblocage de chaque onglet du menu (identifiants libres, comme les groupes) ; un
+ * onglet absent est toujours ouvert.
+ */
+export const tabUnlocksSchema = z.record(z.string(), unlockConditionSchema);
+export type TabUnlocks = z.infer<typeof tabUnlocksSchema>;
+
+/** Condition de déblocage d'un onglet (« toujours » sans réglage). */
+export function tabUnlock(
+  balance: { tabUnlocks?: TabUnlocks | undefined },
+  tab: MenuTabId,
+): UnlockCondition {
+  return balance.tabUnlocks?.[tab] ?? { type: 'always' };
+}
+
+// --- Récompenses de progression ---------------------------------------------------
+
+/** Bonus permanents (briques génériques), cumulés tant que la récompense est réclamée. */
+export const permanentBonusSchema = z.discriminatedUnion('type', [
+  /** Probabilité de capture en expédition. */
+  z.object({ type: z.literal('capture'), percent: z.number().positive().max(1000) }),
+  /** XP gagnée en expédition et en combat. */
+  z.object({ type: z.literal('xp'), percent: z.number().positive().max(1000) }),
+  /** Poké Dollars gagnés en combat. */
+  z.object({ type: z.literal('money'), percent: z.number().positive().max(1000) }),
+  /**
+   * Chance de chromatique (expéditions, œufs, fossiles) : +1 % = taux × 1,01, cumulé avec la
+   * chaîne de zone, le Charme Chroma, Masuda et les talents.
+   */
+  z.object({ type: z.literal('shiny'), percent: z.number().positive().max(1000) }),
+]);
+export type PermanentBonus = z.infer<typeof permanentBonusSchema>;
+export type PermanentBonusType = PermanentBonus['type'];
+
+/** Récompense d'un palier ou d'une collection, accordée quand le joueur la réclame. */
+export const progressRewardSchema = z.object({
+  currency: z.int().min(0).max(100_000_000),
+  items: z.array(itemStackSchema),
+  /** Emplacements supplémentaires (le total reste plafonné par le maximum de l'équilibrage). */
+  expeditionSlots: z.int().min(0).max(6),
+  daycareSlots: z.int().min(0).max(10),
+  /** Couveuses supplémentaires (6 places et un assistant chacune) ; absent des anciens contenus. */
+  incubators: z.int().min(0).max(10).default(0),
+  bonuses: z.array(permanentBonusSchema),
+});
+export type ProgressReward = z.infer<typeof progressRewardSchema>;
+
+// --- Complétion des expéditions -----------------------------------------------------
+
+/**
+ * Récompense de complétion : une expédition est complétée quand chaque Pokémon de ses rencontres
+ * (espèce ou forme) est capturé, en version chromatique avec `shiny`. À réclamer une fois par
+ * expédition (`zone`) ou par région dont toutes les expéditions sont complétées (`region`).
+ */
+export const expeditionCompletionSchema = z.object({
+  id: slugSchema,
+  name: nameSchema,
+  scope: z.enum(['zone', 'region']),
+  /** Région ; null = toutes les régions (une récompense pour chacune). */
+  regionId: slugSchema.nullable(),
+  /** Pour `zone` : une expédition précise ; null = chaque expédition de la région. */
+  zoneId: slugSchema.nullable(),
+  shiny: z.boolean(),
+  rewards: progressRewardSchema,
+});
+export type ExpeditionCompletion = z.infer<typeof expeditionCompletionSchema>;
+export type ExpeditionCompletionScope = ExpeditionCompletion['scope'];
+
+// --- Bâtiments à débloquer ----------------------------------------------------------
+
+/** Bâtiments dont le nombre de places grandit avec la progression. */
+export const FACILITIES = [
+  {
+    id: 'expedition',
+    label: 'Emplacements d’expédition',
+    unit: 'emplacement d’expédition',
+    units: 'emplacements d’expédition',
+  },
+  { id: 'daycare', label: 'Pensions', unit: 'pension', units: 'pensions' },
+  { id: 'incubator', label: 'Couveuses', unit: 'couveuse', units: 'couveuses' },
+  {
+    id: 'museum',
+    label: 'Places du Musée',
+    unit: 'place de restauration',
+    units: 'places de restauration',
+  },
+  { id: 'farm', label: 'Parcelles de la ferme', unit: 'parcelle', units: 'parcelles' },
+  { id: 'center', label: 'Centres Pokémon', unit: 'Centre Pokémon', units: 'Centres Pokémon' },
+] as const;
+export type FacilityId = (typeof FACILITIES)[number]['id'];
+
+/** Palier : `amount` emplacements d'expédition, pensions, couveuses, places, parcelles ou Centres en plus quand la condition est remplie. */
+export const facilityUnlockSchema = z.object({
+  amount: z.int().min(1).max(10),
+  unlock: unlockConditionSchema,
+});
+export type FacilityUnlock = z.infer<typeof facilityUnlockSchema>;
+
+export const facilityUnlocksSchema = z.object({
+  expedition: z.array(facilityUnlockSchema).default([]),
+  daycare: z.array(facilityUnlockSchema).default([]),
+  incubator: z.array(facilityUnlockSchema).default([]),
+  museum: z.array(facilityUnlockSchema).default([]),
+  farm: z.array(facilityUnlockSchema).default([]),
+  center: z.array(facilityUnlockSchema).default([]),
+});
+export type FacilityUnlocks = z.infer<typeof facilityUnlocksSchema>;
 
 /** Groupes prêts à afficher : onglets inconnus et doublons retirés, oubliés ajoutés, vides retirés. */
 export function normalizeMenuGroups(groups: readonly (readonly string[])[] | undefined) {
@@ -256,7 +414,7 @@ export type GuildSettings = z.infer<typeof guildSettingsSchema>;
 export const balanceSettingsSchema = z.object({
   expeditions: z.object({
     initialSlots: z.int().min(1).max(6),
-    maxSlots: z.int().min(1).max(6),
+    maxSlots: z.int().min(1).max(9),
     maxTeamSize: z.int().min(1).max(6),
     durationsMinutes: z.array(z.int().positive()).min(1),
     encountersPerHour: z.number().positive(),
@@ -318,7 +476,10 @@ export const balanceSettingsSchema = z.object({
     hatchMinutesPerCounter: z.number().positive(),
     /** Un couple en pension pond un œuf toutes les `eggMinutes` minutes. */
     eggMinutes: z.number().positive(),
-    /** Capacité de la couveuse : œufs en attente d'éclosion au maximum. */
+    /**
+     * Places des couveuses au départ (6 par couveuse, + `facilityUnlocks`) ; aussi le nombre
+     * d'œufs en attente dans une pension au maximum.
+     */
     maxEggs: z.int().min(1).max(30),
     /** IV transmis par les parents sans objet (3 dans les jeux récents). */
     inheritedIvCount: z.int().min(0).max(6),
@@ -335,17 +496,24 @@ export const balanceSettingsSchema = z.object({
     xpPerCandy: z.int().min(0),
   }),
   daycare: z.object({
+    /** Pensions au départ (+ récompenses et `facilityUnlocks`, sans maximum). */
     initialSlots: z.int().min(0),
-    maxSlots: z.int().min(1),
   }),
   museum: z.object({
-    /** Fossiles en cours de restauration au Musée au maximum (en même temps). */
-    slots: z.int().min(1).max(20),
+    /** Fossiles en cours de restauration au Musée en même temps, au départ (+ `facilityUnlocks`). */
+    slots: z.int().min(1),
   }),
+  /** Ferme à baies ; absent = toutes les parcelles du champ ouvertes. */
+  farm: z
+    .object({
+      /** Parcelles ouvertes au départ (+ `facilityUnlocks`). */
+      initialPlots: z.int().min(0),
+    })
+    .optional(),
   /** Centre Pokémon : les Pokémon mis K.O. y sont soignés. */
   center: z.object({
-    /** Pokémon en soins au maximum (en même temps). */
-    slots: z.int().min(1).max(30),
+    /** Pokémon en soins en même temps, au départ (6 par Centre, + `facilityUnlocks`). */
+    slots: z.int().min(1),
     /** Durée des soins (talents compris : Médic Nature, Cœur Soin…). */
     healMinutes: z.int().min(1),
   }),
@@ -380,56 +548,17 @@ export const balanceSettingsSchema = z.object({
   guilds: guildSettingsSchema.default(DEFAULT_GUILD_SETTINGS),
   /** Menu du jeu ; absent = `DEFAULT_MENU_GROUPS`. */
   menu: menuSettingsSchema.optional(),
+  /** Déblocage des onglets du menu ; absent = tous ouverts. */
+  tabUnlocks: tabUnlocksSchema.optional(),
+  /** Pensions, places du Musée, parcelles et Centres en plus selon la progression ; absent = aucun. */
+  facilityUnlocks: facilityUnlocksSchema.optional(),
+  /** Récompenses de complétion des expéditions ; absent = aucune. */
+  expeditionCompletions: z
+    .array(expeditionCompletionSchema)
+    .refine((list) => new Set(list.map((c) => c.id)).size === list.length, 'Identifiant en double')
+    .optional(),
 });
 export type BalanceSettings = z.infer<typeof balanceSettingsSchema>;
-
-// --- Conditions de déblocage (briques génériques) ----------------------------
-
-const baseUnlockConditions = [
-  z.object({ type: z.literal('always') }),
-  z.object({
-    type: z.literal('regionDexPercent'),
-    regionId: slugSchema,
-    percent: z.number().min(0).max(100),
-  }),
-  /** Avoir battu un dresseur donné au moins une fois. */
-  z.object({ type: z.literal('trainerDefeated'), trainerId: slugSchema }),
-  /**
-   * Posséder au moins N badges (victoires contre des dresseurs qui en donnent un), ceux d'une
-   * région donnée ou de toutes les régions.
-   */
-  z.object({
-    type: z.literal('badgeCount'),
-    count: z.int().min(1).max(100),
-    regionId: slugSchema.optional(),
-  }),
-  /** Avoir capturé au moins N espèces différentes (Pokédex national). */
-  z.object({ type: z.literal('speciesCaught'), count: z.int().min(1).max(10_000) }),
-  /** Avoir fait éclore au moins N œufs. */
-  z.object({ type: z.literal('eggsHatched'), count: z.int().min(1).max(100_000) }),
-  /** Avoir validé au moins N étapes d'une quête (ex. zone ouverte pendant une quête). */
-  z.object({
-    type: z.literal('questStepsDone'),
-    questId: slugSchema,
-    count: z.int().min(1).max(20),
-  }),
-  /** Avoir validé toutes les étapes d'une quête. */
-  z.object({ type: z.literal('questCompleted'), questId: slugSchema }),
-] as const;
-
-/** Condition simple (une seule brique). */
-export const baseUnlockConditionSchema = z.discriminatedUnion('type', [...baseUnlockConditions]);
-export type BaseUnlockCondition = z.infer<typeof baseUnlockConditionSchema>;
-
-export const unlockConditionSchema = z.discriminatedUnion('type', [
-  ...baseUnlockConditions,
-  /** Toutes les conditions de la liste à la fois (ex. 5 badges et 50 espèces capturées). */
-  z.object({
-    type: z.literal('allOf'),
-    conditions: z.array(baseUnlockConditionSchema).min(2, 'Au moins deux conditions').max(5),
-  }),
-]);
-export type UnlockCondition = z.infer<typeof unlockConditionSchema>;
 
 // --- Régions ----------------------------------------------------------------
 
@@ -819,6 +948,11 @@ export const itemEffectSchema = z.discriminatedUnion('type', [
   z.object({ type: z.literal('encounterBoost'), multiplier: z.number().min(1).max(10) }),
   /** Coffre de guilde : ouvert depuis le sac, il donne des lots tirés parmi ceux de sa rareté. */
   z.object({ type: z.literal('guildChest'), rarity: chestRaritySchema }),
+  /**
+   * Acheté en boutique : débloque aussitôt une parcelle de la ferme par objet, sans passer par le
+   * sac. Le prix de l'article est multiplié par `priceGrowth` à chaque achat.
+   */
+  z.object({ type: z.literal('farmPlot'), priceGrowth: z.number().min(1).max(10) }),
 ]);
 export type ItemEffect = z.infer<typeof itemEffectSchema>;
 export type ItemEffectType = ItemEffect['type'];
@@ -909,6 +1043,30 @@ export const encounterSchema = z
   });
 export type Encounter = z.infer<typeof encounterSchema>;
 
+/**
+ * Rencontre spéciale (formes événementielles : Pikachu à casquette, Pichu Troizépi…) : possible
+ * seulement si l'équipe compte le Pokémon requis exact (espèce et forme, pas une évolution). Chaque
+ * rencontre a alors `chance` % d'être lui, une fois au plus par expédition ; jamais chromatique.
+ */
+export const specialEncounterSchema = z
+  .object({
+    speciesId: z.int().positive(),
+    formId: formIdSchema,
+    minLevel: z.int().min(1).max(100),
+    maxLevel: z.int().min(1).max(100),
+    requiredSpeciesId: z.int().positive(),
+    /** Forme exacte du Pokémon requis ; null = forme par défaut. */
+    requiredFormId: formIdSchema,
+    chance: z.number().gt(0).max(100),
+    /** Phrase énigmatique affichée sur la zone quand le joueur possède le Pokémon requis. */
+    hint: z.string().max(300),
+  })
+  .refine((e) => e.maxLevel >= e.minLevel, {
+    message: 'Niveau max doit être ≥ niveau min',
+    path: ['maxLevel'],
+  });
+export type SpecialEncounter = z.infer<typeof specialEncounterSchema>;
+
 export const zoneSchema = z.object({
   id: slugSchema,
   regionId: slugSchema,
@@ -938,6 +1096,7 @@ export const zoneSchema = z.object({
     .array(zoneWeatherSchema)
     .default([])
     .refine((list) => new Set(list.map((w) => w.weather)).size === list.length, 'Météo en double'),
+  specialEncounters: z.array(specialEncounterSchema).default([]),
 });
 export type Zone = z.infer<typeof zoneSchema>;
 
@@ -1077,7 +1236,7 @@ export const shopEntrySchema = z
     itemId: slugSchema,
     categoryId: slugSchema,
     order: z.int().min(0),
-    /** Prix d'un lot, en Poké Dollars. */
+    /** Prix d'un lot, en Poké Dollars (premier achat pour un objet `farmPlot`). */
     price: z.int().min(0).max(100_000_000),
     /** Nombre d'objets par lot (ex. 10 Poké Balls). */
     lotSize: z.int().min(1).max(999),
@@ -1155,46 +1314,12 @@ export const evolutionOverrideSchema = z
   });
 export type EvolutionOverride = z.infer<typeof evolutionOverrideSchema>;
 
-// --- Progression : paliers du Pokédex et collections ------------------------------------
+// --- Progression : collections ----------------------------------------------------------
 
-/** Bonus permanents (briques génériques), cumulés tant que la récompense est réclamée. */
-export const permanentBonusSchema = z.discriminatedUnion('type', [
-  /** Probabilité de capture en expédition. */
-  z.object({ type: z.literal('capture'), percent: z.number().positive().max(1000) }),
-  /** XP gagnée en expédition et en combat. */
-  z.object({ type: z.literal('xp'), percent: z.number().positive().max(1000) }),
-  /** Poké Dollars gagnés en combat. */
-  z.object({ type: z.literal('money'), percent: z.number().positive().max(1000) }),
-]);
-export type PermanentBonus = z.infer<typeof permanentBonusSchema>;
-export type PermanentBonusType = PermanentBonus['type'];
-
-/** Récompense d'un palier ou d'une collection, accordée quand le joueur la réclame. */
-export const progressRewardSchema = z.object({
-  currency: z.int().min(0).max(100_000_000),
-  items: z.array(itemStackSchema),
-  /** Emplacements supplémentaires (le total reste plafonné par le maximum de l'équilibrage). */
-  expeditionSlots: z.int().min(0).max(6),
-  daycareSlots: z.int().min(0).max(10),
-  bonuses: z.array(permanentBonusSchema),
-});
-export type ProgressReward = z.infer<typeof progressRewardSchema>;
-
-export const dexMilestoneSchema = z.object({
-  id: slugSchema,
-  order: z.int().min(0),
-  name: nameSchema,
-  /** Région ; null = Pokédex national (espèces de toutes les régions). */
-  regionId: slugSchema.nullable(),
-  /** Pokédex shiny : ne compte que les espèces capturées en version shiny. */
-  shiny: z.boolean(),
-  /** Part du Pokédex capturée (en %). */
-  percent: z.number().positive().max(100),
-  rewards: progressRewardSchema,
-});
-export type DexMilestone = z.infer<typeof dexMilestoneSchema>;
-
-/** Collection thématique : capturer toutes les espèces de la liste. */
+/**
+ * Collection thématique : capturer toutes les espèces de la liste (forme par défaut) et toutes
+ * les formes de `formIds` (Zarbi B, Prismillon Banquise…).
+ */
 export const collectionSchema = z.object({
   id: slugSchema,
   order: z.int().min(0),
@@ -1202,6 +1327,9 @@ export const collectionSchema = z.object({
   description: z.string().max(500),
   speciesIds: z.array(z.int().positive()).min(1, 'Au moins une espèce'),
   rewards: progressRewardSchema,
+  /** Région : la collection n'apparaît qu'une fois la région débloquée ; null = toujours. */
+  regionId: slugSchema.nullable(),
+  formIds: z.array(z.int().positive()),
 });
 export type Collection = z.infer<typeof collectionSchema>;
 
@@ -1209,12 +1337,13 @@ export type Collection = z.infer<typeof collectionSchema>;
 
 /** Conditions d'étape propres aux quêtes, comptées à partir du début de l'étape. */
 const questActionConditions = [
-  /** Capturer N Pokémon en expédition (filtrés par type et / ou espèce). */
+  /** Capturer N Pokémon en expédition (filtrés par type et / ou espèce), dans la zone indiquée ou, sans zone, dans la région de la quête. */
   z.object({
     type: z.literal('catchPokemon'),
     count: z.int().min(1).max(10_000),
     pokemonType: z.string().min(1).nullable(),
     speciesId: z.int().positive().nullable(),
+    zoneId: slugSchema.nullable().default(null),
   }),
   /**
    * Réussir N expéditions dans une zone, avec au moins `memberCount` Pokémon (du type demandé,
@@ -1409,7 +1538,6 @@ export const gameContentStructureSchema = z.object({
   shopCategories: z.array(shopCategorySchema),
   shopEntries: z.array(shopEntrySchema),
   evolutionOverrides: z.array(evolutionOverrideSchema),
-  dexMilestones: z.array(dexMilestoneSchema),
   collections: z.array(collectionSchema),
   quests: z.array(questSchema),
   guildQuests: z.array(guildQuestSchema).default([]),
@@ -1425,8 +1553,39 @@ export interface GameContent extends GameContentData {
 /** Chances par défaut qu'une rencontre soit le Pokémon fuyard (%), dans la zone où il se trouve. */
 export const DEFAULT_ROAMING_CHANCE = 3;
 
+/** Chances par défaut qu'une rencontre soit la rencontre spéciale (%), équipe requise présente. */
+export const DEFAULT_SPECIAL_ENCOUNTER_CHANCE = 2;
+
 /** Durée par défaut d'une expédition légendaire. */
 export const DEFAULT_LEGENDARY_EXPEDITION_MINUTES = 240;
+
+/**
+ * Affinités d'une zone d'expédition : les types super efficaces sur le type le plus présent parmi
+ * ses Pokémon. Égalités départagées par le poids de rencontre cumulé ; à égalité parfaite, les
+ * faiblesses de tous les types à égalité.
+ * Même calcul que la migration 0086 (à garder en phase).
+ */
+export function zoneAffinityTypes(encounters: readonly Encounter[]): string[] {
+  const seen = new Set<string>();
+  const stats = new Map<string, { count: number; weight: number }>();
+  for (const e of encounters) {
+    const key = `${e.speciesId}:${e.formId ?? ''}`;
+    for (const type of pokemonTypes(e.speciesId, e.formId)) {
+      const stat = stats.get(type) ?? { count: 0, weight: 0 };
+      if (!seen.has(key)) stat.count++;
+      stat.weight += e.weight;
+      stats.set(type, stat);
+    }
+    seen.add(key);
+  }
+  const best = [...stats.values()].reduce(
+    (b, s) => (s.count > b.count || (s.count === b.count && s.weight > b.weight) ? s : b),
+    { count: 0, weight: 0 },
+  );
+  const tied = [...stats].filter(([, s]) => s.count === best.count && s.weight === best.weight);
+  const weak = new Set(tied.flatMap(([type]) => typeWeaknesses([type])));
+  return types.map((t) => t.name).filter((t) => weak.has(t));
+}
 
 /** Expédition légendaire par défaut : 4 h, les faiblesses du Pokémon en affinité. */
 export function defaultLegendaryExpedition(

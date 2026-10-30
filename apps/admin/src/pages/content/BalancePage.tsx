@@ -121,7 +121,7 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
             <NumberInput
               value={b.expeditions.maxSlots}
               min={1}
-              max={6}
+              max={9}
               onChange={exp('maxSlots')}
               disabled={disabled}
             />
@@ -582,8 +582,8 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
             />
           </Field>
           <Field
-            label="Capacité de la couveuse"
-            hint="Œufs en attente d’éclosion au maximum."
+            label="Places des couveuses au départ"
+            hint="6 par couveuse, + paliers de Progression → Bâtiments. Aussi les œufs en attente dans une pension au maximum."
             error={err('breeding.maxEggs')}
           >
             <NumberInput
@@ -641,14 +641,6 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
               disabled={disabled}
             />
           </Field>
-          <Field label="Pensions maximum" error={err('daycare.maxSlots')}>
-            <NumberInput
-              value={b.daycare.maxSlots}
-              min={1}
-              onChange={set('daycare')('maxSlots')}
-              disabled={disabled}
-            />
-          </Field>
           <Field
             label="Places au Musée"
             hint="Fossiles restaurés en même temps (la durée se règle sur chaque fossile, dans Objets)."
@@ -657,7 +649,6 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
             <NumberInput
               value={b.museum.slots}
               min={1}
-              max={20}
               onChange={set('museum')('slots')}
               disabled={disabled}
             />
@@ -670,7 +661,6 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
             <NumberInput
               value={b.center.slots}
               min={1}
-              max={30}
               onChange={set('center')('slots')}
               disabled={disabled}
             />

@@ -17,6 +17,135 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '30 octobre 2026',
+    title: 'La région de Hoenn et une nouvelle progression',
+    changes: [
+      {
+        section: 'Hoenn',
+        items: [
+          'Une troisième région s’ouvre quand tu as complété la moitié du Pokédex de Johto : Hoenn et ses 135 Pokémon, légendaires compris.',
+          'Comme à Johto, tu y repars de zéro : choisis Arcko, Poussifeu ou Gobou, puis monte une équipe de Pokémon de Hoenn. Seuls eux partent en expédition et combattent dans la région.',
+          'Trente zones d’expédition, des Routes 101 à 103 jusqu’à la Zone de Combat, avec une difficulté qui monte comme à Kanto et Johto. Des Pokémon de Kanto et de Johto s’y montrent aussi.',
+          'Huit Champions à battre (Roxanne, Bastien, Voltère, Adriane, Norman, Alizée, Lévy et Tatia, Juan), puis le Conseil 4 et le Maître Marc. Un ancien Maître t’attend ensuite à la Zone de Combat…',
+          'Des zones spéciales cachent des Pokémon introuvables ailleurs : le Labo du Prof. Seko, les Chutes Météore, l’Épave Abandonnée, le Parc Safari de Hoenn et la Zone de Combat.',
+          'Lilia et Anorith renaissent au Musée, à partir des fossiles trouvés sur les Routes 111 à 113.',
+        ],
+      },
+      {
+        section: 'Déblocage au fil de l’aventure',
+        items: [
+          'Certaines parties du jeu s’ouvrent désormais peu à peu. Dans le menu, un onglet fermé porte un cadenas et affiche ce qu’il te reste à faire.',
+          'Pension : 2 badges de Kanto. Musée : 6 badges de Kanto. Quêtes : victoire contre le Maître de Kanto. Guilde : Johto débloqué. Ferme à baies : Hoenn débloqué.',
+          'Un onglet où tu as quelque chose en cours (œufs, fossiles, baies, quête commencée) reste ouvert.',
+        ],
+      },
+      {
+        section: 'Quêtes',
+        items: [
+          'Dix quêtes légendaires : Regirock, Registeel, Regice, Kyogre, Groudon, Rayquaza, Jirachi et Deoxys.',
+          'Latias et Latios sont des fuyards : une fois leur quête terminée, ils changent de zone de Hoenn à chaque heure, comme les bêtes de Johto.',
+          'Les quêtes de chaque région s’ouvrent après la victoire contre son Maître de la Ligue, et leurs objectifs sont revus dans toutes les régions.',
+          'Les captures ne comptent plus que dans la région de la quête, voire dans une zone précise quand l’étape l’indique.',
+        ],
+      },
+      {
+        section: 'Expéditions',
+        items: [
+          'Les zones demandent plus de PE, surtout en début de région : une équipe au niveau du dernier Champion battu y entre presque toujours, sinon quelques niveaux de plus suffisent.',
+          'Jusqu’à 9 expéditions en même temps au lieu de 6 : une place de plus en débloquant Johto, une autre avec Hoenn.',
+          'Chaque zone a son propre butin : Poké Balls, baies, objets d’évolution et fossiles dépendent de l’endroit. Chaque fossile ne se trouve plus que dans une seule zone.',
+          'Les affinités de chaque zone sont revues : ce sont les types super efficaces sur le type le plus présent parmi ses Pokémon.',
+          'La chaîne chromatique monte moins vite, mais bien plus haut : jusqu’à × 6 au lieu de × 3.',
+        ],
+      },
+      {
+        section: 'Complétion des expéditions',
+        items: [
+          'Nouvel onglet « Expéditions » au Pokédex, avec des récompenses à réclamer quand tu as capturé tous les Pokémon d’une zone.',
+          'Chaque zone complétée en chromatique donne +1 % de chance de chromatique, pour de bon.',
+          'Chaque région complétée donne une couveuse de plus.',
+        ],
+      },
+      {
+        section: 'Combats de dresseurs',
+        items: [
+          'Les dresseurs sont plus forts, surtout le Conseil 4 et les Maîtres, mais rapportent 50 % de Poké Dollars en plus.',
+          'Ils ne donnent plus d’objets, seulement des Poké Dollars.',
+          'Plus de PE minimale ni de niveau maximal pour les affronter : à toi de juger si ton équipe est prête.',
+          'Les Pokémon adverses croisés en combat ou en donjon sont maintenant marqués comme vus au Pokédex.',
+        ],
+      },
+      {
+        section: 'Bâtiments',
+        items: [
+          'Les bâtiments s’agrandissent avec l’aventure. Pension : une de plus au 2e badge de Johto, puis au 2e badge de Hoenn. Musée : 2 places de plus au 4e badge de Hoenn. Centre Pokémon : un de plus en débloquant Johto, puis Hoenn.',
+          'La ferme démarre avec une seule parcelle. Les suivantes s’achètent à la Boutique, jusqu’à 18 : 10 000 ₽ la première, et le prix augmente de moitié à chaque achat.',
+          'Au-delà de 9 parcelles, un second champ s’ouvre, avec son arroseur et son assistant de récolte.',
+          'Une pension pleine ne perd plus d’œufs : la ponte se met en pause jusqu’à ce que tu les ramasses.',
+          'Si tu as maintenant moins de places qu’avant : tes expéditions en cours se terminent normalement, puis l’emplacement en trop disparaît. Pour une pension ou une place du Musée en trop, les parents et les assistants retournent au PC, les objets tenus et les fossiles au sac, même un fossile déjà restauré. Les œufs prêts vont en couveuse s’il y a de la place ; les autres sont perdus.',
+        ],
+      },
+      {
+        section: 'Boutique',
+        items: [
+          'Les articles verrouillés n’apparaissent plus tant que tu ne peux pas les acheter.',
+          'Super Ball au 2e badge de Kanto, Hyper Ball au 4e, Rappel au 8e. Pilule Talent (50 000 ₽) une fois Hoenn débloqué, Patch Talent au 4e badge de Hoenn.',
+          'Fin de la vente des Aromates, des Capsules d’Argent et d’Or et des objets d’évolution : ils se trouvent désormais dans les coffres de guilde ou le butin de certaines zones.',
+          'Pierre Stase (dès le 3e badge de Kanto) et Nœud Destin (dès le 6e) restent en vente, au rayon Élevage.',
+        ],
+      },
+      {
+        section: 'Rencontres spéciales',
+        items: [
+          'Certaines zones d’expédition cachent des Pokémon spéciaux, qu’on ne croise qu’avec le bon Pokémon dans l’équipe. Le Pokémon exact, pas une de ses évolutions !',
+          'Treize formes spéciales à trouver de Kanto à Hoenn : Pikachu et Évoli Partenaires, les casquettes de Pikachu, Pikachu Cosplayeur et ses costumes de Concours, et Pichu Troizépi.',
+          'Quand tu possèdes le Pokémon qu’il faut, une phrase énigmatique apparaît sur la zone et la forme spéciale rejoint la liste de ses Pokémon. Elle reste rare, n’est jamais chromatique, ne peut pas évoluer, et une Ball lui est toujours lancée.',
+          'Ces formes ne se transmettent pas : l’œuf d’un Évoli Partenaire donne un Évoli normal.',
+          'Le wiki indique où et comment trouver chacune d’elles.',
+        ],
+      },
+      {
+        section: 'Donjons',
+        items: [
+          'Les donjons ferment pour l’instant : ils rouvriront avec le premier badge de Kalos, une région à venir. Un donjon déjà en cours peut être terminé.',
+          'Trois nouveaux donjons extrêmes t’y attendront : Méga-Latias, Méga-Latios et Méga-Rayquaza.',
+        ],
+      },
+      {
+        section: 'Talents',
+        items: [
+          'Les talents des Pokémon de Hoenn ont maintenant un effet : Garde Mystik, Peau Dure, Lavabo, Air Lock, Force Pure…',
+        ],
+      },
+      {
+        section: 'Pokédex',
+        items: [
+          'La section des Pokémon Dominants disparaît : ils ne feront pas partie du jeu.',
+          'Les paliers du Pokédex disparaissent. Les objets et Poké Dollars déjà reçus te restent, mais leurs emplacements d’expédition, leurs pensions et leur bonus de capture sont retirés : les places suivent désormais les nouvelles règles de déblocage.',
+          'Une forme reste cachée au Pokédex tant que tu ne l’as pas rencontrée : avoir vu la forme normale de l’espèce ne suffit plus.',
+          'Les collections sont refaites : chacune réunit un Pokémon et toutes ses formes (l’alphabet des Zarbi, les motifs de Prismillon, les fleurs de Flabébé, les appareils de Motisma…). Chacune rapporte un petit bonus permanent d’XP, de Poké Dollars ou de capture.',
+          'L’onglet Collections ne montre plus que les collections des régions que tu as débloquées, rangées par région.',
+          'Les anciennes collections (Insectes de la Forêt de Jade, Famille Nidoran, Starters de Kanto) disparaissent, avec leurs récompenses.',
+        ],
+      },
+      {
+        section: 'Compte',
+        items: [
+          'Mot de passe oublié ? Tu peux désormais le réinitialiser depuis l’écran de connexion : un lien t’est envoyé par e-mail.',
+          'Tu peux supprimer un profil secondaire depuis les réglages, pour libérer sa place et repartir de zéro.',
+        ],
+      },
+      {
+        section: 'Interface',
+        items: [
+          'Nouveau réglage « Thème » : clair, sombre ou comme ton appareil.',
+          'Dans la liste des membres d’une guilde, un point indique qui est connecté. Il remplace le détail de ce que chacun apporte aux quêtes de la semaine.',
+          'Face à un légendaire, la Master Ball n’est plus proposée en premier, pour éviter de la gâcher par mégarde.',
+        ],
+      },
+    ],
+  },
+  {
     date: '27 octobre 2026',
     title: 'Classement des guildes et tous les Aromates',
     changes: [

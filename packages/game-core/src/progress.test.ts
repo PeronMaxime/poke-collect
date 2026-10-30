@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { isUnlocked, isUnlockedSoon, isZoneUnlocked, regionDexProgress } from './progress';
+import {
+  isTabUnlocked,
+  isUnlocked,
+  isUnlockedSoon,
+  isZoneUnlocked,
+  regionDexProgress,
+} from './progress';
 import { testContext } from './test-helpers';
 
 const ctx = testContext();
@@ -46,6 +52,31 @@ describe('déblocages', () => {
     expect(isUnlocked(ctx, kantoBadge, caught(1, ['albert']))).toBe(false);
     expect(isUnlocked(ctx, oneBadge, caught(1, ['albert']))).toBe(true);
     expect(isUnlocked(ctx, kantoBadge, caught(1, ['pierre']))).toBe(true);
+  });
+
+  it('évalue le déblocage d’une région', () => {
+    const hoenn = { type: 'regionUnlocked' as const, regionId: 'hoenn' };
+    const johto = ctx.region('johto')!.speciesIds;
+    const half = johto.slice(0, Math.ceil(johto.length / 2));
+    const progress = (ids: number[]) => ({ ...caught(0), caughtSpeciesIds: new Set(ids) });
+    expect(isUnlocked(ctx, hoenn, progress(half.slice(1)))).toBe(false);
+    expect(isUnlocked(ctx, hoenn, progress(half))).toBe(true);
+    // Une région désactivée (absente du contexte) n'est jamais débloquée.
+    const closed = testContext((c) => {
+      c.regions.find((r) => r.id === 'hoenn')!.enabled = false;
+      c.regions = c.regions.filter((r) => r.enabled);
+    });
+    expect(isUnlocked(closed, hoenn, progress(johto))).toBe(false);
+  });
+
+  it('ouvre les onglets selon leur condition (toujours sans réglage)', () => {
+    expect(isTabUnlocked(ctx, 'pc', caught(0))).toBe(true);
+    expect(isTabUnlocked(ctx, 'daycare', caught(1, ['pierre']))).toBe(false);
+    expect(isTabUnlocked(ctx, 'daycare', caught(1, ['pierre', 'ondine']))).toBe(true);
+    expect(isTabUnlocked(ctx, 'quests', caught(1, ['pierre']))).toBe(false);
+    expect(isTabUnlocked(ctx, 'quests', caught(1, ['maitre-blue']))).toBe(true);
+    const open = testContext((c) => delete c.balance.tabUnlocks);
+    expect(isTabUnlocked(open, 'daycare', caught(0))).toBe(true);
   });
 
   it('exige toutes les briques d’une condition combinée', () => {

@@ -58,11 +58,10 @@ export interface Species {
  *   Attaque, Pikachu Casquette…) ;
  * - `cosmetic` : simple variante d'apparence (Zarbi B, Prismillon Toundra, Sancoki Orient…) ;
  * - `mega` / `primal` / `gmax` : Méga-Évolutions, Primo-Résurgences, Gigamax (et Ultra-Gigamax) ;
- * - `battle` : forme de combat (Darumacho Transe, Exagide Assaut…) ;
- * - `totem` : Pokémon Dominants d'Alola.
+ * - `battle` : forme de combat (Darumacho Transe, Exagide Assaut…).
  */
 export type FormKind =
-  'regional' | 'alternate' | 'cosmetic' | 'mega' | 'primal' | 'gmax' | 'battle' | 'totem';
+  'regional' | 'alternate' | 'cosmetic' | 'mega' | 'primal' | 'gmax' | 'battle';
 
 /**
  * Forme d'une espèce autre que sa forme par défaut : variétés PokéAPI (`pokemon-species.varieties`)

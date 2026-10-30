@@ -6,12 +6,12 @@ import type { ContentCache } from '../content-cache';
 import { assistantHolders } from './assistants';
 import { GameError } from './errors';
 import { requireStartedProfile } from './expeditions';
-import { takeItems, toInstance } from './store';
+import { playerFacilityPlaces, takeItems, toInstance } from './store';
 import type { PokemonRow } from './store';
 
 /**
  * Centre Pokémon : un Pokémon mis K.O. en combat y est soigné, dans la limite des places
- * (`balance.center.slots`, 6 par Centre). Il occupe une place (`healSlot` ; l'assistant de son
+ * (places débloquées, 6 par Centre). Il occupe une place (`healSlot` ; l'assistant de son
  * Centre agit sur la durée) jusqu'à `healUntil`, puis il est de nouveau libre : rien à récupérer,
  * la place se libère d'elle-même. Un Rappel (objet `revive`) le ranime aussitôt.
  */
@@ -40,6 +40,7 @@ export async function healPokemon(
   await requireStartedProfile(db, userId);
   return db.transaction(async (tx) => {
     const rows = await knockedOutRows(tx, userId, ids);
+    const places = await playerFacilityPlaces(tx, ctx, userId, 'center');
 
     // Premières places libres, dans l'ordre des Pokémon demandés.
     const taken = new Set(
@@ -50,9 +51,7 @@ export async function healPokemon(
           .where(and(eq(pokemon.ownerId, userId), gt(pokemon.healUntil, now)))
       ).map((r) => r.slot),
     );
-    const free = Array.from({ length: ctx.balance.center.slots }, (_, i) => i).filter(
-      (i) => !taken.has(i),
-    );
+    const free = Array.from({ length: places }, (_, i) => i).filter((i) => !taken.has(i));
     if (rows.length > free.length) throw new GameError(409, 'CENTER_FULL');
 
     const helpers = await assistantHolders(tx, userId, 'center');

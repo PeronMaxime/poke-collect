@@ -455,9 +455,6 @@ function MemberList({ guild }: { guild: GuildDto }) {
           <MemberRow key={m.trainerName} member={m} myRole={guild.myRole} />
         ))}
       </ul>
-      <p className="text-xs text-slate-500">
-        Avancée apportée aux quêtes cette semaine (quêtes du jour comprises) à droite.
-      </p>
     </section>
   );
 }
@@ -475,6 +472,12 @@ function MemberRow({ member: m, myRole }: { member: GuildMemberDto; myRole: Guil
   return (
     <li className="space-y-1 py-2 text-sm">
       <div className="flex items-center gap-2">
+        <span
+          title={m.online ? 'Connecté' : 'Hors ligne'}
+          className={`h-2 w-2 shrink-0 rounded-full ${
+            m.online ? 'bg-green-500 ring-2 ring-green-500/25' : 'bg-slate-300 dark:bg-slate-600'
+          }`}
+        />
         <a
           href={m.isMe ? '#trainer' : trainerLink(m.trainerName)}
           className="truncate font-medium hover:underline"
@@ -486,12 +489,6 @@ function MemberRow({ member: m, myRole }: { member: GuildMemberDto; myRole: Guil
             {ROLE_LABELS[m.role]}
           </span>
         )}
-        <span
-          className="ml-auto font-mono text-xs text-slate-500"
-          title="Avancée apportée cette semaine (quêtes du jour comprises)"
-        >
-          {m.weekContribution.toLocaleString('fr-FR')}
-        </span>
       </div>
       {(canKick || canPromote) && (
         <div className="flex flex-wrap gap-1">

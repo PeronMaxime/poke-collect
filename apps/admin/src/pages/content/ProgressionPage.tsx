@@ -1,17 +1,11 @@
 import { useState } from 'react';
-import { collectionSchema, dexMilestoneSchema } from '@poke/content';
-import type { Collection, DexMilestone } from '@poke/content';
-import {
-  NO_CLAIMS,
-  dexSpeciesIds,
-  playerBonuses,
-  playerSlots,
-  sortedCollections,
-  sortedMilestones,
-} from '@poke/game-core';
+import { collectionSchema } from '@poke/content';
+import type { Collection } from '@poke/content';
+import { speciesForms } from '@poke/data';
+import { NO_CLAIMS, playerBonuses, playerSlots, sortedCollections } from '@poke/game-core';
 import { EntityPage, VersionBanner } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
-import { Field, NumberInput, Section, TextInput, Toggle } from '../../components/forms/fields';
+import { Field, NumberInput, Section, TextInput } from '../../components/forms/fields';
 import { Sprite, SpeciesSetEditor } from '../../components/forms/pickers';
 import {
   BONUS_LABELS,
@@ -20,17 +14,19 @@ import {
   rewardSummary,
 } from '../../components/forms/RewardEditor';
 import { errorMessage, useWorkingVersion } from '../../lib/content';
-import type { WorkingVersion } from '../../lib/content';
+import { ExpeditionCompletionsView } from './ExpeditionCompletionsView';
+import { FacilitiesView } from './FacilitiesView';
 
 const VIEWS = [
-  { id: 'milestones', label: 'Paliers du Pokédex' },
   { id: 'collections', label: 'Collections' },
+  { id: 'completions', label: 'Complétion d’expédition' },
+  { id: 'facilities', label: 'Bâtiments' },
   { id: 'summary', label: 'Récapitulatif' },
 ] as const;
 type View = (typeof VIEWS)[number]['id'];
 
 export function ProgressionPage() {
-  const [view, setView] = useState<View>('milestones');
+  const [view, setView] = useState<View>('collections');
   return (
     <div className="space-y-4">
       <nav className="flex gap-1">
@@ -48,148 +44,10 @@ export function ProgressionPage() {
           </button>
         ))}
       </nav>
-      {view === 'milestones' && <MilestonesView />}
       {view === 'collections' && <CollectionsView />}
+      {view === 'completions' && <ExpeditionCompletionsView />}
+      {view === 'facilities' && <FacilitiesView />}
       {view === 'summary' && <SummaryView />}
-    </div>
-  );
-}
-
-const dexName = (w: WorkingVersion, regionId: string | null, shiny = false) =>
-  `${regionId ? (w.ctx.region(regionId)?.name ?? regionId) : 'National'}${shiny ? ' ★ chromatique' : ''}`;
-
-// --- Paliers --------------------------------------------------------------------------------
-
-function MilestonesView() {
-  return (
-    <EntityPage<DexMilestone>
-      title="Progression : paliers du Pokédex"
-      description="Seuil (% du Pokédex d’une région ou national, normal ou chromatique) et récompenses : objets, argent, emplacements, bonus permanents."
-      collection="dex-milestones"
-      entityKind="dexMilestone"
-      schema={dexMilestoneSchema}
-      list={(w) => sortedMilestones(w.ctx)}
-      getKey={(m) => m.id}
-      searchText={(m, w) => `${m.id} ${m.name} ${dexName(w, m.regionId, m.shiny)}`}
-      renderListItem={(m, w) => (
-        <>
-          <span className="block truncate font-medium">{m.name}</span>
-          <span className="block truncate text-xs text-slate-500">
-            {m.percent} % · {dexName(w, m.regionId, m.shiny)} · {rewardSummary(m.rewards)}
-          </span>
-        </>
-      )}
-      create={(w) => ({
-        id: '',
-        order: w.content.dexMilestones.length,
-        name: '',
-        regionId: w.ctx.regions[0]?.id ?? null,
-        shiny: false,
-        percent: 10,
-        rewards: emptyReward(),
-      })}
-      duplicate={(m) => ({ ...structuredClone(m), id: `${m.id}-copie`, name: `${m.name} (copie)` })}
-      renderForm={(p) => <MilestoneForm {...p} />}
-      newLabel="Nouveau palier"
-    />
-  );
-}
-
-function MilestoneForm({
-  value: m,
-  onChange,
-  errors,
-  isNew,
-  editable,
-  working,
-}: EntityFormProps<DexMilestone>) {
-  const set = <K extends keyof DexMilestone>(key: K, v: DexMilestone[K]) =>
-    onChange({ ...m, [key]: v });
-  const { ctx } = working;
-  const disabled = !editable;
-  const total = dexSpeciesIds(ctx, m.regionId).length;
-
-  return (
-    <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Identifiant"
-          hint="Minuscules et tirets, non modifiable ensuite."
-          error={errors.get('id')}
-        >
-          <TextInput value={m.id} onChange={(v) => set('id', v)} disabled={disabled || !isNew} />
-        </Field>
-        <Field label="Nom" error={errors.get('name')}>
-          <TextInput value={m.name} onChange={(v) => set('name', v)} disabled={disabled} />
-        </Field>
-        <Field
-          label="Pokédex"
-          hint="National : espèces de toutes les régions."
-          error={errors.get('regionId')}
-        >
-          <select
-            className="input"
-            value={m.regionId ?? ''}
-            disabled={disabled}
-            onChange={(e) => set('regionId', e.target.value || null)}
-          >
-            {ctx.regions.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-            {m.regionId && !ctx.region(m.regionId) && (
-              <option value={m.regionId}>{m.regionId} (inconnue)</option>
-            )}
-            <option value="">Pokédex national</option>
-          </select>
-          <div className="mt-2">
-            <Toggle
-              checked={m.shiny}
-              onChange={(v) => set('shiny', v)}
-              disabled={disabled}
-              label="Pokédex chromatique (ne compte que les captures chromatiques)"
-            />
-          </div>
-        </Field>
-        <Field
-          label="Seuil"
-          hint={
-            Number.isFinite(m.percent)
-              ? `soit ${Math.ceil((m.percent / 100) * total)} espèce(s) sur ${total}`
-              : undefined
-          }
-          error={errors.get('percent')}
-        >
-          <NumberInput
-            value={m.percent}
-            min={0}
-            max={100}
-            step={1}
-            unit="%"
-            onChange={(v) => set('percent', v)}
-            disabled={disabled}
-          />
-        </Field>
-        <Field label="Ordre" error={errors.get('order')}>
-          <NumberInput
-            value={m.order}
-            min={0}
-            onChange={(v) => set('order', v)}
-            disabled={disabled}
-          />
-        </Field>
-      </div>
-      <Section title="Récompenses">
-        <RewardEditor
-          ctx={ctx}
-          value={m.rewards}
-          onChange={(v) => set('rewards', v)}
-          errors={errors}
-          prefix="rewards"
-          disabled={disabled}
-        />
-      </Section>
     </div>
   );
 }
@@ -200,20 +58,24 @@ function CollectionsView() {
   return (
     <EntityPage<Collection>
       title="Progression : collections thématiques"
-      description="Liste d’espèces à capturer (starters, lignées, types…) et récompense, souvent un bonus permanent."
+      description="Espèces et formes à capturer (Zarbi, Prismillon…) et récompense, souvent un bonus permanent. Le joueur ne voit que les collections des régions qu’il a débloquées."
       collection="collections"
       entityKind="collection"
       schema={collectionSchema}
       list={(w) => sortedCollections(w.ctx)}
       getKey={(c) => c.id}
-      searchText={(c) => `${c.id} ${c.name} ${c.description}`}
-      renderListItem={(c) => (
+      searchText={(c, w) =>
+        `${c.id} ${c.name} ${c.description} ${c.regionId ? (w.ctx.region(c.regionId)?.name ?? '') : ''}`
+      }
+      renderListItem={(c, w) => (
         <span className="flex items-center gap-2">
           {c.speciesIds[0] && <Sprite id={c.speciesIds[0]} size={28} />}
           <span className="min-w-0">
             <span className="block truncate font-medium">{c.name}</span>
             <span className="block truncate text-xs text-slate-500">
-              {c.speciesIds.length} espèce(s) · {rewardSummary(c.rewards)}
+              {c.regionId ? (w.ctx.region(c.regionId)?.name ?? c.regionId) : 'Toutes régions'} ·{' '}
+              {c.speciesIds.length} espèce(s) · {c.formIds.length} forme(s) ·{' '}
+              {rewardSummary(c.rewards)}
             </span>
           </span>
         </span>
@@ -225,6 +87,8 @@ function CollectionsView() {
         description: '',
         speciesIds: [],
         rewards: emptyReward(),
+        regionId: w.ctx.regions[0]?.id ?? null,
+        formIds: [],
       })}
       duplicate={(c) => ({ ...structuredClone(c), id: `${c.id}-copie`, name: `${c.name} (copie)` })}
       renderForm={(p) => <CollectionForm {...p} />}
@@ -274,8 +138,30 @@ function CollectionForm({
             disabled={disabled}
           />
         </Field>
+        <Field
+          label="Région"
+          hint="Visible par le joueur une fois la région débloquée."
+          error={errors.get('regionId')}
+        >
+          <select
+            className="input"
+            value={c.regionId ?? ''}
+            disabled={disabled}
+            onChange={(e) => set('regionId', e.target.value || null)}
+          >
+            {ctx.regions.map((r) => (
+              <option key={r.id} value={r.id}>
+                {r.name}
+              </option>
+            ))}
+            {c.regionId && !ctx.region(c.regionId) && (
+              <option value={c.regionId}>{c.regionId} (inconnue)</option>
+            )}
+            <option value="">Toutes régions (toujours visible)</option>
+          </select>
+        </Field>
       </div>
-      <Section title="Espèces à capturer">
+      <Section title="Espèces à capturer (forme par défaut)">
         <SpeciesSetEditor
           ctx={ctx}
           value={c.speciesIds}
@@ -285,6 +171,15 @@ function CollectionForm({
         {errors.get('speciesIds') && (
           <p className="text-xs text-red-600">{errors.get('speciesIds')}</p>
         )}
+      </Section>
+      <Section title="Formes à capturer">
+        <FormSetEditor
+          speciesIds={c.speciesIds}
+          value={c.formIds}
+          onChange={(v) => set('formIds', v)}
+          disabled={disabled}
+        />
+        {errors.get('formIds') && <p className="text-xs text-red-600">{errors.get('formIds')}</p>}
       </Section>
       <Section title="Récompenses">
         <RewardEditor
@@ -300,6 +195,78 @@ function CollectionForm({
   );
 }
 
+/** Formes des espèces de la collection, à cocher (une forme d'une espèce retirée reste listée). */
+function FormSetEditor({
+  speciesIds,
+  value,
+  onChange,
+  disabled,
+}: {
+  speciesIds: number[];
+  value: number[];
+  onChange: (ids: number[]) => void;
+  disabled: boolean;
+}) {
+  const selected = new Set(value);
+  const candidates = [...new Set(speciesIds)].flatMap((id) => speciesForms(id));
+  const orphans = value.filter((id) => !candidates.some((f) => f.id === id));
+  const set = (next: Set<number>) => onChange([...next].sort((a, b) => a - b));
+
+  if (candidates.length === 0 && orphans.length === 0) {
+    return <p className="text-sm text-slate-500">Les espèces choisies n’ont pas d’autre forme.</p>;
+  }
+  return (
+    <div>
+      {!disabled && (
+        <div className="mb-2 flex flex-wrap gap-2 text-xs">
+          <button
+            type="button"
+            className="btn-ghost px-2 py-1"
+            onClick={() => set(new Set([...value, ...candidates.map((f) => f.id)]))}
+          >
+            Tout
+          </button>
+          <button type="button" className="btn-ghost px-2 py-1" onClick={() => set(new Set())}>
+            Aucune
+          </button>
+          <span className="self-center text-slate-500">{value.length} sélectionnée(s)</span>
+        </div>
+      )}
+      <div className="grid max-h-72 grid-cols-6 gap-1 overflow-y-auto sm:grid-cols-10 lg:grid-cols-14">
+        {candidates.map((f) => {
+          const on = selected.has(f.id);
+          return (
+            <button
+              key={f.id}
+              type="button"
+              disabled={disabled}
+              title={f.nameFr}
+              onClick={() => {
+                const next = new Set(selected);
+                if (on) next.delete(f.id);
+                else next.add(f.id);
+                set(next);
+              }}
+              className={`rounded-lg border p-0.5 transition ${
+                on
+                  ? 'border-brand-500 bg-brand-500/10'
+                  : 'border-transparent opacity-40 grayscale hover:opacity-80'
+              }`}
+            >
+              <Sprite id={f.speciesId} formId={f.id} size={40} />
+            </button>
+          );
+        })}
+      </div>
+      {orphans.length > 0 && (
+        <p className="mt-2 text-xs text-amber-600">
+          Formes d’espèces absentes de la liste : {orphans.join(', ')}
+        </p>
+      )}
+    </div>
+  );
+}
+
 // --- Récapitulatif ----------------------------------------------------------------------------
 
 /** Emplacements et bonus cumulés quand le joueur réclame les récompenses dans l'ordre. */
@@ -310,11 +277,6 @@ function SummaryView() {
   const w = working.data;
   const { ctx } = w;
   const steps = [
-    ...sortedMilestones(ctx).map((m) => ({
-      kind: 'milestone' as const,
-      id: m.id,
-      label: `${m.name} (${m.percent} % ${dexName(w, m.regionId, m.shiny)})`,
-    })),
     ...sortedCollections(ctx).map((c) => ({
       kind: 'collection' as const,
       id: c.id,
@@ -323,21 +285,23 @@ function SummaryView() {
     ...ctx.quests.map((q) => ({ kind: 'quest' as const, id: q.id, label: `Quête « ${q.name} »` })),
   ];
   const ids = {
-    milestone: new Set<string>(),
     collection: new Set<string>(),
     quest: new Set<string>(),
   };
-  const start = playerSlots(ctx, NO_CLAIMS);
+  const { balance } = ctx;
+  const slotsOf = (claimed: typeof NO_CLAIMS) => {
+    const slots = playerSlots(ctx, claimed);
+    return { ...slots, expeditions: Math.min(balance.expeditions.maxSlots, slots.expeditions) };
+  };
+  const start = slotsOf(NO_CLAIMS);
   const rows = steps.map((step) => {
     ids[step.kind].add(step.id);
     const claimed = {
-      milestoneIds: ids.milestone,
       collectionIds: ids.collection,
       questIds: ids.quest,
     };
-    return { ...step, slots: playerSlots(ctx, claimed), bonuses: playerBonuses(ctx, claimed) };
+    return { ...step, slots: slotsOf(claimed), bonuses: playerBonuses(ctx, claimed) };
   });
-  const { balance } = ctx;
 
   return (
     <div className="space-y-4">
@@ -345,7 +309,8 @@ function SummaryView() {
         <h1 className="text-2xl font-bold">Progression : récapitulatif</h1>
         <p className="mt-1 text-slate-500">
           Emplacements et bonus cumulés si le joueur réclame chaque récompense, dans l’ordre
-          (paliers, collections, puis quêtes). Les maxima viennent de l’Équilibrage.
+          (collections, puis quêtes), sans les paliers des Bâtiments. Les maxima viennent de
+          l’Équilibrage.
         </p>
       </div>
       <VersionBanner working={w} />
@@ -355,7 +320,7 @@ function SummaryView() {
             <tr>
               <th className="p-2 font-normal">Récompense réclamée</th>
               <th className="p-2 font-normal">Expéditions (max {balance.expeditions.maxSlots})</th>
-              <th className="p-2 font-normal">Pensions (max {balance.daycare.maxSlots})</th>
+              <th className="p-2 font-normal">Pensions</th>
               <th className="p-2 font-normal">Bonus</th>
             </tr>
           </thead>

@@ -1,4 +1,4 @@
-import type { ItemStack, PurchasePeriod, ShopEntry } from '@poke/content';
+import type { ItemEffect, ItemStack, PurchasePeriod, ShopEntry } from '@poke/content';
 import type { GameContext } from './context';
 import { isUnlocked } from './progress';
 import type { PlayerProgress } from './progress';
@@ -76,6 +76,50 @@ export type ShopEntryState =
 
 export interface ShopEntryStatus extends PurchaseLimitStatus {
   state: ShopEntryState;
+  /** Prix du prochain lot (il augmente à chaque achat d'une parcelle de ferme). */
+  price: number;
+  /** Lots achetables d'un coup : un seul quand le prix augmente à chaque achat. */
+  maxLotsPerPurchase: number;
+}
+
+/** Effet « parcelle de ferme » d'un objet : débloquée à l'achat, sans passer par le sac. */
+export function farmPlotEffect(
+  ctx: GameContext,
+  itemId: string,
+): Extract<ItemEffect, { type: 'farmPlot' }> | null {
+  return (
+    ctx
+      .item(itemId)
+      ?.effects.find(
+        (e): e is Extract<ItemEffect, { type: 'farmPlot' }> => e.type === 'farmPlot',
+      ) ?? null
+  );
+}
+
+/** Prix arrondi à 3 chiffres significatifs (12 345 → 12 300). */
+export function roundPrice(price: number): number {
+  if (price < 1000) return Math.round(price);
+  const step = 10 ** (Math.floor(Math.log10(price)) - 2);
+  return Math.round(price / step) * step;
+}
+
+/** Prix après `bought` achats : premier prix × `growth` par achat, arrondi. */
+export function escalatedPrice(basePrice: number, growth: number, bought: number): number {
+  return roundPrice(basePrice * growth ** bought);
+}
+
+/** Prix du prochain lot : celui du contenu, multiplié à chaque achat pour une parcelle de ferme. */
+export function nextLotPrice(
+  ctx: GameContext,
+  entry: ShopEntry,
+  purchases: readonly ShopPurchaseRecord[],
+): number {
+  const plot = farmPlotEffect(ctx, entry.itemId);
+  if (!plot) return entry.price;
+  const bought = purchases
+    .filter((p) => p.entryId === entry.id)
+    .reduce((sum, p) => sum + p.lots, 0);
+  return escalatedPrice(entry.price, plot.priceGrowth, bought);
 }
 
 export function shopEntryStatus(
@@ -85,7 +129,11 @@ export function shopEntryStatus(
   purchases: readonly ShopPurchaseRecord[],
   now: Date | number,
 ): ShopEntryStatus {
-  const limit = purchaseLimitStatus(entry, purchases, now);
+  const limit = {
+    ...purchaseLimitStatus(entry, purchases, now),
+    price: nextLotPrice(ctx, entry, purchases),
+    maxLotsPerPurchase: farmPlotEffect(ctx, entry.itemId) ? 1 : MAX_LOTS_PER_PURCHASE,
+  };
   if (!isOnSale(ctx, entry, now)) return { state: 'hidden', ...limit };
   if (!isUnlocked(ctx, entry.unlock, progress)) {
     return { state: entry.lockedVisibility === 'hidden' ? 'hidden' : 'locked', ...limit };
@@ -100,14 +148,18 @@ export function purchaseGift(entry: Pick<ShopEntry, 'gift'>, quantity: number): 
   return gift && count > 0 ? { itemId: gift.itemId, quantity: count } : null;
 }
 
-/** Prix, objets reçus et cadeau pour `lots` lots (le prix vient toujours du contenu publié). */
+/**
+ * Prix, objets reçus et cadeau pour `lots` lots (le prix vient toujours du contenu publié ;
+ * `price` = prix du prochain lot, voir `nextLotPrice`).
+ */
 export function purchaseQuote(
   entry: ShopEntry,
   lots: number,
+  price = entry.price,
 ): { totalPrice: number; stack: ItemStack; gift: ItemStack | null } {
   const quantity = entry.lotSize * lots;
   return {
-    totalPrice: entry.price * lots,
+    totalPrice: price * lots,
     stack: { itemId: entry.itemId, quantity },
     gift: purchaseGift(entry, quantity),
   };
@@ -116,11 +168,20 @@ export function purchaseQuote(
 /** Nombre de lots achetables d'un coup avec ce solde (0 si aucun). */
 export function maxPurchasableLots(
   entry: ShopEntry,
-  status: Pick<ShopEntryStatus, 'remainingLots'>,
+  status: Pick<ShopEntryStatus, 'remainingLots'> &
+    Partial<Pick<ShopEntryStatus, 'price' | 'maxLotsPerPurchase'>>,
   currency: number,
 ): number {
-  const affordable = entry.price > 0 ? Math.floor(currency / entry.price) : Infinity;
-  return Math.max(0, Math.min(MAX_LOTS_PER_PURCHASE, affordable, status.remainingLots ?? Infinity));
+  const price = status.price ?? entry.price;
+  const affordable = price > 0 ? Math.floor(currency / price) : Infinity;
+  return Math.max(
+    0,
+    Math.min(
+      status.maxLotsPerPurchase ?? MAX_LOTS_PER_PURCHASE,
+      affordable,
+      status.remainingLots ?? Infinity,
+    ),
+  );
 }
 
 export type PurchaseCheck =
@@ -158,7 +219,16 @@ export function checkPurchase(
       nextLotsAt: status.nextLotsAt,
     };
   }
-  const quote = purchaseQuote(entry, lots);
+  // Prix croissant : un lot à la fois, chacun à son prix.
+  if (lots > status.maxLotsPerPurchase) {
+    return {
+      ok: false,
+      error: 'LIMIT_REACHED',
+      remainingLots: Math.min(status.maxLotsPerPurchase, status.remainingLots ?? Infinity),
+      nextLotsAt: null,
+    };
+  }
+  const quote = purchaseQuote(entry, lots, status.price);
   if (quote.totalPrice > input.currency) {
     return { ok: false, error: 'NOT_ENOUGH_MONEY', totalPrice: quote.totalPrice };
   }

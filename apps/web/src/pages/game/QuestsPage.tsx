@@ -89,7 +89,8 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
     ? Date.parse(expeditions.data.serverTime) - expeditions.dataUpdatedAt
     : 0;
   const active = expeditions.data?.active ?? [];
-  const freeSlot = active.length < (expeditions.data?.slots ?? 0);
+  const slots = expeditions.data?.slots ?? 0;
+  const freeSlot = active.filter((e) => e.slotIndex < slots).length < slots;
   /** Pokémon à capturer en expédition légendaire : récompense réclamée, pas encore capturé. */
   const targetOf = (q: Quest) => {
     const state = byId.get(q.id);
@@ -282,6 +283,15 @@ function QuestCard({
                         {step.description || questConditionText(ctx, condition)}
                       </p>
                     )}
+                    {current &&
+                      condition.type === 'catchPokemon' &&
+                      !condition.zoneId &&
+                      quest.regionId && (
+                        <p className="text-xs text-slate-500">
+                          Captures comptées uniquement à{' '}
+                          {ctx.region(quest.regionId)?.name ?? quest.regionId}.
+                        </p>
+                      )}
                     {current && target !== null && target > 1 && (
                       <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
                         <ProgressBar className="flex-1" value={(state?.count ?? 0) / target} />

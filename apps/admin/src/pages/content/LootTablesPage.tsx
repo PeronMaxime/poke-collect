@@ -1,9 +1,48 @@
 import { lootTableSchema } from '@poke/content';
 import type { LootEntry, LootTable } from '@poke/content';
 import { EntityPage } from '../../components/EntityPage';
-import type { EntityFormProps } from '../../components/EntityPage';
+import type { EntityFormProps, ListFilter } from '../../components/EntityPage';
 import { Field, NumberInput, Section, TextInput, errorsUnder } from '../../components/forms/fields';
 import { ItemIcon, ItemSelect } from '../../components/forms/pickers';
+import type { WorkingVersion } from '../../lib/content';
+
+/** Valeur du filtre pour les tables utilisées par aucune zone ni aucun donjon. */
+const NO_REGION = '-';
+
+/** Régions des zones et donjons qui utilisent la table. */
+function tableRegions(t: LootTable, w: WorkingVersion): Set<string> {
+  return new Set(
+    [...w.content.zones, ...w.content.dungeons]
+      .filter((e) => e.lootTableId === t.id)
+      .map((e) => e.regionId),
+  );
+}
+
+const regionFilter: ListFilter<LootTable> = {
+  label: 'Région',
+  allLabel: 'Toutes les régions',
+  options: (w) => [
+    ...w.ctx.regions.map((r) => ({ value: r.id, label: r.name })),
+    { value: NO_REGION, label: 'Non utilisées' },
+  ],
+  matches: (t, value, w) => {
+    const regions = tableRegions(t, w);
+    return value === NO_REGION ? regions.size === 0 : regions.has(value);
+  },
+};
+
+/**
+ * Ordre des expéditions : celui de la première zone qui utilise la table (région, puis ordre de la
+ * zone) ; les tables sans zone viennent ensuite, dans leur ordre d'origine.
+ */
+function byExpeditionOrder(w: WorkingVersion): LootTable[] {
+  const rank = new Map<string, number>();
+  w.ctx.zones.forEach((z, i) => {
+    if (z.lootTableId && !rank.has(z.lootTableId)) rank.set(z.lootTableId, i);
+  });
+  const rankOf = (t: LootTable) => rank.get(t.id) ?? Number.MAX_SAFE_INTEGER;
+  return [...w.content.lootTables].sort((a, b) => rankOf(a) - rankOf(b));
+}
 
 export function LootTablesPage() {
   return (
@@ -13,14 +52,17 @@ export function LootTablesPage() {
       collection="loot-tables"
       entityKind="lootTable"
       schema={lootTableSchema}
-      list={(w) => w.content.lootTables}
+      list={byExpeditionOrder}
+      listFilter={regionFilter}
       getKey={(t) => t.id}
       searchText={(t) => `${t.id} ${t.name}`}
       renderListItem={(t, w) => (
         <>
           <span className="block truncate font-medium">{t.name}</span>
           <span className="block text-xs text-slate-500">
-            {t.entries.length} entrée(s) ·{' '}
+            {[...tableRegions(t, w)].map((id) => w.ctx.region(id)?.name ?? id).join(', ') ||
+              'Non utilisée'}{' '}
+            · {t.entries.length} entrée(s) ·{' '}
             {w.content.zones.filter((z) => z.lootTableId === t.id).length} zone(s)
           </span>
         </>

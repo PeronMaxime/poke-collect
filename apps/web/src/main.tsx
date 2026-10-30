@@ -7,6 +7,7 @@ import { UpdatePrompt } from './components/UpdatePrompt';
 import { logError } from './lib/log';
 import { registerServiceWorker } from './lib/pwa';
 import { adoptTabProfileFromUrl } from './lib/tab-profile';
+import { watchTheme } from './lib/theme';
 import './index.css';
 
 const queryClient = new QueryClient({
@@ -24,6 +25,7 @@ window.addEventListener('error', (e) => logError('Erreur non interceptée', e.er
 window.addEventListener('unhandledrejection', (e) => logError('Promesse rejetée', e.reason));
 registerServiceWorker();
 adoptTabProfileFromUrl();
+watchTheme();
 
 createRoot(document.getElementById('root')!, {
   onCaughtError: (error, info) => logError('Rendu', error, { componentStack: info.componentStack }),

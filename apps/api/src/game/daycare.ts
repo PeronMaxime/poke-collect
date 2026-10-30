@@ -13,11 +13,10 @@ import {
   hatchMinutes,
   isTransferableSpecies,
   lineageId,
-  playerSlots,
   resolveEgg,
   transferCandies,
 } from '@poke/game-core';
-import type { AbilityHolder, ClaimedRewards, DaycareParent, GameContext } from '@poke/game-core';
+import type { AbilityHolder, DaycareParent, GameContext } from '@poke/game-core';
 import type { DaycareDto, DepositDaycareInput, EggDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { assistantHolder, assistantHolders } from './assistants';
@@ -26,11 +25,11 @@ import { recordGuildActivity } from './guilds';
 import {
   addItems,
   assertAvailable,
-  claimedRewards,
   insertPokemon,
+  playerFacilityPlaces,
   pokemonActivities,
   recordPokedex,
-  shinyCharm,
+  shinyBoost,
   takeItems,
   toInstance,
 } from './store';
@@ -40,11 +39,6 @@ import type { PokemonRow } from './store';
 
 export type DaycareRow = typeof daycareSlots.$inferSelect;
 export type EggRow = typeof eggs.$inferSelect;
-
-/** Nombre de pensions du joueur (départ + paliers et collections réclamés). */
-export function daycareSlotCount(ctx: GameContext, claimed: ClaimedRewards): number {
-  return playerSlots(ctx, claimed).daycare;
-}
 
 export function toEggDto(row: EggRow): EggDto {
   return {
@@ -151,7 +145,7 @@ export async function depositDaycare(
           .where(eq(daycareSlots.ownerId, userId))
       ).map((s) => s.slotIndex),
     );
-    const slots = daycareSlotCount(ctx, await claimedRewards(tx, userId));
+    const slots = await playerFacilityPlaces(tx, ctx, userId, 'daycare');
     if (input.slotIndex !== undefined && input.slotIndex >= slots) {
       throw new GameError(400, 'NO_SUCH_SLOT');
     }
@@ -195,9 +189,10 @@ export async function depositDaycare(
 }
 
 /**
- * Ramasse les œufs pondus dans une pension (dans la limite de la couveuse). Les œufs qui
- * n'y tiennent pas restent en attente dans la pension, jusqu'à `maxEggs` ; au-delà, ils
- * sont perdus. Les parents sont figés dans chaque œuf au moment de la ponte.
+ * Ramasse les œufs pondus dans une pension (dans la limite des couveuses). Les œufs qui
+ * n'y tiennent pas restent en attente dans la pension, jusqu'à `maxEggs` : une fois pleine,
+ * la pension arrête de pondre jusqu'au prochain ramassage. Les parents sont figés dans
+ * chaque œuf au moment de la ponte.
  */
 async function collectInTx(
   tx: Db,
@@ -205,7 +200,7 @@ async function collectInTx(
   userId: string,
   slot: DaycareRow,
   now: Date,
-): Promise<{ eggs: EggRow[]; lost: number; laid: number }> {
+): Promise<{ eggs: EggRow[]; waiting: number; laid: number }> {
   const { maxEggs } = ctx.balance.breeding;
   const parents = await ownedPokemon(
     tx,
@@ -218,10 +213,10 @@ async function collectInTx(
   const eggMinutes = slotEggMinutes(ctx, [a, b], helper);
   const laid = eggsLaid(ctx, slot.startedAt, now, eggMinutes);
   const waiting = Math.min(laid, maxEggs);
-  const lost = laid - waiting;
-  if (waiting === 0) return { eggs: [], lost: 0, laid };
+  if (waiting === 0) return { eggs: [], waiting, laid };
 
-  // Places libres de la couveuse, dans l'ordre : chaque œuf en prend une.
+  // Places libres des couveuses, dans l'ordre : chaque œuf en prend une.
+  const capacity = await playerFacilityPlaces(tx, ctx, userId, 'incubator');
   const taken = new Set(
     (
       await tx
@@ -230,20 +225,23 @@ async function collectInTx(
         .where(and(eq(eggs.ownerId, userId), eq(eggs.hatched, false)))
     ).map((r) => r.slot),
   );
-  const places = Array.from({ length: maxEggs }, (_, i) => i)
+  const places = Array.from({ length: capacity }, (_, i) => i)
     .filter((i) => !taken.has(i))
     .slice(0, waiting);
   const collected = places.length;
-  if (collected === 0) return { eggs: [], lost: 0, laid };
+  if (collected === 0) return { eggs: [], waiting, laid };
 
   if (!a || !b) throw new GameError(409, 'PARENT_MISSING');
   const check = checkBreedingPair(ctx, a, b);
   if (!check.ok) throw new GameError(409, 'INCOMPATIBLE_PARENTS', { errors: check.errors });
 
-  // Nouveau début de cycle : on garde les œufs restés en attente et le temps entamé.
+  // Nouveau début de cycle : on garde les œufs restés en attente et le temps entamé. Pension
+  // pleine : la ponte s'était arrêtée, elle reprend maintenant (sans temps entamé).
   const cycleMs = eggMinutes * 60_000;
-  const consumed = lost + collected;
-  const nextStart = new Date(slot.startedAt.getTime() + consumed * cycleMs);
+  const nextStart =
+    laid >= maxEggs
+      ? new Date(now.getTime() - (waiting - collected) * cycleMs)
+      : new Date(slot.startedAt.getTime() + collected * cycleMs);
   const [locked] = await tx
     .update(daycareSlots)
     .set({ startedAt: nextStart })
@@ -289,7 +287,7 @@ async function collectInTx(
       })),
     )
     .returning();
-  return { eggs: created, lost, laid };
+  return { eggs: created, waiting: waiting - collected, laid };
 }
 
 async function requireSlot(db: Db, userId: string, slotIndex: number): Promise<DaycareRow> {
@@ -336,11 +334,11 @@ export async function withdrawDaycare(
       ? await collectInTx(tx, ctx, userId, slot, now).catch((err: unknown) => {
           // Couple devenu incompatible (contenu modifié) : on retire sans ramasser.
           if (err instanceof GameError && err.code === 'INCOMPATIBLE_PARENTS') {
-            return { eggs: [], lost: 0 };
+            return { eggs: [], waiting: 0 };
           }
           throw err;
         })
-      : { eggs: [], lost: 0 };
+      : { eggs: [], waiting: 0 };
     const deleted = await tx.delete(daycareSlots).where(eq(daycareSlots.id, slot.id)).returning();
     if (deleted.length === 0) throw new GameError(409, 'DAYCARE_EMPTY');
     await addItems(
@@ -378,8 +376,8 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
     ready.sort((x, y) => x.hatchAt.getTime() - y.hatchAt.getTime() || x.id.localeCompare(y.id));
 
     const hatched: PokemonRow[] = [];
-    // Charme Chroma possédé à l'éclosion (effet lu dans la version publiée).
-    const charm = await shinyCharm(tx, published, userId);
+    // Charme Chroma possédé et bonus de chance shiny à l'éclosion (lus dans la version publiée).
+    const charm = await shinyBoost(tx, published, userId);
     for (const egg of ready) {
       const ctx = await content.version(egg.contentVersionId);
       const child = resolveEgg(ctx, {

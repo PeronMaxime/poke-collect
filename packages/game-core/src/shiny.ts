@@ -13,6 +13,8 @@ export interface ShinyFactors {
   charm?: number;
   /** Éclosion : parents d'origines différentes (méthode Masuda). */
   masuda?: boolean;
+  /** Bonus permanent de chance shiny du joueur (récompenses : complétions…), 1 = aucun. */
+  bonus?: number;
 }
 
 /** Au-delà, la chaîne n'augmente plus (le multiplicateur est plafonné bien avant). */
@@ -37,7 +39,8 @@ export function shinyMultiplier(ctx: GameContext, factors: ShinyFactors = {}): n
   return (
     chainMultiplier(ctx, factors.chain ?? 0) *
     (factors.charm ?? 1) *
-    (factors.masuda ? ctx.balance.shiny.masudaMultiplier : 1)
+    (factors.masuda ? ctx.balance.shiny.masudaMultiplier : 1) *
+    (factors.bonus ?? 1)
   );
 }
 

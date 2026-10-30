@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
-import { createDb, ensureSeedContent, users } from '@poke/db';
+import { createDb, ensureSeedContent, trainerProgress, users } from '@poke/db';
 import type {
   FossilRevivalDto,
   InventoryEntryDto,
@@ -73,6 +73,22 @@ describe('Musée', () => {
       { itemId: 'helix-fossil', quantity: 2 },
       { itemId: 'old-amber', quantity: 1 },
     ]);
+  });
+
+  it('reste fermé avant le 3e badge de Kanto', async () => {
+    const deposit = () => call('POST', '/api/museum', { itemId: 'helix-fossil' });
+    expect((await deposit()).body).toMatchObject({ error: 'TAB_LOCKED', tab: 'museum' });
+    // Badges de Pierre, Ondine et Major Bob : le Musée ouvre.
+    await handle.db.insert(trainerProgress).values(
+      ['pierre', 'ondine', 'major-bob'].map((trainerId) => ({
+        ownerId: userId,
+        trainerId,
+        wins: 1,
+      })),
+    );
+    expect((await call('POST', '/api/museum', { itemId: 'poke-ball' })).body).toMatchObject({
+      error: 'NOT_A_FOSSIL',
+    });
   });
 
   it('refuse un objet qui n’est pas un fossile, ou absent du sac', async () => {

@@ -73,8 +73,8 @@ function virtualPokemon(
   };
 }
 
-/** Réglage gardé dans ce navigateur (PC fictif, favoris) ; sans stockage, il vaut pour la session. */
-function useStored<T>(key: string, initial: T) {
+/** Réglage gardé dans ce navigateur (PC fictif, favoris, équipes du calculateur de PE). */
+export function useStored<T>(key: string, initial: T) {
   const [value, setValue] = useState<T>(() => {
     try {
       const raw = localStorage.getItem(key);

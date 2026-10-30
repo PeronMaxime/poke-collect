@@ -21,6 +21,7 @@ import {
   guildWeeklyQuests,
   guilds,
   playerProfiles,
+  users,
 } from '@poke/db';
 import type { Db } from '@poke/db';
 import { CHEST_RARITY_LABELS, GUILD_QUEST_PERIODS } from '@poke/content';
@@ -37,6 +38,7 @@ import {
   openGuildChests,
 } from '@poke/game-core';
 import type { GameContext, GuildActivity, GuildRole } from '@poke/game-core';
+import { ONLINE_WINDOW_MS } from '@poke/shared';
 import type {
   AdminGuildQuestsResetResponse,
   CreateGuildInput,
@@ -669,9 +671,11 @@ async function guildDto(
         role: guildMembers.role,
         joinedAt: guildMembers.joinedAt,
         trainerName: playerProfiles.trainerName,
+        lastSeenAt: users.lastSeenAt,
       })
       .from(guildMembers)
       .innerJoin(playerProfiles, eq(playerProfiles.userId, guildMembers.userId))
+      .innerJoin(users, eq(users.id, guildMembers.userId))
       .where(eq(guildMembers.guildId, guildId)),
     currentQuests(db, ctx, guildId, now),
     // Quêtes de la semaine et quêtes du jour depuis lundi (périodes identifiées par leur date).
@@ -697,8 +701,6 @@ async function guildDto(
           .orderBy(guildJoinRequests.createdAt),
   ]);
   if (!guild) throw new GameError(404, 'NOT_IN_GUILD');
-  const weekTotal = new Map<string, number>();
-  for (const c of contributions) weekTotal.set(c.userId, (weekTotal.get(c.userId) ?? 0) + c.amount);
   members.sort(
     (a, b) => ROLE_RANK[a.role] - ROLE_RANK[b.role] || a.joinedAt.getTime() - b.joinedAt.getTime(),
   );
@@ -714,8 +716,10 @@ async function guildDto(
       trainerName: m.trainerName,
       role: m.role,
       joinedAt: m.joinedAt.toISOString(),
-      weekContribution: weekTotal.get(m.userId) ?? 0,
       isMe: m.userId === member.userId,
+      online:
+        m.userId === member.userId ||
+        (!!m.lastSeenAt && now.getTime() - m.lastSeenAt.getTime() < ONLINE_WINDOW_MS),
     })),
     requests: requests.map((r) => ({
       trainerName: r.trainerName,

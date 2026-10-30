@@ -22,7 +22,6 @@ const ISSUE_SECTIONS: Record<ContentEntityKind, { path: string; label: string }>
   shopCategory: { path: '/shop', label: 'Boutique (catégories)' },
   shopEntry: { path: '/shop', label: 'Boutique (articles)' },
   evolutionOverride: { path: '/evolutions', label: 'Évolutions' },
-  dexMilestone: { path: '/progression', label: 'Progression (paliers)' },
   collection: { path: '/progression', label: 'Progression (collections)' },
   quest: { path: '/quests', label: 'Quêtes' },
   guildQuest: { path: '/guilds', label: 'Guildes (quêtes)' },

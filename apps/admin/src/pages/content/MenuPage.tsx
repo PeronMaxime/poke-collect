@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import { DEFAULT_MENU_GROUPS, MENU_TABS, normalizeMenuGroups } from '@poke/content';
-import type { MenuTabId } from '@poke/content';
+import type { MenuTabId, TabUnlocks, UnlockCondition } from '@poke/content';
 import { VersionBanner } from '../../components/EntityPage';
+import { UnlockEditor } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
 import { errorMessage, useSaveBalance, useWorkingVersion } from '../../lib/content';
 
@@ -29,11 +30,15 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
   const balance = working.content.balance;
   const initial = normalizeMenuGroups(balance.menu?.groups);
   const [groups, setGroups] = useState<MenuTabId[][]>(initial);
+  const initialUnlocks = balance.tabUnlocks ?? {};
+  const [unlocks, setUnlocks] = useState<TabUnlocks>(initialUnlocks);
   const [drag, setDrag] = useState<Drag | null>(null);
   const [target, setTarget] = useState<Target | null>(null);
   const save = useSaveBalance(working.version.id);
   const editable = working.editable;
-  const dirty = JSON.stringify(groups) !== JSON.stringify(initial);
+  const dirty =
+    JSON.stringify(groups) !== JSON.stringify(initial) ||
+    JSON.stringify(unlocks) !== JSON.stringify(initialUnlocks);
   const isDefault = JSON.stringify(groups) === JSON.stringify(DEFAULT_MENU_GROUPS);
 
   function endDrag() {
@@ -115,13 +120,20 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
             >
               Menu par défaut
             </button>
-            <button className="btn-ghost" disabled={!dirty} onClick={() => setGroups(initial)}>
+            <button
+              className="btn-ghost"
+              disabled={!dirty}
+              onClick={() => {
+                setGroups(initial);
+                setUnlocks(initialUnlocks);
+              }}
+            >
               Annuler
             </button>
             <button
               className="btn-primary"
               disabled={!dirty || save.isPending}
-              onClick={() => save.mutate({ ...balance, menu: { groups } })}
+              onClick={() => save.mutate({ ...balance, menu: { groups }, tabUnlocks: unlocks })}
             >
               Enregistrer
             </button>
@@ -243,6 +255,33 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
           </div>
         </div>
       </div>
+
+      <section className="space-y-2">
+        <h2 className="text-lg font-semibold">Déblocage des onglets</h2>
+        <p className="text-sm text-slate-500">
+          Un onglet verrouillé s’affiche « ??? » avec un cadenas dans le menu et ne s’ouvre pas ; sa
+          condition apparaît au survol (au toucher sur mobile). Il reste ouvert au joueur qui y a
+          encore quelque chose en cours (œufs, fossiles, baies, donjon, quête commencée).
+        </p>
+        <div className="divide-y divide-slate-200 rounded-lg border border-slate-200 bg-white dark:divide-slate-800 dark:border-slate-800 dark:bg-slate-900">
+          {MENU_TABS.map(({ id, label }) => (
+            <div key={id} className="flex flex-wrap items-center gap-3 px-3 py-2">
+              <span className="w-36 text-sm font-medium">{label}</span>
+              <UnlockEditor
+                value={unlocks[id] ?? { type: 'always' }}
+                onChange={(v: UnlockCondition) => {
+                  const { [id]: _previous, ...rest } = unlocks;
+                  setUnlocks(v.type === 'always' ? rest : { ...rest, [id]: v });
+                }}
+                regions={working.content.regions}
+                trainers={working.content.trainers}
+                quests={working.content.quests}
+                disabled={!editable}
+              />
+            </div>
+          ))}
+        </div>
+      </section>
     </div>
   );
 }

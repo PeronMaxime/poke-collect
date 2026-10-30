@@ -19,7 +19,6 @@ export type EntityCollection =
   | 'shop-categories'
   | 'shop-entries'
   | 'evolutions'
-  | 'dex-milestones'
   | 'collections'
   | 'quests'
   | 'guild-quests'

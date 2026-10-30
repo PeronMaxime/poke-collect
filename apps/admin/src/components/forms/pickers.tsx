@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { WEATHERS } from '@poke/content';
+import { ITEM_CATEGORIES, WEATHERS } from '@poke/content';
 import type {
   BaseUnlockCondition,
+  ItemCategory,
   Quest,
   Region,
   Trainer,
@@ -34,7 +35,6 @@ const FORM_KINDS: [FormKind, string][] = [
   ['primal', 'Primo-Résurgences'],
   ['gmax', 'Gigamax'],
   ['battle', 'Formes de combat'],
-  ['totem', 'Pokémon Dominants'],
 ];
 
 const typeNames = new Map(types.map((t) => [t.name, t.nameFr]));
@@ -348,7 +348,23 @@ export function TypeSelect({
   );
 }
 
-/** Objet du catalogue du contenu (optionnellement filtré, ex. Balls uniquement). */
+/** Séparateurs du sélecteur d'objets, dans l'ordre des catégories du contenu. */
+const ITEM_GROUP_LABELS: Record<ItemCategory, string> = {
+  ball: 'Balls',
+  berry: 'Baies',
+  evolution: 'Évolution',
+  breeding: 'Élevage',
+  endgame: 'Endgame',
+  fossil: 'Fossiles',
+  megaStone: 'Méga-Gemmes',
+  chest: 'Coffres',
+  misc: 'Divers',
+};
+
+/**
+ * Objet du catalogue du contenu (optionnellement filtré, ex. Balls uniquement),
+ * regroupé par catégorie et trié par ordre alphabétique.
+ */
 export function ItemSelect({
   ctx,
   value,
@@ -379,11 +395,22 @@ export function ItemSelect({
           <option value="">{allowNone ? 'Aucun' : 'Choisir…'}</option>
         )}
         {!known && <option value={value}>{value} (inconnu)</option>}
-        {items.map((i) => (
-          <option key={i.id} value={i.id}>
-            {i.name} ({i.id})
-          </option>
-        ))}
+        {ITEM_CATEGORIES.map((category) => {
+          const group = items
+            .filter((i) => i.category === category)
+            .sort((a, b) => a.name.localeCompare(b.name, 'fr'));
+          return (
+            group.length > 0 && (
+              <optgroup key={category} label={ITEM_GROUP_LABELS[category]}>
+                {group.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.name} ({i.id})
+                  </option>
+                ))}
+              </optgroup>
+            )
+          );
+        })}
       </select>
     </div>
   );
@@ -420,6 +447,8 @@ export function UnlockEditor({
         return { type, regionId: regions[0]?.id ?? '', percent: 10 };
       case 'trainerDefeated':
         return { type, trainerId: trainers[0]?.id ?? '' };
+      case 'regionUnlocked':
+        return { type, regionId: regions[0]?.id ?? '' };
       case 'badgeCount':
       case 'speciesCaught':
       case 'eggsHatched':
@@ -455,6 +484,7 @@ export function UnlockEditor({
         <option value="trainerDefeated" disabled={trainers.length === 0}>
           Avoir battu un dresseur
         </option>
+        <option value="regionUnlocked">Région débloquée</option>
         <option value="badgeCount">Nombre de badges</option>
         <option value="speciesCaught">Nombre d’espèces capturées</option>
         <option value="eggsHatched">Nombre d’œufs éclos</option>
@@ -560,6 +590,24 @@ export function UnlockEditor({
             ))}
           </select>
         </>
+      )}
+      {value.type === 'regionUnlocked' && (
+        <select
+          className="input w-auto"
+          value={value.regionId}
+          disabled={disabled}
+          onChange={(e) => onChange({ ...value, regionId: e.target.value })}
+        >
+          {!regions.some((r) => r.id === value.regionId) && (
+            <option value={value.regionId}>{value.regionId || '—'} (inconnue)</option>
+          )}
+          {regions.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+              {r.enabled ? '' : ' (désactivée)'}
+            </option>
+          ))}
+        </select>
       )}
       {value.type === 'trainerDefeated' && (
         <select

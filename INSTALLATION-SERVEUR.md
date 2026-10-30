@@ -183,7 +183,22 @@ MAIL_FROM=Dexpedition <contact@mondomaine.fr>
 ```
 
 Dans l'URL, le `@` de l'adresse s'écrit `%40` ; dans le mot de passe, encoder aussi `@` → `%40`,
-`:` → `%3A`, `/` → `%2F`. Pas de DNS à ajouter : OVH gère déjà le SPF du domaine. Après une
+`:` → `%3A`, `/` → `%2F`. Pour ne pas se tromper, ce script teste les identifiants chez OVH puis
+affiche le mot de passe encodé (saisie masquée, rien dans l'historique ; ne pas passer le mot de
+passe dans une commande entre guillemets doubles, le shell modifierait `$`, `!` ou `\`) :
+
+```bash
+python3 - <<'PY'
+import getpass, smtplib, urllib.parse
+pw = getpass.getpass('Mot de passe de la boîte : ')
+with smtplib.SMTP_SSL('ssl0.ovh.net', 465) as s:
+    s.login('contact@mondomaine.fr', pw)
+print('Identifiants OK. Mot de passe encodé :')
+print(urllib.parse.quote(pw, safe=''))
+PY
+```
+
+Pas de DNS à ajouter : OVH gère déjà le SPF du domaine. Après une
 modification du `.env` sur un serveur déjà lancé, recréer l'API pour qu'elle le relise
 (`restart` ne suffit pas) :
 

@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { BattleRules, Trainer } from '@poke/content';
-import { trainerPower, trainerStatus } from '@poke/game-core';
+import { trainerStatus } from '@poke/game-core';
 import type { GameContext, TrainerStatus } from '@poke/game-core';
 import type { BattleDto, ClaimBattleResponse, TrainerRecordDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge, useNow } from '../../components/ui';
@@ -459,9 +459,6 @@ function TrainerCard(props: TrainerCardProps) {
         <div className="min-w-0 flex-1">
           <TrainerHeading {...props} />
         </div>
-        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-          PE {trainerPower(ctx, trainer)}
-        </span>
       </div>
       <TrainerTeam ctx={ctx} trainer={trainer} locked={locked} />
       <TrainerRewards ctx={ctx} trainer={trainer} />
@@ -556,12 +553,7 @@ function FeaturedTrainerCard(
         </div>
 
         <div className="min-w-0 flex-1 space-y-2">
-          <div className="flex flex-wrap items-start justify-between gap-2">
-            <TrainerHeading {...props} large />
-            <span className="shrink-0 rounded-full bg-white/80 px-2 py-0.5 text-xs text-slate-600 shadow-sm dark:bg-slate-800 dark:text-slate-300">
-              PE {trainerPower(ctx, trainer)}
-            </span>
-          </div>
+          <TrainerHeading {...props} large />
           <TrainerTeam ctx={ctx} trainer={trainer} locked={locked} size={56} />
           <TrainerRules rules={trainer.rules} />
         </div>

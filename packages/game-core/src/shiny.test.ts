@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest';
 import { resolveEgg } from './breeding';
 import type { DaycareParent } from './breeding';
 import { perfectIvCount, resolveExpedition } from './expedition';
-import { isMilestoneReached } from './progression';
 import {
   chainMultiplier,
   chainPerfectIvs,
@@ -162,14 +161,5 @@ describe('élevage et Pokédex shiny', () => {
     // 1/12 × 4 × 3 = 100 % : tous les œufs sont shiny.
     expect(egg([parent('kanto', 'male'), parent('johto', 'female')], 3)).toBe(40);
     expect(same).toBeLessThan(40);
-  });
-
-  it('mesure les paliers shiny sur les captures shiny', () => {
-    const milestone = ctx.content.dexMilestones.find((m) => m.id === 'kanto-shiny-5')!;
-    const ids = new Set([...Array(8).keys()].map((i) => i + 1));
-    expect(isMilestoneReached(ctx, milestone, { caughtSpeciesIds: ids })).toBe(false);
-    expect(
-      isMilestoneReached(ctx, milestone, { caughtSpeciesIds: ids, caughtShinySpeciesIds: ids }),
-    ).toBe(true);
   });
 });

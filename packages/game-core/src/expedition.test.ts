@@ -97,7 +97,7 @@ describe('checkTeam', () => {
     const errors = checkTeam(ctx, azuria, 15, weak).errors.map((e) => e.code);
     expect(errors).toEqual(['DURATION_NOT_ALLOWED', 'POWER_TOO_LOW', 'MISSING_TYPES']);
 
-    const strong = [member('a', 7, 30), member('b', 1, 30)];
+    const strong = [member('a', 7, 50), member('b', 1, 50)];
     const ok = checkTeam(ctx, azuria, 60, strong);
     expect(ok.errors).toEqual([]);
     expect(ok.affinityCount).toBe(1);
@@ -226,7 +226,7 @@ describe('resolveExpedition', () => {
 
   it('donne du butin, de l’XP et du bonheur', () => {
     const result = resolveExpedition(ctx, input);
-    const lootIds = new Set(ctx.lootTable('butin-route')!.entries.map((e) => e.itemId));
+    const lootIds = new Set(ctx.lootTable(route1.lootTableId!)!.entries.map((e) => e.itemId));
     for (const stack of result.loot) expect(lootIds.has(stack.itemId)).toBe(true);
     const [starter] = result.team;
     expect(starter!.xpGained).toBe(result.xpPerMember);

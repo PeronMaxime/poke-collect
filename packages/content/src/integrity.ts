@@ -3,17 +3,20 @@ import {
   getForm,
   getSpecies,
   natures,
+  pokemonTypes,
   types as typeData,
 } from '@poke/data';
 import {
   CHEST_RARITIES,
   CHEST_RARITY_LABELS,
+  FACILITIES,
   GUILD_QUEST_DIFFICULTIES,
   GUILD_QUEST_DIFFICULTY_LABELS,
   GUILD_QUEST_PERIODS,
   gameContentStructureSchema,
   isRoamingZone,
   lowestUnitPrice,
+  MENU_TABS,
   unlockParts,
 } from './schemas';
 import type {
@@ -54,7 +57,6 @@ export type ContentEntityKind =
   | 'shopCategory'
   | 'shopEntry'
   | 'evolutionOverride'
-  | 'dexMilestone'
   | 'collection'
   | 'quest'
   | 'guildQuest'
@@ -126,8 +128,6 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     add('error', 'shopEntry', id, 'Identifiant d’article de boutique en double');
   for (const id of duplicates(content.evolutionOverrides.map((o) => o.id)))
     add('error', 'evolutionOverride', id, 'Surcharge d’évolution en double');
-  for (const id of duplicates(content.dexMilestones.map((m) => m.id)))
-    add('error', 'dexMilestone', id, 'Identifiant de palier en double');
   for (const id of duplicates(content.collections.map((c) => c.id)))
     add('error', 'collection', id, 'Identifiant de collection en double');
   for (const id of duplicates(content.quests.map((q) => q.id)))
@@ -140,8 +140,14 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     add('error', 'chestEntry', id, 'Identifiant de lot de coffre en double');
 
   const checkUnlockPart = (entity: ContentEntityKind, id: string, unlock: BaseUnlockCondition) => {
-    if (unlock.type === 'regionDexPercent' && !regionIds.has(unlock.regionId)) {
+    if (
+      (unlock.type === 'regionDexPercent' || unlock.type === 'regionUnlocked') &&
+      !regionIds.has(unlock.regionId)
+    ) {
       add('error', entity, id, `Condition de déblocage : région « ${unlock.regionId} » inconnue`);
+    }
+    if (unlock.type === 'regionUnlocked' && entity === 'region' && unlock.regionId === id) {
+      add('error', entity, id, 'Condition de déblocage : la région dépend d’elle-même');
     }
     if (unlock.type === 'trainerDefeated') {
       if (!trainerIds.has(unlock.trainerId)) {
@@ -207,7 +213,12 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   const { balance } = content;
 
   /** Condition d'étape de quête : brique de déblocage ou action (captures, expédition). */
-  const checkQuestCondition = (id: string, step: number, condition: QuestCondition) => {
+  const checkQuestCondition = (
+    id: string,
+    regionId: string | null,
+    step: number,
+    condition: QuestCondition,
+  ) => {
     const report = (severity: ContentIssue['severity'], message: string) =>
       add(severity, 'quest', id, `Étape ${step + 1} : ${message}`);
     switch (condition.type) {
@@ -215,16 +226,43 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
         if (condition.pokemonType && !KNOWN_TYPES.has(condition.pokemonType)) {
           report('error', `type « ${condition.pokemonType} » inconnu`);
         }
-        if (condition.speciesId === null) break;
+        const zone = condition.zoneId
+          ? content.zones.find((z) => z.id === condition.zoneId)
+          : undefined;
+        if (condition.zoneId && !zone) report('error', `zone « ${condition.zoneId} » inconnue`);
+        // Sans zone précise, les captures ne comptent que dans la région de la quête.
+        const places = zone
+          ? [zone]
+          : content.zones.filter((z) => regionId === null || z.regionId === regionId);
+        const where = zone
+          ? zone.name
+          : regionId === null
+            ? 'aucune zone'
+            : `la région ${regionId}`;
+        if (condition.speciesId === null) {
+          if (
+            (zone || !condition.zoneId) &&
+            condition.pokemonType &&
+            !places.some((z) =>
+              z.encounters.some((e) =>
+                pokemonTypes(e.speciesId, e.formId).includes(condition.pokemonType!),
+              ),
+            )
+          ) {
+            report('warning', `aucun Pokémon du type demandé n’apparaît dans ${where}`);
+          }
+          break;
+        }
         const species = getSpecies(condition.speciesId);
         if (!species) {
           report('error', `espèce ${condition.speciesId} inconnue`);
         } else if (condition.pokemonType && !species.types.includes(condition.pokemonType)) {
           report('error', `${species.nameFr} n’est pas du type demandé`);
         } else if (
-          !content.zones.some((z) => z.encounters.some((e) => e.speciesId === species.id))
+          (zone || !condition.zoneId) &&
+          !places.some((z) => z.encounters.some((e) => e.speciesId === species.id))
         ) {
-          report('warning', `${species.nameFr} n’apparaît dans aucune zone`);
+          report('warning', `${species.nameFr} n’apparaît pas dans ${where}`);
         }
         break;
       }
@@ -257,9 +295,6 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   // Équilibrage
   if (balance.expeditions.initialSlots > balance.expeditions.maxSlots) {
     add('error', 'balance', null, 'Expéditions : emplacements initiaux > maximum');
-  }
-  if (balance.daycare.initialSlots > balance.daycare.maxSlots) {
-    add('error', 'balance', null, 'Pensions : emplacements initiaux > maximum');
   }
   if (balance.combat.minAttackIntervalMs > balance.combat.maxAttackIntervalMs) {
     add('error', 'balance', null, 'Combat : délai minimal entre deux attaques > maximal');
@@ -304,6 +339,26 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     add('warning', 'item', null, 'Aucun objet n’a l’effet « Ball » : capture impossible');
   if (!balance.newPlayer.startingInventory.some((s) => ballIds.has(s.itemId))) {
     add('warning', 'balance', null, 'Les nouveaux joueurs ne reçoivent aucune Ball');
+  }
+
+  for (const [tab, unlock] of Object.entries(balance.tabUnlocks ?? {})) {
+    checkUnlock('balance', tab, unlock);
+  }
+  for (const { id } of FACILITIES) {
+    for (const step of balance.facilityUnlocks?.[id] ?? []) checkUnlock('balance', id, step.unlock);
+  }
+  for (const c of balance.expeditionCompletions ?? []) {
+    if (c.regionId && !regionIds.has(c.regionId)) {
+      add('error', 'balance', c.id, `Complétion : région « ${c.regionId} » inconnue`);
+    }
+    if (c.zoneId) {
+      const zone = content.zones.find((z) => z.id === c.zoneId);
+      if (!zone) add('error', 'balance', c.id, `Complétion : expédition « ${c.zoneId} » inconnue`);
+      else if (c.regionId && zone.regionId !== c.regionId) {
+        add('error', 'balance', c.id, 'Complétion : l’expédition n’est pas dans la région choisie');
+      }
+    }
+    checkReward('balance', c.id, c.rewards);
   }
 
   // Régions
@@ -458,6 +513,37 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
       }
     }
     if (enabledCount === 0) add('error', 'zone', zone.id, 'Aucune rencontre active');
+
+    // Rencontres spéciales : le Pokémon requis doit pouvoir faire partie de l'équipe (Pokédex de
+    // la région de la zone).
+    for (const s of zone.specialEncounters) {
+      const species = getSpecies(s.speciesId);
+      const required = getSpecies(s.requiredSpeciesId);
+      if (!species)
+        add('error', 'zone', zone.id, `Rencontre spéciale : espèce ${s.speciesId} inconnue`);
+      if (!required) {
+        add(
+          'error',
+          'zone',
+          zone.id,
+          `Rencontre spéciale : espèce requise ${s.requiredSpeciesId} inconnue`,
+        );
+      }
+      const formIssue =
+        formError(s) ?? formError({ speciesId: s.requiredSpeciesId, formId: s.requiredFormId });
+      if (formIssue) add('error', 'zone', zone.id, `Rencontre spéciale : ${formIssue}`);
+      if (species && disabled.has(s.speciesId)) {
+        add('warning', 'zone', zone.id, `Rencontre spéciale : ${species.nameFr} est désactivé`);
+      }
+      if (required && region && !region.speciesIds.includes(required.id)) {
+        add(
+          'warning',
+          'zone',
+          zone.id,
+          `Rencontre spéciale : ${required.nameFr} n’est pas dans le Pokédex de la région, il ne peut pas faire partie de l’équipe`,
+        );
+      }
+    }
   }
 
   // Dresseurs
@@ -639,12 +725,6 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   }
 
   // Progression
-  for (const m of content.dexMilestones) {
-    if (m.regionId && !regionIds.has(m.regionId)) {
-      add('error', 'dexMilestone', m.id, `Région « ${m.regionId} » inconnue`);
-    }
-    checkReward('dexMilestone', m.id, m.rewards);
-  }
   for (const c of content.collections) {
     const unknown = c.speciesIds.filter((id) => !getSpecies(id));
     if (unknown.length > 0) {
@@ -652,6 +732,16 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     }
     if (new Set(c.speciesIds).size !== c.speciesIds.length) {
       add('warning', 'collection', c.id, 'Espèce en double dans la liste');
+    }
+    const unknownForms = c.formIds.filter((id) => !getForm(id));
+    if (unknownForms.length > 0) {
+      add('error', 'collection', c.id, `Formes inconnues : ${unknownForms.join(', ')}`);
+    }
+    if (new Set(c.formIds).size !== c.formIds.length) {
+      add('warning', 'collection', c.id, 'Forme en double dans la liste');
+    }
+    if (c.regionId && !regionIds.has(c.regionId)) {
+      add('error', 'collection', c.id, `Région « ${c.regionId} » inconnue`);
     }
     checkReward('collection', c.id, c.rewards);
   }
@@ -661,7 +751,9 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
       add('error', 'quest', quest.id, `Région « ${quest.regionId} » inconnue`);
     }
     checkUnlock('quest', quest.id, quest.unlock);
-    quest.steps.forEach((step, i) => checkQuestCondition(quest.id, i, step.condition));
+    quest.steps.forEach((step, i) =>
+      checkQuestCondition(quest.id, quest.regionId, i, step.condition),
+    );
     checkQuestReward(quest.id, quest.rewards);
     if (quest.rewards.pokemon.some((p) => p.roaming !== null)) {
       if (!quest.regionId) {
@@ -689,24 +781,19 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     }
   }
 
-  const rewards = [...content.dexMilestones, ...content.collections, ...content.quests].map(
-    (r) => r.rewards,
-  );
-  const slotTotal = (key: 'expeditionSlots' | 'daycareSlots') =>
-    rewards.reduce((sum, r) => sum + r[key], 0);
-  for (const [key, group, label] of [
-    ['expeditionSlots', balance.expeditions, 'd’expédition'],
-    ['daycareSlots', balance.daycare, 'de pension'],
-  ] as const) {
-    const unreachable = group.initialSlots + slotTotal(key) - group.maxSlots;
-    if (unreachable > 0) {
-      add(
-        'warning',
-        'balance',
-        null,
-        `Progression : ${unreachable} emplacement(s) ${label} au-delà du maximum (sans effet)`,
-      );
-    }
+  const rewards = [...content.collections, ...content.quests].map((r) => r.rewards);
+  const unreachable =
+    balance.expeditions.initialSlots +
+    rewards.reduce((sum, r) => sum + r.expeditionSlots, 0) +
+    (balance.facilityUnlocks?.expedition ?? []).reduce((sum, step) => sum + step.amount, 0) -
+    balance.expeditions.maxSlots;
+  if (unreachable > 0) {
+    add(
+      'warning',
+      'balance',
+      null,
+      `Progression : ${unreachable} emplacement(s) d’expédition au-delà du maximum (sans effet)`,
+    );
   }
 
   return issues;
@@ -746,6 +833,16 @@ const unlockables = (content: GameContentData): { unlock: QuestCondition; name: 
     ...content.quests.flatMap((q) =>
       q.steps.map((s, i) => ({ unlock: s.condition, name: `Quête ${q.name}, étape ${i + 1}` })),
     ),
+    ...Object.entries(content.balance.tabUnlocks ?? {}).map(([tab, unlock]) => ({
+      unlock,
+      name: `Onglet ${MENU_TABS.find((t) => t.id === tab)?.label ?? tab}`,
+    })),
+    ...FACILITIES.flatMap(({ id, label }) =>
+      (content.balance.facilityUnlocks?.[id] ?? []).map((step) => ({
+        unlock: step.unlock,
+        name: `${label} (+${step.amount})`,
+      })),
+    ),
   ].flatMap((e) => unlockParts(e.unlock).map((unlock) => ({ unlock, name: e.name })));
 
 /** Où une entité est-elle utilisée ? (avant suppression : intégrité des références) */
@@ -772,9 +869,6 @@ export function findUsages(
       }
       for (const o of content.evolutionOverrides) {
         if (o.methods.some((m) => m.itemId === id)) usages.push(`Évolution « ${o.id} »`);
-      }
-      for (const m of content.dexMilestones) {
-        if (m.rewards.items.some((s) => s.itemId === id)) usages.push(`Palier « ${m.name} »`);
       }
       for (const c of content.collections) {
         if (c.rewards.items.some((s) => s.itemId === id)) usages.push(`Collection « ${c.name} »`);
@@ -812,9 +906,6 @@ export function findUsages(
       for (const t of content.trainers) {
         if (t.regionId === id) usages.push(`Dresseur « ${t.name} »`);
       }
-      for (const m of content.dexMilestones) {
-        if (m.regionId === id) usages.push(`Palier « ${m.name} »`);
-      }
       for (const q of content.quests) {
         if (q.regionId === id) usages.push(`Quête « ${q.name} »`);
       }
@@ -822,7 +913,9 @@ export function findUsages(
         if (d.regionId === id) usages.push(`Donjon « ${d.name} »`);
       }
       const unlocks = unlockables(content).filter(
-        (e) => e.unlock.type === 'regionDexPercent' && e.unlock.regionId === id,
+        (e) =>
+          (e.unlock.type === 'regionDexPercent' || e.unlock.type === 'regionUnlocked') &&
+          e.unlock.regionId === id,
       );
       for (const e of unlocks) usages.push(`Condition de déblocage de « ${e.name} »`);
       break;
@@ -832,7 +925,9 @@ export function findUsages(
         if (t.zoneId === id) usages.push(`Dresseur « ${t.name} »`);
       }
       const steps = unlockables(content).filter(
-        (e) => e.unlock.type === 'expedition' && e.unlock.zoneId === id,
+        (e) =>
+          (e.unlock.type === 'expedition' || e.unlock.type === 'catchPokemon') &&
+          e.unlock.zoneId === id,
       );
       for (const e of steps) usages.push(e.name);
       break;
@@ -857,7 +952,6 @@ export function findUsages(
     case 'ability':
     case 'shopEntry':
     case 'evolutionOverride':
-    case 'dexMilestone':
     case 'collection':
     case 'dungeon':
     case 'guildQuest':

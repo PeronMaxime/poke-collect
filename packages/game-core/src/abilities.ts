@@ -72,7 +72,8 @@ export type AssistantPost = (typeof ASSISTANT_POSTS)[number];
 /**
  * Places couvertes par un assistant : une couveuse et un Centre Pokémon en ont 6 chacun (les
  * places suivantes forment une autre couveuse, un autre Centre) ; une pension, une place du Musée ;
- * l'arrosage et la récolte de la ferme, ses 9 parcelles.
+ * l'arrosage et la récolte de la ferme, un champ de 9 parcelles (les suivantes forment un autre
+ * champ).
  */
 export const ASSISTANT_POST_PLACES: Record<AssistantPost, number> = {
   daycare: 1,

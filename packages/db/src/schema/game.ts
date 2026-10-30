@@ -68,6 +68,8 @@ export const playerProfiles = pgTable(
       .default(sql`'{}'::uuid[]`),
     /** Départ volontaire de sa dernière guilde : délai avant d'en rejoindre une autre. */
     guildLeftAt: timestamp('guild_left_at', { withTimezone: true }),
+    /** Parcelles de la ferme achetées à la boutique (en plus du départ et des paliers). */
+    farmPlots: integer('farm_plots').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('player_profiles_trainer_name_lower').on(sql`lower(${t.trainerName})`)],
@@ -560,10 +562,11 @@ export const shopSeen = pgTable(
   (t) => [primaryKey({ columns: [t.ownerId, t.shopEntryId] })],
 );
 
-export const rewardKind = pgEnum('reward_kind', ['milestone', 'collection']);
+export const rewardKind = pgEnum('reward_kind', ['collection', 'completion']);
 
 /**
- * Récompenses de progression réclamées (paliers du Pokédex, collections) : une seule fois chacune.
+ * Récompenses de progression réclamées (collections, complétions d'expédition
+ * par expédition ou région : `complétion:cible`) : une seule fois chacune.
  * Les emplacements et bonus permanents en découlent.
  */
 export const rewardClaims = pgTable(
@@ -600,6 +603,13 @@ export const pokedex = pgTable(
     caughtShiny: boolean('caught_shiny').notNull().default(false),
     /** Version shiny rencontrée (capturée ou non) : la case du Pokédex shiny se dévoile. */
     seenShiny: boolean('seen_shiny').notNull().default(false),
+    /**
+     * Formes de l'espèce rencontrées (expédition, combat), capturées ou non : voir la forme
+     * normale ne dévoile pas les formes alternatives.
+     */
+    seenFormIds: integer('seen_form_ids').array().notNull().default([]),
+    /** Formes rencontrées en version shiny. */
+    seenShinyFormIds: integer('seen_shiny_form_ids').array().notNull().default([]),
     firstCaughtAt: timestamp('first_caught_at', { withTimezone: true }),
   },
   (t) => [primaryKey({ columns: [t.ownerId, t.speciesId] })],

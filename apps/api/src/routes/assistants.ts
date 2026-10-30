@@ -1,14 +1,13 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { Db } from '@poke/db';
-import { ASSISTANT_POSTS, FARM_PLOTS, assistantSlotCount } from '@poke/game-core';
+import { ASSISTANT_POSTS, assistantSlotCount } from '@poke/game-core';
 import type { AssistantPost } from '@poke/game-core';
 import { assignAssistantInputSchema } from '@poke/shared';
 import type { AssistantDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { assignAssistant, listAssistants, removeAssistant } from '../game/assistants';
-import { daycareSlotCount } from '../game/daycare';
-import { claimedRewards } from '../game/store';
+import { playerFacilityPlaces } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
@@ -20,7 +19,7 @@ interface Deps {
 
 const slotParams = z.object({
   post: z.enum(ASSISTANT_POSTS),
-  slot: z.coerce.number().int().min(0).max(30),
+  slot: z.coerce.number().int().min(0).max(999),
 });
 
 /** Assistants des pensions, des couveuses, des places du Musée, des Centres Pokémon et de la ferme. */
@@ -32,16 +31,16 @@ export async function assistantRoutes(app: FastifyInstance, { db, content, hooks
     const ctx = await content.get();
     switch (post) {
       case 'daycare':
-        return daycareSlotCount(ctx, await claimedRewards(db, userId));
-      case 'incubator':
-        return assistantSlotCount(post, ctx.balance.breeding.maxEggs);
       case 'museum':
-        return ctx.balance.museum.slots;
+        return playerFacilityPlaces(db, ctx, userId, post);
+      case 'incubator':
+        return assistantSlotCount(post, await playerFacilityPlaces(db, ctx, userId, 'incubator'));
       case 'center':
-        return assistantSlotCount(post, ctx.balance.center.slots);
+        return assistantSlotCount(post, await playerFacilityPlaces(db, ctx, userId, 'center'));
       case 'farm':
       case 'harvest':
-        return assistantSlotCount(post, FARM_PLOTS);
+        // Un arroseur et un assistant de récolte par champ de 9 parcelles.
+        return assistantSlotCount(post, await playerFacilityPlaces(db, ctx, userId, 'farm'));
     }
   }
 

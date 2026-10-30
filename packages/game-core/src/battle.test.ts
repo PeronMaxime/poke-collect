@@ -29,7 +29,7 @@ function fight(
   trainer: Trainer,
   team: TeamMember[],
   seed = 42,
-  extra: { bonuses?: { capture: number; xp: number; money: number } } = {},
+  extra: { bonuses?: { capture: number; xp: number; money: number; shiny: number } } = {},
 ) {
   const setup = buildBattleSetup(
     c,
@@ -54,7 +54,7 @@ describe('table des types', () => {
 
 describe('équipe du dresseur', () => {
   it('calcule la PE d’un dresseur sans aléatoire', () => {
-    expect(trainerPower(ctx, pierre)).toBe(293);
+    expect(trainerPower(ctx, pierre)).toBe(310);
     const strong = testContext((c) => {
       c.balance.battles.defaultTrainerIv = 31;
     });
@@ -85,10 +85,9 @@ describe('équipe du dresseur', () => {
 });
 
 describe('conditions d’équipe', () => {
-  const leo = ctx.trainer('campeur-leo')!;
-
   it('vérifie le niveau maximal, les types, la PE minimale et les attaques', () => {
-    expect(checkBattleTeam(ctx, leo, [member('a', 4, 20)])).toContainEqual({
+    const capped = { ...pierre, rules: { ...pierre.rules, maxLevel: 15 } };
+    expect(checkBattleTeam(ctx, capped, [member('a', 4, 20)])).toContainEqual({
       code: 'LEVEL_TOO_HIGH',
       maxLevel: 15,
     });

@@ -2,7 +2,7 @@ import type { EvolutionMethod, TimeOfDay } from '@poke/content';
 import { evolutionChains, getForm } from '@poke/data';
 import type { EvolutionDetail, EvolutionNode, Species } from '@poke/data';
 import type { GameContext } from './context';
-import { canEvolveInForm, counterpartFormId, formIdByName } from './forms';
+import { canEvolveInForm, counterpartFormId, formIdByName, isEventForm } from './forms';
 import { xpForLevel } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 
@@ -205,6 +205,7 @@ export function evolutionOptions(
   formId?: number | null,
 ): EvolutionOption[] {
   const from = formId != null && getForm(formId)?.speciesId === fromSpeciesId ? formId : null;
+  if (isEventForm(from)) return [];
   let options = pokeApiOptions(ctx, fromSpeciesId, from).map(
     (o): EvolutionOption & { generic: boolean } => ({ ...o, source: 'pokeapi' }),
   );

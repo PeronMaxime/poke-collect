@@ -75,14 +75,17 @@ function EncounterContent({
   const pokemon = usePokemon();
   const claimed = useClaimedRewards();
   const owned = new Map(inventory.data?.map((i) => [i.itemId, i.quantity]));
-  // De la Ball la plus forte à la plus faible : un légendaire mérite la meilleure.
+  // De la Ball la plus forte à la plus faible : un légendaire mérite la meilleure. Les Balls
+  // à capture assurée (Master Ball) passent en dernier, pour ne pas les gaspiller par défaut.
   const balls = ctx.content.items
     .filter((i) => ctx.itemEffect(i.id, 'ball') && (owned.get(i.id) ?? 0) > 0)
-    .sort(
-      (a, b) =>
-        ctx.itemEffect(b.id, 'ball')!.catchMultiplier -
-        ctx.itemEffect(a.id, 'ball')!.catchMultiplier,
-    );
+    .sort((a, b) => {
+      const ea = ctx.itemEffect(a.id, 'ball')!;
+      const eb = ctx.itemEffect(b.id, 'ball')!;
+      return (
+        Number(!!ea.guaranteed) - Number(!!eb.guaranteed) || eb.catchMultiplier - ea.catchMultiplier
+      );
+    });
   const berries = ctx.content.items
     .filter((i) => ctx.itemEffect(i.id, 'captureBoost') && (owned.get(i.id) ?? 0) > 0)
     .sort(

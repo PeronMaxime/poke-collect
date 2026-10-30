@@ -7,7 +7,14 @@ import type { ContentCache } from '../content-cache';
 import { assistantHolder } from './assistants';
 import { GameError } from './errors';
 import { newSeed, requireStartedProfile } from './expeditions';
-import { addItems, insertPokemon, recordPokedex, shinyCharm, takeItems } from './store';
+import {
+  addItems,
+  insertPokemon,
+  playerFacilityPlaces,
+  recordPokedex,
+  shinyBoost,
+  takeItems,
+} from './store';
 import type { PokemonRow } from './store';
 
 /**
@@ -39,7 +46,7 @@ export async function activeRevivals(db: Db, userId: string): Promise<FossilRevi
 }
 
 /**
- * Dépose un fossile au Musée, à la première place libre (`balance.museum.slots` places) : l'assistant
+ * Dépose un fossile au Musée, à la première place libre (places débloquées) : l'assistant
  * de cette place agit sur la restauration.
  */
 export async function depositFossil(
@@ -53,6 +60,7 @@ export async function depositFossil(
   await requireStartedProfile(db, userId);
   const effect = fossilEffect(ctx, itemId);
   if (!effect || !ctx.species(effect.speciesId)) throw new GameError(400, 'NOT_A_FOSSIL');
+  const places = await playerFacilityPlaces(db, ctx, userId, 'museum');
 
   return db.transaction(async (tx) => {
     const taken = new Set(
@@ -63,9 +71,7 @@ export async function depositFossil(
           .where(and(eq(fossilRevivals.ownerId, userId), isNull(fossilRevivals.revivedAt)))
       ).map((r) => r.slot),
     );
-    const slotIndex = Array.from({ length: ctx.balance.museum.slots }, (_, i) => i).find(
-      (i) => !taken.has(i),
-    );
+    const slotIndex = Array.from({ length: places }, (_, i) => i).find((i) => !taken.has(i));
     if (slotIndex === undefined) throw new GameError(409, 'MUSEUM_FULL');
     if (!(await takeItems(tx, userId, itemId, 1))) {
       throw new GameError(409, 'ITEM_MISSING', { itemId });
@@ -139,7 +145,7 @@ export async function reviveFossils(db: Db, content: ContentCache, userId: strin
     ready.sort((x, y) => x.readyAt.getTime() - y.readyAt.getTime() || x.id.localeCompare(y.id));
 
     const revived: PokemonRow[] = [];
-    const charm = await shinyCharm(tx, published, userId);
+    const charm = await shinyBoost(tx, published, userId);
     for (const fossil of ready) {
       const ctx = await content.version(fossil.contentVersionId);
       const child = reviveFossil(ctx, { ...fossil, shinyCharm: charm });

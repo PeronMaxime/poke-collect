@@ -93,7 +93,6 @@ const ENTITY_ROUTES: Record<string, { type: ContentEntityType; audit: string }> 
   'shop-categories': { type: 'shopCategory', audit: 'shop_category' },
   'shop-entries': { type: 'shopEntry', audit: 'shop_entry' },
   evolutions: { type: 'evolutionOverride', audit: 'evolution_override' },
-  'dex-milestones': { type: 'dexMilestone', audit: 'dex_milestone' },
   collections: { type: 'collection', audit: 'collection' },
   quests: { type: 'quest', audit: 'quest' },
   'guild-quests': { type: 'guildQuest', audit: 'guild_quest' },

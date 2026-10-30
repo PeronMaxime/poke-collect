@@ -28,16 +28,20 @@ import {
 import { api } from '../../lib/api';
 import {
   PLAYER_STATE_KEYS,
+  assistantPlaces,
   serverOffset,
+  shownPlaces,
   useAssistants,
   useDaycare,
   usePokemon,
+  useShinyBonus,
   useShinyCharm,
 } from '../../lib/game';
 import {
   errorText,
   formatCountdown,
   formatDuration,
+  formatPercentBonus,
   formatShinyRate,
   itemIcon,
   itemName,
@@ -66,8 +70,8 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
     setNotice(
       [
         n > 0 && `${n} œuf${n > 1 ? 's' : ''} placé${n > 1 ? 's' : ''} dans la couveuse.`,
-        res.lost > 0 &&
-          `${res.lost} œuf${res.lost > 1 ? 's' : ''} perdu${res.lost > 1 ? 's' : ''} faute de place.`,
+        res.waiting > 0 &&
+          `${res.waiting} œuf${res.waiting > 1 ? 's' : ''} encore en attente à la pension, faute de place.`,
       ]
         .filter(Boolean)
         .join(' ') || null,
@@ -96,6 +100,11 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
   const data = daycare.data;
   const serverNow = now + serverOffset(data, daycare.dataUpdatedAt);
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
+  const openSlots = data?.slots ?? 0;
+  const shownSlots = shownPlaces(openSlots, [
+    ...(data?.pensions ?? []).map((p) => p.slotIndex),
+    ...assistantPlaces(assistants.data, 'daycare'),
+  ]);
   // Assistant d'une pension : son talent est figé dans ses œufs au ramassage.
   const helperOf = (slot: number) => {
     const id = assistants.data?.find((a) => a.post === 'daycare' && a.slot === slot)?.pokemonId;
@@ -103,6 +112,10 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
   };
   const eggs = data?.eggs ?? [];
   const maxEggs = data?.maxEggs ?? 0;
+  const shownEggs = shownPlaces(maxEggs, [
+    ...eggs.map((e) => e.slotIndex),
+    ...assistantPlaces(assistants.data, 'incubator'),
+  ]);
   const readyEggs = eggs.filter((e) => Date.parse(e.hatchAt) <= serverNow).length;
   const error = collect.error ?? withdraw.error ?? hatch.error;
 
@@ -121,7 +134,7 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
           moins vite selon leurs talents et celui de l’assistant de la pension).
         </p>
         <div className="grid gap-3 md:grid-cols-2">
-          {Array.from({ length: data?.slots ?? 0 }, (_, slot) => {
+          {Array.from({ length: shownSlots }, (_, slot) => {
             const pension = data?.pensions.find((p) => p.slotIndex === slot);
             return pension ? (
               <PensionCard
@@ -133,11 +146,22 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
                 )}
                 charm={charm}
                 helper={helperOf(slot)}
+                closed={slot >= openSlots}
                 serverNow={serverNow}
                 busy={collect.isPending || withdraw.isPending}
                 onCollect={() => collect.mutate(slot)}
                 onWithdraw={() => withdraw.mutate(slot)}
               />
+            ) : slot >= openSlots ? (
+              <div
+                key={slot}
+                className="flex min-h-40 flex-col gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-3 dark:border-slate-700"
+              >
+                <span className="grid flex-1 place-items-center text-center text-sm text-slate-500">
+                  Pension fermée
+                </span>
+                <AssistantCard ctx={ctx} post="daycare" slot={slot} closed />
+              </div>
             ) : (
               <div
                 key={slot}
@@ -181,17 +205,23 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
           ramassage.
         </p>
         <div className="space-y-4">
-          {Array.from({ length: assistantSlotCount('incubator', maxEggs) }, (_, incubator) => {
+          {Array.from({ length: assistantSlotCount('incubator', shownEggs) }, (_, incubator) => {
             const size = ASSISTANT_POST_PLACES.incubator;
             const first = incubator * size;
             return (
               <div key={incubator} className="space-y-2">
-                {maxEggs > size && (
+                {shownEggs > size && (
                   <h3 className="text-sm font-semibold">Couveuse {incubator + 1}</h3>
                 )}
-                <AssistantCard ctx={ctx} post="incubator" slot={incubator} standalone />
+                <AssistantCard
+                  ctx={ctx}
+                  post="incubator"
+                  slot={incubator}
+                  standalone
+                  closed={first >= maxEggs}
+                />
                 <div className="grid grid-cols-3 gap-2 sm:grid-cols-6">
-                  {Array.from({ length: Math.min(size, maxEggs - first) }, (_, i) => {
+                  {Array.from({ length: Math.min(size, shownEggs - first) }, (_, i) => {
                     const egg = eggs.find((e) => e.slotIndex === first + i);
                     return egg ? (
                       <div key={i} className="card flex flex-col items-center p-3 text-xs">
@@ -202,7 +232,7 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
                         key={i}
                         className="grid min-h-28 place-items-center rounded-2xl border-2 border-dashed border-slate-300 p-3 text-center text-xs text-slate-500 dark:border-slate-700"
                       >
-                        Place libre
+                        {first + i < maxEggs ? 'Place libre' : 'Place fermée'}
                       </div>
                     );
                   })}
@@ -230,6 +260,7 @@ function PensionCard({
   parents,
   charm,
   helper,
+  closed,
   serverNow,
   busy,
   onCollect,
@@ -240,11 +271,13 @@ function PensionCard({
   parents: (PokemonDto | undefined)[];
   charm: number;
   helper: AbilityHolder | undefined;
+  closed: boolean;
   serverNow: number;
   busy: boolean;
   onCollect: () => void;
   onWithdraw: () => void;
 }) {
+  const shinyBonus = useShinyBonus();
   const { maxEggs } = ctx.balance.breeding;
   const start = Date.parse(pension.startedAt);
   const laid = eggsLaid(ctx, new Date(start), new Date(serverNow), pension.eggMinutes);
@@ -254,10 +287,12 @@ function PensionCard({
   const held = [pension.heldItemAId, pension.heldItemBId];
   const rules = inheritanceRules(ctx, [pension.heldItemAId, pension.heldItemBId]);
   const [pa, pb] = parents;
-  const shinyRate = pa && pb ? eggShinyProbability(ctx, [pa, pb], charm, helper) : null;
+  const shinyRate =
+    pa && pb ? eggShinyProbability(ctx, [pa, pb], charm * shinyBonus, helper) : null;
   const shinyBonuses = [
     pa && pb && isMasudaPair(pa, pb) && 'Masuda',
     charm > 1 && 'Charme Chroma',
+    shinyBonus > 1 && `bonus +${formatPercentBonus(shinyBonus)}`,
   ].filter(Boolean);
 
   return (
@@ -319,7 +354,7 @@ function PensionCard({
           />
           <p className="mt-1">
             {waiting >= maxEggs
-              ? 'Pension pleine : ramasse les œufs !'
+              ? 'Pension pleine : la ponte est en pause, ramasse les œufs !'
               : `Prochain œuf dans ${formatCountdown(nextAt - serverNow)}`}
           </p>
         </div>
@@ -343,7 +378,7 @@ function PensionCard({
         </div>
       </div>
       <div className="mt-3">
-        <AssistantCard ctx={ctx} post="daycare" slot={pension.slotIndex} />
+        <AssistantCard ctx={ctx} post="daycare" slot={pension.slotIndex} closed={closed} />
       </div>
     </div>
   );
