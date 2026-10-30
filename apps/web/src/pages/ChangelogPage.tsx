@@ -17,7 +17,7 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
-    date: '27 octobre 2026',
+    date: '30 octobre 2026',
     title: 'La région de Hoenn et une nouvelle progression',
     changes: [
       {
