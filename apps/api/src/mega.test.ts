@@ -141,8 +141,7 @@ describe('Méga-Évolution au PC', () => {
       {
         zoneId: zone.id,
         team: [a.id, b.id],
-        durationMinutes: zone.durationsMinutes[0],
-        ballItemId: null,
+        balls: { new: null, shiny: null, caught: null },
         berryItemId: null,
       },
     );

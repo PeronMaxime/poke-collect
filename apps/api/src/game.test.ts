@@ -1,7 +1,8 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
-import { createDb, ensureSeedContent, users } from '@poke/db';
+import { planAfter } from '@poke/game-core';
+import { createDb, ensureSeedContent, inventory, users } from '@poke/db';
 import type {
   ClaimExpeditionResponse,
   ContentVersionDetailDto,
@@ -15,7 +16,7 @@ import type {
 } from '@poke/shared';
 import { buildApp } from './app';
 import { loadEnv } from './env';
-import { addItems, recordPokedex } from './game/store';
+import { addItems, insertPokemon, recordPokedex } from './game/store';
 
 const handle = createDb({ pgliteDataDir: 'memory://' });
 const env = loadEnv({ NODE_ENV: 'test' });
@@ -78,9 +79,8 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
   it('exige un starter avant de partir en expédition', async () => {
     const res = await call('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 15,
       team: ['00000000-0000-4000-8000-000000000000'],
-      ballItemId: null,
+      balls: { new: null, shiny: null, caught: null },
       berryItemId: null,
     });
     expect(res.body).toMatchObject({ error: 'NO_STARTER' });
@@ -112,47 +112,40 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
   it('refuse une zone verrouillée', async () => {
     const res = await call('POST', '/api/expeditions', {
       zoneId: 'foret-de-jade',
-      durationMinutes: 60,
       team: [starter.id],
-      ballItemId: 'poke-ball',
+      balls: { new: 'poke-ball', shiny: 'poke-ball', caught: 'poke-ball' },
       berryItemId: null,
     });
     expect(res).toMatchObject({ status: 403, body: { error: 'ZONE_LOCKED' } });
   });
 
-  it('valide l’équipe et la durée', async () => {
-    const res = await call('POST', '/api/expeditions', {
+  it('refuse un objet qui n’est pas une Ball ou la bonne sorte de baie', async () => {
+    const notABerry = await call('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 30,
       team: [starter.id],
-      ballItemId: 'poke-ball',
-      berryItemId: null,
+      balls: { new: null, shiny: null, caught: null },
+      berryItemId: 'nanab-berry',
     });
-    expect(res).toMatchObject({
-      status: 400,
-      body: { error: 'TEAM_INVALID', errors: [{ code: 'DURATION_NOT_ALLOWED' }] },
-    });
+    expect(notABerry.body).toMatchObject({ error: 'NOT_A_BERRY' });
     const notABall = await call('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 60,
       team: [starter.id],
-      ballItemId: 'razz-berry',
+      balls: { new: null, shiny: 'razz-berry', caught: null },
       berryItemId: null,
     });
     expect(notABall.body).toMatchObject({ error: 'NOT_A_BALL' });
   });
 
-  it('limite les Balls emportées et annule une expédition en rendant la réserve', async () => {
+  it('annule une expédition en rendant les baies', async () => {
     const res = await call<ExpeditionDto>('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 5,
       team: [starter.id],
-      ballItemId: 'poke-ball',
-      ballCount: 1,
+      balls: { new: 'poke-ball', shiny: 'poke-ball', caught: 'poke-ball' },
       berryItemId: 'razz-berry',
+      berryCount: 2,
     });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
-    expect(res.body).toMatchObject({ balls: 1, berries: 2 });
+    expect(res.body).toMatchObject({ balls: 0, berries: 2, ballsUsed: [] });
 
     const cancel = await call('POST', `/api/expeditions/${res.body.id}/cancel`);
     expect(cancel.status).toBe(204);
@@ -190,22 +183,29 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
 
   let expedition: ExpeditionDto;
 
-  it('lance une expédition et réserve les Balls et baies', async () => {
+  it('lance une expédition : réserve les baies, pas les Balls', async () => {
     const res = await call<ExpeditionDto>('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 5,
       team: [starter.id],
-      ballItemId: 'poke-ball',
+      balls: { new: 'poke-ball', shiny: 'poke-ball', caught: 'poke-ball' },
       berryItemId: 'razz-berry',
+      berryCount: 2,
     });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
     expedition = res.body;
-    expect(expedition).toMatchObject({ slotIndex: 0, balls: 2, berries: 2, contentVersionId: 1 });
-    expect(new Date(expedition.endsAt).getTime() - clock.getTime()).toBe(5 * 60_000);
+    expect(expedition).toMatchObject({
+      slotIndex: 0,
+      balls: 0,
+      ballPlan: { new: 'poke-ball', shiny: 'poke-ball', caught: 'poke-ball' },
+      berries: 2,
+      contentVersionId: 1,
+    });
+    expect(new Date(expedition.minEndsAt).getTime() - clock.getTime()).toBe(3 * 60_000);
+    expect(new Date(expedition.endsAt).getTime() - clock.getTime()).toBe(48 * 60 * 60_000);
 
     const inv = await call<InventoryEntryDto[]>('GET', '/api/inventory');
     expect(inv.body).toEqual([
-      { itemId: 'poke-ball', quantity: 18 },
+      { itemId: 'poke-ball', quantity: 20 },
       { itemId: 'razz-berry', quantity: 3 },
     ]);
     const list = await call<ExpeditionsResponse>('GET', '/api/expeditions');
@@ -218,22 +218,33 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
   it('refuse un Pokémon déjà en expédition', async () => {
     const res = await call('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 15,
       team: [starter.id],
-      ballItemId: null,
+      balls: { new: null, shiny: null, caught: null },
       berryItemId: null,
     });
     expect(res).toMatchObject({ status: 409, body: { error: 'POKEMON_BUSY' } });
   });
 
-  it('refuse de réclamer avant la fin', async () => {
-    advance(4);
+  it('refuse de réclamer avant la durée minimum', async () => {
+    advance(2);
     const res = await call('POST', `/api/expeditions/${expedition.id}/claim`);
     expect(res).toMatchObject({ status: 409, body: { error: 'NOT_FINISHED' } });
   });
 
+  it('retire une Ball du sac à chaque rencontre, avant la réclamation', async () => {
+    advance(4);
+    // 6 min : deux rencontres (toutes les 3 min), deux Poké Balls lancées.
+    const inv = await call<InventoryEntryDto[]>('GET', '/api/inventory');
+    expect(inv.body.find((i) => i.itemId === 'poke-ball')?.quantity).toBe(18);
+    const list = await call<ExpeditionsResponse>('GET', '/api/expeditions');
+    const active = list.body.active[0]!;
+    expect(active.ballsUsed).toEqual([{ itemId: 'poke-ball', quantity: 2 }]);
+    // Rythme envoyé au client : le compteur affiché tombe juste.
+    expect(active.pace).not.toBeNull();
+    expect(planAfter(active.pace!, 6).encounters).toBe(2);
+  });
+
   it('réclame le résultat une seule fois et l’applique', async () => {
-    advance(1);
     const cancel = await call('POST', `/api/expeditions/${expedition.id}/cancel`);
     expect(cancel).toMatchObject({ status: 409, body: { error: 'ALREADY_FINISHED' } });
     const res = await call<ClaimExpeditionResponse>(
@@ -286,9 +297,8 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
   it('résout une expédition avec le contenu de sa version de départ', async () => {
     const started = await call<ExpeditionDto>('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 240,
       team: [starter.id],
-      ballItemId: 'poke-ball',
+      balls: { new: 'poke-ball', shiny: 'poke-ball', caught: 'poke-ball' },
       berryItemId: null,
     });
     expect(started.status).toBe(201);
@@ -323,42 +333,88 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
     // Les nouvelles expéditions utilisent le nouveau contenu.
     const next = await call<ExpeditionDto>('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 2,
       team: [starter.id],
-      ballItemId: null,
+      balls: { new: null, shiny: null, caught: null },
       berryItemId: null,
     });
     expect(next.body.contentVersionId).toBe(draft.body.id);
-    advance(2);
+    advance(3);
     const claimed = await call<ClaimExpeditionResponse>(
       'POST',
       `/api/expeditions/${next.body.id}/claim`,
     );
     expect(claimed.body.expedition.result!.encounters.map((e) => e.speciesId)).toEqual([129]);
-    expect(claimed.body.expedition.result!.encounters[0]!.outcome).toBe('noBall');
+    expect(claimed.body.expedition.result!.encounters[0]!.outcome).toBe('ignored');
   });
 
-  it('ignore les rencontres hors du filtre de capture, sans utiliser de Ball', async () => {
-    const captureFilter = { speciesIds: [16], minPerfectIvs: 0, shiny: 'any' };
+  it('ne lance pas de Ball aux catégories sans Ball', async () => {
     const started = await call<ExpeditionDto>('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 5,
       team: [starter.id],
-      ballItemId: 'poke-ball',
+      // Magicarpe (seule rencontre de la Route 1 depuis le test précédent) n'est pas capturé.
+      balls: { new: null, shiny: 'poke-ball', caught: 'poke-ball' },
       berryItemId: null,
-      captureFilter,
     });
     expect(started.status, JSON.stringify(started.body)).toBe(201);
-    expect(started.body.captureFilter).toEqual(captureFilter);
-    advance(5);
+    advance(6);
     const claimed = await call<ClaimExpeditionResponse>(
       'POST',
       `/api/expeditions/${started.body.id}/claim`,
     );
-    // La Route 1 ne propose plus que Magicarpe (version publiée au test précédent).
     const result = claimed.body.expedition.result!;
     expect(result.encounters.map((e) => e.outcome)).toEqual(['ignored', 'ignored']);
     expect(result.ballsUsed).toBe(0);
+  });
+});
+
+describe('Balls retirées au fil des expéditions', () => {
+  it('partage le stock entre expéditions dans l’ordre des rencontres, même jeu fermé', async () => {
+    const call = client(await signUp('blue@example.com'));
+    expect((await call('POST', '/api/profile', { trainerName: 'Blue' })).status).toBe(201);
+    const starter = (await call<PokemonDto>('POST', '/api/starter', { speciesId: 1 })).body;
+    const [user] = await handle.db.select().from(users).where(eq(users.email, 'blue@example.com'));
+    // Une seconde expédition demande un second Pokémon : une Pidgey capturée.
+    const [second] = await insertPokemon(
+      handle.db,
+      user!.id,
+      [{ ...starter, speciesId: 16, formId: null, ability: 'keen-eye' }],
+      { origin: 'capture', originRegion: 'kanto', at: clock },
+    );
+    // Il ne reste que 3 Poké Balls.
+    await handle.db
+      .update(inventory)
+      .set({ quantity: 3 })
+      .where(and(eq(inventory.ownerId, user!.id), eq(inventory.itemId, 'poke-ball')));
+    const start = (pokemonId: string) =>
+      call<ExpeditionDto>('POST', '/api/expeditions', {
+        zoneId: 'route-1',
+        team: [pokemonId],
+        balls: { new: 'poke-ball', shiny: 'poke-ball', caught: 'poke-ball' },
+        berryItemId: null,
+      });
+    const first = await start(starter.id);
+    expect(first.status, JSON.stringify(first.body)).toBe(201);
+    advance(1);
+    const later = await start(second!.id);
+    expect(later.status, JSON.stringify(later.body)).toBe(201);
+
+    // Jeu fermé 10 min : rencontres à 3, 4, 6, 7, 9 et 10 min ; les 3 Balls partent à la
+    // première (3 min), à la seconde (4 min) puis à la première (6 min).
+    advance(9);
+    const list = await call<ExpeditionsResponse>('GET', '/api/expeditions');
+    const used = (id: string) => list.body.active.find((e) => e.id === id)!.ballsUsed;
+    expect(used(first.body.id)).toEqual([{ itemId: 'poke-ball', quantity: 2 }]);
+    expect(used(later.body.id)).toEqual([{ itemId: 'poke-ball', quantity: 1 }]);
+    const inv = await call<InventoryEntryDto[]>('GET', '/api/inventory');
+    expect(inv.body.find((i) => i.itemId === 'poke-ball')).toBeUndefined();
+
+    const claimed = await call<ClaimExpeditionResponse>(
+      'POST',
+      `/api/expeditions/${first.body.id}/claim`,
+    );
+    const result = claimed.body.expedition.result!;
+    expect(result.encounters.map((e) => e.outcome === 'noBall')).toEqual([false, false, true]);
+    expect(result.ballsUsed).toBe(2);
   });
 });
 

@@ -95,7 +95,10 @@ export function toPokemonDto(row: PokemonRow, activity: PokemonActivity | null =
   };
 }
 
-export function toExpeditionDto(row: ExpeditionRow): ExpeditionDto {
+export function toExpeditionDto(
+  row: ExpeditionRow,
+  pace: ExpeditionDto['pace'] = null,
+): ExpeditionDto {
   return {
     id: row.id,
     zoneId: row.zoneId,
@@ -107,14 +110,20 @@ export function toExpeditionDto(row: ExpeditionRow): ExpeditionDto {
     balls: row.balls,
     berryItemId: row.berryItemId,
     berries: row.berries,
+    encounterBerryItemId: row.encounterBerryItemId,
+    encounterBerries: row.encounterBerries,
     captureFilter: row.captureFilter,
+    ballPlan: row.ballPlan,
+    ballsUsed: Object.entries(row.ballsUsed).map(([itemId, quantity]) => ({ itemId, quantity })),
     contentVersionId: row.contentVersionId,
     startedAt: row.startedAt.toISOString(),
+    minEndsAt: row.minEndsAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
     claimedAt: row.claimedAt?.toISOString() ?? null,
     shinyChain: row.shinyChain,
     localHour: row.localHour,
     roamerQuestIds: row.roamers.map((r) => r.questId),
+    pace,
     result: (row.result as ExpeditionDto['result']) ?? null,
   };
 }

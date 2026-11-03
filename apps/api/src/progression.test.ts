@@ -191,9 +191,8 @@ describe('évolutions', () => {
   it('refuse un Pokémon occupé', async () => {
     const start = await call('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 15,
       team: [starter.id],
-      ballItemId: null,
+      balls: { new: null, shiny: null, caught: null },
       berryItemId: null,
     });
     expect(start.status).toBe(201);

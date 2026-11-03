@@ -200,7 +200,6 @@ export function legendarySite(quest: Quest, target: QuestPokemon): ExpeditionSit
     minPower: expedition.minPower,
     requiredTypes: expedition.requiredTypes,
     affinityTypes: expedition.affinityTypes,
-    durationsMinutes: [expedition.durationMinutes],
   };
 }
 

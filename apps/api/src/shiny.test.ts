@@ -74,9 +74,8 @@ describe('shinies', () => {
   async function run(ballItemId: string | null = null) {
     const started = await call<ExpeditionDto>('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 15,
       team: [starter.id],
-      ballItemId,
+      balls: { new: ballItemId, shiny: ballItemId, caught: ballItemId },
       berryItemId: null,
     });
     expect(started.status, JSON.stringify(started.body)).toBe(201);

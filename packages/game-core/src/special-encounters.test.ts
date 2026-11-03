@@ -18,7 +18,7 @@ describe('rencontres spéciales', () => {
   };
   const input: ExpeditionInput = {
     zone: sure,
-    durationMinutes: 60,
+    elapsedMinutes: 60,
     seed: 1234,
     team: [member('pikachu', 25, 10)],
     balls: { itemId: 'poke-ball', quantity: 30 },

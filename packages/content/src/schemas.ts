@@ -416,16 +416,14 @@ export const balanceSettingsSchema = z.object({
     initialSlots: z.int().min(1).max(6),
     maxSlots: z.int().min(1).max(9),
     maxTeamSize: z.int().min(1).max(6),
-    durationsMinutes: z.array(z.int().positive()).min(1),
-    encountersPerHour: z.number().positive(),
-    minEncounters: z.int().min(0),
-    lootRollsPerHour: z.number().min(0),
-    minLootRolls: z.int().min(0),
-    /**
-     * Rendements décroissants : quantité = (durée en h) ^ exposant × taux horaire.
-     * 1 = linéaire ; < 1 = les expéditions longues rapportent moins par heure.
-     */
-    durationExponent: z.number().min(0.1).max(1),
+    /** Durée au-delà de laquelle une expédition s'arrête d'elle-même. */
+    maxDurationMinutes: z.int().positive(),
+    /** Une rencontre toutes les N minutes, sans rendement décroissant. */
+    encounterIntervalMinutes: z.number().positive(),
+    /** Un tirage de butin toutes les N minutes. */
+    lootIntervalMinutes: z.number().positive(),
+    /** Temps d'effet d'une baie emportée (rencontres ou capture). */
+    berryDurationMinutes: z.number().positive(),
   }),
   capture: z.object({
     /** Multiplicateur global de la probabilité de capture. */
@@ -1082,7 +1080,8 @@ export const zoneSchema = z.object({
   /** Exemple : 2 Pokémon de type Eau pour une zone sous-marine. */
   requiredTypes: z.array(z.object({ type: z.string().min(1), count: z.int().min(1).max(6) })),
   affinityTypes: z.array(z.string().min(1)),
-  durationsMinutes: z.array(z.int().positive()).min(1, 'Au moins une durée'),
+  /** Temps avant de pouvoir arrêter une expédition dans la zone. */
+  minDurationMinutes: z.int().positive(),
   encounters: z.array(encounterSchema).min(1, 'Au moins une rencontre'),
   lootTableId: slugSchema.nullable(),
   unlock: unlockConditionSchema,

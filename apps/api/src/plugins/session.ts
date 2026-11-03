@@ -25,7 +25,16 @@ declare module 'fastify' {
 /** Intervalle minimal entre deux enregistrements de présence d'un même utilisateur. */
 const PRESENCE_THROTTLE_MS = 60_000;
 
-export function sessionHooks(auth: Auth, db: Db, now: () => Date) {
+/**
+ * `onPlayer` : rattrapage du temps écoulé pour le joueur (Balls des expéditions en cours…), avant
+ * chaque requête de jeu. Un échec ne bloque pas la requête : le prochain passage reprendra.
+ */
+export function sessionHooks(
+  auth: Auth,
+  db: Db,
+  now: () => Date,
+  onPlayer?: (userId: string) => Promise<void>,
+) {
   const lastWrites = new Map<string, number>();
   /** Présence : `last_seen_at` mis à jour au plus une fois par minute et par utilisateur. */
   const touch = async (userId: string) => {
@@ -61,6 +70,7 @@ export function sessionHooks(auth: Auth, db: Db, now: () => Date) {
     async requireUser(request: FastifyRequest, reply: FastifyReply) {
       request.user = await loadUser(request, true);
       if (!request.user) return reply.code(401).send({ error: 'UNAUTHENTICATED' });
+      await onPlayer?.(request.user.id).catch((err: unknown) => request.log.warn({ err }));
     },
     /** Exige une session valide ET le rôle admin (vérifié côté serveur, à chaque requête). */
     async requireAdmin(request: FastifyRequest, reply: FastifyReply) {

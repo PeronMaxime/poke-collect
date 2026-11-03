@@ -35,10 +35,10 @@ import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
  * Link), fossiles restaurés au Musée et quêtes. Formes alternatives : Archipel Lointain, à part.
  */
 
-const ALL_DURATIONS = [2, 5, 15, 60, 240, 480];
-const LONG_DURATIONS = [60, 240, 480];
+const SHORT_MIN_DURATION = 3;
+const LONG_MIN_DURATION = 60;
 /** Zones spéciales : pas d'aller-retour rapide. */
-const SPECIAL_DURATIONS = [240, 480];
+const SPECIAL_MIN_DURATION = 240;
 
 const enc = (speciesId: number, weight: number, minLevel: number, maxLevel: number): Encounter => ({
   speciesId,
@@ -69,7 +69,7 @@ const zone = ({
   | 'image'
   | 'enabled'
   | 'requiredTypes'
-  | 'durationsMinutes'
+  | 'minDurationMinutes'
   | 'weatherChangeChance'
   | 'weathers'
   | 'specialEncounters'
@@ -80,7 +80,7 @@ const zone = ({
   image: null,
   enabled: true,
   requiredTypes: [],
-  durationsMinutes: ALL_DURATIONS,
+  minDurationMinutes: SHORT_MIN_DURATION,
   weatherChangeChance: ZONE_WEATHER_CHANGE_CHANCE,
   weathers: seedZoneWeathers(z.habitat, weatherTypes),
   specialEncounters: [],
@@ -198,7 +198,7 @@ export const kantoZones: Zone[] = [
     minPower: 950,
     requiredTypes: [{ type: 'water', count: 1 }],
     weatherTypes: ['water'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(129, 30, 10, 18),
       enc(60, 20, 12, 17),
@@ -318,7 +318,7 @@ export const kantoZones: Zone[] = [
     habitat: 'urban',
     minPower: 1950,
     weatherTypes: ['ghost', 'psychic'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(92, 60, 22, 29),
       enc(104, 25, 22, 28),
@@ -336,7 +336,7 @@ export const kantoZones: Zone[] = [
     habitat: 'grassland',
     minPower: 2025,
     weatherTypes: ['grass', 'bug', 'normal'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(43, 14, 22, 28),
       enc(69, 14, 22, 28),
@@ -360,7 +360,7 @@ export const kantoZones: Zone[] = [
     habitat: 'urban',
     minPower: 2100,
     weatherTypes: ['flying', 'poison', 'normal'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(84, 28, 22, 28),
       enc(21, 16, 22, 28),
@@ -385,7 +385,7 @@ export const kantoZones: Zone[] = [
     minPower: 2750,
     requiredTypes: [{ type: 'water', count: 2 }],
     weatherTypes: ['water'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(72, 26, 28, 36),
       enc(116, 14, 28, 34),
@@ -413,7 +413,7 @@ export const kantoZones: Zone[] = [
     habitat: 'urban',
     minPower: 3150,
     weatherTypes: ['fire', 'poison'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(109, 18, 30, 36),
       enc(88, 18, 30, 36),
@@ -437,7 +437,7 @@ export const kantoZones: Zone[] = [
     habitat: 'grassland',
     minPower: 3350,
     weatherTypes: ['normal', 'fighting', 'poison'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(22, 18, 38, 44),
       enc(57, 18, 38, 44),
@@ -459,7 +459,7 @@ export const kantoZones: Zone[] = [
     habitat: 'cave',
     minPower: 3600,
     weatherTypes: ['fighting', 'rock', 'ground'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(67, 18, 42, 48),
       enc(75, 18, 42, 48),
@@ -484,7 +484,7 @@ export const kantoZones: Zone[] = [
     habitat: 'grassland',
     minPower: 1850,
     weatherTypes: ['grass', 'fire', 'water'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(16, 26, 12, 16),
       enc(19, 26, 12, 16),
@@ -509,7 +509,7 @@ export const kantoZones: Zone[] = [
     minPower: 2750,
     requiredTypes: [{ type: 'fighting', count: 1 }],
     weatherTypes: ['fighting', 'normal'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(43, 18, 26, 30),
       enc(69, 18, 26, 30),
@@ -531,7 +531,7 @@ export const kantoZones: Zone[] = [
     habitat: 'grassland',
     minPower: 3150,
     weatherTypes: ['normal', 'bug', 'grass', 'ground'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(111, 14, 25, 32),
       enc(102, 14, 25, 32),
@@ -563,7 +563,7 @@ export const kantoZones: Zone[] = [
     minPower: 3250,
     requiredTypes: [{ type: 'fighting', count: 2 }],
     weatherTypes: ['fighting'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(56, 30, 30, 36),
       enc(66, 30, 30, 36),
@@ -585,7 +585,7 @@ export const kantoZones: Zone[] = [
     minPower: 3500,
     requiredTypes: [{ type: 'psychic', count: 1 }],
     weatherTypes: ['electric', 'psychic', 'poison'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(81, 16, 32, 38),
       enc(100, 16, 32, 38),
@@ -613,7 +613,7 @@ export const kantoZones: Zone[] = [
     habitat: 'urban',
     minPower: 2500,
     weatherTypes: ['electric'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(100, 26, 28, 34),
       enc(81, 26, 28, 34),
@@ -636,7 +636,7 @@ export const kantoZones: Zone[] = [
     minPower: 3250,
     requiredTypes: [{ type: 'water', count: 2 }],
     weatherTypes: ['ice', 'water'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(86, 24, 32, 38),
       enc(90, 18, 32, 38),
@@ -662,7 +662,7 @@ export const kantoZones: Zone[] = [
     minPower: 3500,
     requiredTypes: [{ type: 'fire', count: 1 }],
     weatherTypes: ['fire', 'rock'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(77, 22, 36, 42),
       enc(74, 16, 36, 40),
@@ -685,7 +685,7 @@ export const kantoZones: Zone[] = [
     habitat: 'cave',
     minPower: 4500,
     weatherTypes: ['psychic', 'ground'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(42, 12, 52, 58),
       enc(47, 12, 52, 58),
@@ -710,7 +710,7 @@ export const kantoZones: Zone[] = [
     habitat: 'grassland',
     minPower: 3650,
     weatherTypes: ['grass', 'bug', 'psychic'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(114, 20, 45, 50),
       enc(102, 20, 45, 50),

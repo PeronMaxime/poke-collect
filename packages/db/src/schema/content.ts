@@ -172,7 +172,8 @@ export const zones = pgTable(
     enabled: boolean('enabled').notNull().default(true),
     requiredTypes: jsonb('required_types').$type<Zone['requiredTypes']>().notNull(),
     affinityTypes: jsonb('affinity_types').$type<string[]>().notNull(),
-    durationsMinutes: jsonb('durations_minutes').$type<number[]>().notNull(),
+    /** Temps avant de pouvoir arrêter une expédition dans la zone. */
+    minDurationMinutes: integer('min_duration_minutes').notNull(),
     encounters: jsonb('encounters').$type<Encounter[]>().notNull(),
     lootTableId: text('loot_table_id'),
     unlock: jsonb('unlock').$type<UnlockCondition>().notNull(),

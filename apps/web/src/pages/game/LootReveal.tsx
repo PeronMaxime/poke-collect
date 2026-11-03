@@ -2,7 +2,6 @@ import { Fragment, useEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
-import { expeditionBerryCount, expeditionEnv, expeditionPlan, zoneWeather } from '@poke/game-core';
 import type { GameContext, PokemonInstance } from '@poke/game-core';
 import type { ClaimExpeditionResponse, ExpeditionDto, StartExpeditionInput } from '@poke/shared';
 import {
@@ -12,7 +11,6 @@ import {
   PokemonSprite,
   ShinySparkles,
   ShinyStar,
-  useNow,
 } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
@@ -73,38 +71,22 @@ function RevealContent({
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
   const capturedById = new Map(data.captured.map((p) => [p.id, p]));
   const queryClient = useQueryClient();
-  const { ballItemId, balls, berryItemId, berries, zoneId } = data.expedition;
+  const { berryItemId, berries, encounterBerryItemId, encounterBerries, zoneId } = data.expedition;
   // Pas de relance d'une expédition qui a emporté un fuyard : il faut le traquer à nouveau.
   const canRelaunch = !!zoneId && data.expedition.roamerQuestIds.length === 0;
-  // Rencontres de la relance, talents de l'équipe compris (heure et météo de maintenant) : elles
-  // peuvent différer de celles de l'expédition récupérée (talents de nuit, de pluie…).
-  const now = useNow(30_000);
-  const zone = zoneId ? ctx.zone(zoneId) : undefined;
-  const team = data.expedition.team.flatMap((id) => pokemonById.get(id) ?? []);
-  const encounters = zone
-    ? expeditionPlan(
-        ctx,
-        data.expedition.durationMinutes,
-        expeditionEnv({ ...zone, weather: zoneWeather(zone, now) }, team, new Date(now).getHours()),
-      ).encounters
-    : 0;
-  // Une Ball par rencontre emportée la dernière fois : la relance en emporte autant qu'elle aura
-  // de rencontres (le serveur plafonne au stock), sinon le même nombre qu'avant.
-  const tookMax = balls >= (data.expedition.result?.encounters.length ?? Infinity);
-  const ballsNeeded = ballItemId && balls > 0 ? (tookMax ? encounters : balls) : 0;
-  // Relance : repartir dans la même zone avec les mêmes réglages (équipe, durée, Balls, baie et
-  // filtre), pour enchaîner les maillons. Le serveur plafonne Balls et baies au stock restant.
+  // Relance : repartir dans la même zone avec les mêmes réglages (équipe, Balls, baies), pour
+  // enchaîner les maillons. Le serveur plafonne les baies au stock restant.
   const relaunch = useMutation({
     mutationFn: (e: ExpeditionDto) => {
       const input: StartExpeditionInput = {
         zoneId: e.zoneId!,
-        durationMinutes: e.durationMinutes,
         team: e.team,
-        ballItemId: e.ballItemId,
-        ...(e.ballItemId && e.balls > 0
-          ? { ...(!tookMax && { ballCount: e.balls }), captureFilter: e.captureFilter }
-          : {}),
+        // Ancienne expédition : sa Ball pour toutes les catégories.
+        balls: e.ballPlan ?? { new: e.ballItemId, shiny: e.ballItemId, caught: e.ballItemId },
         berryItemId: e.berryItemId,
+        ...(e.berryItemId ? { berryCount: e.berries } : {}),
+        encounterBerryItemId: e.encounterBerryItemId,
+        ...(e.encounterBerryItemId ? { encounterBerryCount: e.encounterBerries } : {}),
       };
       return api<ExpeditionDto>('/api/expeditions', {
         method: 'POST',
@@ -118,22 +100,18 @@ function RevealContent({
       );
     },
   });
-  // Stock rafraîchi après la récupération (Balls et baies non utilisées rendues) : on attend la
-  // fin du rechargement pour ne pas avertir à tort.
+  // Stock rafraîchi après la récupération (baies non utilisées rendues) : on attend la fin du
+  // rechargement pour ne pas avertir à tort. Les Balls ne sont pas réservées au départ.
   const inventory = useInventory();
   const shortage = (itemId: string | null, needed: number) => {
     if (!itemId || needed === 0 || !inventory.data || inventory.isFetching) return null;
     const owned = inventory.data.find((i) => i.itemId === itemId)?.quantity ?? 0;
     return owned < needed ? { itemId, owned, needed } : null;
   };
-  const ballsShort = shortage(ballItemId, ballsNeeded);
-  // Baie de capture : une par rencontre au plus ; Baie Nanana : une par heure d'expédition.
-  const berriesShort = shortage(
-    berryItemId,
-    berryItemId && berries > 0
-      ? expeditionBerryCount(ctx, berryItemId, data.expedition.durationMinutes, encounters)
-      : 0,
-  );
+  const shortages = [
+    shortage(berryItemId, berries),
+    shortage(encounterBerryItemId, encounterBerries),
+  ].flatMap((s) => s ?? []);
 
   return (
     <ExpeditionRevealView
@@ -146,28 +124,16 @@ function RevealContent({
       }}
       footer={
         <>
-          {canRelaunch && (ballsShort || berriesShort) && (
+          {canRelaunch && shortages.length > 0 && (
             <div className="mt-4 space-y-1 text-right text-sm text-amber-700 dark:text-amber-400">
-              {ballsShort && (
-                <p>
-                  Stock de {itemName(ctx, ballsShort.itemId)} insuffisant pour relancer à
-                  l’identique :{' '}
-                  {ballsShort.owned === 0
-                    ? 'il n’en reste aucune, l’expédition partirait sans capture (observation seulement).'
-                    : `${ballsShort.owned} / ${ballsShort.needed} seraient emportées.`}
+              {shortages.map(({ itemId, owned, needed }) => (
+                <p key={itemId}>
+                  Stock de {itemName(ctx, itemId)} insuffisant pour relancer à l’identique :{' '}
+                  {owned === 0
+                    ? 'il n’en reste aucune, l’expédition partirait sans.'
+                    : `${owned} / ${needed} seraient emportées.`}
                 </p>
-              )}
-              {berriesShort && (
-                <p>
-                  Stock de {itemName(ctx, berriesShort.itemId)} insuffisant pour relancer à
-                  l’identique :{' '}
-                  {ctx.itemEffect(berriesShort.itemId, 'encounterBoost')
-                    ? `il en faut ${berriesShort.needed} (une par heure), il t’en reste ${berriesShort.owned}.`
-                    : berriesShort.owned === 0
-                      ? 'il n’en reste aucune, l’expédition partirait sans baie.'
-                      : `${berriesShort.owned} / ${berriesShort.needed} seraient emportées.`}
-                </p>
-              )}
+              ))}
             </div>
           )}
           {relaunch.error && (
@@ -184,11 +150,11 @@ function RevealContent({
                 className="btn-ghost"
                 disabled={relaunch.isPending}
                 onClick={() => relaunch.mutate(data.expedition)}
-                title="Repartir avec la même équipe, la même durée, les mêmes Balls, baie et filtres"
+                title="Repartir avec la même équipe, les mêmes Balls, baies et filtres"
               >
                 {relaunch.isPending
                   ? 'Relance…'
-                  : ballsShort || berriesShort
+                  : shortages.length > 0
                     ? '↻ Relancer quand même'
                     : '↻ Relancer'}
               </button>
@@ -422,7 +388,9 @@ export function ExpeditionRevealView({
               <p className="mt-2 text-xs text-slate-500">
                 {result.ballsUsed} Ball{result.ballsUsed > 1 ? 's' : ''} utilisée
                 {result.ballsUsed > 1 ? 's' : ''}
-                {result.berriesUsed > 0 && `, ${result.berriesUsed} baie(s)`}.
+                {result.berriesUsed + (result.encounterBerriesUsed ?? 0) > 0 &&
+                  `, ${result.berriesUsed + (result.encounterBerriesUsed ?? 0)} baie(s)`}
+                .
               </p>
             )}
           </div>

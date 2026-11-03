@@ -48,7 +48,7 @@ describe('taux shiny', () => {
     const zone = ctx.zone('route-1')!;
     const input = {
       zone,
-      durationMinutes: 480,
+      elapsedMinutes: 480,
       seed: 7,
       team: [member('a', 6, 50)],
       balls: null,
@@ -114,7 +114,7 @@ describe('chaîne de zone', () => {
   it('applique les IV parfaits aux rencontres d’expédition', () => {
     const input = {
       zone: ctx.zone('route-1')!,
-      durationMinutes: 480,
+      elapsedMinutes: 480,
       seed: 7,
       team: [member('a', 6, 50)],
       balls: { itemId: 'poke-ball', quantity: 99 },

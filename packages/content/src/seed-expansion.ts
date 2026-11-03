@@ -20,7 +20,7 @@ import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
  * de les obtenir.
  */
 
-const ALL_DURATIONS = [2, 5, 15, 60, 240, 480];
+const SHORT_MIN_DURATION = 3;
 /** Sprites de dresseurs servis par l'API (`pnpm sprites:download`, source : Pokémon Showdown). */
 const TRAINER_SPRITES = '/api/sprites/trainers';
 
@@ -131,7 +131,7 @@ const zone = ({
   | 'image'
   | 'enabled'
   | 'requiredTypes'
-  | 'durationsMinutes'
+  | 'minDurationMinutes'
   | 'weatherChangeChance'
   | 'weathers'
   | 'specialEncounters'
@@ -141,7 +141,7 @@ const zone = ({
   image: null,
   enabled: true,
   requiredTypes: [],
-  durationsMinutes: ALL_DURATIONS,
+  minDurationMinutes: SHORT_MIN_DURATION,
   weatherChangeChance: ZONE_WEATHER_CHANGE_CHANCE,
   weathers: seedZoneWeathers(z.habitat, weatherTypes),
   specialEncounters: [],

@@ -120,7 +120,7 @@ export function effectText(effect: ItemEffect): string {
     case 'levelUp':
       return `Sur un Pokémon : +${effect.levels} niveau${effect.levels > 1 ? 'x' : ''}`;
     case 'encounterBoost':
-      return `Expédition : rencontres ${formatMultiplier(effect.multiplier)} (une baie par heure)`;
+      return `Expédition : rencontres ${formatMultiplier(effect.multiplier)} le temps de son effet`;
     case 'guildChest':
       return `Coffre ${CHEST_RARITY_LABELS[effect.rarity]} : à ouvrir`;
     case 'farmPlot':
@@ -306,9 +306,9 @@ export const GAME_ERRORS: Record<string, string> = {
   NO_SUCH_SLOT: 'Cette place n’est pas encore débloquée.',
   ZONE_LOCKED: 'Cette zone n’est pas encore débloquée.',
   TEAM_INVALID: 'L’équipe ne remplit pas les conditions de la zone.',
-  NOT_FINISHED: 'L’expédition n’est pas encore terminée.',
+  NOT_FINISHED: 'L’expédition n’a pas encore atteint sa durée minimum.',
   ALREADY_CLAIMED: 'Déjà récupéré.',
-  ALREADY_FINISHED: 'Déjà terminé : il ne reste plus qu’à récupérer le résultat.',
+  ALREADY_FINISHED: 'Il ne reste plus qu’à récupérer le résultat.',
   STOCK_CHANGED: 'Ton inventaire a changé, réessaie.',
   INVALID_STARTER: 'Ce starter n’est pas disponible.',
   REGION_LOCKED: 'Cette région n’est pas encore débloquée.',
@@ -378,7 +378,6 @@ export const GAME_ERRORS: Record<string, string> = {
   NOT_A_BATTLE_ITEM: 'Cet objet ne s’utilise pas en combat.',
   FULL_HP: 'Ce Pokémon a déjà tous ses PV.',
   ITEM_COOLDOWN: 'Cette baie se recharge : attends quelques secondes.',
-  NOT_ENOUGH_BERRIES: 'Tu n’as pas assez de baies pour toute la durée de l’expédition.',
   NOT_PLANTABLE: 'Cet objet ne se plante pas à la ferme.',
   PLOT_TAKEN: 'Cette parcelle est déjà plantée.',
   PLOT_EMPTY: 'Cette parcelle est vide.',

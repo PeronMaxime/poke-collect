@@ -175,9 +175,8 @@ describe('pension et œufs', () => {
 
     const expedition = await call('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 15,
       team: [ditto],
-      ballItemId: null,
+      balls: { new: null, shiny: null, caught: null },
       berryItemId: null,
     });
     expect(expedition.body).toMatchObject({ error: 'POKEMON_BUSY' });

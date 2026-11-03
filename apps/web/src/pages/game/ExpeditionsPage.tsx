@@ -2,6 +2,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SpecialEncounter, Zone } from '@poke/content';
 import {
+  IV_BALL_CATEGORIES,
   WEATHER_LABELS,
   abilityMultiplier,
   chainMultiplier,
@@ -10,6 +11,7 @@ import {
   isUnlocked,
   isUnlockedSoon,
   isZoneUnlocked,
+  planAfter,
   resolveWeather,
   shinyProbability,
   specialEncountersFor,
@@ -394,11 +396,16 @@ function ActiveExpedition({
   onCancel: () => void;
 }) {
   const start = Date.parse(expedition.startedAt);
+  const minEnd = Date.parse(expedition.minEndsAt);
   const end = Date.parse(expedition.endsAt);
   const done = serverNow >= end;
+  const stoppable = serverNow >= minEnd;
   const zone = expedition.zoneId ? ctx.zone(expedition.zoneId) : undefined;
   const quest = expedition.questId ? ctx.quest(expedition.questId) : undefined;
   const legendary = !!expedition.questId && expedition.balls === 0;
+  // Compté au rythme calculé par le serveur (contenu, équipe et météo du départ) : exact.
+  const elapsedMinutes = (Math.min(serverNow, end) - start) / 60_000;
+  const sofar = expedition.pace ? planAfter(expedition.pace, Math.max(0, elapsedMinutes)) : null;
   return (
     <div
       className={`card group/exp relative p-4 ${done ? 'ring-2 ring-brand-500/50' : ''}`}
@@ -432,7 +439,7 @@ function ActiveExpedition({
             {zone?.name ?? quest?.name ?? expedition.zoneId ?? expedition.questId}
           </p>
           <p className="text-xs text-slate-500">
-            {formatDuration(expedition.durationMinutes)}
+            {formatDuration(Math.floor(elapsedMinutes))} écoulées
             {expedition.shinyChain > 0 && (
               <span className="ml-1 text-amber-600 dark:text-amber-400">
                 · ✦ chaîne {expedition.shinyChain}
@@ -456,13 +463,37 @@ function ActiveExpedition({
         </div>
       </div>
       <ProgressBar className="mt-3" value={(serverNow - start) / (end - start)} />
-      <div className="mt-3 flex items-center justify-between">
-        <span className="font-mono text-sm text-slate-500">
-          {done ? 'Terminée !' : formatCountdown(end - serverNow)}
+      {sofar && (
+        <p className="mt-2 text-xs text-slate-500">
+          {sofar.encounters} rencontre{sofar.encounters > 1 ? 's' : ''} · {sofar.lootRolls} tirage
+          {sofar.lootRolls > 1 ? 's' : ''} de butin
+        </p>
+      )}
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <span className="text-sm text-slate-500">
+          {done ? (
+            'Terminée !'
+          ) : stoppable ? (
+            <>
+              Retour de lui-même dans{' '}
+              <span className="font-mono">{formatCountdown(end - serverNow)}</span>
+            </>
+          ) : (
+            <>
+              Arrêt possible dans{' '}
+              <span className="font-mono">{formatCountdown(minEnd - serverNow)}</span>
+            </>
+          )}
         </span>
-        {done ? (
-          <button className="btn-primary" disabled={claiming} onClick={onClaim}>
-            {claiming ? 'Ouverture…' : legendary ? 'Découvrir le légendaire' : 'Récupérer'}
+        {stoppable ? (
+          <button className="btn-primary shrink-0" disabled={claiming} onClick={onClaim}>
+            {claiming
+              ? 'Ouverture…'
+              : legendary
+                ? 'Découvrir le légendaire'
+                : done
+                  ? 'Récupérer'
+                  : 'Arrêter et récupérer'}
           </button>
         ) : (
           <CancelButton label="Annuler l’expédition" pending={cancelling} onConfirm={onCancel} />
@@ -501,7 +532,9 @@ function ExpeditionSummary({
     new Date(iso).toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
   const legendary = !!e.questId && e.balls === 0;
   const rows: [string, string][] = [
-    ['Durée', `${formatDuration(e.durationMinutes)} · retour ${time(e.endsAt)}`],
+    e.minEndsAt === e.endsAt
+      ? ['Retour', time(e.endsAt)]
+      : ['Durée', `arrêt possible ${time(e.minEndsAt)} · au plus tard ${time(e.endsAt)}`],
   ];
   // Météo figée au départ (talents compris) : celle de la zone a pu changer depuis.
   if (e.zoneId && abilityEnv) {
@@ -509,15 +542,35 @@ function ExpeditionSummary({
     rows.push(['Météo', `${weather ? WEATHER_LABELS[weather] : 'Temps clair'} (au départ)`]);
   }
   if (legendary) rows.push(['Ball', 'au choix au retour (une seule lancée)']);
-  else {
+  else if (e.ballPlan) {
+    const plan = e.ballPlan;
+    const ball = (itemId: string | null) => (itemId ? itemName(ctx, itemId) : 'aucune');
+    rows.push(['Nouveau', ball(plan.new)]);
+    rows.push(['Shiny', ball(plan.shiny)]);
+    rows.push(['Déjà capturé', ball(plan.caught)]);
+    IV_BALL_CATEGORIES.forEach((category, i) => {
+      if (plan[category] !== undefined) {
+        rows.push([`Déjà capturé · ${i + 1} IV parfait${i > 0 ? 's' : ''}`, ball(plan[category])]);
+      }
+    });
+    rows.push([
+      'Balls lancées',
+      e.ballsUsed.length > 0
+        ? e.ballsUsed.map((b) => `${b.quantity} × ${itemName(ctx, b.itemId)}`).join(' · ')
+        : 'aucune pour l’instant',
+    ]);
+  } else {
     rows.push([
       'Balls',
       e.ballItemId ? `${e.balls} × ${itemName(ctx, e.ballItemId)}` : 'aucune (observation)',
     ]);
-    rows.push([
-      'Baies',
-      e.berryItemId ? `${e.berries} × ${itemName(ctx, e.berryItemId)}` : 'aucune',
-    ]);
+  }
+  if (!legendary) {
+    const berries = [
+      e.berryItemId && `${e.berries} × ${itemName(ctx, e.berryItemId)}`,
+      e.encounterBerryItemId && `${e.encounterBerries} × ${itemName(ctx, e.encounterBerryItemId)}`,
+    ].filter(Boolean);
+    rows.push(['Baies', berries.length > 0 ? berries.join(' · ') : 'aucune']);
   }
   // Comme au serveur : chaîne du départ, Charme Chroma et bonus permanent au retour et, hors
   // expédition légendaire, talents de l'équipe.
@@ -553,7 +606,7 @@ function ExpeditionSummary({
             <dd>{value}</dd>
           </Fragment>
         ))}
-        {!legendary && (
+        {!legendary && !e.ballPlan && (
           <>
             <dt className="text-slate-500">Captures</dt>
             <dd>

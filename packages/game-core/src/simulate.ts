@@ -1,10 +1,11 @@
 import type { GameContext } from './context';
-import { encounterCount, resolveExpedition } from './expedition';
+import { expeditionPlan, maxExpeditionBerries, resolveExpedition } from './expedition';
 import { createRng, MAX_SEED } from './rng';
 
 export interface ZoneSimulationInput {
   zoneId: string;
-  durationMinutes: number;
+  /** Temps passé en expédition avant de l'arrêter. */
+  minutes: number;
   /** Ball utilisée (stock illimité) ; null = aucune capture. */
   ballItemId: string | null;
   berryItemId: string | null;
@@ -34,7 +35,7 @@ export function simulateZone(ctx: GameContext, input: ZoneSimulationInput): Zone
   const zone = ctx.zone(input.zoneId);
   if (!zone) throw new Error(`Zone inconnue : ${input.zoneId}`);
   const seeds = createRng(input.seed);
-  const perRun = encounterCount(ctx, input.durationMinutes);
+  const perRun = expeditionPlan(ctx, input.minutes).encounters;
   const species = new Map<number, { seen: number; captured: number }>();
   const loot = new Map<string, { quantity: number; runs: number }>();
   let encounters = 0;
@@ -45,12 +46,14 @@ export function simulateZone(ctx: GameContext, input: ZoneSimulationInput): Zone
   for (let run = 0; run < input.runs; run++) {
     const result = resolveExpedition(ctx, {
       zone,
-      durationMinutes: input.durationMinutes,
+      elapsedMinutes: input.minutes,
       seed: seeds.int(0, MAX_SEED),
       team: [],
       affinityCount: input.affinityCount,
       balls: input.ballItemId ? { itemId: input.ballItemId, quantity: perRun } : null,
-      berries: input.berryItemId ? { itemId: input.berryItemId, quantity: perRun } : null,
+      berries: input.berryItemId
+        ? { itemId: input.berryItemId, quantity: maxExpeditionBerries(ctx) }
+        : null,
       pity: {},
     });
     for (const e of result.encounters) {

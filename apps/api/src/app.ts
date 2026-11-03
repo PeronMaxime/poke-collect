@@ -9,6 +9,7 @@ import { ContentCache } from './content-cache';
 import type { Env } from './env';
 import type { Mailer } from './mail';
 import { GameError } from './game/errors';
+import { settleExpeditionBalls } from './game/expeditions';
 import { webPushSender } from './game/push';
 import type { PushSender } from './game/push';
 import { authRoutes } from './plugins/auth-routes';
@@ -60,7 +61,11 @@ export async function buildApp({
   const app = Fastify({ logger, trustProxy: env.trustProxy });
   const auth = createAuth(db, env, mailer);
   const content = new ContentCache(db);
-  const hooks = sessionHooks(auth, db, now);
+  // Les Balls des expéditions en cours sont retirées du sac au fil des rencontres, rattrapées à
+  // chaque requête du joueur (jeu fermé entre-temps compris).
+  const hooks = sessionHooks(auth, db, now, (userId) =>
+    settleExpeditionBalls(db, content, userId, now()),
+  );
   const push = env.vapid ? (pushSender ?? webPushSender(env.vapid)) : null;
 
   app.decorateRequest('user', null);

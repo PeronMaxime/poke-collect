@@ -4,19 +4,10 @@
       "initialSlots": 2,
       "maxSlots": 9,
       "maxTeamSize": 6,
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
-      "encountersPerHour": 20,
-      "minEncounters": 1,
-      "lootRollsPerHour": 10,
-      "minLootRolls": 1,
-      "durationExponent": 0.9
+      "maxDurationMinutes": 2880,
+      "encounterIntervalMinutes": 3,
+      "lootIntervalMinutes": 6,
+      "berryDurationMinutes": 10
     },
     "capture": {
       "globalMultiplier": 1,
@@ -289,7 +280,7 @@
       "dungeons": {
         "type": "badgeCount",
         "count": 1,
-        "regionId": "kalos"
+        "regionId": "kanto"
       }
     },
     "facilityUnlocks": {
@@ -6245,7 +6236,7 @@
       "effects": [
         {
           "type": "encounterBoost",
-          "multiplier": 1.25
+          "multiplier": 2
         },
         {
           "type": "berryPlant",
@@ -9950,14 +9941,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 399,
@@ -10048,14 +10032,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 915,
@@ -10124,14 +10101,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 19,
@@ -10216,14 +10186,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 731,
@@ -10292,14 +10255,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 819,
@@ -10368,14 +10324,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 504,
@@ -10443,14 +10392,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 261,
@@ -10531,14 +10473,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 659,
@@ -10614,14 +10549,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 396,
@@ -10683,14 +10611,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 161,
@@ -10761,14 +10682,7 @@
         "rock",
         "fire"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 265,
@@ -10866,14 +10780,7 @@
         "ice",
         "fairy"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 551,
@@ -10951,14 +10858,7 @@
         "rock",
         "fire"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 10,
@@ -11062,14 +10962,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 128,
@@ -11164,14 +11057,7 @@
         "ghost",
         "dark"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 436,
@@ -11249,14 +11135,7 @@
         "steel",
         "fire"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 27,
@@ -11339,14 +11218,7 @@
         "rock",
         "fire"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 165,
@@ -11432,14 +11304,7 @@
         "ice",
         "dark"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 77,
@@ -11522,14 +11387,7 @@
         "psychic",
         "fairy"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 447,
@@ -11631,14 +11489,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 143,
@@ -11745,14 +11596,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 276,
@@ -11833,14 +11677,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 21,
@@ -11918,14 +11755,7 @@
         "electric",
         "ice"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 163,
@@ -11998,14 +11828,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 41,
@@ -12071,14 +11894,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 290,
@@ -12167,14 +11983,7 @@
         "ground",
         "psychic"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 179,
@@ -12264,14 +12073,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 194,
@@ -12350,14 +12152,7 @@
         "ground",
         "psychic"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 43,
@@ -12438,14 +12233,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 293,
@@ -12523,11 +12311,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 129,
@@ -12607,14 +12391,7 @@
         "water",
         "grass"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 296,
@@ -12699,14 +12476,7 @@
         "ghost",
         "dark"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 201,
@@ -12941,14 +12711,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 79,
@@ -13014,14 +12777,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 278,
@@ -13113,14 +12869,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 16,
@@ -13216,14 +12965,7 @@
         "rock",
         "fire"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 204,
@@ -13319,14 +13061,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 50,
@@ -13380,14 +13115,7 @@
       "affinityTypes": [
         "ground"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 309,
@@ -13489,14 +13217,7 @@
         "rock",
         "fire"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 313,
@@ -13602,14 +13323,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 209,
@@ -13715,14 +13429,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 21,
@@ -13821,14 +13528,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 216,
@@ -13907,14 +13607,7 @@
         "ground",
         "psychic"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 322,
@@ -14003,14 +13696,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 41,
@@ -14084,14 +13770,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 327,
@@ -14193,14 +13872,7 @@
         "electric",
         "ice"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 234,
@@ -14306,14 +13978,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 16,
@@ -14415,14 +14080,7 @@
         "psychic",
         "fairy"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 322,
@@ -14506,14 +14164,7 @@
         "rock",
         "water"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 218,
@@ -14598,11 +14249,7 @@
         "psychic",
         "dark"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 92,
@@ -14663,14 +14310,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 335,
@@ -14788,11 +14428,7 @@
         "ground",
         "psychic"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 43,
@@ -14892,14 +14528,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 241,
@@ -15001,11 +14630,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 328,
@@ -15093,11 +14718,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 84,
@@ -15187,11 +14808,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 190,
@@ -15306,11 +14923,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 183,
@@ -15394,11 +15007,7 @@
       "affinityTypes": [
         "ground"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 81,
@@ -15499,11 +15108,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 72,
@@ -15612,11 +15217,7 @@
         "ground",
         "psychic"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 109,
@@ -15716,11 +15317,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 72,
@@ -15810,11 +15407,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 170,
@@ -15916,11 +15509,7 @@
       "affinityTypes": [
         "ground"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 180,
@@ -16010,11 +15599,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 22,
@@ -16100,11 +15685,7 @@
         "fire",
         "ice"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 352,
@@ -16233,11 +15814,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 129,
@@ -16332,11 +15909,7 @@
         "ghost",
         "dark"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 353,
@@ -16426,11 +15999,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 67,
@@ -16526,11 +16095,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 361,
@@ -16624,10 +16189,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 16,
@@ -16734,11 +16296,7 @@
         "steel",
         "fire"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 220,
@@ -16843,10 +16401,7 @@
         "psychic",
         "ice"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 43,
@@ -16941,11 +16496,7 @@
         "water",
         "grass"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 294,
@@ -17043,11 +16594,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 231,
@@ -17149,10 +16696,7 @@
         "rock",
         "fire"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 111,
@@ -17298,11 +16842,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 370,
@@ -17402,11 +16942,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 164,
@@ -17519,10 +17055,7 @@
         "psychic",
         "fairy"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 56,
@@ -17605,10 +17138,7 @@
         "electric",
         "ice"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 161,
@@ -17712,10 +17242,7 @@
       "affinityTypes": [
         "fighting"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 261,
@@ -17839,10 +17366,7 @@
         "fire",
         "ice"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 191,
@@ -17946,10 +17470,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 41,
@@ -18056,10 +17577,7 @@
         "ghost",
         "dark"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 81,
@@ -18174,10 +17692,7 @@
       "affinityTypes": [
         "ground"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 100,
@@ -18261,10 +17776,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 72,
@@ -18370,10 +17882,7 @@
         "rock",
         "fire"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 165,
@@ -18500,10 +18009,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 86,
@@ -18605,10 +18111,7 @@
         "ghost",
         "dark"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 203,
@@ -18726,10 +18229,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 231,
@@ -18853,10 +18353,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 217,
@@ -18978,10 +18475,7 @@
         "rock",
         "water"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 77,
@@ -19077,10 +18571,7 @@
         "dragon",
         "fairy"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 289,
@@ -19196,10 +18687,7 @@
       "affinityTypes": [
         "ground"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 42,
@@ -19307,10 +18795,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 72,
@@ -19406,10 +18891,7 @@
         "grass",
         "electric"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 72,
@@ -19513,10 +18995,7 @@
         "grass",
         "ice"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 42,
@@ -19602,10 +19081,7 @@
         "rock",
         "fire"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 114,
@@ -19701,10 +19177,7 @@
         "rock",
         "water"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 198,
@@ -19817,14 +19290,7 @@
         "bug",
         "fairy"
       ],
-      "durationsMinutes": [
-        2,
-        5,
-        15,
-        60,
-        240,
-        480
-      ],
+      "minDurationMinutes": 3,
       "encounters": [
         {
           "speciesId": 19,
@@ -19945,10 +19411,7 @@
         "fire",
         "ice"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 204,
@@ -20060,10 +19523,7 @@
         "ghost",
         "dark"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 302,
@@ -20153,10 +19613,7 @@
         "ghost",
         "dark"
       ],
-      "durationsMinutes": [
-        240,
-        480
-      ],
+      "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 337,

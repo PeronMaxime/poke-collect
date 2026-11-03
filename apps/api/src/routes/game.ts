@@ -31,6 +31,7 @@ import type { ContentCache } from '../content-cache';
 import {
   cancelExpedition,
   claimExpedition,
+  expeditionPaces,
   expeditionSlots,
   legendaryEncounter,
   playerRoamers,
@@ -149,6 +150,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
         .where(eq(playerProfiles.userId, userId)),
       playerRoamers(db, ctx, userId, at),
     ]);
+    const paces = await expeditionPaces(db, content, userId, rows);
     const chainDto = (s: { chain: number; expiresAt: Date | null }) => ({
       chain: s.chain,
       expiresAt: s.expiresAt?.toISOString() ?? null,
@@ -156,7 +158,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     return {
       slots,
       serverTime: at.toISOString(),
-      active: rows.map(toExpeditionDto),
+      active: rows.map((r) => toExpeditionDto(r, paces.get(r.id) ?? null)),
       chains: ctx.zones.flatMap((z) => {
         const s = chains.get(z.id);
         return s ? [{ zoneId: z.id, ...chainDto(s) }] : [];
@@ -204,7 +206,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
       .where(and(eq(expeditions.ownerId, request.user!.id), isNotNull(expeditions.claimedAt)))
       .orderBy(desc(expeditions.claimedAt))
       .limit(20);
-    return rows.map(toExpeditionDto);
+    return rows.map((r) => toExpeditionDto(r));
   });
 
   app.post('/api/expeditions', async (request, reply) => {
