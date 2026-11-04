@@ -19,9 +19,8 @@ import { types } from '@poke/data';
 import {
   attackIntervalMs,
   createGameContext,
-  encounterCount,
+  expeditionPlan,
   hatchMinutes,
-  lootRollCount,
   shinyProbability,
 } from '@poke/game-core';
 import { IssueList, VersionBanner } from '../../components/EntityPage';
@@ -57,7 +56,6 @@ const formatMinutes = (m: number) =>
 function BalanceForm({ working }: { working: WorkingVersion }) {
   const initial = working.content.balance;
   const [b, setB] = useState<BalanceSettings>(initial);
-  const [newDuration, setNewDuration] = useState(30);
   const [newIvThreshold, setNewIvThreshold] = useState(5);
   const save = useSaveBalance(working.version.id);
   const { valid, errors } = validate(balanceSettingsSchema, b);
@@ -136,105 +134,56 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
               disabled={disabled}
             />
           </Field>
-          <Field label="Rencontres par heure" error={err('expeditions.encountersPerHour')}>
+          <Field label="Durée maximale" error={err('expeditions.maxDurationMinutes')}>
             <NumberInput
-              value={b.expeditions.encountersPerHour}
-              min={0}
-              step={0.5}
-              unit="/ h"
-              onChange={exp('encountersPerHour')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Rencontres minimum" error={err('expeditions.minEncounters')}>
-            <NumberInput
-              value={b.expeditions.minEncounters}
-              min={0}
-              onChange={exp('minEncounters')}
+              value={b.expeditions.maxDurationMinutes}
+              min={1}
+              unit="min"
+              onChange={exp('maxDurationMinutes')}
               disabled={disabled}
             />
           </Field>
           <Field
-            label="Exposant de durée"
-            hint="1 = linéaire ; moins de 1 = rendements décroissants."
-            error={err('expeditions.durationExponent')}
+            label="Une rencontre toutes les"
+            error={err('expeditions.encounterIntervalMinutes')}
           >
             <NumberInput
-              value={b.expeditions.durationExponent}
+              value={b.expeditions.encounterIntervalMinutes}
               min={0.1}
-              max={1}
-              step={0.05}
-              onChange={exp('durationExponent')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Tirages de butin par heure" error={err('expeditions.lootRollsPerHour')}>
-            <NumberInput
-              value={b.expeditions.lootRollsPerHour}
-              min={0}
               step={0.5}
-              unit="/ h"
-              onChange={exp('lootRollsPerHour')}
+              unit="min"
+              onChange={exp('encounterIntervalMinutes')}
               disabled={disabled}
             />
           </Field>
-          <Field label="Tirages de butin minimum" error={err('expeditions.minLootRolls')}>
+          <Field
+            label="Un tirage de butin toutes les"
+            error={err('expeditions.lootIntervalMinutes')}
+          >
             <NumberInput
-              value={b.expeditions.minLootRolls}
-              min={0}
-              onChange={exp('minLootRolls')}
+              value={b.expeditions.lootIntervalMinutes}
+              min={0.1}
+              step={0.5}
+              unit="min"
+              onChange={exp('lootIntervalMinutes')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Effet d’une baie"
+            hint="Baies de capture et de rencontres, l’une après l’autre depuis le départ."
+            error={err('expeditions.berryDurationMinutes')}
+          >
+            <NumberInput
+              value={b.expeditions.berryDurationMinutes}
+              min={0.1}
+              step={1}
+              unit="min"
+              onChange={exp('berryDurationMinutes')}
               disabled={disabled}
             />
           </Field>
         </div>
-        <Field label="Durées proposées" error={err('expeditions.durationsMinutes')}>
-          <div className="flex flex-wrap items-center gap-2">
-            {b.expeditions.durationsMinutes.map((d) => (
-              <span
-                key={d}
-                className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm dark:bg-slate-800"
-              >
-                {formatMinutes(d)}
-                {!disabled && (
-                  <button
-                    type="button"
-                    className="text-slate-400 hover:text-red-600"
-                    onClick={() =>
-                      exp('durationsMinutes')(b.expeditions.durationsMinutes.filter((x) => x !== d))
-                    }
-                  >
-                    ✕
-                  </button>
-                )}
-              </span>
-            ))}
-            {!disabled && (
-              <span className="flex items-center gap-1">
-                <NumberInput
-                  className="w-32"
-                  value={newDuration}
-                  min={1}
-                  unit="min"
-                  onChange={setNewDuration}
-                />
-                <button
-                  type="button"
-                  className="btn-ghost py-1"
-                  disabled={
-                    !(newDuration > 0) || b.expeditions.durationsMinutes.includes(newDuration)
-                  }
-                  onClick={() =>
-                    exp('durationsMinutes')(
-                      [...b.expeditions.durationsMinutes, newDuration].sort((x, y) => x - y),
-                    )
-                  }
-                >
-                  Ajouter
-                </button>
-              </span>
-            )}
-          </div>
-        </Field>
         {preview && (
           <table className="text-sm">
             <thead className="text-left text-xs text-slate-500">
@@ -245,11 +194,11 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
               </tr>
             </thead>
             <tbody>
-              {b.expeditions.durationsMinutes.map((d) => (
+              {[60, 480, b.expeditions.maxDurationMinutes].map((d) => (
                 <tr key={d}>
                   <td className="pr-6">{formatMinutes(d)}</td>
-                  <td className="pr-6 font-mono">{encounterCount(preview, d)}</td>
-                  <td className="font-mono">{lootRollCount(preview, d)}</td>
+                  <td className="pr-6 font-mono">{expeditionPlan(preview, d).encounters}</td>
+                  <td className="font-mono">{expeditionPlan(preview, d).lootRolls}</td>
                 </tr>
               ))}
             </tbody>

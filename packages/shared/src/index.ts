@@ -15,9 +15,11 @@ import type {
 import { STAT_NAMES } from '@poke/data';
 import type { StatName, Stats } from '@poke/data';
 import type {
+  AutoTransferFilter,
   BattleError,
   BattleResult,
   BreedingError,
+  BallPlan,
   CaptureFilter,
   DungeonCommand,
   DungeonMove,
@@ -26,6 +28,7 @@ import type {
   DungeonSetup,
   DungeonTeamError,
   ExpeditionError,
+  ExpeditionPace,
   ExpeditionResult,
   Gender,
   GuildJoinMode,
@@ -621,23 +624,41 @@ export interface HarvestBerriesResponse {
 
 // --- Expéditions --------------------------------------------------------------------
 
-export const captureFilterSchema = z.object({
-  speciesIds: z.array(z.int().positive()).max(100),
-  minPerfectIvs: z.int().min(0).max(STAT_NAMES.length),
-  shiny: z.enum(['any', 'always', 'only']),
-  newOnly: z.boolean().optional(),
+/** Ball à lancer pour chaque catégorie de Pokémon rencontré ; null = pas de capture. */
+export const ballPlanSchema = z.object({
+  new: slugSchema.nullable(),
+  shiny: slugSchema.nullable(),
+  caught: slugSchema.nullable(),
+  /** Déjà capturés avec au moins N IV parfaits ; absent = non réglé. */
+  iv1: slugSchema.nullable().optional(),
+  iv2: slugSchema.nullable().optional(),
+  iv3: slugSchema.nullable().optional(),
+  iv4: slugSchema.nullable().optional(),
+  iv5: slugSchema.nullable().optional(),
+  iv6: slugSchema.nullable().optional(),
 });
+
+/** Filtre du transfert automatique (voir `AutoTransferFilter`). */
+export const autoTransferFilterSchema = z.object({
+  maxPerfectIvs: z.int().min(0).max(STAT_NAMES.length),
+}) satisfies z.ZodType<AutoTransferFilter>;
 
 export const startExpeditionInputSchema = z.object({
   zoneId: slugSchema,
-  durationMinutes: z.int().positive(),
   team: z.array(z.uuid()).min(1).max(6),
-  ballItemId: slugSchema.nullable(),
-  /** Nombre de Balls à emporter (absent : une par rencontre, dans la limite du stock). */
-  ballCount: z.int().positive().optional(),
+  /** Balls retirées du sac au fil de l'expédition, à chaque rencontre. */
+  balls: ballPlanSchema,
+  /** Baie de capture et nombre emporté (absent : une). */
   berryItemId: slugSchema.nullable(),
-  /** Pokémon à tenter de capturer ; absent ou null = tous. */
-  captureFilter: captureFilterSchema.nullable().optional(),
+  berryCount: z.int().positive().optional(),
+  /** Baie de rencontres et nombre emporté (absent : une). */
+  encounterBerryItemId: slugSchema.nullable().optional(),
+  encounterBerryCount: z.int().positive().optional(),
+  /**
+   * Transfert automatique au retour : captures déjà au Pokédex avec au plus N IV parfaits ;
+   * null ou absent = aucun.
+   */
+  autoTransfer: autoTransferFilterSchema.nullable().optional(),
   /** Heure locale du joueur (talents de jour ou de nuit). */
   utcOffsetMinutes: utcOffsetSchema.optional(),
 });
@@ -676,11 +697,20 @@ export interface LegendaryEncounterDto {
 
 /** Résultat stocké : chaque Pokémon capturé reçoit son identifiant en base. */
 export interface StoredExpeditionResult extends ExpeditionResult {
-  encounters: (ExpeditionResult['encounters'][number] & { pokemonId?: string })[];
+  encounters: (ExpeditionResult['encounters'][number] & {
+    pokemonId?: string;
+    /** Capture transférée automatiquement au retour. */
+    transferred?: true;
+  })[];
   /** Espèces capturées pour la première fois. */
   newSpeciesIds: number[];
   /** Formes capturées pour la première fois (absent des expéditions anciennes). */
   newFormIds?: number[];
+  /**
+   * Captures transférées automatiquement au retour (rencontres marquées `transferred`, sans
+   * `pokemonId`) et Bonbons gagnés ; absent = aucun transfert.
+   */
+  autoTransferred?: { count: number; candies: { lineageId: number; quantity: number }[] };
 }
 
 export interface ExpeditionDto {
@@ -691,14 +721,27 @@ export interface ExpeditionDto {
   questId: string | null;
   slotIndex: number;
   team: string[];
+  /** Durée minimum tant que l'expédition court, temps réellement passé une fois réclamée. */
   durationMinutes: number;
   ballItemId: string | null;
   balls: number;
   berryItemId: string | null;
   berries: number;
+  encounterBerryItemId: string | null;
+  encounterBerries: number;
+  /** Anciennes expéditions : Pokémon à tenter de capturer ; null = tous. */
   captureFilter: CaptureFilter | null;
+  /** Ball de chaque catégorie ; null = ancienne expédition (Balls réservées dans `balls`). */
+  ballPlan: BallPlan | null;
+  /** Transfert automatique au retour, figé au départ ; null = aucun. */
+  autoTransfer: AutoTransferFilter | null;
+  /** Balls retirées du sac jusqu'ici, au fil des rencontres. */
+  ballsUsed: { itemId: string; quantity: number }[];
   contentVersionId: number;
   startedAt: string;
+  /** À partir de cette date, l'expédition peut être arrêtée et récupérée. */
+  minEndsAt: string;
+  /** Fin de l'expédition : au-delà, le temps ne compte plus. */
   endsAt: string;
   claimedAt: string | null;
   /** Maillon de la chaîne de zone au départ (bonus shiny). */
@@ -707,6 +750,13 @@ export interface ExpeditionDto {
   localHour: number | null;
   /** Quêtes des fuyards présents dans la zone au départ (à croiser pendant l'expédition). */
   roamerQuestIds: string[];
+  /** Fuyards déjà croisés pendant l'expédition (l'issue de la capture reste secrète). */
+  roamersMet: string[];
+  /**
+   * Rythme des rencontres et du butin, calculé par le serveur (contenu et équipe du départ) :
+   * le client en tire le nombre exact de rencontres. null = expédition légendaire ou terminée.
+   */
+  pace: ExpeditionPace | null;
   result: StoredExpeditionResult | null;
 }
 

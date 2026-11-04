@@ -246,7 +246,7 @@ describe('administration', () => {
     const draftId = draftRes.json<{ id: number }>().id;
 
     const balance = structuredClone(seedContent.balance);
-    balance.expeditions.encountersPerHour = 6;
+    balance.expeditions.encounterIntervalMinutes = 6;
     const bad = await app.inject({
       method: 'PUT',
       url: `/api/admin/content/versions/${draftId}/balance`,
@@ -265,7 +265,7 @@ describe('administration', () => {
 
     // Le jeu voit toujours la version publiée tant que le brouillon n'est pas publié.
     const before = await app.inject({ method: 'GET', url: '/api/content' });
-    expect(before.json().balance.expeditions.encountersPerHour).toBe(20);
+    expect(before.json().balance.expeditions.encounterIntervalMinutes).toBe(3);
 
     const pub = await app.inject({
       method: 'POST',
@@ -277,7 +277,7 @@ describe('administration', () => {
     const after = await app.inject({ method: 'GET', url: '/api/content' });
     expect(after.json()).toMatchObject({
       versionId: draftId,
-      balance: { expeditions: { encountersPerHour: 6 } },
+      balance: { expeditions: { encounterIntervalMinutes: 6 } },
     });
 
     const log = await app.inject({ method: 'GET', url: '/api/admin/audit-log', headers });

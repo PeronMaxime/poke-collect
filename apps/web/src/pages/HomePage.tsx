@@ -42,6 +42,7 @@ import { MuseumPage } from './game/MuseumPage';
 import { PcPage } from './game/PcPage';
 import { PokedexPage } from './game/PokedexPage';
 import { QuestsPage } from './game/QuestsPage';
+import { RoamerSightingNotice } from './game/RoamerSightingNotice';
 import { ShopPage } from './game/ShopPage';
 import { TeamsPage } from './game/TeamsPage';
 import { TrainerCardPage } from './game/TrainerCardPage';
@@ -439,6 +440,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
         <div className="flex items-center gap-2">{accountLinks('btn-ghost')}</div>
       </header>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <RoamerSightingNotice ctx={ctx} expeditions={expeditions.data?.active} />
 
       <div className="md:flex md:items-start md:gap-6">
         {/* Mobile : barre avec bouton burger, menu en tiroir depuis la gauche. */}

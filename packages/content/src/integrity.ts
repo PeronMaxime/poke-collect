@@ -454,7 +454,6 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
   }
 
   // Zones
-  const durations = new Set(balance.expeditions.durationsMinutes);
   for (const zone of content.zones) {
     const region = content.regions.find((r) => r.id === zone.regionId);
     if (!region) add('error', 'zone', zone.id, `Région « ${zone.regionId} » inconnue`);
@@ -469,9 +468,8 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
     if (requiredCount > balance.expeditions.maxTeamSize) {
       add('error', 'zone', zone.id, 'Plus de Pokémon requis que la taille d’équipe maximale');
     }
-    const odd = zone.durationsMinutes.filter((d) => !durations.has(d));
-    if (odd.length > 0) {
-      add('warning', 'zone', zone.id, `Durées hors des réglages globaux : ${odd.join(', ')} min`);
+    if (zone.minDurationMinutes > balance.expeditions.maxDurationMinutes) {
+      add('error', 'zone', zone.id, 'Durée minimum au-delà de la durée maximale des expéditions');
     }
     checkUnlock('zone', zone.id, zone.unlock);
 

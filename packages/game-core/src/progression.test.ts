@@ -109,7 +109,7 @@ describe('emplacements et bonus', () => {
     const zone = ctx.zone('route-1')!;
     const input = {
       zone,
-      durationMinutes: 60,
+      elapsedMinutes: 60,
       seed: 42,
       team: [member('a', 4, 10)],
       balls: null,

@@ -1,4 +1,4 @@
-import { STAT_NAMES } from '@poke/data';
+import { STAT_NAMES, getForm } from '@poke/data';
 import type {
   Encounter,
   ItemStack,
@@ -32,7 +32,6 @@ import {
   durationWithAbility,
   effectiveAbility,
   memberPower,
-  scaledByAbility,
   teamMemberPowers,
 } from './abilities';
 import type { AbilityEnv } from './abilities';
@@ -44,43 +43,82 @@ import { chainPerfectIvs, shinyProbability } from './shiny';
 import type { ShinyFactors } from './shiny';
 import { MAX_MEGAS_PER_TEAM, megaCount } from './mega';
 
-// --- Quantités selon la durée ----------------------------------------------------
+// --- Temps d'une expédition ----------------------------------------------------------
 
-/** Quantité = taux horaire × (durée en h) ^ exposant : rendements décroissants. */
-function scaledCount(ctx: GameContext, durationMinutes: number, perHour: number, min: number) {
-  const hours = durationMinutes / 60;
-  return Math.max(min, Math.floor(perHour * hours ** ctx.balance.expeditions.durationExponent));
+// Marge d'arrondi : 60 min / 3 min doit bien donner 20 rencontres.
+const EPSILON = 1e-9;
+
+/** Temps avant de pouvoir arrêter l'expédition : au moins le temps d'une rencontre. */
+export function expeditionMinMinutes(
+  ctx: GameContext,
+  minDurationMinutes: number,
+  env?: AbilityEnv,
+): number {
+  const { encounterIntervalMinutes, maxDurationMinutes } = ctx.balance.expeditions;
+  const minutes = env
+    ? durationWithAbility(ctx, env, 'expeditionDuration', minDurationMinutes)
+    : minDurationMinutes;
+  return Math.min(maxDurationMinutes, Math.max(encounterIntervalMinutes, minutes));
 }
 
-export function encounterCount(ctx: GameContext, durationMinutes: number): number {
-  const { encountersPerHour, minEncounters } = ctx.balance.expeditions;
-  return scaledCount(ctx, durationMinutes, encountersPerHour, minEncounters);
+/** Rythme des rencontres : talents de l'équipe, et baies de rencontres depuis le départ. */
+export interface EncounterClock {
+  perMinute: number;
+  boost: number;
+  boostMinutes: number;
+}
+
+function encounterClock(
+  ctx: GameContext,
+  env?: AbilityEnv,
+  encounterBerries?: ItemStack | null,
+): EncounterClock {
+  const { encounterIntervalMinutes, berryDurationMinutes } = ctx.balance.expeditions;
+  const effect = encounterBerries && ctx.itemEffect(encounterBerries.itemId, 'encounterBoost');
+  return {
+    perMinute: (env ? abilityMultiplier(ctx, env, 'encounters') : 1) / encounterIntervalMinutes,
+    boost: effect ? effect.multiplier : 1,
+    boostMinutes: effect ? encounterBerries.quantity * berryDurationMinutes : 0,
+  };
+}
+
+/** Rencontres survenues après `minutes` : le temps sous l'effet d'une baie compte davantage. */
+function encountersAfter(clock: EncounterClock, minutes: number): number {
+  const boosted = Math.min(minutes, clock.boostMinutes);
+  return Math.floor(clock.perMinute * (minutes + (clock.boost - 1) * boosted) + EPSILON);
+}
+
+/** Moment de la n-ième rencontre (à partir de 1). */
+function encounterTime(clock: EncounterClock, n: number): number {
+  const boostedEncounters = clock.perMinute * clock.boost * clock.boostMinutes;
+  return n <= boostedEncounters
+    ? n / (clock.perMinute * clock.boost)
+    : clock.boostMinutes + (n - boostedEncounters) / clock.perMinute;
 }
 
 /**
- * Baies emportées en expédition : une baie de capture par rencontre au plus, une baie de
- * rencontres (Baie Nanana) par heure d'expédition, au moins une. 0 si la baie ne sert pas en
- * expédition.
+ * Moment de la n-ième rencontre (à partir de 1), en minutes depuis le départ : talents de l'équipe
+ * et baies de rencontres compris.
  */
-export function expeditionBerryCount(
+export function encounterMinutes(
   ctx: GameContext,
-  itemId: string,
-  durationMinutes: number,
-  encounters: number,
+  n: number,
+  env?: AbilityEnv,
+  encounterBerries?: ItemStack | null,
 ): number {
-  if (ctx.itemEffect(itemId, 'encounterBoost')) return Math.max(1, Math.ceil(durationMinutes / 60));
-  return ctx.itemEffect(itemId, 'captureBoost') ? encounters : 0;
+  return encounterTime(encounterClock(ctx, env, encounterBerries), n);
 }
 
-/** Multiplicateur de rencontres de la baie emportée (1 sans Baie Nanana). */
-export const berryEncounterMultiplier = (
-  ctx: GameContext,
-  berryItemId: string | null | undefined,
-) => (berryItemId && ctx.itemEffect(berryItemId, 'encounterBoost')?.multiplier) || 1;
+/** Baies entamées après `minutes` : une pour chaque tranche d'effet commencée. */
+export function berriesConsumed(ctx: GameContext, quantity: number, minutes: number): number {
+  const slices = Math.ceil(minutes / ctx.balance.expeditions.berryDurationMinutes - EPSILON);
+  return Math.min(quantity, Math.max(0, slices));
+}
 
-export function lootRollCount(ctx: GameContext, durationMinutes: number): number {
-  const { lootRollsPerHour, minLootRolls } = ctx.balance.expeditions;
-  return scaledCount(ctx, durationMinutes, lootRollsPerHour, minLootRolls);
+/** Baies utiles au plus sur une expédition : de quoi couvrir la durée maximale. */
+export function maxExpeditionBerries(ctx: GameContext): number {
+  const { maxDurationMinutes, berryDurationMinutes } = ctx.balance.expeditions;
+  return Math.ceil(maxDurationMinutes / berryDurationMinutes - EPSILON);
 }
 
 // --- Capture et pitié ----------------------------------------------------------------
@@ -213,12 +251,12 @@ export function rollLoot(rng: Rng, table: LootTable): ItemStack[] {
 export function lootProbabilities(
   ctx: GameContext,
   zone: Zone,
-  durationMinutes: number,
+  minutes: number,
   env?: AbilityEnv,
 ): { itemId: string; probability: number; min: number; max: number }[] {
   const table = zone.lootTableId ? ctx.lootTable(zone.lootTableId) : undefined;
   if (!table) return [];
-  const rolls = expeditionPlan(ctx, durationMinutes, env).lootRolls;
+  const rolls = expeditionPlan(ctx, minutes, env).lootRolls;
   return table.entries.map((e) => ({
     itemId: e.itemId,
     probability: 1 - (1 - e.chance) ** rolls,
@@ -234,7 +272,6 @@ export interface TeamMember extends PokemonInstance {
 }
 
 export type ExpeditionError =
-  | { code: 'DURATION_NOT_ALLOWED' }
   | { code: 'TEAM_EMPTY' }
   | { code: 'TEAM_TOO_LARGE'; max: number }
   | { code: 'DUPLICATE_MEMBER' }
@@ -312,14 +349,13 @@ export function missingTypes(
 
 /**
  * Règles d'accès d'un lieu d'expédition : une zone, ou le repaire d'un légendaire de quête
- * (région de la quête, null = toutes les régions ; une seule durée).
+ * (région de la quête, null = toutes les régions).
  */
 export interface ExpeditionSite {
   regionId: string | null;
   minPower: number;
   requiredTypes: readonly { type: string; count: number }[];
   affinityTypes: readonly string[];
-  durationsMinutes: readonly number[];
   /** Météo du lieu au départ (voir `zoneWeather`) ; absente = temps clair. */
   weather?: Weather | null;
 }
@@ -335,44 +371,61 @@ export function expeditionEnv(
 }
 
 export interface ExpeditionPlan {
-  /** Temps réel avant le retour (durée choisie modifiée par les talents). */
-  realDurationMinutes: number;
   encounters: number;
   lootRolls: number;
 }
 
 /**
- * Rencontres, jets de butin et durée réelle d'une expédition de `durationMinutes`, talents de
- * l'équipe compris (sans environnement : valeurs de base), et Baie Nanana emportée.
+ * Rencontres et tirages de butin après `minutes` d'expédition, talents de l'équipe compris (sans
+ * environnement : valeurs de base), et baies de rencontres emportées.
  */
 export function expeditionPlan(
   ctx: GameContext,
-  durationMinutes: number,
+  minutes: number,
   env?: AbilityEnv,
-  berryItemId?: string | null,
+  encounterBerries?: ItemStack | null,
 ): ExpeditionPlan {
-  const base = encounterCount(ctx, durationMinutes);
-  const lootRolls = lootRollCount(ctx, durationMinutes);
-  const boosted = (n: number) => Math.floor(n * berryEncounterMultiplier(ctx, berryItemId));
-  if (!env) return { realDurationMinutes: durationMinutes, encounters: boosted(base), lootRolls };
+  return planAfter(expeditionPace(ctx, env, encounterBerries), minutes);
+}
+
+/**
+ * Rythme d'une expédition (rencontres et butin par minute, baies de rencontres comprises) : de
+ * quoi compter exactement ses rencontres à tout moment. Le serveur le calcule avec le contenu et
+ * l'équipe du départ ; le client s'en sert pour l'affichage.
+ */
+export interface ExpeditionPace extends EncounterClock {
+  lootPerMinute: number;
+}
+
+export function expeditionPace(
+  ctx: GameContext,
+  env?: AbilityEnv,
+  encounterBerries?: ItemStack | null,
+): ExpeditionPace {
   return {
-    realDurationMinutes: durationWithAbility(ctx, env, 'expeditionDuration', durationMinutes),
-    encounters: boosted(scaledByAbility(ctx, env, 'encounters', base)),
-    lootRolls: scaledByAbility(ctx, env, 'lootRolls', lootRolls),
+    ...encounterClock(ctx, env, encounterBerries),
+    lootPerMinute:
+      (env ? abilityMultiplier(ctx, env, 'lootRolls') : 1) /
+      ctx.balance.expeditions.lootIntervalMinutes,
+  };
+}
+
+/** Rencontres et tirages de butin après `minutes`, au rythme donné. */
+export function planAfter(pace: ExpeditionPace, minutes: number): ExpeditionPlan {
+  return {
+    encounters: encountersAfter(pace, minutes),
+    lootRolls: Math.floor(pace.lootPerMinute * minutes + EPSILON),
   };
 }
 
 export function checkTeam(
   ctx: GameContext,
   zone: ExpeditionSite,
-  durationMinutes: number,
   team: readonly TeamMember[],
   hour?: number | null,
 ): TeamCheck {
   const errors: ExpeditionError[] = [];
   const { maxTeamSize } = ctx.balance.expeditions;
-  if (!zone.durationsMinutes.includes(durationMinutes))
-    errors.push({ code: 'DURATION_NOT_ALLOWED' });
   if (team.length === 0) errors.push({ code: 'TEAM_EMPTY' });
   if (team.length > maxTeamSize) errors.push({ code: 'TEAM_TOO_LARGE', max: maxTeamSize });
   if (new Set(team.map((m) => m.id)).size !== team.length)
@@ -444,20 +497,182 @@ export function matchesCaptureFilter(
   return perfectIvCount(wild) >= filter.minPerfectIvs;
 }
 
+// --- Balls par catégorie ------------------------------------------------------------------
+
+/**
+ * Déjà capturé avec au moins N IV parfaits (`iv1` à `iv6`) : catégories facultatives du plan,
+ * qui affinent « déjà capturé ».
+ */
+export const IV_BALL_CATEGORIES = ['iv1', 'iv2', 'iv3', 'iv4', 'iv5', 'iv6'] as const;
+export type IvBallCategory = (typeof IV_BALL_CATEGORIES)[number];
+export const ivBallCategory = (count: number) => `iv${count}` as IvBallCategory;
+
+/** Catégorie d'un Pokémon rencontré, qui décide de la Ball lancée. */
+export type BallCategory = 'new' | 'shiny' | 'caught' | IvBallCategory;
+export const BALL_CATEGORIES: readonly BallCategory[] = [
+  'new',
+  'shiny',
+  'caught',
+  ...IV_BALL_CATEGORIES,
+];
+
+/**
+ * Ball à lancer pour chaque catégorie ; null = pas de capture. Une catégorie d'IV absente n'est
+ * pas réglée : ses Pokémon tombent dans la catégorie d'IV inférieure réglée, sinon « déjà capturé ».
+ */
+export type BallPlan = Record<'new' | 'shiny' | 'caught', string | null> &
+  Partial<Record<IvBallCategory, string | null>>;
+export const NO_BALL_PLAN: BallPlan = { new: null, shiny: null, caught: null };
+
+/**
+ * Chromatique d'abord, puis absent du Pokédex (au départ, ou capturé depuis), sinon déjà capturé :
+ * avec le plus grand nombre d'IV parfaits réglé dans le plan qu'il atteint, ou sans précision.
+ */
+export function ballCategory(
+  wild: Pick<PokemonInstance, 'speciesId' | 'formId' | 'isShiny' | 'ivs'>,
+  caught: CaughtDex,
+  plan?: BallPlan | null,
+): BallCategory {
+  if (wild.isShiny) return 'shiny';
+  if (isNewToDex(caught, wild)) return 'new';
+  for (let count = perfectIvCount(wild); count >= 1 && plan; count--) {
+    if (plan[ivBallCategory(count)] !== undefined) return ivBallCategory(count);
+  }
+  return 'caught';
+}
+
+/** Ball d'une catégorie du plan (null : pas de capture ou catégorie non réglée). */
+export const planBall = (plan: BallPlan, category: BallCategory) => plan[category] ?? null;
+
+export const planHasBall = (plan: BallPlan) =>
+  BALL_CATEGORIES.some((c) => planBall(plan, c) !== null);
+
+/**
+ * Journal des lancers d'une expédition, un caractère par rencontre, écrit au fil de l'expédition
+ * quand la Ball est retirée du sac : la catégorie dont la Ball est lancée, `NO_THROW` si la
+ * catégorie n'a pas de Ball, `MISSED_THROW` si sa Ball manquait dans le sac à ce moment-là.
+ */
+export const THROW_CODES: Record<BallCategory, string> = {
+  new: 'n',
+  shiny: 's',
+  caught: 'c',
+  iv1: '1',
+  iv2: '2',
+  iv3: '3',
+  iv4: '4',
+  iv5: '5',
+  iv6: '6',
+};
+export const NO_THROW = '-';
+export const MISSED_THROW = 'x';
+const CODE_CATEGORIES = new Map(BALL_CATEGORIES.map((c) => [THROW_CODES[c], c]));
+
+/** Lancer décidé pour une rencontre : une Ball, ou rien (et pourquoi). */
+export type ThrowDecision = { ballItemId: string } | { outcome: 'noBall' | 'ignored' };
+
+export interface ThrowContext {
+  /** Rang de la rencontre (à partir de 1). */
+  n: number;
+  wild: PokemonInstance;
+  category: BallCategory;
+  /** Rencontre ordinaire de la zone (ni fuyard ni rencontre spéciale). */
+  ordinary: boolean;
+  /** Captures connues à ce moment (Pokédex du départ et captures de l'expédition). */
+  caught: CaughtDex;
+}
+
+export type ChooseThrow = (t: ThrowContext) => ThrowDecision;
+
+/**
+ * Lancers d'après le plan de Balls. Avec un journal (`throws`), il fait foi : les rencontres
+ * qu'il ne couvre pas ne reçoivent pas de Ball. Sans journal (simulateur), stock illimité.
+ */
+export function planThrows(plan: BallPlan, throws?: string): ChooseThrow {
+  return ({ n, category }) => {
+    const code = throws === undefined ? THROW_CODES[category] : (throws[n - 1] ?? NO_THROW);
+    if (code === MISSED_THROW) return { outcome: 'noBall' };
+    const ballItemId = planBall(plan, CODE_CATEGORIES.get(code) ?? category);
+    return code !== NO_THROW && ballItemId ? { ballItemId } : { outcome: 'ignored' };
+  };
+}
+
+/** Lancers des anciennes expéditions : Balls réservées au départ et filtre de capture. */
+function reservedThrows(
+  balls: ItemStack | null | undefined,
+  filter: CaptureFilter | null | undefined,
+): ChooseThrow {
+  let left = balls?.quantity ?? 0;
+  return ({ wild, ordinary, caught }) => {
+    if (!balls || left <= 0) return { outcome: 'noBall' };
+    if (ordinary && !matchesCaptureFilter(filter, wild, caught)) return { outcome: 'ignored' };
+    left--;
+    return { ballItemId: balls.itemId };
+  };
+}
+
+/**
+ * État figé au départ d'une expédition à plan de Balls, pour rejouer ses rencontres à l'identique
+ * à chaque retrait de Balls puis à la réclamation : captures du Pokédex et pitié des Pokémon
+ * qu'elle peut croiser.
+ */
+export interface CaptureSnapshot {
+  speciesIds: number[];
+  formIds: number[];
+  pity: Record<number, number>;
+}
+
+/** Instantané limité aux Pokémon que l'expédition peut croiser (`speciesIds`), formes comprises. */
+export function captureSnapshot(
+  dex: CaughtDex,
+  pity: Readonly<Record<number, number>>,
+  speciesIds: Iterable<number>,
+): CaptureSnapshot {
+  const relevant = new Set(speciesIds);
+  return {
+    speciesIds: [...dex.speciesIds].filter((id) => relevant.has(id)),
+    formIds: [...dex.formIds].filter((id) => relevant.has(getForm(id)?.speciesId ?? -1)),
+    pity: Object.fromEntries(Object.entries(pity).filter(([id]) => relevant.has(Number(id)))),
+  };
+}
+
+/** Espèces qu'une expédition dans la zone peut croiser (zone, rencontres spéciales, fuyards). */
+export function zoneSpeciesIds(zone: Zone, roamers: readonly ExpeditionRoamer[] = []): number[] {
+  return [
+    ...new Set([
+      ...zone.encounters.map((e) => e.speciesId),
+      ...zone.specialEncounters.map((s) => s.speciesId),
+      ...roamers.map((r) => r.target.speciesId),
+    ]),
+  ];
+}
+
 // --- Résolution ----------------------------------------------------------------------------
+
+/** Suite de tirages du butin, distincte de celle des rencontres. */
+const LOOT_SEED_MASK = 0x5bd1e995;
 
 export interface ExpeditionInput {
   zone: Zone;
-  durationMinutes: number;
+  /** Temps écoulé entre le départ et l'arrêt de l'expédition. */
+  elapsedMinutes: number;
   seed: number;
   team: readonly TeamMember[];
-  /** Balls réservées au départ (une par tentative de capture). */
-  balls: ItemStack | null;
   /**
-   * Baies réservées au départ : une par tentative de capture, ou des Baies Nanana (toutes
-   * consommées, rencontres multipliées).
+   * Ball à lancer selon la catégorie du Pokémon rencontré. Les Balls sont retirées du sac au fil
+   * de l'expédition (voir `throws`).
    */
+  ballPlan?: BallPlan | null;
+  /**
+   * Journal des lancers (voir `THROW_CODES`), qui fait foi pour le plan de Balls ; absent = stock
+   * illimité (simulateur).
+   */
+  throws?: string;
+  /** Anciennes expéditions : Balls réservées au départ (une par tentative de capture). */
+  balls?: ItemStack | null;
+  /** Baies de capture : la capture est facilitée le temps de leur effet, depuis le départ. */
   berries: ItemStack | null;
+  /** Baies de rencontres : les rencontres s'accélèrent le temps de leur effet, depuis le départ. */
+  encounterBerries?: ItemStack | null;
   /** Échecs de capture accumulés par espèce. */
   pity: Readonly<Record<number, number>>;
   /** Par défaut, calculée à partir de l'équipe (le simulateur la fixe directement). */
@@ -466,9 +681,12 @@ export interface ExpeditionInput {
   bonuses?: PlayerBonuses;
   /** Chaîne de zone et Charme Chroma ; aucun multiplicateur par défaut. */
   shiny?: ShinyFactors;
-  /** Pokémon à tenter de capturer ; absent = tous. */
+  /** Anciennes expéditions : Pokémon à tenter de capturer ; absent = tous. */
   captureFilter?: CaptureFilter | null;
-  /** Captures du Pokédex, lues à la réclamation ; requis par le filtre « nouveaux Pokémon ». */
+  /**
+   * Captures du Pokédex, figées au départ : décident de la catégorie (nouveau ou déjà capturé) et
+   * du filtre « nouveaux Pokémon ».
+   */
   caught?: CaughtDex;
   /** Heure locale du joueur au départ (talents de jour ou de nuit). */
   hour?: number | null;
@@ -499,6 +717,8 @@ export interface EncounterResult {
   isShiny: boolean;
   outcome: EncounterOutcome;
   captureChance: number;
+  /** Ball lancée (absent sans lancer). */
+  ballItemId?: string;
   /** Présent si capturé. */
   pokemon?: PokemonInstance;
   /** Fuyard de cette quête (absent pour une rencontre ordinaire). */
@@ -532,7 +752,7 @@ export function defeatedXp(
 export function expectedExpeditionXp(
   ctx: GameContext,
   zone: Zone,
-  durationMinutes: number,
+  minutes: number,
   bonuses: PlayerBonuses = NO_BONUSES,
   env?: AbilityEnv,
 ): number {
@@ -553,7 +773,7 @@ export function expectedExpeditionXp(
     }
     return sum + ((weight / total) * xp) / (e.maxLevel - e.minLevel + 1);
   }, 0);
-  return Math.round(perEncounter * expeditionPlan(ctx, durationMinutes, env).encounters);
+  return Math.round(perEncounter * expeditionPlan(ctx, minutes, env).encounters);
 }
 
 export interface TeamMemberResult {
@@ -574,7 +794,10 @@ export interface ExpeditionResult {
   /** Nouveaux compteurs de pitié des espèces concernées. */
   pity: Record<number, number>;
   ballsUsed: number;
+  /** Baies de capture entamées. */
   berriesUsed: number;
+  /** Baies de rencontres entamées (absent des expéditions anciennes). */
+  encounterBerriesUsed?: number;
   /** Probabilité shiny de chaque rencontre (multiplicateurs compris). */
   shinyChance: number;
 }
@@ -601,27 +824,44 @@ export function applyTeamXp(
   });
 }
 
+/** Expédition jouée rencontre par rencontre (voir `createExpeditionRun`). */
+export interface ExpeditionRun {
+  /** Moment de la n-ième rencontre (à partir de 1), en minutes depuis le départ. */
+  encounterMinutes(n: number): number;
+  /** Rencontres survenues après `minutes`. */
+  encountersAfter(minutes: number): number;
+  /** Rencontres déjà jouées. */
+  readonly played: number;
+  /**
+   * Joue la rencontre suivante ; `choose` décide de la Ball lancée. null si la zone n'a plus
+   * aucune rencontre active.
+   */
+  next(choose: ChooseThrow): EncounterResult | null;
+  /** Résultat après `elapsedMinutes` (butin, XP, pitié…), sur les rencontres jouées. */
+  finish(elapsedMinutes: number): ExpeditionResult;
+}
+
 /**
- * Calcule le résultat d'une expédition de façon déterministe (seed + contenu de la version
- * active au départ). Le serveur l'applique ensuite en base ; le client ne fait qu'afficher.
+ * Expédition jouée pas à pas, de façon déterministe (seed + contenu de la version active au
+ * départ) : les rencontres, puis le butin, suivent chacun leur propre suite de tirages. Rejouer
+ * les mêmes lancers redonne les mêmes rencontres ; le serveur s'en sert pour retirer les Balls du
+ * sac au fil de l'expédition.
  */
-export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): ExpeditionResult {
+export function createExpeditionRun(
+  ctx: GameContext,
+  input: Omit<ExpeditionInput, 'elapsedMinutes'>,
+): ExpeditionRun {
   const rng = createRng(input.seed);
   const zone = { ...input.zone, weather: input.weather ?? null };
   const pity = new Map(Object.entries(input.pity).map(([k, v]) => [Number(k), v]));
   const touched = new Set<number>();
   const affinityCount = input.affinityCount ?? countAffinity(ctx, zone, input.team, input.hour);
-  const ball = input.balls ? ctx.itemEffect(input.balls.itemId, 'ball') : undefined;
-  const ballMultiplier = input.balls ? (ball?.catchMultiplier ?? 1) : 0;
-  const guaranteed = ball?.guaranteed === true;
   const captureBerry = input.berries
     ? ctx.itemEffect(input.berries.itemId, 'captureBoost')
     : undefined;
-  const boostMultiplier = captureBerry?.multiplier ?? 1;
-  const encounterBerry = input.berries && input.berries.quantity > 0 ? input.berries.itemId : null;
-  let ballsLeft = input.balls?.quantity ?? 0;
-  // Baies de capture : une par tentative ; Baies Nanana : consommées d'office.
-  let berriesLeft = captureBerry ? (input.berries?.quantity ?? 0) : 0;
+  const captureBerryMinutes = captureBerry
+    ? input.berries!.quantity * ctx.balance.expeditions.berryDurationMinutes
+    : 0;
   const env = expeditionEnv(zone, input.team, input.hour);
   const shinyChance = Math.min(
     1,
@@ -635,183 +875,168 @@ export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): Exp
   const bonuses = abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES);
   const attracted = attractedTypes(ctx, env);
   const extraLevels = Math.round(abilityModifier(ctx, env, 'wildLevel'));
-  const plan = expeditionPlan(ctx, input.durationMinutes, env, encounterBerry);
-  // Copie enrichie au fil des captures : un nouveau Pokémon capturé n'est plus visé ensuite.
+  const clock = encounterClock(ctx, env, input.encounterBerries);
+  // Copie enrichie au fil des captures : un nouveau Pokémon capturé ne l'est plus ensuite.
   const caught = {
     speciesIds: new Set(input.caught?.speciesIds),
     formIds: new Set(input.caught?.formIds),
   };
-
-  const encounters: EncounterResult[] = [];
-  let xpPerMember = 0;
-  // Sans fuyard, aucun tirage en plus : les seeds restent inchangés.
+  // Fuyards et rencontres spéciales : une fois au plus chacun.
   const roamers = [...(input.roamers ?? [])];
-  // Idem sans rencontre spéciale ouverte par l'équipe.
   const specials = specialEncountersFor(ctx, zone, input.team);
-  for (let i = 0; i < plan.encounters; i++) {
+
+  const wildOf = (speciesId: number, level: number, formId: number | null, shiny: number) => {
+    const wild = generatePokemon(ctx, rng, speciesId, level, { shinyProbability: shiny, formId });
+    if (perfectIvs > 0) wild.ivs = withPerfectIvs(rng, wild.ivs, perfectIvs);
+    applyWildAbilities(ctx, env, rng, wild);
+    return wild;
+  };
+  const wildLevel = (min: number, max: number) =>
+    Math.min(MAX_LEVEL, Math.max(1, rng.int(min, max) + extraLevels));
+  /** Pokémon de la prochaine rencontre ; null si la zone n'a plus aucune rencontre active. */
+  const meet = () => {
     const roamerIndex = roamers.findIndex((r) =>
       rng.chance(roamerEncounterChance(ctx, r.target, r.target.roaming ?? 0, attracted) / 100),
     );
     if (roamerIndex >= 0) {
-      // Fuyard : toujours tenté s'il reste une Ball, quel que soit le filtre ; pas de pitié.
       const [{ questId, target }] = roamers.splice(roamerIndex, 1) as [ExpeditionRoamer];
-      const species = ctx.species(target.speciesId, target.formId)!;
-      const wild = generateQuestPokemon(ctx, rng, target, shinyChance);
+      return {
+        wild: generateQuestPokemon(ctx, rng, target, shinyChance),
+        extra: { questId },
+        ordinary: false,
+      };
+    }
+    const specialIndex = specials.findIndex((s) => rng.chance(s.chance / 100));
+    if (specialIndex >= 0) {
+      const [special] = specials.splice(specialIndex, 1) as [SpecialEncounter];
+      const formId = ctx.species(special.speciesId, special.formId)!.form?.id ?? null;
+      const level = wildLevel(special.minLevel, special.maxLevel);
+      return {
+        wild: wildOf(special.speciesId, level, formId, 0),
+        extra: { special: true as const },
+        ordinary: false,
+      };
+    }
+    const table = weightedEncounters(ctx, zone, pity, attracted);
+    if (table.length === 0) return null;
+    const encounter = rng.weighted(table);
+    const formId = ctx.species(encounter.speciesId, encounter.formId)!.form?.id ?? null;
+    const level = wildLevel(encounter.minLevel, encounter.maxLevel);
+    return {
+      wild: wildOf(encounter.speciesId, level, formId, shinyChance),
+      extra: {},
+      ordinary: true,
+    };
+  };
+
+  const encounters: EncounterResult[] = [];
+  let xpPerMember = 0;
+  let ballsUsed = 0;
+
+  return {
+    encounterMinutes: (n) => encounterTime(clock, n),
+    encountersAfter: (minutes) => encountersAfter(clock, minutes),
+    get played() {
+      return encounters.length;
+    },
+    next(choose) {
+      const n = encounters.length + 1;
+      const met = meet();
+      if (!met) return null;
+      const { wild, extra, ordinary } = met;
+      const species = ctx.species(wild.speciesId, wild.formId)!;
+      const formId = wild.formId ?? null;
       xpPerMember += Math.floor(
         defeatXp(species, wild.level) * ctx.balance.xp.multiplier * bonuses.xp,
       );
       const base = {
         speciesId: wild.speciesId,
-        formId: wild.formId ?? null,
+        formId,
         level: wild.level,
         isShiny: wild.isShiny,
-        questId,
+        ...extra,
       };
-      if (ballsLeft <= 0) {
-        encounters.push({ ...base, outcome: 'noBall', captureChance: 0 });
-        continue;
+      const category = ballCategory(wild, caught, input.ballPlan);
+      const decision = choose({ n, wild, ordinary, caught, category });
+      if ('outcome' in decision) {
+        const skipped: EncounterResult = { ...base, outcome: decision.outcome, captureChance: 0 };
+        encounters.push(skipped);
+        return skipped;
       }
-      const useBerry = berriesLeft > 0;
+      const ball = ctx.itemEffect(decision.ballItemId, 'ball');
       const captureChance = captureProbability(ctx, {
         captureRate: species.captureRate,
-        ballMultiplier,
-        guaranteed,
-        boostMultiplier: useBerry ? boostMultiplier : 1,
+        ballMultiplier: ball?.catchMultiplier ?? 1,
+        guaranteed: ball?.guaranteed === true,
+        boostMultiplier:
+          encounterTime(clock, n) <= captureBerryMinutes + EPSILON ? captureBerry!.multiplier : 1,
         affinityCount,
         bonusMultiplier: bonuses.capture,
       });
-      ballsLeft--;
-      if (useBerry) berriesLeft--;
+      ballsUsed++;
       const captured = rng.chance(captureChance);
-      encounters.push({
-        ...base,
-        outcome: captured ? 'captured' : 'escaped',
-        captureChance,
-        ...(captured && { pokemon: wild }),
-      });
-      continue;
-    }
-    const specialIndex = specials.findIndex((s) => rng.chance(s.chance / 100));
-    if (specialIndex >= 0) {
-      // Rencontre spéciale : une fois au plus, jamais chromatique ; toujours tentée s'il reste une
-      // Ball, quel que soit le filtre ; pas de pitié.
-      const [special] = specials.splice(specialIndex, 1) as [SpecialEncounter];
-      const species = ctx.species(special.speciesId, special.formId)!;
-      const formId = species.form?.id ?? null;
-      const level = Math.min(
-        MAX_LEVEL,
-        Math.max(1, rng.int(special.minLevel, special.maxLevel) + extraLevels),
-      );
-      const wild = generatePokemon(ctx, rng, species.id, level, { shinyProbability: 0, formId });
-      if (perfectIvs > 0) wild.ivs = withPerfectIvs(rng, wild.ivs, perfectIvs);
-      applyWildAbilities(ctx, env, rng, wild);
-      xpPerMember += Math.floor(defeatXp(species, level) * ctx.balance.xp.multiplier * bonuses.xp);
-      const base = { speciesId: species.id, formId, level, isShiny: false, special: true as const };
-      if (ballsLeft <= 0) {
-        encounters.push({ ...base, outcome: 'noBall', captureChance: 0 });
-        continue;
+      if (ordinary) {
+        pity.set(wild.speciesId, captured ? 0 : (pity.get(wild.speciesId) ?? 0) + 1);
+        touched.add(wild.speciesId);
       }
-      const useBerry = berriesLeft > 0;
-      const captureChance = captureProbability(ctx, {
-        captureRate: species.captureRate,
-        ballMultiplier,
-        guaranteed,
-        boostMultiplier: useBerry ? boostMultiplier : 1,
-        affinityCount,
-        bonusMultiplier: bonuses.capture,
-      });
-      ballsLeft--;
-      if (useBerry) berriesLeft--;
-      const captured = rng.chance(captureChance);
       if (captured) {
-        caught.speciesIds.add(species.id);
+        caught.speciesIds.add(wild.speciesId);
         if (formId != null) caught.formIds.add(formId);
       }
-      encounters.push({
+      const result: EncounterResult = {
         ...base,
         outcome: captured ? 'captured' : 'escaped',
         captureChance,
+        ballItemId: decision.ballItemId,
         ...(captured && { pokemon: wild }),
-      });
-      continue;
-    }
-    const table = weightedEncounters(ctx, zone, pity, attracted);
-    if (table.length === 0) break;
-    const encounter = rng.weighted(table);
-    const species = ctx.species(encounter.speciesId, encounter.formId)!;
-    const formId = species.form?.id ?? null;
-    const level = Math.min(
-      MAX_LEVEL,
-      Math.max(1, rng.int(encounter.minLevel, encounter.maxLevel) + extraLevels),
-    );
-    const wild = generatePokemon(ctx, rng, species.id, level, {
-      shinyProbability: shinyChance,
-      formId,
-    });
-    // Aucun tirage en plus sans palier atteint : les seeds sans chaîne restent inchangés.
-    if (perfectIvs > 0) wild.ivs = withPerfectIvs(rng, wild.ivs, perfectIvs);
-    applyWildAbilities(ctx, env, rng, wild);
-    xpPerMember += Math.floor(defeatXp(species, level) * ctx.balance.xp.multiplier * bonuses.xp);
-
-    if (ballsLeft <= 0 || !matchesCaptureFilter(input.captureFilter, wild, caught)) {
-      encounters.push({
-        speciesId: species.id,
-        formId,
-        level,
-        isShiny: wild.isShiny,
-        outcome: ballsLeft <= 0 ? 'noBall' : 'ignored',
-        captureChance: 0,
-      });
-      continue;
-    }
-    const useBerry = berriesLeft > 0;
-    const captureChance = captureProbability(ctx, {
-      captureRate: species.captureRate,
-      ballMultiplier,
-      guaranteed,
-      boostMultiplier: useBerry ? boostMultiplier : 1,
-      affinityCount,
-      bonusMultiplier: bonuses.capture,
-    });
-    ballsLeft--;
-    if (useBerry) berriesLeft--;
-    const captured = rng.chance(captureChance);
-    pity.set(species.id, captured ? 0 : (pity.get(species.id) ?? 0) + 1);
-    touched.add(species.id);
-    if (captured) {
-      caught.speciesIds.add(species.id);
-      if (formId != null) caught.formIds.add(formId);
-    }
-    encounters.push({
-      speciesId: species.id,
-      formId,
-      level,
-      isShiny: wild.isShiny,
-      outcome: captured ? 'captured' : 'escaped',
-      captureChance,
-      ...(captured && { pokemon: wild }),
-    });
-  }
-
-  const lootTotals = new Map<string, number>();
-  const lootTable = zone.lootTableId ? ctx.lootTable(zone.lootTableId) : undefined;
-  if (lootTable) {
-    for (let i = 0; i < plan.lootRolls; i++) addStacks(lootTotals, rollLoot(rng, lootTable));
-  }
-
-  return {
-    encounters,
-    loot: [...lootTotals].map(([itemId, quantity]) => ({ itemId, quantity })),
-    team: applyTeamXp(
-      ctx,
-      input.team,
-      xpPerMember,
-      abilityHappiness(ctx, env, ctx.balance.xp.happinessPerExpedition),
-    ),
-    xpPerMember,
-    pity: Object.fromEntries([...touched].map((id) => [id, pity.get(id) ?? 0])),
-    ballsUsed: (input.balls?.quantity ?? 0) - ballsLeft,
-    berriesUsed: (input.berries?.quantity ?? 0) - berriesLeft,
-    shinyChance,
+      };
+      encounters.push(result);
+      return result;
+    },
+    finish(elapsedMinutes) {
+      const lootRng = createRng(input.seed ^ LOOT_SEED_MASK);
+      const lootTotals = new Map<string, number>();
+      const lootTable = zone.lootTableId ? ctx.lootTable(zone.lootTableId) : undefined;
+      if (lootTable) {
+        const { lootRolls } = expeditionPlan(ctx, elapsedMinutes, env, input.encounterBerries);
+        for (let i = 0; i < lootRolls; i++) addStacks(lootTotals, rollLoot(lootRng, lootTable));
+      }
+      return {
+        encounters: [...encounters],
+        loot: [...lootTotals].map(([itemId, quantity]) => ({ itemId, quantity })),
+        team: applyTeamXp(
+          ctx,
+          input.team,
+          xpPerMember,
+          abilityHappiness(ctx, env, ctx.balance.xp.happinessPerExpedition),
+        ),
+        xpPerMember,
+        pity: Object.fromEntries([...touched].map((id) => [id, pity.get(id) ?? 0])),
+        ballsUsed,
+        berriesUsed: captureBerry
+          ? berriesConsumed(ctx, input.berries!.quantity, elapsedMinutes)
+          : 0,
+        encounterBerriesUsed:
+          clock.boostMinutes > 0
+            ? berriesConsumed(ctx, input.encounterBerries!.quantity, elapsedMinutes)
+            : 0,
+        shinyChance,
+      };
+    },
   };
+}
+
+/**
+ * Calcule le résultat d'une expédition arrêtée après `elapsedMinutes` (voir
+ * `createExpeditionRun`) : s'arrêter plus tard ajoute des rencontres sans changer les
+ * précédentes. Le serveur applique ensuite le résultat en base ; le client ne fait qu'afficher.
+ */
+export function resolveExpedition(ctx: GameContext, input: ExpeditionInput): ExpeditionResult {
+  const run = createExpeditionRun(ctx, input);
+  const choose = input.ballPlan
+    ? planThrows(input.ballPlan, input.throws)
+    : reservedThrows(input.balls, input.captureFilter);
+  const total = run.encountersAfter(input.elapsedMinutes);
+  while (run.played < total && run.next(choose));
+  return run.finish(input.elapsedMinutes);
 }

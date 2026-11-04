@@ -214,13 +214,19 @@ export const pillClass = (active: boolean) =>
  * s'il en a une), triables et filtrables par étiquette, ceux en affinité mis en évidence.
  * Renvoie les membres choisis (dans l'ordre de sélection) pour valider l'équipe.
  */
-export function useTeamPicker(ctx: GameContext, zone: ExpeditionSite) {
+/** `initialTeam` : équipe préparée à reprendre (lue une fois, à l'ouverture). */
+export function useTeamPicker(
+  ctx: GameContext,
+  zone: ExpeditionSite,
+  initialTeam?: () => string[],
+) {
   return useTeamPickerOver(
     ctx,
     zone,
     usePokemon().data ?? [],
     useTags().data ?? [],
     useTeams().data ?? [],
+    initialTeam,
   );
 }
 
@@ -253,8 +259,9 @@ export function useTeamPickerOver(
   tags: readonly PokemonTagDto[],
   /** Équipes enregistrées proposées d'un clic (aucune dans le simulateur de l'admin). */
   savedTeams: readonly PokemonTeamDto[] = [],
+  initialTeam?: () => string[],
 ) {
-  const [team, setTeam] = useState<string[]>([]);
+  const [team, setTeam] = useState<string[]>(() => initialTeam?.() ?? []);
   const [sort, setSort] = useState<Sort>('power');
   const [stat, setStat] = useState<StatName>('attack');
   const [search, setSearch] = useState('');

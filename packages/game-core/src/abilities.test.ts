@@ -12,7 +12,12 @@ import {
 import { battleEnv, buildBattleSetup, resolveBattle } from './battle';
 import type { Trainer } from '@poke/content';
 import type { TeamMember } from './expedition';
-import { expeditionEnv, expeditionPlan, resolveExpedition } from './expedition';
+import {
+  expeditionEnv,
+  expeditionMinMinutes,
+  expeditionPlan,
+  resolveExpedition,
+} from './expedition';
 import type { ExpeditionInput } from './expedition';
 import { pokemonPower } from './pokemon';
 import { NO_BONUSES } from './progression';
@@ -80,7 +85,7 @@ const zone = ctx.zone('route-1')!;
 const expedition = (team: ExpeditionInput['team'], extra: Partial<ExpeditionInput> = {}) =>
   resolveExpedition(ctx, {
     zone,
-    durationMinutes: 60,
+    elapsedMinutes: 60,
     seed: 42,
     team,
     balls: { itemId: 'poke-ball', quantity: 50 },
@@ -133,13 +138,14 @@ describe('talents : expéditions', () => {
     expect(abilityBonuses(ctx, expeditionEnv(zone, team), NO_BONUSES).money).toBe(1);
   });
 
-  it('modifie la durée réelle et le nombre de rencontres', () => {
+  it('réduit la durée minimum et modifie le nombre de rencontres', () => {
     const team = [member('a', 6, 50, { ability: 'illuminate' })];
+    const env = expeditionEnv(zone, team);
+    expect(expeditionMinMinutes(ctx, 120, env)).toBe(90);
+    // Jamais moins que le temps d'une rencontre.
+    expect(expeditionMinMinutes(ctx, 3, env)).toBe(3);
     const base = expeditionPlan(ctx, 120);
-    const plan = expeditionPlan(ctx, 120, expeditionEnv(zone, team));
-    expect(plan.realDurationMinutes).toBe(90);
-    // Arrondi à la seconde : 2 min − 25 % = 1 min 30 s.
-    expect(expeditionPlan(ctx, 2, expeditionEnv(zone, team)).realDurationMinutes).toBe(1.5);
+    const plan = expeditionPlan(ctx, 120, env);
     expect(plan.encounters).toBe(Math.round(base.encounters * 1.5));
     expect(expedition(team).encounters).toHaveLength(
       Math.round(expeditionPlan(ctx, 60).encounters * 1.5),

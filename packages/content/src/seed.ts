@@ -33,8 +33,6 @@ import { chestEntries, guildChestItems, guildQuests } from './seed-guilds';
  * Tout reste modifiable ensuite dans le panneau d'admin. Valeurs : PLAN.md, section 7.
  */
 
-const ALL_DURATIONS = [2, 5, 15, 60, 240, 480];
-
 const loot = (itemId: string, chance: number, min = 1, max = min): LootEntry => ({
   itemId,
   chance,
@@ -348,12 +346,10 @@ export const seedContent: GameContentData = withOwnLootTables({
       initialSlots: 2,
       maxSlots: 9,
       maxTeamSize: 6,
-      durationsMinutes: ALL_DURATIONS,
-      encountersPerHour: 20,
-      minEncounters: 1,
-      lootRollsPerHour: 10,
-      minLootRolls: 1,
-      durationExponent: 0.9,
+      maxDurationMinutes: 2880,
+      encounterIntervalMinutes: 3,
+      lootIntervalMinutes: 6,
+      berryDurationMinutes: 10,
     },
     capture: {
       globalMultiplier: 1,
@@ -569,7 +565,7 @@ export const seedContent: GameContentData = withOwnLootTables({
       category: 'berry',
       rarity: 'uncommon',
       effects: [
-        { type: 'encounterBoost', multiplier: 1.25 },
+        { type: 'encounterBoost', multiplier: 2 },
         { type: 'berryPlant', minutes: 60, minYield: 1, maxYield: 3 },
       ],
     },

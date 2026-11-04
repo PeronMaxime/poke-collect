@@ -64,7 +64,7 @@ describe('formes alternatives et régionales', () => {
     const result = resolveExpedition(ctx, {
       seed: 3,
       zone,
-      durationMinutes: 60,
+      elapsedMinutes: 60,
       team: [member('a', 1, 20)],
       pity: {},
       balls: { itemId: 'poke-ball', quantity: 99 },

@@ -23,7 +23,8 @@ import { BadgeIcon, TrainerRules, TrainerSprite, formatTimeLimit } from './Battl
 import { CombatTeamOrder, EnemyInfo, combatMove } from './CombatTeamOrder';
 import { TeamPicker, useTeamPicker } from './TeamPicker';
 import { TEAM_WEATHER_NOTE, WeatherIcon, zoneWeatherForecast } from './WeatherIcon';
-import { XpPreview, formatXp, usePlayerBonuses } from './XpPreview';
+import { TeamSection } from './TeamSection';
+import { formatXp, usePlayerBonuses } from './XpPreview';
 
 function ruleText(e: BattleError): string {
   switch (e.code) {
@@ -69,7 +70,6 @@ export function LaunchBattleDialog({
     minPower: trainer.rules.minPower,
     requiredTypes: trainer.rules.requiredTypes,
     affinityTypes: [...new Set(enemies.flatMap((e) => typeWeaknesses(e.types)))],
-    durationsMinutes: [],
   };
   const picker = useTeamPicker(ctx, site);
   const [moves, setMoves] = useState<Record<string, DungeonMove>>({});
@@ -155,29 +155,41 @@ export function LaunchBattleDialog({
         </div>
       </div>
 
-      <TeamPicker
+      <TeamSection
         ctx={ctx}
-        zone={site}
-        picker={picker}
-        power={power}
+        title={`Équipe · ${trainer.name}`}
+        env={env}
+        members={members}
+        xp={maxXp}
         maxTeamSize={maxTeamSize}
-        statSort
-        abilityEnv={env}
-      />
-      <p className="mt-1 text-xs text-slate-500">
-        Encadrés en vert : un de leurs types est efficace contre un Pokémon du dresseur.
-      </p>
-
-      {members.length > 0 && (
-        <CombatTeamOrder
+        power={power}
+        minPower={trainer.rules.minPower}
+        errors={errors.map(ruleText)}
+      >
+        <TeamPicker
           ctx={ctx}
-          members={members}
-          moves={moves}
-          setMoves={setMoves}
-          setTeam={picker.setTeam}
-          targets={targets}
+          zone={site}
+          picker={picker}
+          power={power}
+          maxTeamSize={maxTeamSize}
+          statSort
+          abilityEnv={env}
         />
-      )}
+        <p className="mt-1 text-xs text-slate-500">
+          Encadrés en vert : un de leurs types est efficace contre un Pokémon du dresseur.
+        </p>
+
+        {members.length > 0 && (
+          <CombatTeamOrder
+            ctx={ctx}
+            members={members}
+            moves={moves}
+            setMoves={setMoves}
+            setTeam={picker.setTeam}
+            targets={targets}
+          />
+        )}
+      </TeamSection>
 
       <div className="mt-5 grid gap-1 rounded-xl bg-slate-100 p-3 text-sm dark:bg-slate-800/60">
         <p className="flex flex-wrap items-center gap-x-1">
@@ -189,9 +201,10 @@ export function LaunchBattleDialog({
             </span>
           )}
         </p>
-        <XpPreview ctx={ctx} members={members} xp={maxXp}>
-          jusqu’à {formatXp(maxXp)} par Pokémon si toute son équipe est vaincue
-        </XpPreview>
+        <p>
+          <span className="font-semibold">XP gagnée :</span> jusqu’à {formatXp(maxXp)} par Pokémon
+          si toute son équipe est vaincue
+        </p>
         <p className="mt-2 text-xs text-slate-500">
           Chaque Pokémon adverse vaincu rapporte de l’XP à toute l’équipe, même en cas de défaite
           (pas en cas de fuite). Les Pokémon mis K.O. le restent jusqu’à leurs soins au Centre

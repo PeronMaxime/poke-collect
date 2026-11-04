@@ -126,16 +126,20 @@ export const usePokedexForms = () =>
     queryFn: () => api<PokedexFormEntryDto[]>('/api/pokedex/forms'),
   });
 
+// Les Balls des expéditions en cours sont retirées du sac au fil des rencontres : sac et
+// expéditions se rechargent régulièrement pour suivre le stock.
 export const useInventory = () =>
   useQuery({
     queryKey: keys.inventory,
     queryFn: () => api<InventoryEntryDto[]>('/api/inventory'),
+    refetchInterval: 60_000,
   });
 
 export const useExpeditions = () =>
   useQuery({
     queryKey: keys.expeditions,
     queryFn: () => api<ExpeditionsResponse>('/api/expeditions'),
+    refetchInterval: 60_000,
   });
 
 export const useDaycare = () =>

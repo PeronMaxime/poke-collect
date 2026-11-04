@@ -129,8 +129,8 @@ const EFFECTS: Record<
   },
   encounterBoost: {
     label: 'Rencontres en expédition',
-    help: 'Emportée en expédition à la place d’une baie de capture : multiplie le nombre de rencontres (Baie Nanana). Une baie par heure d’expédition, au moins une, toutes consommées.',
-    create: () => ({ type: 'encounterBoost', multiplier: 1.25 }),
+    help: 'Emportée en expédition : multiplie le rythme des rencontres pendant le temps d’effet d’une baie (Équilibrage), pour chaque baie entamée (Baie Nanana). Les baies pas encore entamées sont rendues.',
+    create: () => ({ type: 'encounterBoost', multiplier: 2 }),
   },
   guildChest: {
     label: 'Coffre de guilde',

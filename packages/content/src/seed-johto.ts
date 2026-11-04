@@ -39,10 +39,10 @@ import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
  * la boutique), œufs (bébés : Pichu, Mélo, Toudoudou, Debugant, Lippouti, Élekid, Magby) et quêtes.
  */
 
-const ALL_DURATIONS = [2, 5, 15, 60, 240, 480];
-const LONG_DURATIONS = [60, 240, 480];
+const SHORT_MIN_DURATION = 3;
+const LONG_MIN_DURATION = 60;
 /** Zones spéciales : pas d'aller-retour rapide. */
-const SPECIAL_DURATIONS = [240, 480];
+const SPECIAL_MIN_DURATION = 240;
 
 export const johtoRegion: Region = {
   id: 'johto',
@@ -98,7 +98,7 @@ const zone = ({
   | 'image'
   | 'enabled'
   | 'requiredTypes'
-  | 'durationsMinutes'
+  | 'minDurationMinutes'
   | 'weatherChangeChance'
   | 'weathers'
   | 'specialEncounters'
@@ -109,7 +109,7 @@ const zone = ({
   image: null,
   enabled: true,
   requiredTypes: [],
-  durationsMinutes: ALL_DURATIONS,
+  minDurationMinutes: SHORT_MIN_DURATION,
   weatherChangeChance: ZONE_WEATHER_CHANGE_CHANCE,
   weathers: seedZoneWeathers(z.habitat, weatherTypes),
   specialEncounters: [],
@@ -401,7 +401,7 @@ export const johtoZones: Zone[] = [
     habitat: 'mountain',
     minPower: 1950,
     weatherTypes: ['normal', 'electric', 'water'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(190, 12, 22, 28),
       enc(203, 10, 22, 28),
@@ -426,7 +426,7 @@ export const johtoZones: Zone[] = [
     habitat: 'cave',
     minPower: 2025,
     weatherTypes: ['fighting', 'rock', 'water'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(183, 16, 22, 28),
       enc(184, 4, 26, 30),
@@ -450,7 +450,7 @@ export const johtoZones: Zone[] = [
     minPower: 2100,
     requiredTypes: [{ type: 'water', count: 1 }],
     weatherTypes: ['water'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(170, 16, 22, 28),
       enc(226, 5, 24, 30),
@@ -477,7 +477,7 @@ export const johtoZones: Zone[] = [
     habitat: 'urban',
     minPower: 2750,
     weatherTypes: ['electric', 'steel', 'water'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(180, 16, 28, 34),
       enc(181, 4, 32, 36),
@@ -503,7 +503,7 @@ export const johtoZones: Zone[] = [
     minPower: 3150,
     requiredTypes: [{ type: 'water', count: 1 }],
     weatherTypes: ['water', 'bug'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(129, 32, 28, 38),
       enc(194, 14, 30, 36),
@@ -528,7 +528,7 @@ export const johtoZones: Zone[] = [
     habitat: 'cave',
     minPower: 3350,
     weatherTypes: ['ice', 'water', 'dark'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(220, 24, 32, 38),
       enc(221, 4, 36, 40),
@@ -552,7 +552,7 @@ export const johtoZones: Zone[] = [
     habitat: 'mountain',
     minPower: 3600,
     weatherTypes: ['ground', 'rock', 'normal'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(231, 18, 36, 42),
       enc(232, 4, 40, 44),
@@ -577,7 +577,7 @@ export const johtoZones: Zone[] = [
     habitat: 'waters-edge',
     minPower: 3650,
     weatherTypes: ['normal', 'water', 'psychic'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(164, 10, 40, 46),
       enc(178, 8, 40, 46),
@@ -605,7 +605,7 @@ export const johtoZones: Zone[] = [
     habitat: 'grassland',
     minPower: 1850,
     weatherTypes: ['grass', 'fire', 'water'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(161, 22, 14, 18),
       enc(163, 22, 14, 18),
@@ -630,7 +630,7 @@ export const johtoZones: Zone[] = [
     minPower: 2025,
     requiredTypes: [{ type: 'water', count: 1 }],
     weatherTypes: ['grass', 'rock', 'water'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(191, 16, 18, 22),
       enc(192, 4, 22, 26),
@@ -654,7 +654,7 @@ export const johtoZones: Zone[] = [
     minPower: 2500,
     requiredTypes: [{ type: 'bug', count: 2 }],
     weatherTypes: ['bug', 'grass'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(165, 12, 20, 26),
       enc(166, 6, 24, 28),
@@ -681,7 +681,7 @@ export const johtoZones: Zone[] = [
     habitat: 'rough-terrain',
     minPower: 3250,
     weatherTypes: ['ground', 'rock', 'flying'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(231, 14, 28, 34),
       enc(195, 10, 28, 34),
@@ -708,7 +708,7 @@ export const johtoZones: Zone[] = [
     habitat: 'mountain',
     minPower: 5000,
     weatherTypes: ['rock', 'ghost', 'ground'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(217, 12, 45, 52),
       enc(232, 10, 45, 52),
@@ -737,7 +737,7 @@ export const johtoZones: Zone[] = [
     minPower: 3500,
     requiredTypes: [{ type: 'water', count: 2 }],
     weatherTypes: ['water', 'psychic'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(72, 18, 38, 44),
       enc(73, 8, 40, 46),
@@ -763,7 +763,7 @@ export const johtoZones: Zone[] = [
     habitat: 'urban',
     minPower: 4000,
     weatherTypes: ['fire', 'psychic', 'ghost'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(198, 12, 45, 50),
       enc(228, 10, 45, 50),
@@ -788,7 +788,7 @@ export const johtoZones: Zone[] = [
     habitat: 'forest',
     minPower: 3650,
     weatherTypes: ['grass', 'bug', 'psychic'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(204, 14, 40, 46),
       enc(205, 6, 42, 46),

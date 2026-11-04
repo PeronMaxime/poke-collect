@@ -1,0 +1,1 @@
+ALTER TABLE "zones" DROP COLUMN "durations_minutes";

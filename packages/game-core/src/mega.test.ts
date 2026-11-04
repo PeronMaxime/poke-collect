@@ -52,10 +52,8 @@ describe('Méga-Évolution', () => {
     const tooMany = { code: 'TOO_MANY_MEGAS', max: 1 };
 
     const zone = ctx.zones.find((z) => z.regionId === 'kanto')!;
-    expect(checkTeam(ctx, zone, zone.durationsMinutes[0]!, team).errors).toContainEqual(tooMany);
-    expect(
-      checkTeam(ctx, zone, zone.durationsMinutes[0]!, team.slice(1)).errors,
-    ).not.toContainEqual(tooMany);
+    expect(checkTeam(ctx, zone, team).errors).toContainEqual(tooMany);
+    expect(checkTeam(ctx, zone, team.slice(1)).errors).not.toContainEqual(tooMany);
 
     const trainer = ctx.trainers.find((t) => t.regionId === 'kanto')!;
     expect(checkBattleTeam(ctx, trainer, team)).toContainEqual(tooMany);

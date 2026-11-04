@@ -154,9 +154,8 @@ describe('quêtes', () => {
   async function run(zoneId: string) {
     const started = await call<ExpeditionDto>('POST', '/api/expeditions', {
       zoneId,
-      durationMinutes: 15,
       team: [starter.id],
-      ballItemId: 'poke-ball',
+      balls: { new: 'poke-ball', shiny: 'poke-ball', caught: 'poke-ball' },
       berryItemId: null,
     });
     expect(started.status, JSON.stringify(started.body)).toBe(201);
@@ -179,9 +178,8 @@ describe('quêtes', () => {
   it('fait avancer les étapes avec les expéditions, sans double comptage', async () => {
     const locked = await call('POST', '/api/expeditions', {
       zoneId: 'foret-de-jade',
-      durationMinutes: 15,
       team: [starter.id],
-      ballItemId: null,
+      balls: { new: null, shiny: null, caught: null },
       berryItemId: null,
     });
     expect(locked.status).toBe(403);
@@ -320,9 +318,8 @@ describe('quêtes', () => {
 
     const sinnoh = await call('POST', '/api/expeditions', {
       zoneId: 'route-201',
-      durationMinutes: 15,
       team: [starter.id],
-      ballItemId: null,
+      balls: { new: null, shiny: null, caught: null },
       berryItemId: null,
     });
     expect(sinnoh.status).toBe(404);
@@ -405,9 +402,8 @@ describe('quêtes', () => {
       expect(ball.body.error).toBe('NOT_USABLE_ON_POKEMON');
       await call('POST', '/api/expeditions', {
         zoneId: 'route-1',
-        durationMinutes: 15,
         team: [target.id],
-        ballItemId: null,
+        balls: { new: null, shiny: null, caught: null },
         berryItemId: null,
       });
       const busy = await call<{ error: string }>('POST', `/api/pokemon/${target.id}/use-item`, {

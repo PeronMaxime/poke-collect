@@ -214,21 +214,21 @@ describe('Baies Grena et Nanana', () => {
     expect(res.body.remaining).toBe(0);
   });
 
-  it('la Baie Nanana : une par heure, toutes exigées, et plus de rencontres', async () => {
-    const launch = (durationMinutes: number) =>
-      call<ExpeditionDto>('POST', '/api/expeditions', {
-        zoneId: 'route-1',
-        durationMinutes,
-        team: [starter.id],
-        ballItemId: null,
-        berryItemId: 'nanab-berry',
-      });
-    expect((await launch(240)).body).toMatchObject({ error: 'NOT_ENOUGH_BERRIES', berries: 4 });
-    expect(await quantity('nanab-berry')).toBe(3);
-
-    const res = await launch(15);
+  it('la Baie Nanana : le nombre choisi, dans la limite du stock', async () => {
+    const res = await call<ExpeditionDto>('POST', '/api/expeditions', {
+      zoneId: 'route-1',
+      team: [starter.id],
+      balls: { new: null, shiny: null, caught: null },
+      berryItemId: null,
+      encounterBerryItemId: 'nanab-berry',
+      encounterBerryCount: 2,
+    });
     expect(res.status, JSON.stringify(res.body)).toBe(201);
-    expect(res.body).toMatchObject({ berryItemId: 'nanab-berry', berries: 1 });
-    expect(await quantity('nanab-berry')).toBe(2);
+    expect(res.body).toMatchObject({
+      encounterBerryItemId: 'nanab-berry',
+      encounterBerries: 2,
+      berries: 0,
+    });
+    expect(await quantity('nanab-berry')).toBe(1);
   });
 });

@@ -2,13 +2,16 @@ import { describe, expect, it } from 'vitest';
 import { STAT_NAMES } from '@poke/data';
 import type { Stats } from '@poke/data';
 import {
+  ballCategory,
   captureProbability,
   checkTeam,
-  encounterCount,
   encounterProbabilities,
+  berriesConsumed,
   expectedExpeditionXp,
+  expeditionMinMinutes,
+  expeditionPlan,
+  maxExpeditionBerries,
   lootProbabilities,
-  lootRollCount,
   matchesCaptureFilter,
   pityMultiplier,
   resolveExpedition,
@@ -20,30 +23,68 @@ import { member, testContext } from './test-helpers';
 const ctx = testContext();
 const route1 = ctx.zone('route-1')!;
 
-describe('quantités selon la durée', () => {
-  it('applique le taux horaire et les rendements décroissants', () => {
-    const durations = [2, 5, 15, 60, 240, 480];
-    expect(durations.map((d) => encounterCount(ctx, d))).toEqual([1, 2, 5, 20, 69, 129]);
-    expect(durations.map((d) => lootRollCount(ctx, d))).toEqual([1, 1, 2, 10, 34, 64]);
+describe('temps d’une expédition', () => {
+  it('une rencontre toutes les 3 min, un butin toutes les 6 min, sans rendement décroissant', () => {
+    const plans = [2, 3, 5, 6, 60, 480, 2880].map((m) => expeditionPlan(ctx, m));
+    expect(plans.map((p) => p.encounters)).toEqual([0, 1, 1, 2, 20, 160, 960]);
+    expect(plans.map((p) => p.lootRolls)).toEqual([0, 0, 0, 1, 10, 80, 480]);
   });
 
   it('lit les réglages, pas de valeurs en dur', () => {
-    const linear = testContext((c) => {
-      c.balance.expeditions.durationExponent = 1;
-      c.balance.expeditions.encountersPerHour = 5;
+    const custom = testContext((c) => {
+      c.balance.expeditions.encounterIntervalMinutes = 12;
+      c.balance.expeditions.lootIntervalMinutes = 30;
+      c.balance.expeditions.berryDurationMinutes = 20;
+      c.balance.expeditions.maxDurationMinutes = 100;
     });
-    expect(encounterCount(linear, 60)).toBe(5);
-    expect(encounterCount(linear, 480)).toBe(40);
+    expect(expeditionPlan(custom, 60)).toEqual({ encounters: 5, lootRolls: 2 });
+    expect(berriesConsumed(custom, 9, 30)).toBe(2);
+    expect(maxExpeditionBerries(custom)).toBe(5);
+  });
+
+  it('durée minimum : au moins le temps d’une rencontre, au plus la durée maximale', () => {
+    expect(expeditionMinMinutes(ctx, 60)).toBe(60);
+    expect(expeditionMinMinutes(ctx, 1)).toBe(3);
+    expect(expeditionMinMinutes(ctx, 9999)).toBe(2880);
+  });
+
+  it('une baie entamée compte, les suivantes restent à rendre', () => {
+    expect(berriesConsumed(ctx, 5, 0)).toBe(0);
+    expect(berriesConsumed(ctx, 5, 1)).toBe(1);
+    expect(berriesConsumed(ctx, 5, 10)).toBe(1);
+    expect(berriesConsumed(ctx, 5, 10.5)).toBe(2);
+    expect(berriesConsumed(ctx, 5, 600)).toBe(5);
+  });
+
+  it('s’arrêter plus tard ajoute des rencontres sans changer les précédentes', () => {
+    const input: ExpeditionInput = {
+      zone: route1,
+      elapsedMinutes: 30,
+      seed: 7,
+      team: [member('a', 25, 50)],
+      balls: { itemId: 'poke-ball', quantity: 500 },
+      berries: null,
+      pity: {},
+    };
+    const short = resolveExpedition(ctx, input);
+    const long = resolveExpedition(ctx, { ...input, elapsedMinutes: 240 });
+    expect(short.encounters).toHaveLength(10);
+    expect(long.encounters.slice(0, 10)).toEqual(short.encounters);
+    expect(long.encounters).toHaveLength(80);
   });
 });
 
 describe('lootProbabilities', () => {
   it('cumule la chance de chaque objet sur tous les tirages', () => {
-    const short = lootProbabilities(ctx, route1, 2).find((l) => l.itemId === 'poke-ball')!;
+    const short = lootProbabilities(ctx, route1, 6).find((l) => l.itemId === 'poke-ball')!;
     expect(short).toEqual({ itemId: 'poke-ball', probability: 0.7, min: 1, max: 3 });
     // 60 min = 10 tirages.
     const long = lootProbabilities(ctx, route1, 60).find((l) => l.itemId === 'poke-ball')!;
     expect(long.probability).toBeCloseTo(1 - 0.3 ** 10);
+    // Arrêt avant le premier tirage : aucun butin.
+    expect(
+      lootProbabilities(ctx, route1, 5).find((l) => l.itemId === 'poke-ball')!.probability,
+    ).toBe(0);
   });
 
   it('est vide sans table de butin', () => {
@@ -92,32 +133,32 @@ describe('capture', () => {
 describe('checkTeam', () => {
   const azuria = ctx.zone('cap-azuria')!;
 
-  it('vérifie la durée, la PE et les types requis', () => {
+  it('vérifie la PE et les types requis', () => {
     const weak = [member('a', 1, 5)];
-    const errors = checkTeam(ctx, azuria, 15, weak).errors.map((e) => e.code);
-    expect(errors).toEqual(['DURATION_NOT_ALLOWED', 'POWER_TOO_LOW', 'MISSING_TYPES']);
+    const errors = checkTeam(ctx, azuria, weak).errors.map((e) => e.code);
+    expect(errors).toEqual(['POWER_TOO_LOW', 'MISSING_TYPES']);
 
     const strong = [member('a', 7, 50), member('b', 1, 50)];
-    const ok = checkTeam(ctx, azuria, 60, strong);
+    const ok = checkTeam(ctx, azuria, strong);
     expect(ok.errors).toEqual([]);
     expect(ok.affinityCount).toBe(1);
   });
 
   it('refuse une équipe vide, trop grande ou avec doublons', () => {
-    expect(checkTeam(ctx, route1, 15, []).errors.map((e) => e.code)).toEqual(['TEAM_EMPTY']);
+    expect(checkTeam(ctx, route1, []).errors.map((e) => e.code)).toEqual(['TEAM_EMPTY']);
     const seven = Array.from({ length: 7 }, (_, i) => member(`m${i}`, 19, 5));
-    expect(checkTeam(ctx, route1, 15, seven).errors.map((e) => e.code)).toEqual(['TEAM_TOO_LARGE']);
+    expect(checkTeam(ctx, route1, seven).errors.map((e) => e.code)).toEqual(['TEAM_TOO_LARGE']);
     const dup = [member('a', 19, 5), member('a', 19, 5)];
-    expect(checkTeam(ctx, route1, 15, dup).errors.map((e) => e.code)).toEqual(['DUPLICATE_MEMBER']);
+    expect(checkTeam(ctx, route1, dup).errors.map((e) => e.code)).toEqual(['DUPLICATE_MEMBER']);
   });
   it('n’accepte que les Pokémon du Pokédex de la région', () => {
     const route29 = ctx.zone('route-29')!;
     // Un Roucool (Kanto) ne part pas à Johto, même s'il y apparaît ; un Héricendre, si.
-    expect(checkTeam(ctx, route29, 15, [member('a', 16, 10), member('b', 155, 5)]).errors).toEqual([
+    expect(checkTeam(ctx, route29, [member('a', 16, 10), member('b', 155, 5)]).errors).toEqual([
       { code: 'WRONG_REGION', regionId: 'johto', speciesIds: [16] },
     ]);
-    expect(checkTeam(ctx, route29, 15, [member('b', 155, 5)]).errors).toEqual([]);
-    expect(checkTeam(ctx, route1, 15, [member('b', 155, 5)]).errors.map((e) => e.code)).toEqual([
+    expect(checkTeam(ctx, route29, [member('b', 155, 5)]).errors).toEqual([]);
+    expect(checkTeam(ctx, route1, [member('b', 155, 5)]).errors.map((e) => e.code)).toEqual([
       'WRONG_REGION',
     ]);
   });
@@ -126,7 +167,7 @@ describe('checkTeam', () => {
 describe('resolveExpedition', () => {
   const input: ExpeditionInput = {
     zone: route1,
-    durationMinutes: 60,
+    elapsedMinutes: 60,
     seed: 1234,
     team: [member('starter', 4, 5, { xp: 135 })],
     balls: { itemId: 'poke-ball', quantity: 10 },
@@ -257,7 +298,7 @@ describe('simulateZone', () => {
   it('donne des moyennes cohérentes avec les poids de la zone', () => {
     const sim = simulateZone(ctx, {
       zoneId: 'route-1',
-      durationMinutes: 60,
+      minutes: 60,
       ballItemId: 'poke-ball',
       berryItemId: null,
       affinityCount: 0,
@@ -282,7 +323,7 @@ describe('simulateZone', () => {
   it('sans Ball, aucune capture', () => {
     const sim = simulateZone(ctx, {
       zoneId: 'route-1',
-      durationMinutes: 15,
+      minutes: 15,
       ballItemId: null,
       berryItemId: null,
       affinityCount: 0,
@@ -335,5 +376,73 @@ describe('matchesCaptureFilter', () => {
     const only = { ...newOnly, shiny: 'only' as const };
     expect(matchesCaptureFilter(only, wild(16, true, 0), caught)).toBe(false);
     expect(matchesCaptureFilter(only, wild(21, true, 0), caught)).toBe(true);
+  });
+});
+
+describe('Balls par catégorie', () => {
+  it('affine « déjà capturé » selon les IV parfaits réglés dans le plan', () => {
+    const ivs = (perfect: number) =>
+      Object.fromEntries(STAT_NAMES.map((stat, i) => [stat, i < perfect ? 31 : 10])) as Stats;
+    const wild = (perfect: number, isShiny = false) => ({
+      speciesId: 16,
+      formId: null,
+      isShiny,
+      ivs: ivs(perfect),
+    });
+    const caught = { speciesIds: new Set([16]), formIds: new Set<number>() };
+    const plan = { new: null, shiny: null, caught: 'poke-ball', iv2: 'great-ball', iv4: null };
+    expect(ballCategory(wild(1), caught, plan)).toBe('caught');
+    expect(ballCategory(wild(3), caught, plan)).toBe('iv2');
+    expect(ballCategory(wild(6), caught, plan)).toBe('iv4');
+    expect(ballCategory(wild(6, true), caught, plan)).toBe('shiny');
+    expect(ballCategory(wild(6), caught)).toBe('caught');
+    expect(ballCategory(wild(6), { speciesIds: new Set(), formIds: new Set() }, plan)).toBe('new');
+  });
+
+  const caughtPidgey = { speciesIds: new Set([16]), formIds: new Set<number>() };
+  const input: ExpeditionInput = {
+    zone: route1,
+    elapsedMinutes: 60,
+    seed: 1234,
+    team: [member('starter', 4, 5)],
+    ballPlan: { new: 'poke-ball', shiny: 'great-ball', caught: null },
+    berries: null,
+    pity: {},
+    caught: caughtPidgey,
+    // Tous chromatiques : la Ball « Shiny » passe avant les autres catégories.
+    shiny: { chain: 0, charm: 1_000_000 },
+  };
+
+  it('lance la Ball de la catégorie : shiny d’abord, puis nouveau ou déjà capturé', () => {
+    const shinies = resolveExpedition(ctx, input);
+    expect(shinies.encounters.every((e) => e.isShiny && e.ballItemId === 'great-ball')).toBe(true);
+
+    const normal = resolveExpedition(ctx, { ...input, shiny: undefined });
+    // Une espèce capturée en cours de route passe « déjà capturé » : plus de Ball ensuite.
+    const known = new Set([16]);
+    for (const e of normal.encounters) {
+      expect(e.outcome === 'ignored').toBe(known.has(e.speciesId));
+      if (!known.has(e.speciesId)) expect(e.ballItemId).toBe('poke-ball');
+      if (e.outcome === 'captured') known.add(e.speciesId);
+    }
+    expect(normal.encounters.some((e) => e.outcome === 'ignored')).toBe(true);
+    expect(normal.ballsUsed).toBe(normal.encounters.filter((e) => e.ballItemId).length);
+  });
+
+  it('suit le journal des lancers : Ball manquante, rencontre sans Ball au-delà', () => {
+    const plan = { new: 'poke-ball', shiny: 'poke-ball', caught: 'poke-ball' };
+    const result = resolveExpedition(ctx, {
+      ...input,
+      shiny: undefined,
+      ballPlan: plan,
+      throws: 'nx',
+      elapsedMinutes: 9,
+    });
+    expect(result.encounters.map((e) => e.outcome)).toEqual([
+      expect.stringMatching(/captured|escaped/),
+      'noBall',
+      'ignored',
+    ]);
+    expect(result.ballsUsed).toBe(1);
   });
 });

@@ -6,7 +6,6 @@ import {
   MAX_SEED,
   charmMultiplier,
   createRng,
-  encounterCount,
   generatePokemon,
   resolveExpedition,
   zoneWeather,
@@ -21,7 +20,6 @@ import type {
 } from '@poke/shared';
 import { TagBadge, TagToggleList } from '@web/components/tags';
 import { Modal, PokemonSprite } from '@web/components/ui';
-import { formatDuration } from '@web/lib/labels';
 import { ZoneCard } from '@web/pages/game/ExpeditionsPage';
 import { NewbornActionsView } from '@web/pages/game/HatchReveal';
 import { LaunchExpeditionForm } from '@web/pages/game/LaunchExpeditionDialog';
@@ -96,6 +94,7 @@ export function useStored<T>(key: string, initial: T) {
 
 interface Simulation {
   input: StartExpeditionInput;
+  minutes: number;
   chain: number;
   seed: number;
   result: StoredExpeditionResult;
@@ -151,7 +150,7 @@ export function ExpeditionSimulatorPage() {
       caughtShiny={NONE}
       caughtShinyForms={NONE}
       unlocked
-      canLaunch={z.durationsMinutes.length > 0}
+      canLaunch
       chain={chainDto(z.id)}
       // Chaînes sans délai de relance : l’heure n’est pas utilisée.
       serverNow={0}
@@ -301,40 +300,44 @@ function SimulatorDialog({
   // Météo de la zone simulée : par défaut, celle du moment.
   const [weather, setWeather] = useState<Weather | null>(() => zoneWeather(zone, Date.now()));
   const [sim, setSim] = useState<Simulation | null>(null);
+  // Temps passé en expédition simulé (et période des estimations du formulaire).
+  const [minutes, setMinutes] = useState(60);
   const [runs, setRuns] = useState(0);
   const pcById = new Map(pc.map((p) => [p.id, p]));
 
-  function run(input: StartExpeditionInput, simChain: number) {
-    const encounters = encounterCount(ctx, input.durationMinutes);
-    // Seules les rencontres de la zone comptent pour le filtre « nouveaux Pokémon ».
-    const caught: CaughtDex = emptyDex
-      ? { speciesIds: new Set(), formIds: new Set() }
-      : {
-          speciesIds: new Set(zone.encounters.map((e) => e.speciesId)),
-          formIds: new Set(zone.encounters.flatMap((e) => e.formId ?? [])),
-        };
+  // Pokédex simulé : vide, ou tous les Pokémon de la zone déjà capturés (catégorie des Balls).
+  const caught: CaughtDex = emptyDex
+    ? { speciesIds: new Set(), formIds: new Set() }
+    : {
+        speciesIds: new Set(zone.encounters.map((e) => e.speciesId)),
+        formIds: new Set(zone.encounters.flatMap((e) => e.formId ?? [])),
+      };
+
+  function run(input: StartExpeditionInput, minutes: number, simChain: number) {
+    const encounterBerries = input.encounterBerryItemId
+      ? { itemId: input.encounterBerryItemId, quantity: input.encounterBerryCount ?? 1 }
+      : null;
     const seed = randomSeed();
     const result = resolveExpedition(ctx, {
       zone,
-      durationMinutes: input.durationMinutes,
+      elapsedMinutes: minutes,
       seed,
       team: input.team.flatMap((id) => pcById.get(id) ?? []),
-      balls: input.ballItemId
-        ? {
-            itemId: input.ballItemId,
-            quantity: Math.min(encounters, input.ballCount ?? encounters),
-          }
+      // Stock illimité : chaque rencontre reçoit la Ball de sa catégorie.
+      ballPlan: input.balls,
+      berries: input.berryItemId
+        ? { itemId: input.berryItemId, quantity: input.berryCount ?? 1 }
         : null,
-      berries: input.berryItemId ? { itemId: input.berryItemId, quantity: encounters } : null,
+      encounterBerries,
       pity: {},
       shiny: { chain: simChain, charm },
-      captureFilter: input.captureFilter,
       caught,
       weather,
     });
     const captured = result.encounters.filter((e) => e.outcome === 'captured');
     setSim({
       input,
+      minutes,
       chain: simChain,
       seed,
       result: {
@@ -364,6 +367,7 @@ function SimulatorDialog({
           owned={() => Number.MAX_SAFE_INTEGER}
           unlimitedItems
           weather={weather}
+          caught={caught}
           team={picker.team}
           members={picker.members}
           renderTeam={(power, env) => (
@@ -397,6 +401,27 @@ function SimulatorDialog({
                 />
               </label>
               <label className="flex items-center gap-2 text-xs">
+                <span className="text-slate-500">Durée simulée (min)</span>
+                <input
+                  type="number"
+                  className="input w-24 py-1"
+                  min={1}
+                  max={ctx.balance.expeditions.maxDurationMinutes}
+                  value={minutes}
+                  onChange={(e) =>
+                    setMinutes(
+                      Math.max(
+                        1,
+                        Math.min(
+                          ctx.balance.expeditions.maxDurationMinutes,
+                          Math.floor(Number(e.target.value) || 1),
+                        ),
+                      ),
+                    )
+                  }
+                />
+              </label>
+              <label className="flex items-center gap-2 text-xs">
                 <span className="text-slate-500">Météo de la zone</span>
                 <span className="w-40">
                   <WeatherSelect value={weather} onChange={setWeather} />
@@ -407,9 +432,10 @@ function SimulatorDialog({
           }
           pending={false}
           error={null}
-          submitLabel={(d) => `Partir (${formatDuration(d)}) — instantané`}
+          previewMinutes={minutes}
+          submitLabel="Partir pour la durée simulée — instantané"
           onCancel={onClose}
-          onSubmit={(input) => run(input, chain)}
+          onSubmit={(input, minutes) => run(input, minutes, chain)}
         />
       </div>
       {sim && (
@@ -426,14 +452,14 @@ function SimulatorDialog({
               <span className="mr-auto text-xs text-slate-400">Graine {sim.seed}</span>
               <button
                 className="btn-ghost"
-                onClick={() => run(sim.input, sim.chain)}
+                onClick={() => run(sim.input, sim.minutes, sim.chain)}
                 title="Nouveau tirage au même maillon de chaîne"
               >
                 ↻ Même maillon
               </button>
               <button
                 className="btn-ghost"
-                onClick={() => run(sim.input, sim.chain + 1)}
+                onClick={() => run(sim.input, sim.minutes, sim.chain + 1)}
                 title="Repartir avec les mêmes réglages, au maillon suivant (comme en jeu)"
               >
                 ↻ Relancer

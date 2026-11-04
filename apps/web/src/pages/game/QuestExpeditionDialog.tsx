@@ -65,7 +65,7 @@ export function QuestExpeditionDialog({
 
   // Talents de l'équipe : à l'heure actuelle (celle du départ).
   const hour = new Date().getHours();
-  const check = checkTeam(ctx, zone, durationMinutes, picker.members, hour);
+  const check = checkTeam(ctx, zone, picker.members, hour);
   const env = expeditionEnv(zone, picker.members, hour, 'quest');
   const { errors } = check;
   const name = speciesName(ctx, target.speciesId, target.formId);

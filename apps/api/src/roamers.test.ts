@@ -116,9 +116,8 @@ describe('Pokémon fuyards', () => {
   const start = (zoneId = 'route-1', ballItemId: string | null = 'poke-ball') =>
     call<ExpeditionDto>('POST', '/api/expeditions', {
       zoneId,
-      durationMinutes: 15,
       team: [starter.id],
-      ballItemId,
+      balls: { new: ballItemId, shiny: ballItemId, caught: ballItemId },
       berryItemId: null,
     });
   const roamerZone = async () => (await roamers())[0]!.zoneId;
@@ -156,11 +155,15 @@ describe('Pokémon fuyards', () => {
   it('croisé sans être capturé, fuit aussitôt vers une autre zone', async () => {
     const zoneId = await roamerZone();
     const started = await start(zoneId, null);
+    expect(started.body.roamersMet).toEqual([]);
     advance(15);
+    // Annoncé dès la rencontre, avant la réclamation.
+    const running = (await call<ExpeditionsResponse>('GET', '/api/expeditions')).body.active;
+    expect(running.find((e) => e.id === started.body.id)?.roamersMet).toEqual(['fuyard-test']);
     const claimed = await claim(started.body.id);
     expect(claimed.status, JSON.stringify(claimed.body)).toBe(200);
     const met = claimed.body.expedition.result!.encounters.filter((e) => e.speciesId === 243);
-    expect(met).toMatchObject([{ questId: 'fuyard-test', outcome: 'noBall' }]);
+    expect(met).toMatchObject([{ questId: 'fuyard-test', outcome: 'ignored' }]);
     expect(await quest()).toMatchObject({ pokemonCaught: 0 });
     const fled = await roamerZone();
     expect(fled).not.toBe(zoneId);

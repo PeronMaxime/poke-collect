@@ -134,7 +134,7 @@ describe('Pokémon fuyards', () => {
 
   const input: ExpeditionInput = {
     zone: ctx.zone('route-29')!,
-    durationMinutes: 60,
+    elapsedMinutes: 60,
     seed: 7,
     team: [member('a', 155, 30)],
     balls: { itemId: 'ultra-ball', quantity: 50 },
