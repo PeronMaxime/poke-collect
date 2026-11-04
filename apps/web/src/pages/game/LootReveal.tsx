@@ -20,7 +20,14 @@ import {
   usePokemon,
   utcOffsetMinutes,
 } from '../../lib/game';
-import { GAME_ERRORS, formatShinyRate, itemIcon, itemName, speciesName } from '../../lib/labels';
+import {
+  GAME_ERRORS,
+  candyName,
+  formatShinyRate,
+  itemIcon,
+  itemName,
+  speciesName,
+} from '../../lib/labels';
 import { NewbornActions } from './HatchReveal';
 
 // Secondes entre deux rencontres : on accélère quand il y en a beaucoup, pour que
@@ -87,6 +94,7 @@ function RevealContent({
         ...(e.berryItemId ? { berryCount: e.berries } : {}),
         encounterBerryItemId: e.encounterBerryItemId,
         ...(e.encounterBerryItemId ? { encounterBerryCount: e.encounterBerries } : {}),
+        autoTransfer: e.autoTransfer,
       };
       return api<ExpeditionDto>('/api/expeditions', {
         method: 'POST',
@@ -150,7 +158,7 @@ function RevealContent({
                 className="btn-ghost"
                 disabled={relaunch.isPending}
                 onClick={() => relaunch.mutate(data.expedition)}
-                title="Repartir avec la même équipe, les mêmes Balls, baies et filtres"
+                title="Repartir avec la même équipe, les mêmes Balls, baies et le même transfert automatique"
               >
                 {relaunch.isPending
                   ? 'Relance…'
@@ -205,18 +213,21 @@ export function ExpeditionRevealView({
   const result = expedition.result!;
   const { zoneId, questId } = expedition;
   const place = (zoneId && ctx.zone(zoneId)?.name) ?? (questId && ctx.quest(questId)?.name);
-  const captured = result.encounters.filter((e) => e.outcome === 'captured').length;
-  const shinies = result.encounters.filter((e) => e.isShiny).length;
-  const firstShiny = result.encounters.findIndex((e) => e.isShiny);
+  // Captures transférées automatiquement : pas affichées une à une, résumées sous la grille.
+  const encounters = result.encounters.filter((e) => !e.transferred);
+  const transferred = result.autoTransferred;
+  const captured = encounters.filter((e) => e.outcome === 'captured').length;
+  const shinies = encounters.filter((e) => e.isShiny).length;
+  const firstShiny = encounters.findIndex((e) => e.isShiny);
   // « Nouveau ! » sur la première capture de chaque nouvelle espèce ou forme seulement.
   const isFirstNew = newInDexTracker(result);
   const firstNew = new Set<number>();
-  result.encounters.forEach((e, i) => {
+  encounters.forEach((e, i) => {
     if (e.outcome === 'captured' && isFirstNew(e)) firstNew.add(i);
   });
-  const step = revealStep(result.encounters.length);
+  const step = revealStep(encounters.length);
   const delay = (i: number) => (instant ? 0 : 0.3 + i * step);
-  const after = delay(result.encounters.length);
+  const after = delay(encounters.length);
 
   return (
     <div>
@@ -226,6 +237,8 @@ export function ExpeditionRevealView({
           <p className="text-sm text-slate-500">
             {result.encounters.length} rencontre{result.encounters.length > 1 ? 's' : ''},{' '}
             {captured} capture{captured > 1 ? 's' : ''}
+            {transferred &&
+              ` (+ ${transferred.count} transférée${transferred.count > 1 ? 's' : ''})`}
             {result.shinyChance !== undefined && (
               <>
                 {' '}
@@ -258,7 +271,7 @@ export function ExpeditionRevealView({
           </motion.p>
         )}
 
-        {questId && result.encounters[0] && (
+        {questId && encounters[0] && (
           <motion.p
             className={`mt-3 rounded-xl px-3 py-2 text-center text-sm ${
               captured > 0
@@ -270,15 +283,15 @@ export function ExpeditionRevealView({
             transition={{ delay: after }}
           >
             {captured > 0
-              ? `${speciesName(ctx, result.encounters[0].speciesId, result.encounters[0].formId)} a été capturé !`
-              : result.encounters[0].outcome === 'fled'
+              ? `${speciesName(ctx, encounters[0].speciesId, encounters[0].formId)} a été capturé !`
+              : encounters[0].outcome === 'fled'
                 ? 'Tu as pris la fuite. Relance l’expédition légendaire depuis les Quêtes pour allonger la chaîne chromatique.'
-                : `${speciesName(ctx, result.encounters[0].speciesId, result.encounters[0].formId)} s’est enfui… Tu peux retenter une expédition légendaire depuis les Quêtes.`}
+                : `${speciesName(ctx, encounters[0].speciesId, encounters[0].formId)} s’est enfui… Tu peux retenter une expédition légendaire depuis les Quêtes.`}
           </motion.p>
         )}
 
         <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {result.encounters.map((e, i) => {
+          {encounters.map((e, i) => {
             const isNew = firstNew.has(i);
             const captive = e.pokemonId ? pokemon(e.pokemonId) : e.pokemon;
             return (
@@ -356,6 +369,21 @@ export function ExpeditionRevealView({
             );
           })}
         </div>
+
+        {transferred && (
+          <motion.p
+            className="mt-3 rounded-xl bg-slate-100 px-3 py-2 text-center text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+            initial={instant ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: after }}
+          >
+            {transferred.count} Pokémon transféré{transferred.count > 1 ? 's' : ''} automatiquement
+            {transferred.candies.length > 0 &&
+              ` · ${transferred.candies
+                .map((c) => `+${c.quantity} × ${candyName(ctx, c.lineageId)}`)
+                .join(', ')}`}
+          </motion.p>
+        )}
 
         <motion.div
           initial={instant ? false : { opacity: 0, y: 10 }}

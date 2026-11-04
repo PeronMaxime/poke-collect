@@ -57,7 +57,14 @@ import { ActiveAbilities } from './ActiveAbilities';
 import { LaunchExpeditionDialog } from './LaunchExpeditionDialog';
 import { LegendaryEncounterDialog } from './LegendaryEncounterDialog';
 import { LootReveal } from './LootReveal';
+import {
+  AutoTransferButton,
+  GlobalAutoTransferDialog,
+  autoTransferLabel,
+  loadGlobalAutoTransfer,
+} from './AutoTransferSettings';
 import { RegionStarterCard } from './RegionStarterCard';
+import { roamerName } from './RoamerSightingNotice';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 import { ZoneWeatherIcon } from './WeatherIcon';
 
@@ -84,6 +91,9 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   const [selectedRegion, setSelectedRegion] = useSavedRegionTab('expeditions');
   const [linkedZoneId, setLinkedZoneId] = useState(zoneFromHash);
   const [notice, setNotice] = useState<string | null>(null);
+  // Filtre global du transfert automatique (chaque zone peut avoir le sien au lancement).
+  const [autoTransfer, setAutoTransfer] = useState(loadGlobalAutoTransfer);
+  const [autoTransferOpen, setAutoTransferOpen] = useState(false);
 
   const claim = useMutation({
     mutationFn: (id: string) =>
@@ -242,11 +252,18 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   return (
     <div className="space-y-8">
       <section>
-        <div className="mb-3 flex items-baseline justify-between">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3">
           <h2 className="text-lg font-semibold">Expéditions en cours</h2>
-          <span className="text-sm text-slate-500">
-            {active.length} / {slots} emplacements
-          </span>
+          <div className="flex flex-wrap items-baseline gap-x-3">
+            <AutoTransferButton
+              label="Transfert auto"
+              filter={autoTransfer}
+              onClick={() => setAutoTransferOpen(true)}
+            />
+            <span className="text-sm text-slate-500">
+              {active.length} / {slots} emplacements
+            </span>
+          </div>
         </div>
         {notice && (
           <p className="mb-3 flex items-start justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
@@ -364,6 +381,12 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
         />
       )}
       <LootReveal ctx={ctx} data={reveal} onClose={() => setReveal(null)} />
+      <GlobalAutoTransferDialog
+        open={autoTransferOpen}
+        filter={autoTransfer}
+        onClose={() => setAutoTransferOpen(false)}
+        onSave={setAutoTransfer}
+      />
     </div>
   );
 }
@@ -406,6 +429,8 @@ function ActiveExpedition({
   // Compté au rythme calculé par le serveur (contenu, équipe et météo du départ) : exact.
   const elapsedMinutes = (Math.min(serverNow, end) - start) / 60_000;
   const sofar = expedition.pace ? planAfter(expedition.pace, Math.max(0, elapsedMinutes)) : null;
+  // Fuyards pas encore croisés : ceux déjà rencontrés ont leur propre ligne.
+  const tracked = expedition.roamerQuestIds.filter((id) => !expedition.roamersMet.includes(id));
   return (
     <div
       className={`card group/exp relative p-4 ${done ? 'ring-2 ring-brand-500/50' : ''}`}
@@ -424,17 +449,16 @@ function ActiveExpedition({
           {expedition.questId && (
             <p className="text-xs font-medium text-amber-600">✦ Expédition légendaire</p>
           )}
-          {expedition.roamerQuestIds.length > 0 && (
+          {tracked.length > 0 && (
             <p className="text-xs font-medium text-amber-600">
-              ✦ Sur la piste de{' '}
-              {expedition.roamerQuestIds
-                .map((id) => {
-                  const p = ctx.quest(id)?.rewards.pokemon.find((x) => x.roaming != null);
-                  return p ? speciesName(ctx, p.speciesId, p.formId) : id;
-                })
-                .join(' et ')}
+              ✦ Sur la piste de {tracked.map((id) => roamerName(ctx, id)).join(' et ')}
             </p>
           )}
+          {expedition.roamersMet.map((id) => (
+            <p key={id} className="text-xs font-semibold text-amber-600">
+              ✦ {roamerName(ctx, id)} a été rencontré !
+            </p>
+          ))}
           <p className="font-semibold">
             {zone?.name ?? quest?.name ?? expedition.zoneId ?? expedition.questId}
           </p>
@@ -571,6 +595,7 @@ function ExpeditionSummary({
       e.encounterBerryItemId && `${e.encounterBerries} × ${itemName(ctx, e.encounterBerryItemId)}`,
     ].filter(Boolean);
     rows.push(['Baies', berries.length > 0 ? berries.join(' · ') : 'aucune']);
+    if (e.zoneId) rows.push(['Transfert auto', autoTransferLabel(e.autoTransfer)]);
   }
   // Comme au serveur : chaîne du départ, Charme Chroma et bonus permanent au retour et, hors
   // expédition légendaire, talents de l'équipe.

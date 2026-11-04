@@ -25,6 +25,7 @@ import type {
 import type {
   AbilityHolder,
   AssistantPost,
+  AutoTransferFilter,
   BallPlan,
   CaptureFilter,
   CaptureSnapshot,
@@ -339,6 +340,8 @@ export const expeditions = pgTable(
      * sac à chaque rencontre ; null = ancienne expédition (Balls réservées dans `balls`).
      */
     ballPlan: jsonb('ball_plan').$type<BallPlan>(),
+    /** Transfert automatique des captures au retour, figé au départ ; null = aucun. */
+    autoTransfer: jsonb('auto_transfer').$type<AutoTransferFilter>(),
     /** Pokédex (Pokémon de la zone) et pitié figés au départ : les lancers se rejouent à l'identique. */
     captureSnapshot: jsonb('capture_snapshot').$type<CaptureSnapshot>(),
     /** Journal des lancers déjà décidés, un caractère par rencontre (voir `THROW_CODES`). */
@@ -368,6 +371,11 @@ export const expeditions = pgTable(
       .$type<{ questId: string; pokemonIndex: number }[]>()
       .notNull()
       .default([]),
+    /**
+     * Quêtes des fuyards déjà croisés, au fil des rencontres (voir `settleExpeditionBalls`) :
+     * le joueur l'apprend avant la réclamation, sans savoir si la capture a réussi.
+     */
+    roamersMet: jsonb('roamers_met').$type<string[]>().notNull().default([]),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
     /** Notification push « expédition terminée » envoyée. */
     notifiedAt: timestamp('notified_at', { withTimezone: true }),

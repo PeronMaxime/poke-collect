@@ -4,6 +4,7 @@ import { expeditions, pityCounters, playerProfiles, pokemon, questProgress } fro
 import type { Db } from '@poke/db';
 import {
   BALL_CATEGORIES,
+  autoTransferIndexes,
   planBall,
   MAX_SEED,
   MISSED_THROW,
@@ -61,6 +62,7 @@ import { recordGuildActivity } from './guilds';
 import { syncQuests } from './quests';
 import {
   addItems,
+  transferRows,
   assertAvailable,
   caughtDex,
   claimedRewards,
@@ -366,6 +368,8 @@ async function settleBallsIn(db: Db, content: ContentCache, userId: string, now:
     plan: BallPlan;
     throws: string;
     used: Record<string, number>;
+    /** Quêtes des fuyards déjà croisés. */
+    roamersMet: string[];
     /** Rencontres survenues à ce jour. */
     limit: number;
     done: boolean;
@@ -392,6 +396,7 @@ async function settleBallsIn(db: Db, content: ContentCache, userId: string, now:
       plan,
       throws: row.throws,
       used: { ...row.ballsUsed },
+      roamersMet: [...row.roamersMet],
       limit: run.encountersAfter(elapsed),
       done,
     });
@@ -425,8 +430,15 @@ async function settleBallsIn(db: Db, content: ContentCache, userId: string, now:
       code = THROW_CODES[category];
       return { ballItemId };
     });
-    if (met) current.throws += code;
-    else current.done = true;
+    if (!met) {
+      current.done = true;
+      continue;
+    }
+    current.throws += code;
+    // Le joueur apprend qu'il a croisé le fuyard, pas l'issue du lancer.
+    if (met.questId && !current.roamersMet.includes(met.questId)) {
+      current.roamersMet.push(met.questId);
+    }
   }
 
   for (const [itemId, quantity] of taken) {
@@ -434,12 +446,16 @@ async function settleBallsIn(db: Db, content: ContentCache, userId: string, now:
   }
   for (const r of runs) {
     const at = new Date(nextAt(r));
+    // Plus de Ball à lancer ni de fuyard à croiser : inutile de la rejouer avant la réclamation.
+    const pending =
+      planHasBall(r.plan) || r.row.roamers.some((x) => !r.roamersMet.includes(x.questId));
     await db
       .update(expeditions)
       .set({
         throws: r.throws,
         ballsUsed: r.used,
-        nextThrowAt: !r.done && at <= r.row.endsAt ? at : null,
+        roamersMet: r.roamersMet,
+        nextThrowAt: pending && !r.done && at <= r.row.endsAt ? at : null,
       })
       .where(eq(expeditions.id, r.row.id));
   }
@@ -552,8 +568,13 @@ export async function startExpedition(
         ballItemId: null,
         balls: 0,
         ballPlan,
+        autoTransfer: input.autoTransfer ?? null,
         captureSnapshot: snapshot,
-        nextThrowAt: planHasBall(ballPlan) && firstEncounter <= endsAt ? firstEncounter : null,
+        // Rejouée au fil de l'eau pour retirer les Balls, ou pour annoncer un fuyard croisé.
+        nextThrowAt:
+          (planHasBall(ballPlan) || roamers.length > 0) && firstEncounter <= endsAt
+            ? firstEncounter
+            : null,
         berryItemId: berries > 0 ? input.berryItemId : null,
         berries,
         encounterBerryItemId: encounterBerries > 0 ? input.encounterBerryItemId : null,
@@ -987,6 +1008,8 @@ export async function claimExpedition(
           );
       }
     }
+    // Pokédex avant les captures de cette expédition : seules celles déjà connues partent.
+    const dexBefore = zone && locked.autoTransfer ? await caughtDex(tx, userId) : null;
     const newInDex = await recordPokedex(tx, userId, {
       met: result.encounters,
       caught: captured,
@@ -1059,13 +1082,30 @@ export async function claimExpedition(
       now,
     );
 
+    // Transfert automatique, une fois les captures comptées (Pokédex, quêtes, guilde).
+    const toTransfer = dexBefore
+      ? autoTransferIndexes(ctx, result.encounters, dexBefore, locked.autoTransfer)
+      : new Set<number>();
+    const rowByEncounter = new Map<number, PokemonRow>();
     let capturedIndex = 0;
+    result.encounters.forEach((e, i) => {
+      if (e.pokemon) rowByEncounter.set(i, captured[capturedIndex++]!);
+    });
+    const transferredRows = [...toTransfer].map((i) => rowByEncounter.get(i)!);
+    const candiesGained = await transferRows(tx, ctx, userId, transferredRows);
     const stored: StoredExpeditionResult = {
       ...result,
-      encounters: result.encounters.map((e) =>
-        e.pokemon ? { ...e, pokemonId: captured[capturedIndex++]!.id } : e,
+      encounters: result.encounters.map((e, i) =>
+        toTransfer.has(i)
+          ? { ...e, transferred: true as const }
+          : e.pokemon
+            ? { ...e, pokemonId: rowByEncounter.get(i)!.id }
+            : e,
       ),
       ...newInDex,
+      ...(toTransfer.size > 0 && {
+        autoTransferred: { count: toTransfer.size, candies: candiesGained },
+      }),
     };
     const [claimed] = await tx
       .update(expeditions)
@@ -1075,6 +1115,7 @@ export async function claimExpedition(
       })
       .where(eq(expeditions.id, found.id))
       .returning();
-    return { expedition: claimed!, captured };
+    const gone = new Set(transferredRows.map((r) => r.id));
+    return { expedition: claimed!, captured: captured.filter((r) => !gone.has(r.id)) };
   });
 }

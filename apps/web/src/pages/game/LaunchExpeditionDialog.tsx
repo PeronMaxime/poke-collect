@@ -61,6 +61,14 @@ import {
   speciesName,
   typeLabel,
 } from '../../lib/labels';
+import {
+  AutoTransferButton,
+  ZoneAutoTransferDialog,
+  effectiveAutoTransfer,
+  loadGlobalAutoTransfer,
+  parseFilter,
+} from './AutoTransferSettings';
+import type { ZoneAutoTransfer } from './AutoTransferSettings';
 import { TeamPicker, pillClass, useTeamPicker } from './TeamPicker';
 import { TeamSection } from './TeamSection';
 import { TEAM_WEATHER_NOTE, WeatherIcon, zoneWeatherForecast } from './WeatherIcon';
@@ -128,6 +136,22 @@ function EncounterHeader({ className = '' }: { className?: string }) {
   );
 }
 
+const LOOT_ROW = 'grid grid-cols-[minmax(0,1fr)_4.5rem_4rem] items-center gap-x-1';
+
+/** En-tête des colonnes du butin (répété en haut de chaque colonne sur grand écran). */
+function LootHeader({ className = '' }: { className?: string }) {
+  return (
+    <li
+      aria-hidden
+      className={`${LOOT_ROW} pb-1 text-[11px] font-medium text-slate-500 ${className}`}
+    >
+      <span>Objet</span>
+      <span className="text-right">Chance</span>
+      <span className="text-right">Quantité</span>
+    </li>
+  );
+}
+
 /** Catégories de Pokémon rencontrés, chacune avec sa Ball. */
 const BALL_ROWS: Record<BallCategory, { label: string; hint: string }> = {
   new: { label: 'Nouveau Pokémon', hint: 'Absent de ton Pokédex.' },
@@ -159,6 +183,8 @@ interface ZoneSettings {
   showIvBalls?: boolean;
   encounterBerryItemId?: string | null;
   encounterBerryCount?: number;
+  /** Transfert automatique : absent = filtre global. */
+  autoTransfer?: ZoneAutoTransfer;
 }
 
 const settingsKey = (zoneId: string) => `expedition-settings:${zoneId}`;
@@ -409,9 +435,21 @@ export function LaunchExpeditionForm({
   const [berryCount, setBerryCount] = useState(saved.berryCount ?? 1);
   const [encounterBerryChoice, setEncounterBerryId] = useState(saved.encounterBerryItemId ?? null);
   const [encounterBerryCount, setEncounterBerryCount] = useState(saved.encounterBerryCount ?? 1);
+  // Transfert automatique (jeu seulement) : filtre global, ou celui retenu pour la zone.
+  const [globalAutoTransfer] = useState(loadGlobalAutoTransfer);
+  const [zoneAutoTransfer, setZoneAutoTransfer] = useState<ZoneAutoTransfer>(() =>
+    saved.autoTransfer?.custom
+      ? { custom: true, filter: parseFilter(saved.autoTransfer.filter) }
+      : { custom: false },
+  );
+  const [autoTransferOpen, setAutoTransferOpen] = useState(false);
+  const autoTransfer = rememberSettings
+    ? effectiveAutoTransfer(zoneAutoTransfer, globalAutoTransfer)
+    : null;
   useEffect(() => {
     if (!rememberSettings) return;
     storeZoneSettings(zone.id, {
+      autoTransfer: zoneAutoTransfer,
       balls: ballChoice,
       showIvBalls,
       berryItemId: berryChoice,
@@ -422,6 +460,7 @@ export function LaunchExpeditionForm({
   }, [
     rememberSettings,
     zone.id,
+    zoneAutoTransfer,
     ballChoice,
     showIvBalls,
     berryChoice,
@@ -550,10 +589,8 @@ export function LaunchExpeditionForm({
         >
           <PokemonSprite speciesId={r.speciesId} formId={r.formId} size={40} />
           <span>
-            <strong>{speciesName(ctx, r.speciesId, r.formId)}</strong> se cache ici ! Chances de le
-            croiser {per} : {formatChance(roamerMeetChance(r.encounterChance, encounters))}. Il
-            reçoit la Ball de sa catégorie (nouveau, shiny ou déjà capturé). L’expédition l’emmène
-            avec elle : il n’apparaît plus ailleurs jusqu’à son retour.
+            <strong>{speciesName(ctx, r.speciesId, r.formId)}</strong> se cache ici ! Partez à sa
+            recherche.
           </span>
         </p>
       ))}
@@ -685,6 +722,27 @@ export function LaunchExpeditionForm({
         </>
       )}
 
+      {rememberSettings && (
+        <>
+          <div className="mt-5 flex flex-wrap items-center gap-x-2">
+            <AutoTransferButton
+              label={zoneAutoTransfer.custom ? 'Transfert auto (zone)' : 'Transfert auto (global)'}
+              filter={autoTransfer}
+              onClick={() => setAutoTransferOpen(true)}
+              className="-ml-3"
+            />
+          </div>
+          <ZoneAutoTransferDialog
+            open={autoTransferOpen}
+            zoneName={zone.name}
+            value={zoneAutoTransfer}
+            globalFilter={globalAutoTransfer}
+            onClose={() => setAutoTransferOpen(false)}
+            onSave={setZoneAutoTransfer}
+          />
+        </>
+      )}
+
       <h3 className="mt-5 text-sm font-semibold">Rencontres possibles</h3>
       <ul className="mt-2 grid gap-x-6 gap-y-0.5 text-xs sm:grid-cols-2">
         <EncounterHeader />
@@ -780,13 +838,22 @@ export function LaunchExpeditionForm({
           <h3 className="mt-5 text-sm font-semibold">
             Butin possible à chaque tirage (toutes les {lootIntervalMinutes} min)
           </h3>
-          <ul className="mt-2 grid grid-cols-2 gap-1 text-xs sm:grid-cols-3">
+          <ul className="mt-2 grid gap-x-6 gap-y-0.5 text-xs sm:grid-cols-2">
+            <LootHeader />
+            {loot.length > 1 && <LootHeader className="hidden sm:grid" />}
             {loot.map(({ itemId, probability, min, max }) => (
-              <li key={itemId} className="flex items-center gap-1">
-                <img src={itemIcon(ctx, itemId)} alt="" className="h-8 w-8 object-contain" />
-                <span className="truncate">
-                  {itemName(ctx, itemId)} · {formatChance(probability)}
-                  <span className="text-slate-500"> (× {min === max ? min : `${min}–${max}`})</span>
+              <li key={itemId} className={LOOT_ROW} title={itemName(ctx, itemId)}>
+                <span className="flex min-w-0 items-center gap-1">
+                  <img
+                    src={itemIcon(ctx, itemId)}
+                    alt=""
+                    className="h-8 w-8 shrink-0 object-contain"
+                  />
+                  <span className="min-w-0 truncate">{itemName(ctx, itemId)}</span>
+                </span>
+                <span className="text-right tabular-nums">{formatChance(probability)}</span>
+                <span className="text-right tabular-nums text-slate-500">
+                  × {min === max ? min : `${min}–${max}`}
                 </span>
               </li>
             ))}
@@ -830,6 +897,7 @@ export function LaunchExpeditionForm({
                 ...(berryId ? { berryCount: berriesTaken } : {}),
                 encounterBerryItemId: encounterBerryId,
                 ...(encounterBerryId ? { encounterBerryCount: encounterBerriesTaken } : {}),
+                autoTransfer,
               },
               duration,
             )

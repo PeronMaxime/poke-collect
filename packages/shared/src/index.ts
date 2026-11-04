@@ -15,6 +15,7 @@ import type {
 import { STAT_NAMES } from '@poke/data';
 import type { StatName, Stats } from '@poke/data';
 import type {
+  AutoTransferFilter,
   BattleError,
   BattleResult,
   BreedingError,
@@ -637,6 +638,11 @@ export const ballPlanSchema = z.object({
   iv6: slugSchema.nullable().optional(),
 });
 
+/** Filtre du transfert automatique (voir `AutoTransferFilter`). */
+export const autoTransferFilterSchema = z.object({
+  maxPerfectIvs: z.int().min(0).max(STAT_NAMES.length),
+}) satisfies z.ZodType<AutoTransferFilter>;
+
 export const startExpeditionInputSchema = z.object({
   zoneId: slugSchema,
   team: z.array(z.uuid()).min(1).max(6),
@@ -648,6 +654,11 @@ export const startExpeditionInputSchema = z.object({
   /** Baie de rencontres et nombre emporté (absent : une). */
   encounterBerryItemId: slugSchema.nullable().optional(),
   encounterBerryCount: z.int().positive().optional(),
+  /**
+   * Transfert automatique au retour : captures déjà au Pokédex avec au plus N IV parfaits ;
+   * null ou absent = aucun.
+   */
+  autoTransfer: autoTransferFilterSchema.nullable().optional(),
   /** Heure locale du joueur (talents de jour ou de nuit). */
   utcOffsetMinutes: utcOffsetSchema.optional(),
 });
@@ -686,11 +697,20 @@ export interface LegendaryEncounterDto {
 
 /** Résultat stocké : chaque Pokémon capturé reçoit son identifiant en base. */
 export interface StoredExpeditionResult extends ExpeditionResult {
-  encounters: (ExpeditionResult['encounters'][number] & { pokemonId?: string })[];
+  encounters: (ExpeditionResult['encounters'][number] & {
+    pokemonId?: string;
+    /** Capture transférée automatiquement au retour. */
+    transferred?: true;
+  })[];
   /** Espèces capturées pour la première fois. */
   newSpeciesIds: number[];
   /** Formes capturées pour la première fois (absent des expéditions anciennes). */
   newFormIds?: number[];
+  /**
+   * Captures transférées automatiquement au retour (rencontres marquées `transferred`, sans
+   * `pokemonId`) et Bonbons gagnés ; absent = aucun transfert.
+   */
+  autoTransferred?: { count: number; candies: { lineageId: number; quantity: number }[] };
 }
 
 export interface ExpeditionDto {
@@ -713,6 +733,8 @@ export interface ExpeditionDto {
   captureFilter: CaptureFilter | null;
   /** Ball de chaque catégorie ; null = ancienne expédition (Balls réservées dans `balls`). */
   ballPlan: BallPlan | null;
+  /** Transfert automatique au retour, figé au départ ; null = aucun. */
+  autoTransfer: AutoTransferFilter | null;
   /** Balls retirées du sac jusqu'ici, au fil des rencontres. */
   ballsUsed: { itemId: string; quantity: number }[];
   contentVersionId: number;
@@ -728,6 +750,8 @@ export interface ExpeditionDto {
   localHour: number | null;
   /** Quêtes des fuyards présents dans la zone au départ (à croiser pendant l'expédition). */
   roamerQuestIds: string[];
+  /** Fuyards déjà croisés pendant l'expédition (l'issue de la capture reste secrète). */
+  roamersMet: string[];
   /**
    * Rythme des rencontres et du butin, calculé par le serveur (contenu et équipe du départ) :
    * le client en tire le nombre exact de rencontres. null = expédition légendaire ou terminée.

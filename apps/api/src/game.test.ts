@@ -627,3 +627,100 @@ describe('admin : entités de contenu', () => {
     expect(res.status).toBe(201);
   });
 });
+
+describe('transfert automatique au retour', () => {
+  it('transfère les captures déjà au Pokédex selon le filtre, et seulement elles', async () => {
+    const call = client(await signUp('green@example.com'));
+    expect((await call('POST', '/api/profile', { trainerName: 'Green' })).status).toBe(201);
+    const starter = (await call<PokemonDto>('POST', '/api/starter', { speciesId: 7 })).body;
+    const [user] = await handle.db.select().from(users).where(eq(users.email, 'green@example.com'));
+    await addItems(handle.db, user!.id, [{ itemId: 'master-ball', quantity: 200 }]);
+    const started = await call<ExpeditionDto>('POST', '/api/expeditions', {
+      zoneId: 'route-1',
+      team: [starter.id],
+      balls: { new: 'master-ball', shiny: 'master-ball', caught: 'master-ball' },
+      berryItemId: null,
+      autoTransfer: { maxPerfectIvs: 6 },
+    });
+    expect(started.status, JSON.stringify(started.body)).toBe(201);
+    expect(started.body.autoTransfer).toEqual({ maxPerfectIvs: 6 });
+    advance(90);
+    const claimed = await call<ClaimExpeditionResponse>(
+      'POST',
+      `/api/expeditions/${started.body.id}/claim`,
+    );
+    expect(claimed.status, JSON.stringify(claimed.body)).toBe(200);
+    const result = claimed.body.expedition.result!;
+    const caught = result.encounters.filter((e) => e.outcome === 'captured');
+    // Captures gardées : la première de chaque espèce, et les chromatiques.
+    const seen = new Set<string>();
+    const expected = caught.map((e) => {
+      const key = `${e.speciesId}:${e.formId ?? ''}`;
+      const keep = e.isShiny || !seen.has(key);
+      seen.add(key);
+      return !keep;
+    });
+    expect(caught.map((e) => !!e.transferred)).toEqual(expected);
+    const transferred = caught.filter((e) => e.transferred);
+    expect(transferred.length).toBeGreaterThan(0);
+    expect(transferred.every((e) => e.pokemonId === undefined)).toBe(true);
+    expect(result.autoTransferred?.count).toBe(transferred.length);
+    expect(result.autoTransferred?.candies.reduce((n, c) => n + c.quantity, 0)).toBeGreaterThan(0);
+
+    // Le PC et la réponse ne gardent que les autres ; les Bonbons sont crédités.
+    expect(claimed.body.captured).toHaveLength(caught.length - transferred.length);
+    const pc = await call<PokemonDto[]>('GET', '/api/pokemon');
+    expect(pc.body).toHaveLength(1 + caught.length - transferred.length);
+    const candies = await call<{ lineageId: number; quantity: number }[]>('GET', '/api/candies');
+    for (const gained of result.autoTransferred!.candies) {
+      expect(candies.body.find((c) => c.lineageId === gained.lineageId)?.quantity).toBe(
+        gained.quantity,
+      );
+    }
+  });
+
+  it('ne transfère rien sans filtre ni pour un Pokémon avec trop d’IV parfaits', async () => {
+    const call = client(await signUp('yellow@example.com'));
+    expect((await call('POST', '/api/profile', { trainerName: 'Yellow' })).status).toBe(201);
+    const starter = (await call<PokemonDto>('POST', '/api/starter', { speciesId: 1 })).body;
+    const [user] = await handle.db
+      .select()
+      .from(users)
+      .where(eq(users.email, 'yellow@example.com'));
+    await addItems(handle.db, user!.id, [{ itemId: 'master-ball', quantity: 200 }]);
+    const run = async (autoTransfer: { maxPerfectIvs: number } | null) => {
+      const started = await call<ExpeditionDto>('POST', '/api/expeditions', {
+        zoneId: 'route-1',
+        team: [starter.id],
+        balls: { new: 'master-ball', shiny: 'master-ball', caught: 'master-ball' },
+        berryItemId: null,
+        autoTransfer,
+      });
+      expect(started.status, JSON.stringify(started.body)).toBe(201);
+      advance(90);
+      const claimed = await call<ClaimExpeditionResponse>(
+        'POST',
+        `/api/expeditions/${started.body.id}/claim`,
+      );
+      expect(claimed.status, JSON.stringify(claimed.body)).toBe(200);
+      return claimed.body.expedition.result!;
+    };
+    const plain = await run(null);
+    expect(plain.autoTransferred).toBeUndefined();
+    expect(plain.encounters.some((e) => e.transferred)).toBe(false);
+
+    // Tout est déjà au Pokédex : seuls les captures sans IV parfait (et non chromatiques) partent.
+    const strict = await run({ maxPerfectIvs: 0 });
+    const perfect = (e: (typeof strict.encounters)[number]) =>
+      Object.values(e.pokemon!.ivs).filter((v) => v === 31).length;
+    for (const e of strict.encounters.filter((x) => x.outcome === 'captured')) {
+      const isNew = !plain.encounters.some(
+        (p) => p.outcome === 'captured' && p.speciesId === e.speciesId,
+      );
+      if (isNew || e.isShiny || perfect(e) > 0) expect(e.transferred).toBeUndefined();
+    }
+    expect(
+      strict.encounters.filter((e) => e.transferred).every((e) => perfect(e) === 0 && !e.isShiny),
+    ).toBe(true);
+  });
+});

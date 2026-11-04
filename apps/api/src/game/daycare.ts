@@ -1,5 +1,5 @@
 import { and, asc, count, eq, inArray, lte, sql } from 'drizzle-orm';
-import { candies, daycareSlots, eggs, pokemon, speciesCaptures } from '@poke/db';
+import { candies, daycareSlots, eggs, pokemon } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
   abilityHolder,
@@ -14,7 +14,6 @@ import {
   isTransferableSpecies,
   lineageId,
   resolveEgg,
-  transferCandies,
 } from '@poke/game-core';
 import type { AbilityHolder, DaycareParent, GameContext } from '@poke/game-core';
 import type { DaycareDto, DepositDaycareInput, EggDto } from '@poke/shared';
@@ -32,6 +31,7 @@ import {
   shinyBoost,
   takeItems,
   toInstance,
+  transferRows,
 } from './store';
 import type { PokemonRow } from './store';
 
@@ -410,20 +410,6 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
 
 // --- Transfert et Bonbons ------------------------------------------------------------------
 
-async function addCandies(db: Db, ownerId: string, gained: ReadonlyMap<number, number>) {
-  const values = [...gained]
-    .filter(([, quantity]) => quantity > 0)
-    .map(([lineage, quantity]) => ({ ownerId, lineageId: lineage, quantity }));
-  if (values.length === 0) return;
-  await db
-    .insert(candies)
-    .values(values)
-    .onConflictDoUpdate({
-      target: [candies.ownerId, candies.lineageId],
-      set: { quantity: sql`${candies.quantity} + excluded.quantity` },
-    });
-}
-
 /**
  * Transfère des Pokémon contre des Bonbons de lignée. Refusé pour un favori, un légendaire ou
  * un fabuleux, un Pokémon occupé, ou s'il ne restait plus aucun Pokémon au joueur.
@@ -452,32 +438,10 @@ export async function transferPokemon(
       .where(eq(pokemon.ownerId, userId));
     if (owned - rows.length < 1) throw new GameError(409, 'LAST_POKEMON');
 
-    const gained = new Map<number, number>();
-    for (const r of rows) {
-      const lineage = lineageId(ctx, r.speciesId);
-      if (lineage === undefined) continue;
-      gained.set(lineage, (gained.get(lineage) ?? 0) + transferCandies(ctx, r));
-    }
-    await tx.delete(pokemon).where(and(eq(pokemon.ownerId, userId), inArray(pokemon.id, unique)));
-    await addCandies(tx, userId, gained);
-    // Les Méga-Gemmes tenues reviennent dans le sac.
-    await addItems(
-      tx,
-      userId,
-      rows.flatMap((r) => (r.megaStone ? [{ itemId: r.megaStone, quantity: 1 }] : [])),
-    );
-    const transferred = new Map<number, number>();
-    for (const r of rows) transferred.set(r.speciesId, (transferred.get(r.speciesId) ?? 0) + 1);
-    await tx
-      .insert(speciesCaptures)
-      .values([...transferred].map(([speciesId, n]) => ({ speciesId, transferred: n })))
-      .onConflictDoUpdate({
-        target: speciesCaptures.speciesId,
-        set: { transferred: sql`${speciesCaptures.transferred} + excluded.transferred` },
-      });
+    const gained = await transferRows(tx, ctx, userId, rows);
     return {
       transferred: rows.length,
-      gained: [...gained].map(([lineage, quantity]) => ({ lineageId: lineage, quantity })),
+      gained,
     };
   });
 }

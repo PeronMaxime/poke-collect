@@ -1,6 +1,7 @@
 import { and, count, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import {
   assistants,
+  candies,
   daycareSlots,
   dungeonRuns,
   eggs,
@@ -25,10 +26,12 @@ import {
   facilityUnlocks,
   isHealing,
   isTabUnlocked,
+  lineageId,
   NO_ABILITY,
   NO_CLAIMS,
   playerBonuses,
   questStepsDone,
+  transferCandies,
 } from '@poke/game-core';
 import type {
   CaughtDex,
@@ -123,6 +126,8 @@ export function toExpeditionDto(
     shinyChain: row.shinyChain,
     localHour: row.localHour,
     roamerQuestIds: row.roamers.map((r) => r.questId),
+    roamersMet: row.roamersMet,
+    autoTransfer: row.autoTransfer ?? null,
     pace,
     result: (row.result as ExpeditionDto['result']) ?? null,
   };
@@ -376,6 +381,62 @@ export async function eggsHatchedCount(db: Db, ownerId: string): Promise<number>
     .from(eggs)
     .where(and(eq(eggs.ownerId, ownerId), eq(eggs.hatched, true)));
   return row?.n ?? 0;
+}
+
+/**
+ * Supprime des Pokémon du joueur contre des Bonbons de lignée (Méga-Gemmes tenues rendues au sac,
+ * transferts comptés par espèce), sans vérification : à l'appelant de s'assurer qu'ils peuvent
+ * partir (transfert du PC, transfert automatique au retour d'expédition).
+ */
+export async function transferRows(
+  db: Db,
+  ctx: GameContext,
+  ownerId: string,
+  rows: readonly PokemonRow[],
+): Promise<{ lineageId: number; quantity: number }[]> {
+  if (rows.length === 0) return [];
+  const gained = new Map<number, number>();
+  for (const r of rows) {
+    const lineage = lineageId(ctx, r.speciesId);
+    if (lineage === undefined) continue;
+    gained.set(lineage, (gained.get(lineage) ?? 0) + transferCandies(ctx, r));
+  }
+  await db.delete(pokemon).where(
+    and(
+      eq(pokemon.ownerId, ownerId),
+      inArray(
+        pokemon.id,
+        rows.map((r) => r.id),
+      ),
+    ),
+  );
+  const candyValues = [...gained]
+    .filter(([, quantity]) => quantity > 0)
+    .map(([lineage, quantity]) => ({ ownerId, lineageId: lineage, quantity }));
+  if (candyValues.length > 0) {
+    await db
+      .insert(candies)
+      .values(candyValues)
+      .onConflictDoUpdate({
+        target: [candies.ownerId, candies.lineageId],
+        set: { quantity: sql`${candies.quantity} + excluded.quantity` },
+      });
+  }
+  await addItems(
+    db,
+    ownerId,
+    rows.flatMap((r) => (r.megaStone ? [{ itemId: r.megaStone, quantity: 1 }] : [])),
+  );
+  const transferred = new Map<number, number>();
+  for (const r of rows) transferred.set(r.speciesId, (transferred.get(r.speciesId) ?? 0) + 1);
+  await db
+    .insert(speciesCaptures)
+    .values([...transferred].map(([speciesId, n]) => ({ speciesId, transferred: n })))
+    .onConflictDoUpdate({
+      target: speciesCaptures.speciesId,
+      set: { transferred: sql`${speciesCaptures.transferred} + excluded.transferred` },
+    });
+  return [...gained].map(([lineage, quantity]) => ({ lineageId: lineage, quantity }));
 }
 
 export async function addItems(db: Db, ownerId: string, stacks: readonly ItemStack[]) {
