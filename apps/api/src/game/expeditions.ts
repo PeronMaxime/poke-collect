@@ -5,6 +5,7 @@ import type { Db } from '@poke/db';
 import {
   BALL_CATEGORIES,
   autoTransferIndexes,
+  hiddenEscapeIndexes,
   planBall,
   MAX_SEED,
   MISSED_THROW,
@@ -1009,7 +1010,7 @@ export async function claimExpedition(
       }
     }
     // Pokédex avant les captures de cette expédition : seules celles déjà connues partent.
-    const dexBefore = zone && locked.autoTransfer ? await caughtDex(tx, userId) : null;
+    const dexBefore = zone ? await caughtDex(tx, userId) : null;
     const newInDex = await recordPokedex(tx, userId, {
       met: result.encounters,
       caught: captured,
@@ -1086,6 +1087,10 @@ export async function claimExpedition(
     const toTransfer = dexBefore
       ? autoTransferIndexes(ctx, result.encounters, dexBefore, locked.autoTransfer)
       : new Set<number>();
+    // Échappés déjà connus (ni chromatiques ni fuyards) : résumés au retour.
+    const hiddenEscapes = dexBefore
+      ? hiddenEscapeIndexes(result.encounters, dexBefore)
+      : new Set<number>();
     const rowByEncounter = new Map<number, PokemonRow>();
     let capturedIndex = 0;
     result.encounters.forEach((e, i) => {
@@ -1100,7 +1105,9 @@ export async function claimExpedition(
           ? { ...e, transferred: true as const }
           : e.pokemon
             ? { ...e, pokemonId: rowByEncounter.get(i)!.id }
-            : e,
+            : hiddenEscapes.has(i)
+              ? { ...e, filtered: true as const }
+              : e,
       ),
       ...newInDex,
       ...(toTransfer.size > 0 && {

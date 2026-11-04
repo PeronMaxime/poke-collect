@@ -48,3 +48,31 @@ export function autoTransferIndexes(
   });
   return transferred;
 }
+
+/**
+ * Pokémon échappés (indices) résumés au retour plutôt qu'affichés : ni nouveaux au Pokédex, ni
+ * chromatiques, ni fuyards. Un échappé reste nouveau tant que son espèce (ou forme) n'a pas été
+ * capturée plus tôt dans l'expédition.
+ */
+export function hiddenEscapeIndexes(
+  encounters: readonly EncounterResult[],
+  caught: CaughtDex,
+): Set<number> {
+  const hidden = new Set<number>();
+  const speciesIds = new Set(caught.speciesIds);
+  const formIds = new Set(caught.formIds);
+  encounters.forEach((e, i) => {
+    if (e.pokemon) {
+      speciesIds.add(e.speciesId);
+      if (e.formId != null) formIds.add(e.formId);
+    } else if (
+      e.outcome === 'escaped' &&
+      !e.isShiny &&
+      !e.questId &&
+      !isNewToDex({ speciesIds, formIds }, e)
+    ) {
+      hidden.add(i);
+    }
+  });
+  return hidden;
+}

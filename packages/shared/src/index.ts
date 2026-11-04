@@ -701,6 +701,8 @@ export interface StoredExpeditionResult extends ExpeditionResult {
     pokemonId?: string;
     /** Capture transférée automatiquement au retour. */
     transferred?: true;
+    /** Pokémon échappé ni nouveau, ni chromatique, ni fuyard : résumé, pas affiché. */
+    filtered?: true;
   })[];
   /** Espèces capturées pour la première fois. */
   newSpeciesIds: number[];

@@ -216,18 +216,22 @@ export function ExpeditionRevealView({
   // Captures transférées automatiquement : pas affichées une à une, résumées sous la grille.
   const encounters = result.encounters.filter((e) => !e.transferred);
   const transferred = result.autoTransferred;
+  // Échappés déjà au Pokédex (ni chromatiques ni fuyards) : pas affichés non plus, résumés en
+  // une ligne.
+  const escapedCount = encounters.filter((e) => e.filtered).length;
+  const shown = encounters.filter((e) => !e.filtered);
   const captured = encounters.filter((e) => e.outcome === 'captured').length;
-  const shinies = encounters.filter((e) => e.isShiny).length;
-  const firstShiny = encounters.findIndex((e) => e.isShiny);
+  const shinies = shown.filter((e) => e.isShiny).length;
+  const firstShiny = shown.findIndex((e) => e.isShiny);
   // « Nouveau ! » sur la première capture de chaque nouvelle espèce ou forme seulement.
   const isFirstNew = newInDexTracker(result);
   const firstNew = new Set<number>();
-  encounters.forEach((e, i) => {
+  shown.forEach((e, i) => {
     if (e.outcome === 'captured' && isFirstNew(e)) firstNew.add(i);
   });
-  const step = revealStep(encounters.length);
+  const step = revealStep(shown.length);
   const delay = (i: number) => (instant ? 0 : 0.3 + i * step);
-  const after = delay(encounters.length);
+  const after = delay(shown.length);
 
   return (
     <div>
@@ -291,7 +295,7 @@ export function ExpeditionRevealView({
         )}
 
         <div className="mt-4 grid grid-cols-3 gap-2 sm:grid-cols-5">
-          {encounters.map((e, i) => {
+          {shown.map((e, i) => {
             const isNew = firstNew.has(i);
             const captive = e.pokemonId ? pokemon(e.pokemonId) : e.pokemon;
             return (
@@ -369,6 +373,17 @@ export function ExpeditionRevealView({
             );
           })}
         </div>
+
+        {escapedCount > 0 && (
+          <motion.p
+            className="mt-3 rounded-xl bg-red-50 px-3 py-2 text-center text-sm text-red-700 dark:bg-red-950/40 dark:text-red-300"
+            initial={instant ? false : { opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: after }}
+          >
+            {escapedCount} Pokémon se {escapedCount > 1 ? 'sont échappés' : 'est échappé'}
+          </motion.p>
+        )}
 
         {transferred && (
           <motion.p
