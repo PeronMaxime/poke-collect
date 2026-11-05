@@ -54,10 +54,14 @@ import {
 import { PokemonTagBadges, TagManagerDialog, TagPicker } from '../../components/tags';
 import { api } from '../../lib/api';
 import {
-  PLAYER_STATE_KEYS,
+  PROGRESS_KEYS,
+  applyTransfer,
   centerState,
   isUsable,
   keys,
+  patchPokemon,
+  refresh,
+  setItemQuantity,
   useAssistants,
   useCandies,
   useEvolutionChecker,
@@ -65,10 +69,10 @@ import {
   useHeal,
   useRevive,
   useReviveStacks,
+  useDexIndex,
   useInventory,
+  useItemQuantities,
   usePlayerProgress,
-  usePokedex,
-  usePokedexForms,
   usePokemon,
   useTags,
   utcOffsetMinutes,
@@ -89,6 +93,7 @@ import {
 } from '../../lib/labels';
 import { DuplicateSettingsDialog, duplicates, loadDuplicateSettings } from './DuplicateSettings';
 import { EvolutionReveal } from './EvolutionReveal';
+import { ProgressiveItems } from '../../components/ProgressiveGrid';
 import { GENDER_LABELS, PcFilterBar, PcPokemonCard, usePcBrowser } from './PcBrowser';
 
 const ORIGIN_LABELS: Record<PokemonDto['origin'], string> = {
@@ -105,7 +110,6 @@ const canTransfer = (ctx: GameContext, p: PokemonDto) =>
 
 export function PcPage({ ctx }: { ctx: GameContext }) {
   const pokemon = usePokemon();
-  const now = useNow();
   const evolutionsOf = useEvolutionChecker(ctx);
   const browser = usePcBrowser(ctx, pokemon.data ?? []);
   const { filtered, tagFilter } = browser;
@@ -138,22 +142,25 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
         gained: [...gained].map(([lineageId, quantity]) => ({ lineageId, quantity })),
       } satisfies TransferPokemonResponse;
     },
-    onSuccess: (data) => {
+    onSuccess: (data, ids) => {
       setTransferResult(data);
       setToTransfer(new Set());
       setConfirmingLast(false);
       setTransferMode(false);
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      // Collection et Bonbons mis à jour sur place : pas de relecture de tout le PC.
+      const gone = new Set(ids);
+      const list = queryClient.getQueryData<PokemonDto[]>(keys.pokemon) ?? [];
+      return applyTransfer(
+        queryClient,
+        list.filter((p) => gone.has(p.id)),
+        data.gained,
       );
     },
     // Les lots déjà passés sont transférés : on resynchronise le PC.
     onError: () => {
       setToTransfer(new Set());
       setConfirmingLast(false);
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return refresh(queryClient, keys.pokemon, keys.candies, keys.inventory, keys.teams);
     },
   });
 
@@ -297,28 +304,29 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
       )}
 
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-        {filtered.map((entry) => {
-          const { p } = entry;
-          return (
-            <PcPokemonCard
-              key={p.id}
-              entry={entry}
-              tags={tagFilter.tags}
-              now={now}
-              onSelect={() => (transferMode ? toggleTransfer(p) : setSelectedId(p.id))}
-              topLeft={
-                transferMode ? (
-                  p.locked && <span className="absolute top-1.5 left-2 text-amber-500">♥</span>
-                ) : (
-                  <FavoriteToggle pokemon={p} />
-                )
-              }
-              className={`${transferMode && toTransfer.has(p.id) ? 'ring-2 ring-red-500' : ''} ${
-                transferMode && !canTransfer(ctx, p) ? 'opacity-40' : ''
-              }`}
-            />
-          );
-        })}
+        <ProgressiveItems items={filtered} resetKey={browser.viewKey}>
+          {(entry) => {
+            const { p } = entry;
+            return (
+              <PcPokemonCard
+                key={p.id}
+                entry={entry}
+                tags={tagFilter.tags}
+                onSelect={() => (transferMode ? toggleTransfer(p) : setSelectedId(p.id))}
+                topLeft={
+                  transferMode ? (
+                    p.locked && <span className="absolute top-1.5 left-2 text-amber-500">♥</span>
+                  ) : (
+                    <FavoriteToggle pokemon={p} />
+                  )
+                }
+                className={`${transferMode && toTransfer.has(p.id) ? 'ring-2 ring-red-500' : ''} ${
+                  transferMode && !canTransfer(ctx, p) ? 'opacity-40' : ''
+                }`}
+              />
+            );
+          }}
+        </ProgressiveItems>
       </div>
       {filtered.length === 0 && !pokemon.isPending && (
         <p className="text-sm text-slate-500">Aucun Pokémon ne correspond.</p>
@@ -527,20 +535,32 @@ function PokemonDetail({
   const expeditions = useExpeditions();
   const [reveal, setReveal] = useState<EvolveResponse | null>(null);
   const [revealMega, setRevealMega] = useState(false);
-  const refreshPlayerState = () =>
-    Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+  // Évolution : Pokémon mis à jour sur place ; Pokédex, quêtes… et sac seulement si la réponse le dit.
+  const refreshAfterEvolution = (data: EvolveResponse) => {
+    patchPokemon(queryClient, data.pokemon);
+    const newEntries = data.newSpeciesIds.length > 0 || data.newFormIds.length > 0;
+    return refresh(
+      queryClient,
+      ...(data.consumedItemId ? [keys.inventory] : []),
+      ...(newEntries ? PROGRESS_KEYS : []),
+    );
+  };
   const megaEvolve = useMutation({
     mutationFn: (input: MegaEvolveInput) =>
       api<EvolveResponse>(`/api/pokemon/${p.id}/mega`, { method: 'POST', json: input }),
     onSuccess: (data) => {
       setRevealMega(true);
       setReveal(data);
-      return refreshPlayerState();
+      return refreshAfterEvolution(data);
     },
   });
   const megaRevert = useMutation({
     mutationFn: () => api<PokemonDto>(`/api/pokemon/${p.id}/mega`, { method: 'DELETE' }),
-    onSuccess: refreshPlayerState,
+    // La Méga-Gemme revient dans le sac.
+    onSuccess: (updated) => {
+      patchPokemon(queryClient, updated);
+      return refresh(queryClient, keys.inventory);
+    },
   });
   const evolve = useMutation({
     mutationFn: ({ toSpeciesId, toFormId }: Pick<EvolutionOption, 'toSpeciesId' | 'toFormId'>) =>
@@ -551,7 +571,7 @@ function PokemonDetail({
     onSuccess: (data) => {
       setRevealMega(false);
       setReveal(data);
-      return refreshPlayerState();
+      return refreshAfterEvolution(data);
     },
   });
   const species = ctx.species(p.speciesId, p.formId)!;
@@ -569,7 +589,7 @@ function PokemonDetail({
   const toggleLock = useMutation({
     mutationFn: () =>
       api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { locked: !p.locked } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.pokemon }),
+    onSuccess: (updated) => patchPokemon(queryClient, updated),
   });
 
   const candies = useCandies();
@@ -583,10 +603,10 @@ function PokemonDetail({
   const feed = useMutation({
     mutationFn: (count: number) =>
       api<PokemonDto>(`/api/pokemon/${p.id}/candies`, { method: 'POST', json: { count } }),
-    onSuccess: () =>
-      Promise.all(
-        [keys.pokemon, keys.candies].map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      ),
+    onSuccess: (updated) => {
+      patchPokemon(queryClient, updated);
+      return refresh(queryClient, keys.candies);
+    },
   });
 
   const inventory = useInventory();
@@ -602,9 +622,7 @@ function PokemonDetail({
       }),
     onSuccess: async (data) => {
       onTransferred(data);
-      await Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      await applyTransfer(queryClient, [p], data.gained);
     },
   });
 
@@ -974,15 +992,14 @@ function EvolutionPanel({
   onEvolve: (option: EvolutionOption) => void;
 }) {
   const now = useNow();
-  const pokedex = usePokedex();
-  const pokedexForms = usePokedexForms();
+  const dex = useDexIndex();
   if (evolutions.length === 0) return null;
   const usable = isUsable(p, now);
   // Même état qu'au Pokédex (shiny pour un Pokémon shiny) : silhouette tant que l'évolution n'a
   // pas été vue, grisée si vue, en couleur une fois capturée.
   const dexState = (speciesId: number, formId: number | null) => {
-    const entry = pokedex.data?.find((e) => e.speciesId === speciesId);
-    const form = formId != null ? pokedexForms.data?.find((f) => f.formId === formId) : undefined;
+    const entry = dex.bySpecies.get(speciesId);
+    const form = formId != null ? dex.byForm.get(formId) : undefined;
     const seen = (p.isShiny ? entry?.seenShiny : entry?.seen) ?? false;
     const caught =
       formId != null
@@ -996,7 +1013,7 @@ function EvolutionPanel({
       <p className="mb-2 font-medium">Évolution</p>
       <ul className="space-y-2">
         {evolutions.map(({ option, method, methods }) => {
-          const dex = dexState(option.toSpeciesId, option.toFormId);
+          const state = dexState(option.toSpeciesId, option.toFormId);
           return (
             <li
               key={`${option.toSpeciesId}:${option.toFormId ?? ''}`}
@@ -1005,10 +1022,10 @@ function EvolutionPanel({
               <PokemonSprite
                 speciesId={option.toSpeciesId}
                 formId={option.toFormId}
-                shiny={p.isShiny && dex.caught}
+                shiny={p.isShiny && state.caught}
                 size={48}
-                silhouette={!dex.seen}
-                className={dex.seen && !dex.caught ? 'opacity-50 grayscale' : ''}
+                silhouette={!state.seen}
+                className={state.seen && !state.caught ? 'opacity-50 grayscale' : ''}
               />
               <div className="min-w-0 flex-1 text-xs">
                 <p className="text-sm font-medium">
@@ -1079,12 +1096,11 @@ function MegaPanel({
   onMega: (itemId: string) => void;
   onRevert: () => void;
 }) {
-  const inventory = useInventory();
-  const pokedexForms = usePokedexForms();
+  const owned = useItemQuantities();
+  const dex = useDexIndex();
   const options = megaOptions(ctx, p.speciesId);
   if (!p.megaStone && (p.formId !== null || options.length === 0)) return null;
   const busyTitle = p.busy ? 'Le Pokémon doit être disponible (ni en activité)' : undefined;
-  const owned = (itemId: string) => inventory.data?.find((i) => i.itemId === itemId)?.quantity ?? 0;
   // Donjon qui laisse la gemme (indice pour l'obtenir).
   const dungeonOf = (itemId: string) => ctx.dungeons.find((d) => d.gemItemId === itemId);
 
@@ -1113,7 +1129,7 @@ function MegaPanel({
         <ul className="space-y-2">
           {options.flatMap(({ form, itemIds }) =>
             itemIds.map((itemId) => {
-              const dexForm = pokedexForms.data?.find((f) => f.formId === form.id);
+              const dexForm = dex.byForm.get(form.id);
               const caught = !!dexForm && (!p.isShiny || dexForm.caughtShiny);
               const quantity = owned(itemId);
               const dungeon = dungeonOf(itemId);
@@ -1201,13 +1217,10 @@ function ItemUseDialog({
   const use = useMutation({
     mutationFn: (input: UseItemInput) =>
       api<UseItemResponse>(`/api/pokemon/${p.id}/use-item`, { method: 'POST', json: input }),
-    onSuccess: () => {
+    onSuccess: (data) => {
       setStat('');
-      return Promise.all(
-        [keys.pokemon, keys.inventory].map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey }),
-        ),
-      );
+      patchPokemon(queryClient, data.pokemon);
+      setItemQuantity(queryClient, data.itemId, data.remaining);
     },
   });
 

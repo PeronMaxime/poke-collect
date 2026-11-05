@@ -413,6 +413,16 @@ export const GAME_ERRORS: Record<string, string> = {
   MESSAGE_NOT_FOUND: 'Ce message n’existe plus.',
   NOT_A_CHEST: 'Cet objet n’est pas un coffre.',
   CHEST_EMPTY: 'Ce coffre ne contient encore rien pour toi : progresse dans le jeu.',
+  NETWORK: 'Connexion au serveur perdue. Vérifie ta connexion et réessaie.',
+  RATE_LIMITED: 'Trop d’actions d’un coup, réessaie dans quelques secondes.',
+  TIMEOUT: 'Le serveur ne répond pas à temps. Vérifie si l’action est passée, puis réessaie.',
+  BUSY: 'Serveur très sollicité, réessaie dans un instant.',
+  CONFLICT: 'Une autre demande vient de faire la même chose : actualise et réessaie.',
+  INTERNAL: 'Erreur du serveur, réessaie dans un instant.',
+  HTTP_429: 'Trop d’actions d’un coup, réessaie dans quelques secondes.',
+  HTTP_502: 'Serveur en cours de redémarrage, réessaie dans un instant.',
+  HTTP_503: 'Serveur en cours de redémarrage, réessaie dans un instant.',
+  HTTP_504: 'Serveur en cours de redémarrage, réessaie dans un instant.',
 };
 
 export function formatMoney(amount: number): string {

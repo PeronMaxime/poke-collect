@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
-import { createDb, ensureSeedContent, users } from '@poke/db';
+import { createDb, ensureSeedContent, pokemon, users } from '@poke/db';
 import { getNature } from '@poke/game-core';
 import type { PokemonInstance } from '@poke/game-core';
 import type {
@@ -17,7 +17,8 @@ import type {
 } from '@poke/shared';
 import { buildApp } from './app';
 import { loadEnv } from './env';
-import { addItems, insertPokemon } from './game/store';
+import { ContentCache } from './content-cache';
+import { addItems, insertPokemon, transferRows } from './game/store';
 
 const handle = createDb({ pgliteDataDir: 'memory://' });
 const env = loadEnv({ NODE_ENV: 'test' });
@@ -309,5 +310,25 @@ describe('transfert et Bonbons de lignée', () => {
     }
     const pc = await call<PokemonDto[]>('GET', '/api/pokemon');
     expect(pc.body.map((p) => p.speciesId).sort((a, b) => a - b)).toEqual([1, 19, 150, 151]);
+  });
+
+  it('ne crédite pas deux fois les Bonbons si les Pokémon ont déjà été transférés', async () => {
+    const { call, userId } = await newPlayer('green@example.com', 'Green');
+    const a = await give(userId, 2);
+    const b = await give(userId, 2);
+    const rows = await handle.db.select().from(pokemon).where(eq(pokemon.ownerId, userId));
+    const toMove = rows.filter((r) => r.id === a.id || r.id === b.id);
+    const ctx = await new ContentCache(handle.db).get();
+
+    // Premier transfert : normal.
+    const first = await handle.db.transaction((tx) => transferRows(tx, ctx, userId, toMove));
+    expect(first.length).toBeGreaterThan(0);
+    const candies = (await call<CandyDto[]>('GET', '/api/candies')).body;
+
+    // Second transfert des mêmes lignes (course : lues avant la suppression) : annulé.
+    await expect(
+      handle.db.transaction((tx) => transferRows(tx, ctx, userId, toMove)),
+    ).rejects.toMatchObject({ status: 404, code: 'POKEMON_NOT_FOUND' });
+    expect((await call<CandyDto[]>('GET', '/api/candies')).body).toEqual(candies);
   });
 });

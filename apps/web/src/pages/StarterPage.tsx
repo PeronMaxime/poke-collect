@@ -4,7 +4,7 @@ import { motion } from 'motion/react';
 import type { PlayerProfileDto, PokemonDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge } from '../components/ui';
 import { ApiError, api } from '../lib/api';
-import { PLAYER_STATE_KEYS, useGameContext } from '../lib/game';
+import { PLAYER_STATE_KEYS, refresh, useGameContext } from '../lib/game';
 import { GAME_ERRORS } from '../lib/labels';
 
 /** Choix du premier Pokémon parmi les starters de la région de départ (contenu publié). */
@@ -17,12 +17,7 @@ export function StarterPage({ profile }: { profile: PlayerProfileDto }) {
   const choose = useMutation({
     mutationFn: (speciesId: number) =>
       api<PokemonDto>('/api/starter', { method: 'POST', json: { speciesId } }),
-    onSuccess: () =>
-      Promise.all(
-        [['me'], ...PLAYER_STATE_KEYS].map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey }),
-        ),
-      ),
+    onSuccess: () => refresh(queryClient, ...PLAYER_STATE_KEYS),
   });
 
   if (!ctx)
@@ -59,7 +54,13 @@ export function StarterPage({ profile }: { profile: PlayerProfileDto }) {
                   active ? 'ring-4 ring-brand-500/60' : ''
                 }`}
               >
-                <PokemonSprite speciesId={id} kind="artwork" size={140} alt={species?.nameFr} />
+                <PokemonSprite
+                  priority
+                  speciesId={id}
+                  kind="artwork"
+                  size={140}
+                  alt={species?.nameFr}
+                />
                 <span className="text-lg font-semibold">{species?.nameFr}</span>
                 <span className="flex gap-1">
                   {species?.types.map((t) => (

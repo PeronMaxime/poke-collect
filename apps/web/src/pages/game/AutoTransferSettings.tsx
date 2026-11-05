@@ -67,11 +67,13 @@ export function AutoTransferButton({
   return (
     <button
       type="button"
-      className={`btn-ghost text-sm ${className}`}
+      className={`btn-ghost gap-1 px-3 py-1.5 text-xs ${className}`}
       onClick={onClick}
       title="Captures transférées contre des Bonbons au retour de l'expédition"
     >
-      ♻ {label} : <span className="font-medium">{autoTransferLabel(filter)}</span>
+      {/* Libellé d'un bloc : les deux points ne passent jamais seuls à la ligne. */}
+      <span className="whitespace-nowrap">♻ {label} :</span>
+      <span className="font-medium">{autoTransferLabel(filter)}</span>
     </button>
   );
 }
@@ -222,7 +224,9 @@ function AutoTransferForm({
           </label>
           <select
             id="auto-transfer-max-iv"
-            className="input w-auto py-1"
+            // Pleine largeur sur mobile : à sa taille naturelle (la plus longue option), la
+            // liste élargissait la fenêtre au-delà de l'écran.
+            className="input w-full py-1 sm:w-auto"
             disabled={!shown}
             value={shown?.maxPerfectIvs ?? 0}
             onChange={(e) => setFilter({ maxPerfectIvs: Number(e.target.value) })}

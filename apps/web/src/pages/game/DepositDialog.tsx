@@ -8,7 +8,7 @@ import type { DaycareDto, DepositDaycareInput, PokemonDto } from '@poke/shared';
 import { IvHover, Modal, PokemonSprite, ShinyStar, useNow } from '../../components/ui';
 import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, isUsable, useInventory, usePokemon } from '../../lib/game';
+import { isUsable, keys, refresh, useInventory, usePokemon } from '../../lib/game';
 import { errorText, formatDuration, speciesName } from '../../lib/labels';
 import { AbilityLine } from './AssistantCard';
 import { pillClass } from './LaunchExpeditionDialog';
@@ -70,9 +70,7 @@ export function DepositDialog({
     mutationFn: (input: DepositDaycareInput) =>
       api<DaycareDto>('/api/daycare', { method: 'POST', json: input }),
     onSuccess: async () => {
-      await Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      await refresh(queryClient, keys.daycare, keys.pokemon, keys.inventory);
       onClose();
     },
   });

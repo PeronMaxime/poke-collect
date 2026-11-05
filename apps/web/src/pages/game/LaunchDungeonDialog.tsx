@@ -22,7 +22,7 @@ import type {
 import type { DungeonRunDto, StartDungeonInput } from '@poke/shared';
 import { HoverBubble, Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, utcOffsetMinutes } from '../../lib/game';
+import { keys, refresh, utcOffsetMinutes } from '../../lib/game';
 import {
   errorText,
   formatDuration,
@@ -100,9 +100,7 @@ export function LaunchDungeonDialog({
       }),
     onSuccess: () => {
       onClose();
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return refresh(queryClient, keys.dungeons, keys.pokemon);
     },
   });
 

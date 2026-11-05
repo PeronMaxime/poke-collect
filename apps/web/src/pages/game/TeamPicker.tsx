@@ -17,6 +17,7 @@ import type { AbilityEnv, ExpeditionSite, GameContext } from '@poke/game-core';
 import { searchKey } from '@poke/shared';
 import type { PokemonDto, PokemonTagDto, PokemonTeamDto } from '@poke/shared';
 import { PokemonTagBadges, TagFilterSelect, useTagFilterOver } from '../../components/tags';
+import { ProgressiveItems } from '../../components/ProgressiveGrid';
 import {
   HoverBubble,
   PokemonSprite,
@@ -180,7 +181,7 @@ export function SavedTeamsBar({
                           shiny={p.isShiny}
                           size={48}
                         />
-                        <span className="max-w-full truncate">
+                        <span className="line-clamp-2 w-full text-center leading-tight break-words">
                           {ctx.species(p.speciesId, p.formId)?.nameFr}
                         </span>
                         N.{p.level}
@@ -515,66 +516,73 @@ export function TeamPicker({
         </span>
       </div>
       <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto p-1 sm:grid-cols-5">
-        {available.map(({ p, species, power, stats, affinity, activeAbility, abilityText }) => {
-          const selected = team.includes(p.id);
-          const locked = megaLocked(p, members);
-          const card = (
-            <button
-              key={p.id}
-              type="button"
-              onClick={() => toggle(p)}
-              disabled={locked}
-              title={locked ? MEGA_LOCKED_TITLE : affinity ? 'Affinité' : undefined}
-              className={`relative flex flex-col items-center rounded-xl border p-1 text-xs transition disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale ${
-                selected
-                  ? 'border-brand-500 bg-brand-500/10'
-                  : affinity
-                    ? 'border-emerald-400 hover:bg-slate-100 dark:border-emerald-500 dark:hover:bg-slate-800'
-                    : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
-              } ${affinity ? 'shadow-[0_0_8px_2px_rgba(52,211,153,0.65)]' : ''}`}
-            >
-              <PokemonSprite
-                speciesId={p.speciesId}
-                formId={p.formId}
-                shiny={p.isShiny}
-                size={56}
-              />
-              <span className="truncate">
-                {species.nameFr} {p.isShiny && <ShinyStar />}
-              </span>
-              <span className="text-slate-500">
-                N.{p.level} · PE {power}
-              </span>
-              {sort === 'stat' && (
-                <span className="font-medium text-brand-600 dark:text-brand-400">
-                  {STAT_LABELS[stat]} {stats[stat]}
+        <ProgressiveItems
+          items={available}
+          resetKey={[sort, stat, search, type, abilityOnly, favoritesOnly, tagFilter.filter].join(
+            '|',
+          )}
+        >
+          {({ p, species, power, stats, affinity, activeAbility, abilityText }) => {
+            const selected = team.includes(p.id);
+            const locked = megaLocked(p, members);
+            const card = (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => toggle(p)}
+                disabled={locked}
+                title={locked ? MEGA_LOCKED_TITLE : affinity ? 'Affinité' : undefined}
+                className={`relative flex flex-col items-center rounded-xl border p-1 text-xs transition disabled:cursor-not-allowed disabled:opacity-40 disabled:grayscale ${
+                  selected
+                    ? 'border-brand-500 bg-brand-500/10'
+                    : affinity
+                      ? 'border-emerald-400 hover:bg-slate-100 dark:border-emerald-500 dark:hover:bg-slate-800'
+                      : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
+                } ${affinity ? 'shadow-[0_0_8px_2px_rgba(52,211,153,0.65)]' : ''}`}
+              >
+                <PokemonSprite
+                  speciesId={p.speciesId}
+                  formId={p.formId}
+                  shiny={p.isShiny}
+                  size={56}
+                />
+                <span className="line-clamp-2 w-full text-center leading-tight break-words">
+                  {species.nameFr} {p.isShiny && <ShinyStar />}
                 </span>
-              )}
-              {activeAbility && (
-                <span
-                  className="max-w-full truncate text-[10px] text-emerald-700 dark:text-emerald-400"
-                  title={abilityText}
-                >
-                  ✦ {abilityLabel(effectiveAbility(ctx, p))}
+                <span className="text-slate-500">
+                  N.{p.level} · PE {power}
                 </span>
-              )}
-              <PokemonTagBadges pokemon={p} tags={tagFilter.tags} />
-            </button>
-          );
-          return statSort ? (
-            <HoverBubble
-              key={p.id}
-              className="grid"
-              focusable={false}
-              height={140}
-              content={<StatLines values={stats} total={power} />}
-            >
-              {card}
-            </HoverBubble>
-          ) : (
-            card
-          );
-        })}
+                {sort === 'stat' && (
+                  <span className="font-medium text-brand-600 dark:text-brand-400">
+                    {STAT_LABELS[stat]} {stats[stat]}
+                  </span>
+                )}
+                {activeAbility && (
+                  <span
+                    className="max-w-full truncate text-[10px] text-emerald-700 dark:text-emerald-400"
+                    title={abilityText}
+                  >
+                    ✦ {abilityLabel(effectiveAbility(ctx, p))}
+                  </span>
+                )}
+                <PokemonTagBadges pokemon={p} tags={tagFilter.tags} />
+              </button>
+            );
+            return statSort ? (
+              <HoverBubble
+                key={p.id}
+                className="grid"
+                focusable={false}
+                height={140}
+                content={<StatLines values={stats} total={power} />}
+              >
+                {card}
+              </HoverBubble>
+            ) : (
+              card
+            );
+          }}
+        </ProgressiveItems>
         {available.length === 0 && (
           <p className="col-span-full text-sm text-slate-500">
             {tagFilter.filter === 'all' &&

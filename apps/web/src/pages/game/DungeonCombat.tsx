@@ -17,7 +17,7 @@ import type { DungeonCommand, DungeonEvent, DungeonFighter, GameContext } from '
 import type { CombatItemInput, DungeonRunDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar, TypeBadge } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, keys, useInventory } from '../../lib/game';
+import { keys, refreshAfterCombat, useInventory } from '../../lib/game';
 import { abilityLabel, errorText, formatCountdown, itemIcon, itemName } from '../../lib/labels';
 
 /** Combat en cours (tentative de donjon ou combat de dresseur) : ce qu'il faut pour le rejouer. */
@@ -543,8 +543,7 @@ export function DungeonCombat<R extends CombatRun, C>({
   const outcome = live.state.outcome;
   const over = outcome !== null && displayMs >= (live.state.endedAtMs ?? 0);
 
-  const refresh = () =>
-    Promise.all(PLAYER_STATE_KEYS.map((key) => queryClient.invalidateQueries({ queryKey: key })));
+  const refresh = () => refreshAfterCombat(queryClient, queryKey);
   const updateRun = (next: R) =>
     queryClient.setQueryData<{ active: R | null; serverTime: string }>(queryKey, (old) =>
       // L'heure du serveur suit la date de mise à jour du cache : le décalage d'horloge reste juste.

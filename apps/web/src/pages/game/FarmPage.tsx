@@ -7,7 +7,8 @@ import type { BerryPlotDto, HarvestBerriesResponse, PlantBerryInput } from '@pok
 import { HoverBubble, Modal, ProgressBar, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
 import {
-  PLAYER_STATE_KEYS,
+  keys,
+  refresh,
   assistantPlaces,
   serverOffset,
   shownPlaces,
@@ -52,17 +53,17 @@ export function FarmPage({ ctx }: { ctx: GameContext }) {
   const [picking, setPicking] = useState<number | null>(null);
   const [harvested, setHarvested] = useState<HarvestBerriesResponse | null>(null);
 
-  const refresh = () =>
-    Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+  // Plantation, arrachage et récolte : baies du sac et parcelles.
+  const refreshFarm = () => refresh(queryClient, keys.farm, keys.inventory);
   const plant = useMutation({
     mutationFn: async (inputs: PlantBerryInput[]) => {
       for (const json of inputs) await api<BerryPlotDto>('/api/farm', { method: 'POST', json });
     },
-    onSettled: refresh,
+    onSettled: refreshFarm,
   });
   const uproot = useMutation({
     mutationFn: (plot: number) => api<BerryPlotDto>(`/api/farm/${plot}`, { method: 'DELETE' }),
-    onSuccess: refresh,
+    onSuccess: refreshFarm,
   });
   const harvest = useMutation({
     // Sans parcelle : toutes les baies mûres.
@@ -73,7 +74,7 @@ export function FarmPage({ ctx }: { ctx: GameContext }) {
       ),
     onSuccess: (data) => {
       setHarvested(data);
-      return refresh();
+      return refreshFarm();
     },
   });
 

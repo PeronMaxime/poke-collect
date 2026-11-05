@@ -8,7 +8,7 @@ import {
   chainMultiplier,
   chainPerfectIvs,
   expeditionEnv,
-  isUnlocked,
+  isRegionUnlocked,
   isUnlockedSoon,
   isZoneUnlocked,
   planAfter,
@@ -30,7 +30,8 @@ import type {
 import { CancelButton, PokemonSprite, ProgressBar, TypeBadge, useNow } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
-  PLAYER_STATE_KEYS,
+  refreshAfterExpeditionClaim,
+  refreshAfterExpeditionStart,
   keys,
   shownPlaces,
   useExpeditions,
@@ -100,9 +101,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
       api<ClaimExpeditionResponse>(`/api/expeditions/${id}/claim`, { method: 'POST' }),
     onSuccess: (data) => {
       setReveal(data);
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return refreshAfterExpeditionClaim(queryClient);
     },
   });
 
@@ -121,8 +120,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
 
   const cancel = useMutation({
     mutationFn: (id: string) => api<void>(`/api/expeditions/${id}/cancel`, { method: 'POST' }),
-    onSuccess: () =>
-      Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+    onSuccess: () => refreshAfterExpeditionStart(queryClient),
   });
 
   const progress = usePlayerProgress();
@@ -214,7 +212,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
       r.id !== profile.regionUnlocked &&
       r.starterSpeciesIds.length > 0 &&
       !(r.id in profile.regionStarters) &&
-      isUnlocked(ctx, r.unlock, progress)
+      isRegionUnlocked(ctx, r, progress)
     );
   };
   const regionId = currentRegionTab(ctx, progress, selectedRegion);

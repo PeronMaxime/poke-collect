@@ -7,6 +7,12 @@ import type { Env } from './env';
 import { resetPasswordMail } from './mail';
 import type { Mailer } from './mail';
 
+/**
+ * Comptes supprimés depuis le démarrage : leur cookie de session en cache (5 min) ne doit plus
+ * ouvrir de session. Les redémarrages vident la liste, le cache expire de toute façon.
+ */
+export const deletedUserIds = new Set<string>();
+
 /** `mailer` absent : pas de réinitialisation du mot de passe (aucun moyen d'envoyer le lien). */
 export function createAuth(db: Db, env: Env, mailer: Mailer | null = null) {
   return betterAuth({
@@ -19,6 +25,12 @@ export function createAuth(db: Db, env: Env, mailer: Mailer | null = null) {
       provider: 'pg',
       schema: { user: users, session: sessions, account: accounts, verification: verifications },
     }),
+    session: {
+      // Session lue dans un cookie signé pendant 5 min au lieu de la base (1 à 2 requêtes SQL de
+      // moins par appel). Une session révoquée ailleurs reste valable au plus 5 min ; les routes
+      // d'administration relisent la base (`disableCookieCache`, voir `plugins/session.ts`).
+      cookieCache: { enabled: true, maxAge: 5 * 60 },
+    },
     emailAndPassword: {
       enabled: true,
       minPasswordLength: 8,
@@ -43,6 +55,9 @@ export function createAuth(db: Db, env: Env, mailer: Mailer | null = null) {
               message: 'Un compte administrateur ne peut pas être supprimé',
             });
           }
+        },
+        afterDelete: async (user) => {
+          deletedUserIds.add(user.id);
         },
       },
       additionalFields: {

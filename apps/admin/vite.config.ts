@@ -9,6 +9,7 @@ export default defineConfig({
   resolve: { alias: { '@web': fileURLToPath(new URL('../web/src', import.meta.url)) } },
   server: {
     // Même origine que l'API en dev : les cookies de session fonctionnent sans configuration CORS.
-    proxy: { '/api': 'http://127.0.0.1:3000' },
+    // Regex : `/api` seul ou `/api/...`, pas la page `/api-health` de l'admin (un préfixe simple la capterait).
+    proxy: { '^/api(/|$)': 'http://127.0.0.1:3000' },
   },
 });

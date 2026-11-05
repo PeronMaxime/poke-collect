@@ -5,6 +5,7 @@ import { abilityHolder, assistantSlotOf, healMinutes } from '@poke/game-core';
 import type { ContentCache } from '../content-cache';
 import { assistantHolders } from './assistants';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 import { requireStartedProfile } from './expeditions';
 import { playerFacilityPlaces, takeItems, toInstance } from './store';
 import type { PokemonRow } from './store';
@@ -38,7 +39,7 @@ export async function healPokemon(
 ): Promise<PokemonRow[]> {
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const rows = await knockedOutRows(tx, userId, ids);
     const places = await playerFacilityPlaces(tx, ctx, userId, 'center');
 
@@ -89,7 +90,7 @@ export async function revivePokemon(
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
   if (!ctx.itemEffect(itemId, 'revive')) throw new GameError(400, 'NOT_A_REVIVE');
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const rows = await knockedOutRows(tx, userId, ids);
     if (!(await takeItems(tx, userId, itemId, rows.length))) {
       throw new GameError(409, 'ITEM_MISSING', { itemId });

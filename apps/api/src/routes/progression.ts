@@ -152,6 +152,7 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
     const { id } = questParams.parse(request.params);
     const input = startQuestExpeditionInputSchema.parse(request.body);
     const row = await startQuestExpedition(db, content, request.user!.id, id, input, now());
+    hooks.invalidateSettle(request.user!.id);
     return reply.code(201).send(toExpeditionDto(row));
   });
 }

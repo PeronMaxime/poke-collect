@@ -30,7 +30,6 @@ import {
   withdrawDaycare,
 } from '../game/daycare';
 import { assistantHolders } from '../game/assistants';
-import { settleClosedPlaces } from '../game/closed-places';
 import {
   assertTabUnlocked,
   eggsHatchedCount,
@@ -57,7 +56,7 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
   app.get('/api/daycare', async (request): Promise<DaycareResponse> => {
     const userId = request.user!.id;
     const ctx = await content.get();
-    await settleClosedPlaces(db, content, userId, now());
+    await hooks.settleAll(userId);
     const [{ slots, parents }, eggRows, eggsHatched, places, eggPlaces, helpers] =
       await Promise.all([
         loadDaycare(db, userId),

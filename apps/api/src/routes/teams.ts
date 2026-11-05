@@ -7,14 +7,13 @@ import { MAX_MEGAS_PER_TEAM, megaCount } from '@poke/game-core';
 import { MAX_TEAMS, teamInputSchema } from '@poke/shared';
 import type { PokemonTeamDto, TeamInput } from '@poke/shared';
 import { GameError } from '../game/errors';
+import { playerTransaction } from '../game/tx';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
   db: Db;
   hooks: ReturnType<typeof sessionHooks>;
 }
-
-type Tx = Parameters<Parameters<Db['transaction']>[0]>[0];
 
 const uuidParams = z.object({ id: z.uuid() });
 
@@ -24,7 +23,7 @@ const toTeamDto = (
   owned: ReadonlySet<string>,
 ): PokemonTeamDto => ({ id, name, pokemonIds: pokemonIds.filter((p) => owned.has(p)) });
 
-async function ownedIds(db: Db | Tx, userId: string) {
+async function ownedIds(db: Db, userId: string) {
   const rows = await db.select({ id: pokemon.id }).from(pokemon).where(eq(pokemon.ownerId, userId));
   return new Set(rows.map((r) => r.id));
 }
@@ -33,7 +32,7 @@ async function ownedIds(db: Db | Tx, userId: string) {
  * Membres valides : tous au PC du joueur, au plus une Méga, et aucun déjà dans une autre de ses
  * équipes (`teamId` = équipe modifiée, exclue de la recherche).
  */
-async function checkMembers(tx: Tx, userId: string, input: TeamInput, teamId?: string) {
+async function checkMembers(tx: Db, userId: string, input: TeamInput, teamId?: string) {
   if (input.pokemonIds.length === 0) return;
   const members = await tx
     .select({ id: pokemon.id, formId: pokemon.formId })
@@ -72,7 +71,7 @@ export async function teamRoutes(app: FastifyInstance, { db, hooks }: Deps) {
   app.post('/api/teams', async (request, reply) => {
     const input = teamInputSchema.parse(request.body);
     const userId = request.user!.id;
-    const dto = await db.transaction(async (tx) => {
+    const dto = await playerTransaction(db, userId, async (tx) => {
       const [{ total } = { total: 0 }] = await tx
         .select({ total: count() })
         .from(pokemonTeams)
@@ -92,7 +91,7 @@ export async function teamRoutes(app: FastifyInstance, { db, hooks }: Deps) {
     const { id } = uuidParams.parse(request.params);
     const input = teamInputSchema.parse(request.body);
     const userId = request.user!.id;
-    return db.transaction(async (tx) => {
+    return playerTransaction(db, userId, async (tx) => {
       await checkMembers(tx, userId, input, id);
       const [row] = await tx
         .update(pokemonTeams)

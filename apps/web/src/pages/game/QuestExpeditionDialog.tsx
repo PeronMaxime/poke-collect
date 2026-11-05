@@ -11,7 +11,14 @@ import type { GameContext } from '@poke/game-core';
 import type { ExpeditionDto, StartQuestExpeditionInput } from '@poke/shared';
 import { Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, useShinyBonus, useShinyCharm, utcOffsetMinutes } from '../../lib/game';
+import {
+  keys,
+  refresh,
+  refreshAfterExpeditionStart,
+  useShinyBonus,
+  useShinyCharm,
+  utcOffsetMinutes,
+} from '../../lib/game';
 import {
   GAME_ERRORS,
   formatDuration,
@@ -57,9 +64,10 @@ export function QuestExpeditionDialog({
       }),
     onSuccess: () => {
       onClose();
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return Promise.all([
+        refreshAfterExpeditionStart(queryClient),
+        refresh(queryClient, keys.quests),
+      ]);
     },
   });
 

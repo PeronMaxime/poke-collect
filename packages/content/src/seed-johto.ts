@@ -52,7 +52,7 @@ export const johtoRegion: Region = {
   speciesIds: Array.from({ length: 100 }, (_, i) => 152 + i),
   starterSpeciesIds: [152, 155, 158],
   enabled: true,
-  unlock: { type: 'regionDexPercent', regionId: 'kanto', percent: 50 },
+  unlock: { type: 'regionDexPercent', regionId: 'kanto', percent: 75 },
 };
 
 const enc = (speciesId: number, weight: number, minLevel: number, maxLevel: number): Encounter => ({

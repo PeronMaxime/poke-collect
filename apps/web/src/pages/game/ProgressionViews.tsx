@@ -17,7 +17,7 @@ import type { DexCatches, GameContext, RewardKind, RewardState } from '@poke/gam
 import type { ClaimRewardResponse } from '@poke/shared';
 import { PokemonSprite, ProgressBar, ShinyStar } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, useClaimedRewards, usePlayerProgress } from '../../lib/game';
+import { refreshAfterReward, useClaimedRewards, usePlayerProgress } from '../../lib/game';
 import { errorText, itemIcon, itemName, rewardLines } from '../../lib/labels';
 import { visibleRegions } from './RegionTabs';
 
@@ -35,9 +35,7 @@ function useClaim() {
       api<ClaimRewardResponse>('/api/progression/claim', { method: 'POST', json: input }),
     onSuccess: (data) => {
       setLast(data);
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return refreshAfterReward(queryClient);
     },
   });
   return { claim, last };

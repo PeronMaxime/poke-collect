@@ -11,7 +11,12 @@ import type {
 } from '@poke/shared';
 import { GenderSymbol, Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, useClaimedRewards, useInventory, usePokemon } from '../../lib/game';
+import {
+  refreshAfterExpeditionClaim,
+  useClaimedRewards,
+  useInventory,
+  usePokemon,
+} from '../../lib/game';
 import { errorText, formatShinyRate, itemIcon, itemName, speciesName } from '../../lib/labels';
 import { ActiveAbilities } from './ActiveAbilities';
 
@@ -107,9 +112,7 @@ function EncounterContent({
       }),
     onSuccess: (data) => {
       onClaimed(data);
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return refreshAfterExpeditionClaim(queryClient);
     },
   });
 
@@ -157,6 +160,7 @@ function EncounterContent({
         >
           {e.isShiny && <ShinySparkles loop radius={100} delay={0.3} />}
           <PokemonSprite
+            priority
             speciesId={e.speciesId}
             formId={e.formId}
             shiny={e.isShiny}

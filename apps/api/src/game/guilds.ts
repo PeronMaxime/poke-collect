@@ -58,6 +58,7 @@ import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
 import { requireStartedProfile } from './expeditions';
 import { addItems, playerProgress, takeItems } from './store';
+import { playerTransaction, transaction } from './tx';
 
 /**
  * Guildes : création, adhésion (libre ou sur demande), rôles, discussion, quêtes du jour et de la
@@ -357,7 +358,7 @@ export async function settleGuildQuests(
       ),
     );
   for (const quest of pending) {
-    await db.transaction((tx) => rewardQuest(tx, ctx, quest, now));
+    await transaction(db, (tx) => rewardQuest(tx, ctx, quest, now));
   }
   return pending.length;
 }
@@ -400,7 +401,7 @@ export async function resetGuildQuests(
   ctx: GameContext,
   now: Date,
 ): Promise<AdminGuildQuestsResetResponse> {
-  return db.transaction(async (tx) => {
+  return transaction(db, async (tx) => {
     let quests = 0;
     for (const kind of GUILD_QUEST_PERIODS) {
       const week = guildPeriod(kind, now).id;
@@ -761,7 +762,7 @@ export async function createGuild(
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
   const cost = ctx.balance.guilds.creationCost;
-  await db.transaction(async (tx) => {
+  await playerTransaction(db, userId, async (tx) => {
     const profile = await lockProfile(tx, userId);
     if (await membership(tx, userId)) throw new GameError(409, 'ALREADY_IN_GUILD');
     assertNoCooldown(ctx, profile.guildLeftAt, now);
@@ -796,7 +797,7 @@ export async function joinGuild(
 ): Promise<{ joined: boolean }> {
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const profile = await lockProfile(tx, userId);
     if (await membership(tx, userId)) throw new GameError(409, 'ALREADY_IN_GUILD');
     assertNoCooldown(ctx, profile.guildLeftAt, now);
@@ -832,7 +833,7 @@ export async function answerJoinRequest(
   const ctx = await content.get();
   const member = await requireMembership(db, userId, ['leader', 'officer']);
   const candidateId = await userByName(db, name);
-  await db.transaction(async (tx) => {
+  await playerTransaction(db, userId, async (tx) => {
     const [request] = await tx
       .delete(guildJoinRequests)
       .where(
@@ -864,7 +865,7 @@ export async function answerJoinRequest(
  */
 export async function leaveGuild(db: Db, userId: string, now: Date) {
   const member = await requireMembership(db, userId);
-  await db.transaction(async (tx) => {
+  await playerTransaction(db, userId, async (tx) => {
     await lockGuild(tx, member.guildId);
     await tx.delete(guildMembers).where(eq(guildMembers.userId, userId));
     await tx
@@ -913,7 +914,7 @@ export async function kickMember(db: Db, userId: string, name: string, now: Date
   const actor = await requireMembership(db, userId, ['leader', 'officer']);
   const target = await targetMember(db, actor, name);
   if (ROLE_RANK[target.role] <= ROLE_RANK[actor.role]) throw new GameError(403, 'GUILD_FORBIDDEN');
-  await db.transaction(async (tx) => {
+  await playerTransaction(db, userId, async (tx) => {
     await tx.delete(guildMembers).where(eq(guildMembers.userId, target.userId));
     await systemMessage(
       tx,
@@ -934,7 +935,7 @@ export async function setMemberRole(
 ) {
   const actor = await requireMembership(db, userId, ['leader']);
   const target = await targetMember(db, actor, name);
-  await db.transaction(async (tx) => {
+  await playerTransaction(db, userId, async (tx) => {
     await tx.update(guildMembers).set({ role }).where(eq(guildMembers.userId, target.userId));
     if (role !== 'leader') return;
     await tx.update(guildMembers).set({ role: 'officer' }).where(eq(guildMembers.userId, userId));
@@ -1028,7 +1029,7 @@ export async function openChests(
     input.count,
     randomInt(0, MAX_SEED + 1),
   );
-  await db.transaction(async (tx) => {
+  await playerTransaction(db, userId, async (tx) => {
     if (!(await takeItems(tx, userId, input.itemId, input.count))) {
       throw new GameError(409, 'NOT_ENOUGH_ITEMS');
     }

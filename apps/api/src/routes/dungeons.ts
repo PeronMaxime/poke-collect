@@ -15,7 +15,6 @@ import {
   fleeDungeon,
   lastDungeonRun,
   markDungeonResultSeen,
-  settleFinishedDungeonRun,
   startDungeon,
   switchDungeonMember,
   useDungeonItem,
@@ -59,8 +58,9 @@ export async function dungeonRoutes(app: FastifyInstance, { db, content, hooks, 
     const userId = request.user!.id;
     await assertTabUnlocked(db, await content.get(), userId, 'dungeons');
     // Une tentative terminée pendant l'absence du joueur ne bloque pas la suivante.
-    await settleFinishedDungeonRun(db, content, userId, now());
+    await hooks.settleAll(userId);
     const row = await startDungeon(db, content, userId, input, now());
+    hooks.invalidateSettle(userId);
     return reply.code(201).send(toDungeonRunDto(row));
   });
 

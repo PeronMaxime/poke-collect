@@ -68,15 +68,25 @@ avec un redémarrage de quelques minutes. Pour en profiter pleinement, enchaîne
 
 ### 1.4 Trouver les requêtes lentes
 
-Activer le journal des requêtes lentes de Postgres, en ajoutant dans `docker-compose.prod.yml`
-(service `postgres`) :
+C'est déjà activé dans `docker-compose.prod.yml` (service `postgres`) : les requêtes de plus de
+500 ms sont écrites dans les journaux (`docker compose ... logs postgres`) et `pg_stat_statements`
+cumule le temps passé par requête. Une fois, après le premier redémarrage de Postgres avec ces
+réglages :
 
-```yaml
-command: ['postgres', '-c', 'log_min_duration_statement=200']
+```bash
+docker compose -f docker-compose.prod.yml exec postgres   psql -U poke -d poke_collect -c 'create extension if not exists pg_stat_statements'
 ```
 
-Puis lire `docker compose ... logs postgres`. Une requête lente qui revient souvent se corrige
-en général avec un index (une migration).
+Puis, pour voir les requêtes qui coûtent le plus de temps au total :
+
+```sql
+select calls, round(total_exec_time) as total_ms, round(mean_exec_time::numeric, 1) as mean_ms,
+       left(query, 120) as query
+from pg_stat_statements order by total_exec_time desc limit 20;
+```
+
+Une requête lente qui revient souvent se corrige en général avec un index (une migration) : le
+vérifier avec `explain (analyze, buffers)` avant d'ajouter quoi que ce soit.
 
 ### 1.5 Régler Postgres pour la machine
 
@@ -108,7 +118,9 @@ disque.
 
 ### 1.7 Ajuster la limite de requêtes
 
-La limite est réglée par `RATE_LIMIT_PER_MINUTE` dans `.env` (300 par défaut, par adresse IP).
+Deux limites, réglées dans `.env` : `RATE_LIMIT_PER_MINUTE` (600 par défaut, **par joueur**, repéré
+par son cookie de session, par adresse IP s'il n'est pas connecté) et `RATE_LIMIT_PER_IP_PER_MINUTE`
+(1 500 par défaut, par adresse IP, toutes sessions confondues).
 
 - Beaucoup de joueurs légitimes bloqués (réseaux d'écoles ou d'entreprises derrière une seule
   adresse) : **monter** la valeur.

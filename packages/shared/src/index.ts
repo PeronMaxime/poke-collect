@@ -74,6 +74,8 @@ export interface PlayerProfileDto {
   starterSpeciesId: number | null;
   /** Starter choisi dans chaque région suivante (identifiant de région → espèce). */
   regionStarters: Record<string, number>;
+  /** Régions ouvertes pour de bon, même si leur condition de déblocage s'est durcie depuis. */
+  openedRegions: string[];
   currency: number;
   createdAt: string;
 }
@@ -381,6 +383,8 @@ export interface TrainerProfileResponse {
     eggsHatched: number;
     /** Étapes validées de chaque quête commencée. */
     questSteps: Record<string, number>;
+    /** Régions ouvertes pour de bon. */
+    openedRegionIds: string[];
   };
   card: TrainerCardResponse;
 }
@@ -1043,6 +1047,8 @@ export type PublicContentDto = GameContent;
 export interface MeResponse {
   user: { id: string; email: string; name: string; role: UserRole };
   profile: PlayerProfileDto | null;
+  /** Version du contenu publié : le jeu recharge son contenu quand elle change. */
+  contentVersion: number | null;
 }
 
 // Bêta : profils secondaires (nouvelle partie sans nouveau compte), à retirer après la bêta.
@@ -1448,7 +1454,7 @@ export interface GuildMemberDto {
   role: GuildRole;
   joinedAt: string;
   isMe: boolean;
-  /** Vu il y a moins de `ONLINE_WINDOW_MS` (le jeu ouvert envoie un signal par minute). */
+  /** Vu il y a moins de `ONLINE_WINDOW_MS` (les rechargements réguliers du jeu ouvert mettent la présence à jour). */
   online: boolean;
 }
 
@@ -1553,4 +1559,63 @@ export interface OpenChestResponse {
   itemId: string;
   opened: number;
   loot: ItemStack[];
+}
+
+/** Statistiques d'une route de l'API depuis le démarrage (section « Santé de l'API » de l'admin). */
+export interface ApiRouteMetricsDto {
+  /** Méthode et motif de la route, par exemple « GET /api/pokemon » (jamais l'adresse réelle). */
+  route: string;
+  count: number;
+  /** Réponses 5xx. */
+  errors: number;
+  /** Réponses 429 (limite de requêtes). */
+  limited: number;
+  /** Requêtes plus longues que le seuil de lenteur. */
+  slow: number;
+  avgMs: number;
+  /** Durée approchée (borne haute du palier) sous laquelle répondent 95 % des requêtes. */
+  p95Ms: number;
+  maxMs: number;
+}
+
+/** Une minute d'activité de l'API. */
+export interface ApiMinuteMetricsDto {
+  /** Début de la minute (ISO). */
+  at: string;
+  requests: number;
+  errors: number;
+  limited: number;
+  slow: number;
+  avgMs: number;
+  maxMs: number;
+}
+
+/** Une erreur 5xx gardée en mémoire (section « Santé de l'API » de l'admin). */
+export interface ApiErrorDto {
+  /** Instant de l'erreur (ISO). */
+  at: string;
+  /** Méthode et motif de la route (jamais l'adresse réelle). */
+  route: string;
+  status: number;
+  /** Nom de l'erreur (« Error », « PostgresError »…). */
+  name: string;
+  /** Code SQL éventuel (« 40P01 »…). */
+  code: string | null;
+  message: string;
+  /** Début de la pile d'appels. */
+  stack: string | null;
+}
+
+export interface ApiMetricsResponse {
+  generatedAt: string;
+  /** Démarrage du processus : les compteurs repartent de zéro à chaque redémarrage. */
+  startedAt: string;
+  slowThresholdMs: number;
+  totals: { requests: number; errors: number; limited: number; slow: number };
+  /** Routes triées de la plus lente (p95) à la plus rapide. */
+  routes: ApiRouteMetricsDto[];
+  /** Dernières minutes, de la plus ancienne à la plus récente. */
+  minutes: ApiMinuteMetricsDto[];
+  /** Dernières erreurs 5xx, de la plus récente à la plus ancienne (vidées au redémarrage). */
+  recentErrors: ApiErrorDto[];
 }

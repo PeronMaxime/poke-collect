@@ -12,7 +12,7 @@ import type {
 } from '@poke/shared';
 import { Modal, PokemonSprite, ProgressBar, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, useExpeditions, usePlayerProgress, useQuests } from '../../lib/game';
+import { refreshAfterReward, useExpeditions, usePlayerProgress, useQuests } from '../../lib/game';
 import {
   errorText,
   formatCountdown,
@@ -74,9 +74,7 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
       api<ClaimQuestResponse>(`/api/quests/${questId}/claim`, { method: 'POST' }),
     onSuccess: (data) => {
       setReveal(data);
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return refreshAfterReward(queryClient);
     },
   });
 

@@ -20,6 +20,7 @@ import type { ProgressReward } from '@poke/content';
 import type { ClaimRewardInput, EvolveInput, MegaEvolveInput, UseItemInput } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 import { newSeed, requireStartedProfile } from './expeditions';
 import {
   addItems,
@@ -58,7 +59,7 @@ export async function evolve(
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const [row] = await tx
       .select()
       .from(pokemon)
@@ -151,7 +152,7 @@ export async function claimReward(
     throw new GameError(404, 'REWARD_NOT_FOUND');
   }
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const progress = await dexCatches(tx, userId);
     const reached = completion
       ? isCompletionReached(ctx, completion, targetId!, progress)
@@ -197,7 +198,7 @@ export async function useItemOnPokemon(
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const [row] = await tx
       .select()
       .from(pokemon)
@@ -260,7 +261,7 @@ export async function megaEvolve(
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const [row] = await tx
       .select()
       .from(pokemon)
@@ -302,7 +303,7 @@ export async function megaRevert(
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const [row] = await tx
       .select()
       .from(pokemon)

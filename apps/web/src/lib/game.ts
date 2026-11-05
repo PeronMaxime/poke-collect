@@ -1,5 +1,6 @@
 import { useMemo } from 'react';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import type { QueryClient } from '@tanstack/react-query';
 import {
   ASSISTANT_POST_PLACES,
   charmMultiplier,
@@ -27,6 +28,7 @@ import type {
   GuildLeaderboardResponse,
   GuildProfileResponse,
   GuildStateResponse,
+  MeResponse,
   InventoryEntryDto,
   LeaderboardKind,
   LeaderboardResponse,
@@ -72,6 +74,7 @@ export const keys = {
   me: ['me'],
 } as const;
 
+/** Toutes les données du joueur : réservé aux changements qui touchent tout (choix du starter). */
 export const PLAYER_STATE_KEYS = [
   keys.pokemon,
   keys.teams,
@@ -93,12 +96,150 @@ export const PLAYER_STATE_KEYS = [
   keys.me,
 ];
 
+/**
+ * Données qui dérivent de l'avancement du joueur (Pokédex, quêtes, dresseurs battus, œufs
+ * éclos) : à recharger avec toute action qui peut faire avancer l'une d'elles.
+ */
+export const PROGRESS_KEYS = [
+  keys.pokedex,
+  keys.quests,
+  keys.shop,
+  keys.progression,
+  keys.trainerCard,
+];
+
+type QueryKey = readonly unknown[];
+
+/**
+ * Recharge seulement les données qu'une action a modifiées (voir `PROGRESS_KEYS`). `keys.me`
+ * n'est à lister que si l'argent ou la région change : ni transfert, ni favori, ni objet.
+ * Une donnée que personne n'affiche n'est pas rechargée tout de suite, seulement marquée
+ * périmée pour son prochain affichage.
+ */
+export function refresh(queryClient: QueryClient, ...queryKeys: readonly QueryKey[]) {
+  return Promise.all(queryKeys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+}
+
+/** Départ d'une expédition : équipe occupée, baies de départ retirées du sac. */
+export const refreshAfterExpeditionStart = (queryClient: QueryClient) =>
+  refresh(queryClient, keys.expeditions, keys.pokemon, keys.inventory);
+
+/**
+ * Récupération d'une expédition : captures, butin, Bonbons du transfert automatique, Pokédex,
+ * quêtes, guilde. Pas d'argent : `me` reste en cache.
+ */
+export const refreshAfterExpeditionClaim = (queryClient: QueryClient) =>
+  refresh(
+    queryClient,
+    keys.expeditions,
+    keys.pokemon,
+    keys.inventory,
+    keys.candies,
+    keys.teams,
+    ...PROGRESS_KEYS,
+    keys.guild,
+  );
+
+/**
+ * Fin d'un combat de dresseur ou de donjon (`queryKey` : `keys.battles` ou `keys.dungeons`) :
+ * argent, expérience, K.O., butin et avancement.
+ */
+export const refreshAfterCombat = (queryClient: QueryClient, queryKey: QueryKey) =>
+  refresh(
+    queryClient,
+    queryKey,
+    keys.pokemon,
+    keys.inventory,
+    keys.me,
+    ...PROGRESS_KEYS,
+    keys.guild,
+  );
+
+/**
+ * Récompense de quête, de collection ou de complétion : argent, objets, bonus et places
+ * (expéditions, pensions, couveuses, Musée, parcelles).
+ */
+export const refreshAfterReward = (queryClient: QueryClient) =>
+  refresh(
+    queryClient,
+    keys.me,
+    keys.inventory,
+    keys.progression,
+    keys.quests,
+    keys.shop,
+    keys.trainerCard,
+    keys.expeditions,
+    keys.daycare,
+    keys.museum,
+    keys.farm,
+  );
+
+/** Remplace un Pokémon dans la liste en cache (la réponse de l'action le renvoie à jour). */
+export function patchPokemon(queryClient: QueryClient, updated: PokemonDto) {
+  queryClient.setQueryData<PokemonDto[]>(keys.pokemon, (list) =>
+    list?.map((p) => (p.id === updated.id ? updated : p)),
+  );
+}
+
+/** Retire des Pokémon de la liste en cache (transférés). */
+export function removePokemon(queryClient: QueryClient, ids: Iterable<string>) {
+  const gone = new Set(ids);
+  queryClient.setQueryData<PokemonDto[]>(keys.pokemon, (list) =>
+    list?.filter((p) => !gone.has(p.id)),
+  );
+}
+
+/** Ajoute des Bonbons gagnés aux totaux en cache. */
+export function addCandies(queryClient: QueryClient, gained: readonly CandyDto[]) {
+  queryClient.setQueryData<CandyDto[]>(keys.candies, (list) => {
+    if (!list) return list;
+    const next = new Map(list.map((c) => [c.lineageId, c.quantity]));
+    for (const g of gained) next.set(g.lineageId, (next.get(g.lineageId) ?? 0) + g.quantity);
+    return [...next].map(([lineageId, quantity]) => ({ lineageId, quantity }));
+  });
+}
+
+/** Fixe la quantité d'un objet du sac (le serveur renvoie ce qu'il reste). */
+export function setItemQuantity(queryClient: QueryClient, itemId: string, quantity: number) {
+  queryClient.setQueryData<InventoryEntryDto[]>(keys.inventory, (list) => {
+    if (!list) return list;
+    return list.some((i) => i.itemId === itemId)
+      ? list.map((i) => (i.itemId === itemId ? { ...i, quantity } : i))
+      : [...list, { itemId, quantity }];
+  });
+}
+
+/**
+ * Après un transfert : retire les Pokémon et ajoute les Bonbons sans relire la collection. Le
+ * sac n'est relu que si une Méga-Gemme tenue y est revenue ; les équipes enregistrées filtrent
+ * elles-mêmes les Pokémon disparus.
+ */
+export function applyTransfer(
+  queryClient: QueryClient,
+  transferred: readonly PokemonDto[],
+  gained: readonly CandyDto[],
+) {
+  removePokemon(
+    queryClient,
+    transferred.map((p) => p.id),
+  );
+  addCandies(queryClient, gained);
+  return refresh(
+    queryClient,
+    keys.teams,
+    keys.trainerCard,
+    ...(transferred.some((p) => p.megaStone) ? [keys.inventory] : []),
+  );
+}
+
 /** Contenu publié, transformé en contexte `game-core` (affichage uniquement : le serveur décide). */
 export function useGameContext(): GameContext | undefined {
   const content = useQuery({
     queryKey: keys.content,
     queryFn: () => api<PublicContentDto>('/api/content'),
-    staleTime: 5 * 60_000,
+    // Le contenu publié ne change qu'à une nouvelle version : `App` le recharge quand le numéro
+    // de version renvoyé par `/api/me` ne correspond plus (voir `useContentVersionWatch`).
+    staleTime: Infinity,
   });
   return useMemo(
     () => (content.data ? createGameContext(content.data) : undefined),
@@ -244,6 +385,9 @@ export function usePlayerProgress(): PlayerProgress {
   const battles = useBattles();
   const daycare = useDaycare();
   const quests = useQuests();
+  // Profil du joueur, déjà chargé par l'application (aucune requête ici).
+  const me = useQuery<MeResponse | null>({ queryKey: ['me'], queryFn: skipToken });
+  const opened = me.data?.profile?.openedRegions;
   return useMemo(
     () => ({
       caughtSpeciesIds: new Set(pokedex.data?.filter((d) => d.caught).map((d) => d.speciesId)),
@@ -252,8 +396,9 @@ export function usePlayerProgress(): PlayerProgress {
       ),
       eggsHatched: daycare.data?.eggsHatched ?? 0,
       questSteps: new Map(quests.data?.quests.map((q) => [q.questId, q.step])),
+      openedRegionIds: new Set(opened),
     }),
-    [pokedex.data, battles.data, daycare.data, quests.data],
+    [pokedex.data, battles.data, daycare.data, quests.data, opened],
   );
 }
 
@@ -272,6 +417,28 @@ export function useDexCatches(): Required<DexCatches> {
     }),
     [pokedex.data, forms.data],
   );
+}
+
+/** Pokédex indexé : entrée par espèce, entrée par forme, quantité par objet du sac. */
+export function useDexIndex() {
+  const pokedex = usePokedex();
+  const forms = usePokedexForms();
+  return useMemo(
+    () => ({
+      bySpecies: new Map((pokedex.data ?? []).map((e) => [e.speciesId, e])),
+      byForm: new Map((forms.data ?? []).map((f) => [f.formId, f])),
+    }),
+    [pokedex.data, forms.data],
+  );
+}
+
+/** Quantité possédée de chaque objet du sac (0 si absent). */
+export function useItemQuantities(): (itemId: string) => number {
+  const inventory = useInventory();
+  return useMemo(() => {
+    const stock = new Map((inventory.data ?? []).map((i) => [i.itemId, i.quantity]));
+    return (itemId: string) => stock.get(itemId) ?? 0;
+  }, [inventory.data]);
 }
 
 /** Multiplicateur du Charme Chroma possédé (1 = aucun). */
@@ -334,8 +501,7 @@ export function useHeal() {
   return useMutation({
     mutationFn: (pokemonIds: string[]) =>
       api<PokemonDto[]>('/api/center', { method: 'POST', json: { pokemonIds } }),
-    onSuccess: () =>
-      Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+    onSuccess: () => refresh(queryClient, keys.pokemon),
   });
 }
 
@@ -351,8 +517,7 @@ export function useRevive() {
   return useMutation({
     mutationFn: (input: { itemId: string; pokemonIds: string[] }) =>
       api<PokemonDto[]>('/api/center/revive', { method: 'POST', json: input }),
-    onSuccess: () =>
-      Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+    onSuccess: () => refresh(queryClient, keys.pokemon, keys.inventory),
   });
 }
 

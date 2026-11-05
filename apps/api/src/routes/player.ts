@@ -2,9 +2,14 @@ import type { FastifyInstance } from 'fastify';
 import { eq, sql } from 'drizzle-orm';
 import { playerProfiles } from '@poke/db';
 import type { Db } from '@poke/db';
-import { baseShinyProbability, createRng, generatePokemon, isUnlocked } from '@poke/game-core';
+import {
+  baseShinyProbability,
+  createRng,
+  generatePokemon,
+  isRegionUnlocked,
+} from '@poke/game-core';
 import { chooseStarterInputSchema, createProfileInputSchema } from '@poke/shared';
-import type { MeResponse, PlayerProfileDto, PokemonDto, PublicContentDto } from '@poke/shared';
+import type { MeResponse, PlayerProfileDto, PokemonDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError, newSeed } from '../game/expeditions';
 import {
@@ -14,6 +19,7 @@ import {
   recordPokedex,
   toPokemonDto,
 } from '../game/store';
+import { playerTransaction } from '../game/tx';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
@@ -29,6 +35,7 @@ export function toDto(row: typeof playerProfiles.$inferSelect): PlayerProfileDto
     regionUnlocked: row.regionUnlocked,
     starterSpeciesId: row.starterSpeciesId,
     regionStarters: row.regionStarters,
+    openedRegions: row.openedRegions,
     currency: row.currency,
     createdAt: row.createdAt.toISOString(),
   };
@@ -36,7 +43,13 @@ export function toDto(row: typeof playerProfiles.$inferSelect): PlayerProfileDto
 
 export async function playerRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
   /** Contenu publié utile à l'affichage côté joueur. */
-  app.get('/api/content', async (): Promise<PublicContentDto> => (await content.get()).content);
+  app.get('/api/content', async (request, reply) => {
+    const { body, etag } = await content.publicJson();
+    // Le navigateur revalide à chaque appel : 304 sans corps tant que la version est la même.
+    reply.header('etag', etag).header('cache-control', 'private, no-cache');
+    if (request.headers['if-none-match'] === etag) return reply.code(304).send();
+    return reply.type('application/json; charset=utf-8').send(body);
+  });
 
   app.get('/api/me', { preHandler: hooks.requireUser }, async (request): Promise<MeResponse> => {
     const user = request.user!;
@@ -44,10 +57,15 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
       .select()
       .from(playerProfiles)
       .where(eq(playerProfiles.userId, user.id));
-    return { user, profile: profile ? toDto(profile) : null };
+    // Numéro de la version publiée : le jeu recharge le contenu quand il change.
+    const contentVersion = await content
+      .get()
+      .then((ctx) => ctx.content.versionId)
+      .catch(() => null);
+    return { user, profile: profile ? toDto(profile) : null, contentVersion };
   });
 
-  /** Signal de présence envoyé par le jeu ouvert (la session met à jour `last_seen_at`). */
+  /** Signal de présence (anciennes versions du jeu ; la session met à jour `last_seen_at`). */
   app.post('/api/presence', { preHandler: hooks.requireUser }, async (_request, reply) =>
     reply.code(204).send(),
   );
@@ -104,7 +122,7 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
     });
     const at = now();
 
-    const created = await db.transaction(async (tx) => {
+    const created = await playerTransaction(db, user.id, async (tx) => {
       const [claimed] = await tx
         .update(playerProfiles)
         .set({
@@ -153,7 +171,7 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
       if (!region || region.id === profile.regionUnlocked) {
         throw new GameError(404, 'REGION_NOT_FOUND');
       }
-      if (!isUnlocked(ctx, region.unlock, await playerProgress(db, ctx, user.id))) {
+      if (!isRegionUnlocked(ctx, region, await playerProgress(db, ctx, user.id))) {
         throw new GameError(403, 'REGION_LOCKED');
       }
       if (region.id in profile.regionStarters) {
@@ -171,7 +189,7 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
         { shinyProbability: baseShinyProbability(ctx) },
       );
       const at = now();
-      const created = await db.transaction(async (tx) => {
+      const created = await playerTransaction(db, user.id, async (tx) => {
         const [claimed] = await tx
           .update(playerProfiles)
           .set({

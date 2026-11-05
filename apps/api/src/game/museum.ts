@@ -6,6 +6,7 @@ import type { FossilRevivalDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { assistantHolder } from './assistants';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 import { newSeed, requireStartedProfile } from './expeditions';
 import {
   addItems,
@@ -62,7 +63,7 @@ export async function depositFossil(
   if (!effect || !ctx.species(effect.speciesId)) throw new GameError(400, 'NOT_A_FOSSIL');
   const places = await playerFacilityPlaces(db, ctx, userId, 'museum');
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const taken = new Set(
       (
         await tx
@@ -99,7 +100,7 @@ export async function depositFossil(
 
 /** Reprend un fossile pas encore restauré : il revient dans le sac. */
 export async function cancelFossil(db: Db, userId: string, revivalId: string, now: Date) {
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const [row] = await tx
       .delete(fossilRevivals)
       .where(
@@ -128,7 +129,7 @@ export async function reviveFossils(db: Db, content: ContentCache, userId: strin
     .where(and(eq(fossilRevivals.ownerId, userId), isNull(fossilRevivals.revivedAt)));
   const published = await content.get();
   await Promise.all(pending.map((f) => content.version(f.versionId)));
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     // Verrou : seule la première demande restaure un fossile donné.
     const ready = await tx
       .update(fossilRevivals)

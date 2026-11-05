@@ -14,7 +14,7 @@ import {
 } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
-  PLAYER_STATE_KEYS,
+  refreshAfterExpeditionStart,
   newInDexTracker,
   useInventory,
   usePokemon,
@@ -103,9 +103,7 @@ function RevealContent({
     },
     onSuccess: () => {
       onClose();
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return refreshAfterExpeditionStart(queryClient);
     },
   });
   // Stock rafraîchi après la récupération (baies non utilisées rendues) : on attend la fin du

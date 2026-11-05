@@ -53,6 +53,11 @@ export const playerProfiles = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     trainerName: text('trainer_name').notNull(),
     regionUnlocked: text('region_unlocked').notNull(),
+    /**
+     * Régions ouvertes pour de bon, même si leur condition se durcit ensuite (passage de 50 à 75 %
+     * du Pokédex précédent) ; les autres suivent leur condition de déblocage.
+     */
+    openedRegions: jsonb('opened_regions').$type<string[]>().notNull().default([]),
     /** Null tant que le joueur n'a pas choisi son starter. */
     starterSpeciesId: integer('starter_species_id'),
     /** Starter choisi dans chaque région suivante (`{ johto: 155 }`), un seul par région. */

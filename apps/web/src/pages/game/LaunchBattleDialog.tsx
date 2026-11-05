@@ -17,7 +17,7 @@ import type { BattleError, DungeonMove, ExpeditionSite, GameContext } from '@pok
 import type { BattleDto, StartBattleInput } from '@poke/shared';
 import { HoverBubble, Modal, PokemonSprite, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, utcOffsetMinutes } from '../../lib/game';
+import { keys, refresh, utcOffsetMinutes } from '../../lib/game';
 import { errorText, formatDuration, formatMoney, typeLabel } from '../../lib/labels';
 import { BadgeIcon, TrainerRules, TrainerSprite, formatTimeLimit } from './BattlesPage';
 import { CombatTeamOrder, EnemyInfo, combatMove } from './CombatTeamOrder';
@@ -84,9 +84,7 @@ export function LaunchBattleDialog({
       }),
     onSuccess: () => {
       onClose();
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return refresh(queryClient, keys.battles, keys.pokemon);
     },
   });
 

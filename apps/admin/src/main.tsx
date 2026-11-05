@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { RouterProvider, createBrowserRouter } from 'react-router';
 import { AdminGate } from './components/AdminGate';
 import { Layout } from './components/Layout';
+import { ApiHealthPage } from './pages/ApiHealthPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { ExpeditionSimulatorPage } from './pages/ExpeditionSimulatorPage';
@@ -42,6 +43,7 @@ const router = createBrowserRouter([
         children: [
           { index: true, element: <DashboardPage /> },
           { path: 'audit-log', element: <AuditLogPage /> },
+          { path: 'api-health', element: <ApiHealthPage /> },
           { path: 'balance', element: <BalancePage /> },
           { path: 'regions', element: <RegionsPage /> },
           { path: 'species', element: <SpeciesPage /> },

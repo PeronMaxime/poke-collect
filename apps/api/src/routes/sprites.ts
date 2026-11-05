@@ -20,7 +20,7 @@ export async function spriteRoutes(app: FastifyInstance) {
     if (!data) return reply.code(404).send();
     return reply
       .header('Content-Type', CONTENT_TYPES[path.slice(path.lastIndexOf('.') + 1)])
-      .header('Cache-Control', 'public, max-age=604800')
+      .header('Cache-Control', 'public, max-age=31536000, immutable')
       .send(data);
   });
 }

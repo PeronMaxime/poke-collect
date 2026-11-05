@@ -14,7 +14,6 @@ import {
   fleeBattle,
   lastBattle,
   markBattleResultSeen,
-  settleFinishedBattle,
   startBattle,
   switchBattleMember,
   useBattleItem,
@@ -57,8 +56,9 @@ export async function battleRoutes(app: FastifyInstance, { db, content, hooks, n
     const input = startBattleInputSchema.parse(request.body);
     const userId = request.user!.id;
     // Un combat terminé pendant l'absence du joueur ne bloque pas le suivant.
-    await settleFinishedBattle(db, content, userId, now());
+    await hooks.settleAll(userId);
     const row = await startBattle(db, content, userId, input, now());
+    hooks.invalidateSettle(userId);
     return reply.code(201).send(toBattleDto(row));
   });
 

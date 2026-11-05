@@ -41,7 +41,7 @@ import type { ExpeditionDto, PokemonDto, RoamerDto, StartExpeditionInput } from 
 import { HoverBubble, Modal, PokemonSprite, TypeBadge, useNow } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
-  PLAYER_STATE_KEYS,
+  refreshAfterExpeditionStart,
   useDexCatches,
   usePokemon,
   useExpeditions,
@@ -273,9 +273,7 @@ export function LaunchExpeditionDialog({
     onSuccess: () => {
       // Fermer avant le rechargement : l'équipe envoyée devient « occupée » et sortirait de la liste.
       onClose();
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return refreshAfterExpeditionStart(queryClient);
     },
   });
 

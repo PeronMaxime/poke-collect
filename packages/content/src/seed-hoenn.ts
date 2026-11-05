@@ -52,7 +52,7 @@ export const hoennRegion: Region = {
   speciesIds: Array.from({ length: 135 }, (_, i) => 252 + i),
   starterSpeciesIds: [252, 255, 258],
   enabled: true,
-  unlock: { type: 'regionDexPercent', regionId: 'johto', percent: 50 },
+  unlock: { type: 'regionDexPercent', regionId: 'johto', percent: 75 },
 };
 
 const enc = (
@@ -68,9 +68,6 @@ const enc = (
   minLevel,
   maxLevel,
 });
-
-/** Zigzaton de Galar (forme PokéAPI 10174), rare sur la première route. */
-const ZIGZAGOON_GALAR = 10174;
 
 /** Badges de Hoenn uniquement (ceux des autres régions ne comptent pas). */
 const badges = (count: number): UnlockCondition => ({
@@ -132,7 +129,6 @@ export const hoennZones: Zone[] = [
     encounters: [
       enc(261, 28, 2, 4),
       enc(263, 28, 2, 4),
-      enc(263, 2, 2, 4, ZIGZAGOON_GALAR),
       enc(265, 16, 2, 4),
       enc(270, 10, 3, 5),
       enc(273, 10, 3, 5),

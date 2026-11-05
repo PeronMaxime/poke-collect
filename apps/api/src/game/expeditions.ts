@@ -59,6 +59,7 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 import { recordGuildActivity } from './guilds';
 import { syncQuests } from './quests';
 import {
@@ -69,6 +70,7 @@ import {
   claimedRewards,
   playerFacilityPlaces,
   insertPokemon,
+  itemQuantities,
   itemQuantity,
   playerProgress,
   recordPokedex,
@@ -230,14 +232,20 @@ async function availableTeam(db: Db, userId: string, ids: string[], now: Date) {
 
 /** Équipe d'une expédition, dans l'ordre du départ : le premier est en tête (talents). */
 async function expeditionTeam(db: Db, userId: string, ids: string[]) {
-  const rows = ids.length
+  return (await expeditionTeams(db, userId, [ids]))[0]!;
+}
+
+/** Équipes de plusieurs expéditions en une seule requête (même ordre que `teams`). */
+async function expeditionTeams(db: Db, userId: string, teams: readonly string[][]) {
+  const wanted = [...new Set(teams.flat())];
+  const rows = wanted.length
     ? await db
         .select()
         .from(pokemon)
-        .where(and(eq(pokemon.ownerId, userId), inArray(pokemon.id, ids)))
+        .where(and(eq(pokemon.ownerId, userId), inArray(pokemon.id, wanted)))
     : [];
   const byId = new Map(rows.map((r) => [r.id, toInstance(r)]));
-  return ids.flatMap((id) => byId.get(id) ?? []);
+  return teams.map((ids) => ids.flatMap((id) => byId.get(id) ?? []));
 }
 
 /**
@@ -251,12 +259,17 @@ export async function expeditionPaces(
   rows: readonly ExpeditionRow[],
 ): Promise<Map<string, ExpeditionPace>> {
   const paces = new Map<string, ExpeditionPace>();
-  for (const row of rows) {
-    if (row.claimedAt || row.questId || !row.zoneId) continue;
+  const running = rows.filter((row) => !row.claimedAt && !row.questId && row.zoneId);
+  const teams = await expeditionTeams(
+    db,
+    userId,
+    running.map((row) => row.team),
+  );
+  for (const [i, row] of running.entries()) {
     const ctx = await content.version(row.contentVersionId);
-    const zone = ctx.zone(row.zoneId);
+    const zone = ctx.zone(row.zoneId!);
     if (!zone) continue;
-    const team = await expeditionTeam(db, userId, row.team);
+    const team = teams[i]!;
     const site = { ...zone, weather: zoneWeather(zone, row.startedAt) };
     paces.set(
       row.id,
@@ -334,7 +347,16 @@ export async function settleExpeditionBalls(
     .limit(1);
   if (!due) return;
   await preloadExpeditionContent(db, content, userId);
-  await db.transaction((tx) => settleBallsIn(tx, content, userId, now));
+  await playerTransaction(db, userId, (tx) => settleBallsIn(tx, content, userId, now));
+}
+
+/** Prochaine rencontre à régler parmi les expéditions en cours du joueur, ou `null`. */
+export async function nextExpeditionThrow(db: Db, userId: string): Promise<Date | null> {
+  const [row] = await db
+    .select({ at: sql<Date | null>`min(${expeditions.nextThrowAt})` })
+    .from(expeditions)
+    .where(and(eq(expeditions.ownerId, userId), isNull(expeditions.claimedAt)));
+  return row?.at ? new Date(row.at) : null;
 }
 
 /**
@@ -404,8 +426,7 @@ async function settleBallsIn(db: Db, content: ContentCache, userId: string, now:
   }
 
   const ballIds = new Set(runs.flatMap((r) => BALL_CATEGORIES.flatMap((c) => r.plan[c] ?? [])));
-  const stock = new Map<string, number>();
-  for (const itemId of ballIds) stock.set(itemId, await itemQuantity(db, userId, itemId));
+  const stock = await itemQuantities(db, userId, [...ballIds]);
   const taken = new Map<string, number>();
   const nextAt = (r: PendingRun) =>
     r.row.startedAt.getTime() + r.run.encounterMinutes(r.run.played + 1) * 60_000;
@@ -496,7 +517,7 @@ export async function startExpedition(
     throw new GameError(400, 'NOT_A_BERRY');
   }
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const slotIndex = await freeSlot(tx, ctx, userId);
     const team = await availableTeam(tx, userId, input.team, now);
     const hour = startHour(now, input.utcOffsetMinutes);
@@ -614,7 +635,7 @@ export async function startQuestExpedition(
   const quest = ctx.quest(questId);
   if (!quest) throw new GameError(404, 'QUEST_NOT_FOUND');
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const [progress] = await tx
       .select()
       .from(questProgress)
@@ -691,7 +712,7 @@ export async function cancelExpedition(
   expeditionId: string,
   now: Date,
 ): Promise<void> {
-  await db.transaction(async (tx) => {
+  await playerTransaction(db, userId, async (tx) => {
     const [found] = await tx
       .delete(expeditions)
       .where(
@@ -862,7 +883,7 @@ export async function claimExpedition(
   const current = await content.get();
   if (found.ballPlan) await preloadExpeditionContent(db, content, userId);
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     // Balls des dernières rencontres retirées du sac (toutes expéditions), avant de figer celle-ci.
     if (found.ballPlan) await settleBallsIn(tx, content, userId, now);
     // Verrou : seule la première réclamation passe.

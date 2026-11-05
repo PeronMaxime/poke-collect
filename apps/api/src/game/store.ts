@@ -13,7 +13,6 @@ import {
   pokemon,
   questProgress,
   rewardClaims,
-  speciesCaptures,
   trainerProgress,
   trainerRuns,
 } from '@poke/db';
@@ -45,6 +44,7 @@ import type {
   TeamMember,
 } from '@poke/game-core';
 import type { ExpeditionDto, PokemonActivity, PokemonDto, PokemonOrigin } from '@poke/shared';
+import { countSpecies } from './capture-stats';
 import { GameError } from './errors';
 
 /** Accès en base à l'état d'un joueur (Pokémon, inventaire, Pokédex). */
@@ -147,16 +147,7 @@ export async function insertPokemon(
     if (p.isShiny) c.shiny++;
     captures.set(p.speciesId, c);
   }
-  await db
-    .insert(speciesCaptures)
-    .values([...captures].map(([speciesId, c]) => ({ speciesId, ...c })))
-    .onConflictDoUpdate({
-      target: speciesCaptures.speciesId,
-      set: {
-        captured: sql`${speciesCaptures.captured} + excluded.captured`,
-        shiny: sql`${speciesCaptures.shiny} + excluded.shiny`,
-      },
-    });
+  await countSpecies(db, captures);
   return db
     .insert(pokemon)
     .values(
@@ -318,18 +309,23 @@ export async function playerSlotsNow(
 
 /** Avancement hors quêtes. */
 export async function baseProgress(db: Db, ownerId: string): Promise<PlayerProgress> {
-  const [caught, defeated, hatched] = await Promise.all([
+  const [caught, defeated, hatched, opened] = await Promise.all([
     caughtSpeciesIds(db, ownerId),
     db
       .select({ trainerId: trainerProgress.trainerId })
       .from(trainerProgress)
       .where(and(eq(trainerProgress.ownerId, ownerId), gt(trainerProgress.wins, 0))),
     eggsHatchedCount(db, ownerId),
+    db
+      .select({ openedRegions: playerProfiles.openedRegions })
+      .from(playerProfiles)
+      .where(eq(playerProfiles.userId, ownerId)),
   ]);
   return {
     caughtSpeciesIds: caught,
     defeatedTrainerIds: new Set(defeated.map((d) => d.trainerId)),
     eggsHatched: hatched,
+    openedRegionIds: new Set(opened[0]?.openedRegions ?? []),
   };
 }
 
@@ -386,7 +382,8 @@ export async function eggsHatchedCount(db: Db, ownerId: string): Promise<number>
 /**
  * Supprime des Pokémon du joueur contre des Bonbons de lignée (Méga-Gemmes tenues rendues au sac,
  * transferts comptés par espèce), sans vérification : à l'appelant de s'assurer qu'ils peuvent
- * partir (transfert du PC, transfert automatique au retour d'expédition).
+ * partir (transfert du PC, transfert automatique au retour d'expédition). À appeler dans une
+ * transaction : si un Pokémon a déjà disparu (transfert simultané), lève `POKEMON_NOT_FOUND`.
  */
 export async function transferRows(
   db: Db,
@@ -401,15 +398,24 @@ export async function transferRows(
     if (lineage === undefined) continue;
     gained.set(lineage, (gained.get(lineage) ?? 0) + transferCandies(ctx, r));
   }
-  await db.delete(pokemon).where(
-    and(
-      eq(pokemon.ownerId, ownerId),
-      inArray(
-        pokemon.id,
-        rows.map((r) => r.id),
+  // Seules les lignes réellement supprimées comptent : un transfert simultané des mêmes Pokémon
+  // (double clic, deux onglets) en supprimerait moins, et l'appelant annule alors sa transaction
+  // au lieu de créditer deux fois les Bonbons.
+  const deleted = await db
+    .delete(pokemon)
+    .where(
+      and(
+        eq(pokemon.ownerId, ownerId),
+        inArray(
+          pokemon.id,
+          rows.map((r) => r.id),
+        ),
       ),
-    ),
-  );
+    )
+    .returning({ id: pokemon.id });
+  if (deleted.length !== new Set(rows.map((r) => r.id)).size) {
+    throw new GameError(404, 'POKEMON_NOT_FOUND');
+  }
   const candyValues = [...gained]
     .filter(([, quantity]) => quantity > 0)
     .map(([lineage, quantity]) => ({ ownerId, lineageId: lineage, quantity }));
@@ -429,13 +435,10 @@ export async function transferRows(
   );
   const transferred = new Map<number, number>();
   for (const r of rows) transferred.set(r.speciesId, (transferred.get(r.speciesId) ?? 0) + 1);
-  await db
-    .insert(speciesCaptures)
-    .values([...transferred].map(([speciesId, n]) => ({ speciesId, transferred: n })))
-    .onConflictDoUpdate({
-      target: speciesCaptures.speciesId,
-      set: { transferred: sql`${speciesCaptures.transferred} + excluded.transferred` },
-    });
+  await countSpecies(
+    db,
+    new Map([...transferred].map(([speciesId, n]) => [speciesId, { transferred: n }])),
+  );
   return [...gained].map(([lineage, quantity]) => ({ lineageId: lineage, quantity }));
 }
 
@@ -501,6 +504,22 @@ export async function itemQuantity(db: Db, ownerId: string, itemId: string): Pro
     .from(inventory)
     .where(and(eq(inventory.ownerId, ownerId), eq(inventory.itemId, itemId)));
   return row?.quantity ?? 0;
+}
+
+/** Quantités possédées de plusieurs objets en une requête (0 pour ceux qu'on n'a pas). */
+export async function itemQuantities(
+  db: Db,
+  ownerId: string,
+  itemIds: readonly string[],
+): Promise<Map<string, number>> {
+  const quantities = new Map(itemIds.map((id) => [id, 0]));
+  if (itemIds.length === 0) return quantities;
+  const rows = await db
+    .select({ itemId: inventory.itemId, quantity: inventory.quantity })
+    .from(inventory)
+    .where(and(eq(inventory.ownerId, ownerId), inArray(inventory.itemId, [...itemIds])));
+  for (const row of rows) quantities.set(row.itemId, row.quantity);
+  return quantities;
 }
 
 /** Nouveautés du Pokédex après une capture, une éclosion, une évolution… */

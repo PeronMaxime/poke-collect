@@ -93,7 +93,7 @@ const region = (
   speciesIds,
   starterSpeciesIds: [],
   enabled: false,
-  unlock: { type: 'regionDexPercent', regionId: previous, percent: 50 },
+  unlock: { type: 'regionDexPercent', regionId: previous, percent: 75 },
 });
 
 export const expansionRegions: Region[] = [
@@ -105,7 +105,7 @@ export const expansionRegions: Region[] = [
     speciesIds: dexRange(387, 493),
     starterSpeciesIds: [],
     enabled: false,
-    unlock: { type: 'regionDexPercent', regionId: 'hoenn', percent: 50 },
+    unlock: { type: 'regionDexPercent', regionId: 'hoenn', percent: 75 },
   },
   region('unys', 4, 'Unys', dexRange(494, 649), 'sinnoh'),
   region('kalos', 5, 'Kalos', dexRange(650, 721), 'unys'),

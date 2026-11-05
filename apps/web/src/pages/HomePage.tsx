@@ -1,11 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { MeResponse, PlayerProfileDto } from '@poke/shared';
 import { ErrorBoundary } from '../components/ErrorBoundary';
 import { useBodyScrollLock, useNow } from '../components/ui';
 import { authClient } from '../lib/auth-client';
 import { DEX_FORM_SECTIONS, getForm } from '@poke/data';
-import { MENU_TABS, normalizeMenuGroups, tabUnlock } from '@poke/content';
+import { MENU_TABS, normalizeMenu, tabUnlock } from '@poke/content';
 import type { MenuTabId as TabId } from '@poke/content';
 import { claimableRewardCount, eggsLaid, isTabUnlocked } from '@poke/game-core';
 import {
@@ -64,6 +64,26 @@ type PageId = TabId | typeof WIKI_HASH;
 
 const PAGE_LABELS: Record<PageId, string> = { ...TAB_LABELS, [WIKI_HASH]: 'Wiki' };
 
+/** Sections du menu repliées par le joueur (par titre), gardées d'une visite à l'autre. */
+const CLOSED_SECTIONS_KEY = 'dexpedition.menuClosedSections';
+
+function readClosedSections(): Set<string> {
+  try {
+    const saved: unknown = JSON.parse(localStorage.getItem(CLOSED_SECTIONS_KEY) ?? '[]');
+    return new Set(Array.isArray(saved) ? saved.filter((t) => typeof t === 'string') : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function saveClosedSections(closed: ReadonlySet<string>) {
+  try {
+    localStorage.setItem(CLOSED_SECTIONS_KEY, JSON.stringify([...closed]));
+  } catch {
+    // Stockage indisponible (navigation privée…) : le choix ne dure que le temps de la visite.
+  }
+}
+
 function tabFromHash(): PageId {
   // `#expeditions/<zone>` : l'onglet, suivi d'une cible propre à la page.
   const hash = window.location.hash.slice(1).split('/')[0] ?? '';
@@ -77,8 +97,11 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const [hashTab, setTab] = useState<PageId>(tabFromHash);
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
-  // Groupes d'onglets réglés dans l'admin (Menu du jeu), séparés par un trait.
-  const menuGroups = useMemo(() => normalizeMenuGroups(ctx?.content.balance.menu?.groups), [ctx]);
+  // Sections d'onglets réglées dans l'admin (Menu du jeu), repliables une à une.
+  const menuSections = useMemo(() => normalizeMenu(ctx?.content.balance.menu), [ctx]);
+  const [closedSections, setClosedSections] = useState(readClosedSections);
+  // Onglet sur lequel le joueur a replié la section de l'onglet affiché (sinon elle reste ouverte).
+  const [collapsedOn, setCollapsedOn] = useState<PageId | null>(null);
   const [unseenChangelog] = useState(hasUnseenChangelog);
   const expeditions = useExpeditions();
   const daycare = useDaycare();
@@ -143,6 +166,21 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
     window.dispatchEvent(new HashChangeEvent('hashchange'));
   }, [tab, hashTab]);
 
+  // La section de l'onglet affiché est dépliée, même repliée auparavant ; le joueur peut la
+  // replier tant qu'il reste sur cet onglet.
+  const tabSection = menuSections.find((s) => (s.tabs as PageId[]).includes(tab))?.title;
+  const sectionOpen = (title: string) =>
+    !closedSections.has(title) || (title === tabSection && collapsedOn !== tab);
+  function toggleSection(title: string) {
+    const open = sectionOpen(title);
+    const next = new Set(closedSections);
+    if (open) next.add(title);
+    else next.delete(title);
+    setClosedSections(next);
+    saveClosedSections(next);
+    if (title === tabSection) setCollapsedOn(open ? tab : null);
+  }
+
   const shownTab = useRef(tab);
   useEffect(() => {
     if (shownTab.current === tab) return;
@@ -159,6 +197,12 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   }, [menuOpen]);
 
   const now = useNow(5000);
+  // Les évolutions possibles ne se recalculent que si les Pokémon, le sac ou le Pokédex changent ;
+  // seul le filtre « disponible » (ni occupé, ni K.O.) suit l'horloge.
+  const evolvable = useMemo(
+    () => pokemon.data?.filter(hasNewEvolution) ?? [],
+    [pokemon.data, hasNewEvolution],
+  );
   const finished = expeditions.data?.active.filter((e) => Date.parse(e.endsAt) <= now).length ?? 0;
   const dexCatches = useDexCatches();
   const dexForms = usePokedexForms();
@@ -169,8 +213,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   // Collections et complétions à réclamer, Pokémon disponibles prêts à évoluer vers une espèce
   // ou forme qui manque encore au Pokédex (même règle que la pastille « Évol. » du PC).
   const rewardsReady = ctx ? claimableRewardCount(ctx, dexCatches, claimed) : 0;
-  const evolutionsReady =
-    pokemon.data?.filter((p) => isUsable(p, now) && hasNewEvolution(p)).length ?? 0;
+  const evolutionsReady = evolvable.filter((p) => isUsable(p, now)).length;
   const questsReady = quests.data?.quests.filter((q) => q.status === 'completed').length ?? 0;
   // Articles débloqués pas encore vus (évalués par le serveur à chaque chargement de la boutique).
   const shopNew = shop.data?.entries.filter((e) => e.isNew).length ?? 0;
@@ -233,57 +276,120 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   function tabLinks() {
     // Sans le contenu, on ne sait pas encore quels onglets sont verrouillés.
     if (!ctx) return null;
-    return menuGroups.map((group, i) => (
-      <div
-        key={i}
-        className={`flex flex-col gap-0.5 ${i > 0 ? 'mt-2 border-t border-slate-200 pt-2 dark:border-slate-800' : ''}`}
-      >
-        {group.map((id) =>
-          lockedTabs.has(id) ? (
-            // Onglet verrouillé : pas de page, sa condition au survol (au toucher sur mobile).
-            <div key={id} className="group relative" data-tab-hint>
-              <button
-                type="button"
-                // Au toucher seulement : à la souris, le survol suffit et le clic ne fait rien.
-                onPointerUp={(e) => e.pointerType !== 'mouse' && setHint(hint === id ? null : id)}
-                aria-expanded={hint === id}
-                className="flex w-full cursor-default items-center rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-400 md:py-2 dark:text-slate-600"
-              >
-                {tabLabel(id)}
-                <span className="ml-auto text-xs" aria-label="Verrouillé">
-                  🔒
-                </span>
-              </button>
-              <p
-                role="tooltip"
-                className={`absolute top-full left-3 z-20 mt-1 w-56 rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-lg md:top-1/2 md:left-full md:mt-0 md:ml-2 md:-translate-y-1/2 dark:bg-slate-700 ${
-                  hint === id ? 'block' : 'hidden group-hover:block'
-                }`}
-              >
-                {unlockConditionText(ctx, tabUnlock(ctx.content.balance, id)) ?? 'Bientôt'}
-              </p>
-            </div>
-          ) : (
-            <a
-              key={id}
-              href={`#${id}`}
-              onClick={() => setMenuOpen(false)}
-              className={`relative flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition md:py-2 ${
-                tab === id
-                  ? 'bg-brand-500/10 text-brand-600 dark:text-brand-500'
-                  : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-900 dark:hover:bg-slate-800/60 dark:hover:text-slate-100'
-              }`}
+    return menuSections.map(({ title, tabs }, i) => {
+      const open = sectionOpen(title);
+      // Section repliée : un point signale qu'un de ses onglets attend le joueur.
+      const waiting = !open && tabs.some((id) => !lockedTabs.has(id) && tabPending(id));
+      return (
+        <div
+          key={`${i}:${title}`}
+          className={`flex flex-col gap-0.5 ${i > 0 ? 'mt-1 border-t border-slate-200 pt-1 dark:border-slate-800' : ''}`}
+        >
+          <button
+            type="button"
+            onClick={() => toggleSection(title)}
+            aria-expanded={open}
+            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold tracking-wide text-slate-400 uppercase hover:bg-slate-200/60 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800/60 dark:hover:text-slate-300"
+          >
+            <span className="min-w-0 flex-1 truncate">{title}</span>
+            {waiting && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-500" />}
+            <svg
+              viewBox="0 0 24 24"
+              className={`h-4 w-4 shrink-0 transition-transform ${open ? 'rotate-180' : ''}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden
             >
-              {tabLabel(id)}
-              {tabBadges(id)}
-              {tab === id && (
-                <span className="absolute inset-y-2 left-0 w-0.5 rounded bg-brand-500" />
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
+          <SectionPanel open={open}>
+            {/* Onglets légèrement décalés vers la droite, pour les distinguer du titre de section. */}
+            <div className="flex flex-col gap-0.5 pl-3">
+              {tabs.map((id) =>
+                lockedTabs.has(id) ? (
+                  // Onglet verrouillé : pas de page, sa condition au survol (au toucher sur mobile).
+                  <div key={id} className="group relative" data-tab-hint>
+                    <button
+                      type="button"
+                      // Au toucher seulement : à la souris, le survol suffit et le clic ne fait rien.
+                      onPointerUp={(e) =>
+                        e.pointerType !== 'mouse' && setHint(hint === id ? null : id)
+                      }
+                      aria-expanded={hint === id}
+                      className="flex w-full cursor-default items-center rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-400 md:py-2 dark:text-slate-600"
+                    >
+                      {tabLabel(id)}
+                      <span className="ml-auto text-xs" aria-label="Verrouillé">
+                        🔒
+                      </span>
+                    </button>
+                    <p
+                      role="tooltip"
+                      className={`absolute top-full left-3 z-20 mt-1 w-56 rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-lg md:top-1/2 md:left-full md:mt-0 md:ml-2 md:-translate-y-1/2 dark:bg-slate-700 ${
+                        hint === id ? 'block' : 'hidden group-hover:block'
+                      }`}
+                    >
+                      {unlockConditionText(ctx, tabUnlock(ctx.content.balance, id)) ?? 'Bientôt'}
+                    </p>
+                  </div>
+                ) : (
+                  <a
+                    key={id}
+                    href={`#${id}`}
+                    onClick={() => setMenuOpen(false)}
+                    className={`relative flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition md:py-2 ${
+                      tab === id
+                        ? 'bg-brand-500/10 text-brand-600 dark:text-brand-500'
+                        : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-900 dark:hover:bg-slate-800/60 dark:hover:text-slate-100'
+                    }`}
+                  >
+                    {tabLabel(id)}
+                    {tabBadges(id)}
+                    {tab === id && (
+                      <span className="absolute inset-y-2 left-0 w-0.5 rounded bg-brand-500" />
+                    )}
+                  </a>
+                ),
               )}
-            </a>
-          ),
-        )}
-      </div>
-    ));
+            </div>
+          </SectionPanel>
+        </div>
+      );
+    });
+  }
+
+  /** Onglet où une action attend le joueur (même règle que le point du menu mobile). */
+  function tabPending(id: TabId): boolean {
+    switch (id) {
+      case 'expeditions':
+        return finished > 0;
+      case 'battles':
+        return !!battles.data?.active;
+      case 'dungeons':
+        return !!dungeons.data?.active;
+      case 'daycare':
+        return daycareReady > 0;
+      case 'center':
+        return koWaiting > 0;
+      case 'museum':
+        return fossilsReady > 0;
+      case 'farm':
+        return berriesReady > 0;
+      case 'quests':
+        return questsReady > 0;
+      case 'shop':
+        return shopNew > 0;
+      case 'pokedex':
+        return rewardsReady > 0;
+      case 'pc':
+        return evolutionsReady > 0;
+      default:
+        return false;
+    }
   }
 
   /** Pastilles d'un onglet (compteurs, objets à réclamer…). */
@@ -554,6 +660,36 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
         </p>
         <LegalLinks />
       </footer>
+    </div>
+  );
+}
+
+/** Durée de l'animation d'ouverture/fermeture d'une section du menu (ms). */
+const SECTION_ANIM_MS = 200;
+
+/**
+ * Contenu d'une section du menu, déplié ou replié en douceur (hauteur et opacité). Le contenu
+ * reste rendu mais inerte une fois replié ; il ne déborde (infobulles des onglets verrouillés)
+ * qu'une fois l'ouverture terminée, pour ne pas chevaucher la section suivante pendant l'animation.
+ */
+function SectionPanel({ open, children }: { open: boolean; children: ReactNode }) {
+  // État (ouvert ou non) auquel l'animation s'est achevée.
+  const [settled, setSettled] = useState(open);
+  useEffect(() => {
+    const t = window.setTimeout(() => setSettled(open), open ? SECTION_ANIM_MS : 0);
+    return () => window.clearTimeout(t);
+  }, [open]);
+  return (
+    <div
+      inert={!open}
+      style={{ transitionDuration: `${SECTION_ANIM_MS}ms` }}
+      className={`grid transition-[grid-template-rows,opacity] ease-out motion-reduce:transition-none ${
+        open ? 'grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'
+      }`}
+    >
+      <div className={`min-h-0 ${open && settled ? 'overflow-visible' : 'overflow-hidden'}`}>
+        {children}
+      </div>
     </div>
   );
 }

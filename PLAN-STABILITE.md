@@ -118,37 +118,37 @@ Tests :
 
 ### Phase A : Correctifs immédiats (≈ 1 jour, à mettre en ligne seuls)
 
-- [ ] **A1. Données fraîches 30 s par défaut** (`main.tsx`) : `staleTime: 30_000` pour toutes les
+- [x] **A1. Données fraîches 30 s par défaut** (`main.tsx`) : `staleTime: 30_000` pour toutes les
       requêtes. Ouvrir une fiche, changer d'onglet ou de Pokémon réutilise le cache ; les
       invalidations après une action et les rechargements périodiques restent, donc rien ne
       s'affiche en retard. Supprime à lui seul les ~11 requêtes par flèche.
-- [ ] **A2. Ne plus remplacer le jeu par l'écran d'erreur** (`App.tsx`) : écran plein seulement
+- [x] **A2. Ne plus remplacer le jeu par l'écran d'erreur** (`App.tsx`) : écran plein seulement
       si `/api/me` n'a **jamais** répondu (`me.data === undefined`) ; sinon le jeu reste affiché,
       avec un bandeau « Connexion au serveur perdue, nouvel essai… » tant que ça échoue.
-- [ ] **A3. Réessais automatiques des lectures** : jusqu'à 3 essais espacés (1 s, 2 s, 4 s) pour
+- [x] **A3. Réessais automatiques des lectures** : jusqu'à 3 essais espacés (1 s, 2 s, 4 s) pour
       les coupures réseau, 429, 502, 503 et 504, en respectant `Retry-After` ; jamais pour les
       refus métier (4xx). Les actions (POST…) ne sont pas réessayées.
-- [ ] **A4. Limite de requêtes par joueur** (`app.ts`) : `keyGenerator` sur le cookie de session
+- [x] **A4. Limite de requêtes par joueur** (`app.ts`) : `keyGenerator` sur le cookie de session
       (haché), l'IP seulement sans session ; 600 par minute et par joueur, plus une limite large
       par IP (1 500) contre les abus. Réponse 429 au format du jeu :
       `{ error: 'RATE_LIMITED', retryAfter }`.
-- [ ] **A5. Messages d'erreur clairs** (`api.ts`, `labels.ts`) : coupure réseau → `NETWORK`
+- [x] **A5. Messages d'erreur clairs** (`api.ts`, `labels.ts`) : coupure réseau → `NETWORK`
       (« Connexion au serveur perdue »), `RATE_LIMITED` (« Trop d'actions d'un coup, réessaie
       dans quelques secondes »), 502/503/504 (« Serveur en cours de redémarrage »).
-- [ ] **A6. Mises en ligne sans coupure** (`deploy/Caddyfile`) : `reverse_proxy` avec
+- [x] **A6. Mises en ligne sans coupure** (`deploy/Caddyfile`) : `reverse_proxy` avec
       `lb_try_duration 20s` et `lb_try_interval 250ms` : pendant le redémarrage de l'API, Caddy
       garde les requêtes au lieu de répondre 502 (seules les connexions refusées sont retentées,
       une action n'est donc jamais envoyée deux fois).
-- [ ] **A7. Transfert sans double crédit** (`daycare.ts`, `store.ts`) : `DELETE … RETURNING` et
+- [x] **A7. Transfert sans double crédit** (`daycare.ts`, `store.ts`) : `DELETE … RETURNING` et
       Bonbons comptés sur les lignes réellement supprimées ; si le compte ne correspond pas,
       annulation avec `POKEMON_NOT_FOUND`. Le transfert automatique de la branche `expedition`
       passe par la même fonction (`transferRows`) et en profite.
-- [ ] Entrée du changelog (`ChangelogPage.tsx`) à la mise en ligne.
+- [x] Entrée du changelog (`ChangelogPage.tsx`) à la mise en ligne.
 - **But** : les deux symptômes disparaissent, sans changer l'architecture.
 
 ### Phase B : Moins de requêtes après chaque action (≈ 2 à 3 jours)
 
-- [ ] **B1. Invalidation ciblée** : remplacer les 44 invalidations de `PLAYER_STATE_KEYS` par un
+- [x] **B1. Invalidation ciblée** : remplacer les 44 invalidations de `PLAYER_STATE_KEYS` par un
       assistant `refresh(queryClient, …clés)` et, pour chaque action, la liste des données
       qu'elle touche. Point de départ (à vérifier route par route) :
 
@@ -162,104 +162,195 @@ Tests :
   | Centre Pokémon (soins, Rappel) | `pokemon` (+ `inventory` pour le Rappel)                                             |
   | Boutique                       | `shop`, `inventory`, `me`                                                            |
 
-- [ ] **B2. `me` rechargé seulement quand l'argent ou la région change** (boutique, quêtes,
+- [x] **B2. `me` rechargé seulement quand l'argent ou la région change** (boutique, quêtes,
       combats, donjons, guilde, récupérations), plus jamais après un transfert ou un favori.
-- [ ] **B3. Les actions renvoient ce qui a changé** et le jeu l'applique avec `setQueryData`,
+- [x] **B3. Les actions renvoient ce qui a changé** et le jeu l'applique avec `setQueryData`,
       sans relire : transfert → identifiants supprimés et nouveaux totaux de Bonbons ; Bonbons,
       objet, soins, évolution → Pokémon à jour (+ entrées du Pokédex créées). Le favori le fait
       déjà (`FavoriteToggle`) : généraliser.
-- [ ] **B4. `/api/content` en cache long** : chaîne JSON et `ETag` gardés par version côté API ;
+- [x] **B4. `/api/content` en cache long** : chaîne JSON et `ETag` gardés par version côté API ;
       côté jeu `staleTime: Infinity`, rechargé seulement quand la version publiée change (numéro
       de version renvoyé par `/api/me` ou dans un en-tête).
-- [ ] **B5. Retirer le ping de présence** (`presence.ts`) : les rechargements périodiques
+- [x] **B5. Retirer le ping de présence** (`presence.ts`) : les rechargements périodiques
       (inventaire, expéditions) passent déjà par la session, qui met à jour `last_seen_at`.
-- [ ] **B6. Discussion de guilde** rechargée toutes les 15 s (au lieu de 5 s), seulement quand
+- [x] **B6. Discussion de guilde** rechargée toutes les 15 s (au lieu de 5 s), seulement quand
       elle est affichée.
-- [ ] **B7. Compteur de requêtes en développement** (`api.ts`) : avertissement dans la console
+- [x] **B7. Compteur de requêtes en développement** (`api.ts`) : avertissement dans la console
       au-delà de 20 requêtes en 5 s, pour repérer tout retour en arrière.
 - **But** : une action coûte une requête et deux ou trois rechargements, pas quinze.
+- **Réalisé** (écarts avec le plan) : assistants dans `lib/game.ts` (`refresh`, `PROGRESS_KEYS`,
+  `refreshAfterExpeditionStart / Claim / Combat / Reward`, `applyTransfer`, `patchPokemon`,
+  `setItemQuantity`). Seul le choix du starter recharge encore tout (`PLAYER_STATE_KEYS`). La
+  récupération d'une expédition ne recharge pas `me` : aucune expédition ne donne d'argent ; `me`
+  ne l'est plus qu'avec les combats, donjons, quêtes, récompenses et la boutique. Le contenu
+  porte un `ETag` (`W/"content-<version>"`, 304 sans corps) ; `/api/me` renvoie `contentVersion`
+  et rappelle toutes les 5 min pour voir passer une nouvelle version. L'ancienne route
+  `/api/presence` reste pour les clients déjà ouverts.
 
 ### Phase C : Requêtes serveur plus légères (≈ 3 jours)
 
-- [ ] **C1. Cache de session** (`auth.ts`) : `session.cookieCache` de Better Auth (5 min), soit
+- [x] **C1. Cache de session** (`auth.ts`) : `session.cookieCache` de Better Auth (5 min), soit
       1 à 2 requêtes SQL de moins par appel. Vérifier les profils secondaires et garder une
       relecture en base pour `requireAdmin` (un rôle retiré doit agir tout de suite).
-- [ ] **C2. Un seul rattrapage par joueur, et pas à chaque requête** : regrouper
+- [x] **C2. Un seul rattrapage par joueur, et pas à chaque requête** : regrouper
       `settleFinishedDungeonRun`, `settleFinishedBattle`, `settleClosedPlaces` et (branche
       `expedition`) `settleExpeditionBalls` dans un `settlePlayer(userId)`. Garder en mémoire la
       prochaine échéance de chaque joueur (fin de combat, prochaine rencontre…) : rien à faire,
       donc aucune requête SQL, tant qu'elle n'est pas passée. Les actions qui en dépendent
       l'appellent sans attendre.
-- [ ] **C3. `GET /api/quests` en lecture seule** : calculer l'avancement sans transaction et
+- [x] **C3. `GET /api/quests` en lecture seule** : calculer l'avancement sans transaction et
       n'enregistrer que ce qui a changé (ou mettre à jour l'avancement au moment des captures,
       victoires et éclosions).
-- [ ] **C4. Supprimer les N+1** : équipes de toutes les expéditions en une requête dans
+- [x] **C4. Supprimer les N+1** : équipes de toutes les expéditions en une requête dans
       `expeditionPaces` ; repérer les autres `for … await` sur la base dans `game/*.ts`.
-- [ ] **C5. Liste des Pokémon allégée** : compteur de révision par joueur (incrémenté à chaque
+- [x] **C5. Liste des Pokémon allégée** : compteur de révision par joueur (incrémenté à chaque
       changement de ses Pokémon) et `ETag` → réponse 304 sans corps quand rien n'a changé ;
       retirer les champs inutiles au jeu. Plus tard, si besoin : envoi des seuls changements.
-- [ ] **C6. Index et requêtes lentes** : activer `pg_stat_statements` et
+- [x] **C6. Index et requêtes lentes** : activer `pg_stat_statements` et
       `log_min_duration_statement` en production (voir SURCHARGE.md, 1.4), vérifier avec
       `EXPLAIN` les requêtes les plus fréquentes (Pokémon d'un joueur triés par date
       d'obtention, expéditions dont une rencontre est due) et ajouter les index manquants.
 - **But** : une lecture coûte 1 à 3 requêtes SQL, sans écriture.
+- **Réalisé** (écarts avec le plan) :
+  - C1 : `cookieCache` de 5 min ; le cookie rafraîchi est renvoyé au navigateur (sans cela le cache
+    ne se renouvelait jamais). `requireAdmin` relit la base (`disableCookieCache`). Une session
+    révoquée depuis un autre appareil reste valable au plus 5 min ; un compte supprimé est refusé
+    tout de suite (liste en mémoire, `deletedUserIds`).
+  - C2 : `game/settle.ts` (`PlayerSettler`). Deux portées : les requêtes ne rattrapent d'office que
+    les Balls (`balls`), les lectures qui en dépendent (`/api/pokemon`, `/api/daycare`,
+    `/api/museum`) et les départs de combat / donjon appellent `hooks.settleAll` (`all`) ; les
+    routes de réclamation ne rattrapent pas les combats, sinon elles répondraient `ALREADY_CLAIMED`.
+    Prochaine échéance gardée en mémoire (prochaine rencontre d'expédition, sinon 30 s ; combat ou
+    donjon en cours : à chaque appel), appels simultanés d'un joueur fusionnés,
+    `hooks.invalidateSettle` après un départ d'expédition, de combat ou de donjon.
+  - C3 : l'avancement est calculé sans transaction ; la transaction ne s'ouvre que si une étape
+    est franchie (état relu à l'intérieur).
+  - C4 : `expeditionPaces` charge toutes les équipes en une requête ; stock de Balls des
+    rattrapages en une requête (`itemQuantities`). Les autres boucles relevées (attaques de
+    donjon, 6 au plus, récompenses de guilde) sont rares et bornées : laissées telles quelles.
+  - C5 : un compteur de révision en base ne suffit pas (`busy` dépend des expéditions, pensions,
+    combats, assistants…) : `ETag` calculé sur le corps de la réponse, 304 sans corps quand rien
+    n'a changé. La requête SQL reste faite ; seuls le transfert et le traitement côté jeu sont
+    économisés. Les champs du DTO sont tous utilisés par le jeu : rien retiré.
+  - C6 : `docker-compose.prod.yml` active `log_min_duration_statement=500` et `pg_stat_statements`
+    (commande `create extension` à lancer une fois, voir SURCHARGE.md 1.4). Aucun index ajouté
+    sans mesure : à faire avec `pg_stat_statements` en production.
 
 ### Phase D : Écritures sûres (≈ 3 jours)
 
-- [ ] **D1. Verrou par joueur** : assistant `lockPlayer(tx, userId)`
+- [x] **D1. Verrou par joueur** : assistant `lockPlayer(tx, userId)`
       (`pg_advisory_xact_lock`) en tête de chaque transaction d'action (transferts, départs,
       dépôts, assistants, objets, évolutions, Bonbons, boutique, réclamations). Les actions d'un
       même joueur passent l'une après l'autre (elles vont à vitesse humaine) : plus de course
       entre « vérifier » et « écrire » (Pokémon occupé, dernier Pokémon, double réclamation).
-- [ ] **D2. Compteurs globaux hors des transactions des joueurs** : `species_captures` cumulé en
+- [x] **D2. Compteurs globaux hors des transactions des joueurs** : `species_captures` cumulé en
       mémoire et écrit toutes les 30 s en une requête triée par espèce (compteur de statistiques
       admin : quelques secondes perdues en cas d'arrêt brutal sont acceptables). À défaut,
       au minimum trier les lignes par `speciesId` pour éviter les interblocages.
-- [ ] **D3. Erreurs SQL traduites** (`app.ts`) : doublon d'index unique (23505) → 409
+- [x] **D3. Erreurs SQL traduites** (`app.ts`) : doublon d'index unique (23505) → 409
       `CONFLICT` ; interblocage ou conflit de sérialisation (40P01, 40001) → transaction rejouée
       jusqu'à 3 fois, puis 503 `BUSY` ; délai dépassé (57014, 55P03) → 503. Aucun message
       interne renvoyé au joueur pour une erreur 500 (seulement dans les journaux).
-- [ ] **D4. Délais maximaux** : sur la connexion Postgres (`client.ts`) `statement_timeout`
+- [x] **D4. Délais maximaux** : sur la connexion Postgres (`client.ts`) `statement_timeout`
       10 s, `lock_timeout` 5 s, `idle_in_transaction_session_timeout` 30 s, `connect_timeout` ;
       côté jeu, `fetch` abandonné après 20 s (`AbortSignal.timeout`).
-- [ ] **D5. Contenu jamais chargé dans une transaction** : juste après une publication, un
+- [x] **D5. Contenu jamais chargé dans une transaction** : juste après une publication, un
       `content.get()` ou `content.version()` appelé pour la première fois dans une transaction
       réclame une autre connexion ; avec 10 transactions dans ce cas, le pool (10 connexions) se
       bloque. Charger le contenu avant d'ouvrir chaque transaction (comme
       `preloadExpeditionContent`).
-- [ ] **D6. Tests de concurrence sur un vrai Postgres** : service Postgres dans la CI et une
+- [x] **D6. Tests de concurrence sur un vrai Postgres** : service Postgres dans la CI et une
       série de tests lancés seulement là : double transfert, transfert pendant un départ en
       expédition, deux réclamations simultanées, captures croisées de deux joueurs (compteurs).
 - **But** : aucune action simultanée ne peut dupliquer, perdre ou bloquer quoi que ce soit.
+- **Réalisé** (écarts avec le plan) :
+  - D1 : `game/tx.ts` : `playerTransaction(db, userId, fn)` (verrou `pg_advisory_xact_lock` sur
+    `hashtextextended('player:<id>')`, réentrant) et `transaction(db, fn, { players })` (verrous
+    triés). Toutes les transactions de `game/*.ts`, `routes/` et `beta-profiles.ts` y passent.
+    Les commandes de combat et de donjon (changement, objet, fuite) relisent désormais le combat
+    dans la transaction. Les coffres de guilde (plusieurs joueurs, ajouts seuls) et la remise à
+    zéro des quêtes de guilde n'ont que les réessais, sans verrou de joueur.
+  - D2 : `game/capture-stats.ts` : compteurs cumulés en mémoire **après la validation** de la
+    transaction (jamais comptés pour une transaction annulée ou rejouée), écrits toutes les 30 s
+    et à l'arrêt en une requête triée ; `speciesStats` (admin) les écrit d'abord. Repli dans une
+    transaction ouverte autrement : écriture triée.
+  - D3 : 23505 → 409 `CONFLICT` ; 40P01, 40001 → transaction rejouée (3 essais) puis 503
+    `BUSY` ; 57014, 55P03, 25P03 → 503 `BUSY` avec `Retry-After: 1`. Une erreur 500 ne renvoie
+    plus que `{ error: 'INTERNAL' }` (le message de Drizzle contenait la requête et ses
+    paramètres). Libellés `BUSY`, `CONFLICT`, `INTERNAL`, `TIMEOUT` côté jeu.
+  - D4 : délais par défaut dans `createDb` (`DEFAULT_DB_TIMEOUTS`, option `timeouts`) ; les
+    migrations ont leur propre connexion, sans délai. Côté jeu, `TIMEOUT` après 20 s (lecture de
+    la réponse comprise), réessayé comme une erreur passagère pour les lectures.
+  - D5 : plutôt que de précharger partout, `ContentCache` charge le contenu par la connexion de la
+    transaction en cours (`currentTransaction()`, `AsyncLocalStorage`) : couvre aussi les
+    versions lues dans la transaction (réclamations). Une transaction ouverte sur la base depuis
+    une autre du même appel passe par celle-ci (sinon le joueur attendrait son propre verrou).
+  - D6 : `concurrency.test.ts` (ignoré sans `TEST_DATABASE_URL`), service `postgres:17-alpine`
+    dans la CI ; une base neuve est créée puis supprimée. 7 tests : double transfert, transfert
+    pendant un départ, réclamations simultanées, captures croisées, interblocage rejoué, verrou
+    trop long, contenu rechargé dans 12 transactions (pool de 10). Vérifié en local sur un
+    Postgres 17 : sans le verrou, les deux premiers échouent ; sans D5, le dernier bloque.
 
 ### Phase E : Affichage fluide (≈ 2 jours)
 
-- [ ] **E1. Une seule horloge partagée** pour `useNow` (un intervalle commun via
+- [x] **E1. Une seule horloge partagée** pour `useNow` (un intervalle commun via
       `useSyncExternalStore`, au lieu d'un par composant), utilisée seulement par les composants
       qui affichent un compte à rebours.
-- [ ] **E2. PC mémoïsé** : liste de `usePcBrowser` (PE, talent, évolutions) calculée avec
+- [x] **E2. PC mémoïsé** : liste de `usePcBrowser` (PE, talent, évolutions) calculée avec
       `useMemo` sur les Pokémon, le contenu, l'inventaire et les filtres ; plus de `useNow` au
       niveau de `PcPage` (seulement dans les cartes en soins).
-- [ ] **E3. Affichage progressif des grilles** (PC, choix d'équipe) : les 120 premiers Pokémon,
+- [x] **E3. Affichage progressif des grilles** (PC, choix d'équipe) : les 120 premiers Pokémon,
       puis la suite au défilement (`IntersectionObserver`).
-- [ ] **E4. Pastilles du menu mémoïsées** (`HomePage`) : évolutions disponibles calculées quand
+- [x] **E4. Pastilles du menu mémoïsées** (`HomePage`) : évolutions disponibles calculées quand
       les Pokémon ou l'inventaire changent, pas toutes les 5 s.
-- [ ] **E5. Index plutôt que recherches** : `Map` au lieu de `.find` sur le Pokédex dans
+- [x] **E5. Index plutôt que recherches** : `Map` au lieu de `.find` sur le Pokédex dans
       `EvolutionPanel`, `MegaPanel` et les fiches.
 - **But** : PC fluide avec plusieurs milliers de Pokémon, sur mobile compris.
+- **Réalisé** (écarts avec le plan) :
+  - E1 : `useNow` (`components/ui.tsx`) garde un seul `setInterval` par durée (`useSyncExternalStore`,
+    arrêté quand plus personne n'écoute). `sharedNow()` donne l'heure de l'horloge partagée, sans
+    abonnement, pour une décision ponctuelle au rendu.
+  - E2 : `usePcBrowser` calcule sa liste (PE, talent, évolution) et sa liste filtrée / triée avec
+    `useMemo`. `PcPage`, `TeamsPage` et la vitrine n'écoutent plus l'horloge : `KoBadge` ne s'abonne
+    (`HealingBadge`) que pour un Pokémon encore en soins, et la prop `now` des cartes est retirée.
+  - E3 : `ProgressiveItems` (`components/ProgressiveGrid.tsx`) : 120 cartes puis 120 de plus quand la
+    fin approche (`IntersectionObserver`, 600 px d'avance). Utilisé par le PC, « Équipe Pkmn », la
+    vitrine et le choix d'équipe (`TeamPicker`). `resetKey` (`browser.viewKey`) ramène à la première
+    tranche quand l'onglet, la recherche, le tri ou un filtre change, pas à un simple rechargement.
+    La navigation par flèches de la fiche suit toujours la liste complète.
+  - E4 : `HomePage` calcule les Pokémon qui peuvent évoluer quand les Pokémon, le sac ou le Pokédex
+    changent ; seul le filtre « disponible » suit l'horloge de 5 s.
+  - E5 : `useDexIndex` (Pokédex par espèce et par forme) et `useItemQuantities` (sac) dans
+    `lib/game.ts`, utilisés par `EvolutionPanel` et `MegaPanel`.
 
 ### Phase F : Surveillance et tests de charge (≈ 1 à 2 jours)
 
-- [ ] **F1. Journaux utiles** : requêtes lentes (> 500 ms : route, durée), nombre de 429 et de
+- [x] **F1. Journaux utiles** : requêtes lentes (> 500 ms : route, durée), nombre de 429 et de
       500 par minute ; ne plus journaliser chaque requête réussie (les 3 × 10 Mo de journaux
       tiennent alors bien plus longtemps).
-- [ ] **F2. Scénario de charge** (`scripts/load-test`) rejouant une session type contre une copie
+- [x] **F2. Scénario de charge** (`scripts/load-test`) rejouant une session type contre une copie
       de la base : chargement du jeu, 50 flèches dans le PC, transfert de 500 Pokémon,
       récupérations d'expéditions, à plusieurs joueurs en parallèle. Chiffres avant / après
       chaque phase.
-- [ ] **F3. (Optionnel) Télémétrie admin** : requêtes par minute, taux d'erreur et temps de
+- [x] **F3. (Optionnel) Télémétrie admin** : requêtes par minute, taux d'erreur et temps de
       réponse par route, gardés en mémoire.
 - **But** : savoir avant les joueurs quand ça sature, et mesurer chaque amélioration.
+- **Réalisé** (écarts avec le plan) :
+  - F1 : `monitoring.ts`. Fastify ne journalise plus chaque requête (`LogController` avec
+    `disableRequestLogging`). Reste journalisé : chaque requête de plus de 500 ms (« Requête lente » :
+    route par son motif, statut, durée), et chaque minute un résumé (« Dernière minute : … ») s'il y a eu
+    au moins un refus 429, une erreur 5xx ou une requête lente. Les erreurs 500 et les erreurs SQL
+    traduites étaient déjà journalisées par le gestionnaire d'erreurs.
+  - F2 : `scripts/load-test/load-test.mjs` (sans dépendance, voir son README) : comptes
+    `load-<n>@load.test` préparés une fois (`--prepare`, puis `pnpm admin:promote` pour leur donner des
+    Pokémon de test), ouverture du jeu, rechargements du PC (ETag), expédition, transfert par lots,
+    à plusieurs joueurs en parallèle ; rapport JSON et `--compare` avant / après. Les « 50 flèches »
+    du plan ne font plus aucune requête côté jeu (A1) : le scénario mesure à la place le coût serveur
+    de 50 rechargements conditionnels de la liste.
+  - F3 : `Monitoring` garde en mémoire (aucune écriture) les requêtes, erreurs 5xx, refus 429 et durées
+    par route (palier de durée, p95 approché) depuis le démarrage, et par minute sur 2 heures.
+    `GET /api/admin/metrics` (admin) et section **Santé de l'API** de l'admin (rechargée toutes les
+    30 s). Les compteurs repartent de zéro à chaque redémarrage, donc à chaque mise en ligne.
 
 ---
 

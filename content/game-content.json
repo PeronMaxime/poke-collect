@@ -252,6 +252,12 @@
           "guild",
           "leaderboard"
         ]
+      ],
+      "titles": [
+        "Aventure",
+        "Bâtiments",
+        "Collection",
+        "Dresseur"
       ]
     },
     "tabUnlocks": {
@@ -280,7 +286,7 @@
       "dungeons": {
         "type": "badgeCount",
         "count": 1,
-        "regionId": "kanto"
+        "regionId": "kalos"
       }
     },
     "facilityUnlocks": {
@@ -672,7 +678,7 @@
       "unlock": {
         "type": "regionDexPercent",
         "regionId": "kanto",
-        "percent": 50
+        "percent": 75
       }
     },
     {
@@ -826,7 +832,7 @@
       "unlock": {
         "type": "regionDexPercent",
         "regionId": "johto",
-        "percent": 50
+        "percent": 75
       }
     },
     {
@@ -934,7 +940,7 @@
       "unlock": {
         "type": "regionDexPercent",
         "regionId": "hoenn",
-        "percent": 50
+        "percent": 75
       }
     },
     {
@@ -1092,7 +1098,7 @@
       "unlock": {
         "type": "regionDexPercent",
         "regionId": "sinnoh",
-        "percent": 50
+        "percent": 75
       }
     },
     {
@@ -1173,7 +1179,7 @@
       "unlock": {
         "type": "regionDexPercent",
         "regionId": "unys",
-        "percent": 50
+        "percent": 75
       }
     },
     {
@@ -1260,7 +1266,7 @@
       "unlock": {
         "type": "regionDexPercent",
         "regionId": "kalos",
-        "percent": 50
+        "percent": 75
       }
     },
     {
@@ -1353,7 +1359,7 @@
       "unlock": {
         "type": "regionDexPercent",
         "regionId": "alola",
-        "percent": 50
+        "percent": 75
       }
     },
     {
@@ -1390,7 +1396,7 @@
       "unlock": {
         "type": "regionDexPercent",
         "regionId": "galar",
-        "percent": 50
+        "percent": 75
       }
     },
     {
@@ -1513,7 +1519,7 @@
       "unlock": {
         "type": "regionDexPercent",
         "regionId": "hisui",
-        "percent": 50
+        "percent": 75
       }
     }
   ],
@@ -10403,13 +10409,6 @@
         {
           "speciesId": 263,
           "weight": 28,
-          "minLevel": 2,
-          "maxLevel": 4
-        },
-        {
-          "speciesId": 263,
-          "formId": 10174,
-          "weight": 2,
           "minLevel": 2,
           "maxLevel": 4
         },

@@ -4,7 +4,7 @@ import {
   claimableCompletionCount,
   collectionState,
   dexProgress,
-  isUnlocked,
+  isRegionUnlocked,
   isZoneUnlocked,
 } from '@poke/game-core';
 import type { DexCatches, GameContext, PlayerProgress } from '@poke/game-core';
@@ -130,7 +130,7 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
   const foreignRegions = foreign
     ? ctx.regions.filter(
         (r) =>
-          isUnlocked(ctx, r.unlock, foreign.progress) ||
+          isRegionUnlocked(ctx, r, foreign.progress) ||
           r.speciesIds.some((id) => entries.get(id)?.seen),
       )
     : undefined;
@@ -183,10 +183,10 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
       slots: all.filter(keep),
     };
   }).filter((section) => section.total > 0);
-  // Total affiché : espèces du Pokédex régional et formes de ses sections (régionales, Méga…).
-  const dexCaught = progress.caught + formSections.reduce((n, s) => n + s.caught, 0);
-  const dexTotal = progress.total + formSections.reduce((n, s) => n + s.total, 0);
-  const dexPercent = dexTotal ? (dexCaught / dexTotal) * 100 : 0;
+  // Pourcentage du Pokédex régional : espèces seules, comme pour le déblocage des régions. Les
+  // formes de ses sections (régionales, Méga…) sont comptées à part.
+  const formsCaught = formSections.reduce((n, s) => n + s.caught, 0);
+  const formsTotal = formSections.reduce((n, s) => n + s.total, 0);
   const detail = selected ? ctx.species(selected.speciesId, selected.formId) : undefined;
   const detailState = selected ? slotState(selected) : undefined;
   // Zones où l'espèce (ou cette forme précise) se rencontre ; celles des régions encore
@@ -200,7 +200,7 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
     : [];
   const detailZones = allDetailZones.filter((z) => {
     const zoneRegion = ctx.region(z.regionId);
-    return !!zoneRegion && isUnlocked(ctx, zoneRegion.unlock, playerProgress);
+    return !!zoneRegion && isRegionUnlocked(ctx, zoneRegion, playerProgress);
   });
 
   const grid = (list: DexSlot[]) => (
@@ -232,13 +232,13 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
           <h2 className="text-lg font-semibold">Pokédex de {region.name}</h2>
           <p className="text-sm text-slate-500">
             {shiny ? 'Chromatiques' : `Vus : ${seenCount} · Capturés`} :{' '}
-            {`${dexCaught} / ${dexTotal} (${dexPercent.toFixed(1)} %)`}
+            {`${progress.caught} / ${progress.total} (${progress.percent.toFixed(1)} %)`}
           </p>
         </div>
-        <ProgressBar className="mt-3" value={dexPercent / 100} />
-        {dexTotal > progress.total && (
+        <ProgressBar className="mt-3" value={progress.percent / 100} />
+        {formsTotal > 0 && (
           <p className="mt-1 text-xs text-slate-500">
-            Formes comprises · espèces seules : {progress.caught} / {progress.total}
+            Formes alternatives (hors pourcentage) : {formsCaught} / {formsTotal}
           </p>
         )}
         {shiny && !foreign && (
@@ -416,7 +416,9 @@ function DexTile({
         silhouette={!seen}
         className={seen && !caught ? 'opacity-50 grayscale' : ''}
       />
-      <span className="w-full truncate text-center">{seen ? species?.nameFr : '???'}</span>
+      <span className="line-clamp-2 w-full text-center leading-tight break-words">
+        {seen ? species?.nameFr : '???'}
+      </span>
       {caught && shiny && <ShinyStar className="absolute top-0.5 right-1 text-xs" />}
     </button>
   );

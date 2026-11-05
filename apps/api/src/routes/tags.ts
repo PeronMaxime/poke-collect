@@ -6,6 +6,7 @@ import type { Db } from '@poke/db';
 import { MAX_TAGS, tagInputSchema } from '@poke/shared';
 import type { PokemonTagDto } from '@poke/shared';
 import { GameError } from '../game/errors';
+import { playerTransaction } from '../game/tx';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
@@ -65,7 +66,7 @@ export async function tagRoutes(app: FastifyInstance, { db, hooks }: Deps) {
   app.delete('/api/tags/:id', async (request, reply) => {
     const { id } = uuidParams.parse(request.params);
     const userId = request.user!.id;
-    await db.transaction(async (tx) => {
+    await playerTransaction(db, userId, async (tx) => {
       const [row] = await tx
         .delete(pokemonTags)
         .where(and(eq(pokemonTags.id, id), eq(pokemonTags.ownerId, userId)))

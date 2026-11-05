@@ -21,6 +21,7 @@ import type { ContentCache } from '../content-cache';
 import { assistantHolder, assistantHolders } from './assistants';
 import { GameError, newSeed, requireStartedProfile } from './expeditions';
 import { recordGuildActivity } from './guilds';
+import { playerTransaction } from './tx';
 import {
   addItems,
   assertAvailable,
@@ -136,7 +137,7 @@ export async function depositDaycare(
     }
   }
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const used = new Set(
       (
         await tx
@@ -307,7 +308,7 @@ export async function collectEggs(
   now: Date,
 ) {
   const ctx = await content.get();
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const slot = await requireSlot(tx, userId, slotIndex);
     const result = await collectInTx(tx, ctx, userId, slot, now);
     if (result.laid === 0) {
@@ -327,7 +328,7 @@ export async function withdrawDaycare(
   now: Date,
 ) {
   const ctx = await content.get();
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const slot = await requireSlot(tx, userId, slotIndex);
     const parentsAlive = slot.parentAId !== null && slot.parentBId !== null;
     const collected = parentsAlive
@@ -365,7 +366,7 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
     .where(and(eq(eggs.ownerId, userId), eq(eggs.hatched, false)));
   const published = await content.get();
   await Promise.all(pending.map((e) => content.version(e.versionId)));
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     // Verrou : seule la première demande fait éclore un œuf donné.
     const ready = await tx
       .update(eggs)
@@ -423,7 +424,7 @@ export async function transferPokemon(
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
   const unique = [...new Set(ids)];
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const rows = await ownedPokemon(tx, userId, unique);
     if (rows.length !== unique.length) throw new GameError(404, 'POKEMON_NOT_FOUND');
     if (rows.some((r) => r.locked)) throw new GameError(409, 'POKEMON_LOCKED');
@@ -455,7 +456,7 @@ export async function feedCandies(
   requested: number,
 ): Promise<PokemonRow> {
   const ctx = await content.get();
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const [row] = await ownedPokemon(tx, userId, [pokemonId]);
     if (!row) throw new GameError(404, 'POKEMON_NOT_FOUND');
     const lineage = lineageId(ctx, row.speciesId);

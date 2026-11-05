@@ -15,6 +15,7 @@ import type { BerryPlotDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { assistantHolder, assistantHolders } from './assistants';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 import { newSeed, requireStartedProfile } from './expeditions';
 import { addItems, playerFacilityPlaces, takeItems } from './store';
 
@@ -106,7 +107,7 @@ export async function plantBerry(
   const effect = berryPlantEffect(ctx, itemId);
   if (!effect) throw new GameError(400, 'NOT_PLANTABLE');
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const growMs = effect.minutes * 60_000;
     const speed = await wateringSpeed(tx, ctx, userId, farmFieldOf(plotIndex));
     const [row] = await tx
@@ -133,7 +134,7 @@ export async function plantBerry(
 
 /** Arrache une baie pas encore mûre : elle revient dans le sac. */
 export async function uprootBerry(db: Db, userId: string, plotIndex: number, now: Date) {
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const [row] = await tx
       .delete(berryPlots)
       .where(and(eq(berryPlots.ownerId, userId), eq(berryPlots.plotIndex, plotIndex)))
@@ -158,7 +159,7 @@ export async function harvestBerries(
 ) {
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const harvesters = await assistantHolders(tx, userId, 'harvest');
     // Verrou : seule la première demande récolte une parcelle donnée.
     const ripe = await tx

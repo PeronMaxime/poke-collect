@@ -94,6 +94,7 @@ export async function trainerRoutes(app: FastifyInstance, { db, content, hooks }
         defeatedTrainerIds: [...progress.defeatedTrainerIds],
         eggsHatched: progress.eggsHatched,
         questSteps: Object.fromEntries(progress.questSteps ?? []),
+        openedRegionIds: [...(progress.openedRegionIds ?? [])],
       },
       card,
     };

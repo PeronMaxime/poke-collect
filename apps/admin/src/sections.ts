@@ -142,6 +142,12 @@ export const SECTIONS: AdminSection[] = [
     phase: 8,
   },
   {
+    path: '/api-health',
+    label: 'Santé de l’API',
+    description: 'Requêtes, erreurs 5xx, refus 429 et durées par route.',
+    phase: 0,
+  },
+  {
     path: '/audit-log',
     label: 'Versions et journal',
     description: 'Historique des modifications d’administration.',

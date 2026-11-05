@@ -20,7 +20,7 @@ import type { TeamMember, TeamMemberResult } from './expedition';
 import { computeStats } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import type { PlayerProgress } from './progress';
-import { isRegionalSpecies, isUnlocked } from './progress';
+import { isRegionalSpecies, isRegionUnlocked, isUnlocked } from './progress';
 import { NO_BONUSES } from './progression';
 import type { PlayerBonuses } from './progression';
 import {
@@ -211,6 +211,12 @@ export interface DungeonFighter {
   traits?: DungeonTraits;
   /** Statistiques sans ses propres talents (talent neutralisé) ; absent = `stats`. */
   baseStats?: Stats;
+  /**
+   * Bonus exact de ses talents sur chaque statistique, en % (Coloforce : +50), pour l'affichage :
+   * `stats` est arrondi (9 × 1,5 → 14), le rapport des deux afficherait +56 %. Absent des
+   * combats lancés avant : rapport de `stats` et `baseStats`.
+   */
+  abilityStatPercents?: Partial<Record<DungeonStat, number>>;
 }
 
 /** Réglages de combat figés au départ (une modification de l'équilibrage n'affecte pas un combat en cours). */
@@ -561,16 +567,26 @@ function withAbilities(
     const stats = { ...f.stats };
     let { maxHp } = f;
     let statsChanged = false;
+    const abilityStatPercents: Partial<Record<DungeonStat, number>> = {};
     for (const [stat, percent] of statPercent) {
       const mult = Math.max(0, 1 + percent / 100);
       if (stat === 'hp') maxHp = Math.max(1, Math.round(maxHp * mult));
       else {
         stats[stat] = Math.max(1, Math.round(stats[stat] * mult));
+        abilityStatPercents[stat] = (mult - 1) * 100;
         statsChanged = true;
       }
     }
-    // Statistiques d'origine gardées pour le Gaz Inhibiteur (PV max inchangés).
-    return { ...f, stats, maxHp, ability, traits, ...(statsChanged && { baseStats: f.stats }) };
+    // Statistiques d'origine gardées pour le Gaz Inhibiteur (PV max inchangés), bonus exacts des
+    // talents pour l'affichage.
+    return {
+      ...f,
+      stats,
+      maxHp,
+      ability,
+      traits,
+      ...(statsChanged && { baseStats: f.stats, abilityStatPercents }),
+    };
   });
 }
 
@@ -1198,7 +1214,12 @@ export function simulateDungeon(
   const fighterOf = (side: Side): DungeonFighter => {
     const f = current(side);
     if (!neutralized(side) || (!f.traits && !f.baseStats)) return f;
-    return { ...f, stats: f.baseStats ?? f.stats, traits: undefined };
+    return {
+      ...f,
+      stats: f.baseStats ?? f.stats,
+      traits: undefined,
+      abilityStatPercents: undefined,
+    };
   };
   const trigger = (
     side: Side,
@@ -1598,7 +1619,10 @@ export function dungeonStatChanges(
   for (const stat of DUNGEON_STATS) {
     let mult = changes?.[stat] ?? 1;
     if (!neutralized) {
-      if (f.baseStats) mult *= f.stats[stat] / f.baseStats[stat];
+      // Bonus du talent tel qu'annoncé (Coloforce : +50 %), pas le rapport des statistiques
+      // arrondies ; les dégâts, eux, restent calculés sur les statistiques arrondies.
+      if (f.abilityStatPercents) mult *= 1 + (f.abilityStatPercents[stat] ?? 0) / 100;
+      else if (f.baseStats) mult *= f.stats[stat] / f.baseStats[stat];
       mult *= stateStatMultiplier(f.traits, stat, hp / f.maxHp, !!status, up);
     }
     if (stat === 'speed' && status === 'paralysis') mult *= 0.5;
@@ -1634,7 +1658,7 @@ export function dungeonStatus(
   now: Date | number,
 ): DungeonStatus {
   const region = ctx.region(dungeon.regionId);
-  if (!region || !isUnlocked(ctx, region.unlock, progress)) return { state: 'hidden' };
+  if (!region || !isRegionUnlocked(ctx, region, progress)) return { state: 'hidden' };
   const missingSpeciesIds = dungeon.familySpeciesIds.filter(
     (id) => !progress.caughtSpeciesIds.has(id),
   );

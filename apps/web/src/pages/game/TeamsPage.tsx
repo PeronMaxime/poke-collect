@@ -4,10 +4,11 @@ import { memberPower } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import { MAX_TEAMS, TEAM_MAX_SIZE, TEAM_NAME_MAX } from '@poke/shared';
 import type { PokemonDto, PokemonTeamDto, TeamInput } from '@poke/shared';
-import { PokemonSprite, ShinyStar, useNow } from '../../components/ui';
+import { PokemonSprite, ShinyStar } from '../../components/ui';
 import { api } from '../../lib/api';
 import { keys, usePokemon, useTeams } from '../../lib/game';
 import { errorText } from '../../lib/labels';
+import { ProgressiveItems } from '../../components/ProgressiveGrid';
 import { PcFilterBar, PcPokemonCard, usePcBrowser } from './PcBrowser';
 import { MEGA_LOCKED_TITLE, megaLocked } from './TeamPicker';
 
@@ -26,7 +27,6 @@ export function TeamsPage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const pokemon = usePokemon();
   const teams = useTeams();
-  const now = useNow();
   const browser = usePcBrowser(ctx, pokemon.data ?? []);
   const [draft, setDraft] = useState<Draft | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -294,45 +294,46 @@ export function TeamsPage({ ctx }: { ctx: GameContext }) {
       <h3 className="mb-2 font-semibold">PC</h3>
       <PcFilterBar ctx={ctx} browser={browser} />
       <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
-        {browser.filtered.map((entry) => {
-          const { p } = entry;
-          const index = draft?.pokemonIds.indexOf(p.id) ?? -1;
-          const other = teamOf.get(p.id);
-          const locked = megaLocked(p, members);
-          return (
-            <PcPokemonCard
-              key={p.id}
-              entry={entry}
-              tags={browser.tagFilter.tags}
-              now={now}
-              onSelect={() => toggle(p)}
-              title={
-                other
-                  ? `Déjà dans l'équipe « ${other.name} »`
-                  : locked
-                    ? MEGA_LOCKED_TITLE
-                    : undefined
-              }
-              topLeft={
-                index >= 0 && (
-                  <span className="absolute top-1.5 left-2 rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white">
-                    {index + 1}
-                  </span>
-                )
-              }
-              badges={
-                other && (
-                  <span className="max-w-20 truncate rounded bg-violet-100 px-1 text-[10px] text-violet-700 dark:bg-violet-950 dark:text-violet-300">
-                    {other.name}
-                  </span>
-                )
-              }
-              className={`${index >= 0 ? 'ring-2 ring-brand-500' : ''} ${
-                other || locked ? 'cursor-not-allowed opacity-40' : ''
-              }`}
-            />
-          );
-        })}
+        <ProgressiveItems items={browser.filtered} resetKey={browser.viewKey}>
+          {(entry) => {
+            const { p } = entry;
+            const index = draft?.pokemonIds.indexOf(p.id) ?? -1;
+            const other = teamOf.get(p.id);
+            const locked = megaLocked(p, members);
+            return (
+              <PcPokemonCard
+                key={p.id}
+                entry={entry}
+                tags={browser.tagFilter.tags}
+                onSelect={() => toggle(p)}
+                title={
+                  other
+                    ? `Déjà dans l'équipe « ${other.name} »`
+                    : locked
+                      ? MEGA_LOCKED_TITLE
+                      : undefined
+                }
+                topLeft={
+                  index >= 0 && (
+                    <span className="absolute top-1.5 left-2 rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white">
+                      {index + 1}
+                    </span>
+                  )
+                }
+                badges={
+                  other && (
+                    <span className="max-w-20 truncate rounded bg-violet-100 px-1 text-[10px] text-violet-700 dark:bg-violet-950 dark:text-violet-300">
+                      {other.name}
+                    </span>
+                  )
+                }
+                className={`${index >= 0 ? 'ring-2 ring-brand-500' : ''} ${
+                  other || locked ? 'cursor-not-allowed opacity-40' : ''
+                }`}
+              />
+            );
+          }}
+        </ProgressiveItems>
       </div>
       {browser.filtered.length === 0 && !pokemon.isPending && (
         <p className="text-sm text-slate-500">Aucun Pokémon ne correspond.</p>

@@ -6,7 +6,7 @@ import { searchKey } from '@poke/shared';
 import type { UseItemInput, UseItemResponse } from '@poke/shared';
 import { Modal, PokemonSprite } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, useInventory, usePokemon } from '../../lib/game';
+import { patchPokemon, setItemQuantity, useInventory, usePokemon } from '../../lib/game';
 import { errorText, itemIcon, itemName, speciesName } from '../../lib/labels';
 
 /**
@@ -32,12 +32,10 @@ export function HappinessDialog({
   const give = useMutation({
     mutationFn: ({ pokemonId, ...input }: UseItemInput & { pokemonId: string }) =>
       api<UseItemResponse>(`/api/pokemon/${pokemonId}/use-item`, { method: 'POST', json: input }),
-    onSuccess: () =>
-      Promise.all(
-        [keys.pokemon, keys.inventory].map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey }),
-        ),
-      ),
+    onSuccess: (data) => {
+      patchPokemon(queryClient, data.pokemon);
+      setItemQuantity(queryClient, data.itemId, data.remaining);
+    },
   });
   const needle = searchKey(search.trim());
   const candidates = (pokemon.data ?? [])
