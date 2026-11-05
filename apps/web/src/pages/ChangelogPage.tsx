@@ -17,7 +17,7 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
-    date: '4 novembre 2026',
+    date: '5 novembre 2026',
     title: 'Expéditions à durée libre et un jeu plus stable',
     changes: [
       {
