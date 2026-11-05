@@ -25,7 +25,10 @@ import type {
 import type {
   AbilityHolder,
   AssistantPost,
+  AutoTransferFilter,
+  BallPlan,
   CaptureFilter,
+  CaptureSnapshot,
   DaycareParent,
   DungeonCommand,
   DungeonMove,
@@ -50,6 +53,11 @@ export const playerProfiles = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     trainerName: text('trainer_name').notNull(),
     regionUnlocked: text('region_unlocked').notNull(),
+    /**
+     * Régions ouvertes pour de bon, même si leur condition se durcit ensuite (passage de 50 à 75 %
+     * du Pokédex précédent) ; les autres suivent leur condition de déblocage.
+     */
+    openedRegions: jsonb('opened_regions').$type<string[]>().notNull().default([]),
     /** Null tant que le joueur n'a pas choisi son starter. */
     starterSpeciesId: integer('starter_species_id'),
     /** Starter choisi dans chaque région suivante (`{ johto: 155 }`), un seul par région. */
@@ -322,17 +330,38 @@ export const expeditions = pgTable(
     slotIndex: smallint('slot_index').notNull(),
     team: jsonb('team').$type<string[]>().notNull(),
     durationMinutes: integer('duration_minutes').notNull(),
-    /** Balls et baies réservées au départ (une par tentative de capture). */
+    /** Balls réservées au départ (une par tentative de capture) et baies de capture. */
     ballItemId: text('ball_item_id'),
     balls: integer('balls').notNull().default(0),
     berryItemId: text('berry_item_id'),
     berries: integer('berries').notNull().default(0),
-    /** Pokémon à tenter de capturer ; null = tous. */
+    /** Baies de rencontres (Baie Nanana) réservées au départ. */
+    encounterBerryItemId: text('encounter_berry_item_id'),
+    encounterBerries: integer('encounter_berries').notNull().default(0),
+    /** Anciennes expéditions : Pokémon à tenter de capturer ; null = tous. */
     captureFilter: jsonb('capture_filter').$type<CaptureFilter>(),
+    /**
+     * Ball lancée selon la catégorie du Pokémon (nouveau, chromatique, déjà capturé), retirée du
+     * sac à chaque rencontre ; null = ancienne expédition (Balls réservées dans `balls`).
+     */
+    ballPlan: jsonb('ball_plan').$type<BallPlan>(),
+    /** Transfert automatique des captures au retour, figé au départ ; null = aucun. */
+    autoTransfer: jsonb('auto_transfer').$type<AutoTransferFilter>(),
+    /** Pokédex (Pokémon de la zone) et pitié figés au départ : les lancers se rejouent à l'identique. */
+    captureSnapshot: jsonb('capture_snapshot').$type<CaptureSnapshot>(),
+    /** Journal des lancers déjà décidés, un caractère par rencontre (voir `THROW_CODES`). */
+    throws: text('throws').notNull().default(''),
+    /** Moment de la prochaine rencontre à décider ; null = plus aucun lancer à faire. */
+    nextThrowAt: timestamp('next_throw_at', { withTimezone: true }),
+    /** Balls retirées du sac jusqu'ici, par objet. */
+    ballsUsed: jsonb('balls_used').$type<Record<string, number>>().notNull().default({}),
     contentVersionId: integer('content_version_id')
       .notNull()
       .references(() => contentVersions.id),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    /** À partir de cette date, le joueur peut arrêter l'expédition et récupérer le résultat. */
+    minEndsAt: timestamp('min_ends_at', { withTimezone: true }).notNull(),
+    /** Fin de l'expédition : au-delà, le temps ne compte plus. */
     endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
     seed: bigint('seed', { mode: 'number' }).notNull(),
     /** Maillon de la chaîne de zone au départ (bonus shiny). */
@@ -347,6 +376,11 @@ export const expeditions = pgTable(
       .$type<{ questId: string; pokemonIndex: number }[]>()
       .notNull()
       .default([]),
+    /**
+     * Quêtes des fuyards déjà croisés, au fil des rencontres (voir `settleExpeditionBalls`) :
+     * le joueur l'apprend avant la réclamation, sans savoir si la capture a réussi.
+     */
+    roamersMet: jsonb('roamers_met').$type<string[]>().notNull().default([]),
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
     /** Notification push « expédition terminée » envoyée. */
     notifiedAt: timestamp('notified_at', { withTimezone: true }),

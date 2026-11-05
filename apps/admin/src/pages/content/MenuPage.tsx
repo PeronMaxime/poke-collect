@@ -1,6 +1,6 @@
 import { useState } from 'react';
-import { DEFAULT_MENU_GROUPS, MENU_TABS, normalizeMenuGroups } from '@poke/content';
-import type { MenuTabId, TabUnlocks, UnlockCondition } from '@poke/content';
+import { DEFAULT_MENU_GROUPS, DEFAULT_MENU_TITLES, MENU_TABS, normalizeMenu } from '@poke/content';
+import type { MenuSection, MenuTabId, TabUnlocks, UnlockCondition } from '@poke/content';
 import { VersionBanner } from '../../components/EntityPage';
 import { UnlockEditor } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
@@ -26,10 +26,16 @@ type Target =
   | { kind: 'new-group' }
   | { kind: 'group'; index: number };
 
+const DEFAULT_SECTIONS: MenuSection[] = DEFAULT_MENU_GROUPS.map((tabs, i) => ({
+  title: DEFAULT_MENU_TITLES[i] ?? `Section ${i + 1}`,
+  tabs: [...tabs],
+}));
+
 function MenuEditor({ working }: { working: WorkingVersion }) {
   const balance = working.content.balance;
-  const initial = normalizeMenuGroups(balance.menu?.groups);
-  const [groups, setGroups] = useState<MenuTabId[][]>(initial);
+  const initial = normalizeMenu(balance.menu);
+  const [sections, setSections] = useState<MenuSection[]>(initial);
+  const groups = sections.map((s) => s.tabs);
   const initialUnlocks = balance.tabUnlocks ?? {};
   const [unlocks, setUnlocks] = useState<TabUnlocks>(initialUnlocks);
   const [drag, setDrag] = useState<Drag | null>(null);
@@ -37,9 +43,10 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
   const save = useSaveBalance(working.version.id);
   const editable = working.editable;
   const dirty =
-    JSON.stringify(groups) !== JSON.stringify(initial) ||
+    JSON.stringify(sections) !== JSON.stringify(initial) ||
     JSON.stringify(unlocks) !== JSON.stringify(initialUnlocks);
-  const isDefault = JSON.stringify(groups) === JSON.stringify(DEFAULT_MENU_GROUPS);
+  const isDefault = JSON.stringify(sections) === JSON.stringify(DEFAULT_SECTIONS);
+  const titlesValid = sections.every((s) => s.title.trim().length > 0 && s.title.length <= 30);
 
   function endDrag() {
     setDrag(null);
@@ -49,25 +56,26 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
   /** Applique le dépôt en cours, puis retire les groupes devenus vides. */
   function drop() {
     if (!drag || !target) return endDrag();
-    const next = groups.map((g) => [...g]);
+    const next = sections.map((s) => ({ ...s, tabs: [...s.tabs] }));
     if (drag.kind === 'tab') {
       // Position d'arrivée calculée avant de retirer l'onglet de son groupe d'origine.
       let insert = target.kind === 'tab' ? target.index : 0;
       if (target.kind === 'tab') {
-        const from = next[target.group]!.indexOf(drag.id);
+        const from = next[target.group]!.tabs.indexOf(drag.id);
         if (from !== -1 && from < insert) insert--;
       }
-      for (const g of next) {
-        const i = g.indexOf(drag.id);
-        if (i !== -1) g.splice(i, 1);
+      for (const { tabs } of next) {
+        const i = tabs.indexOf(drag.id);
+        if (i !== -1) tabs.splice(i, 1);
       }
-      if (target.kind === 'tab') next[target.group]!.splice(insert, 0, drag.id);
-      else if (target.kind === 'new-group') next.push([drag.id]);
+      if (target.kind === 'tab') next[target.group]!.tabs.splice(insert, 0, drag.id);
+      else if (target.kind === 'new-group')
+        next.push({ title: 'Nouvelle section', tabs: [drag.id] });
     } else if (target.kind === 'group') {
       const [moved] = next.splice(drag.index, 1);
       next.splice(target.index > drag.index ? target.index - 1 : target.index, 0, moved!);
     }
-    setGroups(next.filter((g) => g.length > 0));
+    setSections(next.filter((s) => s.tabs.length > 0));
     endDrag();
   }
 
@@ -107,8 +115,9 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
         <div>
           <h1 className="text-2xl font-bold">Menu du jeu</h1>
           <p className="mt-1 text-slate-500">
-            Ordre des onglets et groupes, séparés par un trait dans le menu (sans titre). Glisser un
-            onglet pour le déplacer, un groupe par sa poignée ⠿ pour le réordonner.
+            Ordre des onglets et sections du menu : chaque section a un titre et se replie dans le
+            jeu (accordéon). Glisser un onglet pour le déplacer, une section par sa poignée ⠿ pour
+            la réordonner.
           </p>
         </div>
         {editable && (
@@ -116,7 +125,9 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
             <button
               className="btn-ghost"
               disabled={isDefault}
-              onClick={() => setGroups(DEFAULT_MENU_GROUPS.map((g) => [...g]))}
+              onClick={() =>
+                setSections(DEFAULT_SECTIONS.map((s) => ({ ...s, tabs: [...s.tabs] })))
+              }
             >
               Menu par défaut
             </button>
@@ -124,7 +135,7 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
               className="btn-ghost"
               disabled={!dirty}
               onClick={() => {
-                setGroups(initial);
+                setSections(initial);
                 setUnlocks(initialUnlocks);
               }}
             >
@@ -132,8 +143,14 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
             </button>
             <button
               className="btn-primary"
-              disabled={!dirty || save.isPending}
-              onClick={() => save.mutate({ ...balance, menu: { groups }, tabUnlocks: unlocks })}
+              disabled={!dirty || !titlesValid || save.isPending}
+              onClick={() =>
+                save.mutate({
+                  ...balance,
+                  menu: { groups, titles: sections.map((s) => s.title.trim()) },
+                  tabUnlocks: unlocks,
+                })
+              }
             >
               Enregistrer
             </button>
@@ -142,6 +159,11 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
       </div>
       <VersionBanner working={working} />
       {save.error && <p className="text-sm text-red-600">{errorMessage(save.error)}</p>}
+      {!titlesValid && (
+        <p className="text-sm text-red-600">
+          Chaque section doit avoir un titre (30 caractères au plus).
+        </p>
+      )}
 
       <div className="grid gap-6 md:grid-cols-[1fr_14rem]">
         <div className="space-y-2" onDragEnd={endDrag}>
@@ -171,7 +193,25 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
                   }`}
                 >
                   {editable && <span aria-hidden>⠿</span>}
-                  Groupe {g + 1}
+                  <input
+                    className="input h-7 flex-1 py-0 text-sm font-semibold text-slate-700 dark:text-slate-200"
+                    value={sections[g]!.title}
+                    maxLength={30}
+                    placeholder={`Section ${g + 1}`}
+                    disabled={!editable}
+                    aria-label={`Titre de la section ${g + 1}`}
+                    // Le champ ne fait pas glisser la section (sélection du texte à la souris).
+                    draggable={false}
+                    onDragStart={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                    }}
+                    onChange={(e) =>
+                      setSections(
+                        sections.map((s, i) => (i === g ? { ...s, title: e.target.value } : s)),
+                      )
+                    }
+                  />
                 </div>
                 <ul>
                   {group.map((id, i) => (
@@ -240,11 +280,14 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
         <div>
           <p className="mb-2 text-xs font-semibold text-slate-400 uppercase">Aperçu</p>
           <div className="rounded-lg border border-slate-200 bg-slate-50 p-2 dark:border-slate-800 dark:bg-slate-950">
-            {groups.map((group, g) => (
+            {sections.map(({ title, tabs: group }, g) => (
               <div
                 key={g}
                 className={g > 0 ? 'mt-2 border-t border-slate-200 pt-2 dark:border-slate-800' : ''}
               >
+                <p className="px-3 py-1 text-xs font-semibold tracking-wide text-slate-400 uppercase">
+                  {title || '—'} ▾
+                </p>
                 {group.map((id) => (
                   <p key={id} className="rounded-lg px-3 py-1.5 text-sm text-slate-500">
                     {LABELS[id]}

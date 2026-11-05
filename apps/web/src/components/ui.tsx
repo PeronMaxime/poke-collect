@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
@@ -17,6 +17,7 @@ export function PokemonSprite({
   className = '',
   silhouette = false,
   alt = '',
+  priority = false,
 }: {
   speciesId: number;
   /** Forme de l'espèce (régionale, Méga, Gigamax…), qui a ses propres sprites. */
@@ -27,20 +28,36 @@ export function PokemonSprite({
   className?: string;
   silhouette?: boolean;
   alt?: string;
+  /** Image visible dès l'ouverture (starter, révélations) : chargée tout de suite, en priorité. */
+  priority?: boolean;
 }) {
   const sprite = pokemonSprite(speciesId, formId);
   return (
     <img
+      ref={markIfCached}
+      data-sprite=""
       src={pokemonSpriteUrl(sprite, { shiny, kind })}
+      onLoad={(e) => {
+        const img = e.currentTarget;
+        if (img.dataset.loaded === undefined) img.dataset.fade = '';
+        img.dataset.loaded = '';
+      }}
+      onAnimationEnd={(e) => {
+        if (e.animationName === 'sprite-in') delete e.currentTarget.dataset.fade;
+      }}
       onError={(e) => {
         // Sprite animé ou artwork absent (formes, générations récentes) : repli sur le sprite fixe.
+        const img = e.currentTarget;
         const fallback = pokemonSpriteUrl(sprite, { shiny });
-        if (e.currentTarget.src !== fallback) e.currentTarget.src = fallback;
+        if (img.getAttribute('src') !== fallback) img.src = fallback;
+        // Repli introuvable lui aussi : on arrête l'attente.
+        else img.dataset.loaded = '';
       }}
       alt={alt}
       width={size}
       height={size}
-      loading="lazy"
+      loading={priority ? 'eager' : 'lazy'}
+      fetchPriority={priority ? 'high' : undefined}
       className={[
         kind === 'default' ? '[image-rendering:pixelated]' : '',
         silhouette ? 'brightness-0 opacity-30 dark:invert' : '',
@@ -48,6 +65,15 @@ export function PokemonSprite({
       ].join(' ')}
     />
   );
+}
+
+/**
+ * Image déjà en mémoire au montage (onglet revisité) : affichée telle quelle, sans fond d'attente
+ * ni fondu. Les autres gardent le fond d'attente jusqu'au chargement, puis apparaissent en fondu
+ * (styles `img[data-sprite]` de index.css).
+ */
+function markIfCached(img: HTMLImageElement | null) {
+  if (img?.complete && img.naturalWidth > 0) img.dataset.loaded = '';
 }
 
 export function TypeBadge({ type }: { type: string }) {
@@ -230,14 +256,68 @@ export function Modal({
   );
 }
 
-/** Heure courante, rafraîchie toutes les secondes (comptes à rebours). */
+/**
+ * Horloge partagée : un seul intervalle par durée, quel que soit le nombre de composants qui
+ * l'écoutent (au lieu d'un `setInterval` par composant, donc par carte d'une grille).
+ */
+interface Clock {
+  now: number;
+  timer: number | undefined;
+  listeners: Set<() => void>;
+}
+
+const clocks = new Map<number, Clock>();
+
+function clockFor(intervalMs: number): Clock {
+  let clock = clocks.get(intervalMs);
+  if (!clock) {
+    clock = { now: Date.now(), timer: undefined, listeners: new Set() };
+    clocks.set(intervalMs, clock);
+  }
+  return clock;
+}
+
+function subscribeClock(intervalMs: number, listener: () => void): () => void {
+  const clock = clockFor(intervalMs);
+  clock.listeners.add(listener);
+  if (clock.timer === undefined) {
+    // Premier abonné : l'heure gardée est peut-être ancienne, on la remet à jour tout de suite.
+    clock.now = Date.now();
+    clock.timer = window.setInterval(() => {
+      clock.now = Date.now();
+      for (const notify of clock.listeners) notify();
+    }, intervalMs);
+  }
+  return () => {
+    clock.listeners.delete(listener);
+    if (clock.listeners.size === 0 && clock.timer !== undefined) {
+      window.clearInterval(clock.timer);
+      clock.timer = undefined;
+    }
+  };
+}
+
+function clockSnapshot(intervalMs: number): number {
+  const clock = clockFor(intervalMs);
+  // Sans abonné, l'horloge ne tourne pas : une heure plus vieille qu'un tour est rafraîchie
+  // (premier rendu d'un composant), sinon la valeur reste stable entre deux lectures.
+  if (clock.timer === undefined && Date.now() - clock.now >= intervalMs) clock.now = Date.now();
+  return clock.now;
+}
+
+/** Heure de l'horloge partagée, à la seconde près, sans abonnement (décision ponctuelle au rendu). */
+export const sharedNow = () => clockSnapshot(1000);
+
+/**
+ * Heure courante, rafraîchie à chaque `intervalMs` (comptes à rebours). N'utiliser que dans les
+ * composants qui affichent vraiment un compte à rebours : chaque tic les redessine.
+ */
 export function useNow(intervalMs = 1000): number {
-  const [now, setNow] = useState(() => Date.now());
-  useEffect(() => {
-    const id = window.setInterval(() => setNow(Date.now()), intervalMs);
-    return () => window.clearInterval(id);
-  }, [intervalMs]);
-  return now;
+  const subscribe = useCallback(
+    (listener: () => void) => subscribeClock(intervalMs, listener),
+    [intervalMs],
+  );
+  return useSyncExternalStore(subscribe, () => clockSnapshot(intervalMs));
 }
 
 /** Bouton d'annulation à deux temps : un premier clic demande confirmation. */

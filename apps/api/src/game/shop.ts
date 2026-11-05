@@ -14,6 +14,7 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 import { requireStartedProfile } from './expeditions';
 import { addItems, itemQuantity, playerFacilityPlaces, playerProgress, takeItems } from './store';
 
@@ -143,7 +144,7 @@ export async function purchase(
   const entry = ctx.shopEntry(input.entryId);
   if (!entry) throw new GameError(404, 'SHOP_ENTRY_NOT_FOUND');
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     // Verrou sur le profil : deux achats simultanés ne contournent ni le solde ni les limites.
     const [profile] = await tx
       .select({ currency: playerProfiles.currency })
@@ -257,7 +258,7 @@ export async function sell(
   if (item.sellPrice === null) throw new GameError(409, 'NOT_SELLABLE');
   const totalPrice = item.sellPrice * input.quantity;
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     if (!(await takeItems(tx, userId, item.id, input.quantity))) {
       throw new GameError(409, 'NOT_ENOUGH_ITEMS', {
         inventoryQuantity: await itemQuantity(tx, userId, item.id),

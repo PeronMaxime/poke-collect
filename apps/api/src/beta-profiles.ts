@@ -7,6 +7,7 @@ import { selectBetaProfileInputSchema } from '@poke/shared';
 import type { BetaProfilesResponse } from '@poke/shared';
 import type { ContentCache } from './content-cache';
 import { leaveGuild } from './game/guilds';
+import { playerTransaction } from './game/tx';
 import type { sessionHooks } from './plugins/session';
 
 /**
@@ -137,7 +138,7 @@ export async function betaProfileRoutes(
     const id = randomUUID();
     const at = now();
     try {
-      await db.transaction(async (tx) => {
+      await playerTransaction(db, accountUserId, async (tx) => {
         await tx.insert(users).values({
           id,
           name: trainerName,

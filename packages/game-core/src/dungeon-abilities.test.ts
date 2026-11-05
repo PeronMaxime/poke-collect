@@ -347,6 +347,19 @@ describe('talents en donjon : mécaniques', () => {
     );
   });
 
+  it('affiche le bonus exact du talent, pas celui des statistiques arrondies', () => {
+    // Coloforce +50 % sur une Attaque de 9 : 14 en combat (arrondi), mais « +50 % » affiché.
+    const strong = fighter({
+      stats: { ...fighter().stats, attack: 14 },
+      baseStats: { ...fighter().stats, attack: 9 },
+      abilityStatPercents: { attack: 50 },
+    });
+    const s = setup([strong], [fighter()]);
+    expect(dungeonStatChanges(s, simulateDungeon(s, [], null, 0).state, 'player', 0)).toEqual({
+      attack: 50,
+    });
+  });
+
   it('sans talent, le combat est inchangé', () => {
     const plain = (f: Partial<DungeonFighter> = {}) => {
       const { traits: _t, ability: _a, ...rest } = fighter(f);
@@ -400,6 +413,7 @@ describe('talents en donjon : mise en place', () => {
     const plain = buildDungeonSetup(ctx, dungeon, team, 1);
     const boosted = buildDungeonSetup(withAbilities, dungeon, team, 1);
     expect(boosted.team[0]!.stats.attack).toBe(plain.team[0]!.stats.attack * 2);
+    expect(boosted.team[0]!.abilityStatPercents).toEqual({ attack: 100 });
     expect(boosted.team[1]!.traits?.damage).toEqual([
       { dir: 'dealt', percent: 50, attackTypes: ['fire'], hpBelow: 1 / 3 },
     ]);

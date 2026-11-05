@@ -1,6 +1,7 @@
 import { and, count, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import {
   assistants,
+  candies,
   daycareSlots,
   dungeonRuns,
   eggs,
@@ -12,7 +13,6 @@ import {
   pokemon,
   questProgress,
   rewardClaims,
-  speciesCaptures,
   trainerProgress,
   trainerRuns,
 } from '@poke/db';
@@ -25,10 +25,12 @@ import {
   facilityUnlocks,
   isHealing,
   isTabUnlocked,
+  lineageId,
   NO_ABILITY,
   NO_CLAIMS,
   playerBonuses,
   questStepsDone,
+  transferCandies,
 } from '@poke/game-core';
 import type {
   CaughtDex,
@@ -42,6 +44,7 @@ import type {
   TeamMember,
 } from '@poke/game-core';
 import type { ExpeditionDto, PokemonActivity, PokemonDto, PokemonOrigin } from '@poke/shared';
+import { countSpecies } from './capture-stats';
 import { GameError } from './errors';
 
 /** Accès en base à l'état d'un joueur (Pokémon, inventaire, Pokédex). */
@@ -95,7 +98,10 @@ export function toPokemonDto(row: PokemonRow, activity: PokemonActivity | null =
   };
 }
 
-export function toExpeditionDto(row: ExpeditionRow): ExpeditionDto {
+export function toExpeditionDto(
+  row: ExpeditionRow,
+  pace: ExpeditionDto['pace'] = null,
+): ExpeditionDto {
   return {
     id: row.id,
     zoneId: row.zoneId,
@@ -107,14 +113,22 @@ export function toExpeditionDto(row: ExpeditionRow): ExpeditionDto {
     balls: row.balls,
     berryItemId: row.berryItemId,
     berries: row.berries,
+    encounterBerryItemId: row.encounterBerryItemId,
+    encounterBerries: row.encounterBerries,
     captureFilter: row.captureFilter,
+    ballPlan: row.ballPlan,
+    ballsUsed: Object.entries(row.ballsUsed).map(([itemId, quantity]) => ({ itemId, quantity })),
     contentVersionId: row.contentVersionId,
     startedAt: row.startedAt.toISOString(),
+    minEndsAt: row.minEndsAt.toISOString(),
     endsAt: row.endsAt.toISOString(),
     claimedAt: row.claimedAt?.toISOString() ?? null,
     shinyChain: row.shinyChain,
     localHour: row.localHour,
     roamerQuestIds: row.roamers.map((r) => r.questId),
+    roamersMet: row.roamersMet,
+    autoTransfer: row.autoTransfer ?? null,
+    pace,
     result: (row.result as ExpeditionDto['result']) ?? null,
   };
 }
@@ -133,16 +147,7 @@ export async function insertPokemon(
     if (p.isShiny) c.shiny++;
     captures.set(p.speciesId, c);
   }
-  await db
-    .insert(speciesCaptures)
-    .values([...captures].map(([speciesId, c]) => ({ speciesId, ...c })))
-    .onConflictDoUpdate({
-      target: speciesCaptures.speciesId,
-      set: {
-        captured: sql`${speciesCaptures.captured} + excluded.captured`,
-        shiny: sql`${speciesCaptures.shiny} + excluded.shiny`,
-      },
-    });
+  await countSpecies(db, captures);
   return db
     .insert(pokemon)
     .values(
@@ -304,18 +309,23 @@ export async function playerSlotsNow(
 
 /** Avancement hors quêtes. */
 export async function baseProgress(db: Db, ownerId: string): Promise<PlayerProgress> {
-  const [caught, defeated, hatched] = await Promise.all([
+  const [caught, defeated, hatched, opened] = await Promise.all([
     caughtSpeciesIds(db, ownerId),
     db
       .select({ trainerId: trainerProgress.trainerId })
       .from(trainerProgress)
       .where(and(eq(trainerProgress.ownerId, ownerId), gt(trainerProgress.wins, 0))),
     eggsHatchedCount(db, ownerId),
+    db
+      .select({ openedRegions: playerProfiles.openedRegions })
+      .from(playerProfiles)
+      .where(eq(playerProfiles.userId, ownerId)),
   ]);
   return {
     caughtSpeciesIds: caught,
     defeatedTrainerIds: new Set(defeated.map((d) => d.trainerId)),
     eggsHatched: hatched,
+    openedRegionIds: new Set(opened[0]?.openedRegions ?? []),
   };
 }
 
@@ -367,6 +377,69 @@ export async function eggsHatchedCount(db: Db, ownerId: string): Promise<number>
     .from(eggs)
     .where(and(eq(eggs.ownerId, ownerId), eq(eggs.hatched, true)));
   return row?.n ?? 0;
+}
+
+/**
+ * Supprime des Pokémon du joueur contre des Bonbons de lignée (Méga-Gemmes tenues rendues au sac,
+ * transferts comptés par espèce), sans vérification : à l'appelant de s'assurer qu'ils peuvent
+ * partir (transfert du PC, transfert automatique au retour d'expédition). À appeler dans une
+ * transaction : si un Pokémon a déjà disparu (transfert simultané), lève `POKEMON_NOT_FOUND`.
+ */
+export async function transferRows(
+  db: Db,
+  ctx: GameContext,
+  ownerId: string,
+  rows: readonly PokemonRow[],
+): Promise<{ lineageId: number; quantity: number }[]> {
+  if (rows.length === 0) return [];
+  const gained = new Map<number, number>();
+  for (const r of rows) {
+    const lineage = lineageId(ctx, r.speciesId);
+    if (lineage === undefined) continue;
+    gained.set(lineage, (gained.get(lineage) ?? 0) + transferCandies(ctx, r));
+  }
+  // Seules les lignes réellement supprimées comptent : un transfert simultané des mêmes Pokémon
+  // (double clic, deux onglets) en supprimerait moins, et l'appelant annule alors sa transaction
+  // au lieu de créditer deux fois les Bonbons.
+  const deleted = await db
+    .delete(pokemon)
+    .where(
+      and(
+        eq(pokemon.ownerId, ownerId),
+        inArray(
+          pokemon.id,
+          rows.map((r) => r.id),
+        ),
+      ),
+    )
+    .returning({ id: pokemon.id });
+  if (deleted.length !== new Set(rows.map((r) => r.id)).size) {
+    throw new GameError(404, 'POKEMON_NOT_FOUND');
+  }
+  const candyValues = [...gained]
+    .filter(([, quantity]) => quantity > 0)
+    .map(([lineage, quantity]) => ({ ownerId, lineageId: lineage, quantity }));
+  if (candyValues.length > 0) {
+    await db
+      .insert(candies)
+      .values(candyValues)
+      .onConflictDoUpdate({
+        target: [candies.ownerId, candies.lineageId],
+        set: { quantity: sql`${candies.quantity} + excluded.quantity` },
+      });
+  }
+  await addItems(
+    db,
+    ownerId,
+    rows.flatMap((r) => (r.megaStone ? [{ itemId: r.megaStone, quantity: 1 }] : [])),
+  );
+  const transferred = new Map<number, number>();
+  for (const r of rows) transferred.set(r.speciesId, (transferred.get(r.speciesId) ?? 0) + 1);
+  await countSpecies(
+    db,
+    new Map([...transferred].map(([speciesId, n]) => [speciesId, { transferred: n }])),
+  );
+  return [...gained].map(([lineage, quantity]) => ({ lineageId: lineage, quantity }));
 }
 
 export async function addItems(db: Db, ownerId: string, stacks: readonly ItemStack[]) {
@@ -431,6 +504,22 @@ export async function itemQuantity(db: Db, ownerId: string, itemId: string): Pro
     .from(inventory)
     .where(and(eq(inventory.ownerId, ownerId), eq(inventory.itemId, itemId)));
   return row?.quantity ?? 0;
+}
+
+/** Quantités possédées de plusieurs objets en une requête (0 pour ceux qu'on n'a pas). */
+export async function itemQuantities(
+  db: Db,
+  ownerId: string,
+  itemIds: readonly string[],
+): Promise<Map<string, number>> {
+  const quantities = new Map(itemIds.map((id) => [id, 0]));
+  if (itemIds.length === 0) return quantities;
+  const rows = await db
+    .select({ itemId: inventory.itemId, quantity: inventory.quantity })
+    .from(inventory)
+    .where(and(eq(inventory.ownerId, ownerId), inArray(inventory.itemId, [...itemIds])));
+  for (const row of rows) quantities.set(row.itemId, row.quantity);
+  return quantities;
 }
 
 /** Nouveautés du Pokédex après une capture, une éclosion, une évolution… */

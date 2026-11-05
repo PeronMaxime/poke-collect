@@ -17,7 +17,7 @@ import {
 } from '../../components/ui';
 import { TagPicker } from '../../components/tags';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, keys, newInDexTracker, usePokemon } from '../../lib/game';
+import { applyTransfer, newInDexTracker, patchPokemon, usePokemon } from '../../lib/game';
 import { errorText, natureLabel, speciesName } from '../../lib/labels';
 
 const STEP = 0.5; // secondes entre deux éclosions
@@ -88,11 +88,14 @@ function HatchContent({
   const transferAll = useMutation({
     mutationFn: (ids: string[]) =>
       api<TransferPokemonResponse>('/api/pokemon/transfer', { method: 'POST', json: { ids } }),
-    onSuccess: (_, ids) => {
+    onSuccess: (res, ids) => {
       markTransferred(ids);
       setConfirmingAll(false);
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
+      const gone = new Set(ids);
+      return applyTransfer(
+        queryClient,
+        transferable.filter((p) => gone.has(p.id)),
+        res.gained,
       );
     },
   });
@@ -153,6 +156,7 @@ function HatchContent({
                   {p.isShiny && <ShinySparkles delay={delay(i)} loop />}
                   <IvHover ivs={p.ivs}>
                     <PokemonSprite
+                      priority
                       speciesId={p.speciesId}
                       formId={p.formId}
                       shiny={p.isShiny}
@@ -254,7 +258,7 @@ export function NewbornActions({
   const toggleLock = useMutation({
     mutationFn: () =>
       api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { locked: !p.locked } }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.pokemon }),
+    onSuccess: (updated) => patchPokemon(queryClient, updated),
   });
   const transfer = useMutation({
     mutationFn: () =>
@@ -262,11 +266,9 @@ export function NewbornActions({
         method: 'POST',
         json: { ids: [p.id] },
       }),
-    onSuccess: () => {
+    onSuccess: (res) => {
       onTransferred?.();
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return applyTransfer(queryClient, [p], res.gained);
     },
   });
   if (transfer.data) {

@@ -27,7 +27,9 @@ import {
 } from '../../components/ui';
 import { api } from '../../lib/api';
 import {
-  PLAYER_STATE_KEYS,
+  PROGRESS_KEYS,
+  keys,
+  refresh,
   assistantPlaces,
   serverOffset,
   shownPlaces,
@@ -63,8 +65,8 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
   const [hatched, setHatched] = useState<HatchEggsResponse | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
 
-  const refresh = () =>
-    Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+  // Ramassage et retrait : œufs, parents libérés et objets tenus rendus.
+  const refreshDaycare = () => refresh(queryClient, keys.daycare, keys.pokemon, keys.inventory);
   const collected = (res: CollectEggsResponse) => {
     const n = res.eggs.length;
     setNotice(
@@ -76,7 +78,7 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
         .filter(Boolean)
         .join(' ') || null,
     );
-    return refresh();
+    return refreshDaycare();
   };
 
   const collect = useMutation({
@@ -93,7 +95,8 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
     mutationFn: () => api<HatchEggsResponse>('/api/eggs/hatch', { method: 'POST' }),
     onSuccess: (data) => {
       setHatched(data);
-      return refresh();
+      // Éclosion : nouveaux Pokémon, Pokédex, quêtes et activité de guilde.
+      return refresh(queryClient, keys.daycare, keys.pokemon, ...PROGRESS_KEYS, keys.guild);
     },
   });
 

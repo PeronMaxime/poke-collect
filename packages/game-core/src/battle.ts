@@ -6,7 +6,7 @@ import type { TeamMember, TeamMemberResult } from './expedition';
 import { pokemonPower } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import type { PlayerProgress } from './progress';
-import { isUnlocked, outOfRegionSpecies } from './progress';
+import { isRegionUnlocked, isUnlocked, outOfRegionSpecies } from './progress';
 import { NO_BONUSES } from './progression';
 import type { PlayerBonuses } from './progression';
 import { abilityBonuses, abilityHappiness, scaledByAbility, teamMemberPowers } from './abilities';
@@ -217,7 +217,7 @@ export function trainerStatus(
   now: Date | number,
 ): TrainerStatus {
   const region = ctx.region(trainer.regionId);
-  if (!region || !isUnlocked(ctx, region.unlock, progress)) return { state: 'locked' };
+  if (!region || !isRegionUnlocked(ctx, region, progress)) return { state: 'locked' };
   if (!isUnlocked(ctx, trainer.unlock, progress)) return { state: 'locked' };
   if (!trainer.repeatable) {
     return record && record.wins > 0 ? { state: 'defeated' } : { state: 'available' };

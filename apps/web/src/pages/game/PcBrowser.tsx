@@ -1,10 +1,10 @@
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { effectiveAbility, isHealing, isRegionalSpecies, memberPower } from '@poke/game-core';
 import type { GameContext, GameSpecies } from '@poke/game-core';
 import { searchKey } from '@poke/shared';
 import type { PokemonActivity, PokemonDto, PokemonTagDto } from '@poke/shared';
-import { PokemonSprite, ShinyStar } from '../../components/ui';
+import { PokemonSprite, ShinyStar, sharedNow, useNow } from '../../components/ui';
 import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { useNewEvolutionChecker, usePlayerProgress } from '../../lib/game';
 import { abilityLabel, formatCountdown } from '../../lib/labels';
@@ -71,40 +71,79 @@ export function usePcBrowser(ctx: GameContext, pokemon: readonly PokemonDto[]) {
   const [ability, setAbility] = useState('all');
   const tagFilter = useTagFilter();
 
-  const list: PcEntry[] = pokemon.map((p) => ({
-    p,
-    species: ctx.species(p.speciesId, p.formId),
-    power: memberPower(ctx, p),
-    ability: effectiveAbility(ctx, p),
-    canEvolve: hasNewEvolution(p),
-  }));
+  // PE, talent et évolution possible de chaque Pokémon : recalculés seulement quand les Pokémon,
+  // le contenu, l'inventaire ou le Pokédex changent (pas à chaque frappe dans la recherche).
+  const list: PcEntry[] = useMemo(
+    () =>
+      pokemon.map((p) => ({
+        p,
+        species: ctx.species(p.speciesId, p.formId),
+        power: memberPower(ctx, p),
+        ability: effectiveAbility(ctx, p),
+        canEvolve: hasNewEvolution(p),
+      })),
+    [ctx, pokemon, hasNewEvolution],
+  );
   const tab = currentRegionTab(ctx, progress, selectedRegion ?? ALL_TAB.id, [ALL_TAB]);
   const needle = searchKey(search.trim());
-  const filtered = list
-    .filter(({ p }) => tab === ALL_TAB.id || isRegionalSpecies(ctx, tab, p.speciesId))
-    .filter(({ species }) => !needle || searchKey(species?.nameFr ?? '').includes(needle))
-    .filter(({ p }) => (!onlyFavorites || p.locked) && (!onlyShiny || p.isShiny))
-    .filter(({ canEvolve }) => !onlyEvolvable || canEvolve)
-    .filter(({ species }) => type === 'all' || !!species?.types.includes(type))
-    .filter((e) => ability === 'all' || e.ability === ability)
-    .filter(({ p }) => tagFilter.matches(p))
-    .sort((a, b) => {
-      switch (sort) {
-        case 'recent':
-          return Date.parse(b.p.caughtAt) - Date.parse(a.p.caughtAt);
-        case 'level':
-          return b.p.level - a.p.level;
-        case 'power':
-          return b.power - a.power;
-        case 'dex':
-          return a.p.speciesId - b.p.speciesId || b.power - a.power;
-        case 'tag':
-          return tagFilter.compare(a.p, b.p) || b.power - a.power;
-      }
-    });
+  const filtered = useMemo(
+    () =>
+      list
+        .filter(({ p }) => tab === ALL_TAB.id || isRegionalSpecies(ctx, tab, p.speciesId))
+        .filter(({ species }) => !needle || searchKey(species?.nameFr ?? '').includes(needle))
+        .filter(({ p }) => (!onlyFavorites || p.locked) && (!onlyShiny || p.isShiny))
+        .filter(({ canEvolve }) => !onlyEvolvable || canEvolve)
+        .filter(({ species }) => type === 'all' || !!species?.types.includes(type))
+        .filter((e) => ability === 'all' || e.ability === ability)
+        .filter(({ p }) => tagFilter.matches(p))
+        .sort((a, b) => {
+          switch (sort) {
+            case 'recent':
+              return Date.parse(b.p.caughtAt) - Date.parse(a.p.caughtAt);
+            case 'level':
+              return b.p.level - a.p.level;
+            case 'power':
+              return b.power - a.power;
+            case 'dex':
+              return a.p.speciesId - b.p.speciesId || b.power - a.power;
+            case 'tag':
+              return tagFilter.compare(a.p, b.p) || b.power - a.power;
+          }
+        }),
+    // `tagFilter` change à chaque rendu : ses deux entrées utiles sont listées à part.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [
+      ctx,
+      list,
+      tab,
+      needle,
+      onlyFavorites,
+      onlyShiny,
+      onlyEvolvable,
+      type,
+      ability,
+      sort,
+      tagFilter.filter,
+      tagFilter.tags,
+    ],
+  );
+
+  // Change avec la vue (onglet, recherche, tri, filtres) : les grilles repartent du haut.
+  const viewKey = [
+    tab,
+    search,
+    sort,
+    type,
+    ability,
+    onlyFavorites,
+    onlyShiny,
+    onlyEvolvable,
+    tagFilter.filter,
+  ].join('|');
 
   return {
     progress,
+    viewKey,
     tab,
     isAllTab: tab === ALL_TAB.id,
     setSelectedRegion,
@@ -256,7 +295,7 @@ function AbilityFilterSelect({
 }
 
 /** Pastille « K.O. », ou « Soins » avec le temps restant au Centre Pokémon. */
-export function KoBadge({ p, now }: { p: PokemonDto; now: number }) {
+export function KoBadge({ p }: { p: PokemonDto }) {
   if (p.knockedOut) {
     return (
       <span
@@ -267,13 +306,20 @@ export function KoBadge({ p, now }: { p: PokemonDto; now: number }) {
       </span>
     );
   }
-  if (!isHealing(p.healUntil, now)) return null;
+  // Seuls les Pokémon encore en soins écoutent l'horloge : les autres cartes ne se redessinent pas.
+  if (!p.healUntil || !isHealing(p.healUntil, sharedNow())) return null;
+  return <HealingBadge healUntil={p.healUntil} />;
+}
+
+function HealingBadge({ healUntil }: { healUntil: string }) {
+  const now = useNow();
+  if (!isHealing(healUntil, now)) return null;
   return (
     <span
       className="rounded bg-pink-100 px-1 font-mono text-[10px] text-pink-700 dark:bg-pink-950 dark:text-pink-300"
       title="En soins au Centre Pokémon"
     >
-      Soins {formatCountdown(Date.parse(p.healUntil!) - now)}
+      Soins {formatCountdown(Date.parse(healUntil) - now)}
     </span>
   );
 }
@@ -282,7 +328,6 @@ export function KoBadge({ p, now }: { p: PokemonDto; now: number }) {
 export function PcPokemonCard({
   entry: { p, species, power, canEvolve },
   tags,
-  now,
   onSelect,
   topLeft,
   badges,
@@ -291,7 +336,6 @@ export function PcPokemonCard({
 }: {
   entry: PcEntry;
   tags: readonly PokemonTagDto[];
-  now: number;
   onSelect: () => void;
   /** Coin haut gauche (cœur des favoris…). */
   topLeft?: ReactNode;
@@ -320,7 +364,7 @@ export function PcPokemonCard({
             {ACTIVITY_LABELS[p.activity]}
           </span>
         )}
-        <KoBadge p={p} now={now} />
+        <KoBadge p={p} />
         {canEvolve && (
           <span
             className="rounded bg-emerald-100 px-1 text-[10px] font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300"
@@ -332,7 +376,8 @@ export function PcPokemonCard({
         {badges}
       </span>
       <PokemonSprite speciesId={p.speciesId} formId={p.formId} shiny={p.isShiny} size={72} />
-      <span className="truncate font-medium">
+      {/* Nom long (Pikachu Casquette Originale…) : sur deux lignes, sans déborder de la case. */}
+      <span className="line-clamp-2 w-full text-center leading-tight break-words font-medium">
         {species?.nameFr}
         {p.gender !== 'genderless' && (
           <span className={p.gender === 'male' ? 'text-sky-500' : 'text-pink-500'}>

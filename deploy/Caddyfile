@@ -10,11 +10,18 @@
 (api) {
 	handle_path /api/sprites/* {
 		root * {$SPRITES_ROOT:/srv/sprites}
-		header Cache-Control "public, max-age=604800"
+		# Une image ne change jamais à URL égale (retouche = nouveau ?v=) : cache d'un an.
+		header Cache-Control "public, max-age=31536000, immutable"
 		file_server
 	}
 	handle /api/* {
-		reverse_proxy {$API_UPSTREAM:api:3000}
+		# Pendant le redémarrage de l'API (mise en ligne), Caddy garde la requête jusqu'à 20 s au lieu
+		# de répondre 502. Seules les connexions refusées sont retentées : une action déjà reçue par
+		# l'API n'est jamais envoyée deux fois.
+		reverse_proxy {$API_UPSTREAM:api:3000} {
+			lb_try_duration 20s
+			lb_try_interval 250ms
+		}
 	}
 }
 

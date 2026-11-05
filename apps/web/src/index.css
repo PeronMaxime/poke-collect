@@ -247,7 +247,33 @@ body {
       20px 140px;
   }
 }
+/*
+ * Sprites des Pokémon (PokemonSprite) : disque discret qui pulse tant que l'image n'est pas
+ * arrivée, puis apparition en fondu. Dans la couche de base : une animation des classes
+ * utilitaires (animate-pulse…) garde la main.
+ */
+@layer base {
+  img[data-sprite]:not([data-loaded]) {
+    background: radial-gradient(circle closest-side, rgb(148 163 184 / 0.25) 60%, transparent 62%);
+    animation: sprite-wait 1.2s ease-in-out infinite alternate;
+  }
+  img[data-sprite][data-fade] {
+    animation: sprite-in 0.2s ease-out;
+  }
+}
+@keyframes sprite-wait {
+  to {
+    opacity: 0.4;
+  }
+}
+@keyframes sprite-in {
+  from {
+    opacity: 0;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
+  img[data-sprite],
   .weather-sun,
   .weather-rain,
   .weather-sand::before,

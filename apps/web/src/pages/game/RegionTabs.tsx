@@ -1,12 +1,12 @@
 import { useState } from 'react';
 import type { Region } from '@poke/content';
-import { isUnlocked } from '@poke/game-core';
+import { isRegionUnlocked } from '@poke/game-core';
 import type { GameContext, PlayerProgress } from '@poke/game-core';
 import { unlockConditionText } from '../../lib/labels';
 
 /** Régions débloquées, puis la suivante (verrouillée) : les autres restent cachées. */
 export function visibleRegions(ctx: GameContext, progress: PlayerProgress) {
-  const unlocked = ctx.regions.filter((r) => isUnlocked(ctx, r.unlock, progress));
+  const unlocked = ctx.regions.filter((r) => isRegionUnlocked(ctx, r, progress));
   const next = ctx.regions.find((r) => !unlocked.includes(r));
   return { unlocked, next };
 }

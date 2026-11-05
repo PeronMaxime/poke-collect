@@ -4,6 +4,7 @@ import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@ta
 import { App } from './App';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { UpdatePrompt } from './components/UpdatePrompt';
+import { retryDelay, shouldRetryQuery } from './lib/api';
 import { logError } from './lib/log';
 import { registerServiceWorker } from './lib/pwa';
 import { adoptTabProfileFromUrl } from './lib/tab-profile';
@@ -11,7 +12,17 @@ import { watchTheme } from './lib/theme';
 import './index.css';
 
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { retry: false, refetchOnWindowFocus: false } },
+  defaultOptions: {
+    queries: {
+      // Données fraîches 30 s : ouvrir une fiche ou changer d'onglet réutilise le cache au lieu
+      // de tout recharger. Les invalidations après une action et les rechargements périodiques
+      // (refetchInterval) restent actifs.
+      staleTime: 30_000,
+      retry: shouldRetryQuery,
+      retryDelay,
+      refetchOnWindowFocus: false,
+    },
+  },
   queryCache: new QueryCache({
     onError: (error, query) => logError('Requête', error, { queryKey: query.queryKey }),
   }),

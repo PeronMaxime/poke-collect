@@ -11,7 +11,7 @@ import {
 } from '@poke/db';
 import type { Db } from '@poke/db';
 import { STAT_NAMES } from '@poke/data';
-import { createRng, generatePokemon, isUnlocked } from '@poke/game-core';
+import { createRng, generatePokemon, isRegionUnlocked } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type {
   AdminPlayerDetailResponse,
@@ -26,7 +26,9 @@ import type {
   AdminTestTrainersResponse,
 } from '@poke/shared';
 import { toDto } from '../routes/player';
+import { flushSpeciesCounts } from './capture-stats';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 import { newSeed, requireStartedProfile } from './expeditions';
 import { trainerCard } from './stats';
 import { addItems, playerProgress, pokemonActivities, recordPokedex } from './store';
@@ -110,7 +112,7 @@ export async function playerDetail(
   ]);
 
   const badges = ctx.regions
-    .filter((r) => isUnlocked(ctx, r.unlock, progress))
+    .filter((r) => isRegionUnlocked(ctx, r, progress))
     .map((region) => ({
       regionId: region.id,
       regionName: region.name,
@@ -141,6 +143,8 @@ export async function playerDetail(
  * possédés actuellement (espèce actuelle), transférés, et joueurs qui l'ont capturée.
  */
 export async function speciesStats(db: Db): Promise<AdminSpeciesStatsDto[]> {
+  // Compteurs encore en mémoire écrits d'abord : les chiffres sont à jour.
+  await flushSpeciesCounts(db);
   const [captured, owned, dex] = await Promise.all([
     db.select().from(speciesCaptures),
     db
@@ -291,7 +295,8 @@ export async function completeTestQuests(
 ): Promise<AdminTestQuestsResponse> {
   await requireTestAccount(db, userId);
   let completed = 0;
-  await db.transaction(async (tx) => {
+  await playerTransaction(db, userId, async (tx) => {
+    completed = 0; // Transaction rejouée : on recompte.
     for (const quest of ctx.quests) {
       const values = {
         step: quest.steps.length,
@@ -343,7 +348,7 @@ export async function giveTestPokemon(
     const ivs = Object.fromEntries(STAT_NAMES.map((s) => [s, 31])) as typeof p.ivs;
     return { ...p, ivs };
   });
-  await db.transaction(async (tx) => {
+  await playerTransaction(db, userId, async (tx) => {
     await tx.insert(pokemon).values(
       list.map((p) => ({
         ownerId: userId,
@@ -384,7 +389,7 @@ export async function deleteTestPokemon(
   const [user] = await db.select({ role: users.role }).from(users).where(eq(users.id, userId));
   if (!user) throw new GameError(404, 'NOT_FOUND');
   if (user.role !== 'admin') throw new GameError(403, 'NOT_ADMIN');
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const rows = await tx
       .select({ id: pokemon.id })
       .from(pokemon)

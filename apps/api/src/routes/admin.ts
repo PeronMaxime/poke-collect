@@ -27,6 +27,7 @@ import {
 } from '@poke/shared';
 import type {
   AdminGuildQuestsResetResponse,
+  ApiMetricsResponse,
   AdminPlayerDetailResponse,
   AdminPlayerDto,
   AdminSpeciesStatsDto,
@@ -54,6 +55,7 @@ import {
 } from '../game/admin-players';
 import { resetGuildQuests } from '../game/guilds';
 import { telemetry } from '../game/telemetry';
+import type { Monitoring } from '../monitoring';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
@@ -62,6 +64,7 @@ interface Deps {
   hooks: ReturnType<typeof sessionHooks>;
   now: () => Date;
   onContentPublished?: (() => Promise<void>) | undefined;
+  monitoring: Monitoring;
 }
 
 const idParams = z.object({ id: z.coerce.number().int().positive() });
@@ -129,7 +132,7 @@ function versionDto(v: Awaited<ReturnType<typeof listContentVersions>>[number]):
 /** Routes /api/admin/* : toutes réservées au rôle admin, toutes les écritures sont journalisées. */
 export async function adminRoutes(
   app: FastifyInstance,
-  { db, content, hooks, now, onContentPublished }: Deps,
+  { db, content, hooks, now, onContentPublished, monitoring }: Deps,
 ) {
   app.addHook('preHandler', hooks.requireAdmin);
 
@@ -323,6 +326,9 @@ export async function adminRoutes(
     const { days } = telemetryQuerySchema.parse(request.query);
     return telemetry(db, await content.get(), days, now());
   });
+
+  /** Santé de l'API : requêtes, erreurs, refus 429 et durées par route (mémoire du processus). */
+  app.get('/api/admin/metrics', async (): Promise<ApiMetricsResponse> => monitoring.snapshot());
 
   app.get('/api/admin/players', async (): Promise<AdminPlayerDto[]> => listPlayers(db));
 

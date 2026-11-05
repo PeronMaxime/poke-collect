@@ -1,5 +1,5 @@
 import { tabUnlock, unlockParts } from '@poke/content';
-import type { MenuTabId, UnlockCondition, Zone } from '@poke/content';
+import type { MenuTabId, Region, UnlockCondition, Zone } from '@poke/content';
 import type { GameContext } from './context';
 
 /** Avancement du joueur utile aux conditions de déblocage. */
@@ -11,6 +11,11 @@ export interface PlayerProgress {
   eggsHatched: number;
   /** Étapes validées de chaque quête commencée (voir `questStepsDone`) ; absent : aucune. */
   questSteps?: ReadonlyMap<string, number>;
+  /**
+   * Régions ouvertes pour de bon (accès acquis avant un durcissement de leur condition) ; les
+   * autres suivent leur condition. Absent : aucune.
+   */
+  openedRegionIds?: ReadonlySet<string>;
 }
 
 export interface DexProgress {
@@ -62,6 +67,22 @@ export function earnedBadges(
   );
 }
 
+/**
+ * Région ouverte au joueur : déjà ouverte pour de bon, ou sa condition remplie. Le contexte ne
+ * contient que les régions actives : une région désactivée reste fermée.
+ */
+export function isRegionUnlocked(
+  ctx: GameContext,
+  region: Region,
+  progress: PlayerProgress,
+  depth = 0,
+): boolean {
+  return (
+    !!progress.openedRegionIds?.has(region.id) ||
+    (depth < MAX_REGION_DEPTH && isUnlocked(ctx, region.unlock, progress, depth + 1))
+  );
+}
+
 /** Régions imbriquées au plus (« région débloquée » d'une région elle-même conditionnée…). */
 const MAX_REGION_DEPTH = 10;
 
@@ -79,11 +100,8 @@ export function isUnlocked(
     case 'trainerDefeated':
       return progress.defeatedTrainerIds.has(condition.trainerId);
     case 'regionUnlocked': {
-      // Le contexte ne contient que les régions actives : une région désactivée reste fermée.
       const region = ctx.region(condition.regionId);
-      return (
-        !!region && depth < MAX_REGION_DEPTH && isUnlocked(ctx, region.unlock, progress, depth + 1)
-      );
+      return !!region && isRegionUnlocked(ctx, region, progress, depth);
     }
     case 'badgeCount':
       return earnedBadges(ctx, progress, condition.regionId).length >= condition.count;
@@ -111,7 +129,7 @@ export function isTabUnlocked(ctx: GameContext, tab: MenuTabId, progress: Player
 export function isZoneUnlocked(ctx: GameContext, zone: Zone, progress: PlayerProgress): boolean {
   const region = ctx.region(zone.regionId);
   return (
-    !!region && isUnlocked(ctx, region.unlock, progress) && isUnlocked(ctx, zone.unlock, progress)
+    !!region && isRegionUnlocked(ctx, region, progress) && isUnlocked(ctx, zone.unlock, progress)
   );
 }
 

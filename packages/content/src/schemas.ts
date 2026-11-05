@@ -193,12 +193,20 @@ export const DEFAULT_MENU_GROUPS: MenuTabId[][] = [
   ['trainer', 'guild', 'leaderboard'],
 ];
 
+/** Titre de chaque groupe par défaut (sections de l'accordéon du menu). */
+export const DEFAULT_MENU_TITLES = ['Aventure', 'Bâtiments', 'Collection', 'Dresseur'];
+
+/** Titre d'une section du menu. */
+export const menuTitleSchema = z.string().trim().min(1, 'Titre obligatoire').max(30);
+
 /**
- * Groupes d'onglets du menu, séparés par un trait (sans titre). Identifiants libres : un onglet
- * retiré du code est ignoré, un onglet absent est ajouté à la fin (voir `normalizeMenuGroups`).
+ * Groupes d'onglets du menu, chacun une section repliable de l'accordéon. Identifiants libres : un
+ * onglet retiré du code est ignoré, un onglet absent est ajouté à la fin (voir `normalizeMenu`).
+ * `titles[i]` : titre du groupe `i` (absent des anciens contenus : titre du groupe par défaut).
  */
 export const menuSettingsSchema = z.object({
   groups: z.array(z.array(z.string())),
+  titles: z.array(menuTitleSchema).optional(),
 });
 export type MenuSettings = z.infer<typeof menuSettingsSchema>;
 
@@ -310,13 +318,46 @@ export const facilityUnlocksSchema = z.object({
 });
 export type FacilityUnlocks = z.infer<typeof facilityUnlocksSchema>;
 
+/** Section du menu : un titre et ses onglets. */
+export interface MenuSection {
+  title: string;
+  tabs: MenuTabId[];
+}
+
+/** Titre par défaut d'un groupe : celui du groupe par défaut de son premier onglet. */
+function defaultMenuTitle(tabs: readonly MenuTabId[], index: number): string {
+  const group = DEFAULT_MENU_GROUPS.findIndex((g) => tabs[0] && g.includes(tabs[0]));
+  return DEFAULT_MENU_TITLES[group] ?? `Section ${index + 1}`;
+}
+
+/** Sections prêtes à afficher (voir `normalizeMenuGroups`), avec leur titre. */
+export function normalizeMenu(menu: Partial<MenuSettings> | undefined): MenuSection[] {
+  const titled = menu?.groups
+    ? menu.groups.map((g, i) => ({ tabs: g, title: menu.titles?.[i]?.trim() || null }))
+    : DEFAULT_MENU_GROUPS.map((g, i) => ({ tabs: g, title: DEFAULT_MENU_TITLES[i] ?? null }));
+  return normalizeTitledGroups(titled).map((s, i) => ({
+    tabs: s.tabs,
+    title: s.title ?? defaultMenuTitle(s.tabs, i),
+  }));
+}
+
 /** Groupes prêts à afficher : onglets inconnus et doublons retirés, oubliés ajoutés, vides retirés. */
 export function normalizeMenuGroups(groups: readonly (readonly string[])[] | undefined) {
+  return normalizeTitledGroups((groups ?? DEFAULT_MENU_GROUPS).map((tabs) => ({ tabs }))).map(
+    (s) => s.tabs,
+  );
+}
+
+function normalizeTitledGroups(
+  groups: readonly { tabs: readonly string[]; title?: string | null }[],
+): { tabs: MenuTabId[]; title: string | null }[] {
   const known = new Set<string>(MENU_TABS.map((t) => t.id));
   const seen = new Set<string>();
-  const result = (groups ?? DEFAULT_MENU_GROUPS).map((g) =>
-    g.filter((id) => known.has(id) && !seen.has(id) && seen.add(id)),
-  ) as MenuTabId[][];
+  const sections = groups.map((g) => ({
+    title: g.title ?? null,
+    tabs: g.tabs.filter((id) => known.has(id) && !seen.has(id) && seen.add(id)) as MenuTabId[],
+  }));
+  const result = sections.map((s) => s.tabs);
   // Onglet oublié (souvent ajouté au jeu après le réglage de l'admin) : placé à côté de son voisin
   // dans les groupes par défaut (celui d'avant, sinon celui d'après) s'il est affiché, sinon dans
   // un groupe final.
@@ -332,8 +373,8 @@ export function normalizeMenuGroups(groups: readonly (readonly string[])[] | und
     else missing.push(id);
     seen.add(id);
   }
-  if (missing.length) result.push(missing);
-  return result.filter((g) => g.length > 0);
+  if (missing.length) sections.push({ tabs: missing, title: 'Autres' });
+  return sections.filter((s) => s.tabs.length > 0);
 }
 
 /** Un nombre par rareté de coffre de guilde (bronze, argent, or). */
@@ -416,16 +457,14 @@ export const balanceSettingsSchema = z.object({
     initialSlots: z.int().min(1).max(6),
     maxSlots: z.int().min(1).max(9),
     maxTeamSize: z.int().min(1).max(6),
-    durationsMinutes: z.array(z.int().positive()).min(1),
-    encountersPerHour: z.number().positive(),
-    minEncounters: z.int().min(0),
-    lootRollsPerHour: z.number().min(0),
-    minLootRolls: z.int().min(0),
-    /**
-     * Rendements décroissants : quantité = (durée en h) ^ exposant × taux horaire.
-     * 1 = linéaire ; < 1 = les expéditions longues rapportent moins par heure.
-     */
-    durationExponent: z.number().min(0.1).max(1),
+    /** Durée au-delà de laquelle une expédition s'arrête d'elle-même. */
+    maxDurationMinutes: z.int().positive(),
+    /** Une rencontre toutes les N minutes, sans rendement décroissant. */
+    encounterIntervalMinutes: z.number().positive(),
+    /** Un tirage de butin toutes les N minutes. */
+    lootIntervalMinutes: z.number().positive(),
+    /** Temps d'effet d'une baie emportée (rencontres ou capture). */
+    berryDurationMinutes: z.number().positive(),
   }),
   capture: z.object({
     /** Multiplicateur global de la probabilité de capture. */
@@ -1082,7 +1121,8 @@ export const zoneSchema = z.object({
   /** Exemple : 2 Pokémon de type Eau pour une zone sous-marine. */
   requiredTypes: z.array(z.object({ type: z.string().min(1), count: z.int().min(1).max(6) })),
   affinityTypes: z.array(z.string().min(1)),
-  durationsMinutes: z.array(z.int().positive()).min(1, 'Au moins une durée'),
+  /** Temps avant de pouvoir arrêter une expédition dans la zone. */
+  minDurationMinutes: z.int().positive(),
   encounters: z.array(encounterSchema).min(1, 'Au moins une rencontre'),
   lootTableId: slugSchema.nullable(),
   unlock: unlockConditionSchema,

@@ -12,8 +12,18 @@ import { searchKey } from '@poke/shared';
 import type { AssignAssistantInput, AssistantDto, PokemonDto } from '@poke/shared';
 import { Modal, PokemonSprite, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, isUsable, useAssistants, usePokemon } from '../../lib/game';
+import { isUsable, keys, refresh, useAssistants, usePokemon } from '../../lib/game';
 import { abilityLabel, errorText, speciesName, typeLabel } from '../../lib/labels';
+
+/** Données du bâtiment où travaille l'assistant d'un poste. */
+const POST_KEYS: Record<AssistantPost, readonly (readonly string[])[]> = {
+  daycare: [keys.daycare],
+  incubator: [keys.daycare],
+  museum: [keys.museum],
+  center: [],
+  farm: [keys.farm],
+  harvest: [keys.farm],
+};
 
 /** Le talent du Pokémon a-t-il un effet dans cette activité, en tant qu'assistant ? */
 function helpsIn(ctx: GameContext, p: PokemonDto, activity: AbilityActivity): boolean {
@@ -78,19 +88,19 @@ export function AssistantCard({
   const current = assistants.data?.find((a) => a.post === post && a.slot === slot);
   const p = current ? pokemon.data?.find((x) => x.id === current.pokemonId) : undefined;
 
-  const refresh = () =>
-    Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
+  // L'assistant occupe son Pokémon et change le rythme du bâtiment où il travaille.
+  const refreshPost = () => refresh(queryClient, keys.assistants, keys.pokemon, ...POST_KEYS[post]);
   const assign = useMutation({
     mutationFn: (input: AssignAssistantInput) =>
       api<AssistantDto>(`/api/assistants/${post}/${slot}`, { method: 'PUT', json: input }),
     onSuccess: () => {
       setPicking(false);
-      return refresh();
+      return refreshPost();
     },
   });
   const release = useMutation({
     mutationFn: () => api(`/api/assistants/${post}/${slot}`, { method: 'DELETE' }),
-    onSuccess: refresh,
+    onSuccess: refreshPost,
   });
 
   return (

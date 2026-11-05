@@ -41,7 +41,7 @@ describe('production', () => {
     expect(res.json()).toEqual({ ok: true });
   });
 
-  it('limite les requêtes par IP, sauf la santé et les sprites', async () => {
+  it('limite les requêtes par IP sans session, sauf la santé et les sprites', async () => {
     const limited = await buildApp({
       db: handle.db,
       env: { ...env, rateLimitPerMinute: 2 },
@@ -50,9 +50,56 @@ describe('production', () => {
       const get = (url: string) => limited.app.inject({ method: 'GET', url });
       expect((await get('/api/config')).statusCode).toBe(200);
       expect((await get('/api/config')).statusCode).toBe(200);
-      expect((await get('/api/config')).statusCode).toBe(429);
+      const refused = await get('/api/config');
+      expect(refused.statusCode).toBe(429);
+      expect(refused.json()).toMatchObject({ error: 'RATE_LIMITED' });
+      expect(refused.json<{ retryAfter: number }>().retryAfter).toBeGreaterThan(0);
       expect((await get('/api/health')).statusCode).toBe(200);
       expect((await get(itemSpriteUrl('poke-ball'))).statusCode).toBe(200);
+    } finally {
+      await limited.app.close();
+    }
+  });
+
+  it('compte la limite par joueur (cookie de session), pas par IP', async () => {
+    const limited = await buildApp({
+      db: handle.db,
+      env: { ...env, rateLimitPerMinute: 2 },
+    });
+    try {
+      const get = (cookie: string) =>
+        limited.app.inject({ method: 'GET', url: '/api/config', headers: { cookie } });
+      const a = 'better-auth.session_token=joueur-a';
+      const b = 'better-auth.session_token=joueur-b';
+      expect((await get(a)).statusCode).toBe(200);
+      expect((await get(a)).statusCode).toBe(200);
+      expect((await get(a)).statusCode).toBe(429);
+      // Même adresse IP, autre joueur : sa limite est intacte.
+      expect((await get(b)).statusCode).toBe(200);
+    } finally {
+      await limited.app.close();
+    }
+  });
+
+  it('plafonne aussi l’adresse IP, cookies inventés compris', async () => {
+    const limited = await buildApp({
+      db: handle.db,
+      env: { ...env, rateLimitPerMinute: 100, rateLimitPerIpPerMinute: 3 },
+    });
+    try {
+      const get = (n: number) =>
+        limited.app.inject({
+          method: 'GET',
+          url: '/api/config',
+          headers: { cookie: `better-auth.session_token=faux-${n}` },
+        });
+      for (let n = 0; n < 3; n++) expect((await get(n)).statusCode).toBe(200);
+      const refused = await get(3);
+      expect(refused.statusCode).toBe(429);
+      expect(refused.json()).toMatchObject({ error: 'RATE_LIMITED' });
+      expect((await limited.app.inject({ method: 'GET', url: '/api/health' })).statusCode).toBe(
+        200,
+      );
     } finally {
       await limited.app.close();
     }
@@ -166,6 +213,37 @@ describe('authentification et profil dresseur', () => {
     expect(again.statusCode).toBe(409);
   });
 
+  it('annonce la version du contenu dans /api/me', async () => {
+    const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
+    const content = await app.inject({ method: 'GET', url: '/api/content' });
+    expect(me.json<{ contentVersion: number }>().contentVersion).toBe(
+      content.json<{ versionId: number }>().versionId,
+    );
+  });
+
+  it('sert le contenu avec un ETag : 304 sans corps tant que la version est la même', async () => {
+    const first = await app.inject({ method: 'GET', url: '/api/content' });
+    expect(first.statusCode).toBe(200);
+    const etag = first.headers.etag as string;
+    expect(etag).toMatch(/^W\/"content-\d+"$/);
+
+    const again = await app.inject({
+      method: 'GET',
+      url: '/api/content',
+      headers: { 'if-none-match': etag },
+    });
+    expect(again.statusCode).toBe(304);
+    expect(again.body).toBe('');
+
+    const other = await app.inject({
+      method: 'GET',
+      url: '/api/content',
+      headers: { 'if-none-match': 'W/"content-0"' },
+    });
+    expect(other.statusCode).toBe(200);
+    expect(other.body).toBe(first.body);
+  });
+
   it('refuse un nom de dresseur déjà pris (insensible à la casse)', async () => {
     const other = await signUp('ondine@example.com');
     const res = await app.inject({
@@ -182,14 +260,14 @@ describe('authentification et profil dresseur', () => {
       app.inject({ method: 'POST', url, headers: { cookie }, payload: { speciesId } });
     expect((await post('/api/starter', 4)).statusCode).toBe(201);
 
-    // Johto s'ouvre à 50 % du Pokédex de Kanto.
+    // Johto s'ouvre à 75 % du Pokédex de Kanto (114 espèces sur 151).
     const locked = await post('/api/regions/johto/starter', 155);
     expect(locked.json()).toMatchObject({ error: 'REGION_LOCKED' });
     const [profile] = await handle.db.select().from(playerProfiles);
     await handle.db
       .insert(pokedex)
       .values(
-        Array.from({ length: 76 }, (_, i) => ({
+        Array.from({ length: 114 }, (_, i) => ({
           ownerId: profile!.userId,
           speciesId: i + 1,
           seen: true,
@@ -246,7 +324,7 @@ describe('administration', () => {
     const draftId = draftRes.json<{ id: number }>().id;
 
     const balance = structuredClone(seedContent.balance);
-    balance.expeditions.encountersPerHour = 6;
+    balance.expeditions.encounterIntervalMinutes = 6;
     const bad = await app.inject({
       method: 'PUT',
       url: `/api/admin/content/versions/${draftId}/balance`,
@@ -265,7 +343,7 @@ describe('administration', () => {
 
     // Le jeu voit toujours la version publiée tant que le brouillon n'est pas publié.
     const before = await app.inject({ method: 'GET', url: '/api/content' });
-    expect(before.json().balance.expeditions.encountersPerHour).toBe(20);
+    expect(before.json().balance.expeditions.encounterIntervalMinutes).toBe(3);
 
     const pub = await app.inject({
       method: 'POST',
@@ -275,9 +353,11 @@ describe('administration', () => {
     expect(pub.statusCode).toBe(200);
 
     const after = await app.inject({ method: 'GET', url: '/api/content' });
+    // Nouvelle version publiée : l'ETag change, le jeu recharge son contenu.
+    expect(after.headers.etag).not.toBe(before.headers.etag);
     expect(after.json()).toMatchObject({
       versionId: draftId,
-      balance: { expeditions: { encountersPerHour: 6 } },
+      balance: { expeditions: { encounterIntervalMinutes: 6 } },
     });
 
     const log = await app.inject({ method: 'GET', url: '/api/admin/audit-log', headers });

@@ -20,6 +20,7 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 import { recordGuildActivity } from './guilds';
 import { combatHealCommand, commandAtMs, metEnemies } from './dungeons';
 import { newSeed, requireStartedProfile, startHour } from './expeditions';
@@ -143,7 +144,7 @@ export async function startBattle(
   const trainer = ctx.trainer(input.trainerId);
   if (!trainer) throw new GameError(404, 'TRAINER_NOT_FOUND');
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const [progress, [record]] = await Promise.all([
       playerProgress(tx, ctx, userId),
       tx
@@ -216,25 +217,27 @@ export async function switchBattleMember(
   input: SwitchDungeonInput,
   now: Date,
 ): Promise<BattleRow> {
-  const battle = await findBattle(db, userId, battleId);
-  const elapsed = elapsedMs(battle, now);
-  const atMs = commandAtMs(input.atMs, elapsed, battle.commands);
-  const state = simulateDungeon(battle.setup, battle.commands, battle.fledAtMs, atMs).state;
-  if (state.outcome !== null) throw new GameError(409, 'BATTLE_FINISHED');
-  if (input.member >= battle.team.length || state.hp[input.member] === 0) {
-    throw new GameError(409, 'MEMBER_KO');
-  }
-  if (input.member === state.active) throw new GameError(409, 'MEMBER_ACTIVE');
-  if (state.recallReadyAt[input.member]! > atMs) throw new GameError(409, 'MEMBER_RECALLED');
+  return playerTransaction(db, userId, async (tx) => {
+    const battle = await findBattle(tx, userId, battleId);
+    const elapsed = elapsedMs(battle, now);
+    const atMs = commandAtMs(input.atMs, elapsed, battle.commands);
+    const state = simulateDungeon(battle.setup, battle.commands, battle.fledAtMs, atMs).state;
+    if (state.outcome !== null) throw new GameError(409, 'BATTLE_FINISHED');
+    if (input.member >= battle.team.length || state.hp[input.member] === 0) {
+      throw new GameError(409, 'MEMBER_KO');
+    }
+    if (input.member === state.active) throw new GameError(409, 'MEMBER_ACTIVE');
+    if (state.recallReadyAt[input.member]! > atMs) throw new GameError(409, 'MEMBER_RECALLED');
 
-  const command: DungeonCommand = { atMs, member: input.member };
-  const [updated] = await db
-    .update(trainerRuns)
-    .set({ commands: sql`${trainerRuns.commands} || ${JSON.stringify([command])}::jsonb` })
-    .where(and(eq(trainerRuns.id, battle.id), isNull(trainerRuns.claimedAt)))
-    .returning();
-  if (!updated) throw new GameError(409, 'ALREADY_CLAIMED');
-  return updated;
+    const command: DungeonCommand = { atMs, member: input.member };
+    const [updated] = await tx
+      .update(trainerRuns)
+      .set({ commands: sql`${trainerRuns.commands} || ${JSON.stringify([command])}::jsonb` })
+      .where(and(eq(trainerRuns.id, battle.id), isNull(trainerRuns.claimedAt)))
+      .returning();
+    if (!updated) throw new GameError(409, 'ALREADY_CLAIMED');
+    return updated;
+  });
 }
 
 /** Donne un objet de soin (consommé) au Pokémon actif du combat. */
@@ -247,9 +250,15 @@ export async function useBattleItem(
   now: Date,
 ): Promise<BattleRow> {
   const ctx = await content.get();
-  const battle = await findBattle(db, userId, battleId);
-  const command = combatHealCommand(ctx, battle, input, elapsedMs(battle, now), 'BATTLE_FINISHED');
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
+    const battle = await findBattle(tx, userId, battleId);
+    const command = combatHealCommand(
+      ctx,
+      battle,
+      input,
+      elapsedMs(battle, now),
+      'BATTLE_FINISHED',
+    );
     if (!(await takeItems(tx, userId, input.itemId, 1))) {
       throw new GameError(409, 'ITEM_MISSING', { itemId: input.itemId });
     }
@@ -270,20 +279,22 @@ export async function fleeBattle(
   battleId: string,
   now: Date,
 ): Promise<BattleRow> {
-  const battle = await findBattle(db, userId, battleId);
-  if (battleState(battle, now).outcome !== null) return battle;
-  const [updated] = await db
-    .update(trainerRuns)
-    .set({ fledAtMs: elapsedMs(battle, now) })
-    .where(
-      and(
-        eq(trainerRuns.id, battle.id),
-        isNull(trainerRuns.claimedAt),
-        isNull(trainerRuns.fledAtMs),
-      ),
-    )
-    .returning();
-  return updated ?? battle;
+  return playerTransaction(db, userId, async (tx) => {
+    const battle = await findBattle(tx, userId, battleId);
+    if (battleState(battle, now).outcome !== null) return battle;
+    const [updated] = await tx
+      .update(trainerRuns)
+      .set({ fledAtMs: elapsedMs(battle, now) })
+      .where(
+        and(
+          eq(trainerRuns.id, battle.id),
+          isNull(trainerRuns.claimedAt),
+          isNull(trainerRuns.fledAtMs),
+        ),
+      )
+      .returning();
+    return updated ?? battle;
+  });
 }
 
 /**
@@ -308,7 +319,7 @@ export async function claimBattle(
   // Les quêtes de guilde suivent le contenu publié, pas la version de départ du combat.
   const published = await content.get();
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     // Verrou : seule la première réclamation passe.
     const [locked] = await tx
       .update(trainerRuns)
@@ -411,18 +422,21 @@ export async function claimBattle(
 
 /**
  * Réclame le combat du joueur s'il est terminé (le joueur a quitté la page pendant le combat) :
- * ses Pokémon redeviennent disponibles. Sans effet sinon.
+ * ses Pokémon redeviennent disponibles. Sans effet sinon. Renvoie vrai si un combat est encore en
+ * cours.
  */
 export async function settleFinishedBattle(
   db: Db,
   content: ContentCache,
   userId: string,
   now: Date,
-): Promise<void> {
+): Promise<boolean> {
   const battle = await activeBattle(db, userId);
-  if (!battle || battleState(battle, now).outcome === null) return;
+  if (!battle) return false;
+  if (battleState(battle, now).outcome === null) return true;
   await claimBattle(db, content, userId, battle.id, now).catch((err: unknown) => {
     // Réclamé entre-temps par une autre requête : rien à faire.
     if (!(err instanceof GameError && err.code === 'ALREADY_CLAIMED')) throw err;
   });
+  return false;
 }

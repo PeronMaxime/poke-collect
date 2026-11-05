@@ -2,14 +2,16 @@ import { Fragment, useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SpecialEncounter, Zone } from '@poke/content';
 import {
+  IV_BALL_CATEGORIES,
   WEATHER_LABELS,
   abilityMultiplier,
   chainMultiplier,
   chainPerfectIvs,
   expeditionEnv,
-  isUnlocked,
+  isRegionUnlocked,
   isUnlockedSoon,
   isZoneUnlocked,
+  planAfter,
   resolveWeather,
   shinyProbability,
   specialEncountersFor,
@@ -28,7 +30,8 @@ import type {
 import { CancelButton, PokemonSprite, ProgressBar, TypeBadge, useNow } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
-  PLAYER_STATE_KEYS,
+  refreshAfterExpeditionClaim,
+  refreshAfterExpeditionStart,
   keys,
   shownPlaces,
   useExpeditions,
@@ -55,7 +58,14 @@ import { ActiveAbilities } from './ActiveAbilities';
 import { LaunchExpeditionDialog } from './LaunchExpeditionDialog';
 import { LegendaryEncounterDialog } from './LegendaryEncounterDialog';
 import { LootReveal } from './LootReveal';
+import {
+  AutoTransferButton,
+  GlobalAutoTransferDialog,
+  autoTransferLabel,
+  loadGlobalAutoTransfer,
+} from './AutoTransferSettings';
 import { RegionStarterCard } from './RegionStarterCard';
+import { roamerName } from './RoamerSightingNotice';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 import { ZoneWeatherIcon } from './WeatherIcon';
 
@@ -82,15 +92,16 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   const [selectedRegion, setSelectedRegion] = useSavedRegionTab('expeditions');
   const [linkedZoneId, setLinkedZoneId] = useState(zoneFromHash);
   const [notice, setNotice] = useState<string | null>(null);
+  // Filtre global du transfert automatique (chaque zone peut avoir le sien au lancement).
+  const [autoTransfer, setAutoTransfer] = useState(loadGlobalAutoTransfer);
+  const [autoTransferOpen, setAutoTransferOpen] = useState(false);
 
   const claim = useMutation({
     mutationFn: (id: string) =>
       api<ClaimExpeditionResponse>(`/api/expeditions/${id}/claim`, { method: 'POST' }),
     onSuccess: (data) => {
       setReveal(data);
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return refreshAfterExpeditionClaim(queryClient);
     },
   });
 
@@ -109,8 +120,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
 
   const cancel = useMutation({
     mutationFn: (id: string) => api<void>(`/api/expeditions/${id}/cancel`, { method: 'POST' }),
-    onSuccess: () =>
-      Promise.all(PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey }))),
+    onSuccess: () => refreshAfterExpeditionStart(queryClient),
   });
 
   const progress = usePlayerProgress();
@@ -202,7 +212,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
       r.id !== profile.regionUnlocked &&
       r.starterSpeciesIds.length > 0 &&
       !(r.id in profile.regionStarters) &&
-      isUnlocked(ctx, r.unlock, progress)
+      isRegionUnlocked(ctx, r, progress)
     );
   };
   const regionId = currentRegionTab(ctx, progress, selectedRegion);
@@ -240,11 +250,18 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   return (
     <div className="space-y-8">
       <section>
-        <div className="mb-3 flex items-baseline justify-between">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3">
           <h2 className="text-lg font-semibold">Expéditions en cours</h2>
-          <span className="text-sm text-slate-500">
-            {active.length} / {slots} emplacements
-          </span>
+          <div className="flex flex-wrap items-baseline gap-x-3">
+            <AutoTransferButton
+              label="Transfert auto"
+              filter={autoTransfer}
+              onClick={() => setAutoTransferOpen(true)}
+            />
+            <span className="text-sm text-slate-500">
+              {active.length} / {slots} emplacements
+            </span>
+          </div>
         </div>
         {notice && (
           <p className="mb-3 flex items-start justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
@@ -362,6 +379,12 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
         />
       )}
       <LootReveal ctx={ctx} data={reveal} onClose={() => setReveal(null)} />
+      <GlobalAutoTransferDialog
+        open={autoTransferOpen}
+        filter={autoTransfer}
+        onClose={() => setAutoTransferOpen(false)}
+        onSave={setAutoTransfer}
+      />
     </div>
   );
 }
@@ -394,11 +417,18 @@ function ActiveExpedition({
   onCancel: () => void;
 }) {
   const start = Date.parse(expedition.startedAt);
+  const minEnd = Date.parse(expedition.minEndsAt);
   const end = Date.parse(expedition.endsAt);
   const done = serverNow >= end;
+  const stoppable = serverNow >= minEnd;
   const zone = expedition.zoneId ? ctx.zone(expedition.zoneId) : undefined;
   const quest = expedition.questId ? ctx.quest(expedition.questId) : undefined;
   const legendary = !!expedition.questId && expedition.balls === 0;
+  // Compté au rythme calculé par le serveur (contenu, équipe et météo du départ) : exact.
+  const elapsedMinutes = (Math.min(serverNow, end) - start) / 60_000;
+  const sofar = expedition.pace ? planAfter(expedition.pace, Math.max(0, elapsedMinutes)) : null;
+  // Fuyards pas encore croisés : ceux déjà rencontrés ont leur propre ligne.
+  const tracked = expedition.roamerQuestIds.filter((id) => !expedition.roamersMet.includes(id));
   return (
     <div
       className={`card group/exp relative p-4 ${done ? 'ring-2 ring-brand-500/50' : ''}`}
@@ -417,22 +447,21 @@ function ActiveExpedition({
           {expedition.questId && (
             <p className="text-xs font-medium text-amber-600">✦ Expédition légendaire</p>
           )}
-          {expedition.roamerQuestIds.length > 0 && (
+          {tracked.length > 0 && (
             <p className="text-xs font-medium text-amber-600">
-              ✦ Sur la piste de{' '}
-              {expedition.roamerQuestIds
-                .map((id) => {
-                  const p = ctx.quest(id)?.rewards.pokemon.find((x) => x.roaming != null);
-                  return p ? speciesName(ctx, p.speciesId, p.formId) : id;
-                })
-                .join(' et ')}
+              ✦ Sur la piste de {tracked.map((id) => roamerName(ctx, id)).join(' et ')}
             </p>
           )}
+          {expedition.roamersMet.map((id) => (
+            <p key={id} className="text-xs font-semibold text-amber-600">
+              ✦ {roamerName(ctx, id)} a été rencontré !
+            </p>
+          ))}
           <p className="font-semibold">
             {zone?.name ?? quest?.name ?? expedition.zoneId ?? expedition.questId}
           </p>
           <p className="text-xs text-slate-500">
-            {formatDuration(expedition.durationMinutes)}
+            {formatDuration(Math.floor(elapsedMinutes))} écoulées
             {expedition.shinyChain > 0 && (
               <span className="ml-1 text-amber-600 dark:text-amber-400">
                 · ✦ chaîne {expedition.shinyChain}
@@ -456,13 +485,37 @@ function ActiveExpedition({
         </div>
       </div>
       <ProgressBar className="mt-3" value={(serverNow - start) / (end - start)} />
-      <div className="mt-3 flex items-center justify-between">
-        <span className="font-mono text-sm text-slate-500">
-          {done ? 'Terminée !' : formatCountdown(end - serverNow)}
+      {sofar && (
+        <p className="mt-2 text-xs text-slate-500">
+          {sofar.encounters} rencontre{sofar.encounters > 1 ? 's' : ''} · {sofar.lootRolls} tirage
+          {sofar.lootRolls > 1 ? 's' : ''} de butin
+        </p>
+      )}
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <span className="text-sm text-slate-500">
+          {done ? (
+            'Terminée !'
+          ) : stoppable ? (
+            <>
+              Retour de lui-même dans{' '}
+              <span className="font-mono">{formatCountdown(end - serverNow)}</span>
+            </>
+          ) : (
+            <>
+              Arrêt possible dans{' '}
+              <span className="font-mono">{formatCountdown(minEnd - serverNow)}</span>
+            </>
+          )}
         </span>
-        {done ? (
-          <button className="btn-primary" disabled={claiming} onClick={onClaim}>
-            {claiming ? 'Ouverture…' : legendary ? 'Découvrir le légendaire' : 'Récupérer'}
+        {stoppable ? (
+          <button className="btn-primary shrink-0" disabled={claiming} onClick={onClaim}>
+            {claiming
+              ? 'Ouverture…'
+              : legendary
+                ? 'Découvrir le légendaire'
+                : done
+                  ? 'Récupérer'
+                  : 'Arrêter et récupérer'}
           </button>
         ) : (
           <CancelButton label="Annuler l’expédition" pending={cancelling} onConfirm={onCancel} />
@@ -501,7 +554,9 @@ function ExpeditionSummary({
     new Date(iso).toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
   const legendary = !!e.questId && e.balls === 0;
   const rows: [string, string][] = [
-    ['Durée', `${formatDuration(e.durationMinutes)} · retour ${time(e.endsAt)}`],
+    e.minEndsAt === e.endsAt
+      ? ['Retour', time(e.endsAt)]
+      : ['Durée', `arrêt possible ${time(e.minEndsAt)} · au plus tard ${time(e.endsAt)}`],
   ];
   // Météo figée au départ (talents compris) : celle de la zone a pu changer depuis.
   if (e.zoneId && abilityEnv) {
@@ -509,15 +564,36 @@ function ExpeditionSummary({
     rows.push(['Météo', `${weather ? WEATHER_LABELS[weather] : 'Temps clair'} (au départ)`]);
   }
   if (legendary) rows.push(['Ball', 'au choix au retour (une seule lancée)']);
-  else {
+  else if (e.ballPlan) {
+    const plan = e.ballPlan;
+    const ball = (itemId: string | null) => (itemId ? itemName(ctx, itemId) : 'aucune');
+    rows.push(['Nouveau', ball(plan.new)]);
+    rows.push(['Shiny', ball(plan.shiny)]);
+    rows.push(['Déjà capturé', ball(plan.caught)]);
+    IV_BALL_CATEGORIES.forEach((category, i) => {
+      if (plan[category] !== undefined) {
+        rows.push([`Déjà capturé · ${i + 1} IV parfait${i > 0 ? 's' : ''}`, ball(plan[category])]);
+      }
+    });
+    rows.push([
+      'Balls lancées',
+      e.ballsUsed.length > 0
+        ? e.ballsUsed.map((b) => `${b.quantity} × ${itemName(ctx, b.itemId)}`).join(' · ')
+        : 'aucune pour l’instant',
+    ]);
+  } else {
     rows.push([
       'Balls',
       e.ballItemId ? `${e.balls} × ${itemName(ctx, e.ballItemId)}` : 'aucune (observation)',
     ]);
-    rows.push([
-      'Baies',
-      e.berryItemId ? `${e.berries} × ${itemName(ctx, e.berryItemId)}` : 'aucune',
-    ]);
+  }
+  if (!legendary) {
+    const berries = [
+      e.berryItemId && `${e.berries} × ${itemName(ctx, e.berryItemId)}`,
+      e.encounterBerryItemId && `${e.encounterBerries} × ${itemName(ctx, e.encounterBerryItemId)}`,
+    ].filter(Boolean);
+    rows.push(['Baies', berries.length > 0 ? berries.join(' · ') : 'aucune']);
+    if (e.zoneId) rows.push(['Transfert auto', autoTransferLabel(e.autoTransfer)]);
   }
   // Comme au serveur : chaîne du départ, Charme Chroma et bonus permanent au retour et, hors
   // expédition légendaire, talents de l'équipe.
@@ -553,7 +629,7 @@ function ExpeditionSummary({
             <dd>{value}</dd>
           </Fragment>
         ))}
-        {!legendary && (
+        {!legendary && !e.ballPlan && (
           <>
             <dt className="text-slate-500">Captures</dt>
             <dd>

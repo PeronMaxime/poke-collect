@@ -15,9 +15,11 @@ import type {
 import { STAT_NAMES } from '@poke/data';
 import type { StatName, Stats } from '@poke/data';
 import type {
+  AutoTransferFilter,
   BattleError,
   BattleResult,
   BreedingError,
+  BallPlan,
   CaptureFilter,
   DungeonCommand,
   DungeonMove,
@@ -26,6 +28,7 @@ import type {
   DungeonSetup,
   DungeonTeamError,
   ExpeditionError,
+  ExpeditionPace,
   ExpeditionResult,
   Gender,
   GuildJoinMode,
@@ -71,6 +74,8 @@ export interface PlayerProfileDto {
   starterSpeciesId: number | null;
   /** Starter choisi dans chaque région suivante (identifiant de région → espèce). */
   regionStarters: Record<string, number>;
+  /** Régions ouvertes pour de bon, même si leur condition de déblocage s'est durcie depuis. */
+  openedRegions: string[];
   currency: number;
   createdAt: string;
 }
@@ -378,6 +383,8 @@ export interface TrainerProfileResponse {
     eggsHatched: number;
     /** Étapes validées de chaque quête commencée. */
     questSteps: Record<string, number>;
+    /** Régions ouvertes pour de bon. */
+    openedRegionIds: string[];
   };
   card: TrainerCardResponse;
 }
@@ -621,23 +628,41 @@ export interface HarvestBerriesResponse {
 
 // --- Expéditions --------------------------------------------------------------------
 
-export const captureFilterSchema = z.object({
-  speciesIds: z.array(z.int().positive()).max(100),
-  minPerfectIvs: z.int().min(0).max(STAT_NAMES.length),
-  shiny: z.enum(['any', 'always', 'only']),
-  newOnly: z.boolean().optional(),
+/** Ball à lancer pour chaque catégorie de Pokémon rencontré ; null = pas de capture. */
+export const ballPlanSchema = z.object({
+  new: slugSchema.nullable(),
+  shiny: slugSchema.nullable(),
+  caught: slugSchema.nullable(),
+  /** Déjà capturés avec au moins N IV parfaits ; absent = non réglé. */
+  iv1: slugSchema.nullable().optional(),
+  iv2: slugSchema.nullable().optional(),
+  iv3: slugSchema.nullable().optional(),
+  iv4: slugSchema.nullable().optional(),
+  iv5: slugSchema.nullable().optional(),
+  iv6: slugSchema.nullable().optional(),
 });
+
+/** Filtre du transfert automatique (voir `AutoTransferFilter`). */
+export const autoTransferFilterSchema = z.object({
+  maxPerfectIvs: z.int().min(0).max(STAT_NAMES.length),
+}) satisfies z.ZodType<AutoTransferFilter>;
 
 export const startExpeditionInputSchema = z.object({
   zoneId: slugSchema,
-  durationMinutes: z.int().positive(),
   team: z.array(z.uuid()).min(1).max(6),
-  ballItemId: slugSchema.nullable(),
-  /** Nombre de Balls à emporter (absent : une par rencontre, dans la limite du stock). */
-  ballCount: z.int().positive().optional(),
+  /** Balls retirées du sac au fil de l'expédition, à chaque rencontre. */
+  balls: ballPlanSchema,
+  /** Baie de capture et nombre emporté (absent : une). */
   berryItemId: slugSchema.nullable(),
-  /** Pokémon à tenter de capturer ; absent ou null = tous. */
-  captureFilter: captureFilterSchema.nullable().optional(),
+  berryCount: z.int().positive().optional(),
+  /** Baie de rencontres et nombre emporté (absent : une). */
+  encounterBerryItemId: slugSchema.nullable().optional(),
+  encounterBerryCount: z.int().positive().optional(),
+  /**
+   * Transfert automatique au retour : captures déjà au Pokédex avec au plus N IV parfaits ;
+   * null ou absent = aucun.
+   */
+  autoTransfer: autoTransferFilterSchema.nullable().optional(),
   /** Heure locale du joueur (talents de jour ou de nuit). */
   utcOffsetMinutes: utcOffsetSchema.optional(),
 });
@@ -676,11 +701,22 @@ export interface LegendaryEncounterDto {
 
 /** Résultat stocké : chaque Pokémon capturé reçoit son identifiant en base. */
 export interface StoredExpeditionResult extends ExpeditionResult {
-  encounters: (ExpeditionResult['encounters'][number] & { pokemonId?: string })[];
+  encounters: (ExpeditionResult['encounters'][number] & {
+    pokemonId?: string;
+    /** Capture transférée automatiquement au retour. */
+    transferred?: true;
+    /** Pokémon échappé ni nouveau, ni chromatique, ni fuyard : résumé, pas affiché. */
+    filtered?: true;
+  })[];
   /** Espèces capturées pour la première fois. */
   newSpeciesIds: number[];
   /** Formes capturées pour la première fois (absent des expéditions anciennes). */
   newFormIds?: number[];
+  /**
+   * Captures transférées automatiquement au retour (rencontres marquées `transferred`, sans
+   * `pokemonId`) et Bonbons gagnés ; absent = aucun transfert.
+   */
+  autoTransferred?: { count: number; candies: { lineageId: number; quantity: number }[] };
 }
 
 export interface ExpeditionDto {
@@ -691,14 +727,27 @@ export interface ExpeditionDto {
   questId: string | null;
   slotIndex: number;
   team: string[];
+  /** Durée minimum tant que l'expédition court, temps réellement passé une fois réclamée. */
   durationMinutes: number;
   ballItemId: string | null;
   balls: number;
   berryItemId: string | null;
   berries: number;
+  encounterBerryItemId: string | null;
+  encounterBerries: number;
+  /** Anciennes expéditions : Pokémon à tenter de capturer ; null = tous. */
   captureFilter: CaptureFilter | null;
+  /** Ball de chaque catégorie ; null = ancienne expédition (Balls réservées dans `balls`). */
+  ballPlan: BallPlan | null;
+  /** Transfert automatique au retour, figé au départ ; null = aucun. */
+  autoTransfer: AutoTransferFilter | null;
+  /** Balls retirées du sac jusqu'ici, au fil des rencontres. */
+  ballsUsed: { itemId: string; quantity: number }[];
   contentVersionId: number;
   startedAt: string;
+  /** À partir de cette date, l'expédition peut être arrêtée et récupérée. */
+  minEndsAt: string;
+  /** Fin de l'expédition : au-delà, le temps ne compte plus. */
   endsAt: string;
   claimedAt: string | null;
   /** Maillon de la chaîne de zone au départ (bonus shiny). */
@@ -707,6 +756,13 @@ export interface ExpeditionDto {
   localHour: number | null;
   /** Quêtes des fuyards présents dans la zone au départ (à croiser pendant l'expédition). */
   roamerQuestIds: string[];
+  /** Fuyards déjà croisés pendant l'expédition (l'issue de la capture reste secrète). */
+  roamersMet: string[];
+  /**
+   * Rythme des rencontres et du butin, calculé par le serveur (contenu et équipe du départ) :
+   * le client en tire le nombre exact de rencontres. null = expédition légendaire ou terminée.
+   */
+  pace: ExpeditionPace | null;
   result: StoredExpeditionResult | null;
 }
 
@@ -991,6 +1047,8 @@ export type PublicContentDto = GameContent;
 export interface MeResponse {
   user: { id: string; email: string; name: string; role: UserRole };
   profile: PlayerProfileDto | null;
+  /** Version du contenu publié : le jeu recharge son contenu quand elle change. */
+  contentVersion: number | null;
 }
 
 // Bêta : profils secondaires (nouvelle partie sans nouveau compte), à retirer après la bêta.
@@ -1396,7 +1454,7 @@ export interface GuildMemberDto {
   role: GuildRole;
   joinedAt: string;
   isMe: boolean;
-  /** Vu il y a moins de `ONLINE_WINDOW_MS` (le jeu ouvert envoie un signal par minute). */
+  /** Vu il y a moins de `ONLINE_WINDOW_MS` (les rechargements réguliers du jeu ouvert mettent la présence à jour). */
   online: boolean;
 }
 
@@ -1501,4 +1559,63 @@ export interface OpenChestResponse {
   itemId: string;
   opened: number;
   loot: ItemStack[];
+}
+
+/** Statistiques d'une route de l'API depuis le démarrage (section « Santé de l'API » de l'admin). */
+export interface ApiRouteMetricsDto {
+  /** Méthode et motif de la route, par exemple « GET /api/pokemon » (jamais l'adresse réelle). */
+  route: string;
+  count: number;
+  /** Réponses 5xx. */
+  errors: number;
+  /** Réponses 429 (limite de requêtes). */
+  limited: number;
+  /** Requêtes plus longues que le seuil de lenteur. */
+  slow: number;
+  avgMs: number;
+  /** Durée approchée (borne haute du palier) sous laquelle répondent 95 % des requêtes. */
+  p95Ms: number;
+  maxMs: number;
+}
+
+/** Une minute d'activité de l'API. */
+export interface ApiMinuteMetricsDto {
+  /** Début de la minute (ISO). */
+  at: string;
+  requests: number;
+  errors: number;
+  limited: number;
+  slow: number;
+  avgMs: number;
+  maxMs: number;
+}
+
+/** Une erreur 5xx gardée en mémoire (section « Santé de l'API » de l'admin). */
+export interface ApiErrorDto {
+  /** Instant de l'erreur (ISO). */
+  at: string;
+  /** Méthode et motif de la route (jamais l'adresse réelle). */
+  route: string;
+  status: number;
+  /** Nom de l'erreur (« Error », « PostgresError »…). */
+  name: string;
+  /** Code SQL éventuel (« 40P01 »…). */
+  code: string | null;
+  message: string;
+  /** Début de la pile d'appels. */
+  stack: string | null;
+}
+
+export interface ApiMetricsResponse {
+  generatedAt: string;
+  /** Démarrage du processus : les compteurs repartent de zéro à chaque redémarrage. */
+  startedAt: string;
+  slowThresholdMs: number;
+  totals: { requests: number; errors: number; limited: number; slow: number };
+  /** Routes triées de la plus lente (p95) à la plus rapide. */
+  routes: ApiRouteMetricsDto[];
+  /** Dernières minutes, de la plus ancienne à la plus récente. */
+  minutes: ApiMinuteMetricsDto[];
+  /** Dernières erreurs 5xx, de la plus récente à la plus ancienne (vidées au redémarrage). */
+  recentErrors: ApiErrorDto[];
 }

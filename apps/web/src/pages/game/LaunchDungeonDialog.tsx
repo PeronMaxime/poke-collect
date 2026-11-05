@@ -22,7 +22,7 @@ import type {
 import type { DungeonRunDto, StartDungeonInput } from '@poke/shared';
 import { HoverBubble, Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, utcOffsetMinutes } from '../../lib/game';
+import { keys, refresh, utcOffsetMinutes } from '../../lib/game';
 import {
   errorText,
   formatDuration,
@@ -35,7 +35,8 @@ import { CombatTeamOrder, EnemyInfo, combatMove } from './CombatTeamOrder';
 import { DungeonDifficultyBadge } from './DungeonDifficultyBadge';
 import { TeamPicker, useTeamPicker } from './TeamPicker';
 import { TEAM_WEATHER_NOTE, WeatherIcon } from './WeatherIcon';
-import { XpPreview, formatXp, usePlayerBonuses } from './XpPreview';
+import { TeamSection } from './TeamSection';
+import { formatXp, usePlayerBonuses } from './XpPreview';
 
 function ruleText(e: DungeonTeamError): string {
   switch (e.code) {
@@ -84,7 +85,6 @@ export function LaunchDungeonDialog({
     minPower: 0,
     requiredTypes: [],
     affinityTypes: typeWeaknesses(bossTypes),
-    durationsMinutes: [],
   };
   const picker = useTeamPicker(ctx, site);
   const [moves, setMoves] = useState<Record<string, DungeonMove>>({});
@@ -100,9 +100,7 @@ export function LaunchDungeonDialog({
       }),
     onSuccess: () => {
       onClose();
-      return Promise.all(
-        PLAYER_STATE_KEYS.map((queryKey) => queryClient.invalidateQueries({ queryKey })),
-      );
+      return refresh(queryClient, keys.dungeons, keys.pokemon);
     },
   });
 
@@ -180,29 +178,40 @@ export function LaunchDungeonDialog({
         </div>
       </div>
 
-      <TeamPicker
+      <TeamSection
         ctx={ctx}
-        zone={site}
-        picker={picker}
-        power={power}
+        title={`Équipe · ${dungeon.name}`}
+        env={env}
+        members={members}
+        xp={maxXp}
         maxTeamSize={maxTeamSize}
-        statSort
-        abilityEnv={env}
-      />
-      <p className="mt-1 text-xs text-slate-500">
-        Encadrés en vert : un de leurs types est efficace contre {boss?.nameFr ?? 'le boss'}.
-      </p>
-
-      {members.length > 0 && (
-        <CombatTeamOrder
+        power={power}
+        errors={errors.map(ruleText)}
+      >
+        <TeamPicker
           ctx={ctx}
-          members={members}
-          moves={moves}
-          setMoves={setMoves}
-          setTeam={picker.setTeam}
-          targets={[{ name: boss?.nameFr ?? 'le boss', types: bossTypes }]}
+          zone={site}
+          picker={picker}
+          power={power}
+          maxTeamSize={maxTeamSize}
+          statSort
+          abilityEnv={env}
         />
-      )}
+        <p className="mt-1 text-xs text-slate-500">
+          Encadrés en vert : un de leurs types est efficace contre {boss?.nameFr ?? 'le boss'}.
+        </p>
+
+        {members.length > 0 && (
+          <CombatTeamOrder
+            ctx={ctx}
+            members={members}
+            moves={moves}
+            setMoves={setMoves}
+            setTeam={picker.setTeam}
+            targets={[{ name: boss?.nameFr ?? 'le boss', types: bossTypes }]}
+          />
+        )}
+      </TeamSection>
 
       <div className="mt-5 grid gap-1 rounded-xl bg-slate-100 p-3 text-sm dark:bg-slate-800/60">
         <p>
@@ -216,9 +225,10 @@ export function LaunchDungeonDialog({
             </span>
           )}
         </p>
-        <XpPreview ctx={ctx} members={members} xp={maxXp}>
-          jusqu’à {formatXp(maxXp)} par Pokémon si tous les adversaires sont vaincus
-        </XpPreview>
+        <p>
+          <span className="font-semibold">XP gagnée :</span> jusqu’à {formatXp(maxXp)} par Pokémon
+          si tous les adversaires sont vaincus
+        </p>
         <p className="mt-2 text-xs text-slate-500">
           Chaque adversaire vaincu rapporte de l’XP à toute l’équipe, même en cas de défaite (pas en
           cas de fuite). Les Pokémon mis K.O. le restent jusqu’à leurs soins au Centre Pokémon.

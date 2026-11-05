@@ -7,6 +7,7 @@ import type { QuestReward } from '@poke/content';
 import type { QuestProgressDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 import { requireStartedProfile } from './expeditions';
 import { addItems, baseProgress, playerSlotsNow, questRecords, questRows } from './store';
 import type { QuestProgressRow } from './store';
@@ -15,6 +16,49 @@ import type { QuestProgressRow } from './store';
  * Quêtes : l'avancement se calcule paresseusement (étapes « état ») et s'enregistre à chaque
  * synchronisation, avec le compteur des étapes « action » mis à jour par les expéditions.
  */
+
+interface QuestWrite {
+  questId: string;
+  values: {
+    step: number;
+    progress: { count: number };
+    stepStartedAt: Date;
+    completedAt: Date | null;
+  };
+}
+
+/** Avancement à enregistrer, sans rien écrire : vide quand les lignes sont déjà à jour. */
+function planQuestSync(
+  ctx: GameContext,
+  base: Awaited<ReturnType<typeof baseProgress>>,
+  rows: readonly QuestProgressRow[],
+  now: Date,
+  event?: QuestEvent,
+): QuestWrite[] {
+  const records = questRecords(rows);
+  const progress = { ...base, questSteps: questStepsDone(ctx, base, records) };
+  const byId = new Map(rows.map((r) => [r.questId, r]));
+  const writes: QuestWrite[] = [];
+
+  for (const quest of ctx.quests) {
+    const row = byId.get(quest.id);
+    if (row?.completedAt) continue;
+    if (!row && !progress.questSteps.has(quest.id)) continue; // verrouillée
+    const record = records.get(quest.id) ?? NEW_QUEST;
+    const next = advanceQuest(ctx, quest, record, progress, event);
+    if (row && next.step === record.step && next.count === record.count) continue;
+    writes.push({
+      questId: quest.id,
+      values: {
+        step: next.step,
+        progress: { count: next.count },
+        stepStartedAt: !row || next.step !== record.step ? now : row.stepStartedAt,
+        completedAt: next.step >= quest.steps.length ? now : null,
+      },
+    });
+  }
+  return writes;
+}
 
 /**
  * Enregistre l'avancement des quêtes débloquées : crée la ligne d'une quête qui apparaît, valide
@@ -29,35 +73,19 @@ export async function syncQuests(
   event?: QuestEvent,
 ): Promise<QuestProgressRow[]> {
   const [base, rows] = await Promise.all([baseProgress(db, userId), questRows(db, userId)]);
-  const records = questRecords(rows);
-  const progress = { ...base, questSteps: questStepsDone(ctx, base, records) };
   const byId = new Map(rows.map((r) => [r.questId, r]));
-
-  for (const quest of ctx.quests) {
-    const row = byId.get(quest.id);
-    if (row?.completedAt) continue;
-    if (!row && !progress.questSteps.has(quest.id)) continue; // verrouillée
-    const record = records.get(quest.id) ?? NEW_QUEST;
-    const next = advanceQuest(ctx, quest, record, progress, event);
-    if (row && next.step === record.step && next.count === record.count) continue;
-
-    const values = {
-      step: next.step,
-      progress: { count: next.count },
-      stepStartedAt: !row || next.step !== record.step ? now : row.stepStartedAt,
-      completedAt: next.step >= quest.steps.length ? now : null,
-    };
+  for (const { questId, values } of planQuestSync(ctx, base, rows, now, event)) {
     const [saved] = await db
       .insert(questProgress)
       .values({
         ownerId: userId,
-        questId: quest.id,
+        questId,
         contentVersionId: ctx.content.versionId,
         ...values,
       })
       .onConflictDoUpdate({ target: [questProgress.ownerId, questProgress.questId], set: values })
       .returning();
-    byId.set(quest.id, saved!);
+    byId.set(questId, saved!);
   }
   return [...byId.values()];
 }
@@ -90,7 +118,12 @@ export async function questsState(
 ): Promise<QuestProgressDto[]> {
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
-  const rows = await db.transaction((tx) => syncQuests(tx, ctx, userId, now));
+  // Lecture seule tant que rien ne change : la transaction (et ses verrous) n'est ouverte que
+  // pour enregistrer une étape franchie, en relisant l'état à l'intérieur.
+  const [base, current] = await Promise.all([baseProgress(db, userId), questRows(db, userId)]);
+  const rows = planQuestSync(ctx, base, current, now).length
+    ? await playerTransaction(db, userId, (tx) => syncQuests(tx, ctx, userId, now))
+    : current;
   const order = new Map(ctx.quests.map((q, i) => [q.id, i]));
   return rows
     .map((r) => toQuestProgressDto(ctx, r))
@@ -114,7 +147,7 @@ export async function claimQuest(
   const quest = ctx.quest(questId);
   if (!quest) throw new GameError(404, 'QUEST_NOT_FOUND');
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const rows = await syncQuests(tx, ctx, userId, now);
     const row = rows.find((r) => r.questId === quest.id);
     if (!row || row.step < quest.steps.length) throw new GameError(409, 'QUEST_NOT_COMPLETED');

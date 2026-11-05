@@ -17,6 +17,62 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '5 novembre 2026',
+    title: 'Expéditions à durée libre et un jeu plus stable',
+    changes: [
+      {
+        section: 'Expéditions',
+        items: [
+          'Plus de durée fixe : chaque zone a une durée minimum, ensuite tu arrêtes l’expédition quand tu veux pour récupérer ses captures et son butin (48 h au plus). Les expéditions de légendaires gardent leur durée fixe.',
+          'Les Balls se choisissent par catégorie de rencontre : nouveau Pokémon, shiny, déjà capturé, et même selon le nombre d’IV parfaits. Elles ne sont plus réservées au départ : chaque Ball est prise dans ton sac au moment de la rencontre.',
+          'Une baie Framby (capture) et une baie Nanana (rencontres) peuvent servir en même temps ; chaque baie dure 10 minutes, et celles pas encore entamées te sont rendues au retour.',
+          'Le nombre de rencontres et de tirages de butin affiché pendant l’expédition est désormais exact.',
+          'Un Pokémon fuyard croisé en expédition est annoncé tout de suite, sans attendre la fin.',
+          'Nouveau : le transfert automatique. Les captures déjà au Pokédex, jusqu’au nombre d’IV parfaits que tu choisis, sont transférées contre des Bonbons au retour. Un réglage commun à toutes les expéditions, ou un propre à chaque zone ; désactivé par défaut. Les Pokémon transférés comptent quand même pour le Pokédex, les quêtes et la guilde.',
+          '« Relancer » renvoie l’expédition avec la même équipe, les mêmes Balls, baies et le même transfert automatique.',
+          'Le récapitulatif du retour est plus court : les Pokémon déjà connus qui se sont échappés sont résumés en une ligne, seuls les nouveaux, les shiny et les fuyards restent détaillés.',
+        ],
+      },
+      {
+        section: 'Stabilité',
+        items: [
+          'Passer d’un Pokémon à l’autre dans le PC avec les flèches ne recharge plus tout à chaque fois : plus de message « Too Many Requests » en parcourant ta collection.',
+          'Une coupure passagère du serveur (ou une mise en ligne) ne cache plus le jeu derrière un écran d’erreur : un bandeau apparaît, le jeu réessaie tout seul et reprend dès que le serveur répond.',
+          'Les messages d’erreur sont plus clairs : connexion perdue, trop d’actions d’un coup, serveur en cours de redémarrage.',
+          'Les mises en ligne ne coupent plus les actions en cours : le serveur patiente quelques secondes le temps de redémarrer.',
+          'La limite d’actions par minute est désormais comptée par joueur, plus par connexion internet : plusieurs dresseurs sur le même réseau ne se gênent plus.',
+          'Transferts, évolutions, objets et Bonbons ne rechargent plus que ce qui a changé : le jeu réagit plus vite et ménage le serveur.',
+          'Une action restée sans réponse est abandonnée au bout de 20 secondes, avec un message, au lieu de laisser le bouton figé.',
+          'Le PC reste fluide même avec des milliers de Pokémon : la grille s’affiche par tranches au fil du défilement et ne se redessine plus chaque seconde (le choix d’équipe, les équipes enregistrées et la vitrine aussi).',
+        ],
+      },
+      {
+        section: 'Progression',
+        items: [
+          'Une nouvelle région s’ouvre désormais aux trois quarts (75 %) du Pokédex de la région précédente, au lieu de la moitié. Les régions que tu as déjà ouvertes le restent.',
+          'Le pourcentage du Pokédex de chaque région ne compte plus que les espèces : les formes alternatives (régionales, Méga…) sont comptées à part, juste en dessous.',
+          'Zigzaton de Galar ne se montre plus à Hoenn : il faudra attendre Galar pour le croiser.',
+        ],
+      },
+      {
+        section: 'Menu',
+        items: [
+          'Le menu est rangé en sections repliables : Aventure, Bâtiments, Collection et Dresseur. Ton choix est gardé, et une section repliée affiche un point quand un de ses onglets t’attend.',
+        ],
+      },
+      {
+        section: 'Corrections',
+        items: [
+          'Les noms longs (Pikachu Casquette Originale…) passent sur deux lignes au lieu de déborder de leur case.',
+          'En combat, le bonus de statistique d’un talent s’affiche tel qu’annoncé : Coloforce montre bien +50 % d’Attaque (et non +56 % sur une petite statistique, à cause de l’arrondi).',
+          'Transférer deux fois les mêmes Pokémon en même temps (double clic, deux onglets) ne donne plus les Bonbons en double.',
+          'Deux actions lancées en même temps passent désormais l’une après l’autre : un Pokémon ne peut plus être transféré pendant qu’il part en expédition, ni une récompense réclamée deux fois.',
+          'Deux dresseurs qui capturent au même moment ne se bloquent plus l’un l’autre (erreur du serveur dans de rares cas).',
+        ],
+      },
+    ],
+  },
+  {
     date: '30 octobre 2026',
     title: 'La région de Hoenn et une nouvelle progression',
     changes: [

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { FastifyInstance } from 'fastify';
 import { and, asc, desc, eq, gt, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import { z } from 'zod';
@@ -31,6 +32,7 @@ import type { ContentCache } from '../content-cache';
 import {
   cancelExpedition,
   claimExpedition,
+  expeditionPaces,
   expeditionSlots,
   legendaryEncounter,
   playerRoamers,
@@ -39,9 +41,6 @@ import {
   shinyChains,
   startExpedition,
 } from '../game/expeditions';
-import { settleFinishedBattle } from '../game/battles';
-import { settleClosedPlaces } from '../game/closed-places';
-import { settleFinishedDungeonRun } from '../game/dungeons';
 import { pokemonActivities, toExpeditionDto, toPokemonDto } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
@@ -58,12 +57,10 @@ const uuidParams = z.object({ id: z.uuid() });
 export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
   app.addHook('preHandler', hooks.requireUser);
 
-  app.get('/api/pokemon', async (request): Promise<PokemonDto[]> => {
+  app.get('/api/pokemon', async (request, reply) => {
     const userId = request.user!.id;
     // Combat terminé pendant l'absence du joueur : son équipe redevient disponible.
-    await settleFinishedDungeonRun(db, content, userId, now());
-    await settleFinishedBattle(db, content, userId, now());
-    await settleClosedPlaces(db, content, userId, now());
+    await hooks.settleAll(userId);
     const [rows, busy] = await Promise.all([
       db
         .select()
@@ -72,7 +69,14 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
         .orderBy(asc(pokemon.caughtAt), asc(pokemon.id)),
       pokemonActivities(db, userId),
     ]);
-    return rows.map((r) => toPokemonDto(r, busy.get(r.id)));
+    const dtos: PokemonDto[] = rows.map((r) => toPokemonDto(r, busy.get(r.id)));
+    // Empreinte du contenu : la collection est la plus lourde réponse du jeu et change rarement
+    // d'un rechargement à l'autre, le navigateur renvoie alors `If-None-Match` et reçoit un 304.
+    const body = JSON.stringify(dtos);
+    const etag = `W/"pokemon-${createHash('sha1').update(body).digest('base64url')}"`;
+    reply.header('etag', etag).header('cache-control', 'private, no-cache');
+    if (request.headers['if-none-match'] === etag) return reply.code(304).send();
+    return reply.type('application/json; charset=utf-8').send(body);
   });
 
   app.patch('/api/pokemon/:id', async (request, reply) => {
@@ -149,6 +153,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
         .where(eq(playerProfiles.userId, userId)),
       playerRoamers(db, ctx, userId, at),
     ]);
+    const paces = await expeditionPaces(db, content, userId, rows);
     const chainDto = (s: { chain: number; expiresAt: Date | null }) => ({
       chain: s.chain,
       expiresAt: s.expiresAt?.toISOString() ?? null,
@@ -156,7 +161,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     return {
       slots,
       serverTime: at.toISOString(),
-      active: rows.map(toExpeditionDto),
+      active: rows.map((r) => toExpeditionDto(r, paces.get(r.id) ?? null)),
       chains: ctx.zones.flatMap((z) => {
         const s = chains.get(z.id);
         return s ? [{ zoneId: z.id, ...chainDto(s) }] : [];
@@ -204,12 +209,13 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
       .where(and(eq(expeditions.ownerId, request.user!.id), isNotNull(expeditions.claimedAt)))
       .orderBy(desc(expeditions.claimedAt))
       .limit(20);
-    return rows.map(toExpeditionDto);
+    return rows.map((r) => toExpeditionDto(r));
   });
 
   app.post('/api/expeditions', async (request, reply) => {
     const input = startExpeditionInputSchema.parse(request.body);
     const row = await startExpedition(db, content, request.user!.id, input, now());
+    hooks.invalidateSettle(request.user!.id);
     return reply.code(201).send(toExpeditionDto(row));
   });
 

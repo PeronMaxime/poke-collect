@@ -21,6 +21,7 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 import { recordGuildActivity } from './guilds';
 import { newSeed, requireStartedProfile, startHour } from './expeditions';
 import {
@@ -191,7 +192,7 @@ export async function startDungeon(
   const dungeon = ctx.dungeon(input.dungeonId);
   if (!dungeon) throw new GameError(404, 'DUNGEON_NOT_FOUND');
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const [progress, [record]] = await Promise.all([
       playerProgress(tx, ctx, userId),
       tx
@@ -270,25 +271,27 @@ export async function switchDungeonMember(
   input: SwitchDungeonInput,
   now: Date,
 ): Promise<DungeonRunRow> {
-  const run = await findRun(db, userId, runId);
-  const elapsed = elapsedMs(run, now);
-  const atMs = commandAtMs(input.atMs, elapsed, run.commands);
-  const state = simulateDungeon(run.setup, run.commands, run.fledAtMs, atMs).state;
-  if (state.outcome !== null) throw new GameError(409, 'DUNGEON_FINISHED');
-  if (input.member >= run.team.length || state.hp[input.member] === 0) {
-    throw new GameError(409, 'MEMBER_KO');
-  }
-  if (input.member === state.active) throw new GameError(409, 'MEMBER_ACTIVE');
-  if (state.recallReadyAt[input.member]! > atMs) throw new GameError(409, 'MEMBER_RECALLED');
+  return playerTransaction(db, userId, async (tx) => {
+    const run = await findRun(tx, userId, runId);
+    const elapsed = elapsedMs(run, now);
+    const atMs = commandAtMs(input.atMs, elapsed, run.commands);
+    const state = simulateDungeon(run.setup, run.commands, run.fledAtMs, atMs).state;
+    if (state.outcome !== null) throw new GameError(409, 'DUNGEON_FINISHED');
+    if (input.member >= run.team.length || state.hp[input.member] === 0) {
+      throw new GameError(409, 'MEMBER_KO');
+    }
+    if (input.member === state.active) throw new GameError(409, 'MEMBER_ACTIVE');
+    if (state.recallReadyAt[input.member]! > atMs) throw new GameError(409, 'MEMBER_RECALLED');
 
-  const command: DungeonCommand = { atMs, member: input.member };
-  const [updated] = await db
-    .update(dungeonRuns)
-    .set({ commands: sql`${dungeonRuns.commands} || ${JSON.stringify([command])}::jsonb` })
-    .where(and(eq(dungeonRuns.id, run.id), isNull(dungeonRuns.claimedAt)))
-    .returning();
-  if (!updated) throw new GameError(409, 'ALREADY_CLAIMED');
-  return updated;
+    const command: DungeonCommand = { atMs, member: input.member };
+    const [updated] = await tx
+      .update(dungeonRuns)
+      .set({ commands: sql`${dungeonRuns.commands} || ${JSON.stringify([command])}::jsonb` })
+      .where(and(eq(dungeonRuns.id, run.id), isNull(dungeonRuns.claimedAt)))
+      .returning();
+    if (!updated) throw new GameError(409, 'ALREADY_CLAIMED');
+    return updated;
+  });
 }
 
 /** Donne un objet de soin (consommé) au Pokémon actif du donjon. */
@@ -301,9 +304,9 @@ export async function useDungeonItem(
   now: Date,
 ): Promise<DungeonRunRow> {
   const ctx = await content.get();
-  const run = await findRun(db, userId, runId);
-  const command = combatHealCommand(ctx, run, input, elapsedMs(run, now), 'DUNGEON_FINISHED');
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
+    const run = await findRun(tx, userId, runId);
+    const command = combatHealCommand(ctx, run, input, elapsedMs(run, now), 'DUNGEON_FINISHED');
     if (!(await takeItems(tx, userId, input.itemId, 1))) {
       throw new GameError(409, 'ITEM_MISSING', { itemId: input.itemId });
     }
@@ -324,16 +327,22 @@ export async function fleeDungeon(
   runId: string,
   now: Date,
 ): Promise<DungeonRunRow> {
-  const run = await findRun(db, userId, runId);
-  if (runState(run, now).outcome !== null) return run;
-  const [updated] = await db
-    .update(dungeonRuns)
-    .set({ fledAtMs: elapsedMs(run, now) })
-    .where(
-      and(eq(dungeonRuns.id, run.id), isNull(dungeonRuns.claimedAt), isNull(dungeonRuns.fledAtMs)),
-    )
-    .returning();
-  return updated ?? run;
+  return playerTransaction(db, userId, async (tx) => {
+    const run = await findRun(tx, userId, runId);
+    if (runState(run, now).outcome !== null) return run;
+    const [updated] = await tx
+      .update(dungeonRuns)
+      .set({ fledAtMs: elapsedMs(run, now) })
+      .where(
+        and(
+          eq(dungeonRuns.id, run.id),
+          isNull(dungeonRuns.claimedAt),
+          isNull(dungeonRuns.fledAtMs),
+        ),
+      )
+      .returning();
+    return updated ?? run;
+  });
 }
 
 /**
@@ -357,7 +366,7 @@ export async function claimDungeonRun(
   // Les quêtes de guilde suivent le contenu publié, pas la version de départ du donjon.
   const published = await content.get();
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     // Verrou : seule la première réclamation passe.
     const [locked] = await tx
       .update(dungeonRuns)
@@ -455,18 +464,21 @@ export async function claimDungeonRun(
 
 /**
  * Réclame la tentative du joueur si elle est terminée (le joueur a quitté la page pendant le
- * combat) : ses Pokémon redeviennent disponibles. Sans effet sinon.
+ * combat) : ses Pokémon redeviennent disponibles. Sans effet sinon. Renvoie vrai si une tentative
+ * est encore en cours.
  */
 export async function settleFinishedDungeonRun(
   db: Db,
   content: ContentCache,
   userId: string,
   now: Date,
-): Promise<void> {
+): Promise<boolean> {
   const run = await activeDungeonRun(db, userId);
-  if (!run || runState(run, now).outcome === null) return;
+  if (!run) return false;
+  if (runState(run, now).outcome === null) return true;
   await claimDungeonRun(db, content, userId, run.id, now).catch((err: unknown) => {
     // Réclamée entre-temps par une autre requête : rien à faire.
     if (!(err instanceof GameError && err.code === 'ALREADY_CLAIMED')) throw err;
   });
+  return false;
 }

@@ -44,9 +44,11 @@ export function WikiTutorialPage({ ctx }: { ctx: GameContext }) {
 
       <Step n={1} title="Pars en expédition">
         <p>
-          Dans <Go href="#expeditions">Expéditions</Go>, choisis une zone, une durée et une équipe,
-          puis emporte des Poké Balls. Pendant ce temps, ton équipe rencontre des Pokémon sauvages
-          et tente de les capturer avec tes Balls ; elle ramène aussi des objets.
+          Dans <Go href="#expeditions">Expéditions</Go>, choisis une zone et une équipe, puis la
+          Ball à lancer aux nouveaux Pokémon, aux shiny et à ceux déjà capturés. Ton équipe
+          rencontre des Pokémon sauvages et tente de les capturer : une Ball est prise dans ton sac
+          à chaque rencontre. Elle ramène aussi des objets. Arrête l’expédition quand tu veux une
+          fois sa durée minimum passée : plus elle dure, plus elle rapporte.
         </p>
         <p className="text-slate-500">
           Chaque zone demande une puissance d’équipe minimale (PE), parfois certains types. Les

@@ -39,10 +39,10 @@ import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
  * la boutique), fossiles (Lilia, Anorith), œufs (Azurill, Okéoké) et quêtes.
  */
 
-const ALL_DURATIONS = [2, 5, 15, 60, 240, 480];
-const LONG_DURATIONS = [60, 240, 480];
+const SHORT_MIN_DURATION = 3;
+const LONG_MIN_DURATION = 60;
 /** Zones spéciales : pas d'aller-retour rapide. */
-const SPECIAL_DURATIONS = [240, 480];
+const SPECIAL_MIN_DURATION = 240;
 
 export const hoennRegion: Region = {
   id: 'hoenn',
@@ -52,7 +52,7 @@ export const hoennRegion: Region = {
   speciesIds: Array.from({ length: 135 }, (_, i) => 252 + i),
   starterSpeciesIds: [252, 255, 258],
   enabled: true,
-  unlock: { type: 'regionDexPercent', regionId: 'johto', percent: 50 },
+  unlock: { type: 'regionDexPercent', regionId: 'johto', percent: 75 },
 };
 
 const enc = (
@@ -68,9 +68,6 @@ const enc = (
   minLevel,
   maxLevel,
 });
-
-/** Zigzaton de Galar (forme PokéAPI 10174), rare sur la première route. */
-const ZIGZAGOON_GALAR = 10174;
 
 /** Badges de Hoenn uniquement (ceux des autres régions ne comptent pas). */
 const badges = (count: number): UnlockCondition => ({
@@ -99,7 +96,7 @@ const zone = ({
   | 'image'
   | 'enabled'
   | 'requiredTypes'
-  | 'durationsMinutes'
+  | 'minDurationMinutes'
   | 'weatherChangeChance'
   | 'weathers'
   | 'specialEncounters'
@@ -110,7 +107,7 @@ const zone = ({
   image: null,
   enabled: true,
   requiredTypes: [],
-  durationsMinutes: ALL_DURATIONS,
+  minDurationMinutes: SHORT_MIN_DURATION,
   weatherChangeChance: ZONE_WEATHER_CHANGE_CHANCE,
   weathers: seedZoneWeathers(z.habitat, weatherTypes),
   specialEncounters: [],
@@ -132,7 +129,6 @@ export const hoennZones: Zone[] = [
     encounters: [
       enc(261, 28, 2, 4),
       enc(263, 28, 2, 4),
-      enc(263, 2, 2, 4, ZIGZAGOON_GALAR),
       enc(265, 16, 2, 4),
       enc(270, 10, 3, 5),
       enc(273, 10, 3, 5),
@@ -421,7 +417,7 @@ export const hoennZones: Zone[] = [
     habitat: 'rough-terrain',
     minPower: 1950,
     weatherTypes: ['ground', 'grass', 'rock'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(328, 18, 22, 28),
       enc(331, 18, 22, 28),
@@ -444,7 +440,7 @@ export const hoennZones: Zone[] = [
     habitat: 'urban',
     minPower: 2025,
     weatherTypes: ['electric', 'steel'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(81, 22, 22, 28),
       enc(100, 22, 22, 28),
@@ -468,7 +464,7 @@ export const hoennZones: Zone[] = [
     minPower: 2100,
     requiredTypes: [{ type: 'water', count: 1 }],
     weatherTypes: ['water'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(72, 24, 22, 28),
       enc(278, 16, 22, 28),
@@ -492,7 +488,7 @@ export const hoennZones: Zone[] = [
     habitat: 'forest',
     minPower: 2750,
     weatherTypes: ['grass', 'dark', 'water'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(352, 10, 28, 34),
       enc(357, 8, 28, 34),
@@ -520,7 +516,7 @@ export const hoennZones: Zone[] = [
     habitat: 'mountain',
     minPower: 3150,
     weatherTypes: ['ghost', 'psychic'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(353, 22, 28, 38),
       enc(355, 22, 28, 38),
@@ -544,7 +540,7 @@ export const hoennZones: Zone[] = [
     habitat: 'cave',
     minPower: 3350,
     weatherTypes: ['ice', 'water'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(361, 22, 32, 38),
       enc(363, 22, 32, 38),
@@ -569,7 +565,7 @@ export const hoennZones: Zone[] = [
     habitat: 'cave',
     minPower: 3600,
     weatherTypes: ['rock', 'fighting', 'steel'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(294, 10, 36, 42),
       enc(295, 4, 40, 44),
@@ -594,7 +590,7 @@ export const hoennZones: Zone[] = [
     habitat: 'waters-edge',
     minPower: 3650,
     weatherTypes: ['water', 'dark', 'ice'],
-    durationsMinutes: LONG_DURATIONS,
+    minDurationMinutes: LONG_MIN_DURATION,
     encounters: [
       enc(370, 12, 40, 46),
       enc(320, 12, 40, 46),
@@ -621,7 +617,7 @@ export const hoennZones: Zone[] = [
     habitat: 'grassland',
     minPower: 1850,
     weatherTypes: ['grass', 'fire', 'water'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(261, 22, 14, 18),
       enc(263, 22, 14, 18),
@@ -646,7 +642,7 @@ export const hoennZones: Zone[] = [
     minPower: 2025,
     requiredTypes: [{ type: 'water', count: 1 }],
     weatherTypes: ['dragon', 'rock', 'water'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(41, 18, 18, 22),
       enc(42, 6, 22, 26),
@@ -671,7 +667,7 @@ export const hoennZones: Zone[] = [
     minPower: 2500,
     requiredTypes: [{ type: 'water', count: 2 }],
     weatherTypes: ['water', 'ghost'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(72, 20, 20, 26),
       enc(41, 14, 20, 26),
@@ -695,7 +691,7 @@ export const hoennZones: Zone[] = [
     habitat: 'grassland',
     minPower: 3250,
     weatherTypes: ['normal', 'psychic', 'ground'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(203, 10, 28, 34),
       enc(231, 10, 28, 34),
@@ -721,7 +717,7 @@ export const hoennZones: Zone[] = [
     habitat: 'urban',
     minPower: 5000,
     weatherTypes: ['steel', 'psychic', 'dragon'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(289, 10, 45, 52),
       enc(297, 10, 45, 52),
@@ -749,7 +745,7 @@ export const hoennZones: Zone[] = [
     minPower: 3500,
     requiredTypes: [{ type: 'water', count: 2 }],
     weatherTypes: ['water', 'dark'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(72, 18, 38, 44),
       enc(73, 8, 40, 46),
@@ -773,7 +769,7 @@ export const hoennZones: Zone[] = [
     habitat: 'cave',
     minPower: 4000,
     weatherTypes: ['ground', 'fire', 'rock'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(42, 14, 45, 50),
       enc(302, 10, 45, 50),
@@ -796,7 +792,7 @@ export const hoennZones: Zone[] = [
     habitat: 'mountain',
     minPower: 4500,
     weatherTypes: ['dragon', 'flying', 'ghost'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(302, 10, 46, 52),
       enc(344, 10, 46, 52),
@@ -819,7 +815,7 @@ export const hoennZones: Zone[] = [
     habitat: 'waters-edge',
     minPower: 3650,
     weatherTypes: ['psychic', 'rock'],
-    durationsMinutes: SPECIAL_DURATIONS,
+    minDurationMinutes: SPECIAL_MIN_DURATION,
     encounters: [
       enc(337, 10, 40, 46),
       enc(338, 10, 40, 46),

@@ -5,6 +5,7 @@ import type { Db } from '@poke/db';
 import type { ContentCache } from '../content-cache';
 import { withdrawDaycare } from './daycare';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 import { addItems, playerFacilityPlaces } from './store';
 
 /**
@@ -54,7 +55,7 @@ export async function settleClosedPlaces(
   if (museumTaken.length > 0) {
     const places = await playerFacilityPlaces(db, ctx, userId, 'museum');
     if (museumTaken.some((slot) => slot >= places)) {
-      await db.transaction(async (tx) => {
+      await playerTransaction(db, userId, async (tx) => {
         // Verrou : seule la première requête rend un fossile donné.
         const returned = await tx
           .delete(fossilRevivals)

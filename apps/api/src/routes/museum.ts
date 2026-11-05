@@ -4,7 +4,6 @@ import type { Db } from '@poke/db';
 import { depositFossilInputSchema } from '@poke/shared';
 import type { FossilRevivalDto, MuseumResponse, ReviveFossilsResponse } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
-import { settleClosedPlaces } from '../game/closed-places';
 import {
   activeRevivals,
   cancelFossil,
@@ -31,7 +30,7 @@ export async function museumRoutes(app: FastifyInstance, { db, content, hooks, n
   app.get('/api/museum', async (request): Promise<MuseumResponse> => {
     const ctx = await content.get();
     const userId = request.user!.id;
-    await settleClosedPlaces(db, content, userId, now());
+    await hooks.settleAll(userId);
     const [rows, slots] = await Promise.all([
       activeRevivals(db, userId),
       playerFacilityPlaces(db, ctx, userId, 'museum'),

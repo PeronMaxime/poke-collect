@@ -64,7 +64,7 @@ export function ZonesPage() {
         minPower: 0,
         requiredTypes: [],
         affinityTypes: [],
-        durationsMinutes: [...w.content.balance.expeditions.durationsMinutes],
+        minDurationMinutes: w.content.balance.expeditions.encounterIntervalMinutes,
         encounters: [],
         lootTableId: null,
         enabled: true,
@@ -85,9 +85,6 @@ function ZoneForm({ value: z, onChange, errors, isNew, editable, working }: Enti
   const set = <K extends keyof Zone>(key: K, v: Zone[K]) => onChange({ ...z, [key]: v });
   const { ctx } = working;
   const disabled = !editable;
-  const durations = [
-    ...new Set([...working.content.balance.expeditions.durationsMinutes, ...z.durationsMinutes]),
-  ].sort((a, b) => a - b);
 
   return (
     <div className="space-y-6">
@@ -254,27 +251,18 @@ function ZoneForm({ value: z, onChange, errors, isNew, editable, working }: Enti
             disabled={disabled}
           />
         </Field>
-        <Field label="Durées disponibles" error={errors.get('durationsMinutes')}>
-          <div className="flex flex-wrap gap-3">
-            {durations.map((d) => (
-              <label key={d} className="flex items-center gap-1 text-sm">
-                <input
-                  type="checkbox"
-                  disabled={disabled}
-                  checked={z.durationsMinutes.includes(d)}
-                  onChange={(e) =>
-                    set(
-                      'durationsMinutes',
-                      e.target.checked
-                        ? [...z.durationsMinutes, d].sort((a, b) => a - b)
-                        : z.durationsMinutes.filter((x) => x !== d),
-                    )
-                  }
-                />
-                {d < 60 ? `${d} min` : `${d / 60} h`}
-              </label>
-            ))}
-          </div>
+        <Field
+          label="Durée minimum"
+          hint="Temps avant de pouvoir arrêter l’expédition."
+          error={errors.get('minDurationMinutes')}
+        >
+          <NumberInput
+            value={z.minDurationMinutes}
+            min={1}
+            unit="min"
+            disabled={disabled}
+            onChange={(v) => set('minDurationMinutes', v)}
+          />
         </Field>
       </Section>
 
@@ -631,9 +619,8 @@ function SpecialEncounterEditor({
 /** Simule N expéditions avec le contenu de la version affichée (brouillon compris). */
 function ZoneSimulator({ zone, working }: { zone: Zone; working: WorkingVersion }) {
   const { ctx } = working;
-  const durations = zone.durationsMinutes;
   const balls = working.content.items.filter((i) => ctx.itemEffect(i.id, 'ball'));
-  const [duration, setDuration] = useState(durations[0] ?? 60);
+  const [duration, setDuration] = useState(Math.max(zone.minDurationMinutes, 60));
   const [ballId, setBallId] = useState<string | null>(balls[0]?.id ?? null);
   const [berryId, setBerryId] = useState<string | null>(null);
   const [affinity, setAffinity] = useState(0);
@@ -646,7 +633,7 @@ function ZoneSimulator({ zone, working }: { zone: Zone; working: WorkingVersion 
       setResult(
         simulateZone(ctx, {
           zoneId: zone.id,
-          durationMinutes: duration,
+          minutes: duration,
           ballItemId: ballId,
           berryItemId: berryId,
           affinityCount: affinity,
@@ -669,18 +656,14 @@ function ZoneSimulator({ zone, working }: { zone: Zone; working: WorkingVersion 
         </p>
       </div>
       <div className="grid gap-3 sm:grid-cols-5">
-        <Field label="Durée">
-          <select
-            className="input"
+        <Field label="Temps passé">
+          <NumberInput
             value={duration}
-            onChange={(e) => setDuration(Number(e.target.value))}
-          >
-            {durations.map((d) => (
-              <option key={d} value={d}>
-                {d < 60 ? `${d} min` : `${d / 60} h`}
-              </option>
-            ))}
-          </select>
+            min={zone.minDurationMinutes}
+            max={ctx.balance.expeditions.maxDurationMinutes}
+            unit="min"
+            onChange={setDuration}
+          />
         </Field>
         <Field label="Ball">
           <ItemSelect

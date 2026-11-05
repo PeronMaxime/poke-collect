@@ -113,9 +113,8 @@ describe('notifications push', () => {
   async function expedition() {
     const started = await player.call<ExpeditionDto>('POST', '/api/expeditions', {
       zoneId: 'route-1',
-      durationMinutes: 15,
       team: [player.starter.id],
-      ballItemId: null,
+      balls: { new: null, shiny: null, caught: null },
       berryItemId: null,
     });
     expect(started.status, JSON.stringify(started.body)).toBe(201);
@@ -133,7 +132,9 @@ describe('notifications push', () => {
 
   it('ne notifie que les joueurs abonnés, une seule fois par expédition', async () => {
     const first = await expedition();
-    advance(20);
+    advance(10);
+    expect(await round()).toBe(0); // arrêt possible, mais pas encore de retour de lui-même
+    advance(2880);
     expect(await round()).toBe(0); // pas encore abonné : rien n'est marqué
 
     const sub = await player.call(
@@ -157,7 +158,7 @@ describe('notifications push', () => {
     const settings = { expeditions: false, eggs: true, fossils: true };
     expect((await player.call('PUT', '/api/push/settings', settings)).body).toEqual(settings);
     const exp = await expedition();
-    advance(20);
+    advance(2880);
     expect(await round()).toBe(0);
     await player.call('POST', `/api/expeditions/${exp.id}/claim`);
     await player.call('PUT', '/api/push/settings', { ...settings, expeditions: true });
@@ -207,7 +208,7 @@ describe('télémétrie (admin)', () => {
     expect(t.zones.find((z) => z.zoneId === 'route-1')).toMatchObject({
       expeditions: 2,
       players: 1,
-      avgDurationMinutes: 15,
+      avgDurationMinutes: 2880, // plafonnée à la durée maximale,
     });
     expect(t.dexDistribution.reduce((s, b) => s + b.players, 0)).toBe(2);
     expect(t.quests.find((q) => q.questId === 'artikodin')?.steps.length).toBeGreaterThan(0);
@@ -228,7 +229,7 @@ describe('joueurs (admin)', () => {
     await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, admin.userId));
     const player = await newPlayer('sacha-joueurs@example.com', 'Sacha');
     advance(5);
-    expect((await player.call('POST', '/api/presence')).status).toBe(204);
+    expect((await admin.call('POST', '/api/presence')).status).toBe(204);
     // Un donjon réussi, une gemme dans le sac (×2) et une autre tenue par un Pokémon.
     await handle.db
       .insert(dungeonProgress)

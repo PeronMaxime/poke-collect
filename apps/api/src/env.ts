@@ -25,8 +25,10 @@ export interface Env {
   port: number;
   /** Derrière un proxy (Caddy) : IP et protocole du client lus dans `X-Forwarded-*`. */
   trustProxy: boolean;
-  /** Requêtes `/api` autorisées par minute et par IP (0 = pas de limite). */
+  /** Requêtes `/api` autorisées par minute et par joueur, par IP sans session (0 = pas de limite). */
   rateLimitPerMinute: number;
+  /** Requêtes `/api` autorisées par minute et par IP, toutes sessions confondues (0 = pas de limite). */
+  rateLimitPerIpPerMinute: number;
   google?: { clientId: string; clientSecret: string };
   discord?: { clientId: string; clientSecret: string };
   /** Absentes : notifications push désactivées. */
@@ -76,7 +78,8 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
     host: source.API_HOST || (isProd ? '0.0.0.0' : '127.0.0.1'),
     port: Number(source.API_PORT || 3000),
     trustProxy: source.TRUST_PROXY ? source.TRUST_PROXY === '1' : isProd,
-    rateLimitPerMinute: Number(source.RATE_LIMIT_PER_MINUTE || (isProd ? 300 : 0)),
+    rateLimitPerMinute: Number(source.RATE_LIMIT_PER_MINUTE || (isProd ? 600 : 0)),
+    rateLimitPerIpPerMinute: Number(source.RATE_LIMIT_PER_IP_PER_MINUTE || (isProd ? 1500 : 0)),
     google: pair(source.GOOGLE_CLIENT_ID, source.GOOGLE_CLIENT_SECRET),
     discord: pair(source.DISCORD_CLIENT_ID, source.DISCORD_CLIENT_SECRET),
     vapid: vapidKeys(source, isProd),

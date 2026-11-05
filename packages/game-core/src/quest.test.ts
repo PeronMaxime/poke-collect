@@ -214,18 +214,17 @@ describe('expédition légendaire', () => {
   const team = [member('a', 59, 50), member('b', 19, 50)]; // Arcanin (Feu), Rattata
   const input = { target, seed: 7, team, ballItemId: 'ultra-ball', berryItemId: null };
 
-  it('règles du repaire : région de la quête, PE minimale, durée et affinités configurées', () => {
+  it('règles du repaire : région de la quête, PE minimale et affinités configurées', () => {
     expect(site).toMatchObject({
       regionId: 'kanto',
       minPower: target.expedition.minPower,
-      durationsMinutes: [240],
     });
     expect(countAffinity(ctx, site, team)).toBe(1); // le Feu, faiblesse d'Artikodin
-    expect(checkTeam(ctx, site, 240, [member('c', 152, 50)]).errors).toContainEqual(
+    expect(checkTeam(ctx, site, [member('c', 152, 50)]).errors).toContainEqual(
       expect.objectContaining({ code: 'WRONG_REGION' }), // Germignon : Pokédex de Johto
     );
     expect(
-      checkTeam(ctx, { ...site, regionId: null }, 240, [member('c', 152, 100)]).errors,
+      checkTeam(ctx, { ...site, regionId: null }, [member('c', 152, 100)]).errors,
     ).not.toContainEqual(expect.objectContaining({ code: 'WRONG_REGION' }));
   });
 

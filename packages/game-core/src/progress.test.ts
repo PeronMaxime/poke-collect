@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  isRegionUnlocked,
   isTabUnlocked,
   isUnlocked,
   isUnlockedSoon,
@@ -57,10 +58,16 @@ describe('déblocages', () => {
   it('évalue le déblocage d’une région', () => {
     const hoenn = { type: 'regionUnlocked' as const, regionId: 'hoenn' };
     const johto = ctx.region('johto')!.speciesIds;
-    const half = johto.slice(0, Math.ceil(johto.length / 2));
+    // Hoenn : 75 % du Pokédex de Johto.
+    const needed = johto.slice(0, Math.ceil(johto.length * 0.75));
     const progress = (ids: number[]) => ({ ...caught(0), caughtSpeciesIds: new Set(ids) });
-    expect(isUnlocked(ctx, hoenn, progress(half.slice(1)))).toBe(false);
-    expect(isUnlocked(ctx, hoenn, progress(half))).toBe(true);
+    expect(isUnlocked(ctx, hoenn, progress(needed.slice(1)))).toBe(false);
+    expect(isUnlocked(ctx, hoenn, progress(needed))).toBe(true);
+    // Accès acquis avant le durcissement du seuil : la région reste ouverte, ses zones aussi.
+    const opened = { ...progress([]), openedRegionIds: new Set(['hoenn']) };
+    expect(isUnlocked(ctx, hoenn, opened)).toBe(true);
+    expect(isRegionUnlocked(ctx, ctx.region('hoenn')!, opened)).toBe(true);
+    expect(isZoneUnlocked(ctx, ctx.zone('route-101')!, opened)).toBe(true);
     // Une région désactivée (absente du contexte) n'est jamais débloquée.
     const closed = testContext((c) => {
       c.regions.find((r) => r.id === 'hoenn')!.enabled = false;

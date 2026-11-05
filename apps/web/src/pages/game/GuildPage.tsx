@@ -23,8 +23,8 @@ import { errorText, formatMoney, guildObjectiveText, itemIcon } from '../../lib/
 import { ChestLootHover } from './ChestLootHover';
 import { guildLink, trainerLink } from './TrainerCardPage';
 
-/** Rafraîchissement de la discussion tant que la page est ouverte. */
-const CHAT_REFRESH_MS = 5000;
+/** Rafraîchissement de la discussion tant qu'elle est affichée (onglet visible). */
+const CHAT_REFRESH_MS = 15_000;
 
 const ROLE_LABELS: Record<GuildRole, string> = {
   leader: 'Chef',

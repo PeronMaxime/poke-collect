@@ -60,6 +60,7 @@ export function EvolutionReveal({
               transition={{ duration: MORPH_SECONDS, times, ease: 'linear' }}
             >
               <PokemonSprite
+                priority
                 speciesId={data.fromSpeciesId}
                 formId={data.fromFormId}
                 shiny={pokemon.isShiny}
@@ -75,6 +76,7 @@ export function EvolutionReveal({
               transition={{ duration: MORPH_SECONDS, times, ease: 'linear' }}
             >
               <PokemonSprite
+                priority
                 speciesId={pokemon.speciesId}
                 formId={pokemon.formId}
                 shiny={pokemon.isShiny}
@@ -92,6 +94,7 @@ export function EvolutionReveal({
             transition={{ type: 'spring', stiffness: 220, damping: 14 }}
           >
             <PokemonSprite
+              priority
               speciesId={pokemon.speciesId}
               formId={pokemon.formId}
               shiny={pokemon.isShiny}

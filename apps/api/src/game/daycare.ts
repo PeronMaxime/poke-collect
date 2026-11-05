@@ -1,5 +1,5 @@
 import { and, asc, count, eq, inArray, lte, sql } from 'drizzle-orm';
-import { candies, daycareSlots, eggs, pokemon, speciesCaptures } from '@poke/db';
+import { candies, daycareSlots, eggs, pokemon } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
   abilityHolder,
@@ -14,7 +14,6 @@ import {
   isTransferableSpecies,
   lineageId,
   resolveEgg,
-  transferCandies,
 } from '@poke/game-core';
 import type { AbilityHolder, DaycareParent, GameContext } from '@poke/game-core';
 import type { DaycareDto, DepositDaycareInput, EggDto } from '@poke/shared';
@@ -22,6 +21,7 @@ import type { ContentCache } from '../content-cache';
 import { assistantHolder, assistantHolders } from './assistants';
 import { GameError, newSeed, requireStartedProfile } from './expeditions';
 import { recordGuildActivity } from './guilds';
+import { playerTransaction } from './tx';
 import {
   addItems,
   assertAvailable,
@@ -32,6 +32,7 @@ import {
   shinyBoost,
   takeItems,
   toInstance,
+  transferRows,
 } from './store';
 import type { PokemonRow } from './store';
 
@@ -136,7 +137,7 @@ export async function depositDaycare(
     }
   }
 
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const used = new Set(
       (
         await tx
@@ -307,7 +308,7 @@ export async function collectEggs(
   now: Date,
 ) {
   const ctx = await content.get();
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const slot = await requireSlot(tx, userId, slotIndex);
     const result = await collectInTx(tx, ctx, userId, slot, now);
     if (result.laid === 0) {
@@ -327,7 +328,7 @@ export async function withdrawDaycare(
   now: Date,
 ) {
   const ctx = await content.get();
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const slot = await requireSlot(tx, userId, slotIndex);
     const parentsAlive = slot.parentAId !== null && slot.parentBId !== null;
     const collected = parentsAlive
@@ -365,7 +366,7 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
     .where(and(eq(eggs.ownerId, userId), eq(eggs.hatched, false)));
   const published = await content.get();
   await Promise.all(pending.map((e) => content.version(e.versionId)));
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     // Verrou : seule la première demande fait éclore un œuf donné.
     const ready = await tx
       .update(eggs)
@@ -410,20 +411,6 @@ export async function hatchEggs(db: Db, content: ContentCache, userId: string, n
 
 // --- Transfert et Bonbons ------------------------------------------------------------------
 
-async function addCandies(db: Db, ownerId: string, gained: ReadonlyMap<number, number>) {
-  const values = [...gained]
-    .filter(([, quantity]) => quantity > 0)
-    .map(([lineage, quantity]) => ({ ownerId, lineageId: lineage, quantity }));
-  if (values.length === 0) return;
-  await db
-    .insert(candies)
-    .values(values)
-    .onConflictDoUpdate({
-      target: [candies.ownerId, candies.lineageId],
-      set: { quantity: sql`${candies.quantity} + excluded.quantity` },
-    });
-}
-
 /**
  * Transfère des Pokémon contre des Bonbons de lignée. Refusé pour un favori, un légendaire ou
  * un fabuleux, un Pokémon occupé, ou s'il ne restait plus aucun Pokémon au joueur.
@@ -437,7 +424,7 @@ export async function transferPokemon(
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
   const unique = [...new Set(ids)];
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const rows = await ownedPokemon(tx, userId, unique);
     if (rows.length !== unique.length) throw new GameError(404, 'POKEMON_NOT_FOUND');
     if (rows.some((r) => r.locked)) throw new GameError(409, 'POKEMON_LOCKED');
@@ -452,32 +439,10 @@ export async function transferPokemon(
       .where(eq(pokemon.ownerId, userId));
     if (owned - rows.length < 1) throw new GameError(409, 'LAST_POKEMON');
 
-    const gained = new Map<number, number>();
-    for (const r of rows) {
-      const lineage = lineageId(ctx, r.speciesId);
-      if (lineage === undefined) continue;
-      gained.set(lineage, (gained.get(lineage) ?? 0) + transferCandies(ctx, r));
-    }
-    await tx.delete(pokemon).where(and(eq(pokemon.ownerId, userId), inArray(pokemon.id, unique)));
-    await addCandies(tx, userId, gained);
-    // Les Méga-Gemmes tenues reviennent dans le sac.
-    await addItems(
-      tx,
-      userId,
-      rows.flatMap((r) => (r.megaStone ? [{ itemId: r.megaStone, quantity: 1 }] : [])),
-    );
-    const transferred = new Map<number, number>();
-    for (const r of rows) transferred.set(r.speciesId, (transferred.get(r.speciesId) ?? 0) + 1);
-    await tx
-      .insert(speciesCaptures)
-      .values([...transferred].map(([speciesId, n]) => ({ speciesId, transferred: n })))
-      .onConflictDoUpdate({
-        target: speciesCaptures.speciesId,
-        set: { transferred: sql`${speciesCaptures.transferred} + excluded.transferred` },
-      });
+    const gained = await transferRows(tx, ctx, userId, rows);
     return {
       transferred: rows.length,
-      gained: [...gained].map(([lineage, quantity]) => ({ lineageId: lineage, quantity })),
+      gained,
     };
   });
 }
@@ -491,7 +456,7 @@ export async function feedCandies(
   requested: number,
 ): Promise<PokemonRow> {
   const ctx = await content.get();
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const [row] = await ownedPokemon(tx, userId, [pokemonId]);
     if (!row) throw new GameError(404, 'POKEMON_NOT_FOUND');
     const lineage = lineageId(ctx, row.speciesId);

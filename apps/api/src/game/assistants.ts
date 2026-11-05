@@ -5,6 +5,7 @@ import { ASSISTANT_POST_INFO, abilityHolder, canAssist } from '@poke/game-core';
 import type { AbilityHolder, AssistantPost, GameContext } from '@poke/game-core';
 import type { AssistantDto } from '@poke/shared';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 import { pauseFarm, resumeFarm } from './farm';
 import { assertAvailable, toInstance } from './store';
 
@@ -62,7 +63,7 @@ export async function assignAssistant(
   now: Date,
 ): Promise<AssistantDto> {
   if (slot >= slots) throw new GameError(400, 'NO_SUCH_SLOT');
-  return db.transaction(async (tx) => {
+  return playerTransaction(db, userId, async (tx) => {
     const [row] = await tx
       .select()
       .from(pokemon)
@@ -94,7 +95,7 @@ export async function removeAssistant(
   slot: number,
   now: Date,
 ) {
-  await db.transaction(async (tx) => {
+  await playerTransaction(db, userId, async (tx) => {
     if (post === 'farm') await pauseFarm(tx, ctx, userId, slot, now);
     const deleted = await tx
       .delete(assistants)

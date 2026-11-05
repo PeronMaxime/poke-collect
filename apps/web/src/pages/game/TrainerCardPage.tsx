@@ -12,7 +12,7 @@ import type {
   TrainerCardResponse,
   TrainerProfileResponse,
 } from '@poke/shared';
-import { Modal, PokemonSprite, ShinyStar, useNow } from '../../components/ui';
+import { Modal, PokemonSprite, ShinyStar } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
   keys,
@@ -26,6 +26,7 @@ import {
 } from '../../lib/game';
 import { abilityLabel, errorText, formatMoney, natureLabel } from '../../lib/labels';
 import { BadgeIcon } from './BattlesPage';
+import { ProgressiveItems } from '../../components/ProgressiveGrid';
 import { GENDER_LABELS, PcFilterBar, PcPokemonCard, usePcBrowser } from './PcBrowser';
 import { DexView } from './PokedexPage';
 import { visibleRegions } from './RegionTabs';
@@ -241,6 +242,7 @@ function useForeignProgress(data: TrainerProfileResponse | undefined): PlayerPro
         defeatedTrainerIds: new Set(data.progress.defeatedTrainerIds),
         eggsHatched: data.progress.eggsHatched,
         questSteps: new Map(Object.entries(data.progress.questSteps)),
+        openedRegionIds: new Set(data.progress.openedRegionIds),
       },
     [data],
   );
@@ -481,7 +483,6 @@ function FeaturedEditor({
   const queryClient = useQueryClient();
   const pokemon = usePokemon();
   const browser = usePcBrowser(ctx, pokemon.data ?? []);
-  const now = useNow();
   const [ids, setIds] = useState(initial);
   const byId = new Map((pokemon.data ?? []).map((p) => [p.id, p]));
   const save = useMutation({
@@ -546,26 +547,27 @@ function FeaturedEditor({
       <div className="min-h-0 flex-1 overflow-y-auto">
         <PcFilterBar ctx={ctx} browser={browser} />
         <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-          {browser.filtered.map((entry) => {
-            const index = ids.indexOf(entry.p.id);
-            return (
-              <PcPokemonCard
-                key={entry.p.id}
-                entry={entry}
-                tags={browser.tagFilter.tags}
-                now={now}
-                onSelect={() => toggle(entry.p.id)}
-                topLeft={
-                  index >= 0 && (
-                    <span className="absolute top-1.5 left-2 rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white">
-                      {index + 1}
-                    </span>
-                  )
-                }
-                className={index >= 0 ? 'ring-2 ring-brand-500' : ''}
-              />
-            );
-          })}
+          <ProgressiveItems items={browser.filtered} resetKey={browser.viewKey}>
+            {(entry) => {
+              const index = ids.indexOf(entry.p.id);
+              return (
+                <PcPokemonCard
+                  key={entry.p.id}
+                  entry={entry}
+                  tags={browser.tagFilter.tags}
+                  onSelect={() => toggle(entry.p.id)}
+                  topLeft={
+                    index >= 0 && (
+                      <span className="absolute top-1.5 left-2 rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white">
+                        {index + 1}
+                      </span>
+                    )
+                  }
+                  className={index >= 0 ? 'ring-2 ring-brand-500' : ''}
+                />
+              );
+            }}
+          </ProgressiveItems>
         </div>
       </div>
       {save.error && <p className="mt-2 text-sm text-red-600">{errorText(save.error)}</p>}

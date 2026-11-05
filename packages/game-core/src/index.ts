@@ -24,3 +24,4 @@ export * from './abilities';
 export * from './weather';
 export * from './roaming';
 export * from './guilds';
+export * from './auto-transfer';

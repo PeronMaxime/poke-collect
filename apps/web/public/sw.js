@@ -12,7 +12,9 @@ const VERSION = 'v1';
 const APP_CACHE = `app-${VERSION}`;
 const SPRITE_CACHE = `sprites-${VERSION}`;
 const SPRITE_HOSTS = ['raw.githubusercontent.com', 'play.pokemonshowdown.com'];
-const MAX_SPRITES = 1500;
+// ~6 300 fichiers en tout (sprites, illustrations, shiny, objets, dresseurs) : environ 60 Mo.
+// Une limite plus basse ferait ressortir les plus anciens et retélécharger sans cesse.
+const MAX_SPRITES = 7000;
 
 self.addEventListener('install', (event) => {
   event.waitUntil(
@@ -56,15 +58,35 @@ async function networkFirst(request) {
   }
 }
 
-async function cacheFirst(request) {
+/** Tri du cache au plus une fois toutes les 5 s, pas à chaque image (lister le cache coûte cher). */
+let trimPending = null;
+function scheduleTrim() {
+  if (!trimPending) {
+    trimPending = new Promise((resolve) => setTimeout(resolve, 5000))
+      .then(() => trimCache(SPRITE_CACHE, MAX_SPRITES))
+      .finally(() => {
+        trimPending = null;
+      });
+  }
+  return trimPending;
+}
+
+async function cacheFirst(event) {
+  const { request } = event;
   const cache = await caches.open(SPRITE_CACHE);
   const cached = await cache.match(request);
   if (cached) return cached;
   const response = await fetch(request);
   // Réponses « opaques » (sans CORS) acceptées : les sprites sont des <img>.
+  // L'image part tout de suite vers la page ; l'enregistrement se fait en arrière-plan.
   if (response.ok || response.type === 'opaque') {
-    await cache.put(request, response.clone());
-    trimCache(SPRITE_CACHE, MAX_SPRITES);
+    // Cache plein (quota) : tant pis, l'image est quand même affichée.
+    event.waitUntil(
+      cache
+        .put(request, response.clone())
+        .then(scheduleTrim)
+        .catch(() => {}),
+    );
   }
   return response;
 }
@@ -76,7 +98,7 @@ self.addEventListener('fetch', (event) => {
   const localSprite =
     url.origin === self.location.origin && url.pathname.startsWith('/api/sprites/');
   if (SPRITE_HOSTS.includes(url.hostname) || localSprite) {
-    event.respondWith(cacheFirst(request));
+    event.respondWith(cacheFirst(event));
     return;
   }
   if (url.origin !== self.location.origin || url.pathname.startsWith('/api/')) return;

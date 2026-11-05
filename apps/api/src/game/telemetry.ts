@@ -108,7 +108,12 @@ export async function telemetry(
       })
       .from(playerProfiles),
     db
-      .select({ ownerId: expeditions.ownerId, at: max(expeditions.startedAt) })
+      .select({
+        ownerId: expeditions.ownerId,
+        at: sql<Date>`max(coalesce(${expeditions.claimedAt}, ${expeditions.startedAt}))`.mapWith(
+          expeditions.startedAt,
+        ),
+      })
       .from(expeditions)
       .groupBy(expeditions.ownerId),
     db

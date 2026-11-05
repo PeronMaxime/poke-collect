@@ -5,7 +5,7 @@ import type { GameContext } from '@poke/game-core';
 import type { PokemonDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS } from '../../lib/game';
+import { PLAYER_STATE_KEYS, refresh } from '../../lib/game';
 import { GAME_ERRORS } from '../../lib/labels';
 
 /**
@@ -18,12 +18,7 @@ export function RegionStarterCard({ ctx, region }: { ctx: GameContext; region: R
   const choose = useMutation({
     mutationFn: (speciesId: number) =>
       api<PokemonDto>(`/api/regions/${region.id}/starter`, { method: 'POST', json: { speciesId } }),
-    onSuccess: () =>
-      Promise.all(
-        [['me'], ...PLAYER_STATE_KEYS].map((queryKey) =>
-          queryClient.invalidateQueries({ queryKey }),
-        ),
-      ),
+    onSuccess: () => refresh(queryClient, ...PLAYER_STATE_KEYS),
   });
 
   return (
@@ -47,7 +42,13 @@ export function RegionStarterCard({ ctx, region }: { ctx: GameContext; region: R
                   : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
               }`}
             >
-              <PokemonSprite speciesId={id} kind="artwork" size={80} alt={species?.nameFr} />
+              <PokemonSprite
+                priority
+                speciesId={id}
+                kind="artwork"
+                size={80}
+                alt={species?.nameFr}
+              />
               <span className="font-medium">{species?.nameFr}</span>
               <span className="flex gap-1">
                 {species?.types.map((t) => (

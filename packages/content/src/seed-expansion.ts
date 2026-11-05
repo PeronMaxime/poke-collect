@@ -20,7 +20,7 @@ import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
  * de les obtenir.
  */
 
-const ALL_DURATIONS = [2, 5, 15, 60, 240, 480];
+const SHORT_MIN_DURATION = 3;
 /** Sprites de dresseurs servis par l'API (`pnpm sprites:download`, source : Pokémon Showdown). */
 const TRAINER_SPRITES = '/api/sprites/trainers';
 
@@ -93,7 +93,7 @@ const region = (
   speciesIds,
   starterSpeciesIds: [],
   enabled: false,
-  unlock: { type: 'regionDexPercent', regionId: previous, percent: 50 },
+  unlock: { type: 'regionDexPercent', regionId: previous, percent: 75 },
 });
 
 export const expansionRegions: Region[] = [
@@ -105,7 +105,7 @@ export const expansionRegions: Region[] = [
     speciesIds: dexRange(387, 493),
     starterSpeciesIds: [],
     enabled: false,
-    unlock: { type: 'regionDexPercent', regionId: 'hoenn', percent: 50 },
+    unlock: { type: 'regionDexPercent', regionId: 'hoenn', percent: 75 },
   },
   region('unys', 4, 'Unys', dexRange(494, 649), 'sinnoh'),
   region('kalos', 5, 'Kalos', dexRange(650, 721), 'unys'),
@@ -131,7 +131,7 @@ const zone = ({
   | 'image'
   | 'enabled'
   | 'requiredTypes'
-  | 'durationsMinutes'
+  | 'minDurationMinutes'
   | 'weatherChangeChance'
   | 'weathers'
   | 'specialEncounters'
@@ -141,7 +141,7 @@ const zone = ({
   image: null,
   enabled: true,
   requiredTypes: [],
-  durationsMinutes: ALL_DURATIONS,
+  minDurationMinutes: SHORT_MIN_DURATION,
   weatherChangeChance: ZONE_WEATHER_CHANGE_CHANCE,
   weathers: seedZoneWeathers(z.habitat, weatherTypes),
   specialEncounters: [],
