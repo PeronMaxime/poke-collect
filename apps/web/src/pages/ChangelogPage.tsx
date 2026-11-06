@@ -17,7 +17,7 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
-    date: '5 novembre 2026',
+    date: '6 novembre 2026',
     title: 'Combats légendaires, une pension plus généreuse et des Bonbons revus',
     changes: [
       {
