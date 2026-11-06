@@ -1,20 +1,19 @@
-import type { Quest, QuestActionCondition, QuestCondition, QuestPokemon } from '@poke/content';
+import type {
+  ImposedWeather,
+  Quest,
+  QuestActionCondition,
+  QuestCondition,
+  QuestExpeditionCondition,
+  QuestPokemon,
+  Weather,
+} from '@poke/content';
 import type { GameContext } from './context';
-import {
-  applyTeamXp,
-  captureProbability,
-  countAffinity,
-  defeatXp,
-  expeditionEnv,
-} from './expedition';
-import type { ExpeditionResult, ExpeditionSite, TeamMember } from './expedition';
+import { timeOfDayAt } from './evolution';
 import { generatePokemon, withPerfectIvs } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import { isUnlocked } from './progress';
 import type { PlayerProgress } from './progress';
-import { NO_BONUSES } from './progression';
-import type { PlayerBonuses } from './progression';
-import { abilityBonuses, abilityHappiness, memberPower } from './abilities';
+import { memberPower } from './abilities';
 import { createRng } from './rng';
 import type { Rng } from './rng';
 import { shinyProbability } from './shiny';
@@ -23,7 +22,8 @@ import type { ShinyFactors } from './shiny';
 /**
  * Quêtes : étapes ordonnées validées l'une après l'autre. Une étape « état » (Pokédex, dresseur
  * battu, œufs éclos…) se valide paresseusement dès que la condition est remplie ; une étape
- * « action » (captures, expédition réussie) compte les expéditions récupérées pendant l'étape.
+ * « action » (captures, expédition réussie, objet de quête) compte les expéditions récupérées
+ * pendant l'étape.
  */
 
 /** Avancement enregistré d'une quête : étapes validées et compteur de l'étape en cours. */
@@ -35,7 +35,7 @@ export interface QuestRecord {
 export const NEW_QUEST: QuestRecord = { step: 0, count: 0 };
 
 export function isActionCondition(c: QuestCondition): c is QuestActionCondition {
-  return c.type === 'catchPokemon' || c.type === 'expedition';
+  return c.type === 'catchPokemon' || c.type === 'expedition' || c.type === 'questItem';
 }
 
 /** Expédition récupérée : seul événement qui fait progresser les étapes « action ». */
@@ -45,12 +45,23 @@ export interface QuestEvent {
   team: readonly PokemonInstance[];
   /** Pokémon capturés pendant l'expédition (espèce et forme). */
   captured: readonly Pick<PokemonInstance, 'speciesId' | 'formId'>[];
+  /** Tirages de butin de l'expédition (chances de trouver un objet de quête) ; absent = aucun. */
+  lootRolls?: number;
+  /** Seed de l'expédition (tirages des objets de quête). */
+  seed?: number;
+  /**
+   * Météo de l'expédition : celle qu'impose un talent de l'équipe, sinon celle de la zone au
+   * départ ; null = temps clair, absent = inconnue.
+   */
+  weather?: Weather | null;
+  /** Heure locale du joueur au départ ; null = inconnue. */
+  hour?: number | null;
 }
 
-/** Membres de l'équipe qui comptent pour une étape « expédition » (type et PE individuelle). */
+/** Membres de l'équipe qui comptent pour une étape d'expédition (type et PE individuelle). */
 export function qualifyingMembers(
   ctx: GameContext,
-  condition: Extract<QuestCondition, { type: 'expedition' }>,
+  condition: Pick<QuestExpeditionCondition, 'memberType' | 'minMemberPower'>,
   team: readonly PokemonInstance[],
 ): number {
   return team.filter((m) => {
@@ -59,6 +70,49 @@ export function qualifyingMembers(
     if (condition.memberType && !species.types.includes(condition.memberType)) return false;
     return memberPower(ctx, m) >= condition.minMemberPower;
   }).length;
+}
+
+/** Ce qui manque à une expédition pour compter dans une étape de quête (vide = rien). */
+export type QuestExpeditionMiss =
+  | { code: 'zone' }
+  | { code: 'members'; count: number }
+  | { code: 'species'; speciesIds: number[] }
+  | { code: 'weather'; weathers: ImposedWeather[] }
+  | { code: 'timeOfDay'; time: 'day' | 'night' };
+
+/**
+ * Conditions d'une étape d'expédition (zone, membres, espèces, météo et moment du départ) que
+ * l'expédition ne remplit pas. Météo ou heure inconnue (absente) : non vérifiée.
+ */
+export function questExpeditionMisses(
+  ctx: GameContext,
+  condition: QuestExpeditionCondition,
+  expedition: {
+    zoneId: string;
+    team: readonly PokemonInstance[];
+    weather?: Weather | null;
+    hour?: number | null;
+  },
+): QuestExpeditionMiss[] {
+  const misses: QuestExpeditionMiss[] = [];
+  if (expedition.zoneId !== condition.zoneId) misses.push({ code: 'zone' });
+  if (qualifyingMembers(ctx, condition, expedition.team) < condition.memberCount) {
+    misses.push({ code: 'members', count: condition.memberCount });
+  }
+  const present = new Set(expedition.team.map((m) => m.speciesId));
+  const missing = condition.speciesIds.filter((id) => !present.has(id));
+  if (missing.length > 0) misses.push({ code: 'species', speciesIds: missing });
+  if (condition.weathers.length > 0 && expedition.weather !== undefined) {
+    if (!condition.weathers.includes(expedition.weather ?? 'clear')) {
+      misses.push({ code: 'weather', weathers: condition.weathers });
+    }
+  }
+  if (condition.timeOfDay && expedition.hour !== undefined) {
+    if (expedition.hour === null || timeOfDayAt(ctx, expedition.hour) !== condition.timeOfDay) {
+      misses.push({ code: 'timeOfDay', time: condition.timeOfDay });
+    }
+  }
+  return misses;
 }
 
 /** Capture qui compte pour une étape « captures ». */
@@ -72,6 +126,31 @@ export function matchesCatch(
   return (
     ctx.species(caught.speciesId, caught.formId)?.types.includes(condition.pokemonType) ?? false
   );
+}
+
+/** Graine des tirages d'objet de quête d'une expédition (indépendante de ses autres tirages). */
+function questItemSeed(seed: number, itemId: string): number {
+  let hash = 0x811c9dc5 ^ seed;
+  for (let i = 0; i < itemId.length; i++) hash = Math.imul(hash ^ itemId.charCodeAt(i), 0x01000193);
+  return hash >>> 0;
+}
+
+/**
+ * Objets de quête trouvés pendant une expédition qui remplit les conditions : chaque tirage de
+ * butin a `chance` % d'en faire trouver un (tirages déterminés par le seed de l'expédition).
+ */
+export function questItemsFound(
+  ctx: GameContext,
+  condition: Extract<QuestCondition, { type: 'questItem' }>,
+  event: QuestEvent,
+): number {
+  if (questExpeditionMisses(ctx, condition, event).length > 0) return 0;
+  const rng = createRng(questItemSeed(event.seed ?? 0, condition.itemId));
+  let found = 0;
+  for (let i = 0; i < (event.lootRolls ?? 0); i++) {
+    if (rng.chance(condition.chance / 100)) found++;
+  }
+  return found;
 }
 
 /** Progression qu'apporte un événement à une étape « action ». */
@@ -91,10 +170,9 @@ export function eventProgress(
       }
       return event.captured.filter((c) => matchesCatch(ctx, condition, c)).length;
     case 'expedition':
-      return event.zoneId === condition.zoneId &&
-        qualifyingMembers(ctx, condition, event.team) >= condition.memberCount
-        ? 1
-        : 0;
+      return questExpeditionMisses(ctx, condition, event).length === 0 ? 1 : 0;
+    case 'questItem':
+      return questItemsFound(ctx, condition, event);
   }
 }
 
@@ -127,6 +205,22 @@ export function advanceQuest(
     count = 0;
   }
   return { step, count };
+}
+
+/**
+ * Objets de quête gagnés par un avancement (`before` → `after`) : ceux de l'étape « objet de
+ * quête » en cours au moment de l'événement, sans dépasser le nombre demandé.
+ */
+export function questItemsGained(
+  quest: Quest,
+  before: QuestRecord,
+  after: QuestRecord,
+): { itemId: string; quantity: number } | null {
+  const condition = quest.steps[before.step]?.condition;
+  if (condition?.type !== 'questItem') return null;
+  const reached = after.step > before.step ? condition.count : after.count;
+  const quantity = reached - before.count;
+  return quantity > 0 ? { itemId: condition.itemId, quantity } : null;
 }
 
 /**
@@ -185,46 +279,17 @@ export function generateQuestPokemon(
   return { ...pokemon, ivs: withPerfectIvs(rng, pokemon.ivs, reward.perfectIvs) };
 }
 
-// --- Expédition légendaire -------------------------------------------------------------------
-
-/**
- * Le Pokémon d'une quête ne s'offre pas : une fois la récompense réclamée, une expédition
- * légendaire (lancée depuis les quêtes, elle occupe un emplacement) le rencontre. Au retour, le
- * joueur le découvre (shiny ou non) puis lance une seule Ball, avec une baie, ou prend la fuite.
- * En cas d'échec ou de fuite, on peut retenter : la relance allonge la chaîne shiny de la quête.
- */
-export function legendarySite(quest: Quest, target: QuestPokemon): ExpeditionSite {
-  const { expedition } = target;
-  return {
-    regionId: quest.regionId,
-    minPower: expedition.minPower,
-    requiredTypes: expedition.requiredTypes,
-    affinityTypes: expedition.affinityTypes,
-  };
-}
-
 export interface QuestEncounterInput {
-  /** Pokémon visé (récompense de la quête) et son expédition (affinités). */
+  /** Pokémon visé (récompense de la quête). */
   target: QuestPokemon;
   seed: number;
-  /** Chaîne de la quête (figée au départ) et Charme Chroma. */
+  /** Chaîne de la quête et Charme Chroma. */
   shiny?: ShinyFactors;
 }
 
-export interface QuestExpeditionInput extends QuestEncounterInput {
-  team: readonly TeamMember[];
-  /** Ball lancée ; null = le joueur prend la fuite. */
-  ballItemId: string | null;
-  berryItemId: string | null;
-  bonuses?: PlayerBonuses;
-  /** Heure locale du joueur au départ (talents de jour ou de nuit). */
-  hour?: number | null;
-}
-
 /**
- * Légendaire rencontré au retour de l'expédition, avant la décision du joueur : ne dépend que du
- * seed, de la chaîne et du Charme (pas de la Ball), donc identique à ce que donnera la capture.
- * La chaîne ne joue que sur le taux shiny : les IV parfaits sont ceux de la récompense, toujours.
+ * Légendaire rencontré : ne dépend que du seed, de la chaîne et du Charme. La chaîne ne joue que
+ * sur le taux shiny : les IV parfaits sont ceux de la récompense, toujours.
  */
 export function questEncounter(
   ctx: GameContext,
@@ -234,92 +299,4 @@ export function questEncounter(
   const shinyChance = shinyProbability(ctx, input.shiny);
   const pokemon = generateQuestPokemon(ctx, rng, input.target, shinyChance);
   return { pokemon, shinyChance, rng };
-}
-
-export interface QuestCaptureInput {
-  target: QuestPokemon;
-  team: readonly TeamMember[];
-  ballItemId: string;
-  berryItemId: string | null;
-  bonuses?: PlayerBonuses;
-  /** Heure locale du joueur au départ (talents de jour ou de nuit). */
-  hour?: number | null;
-}
-
-/**
- * Chance de capture du légendaire : même formule qu'en expédition (Ball, baie, affinité de
- * l'équipe, bonus permanents et talents de l'équipe). Le serveur et l'affichage la partagent.
- */
-export function questCaptureChance(ctx: GameContext, input: QuestCaptureInput): number {
-  const { target } = input;
-  const species = ctx.species(target.speciesId, target.formId);
-  if (!species) return 0;
-  const env = expeditionEnv(target.expedition, input.team, input.hour, 'quest');
-  const berry = input.berryItemId ? ctx.itemEffect(input.berryItemId, 'captureBoost') : undefined;
-  const ball = ctx.itemEffect(input.ballItemId, 'ball');
-  return captureProbability(ctx, {
-    captureRate: species.captureRate,
-    ballMultiplier: ball?.catchMultiplier ?? 1,
-    guaranteed: ball?.guaranteed === true,
-    boostMultiplier: berry?.multiplier ?? 1,
-    affinityCount: countAffinity(ctx, target.expedition, input.team, input.hour),
-    bonusMultiplier: abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES).capture,
-  });
-}
-
-/**
- * Rencontre du légendaire, au format d'un résultat d'expédition (une rencontre, une Ball) :
- * chance de capture de `questCaptureChance`.
- */
-export function resolveQuestExpedition(
-  ctx: GameContext,
-  input: QuestExpeditionInput,
-): ExpeditionResult {
-  const { target } = input;
-  const species = ctx.species(target.speciesId, target.formId)!;
-  const { pokemon: wild, shinyChance, rng } = questEncounter(ctx, input);
-  const env = expeditionEnv(target.expedition, input.team, input.hour, 'quest');
-  const bonuses = abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES);
-  const fled = input.ballItemId === null;
-  const berry =
-    !fled && input.berryItemId ? ctx.itemEffect(input.berryItemId, 'captureBoost') : undefined;
-  const captureChance = fled
-    ? 0
-    : questCaptureChance(ctx, {
-        ...input,
-        ballItemId: input.ballItemId!,
-        berryItemId: berry ? input.berryItemId : null,
-      });
-  const captured = !fled && rng.chance(captureChance);
-  // Fuir ne rapporte rien : ni XP ni bonheur pour l'équipe.
-  const xpPerMember = fled
-    ? 0
-    : Math.floor(defeatXp(species, target.level) * ctx.balance.xp.multiplier * bonuses.xp);
-  return {
-    encounters: [
-      {
-        speciesId: species.id,
-        formId: species.form?.id ?? null,
-        level: target.level,
-        isShiny: wild.isShiny,
-        outcome: fled ? 'fled' : captured ? 'captured' : 'escaped',
-        captureChance,
-        ...(captured && { pokemon: wild }),
-      },
-    ],
-    loot: [],
-    team: fled
-      ? []
-      : applyTeamXp(
-          ctx,
-          input.team,
-          xpPerMember,
-          abilityHappiness(ctx, env, ctx.balance.xp.happinessPerExpedition),
-        ),
-    xpPerMember,
-    pity: {},
-    ballsUsed: fled ? 0 : 1,
-    berriesUsed: berry ? 1 : 0,
-    shinyChance,
-  };
 }

@@ -7,7 +7,6 @@ import {
   MAX_LEVEL,
   NO_ABILITY,
   expeditionEnv,
-  legendarySite,
   memberPower,
   missingTypes,
   outOfRegionSpecies,
@@ -113,7 +112,7 @@ function requiredLevel(ctx: GameContext, place: CalcSite, members: readonly Calc
 
 /**
  * Calculateur de PE : équipes de test (espèce, niveau, IV, nature, talent) gardées dans ce
- * navigateur, et comparaison avec la PE minimale des zones et des expéditions légendaires d'une
+ * navigateur, et comparaison avec la PE minimale des zones et des combats légendaires d'une
  * région, pour équilibrer les niveaux des expéditions sur la version de travail.
  */
 export function PowerCalculatorPage() {
@@ -184,7 +183,7 @@ export function PowerCalculatorPage() {
       activity: 'expedition',
     }));
   // Quêtes de la région, puis celles sans région (ouvertes à toutes) ; les fuyards n'ont pas
-  // d'expédition légendaire.
+  // de combat légendaire.
   const legendaries: CalcSite[] = ctx.quests
     .filter((q) => q.regionId === region?.id || q.regionId === null)
     .sort((a, b) => Number(a.regionId === null) - Number(b.regionId === null) || a.order - b.order)
@@ -201,7 +200,13 @@ export function PowerCalculatorPage() {
           ),
           detail: `Quête « ${q.name} »${q.regionId === null ? ' (toutes régions)' : ''}`,
           enabled: q.enabled,
-          site: legendarySite(q, p),
+          // Combat légendaire : PE minimale et types requis, sans affinités.
+          site: {
+            regionId: q.regionId,
+            minPower: p.battle.minPower,
+            requiredTypes: p.battle.requiredTypes,
+            affinityTypes: [],
+          },
           activity: 'quest' as const,
         })),
     );
@@ -214,8 +219,8 @@ export function PowerCalculatorPage() {
         <h1 className="text-xl font-bold">Calculateur de PE</h1>
         <p className="text-sm text-slate-500">
           Équipes de test gardées dans ce navigateur, comparées à la PE minimale des zones et des
-          expéditions légendaires de la version de travail : PE de l’équipe dans chaque zone
-          (talents et affinités compris, temps clair) et niveau commun à atteindre pour y partir.
+          combats légendaires de la version de travail : PE de l’équipe dans chaque zone (talents et
+          affinités compris, temps clair) et niveau commun à atteindre pour y partir.
         </p>
       </div>
 
@@ -513,9 +518,9 @@ export function PowerCalculatorPage() {
         />
         <SiteTable
           ctx={ctx}
-          title={`Expéditions légendaires de ${region?.name}`}
+          title={`Combats légendaires de ${region?.name}`}
           column="Légendaire"
-          empty="Aucune expédition légendaire (les Pokémon fuyards n’en ont pas)."
+          empty="Aucun combat légendaire (les Pokémon fuyards n’en ont pas)."
           sites={legendaries}
           members={members}
           instances={instances}

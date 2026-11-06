@@ -2,23 +2,13 @@ import { speciesForms } from '@poke/data';
 import type {
   BattleRules,
   Encounter,
-  ProgressReward,
-  Quest,
-  QuestCondition,
-  QuestPokemon,
-  QuestStep,
   Region,
   Trainer,
   TrainerPokemon,
   UnlockCondition,
   Zone,
 } from './schemas';
-import {
-  DEFAULT_ROAMING_CHANCE,
-  defaultLegendaryExpedition,
-  defaultTrainerTimeLimitSeconds,
-  zoneAffinityTypes,
-} from './schemas';
+import { defaultTrainerTimeLimitSeconds, zoneAffinityTypes } from './schemas';
 import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
 
 /**
@@ -842,6 +832,7 @@ const trainer = (
     repeatable: true,
     cooldownMinutes: null,
     enabled: true,
+    questId: null,
     ...rest,
   };
 };
@@ -1265,196 +1256,3 @@ function league(): Trainer[] {
     ),
   ];
 }
-
-// --- Quêtes légendaires --------------------------------------------------------------------------
-
-const reward = (r: Partial<ProgressReward>): ProgressReward => ({
-  currency: 0,
-  items: [],
-  expeditionSlots: 0,
-  daycareSlots: 0,
-  incubators: 0,
-  bonuses: [],
-  ...r,
-});
-/** Pokémon offert par une quête : au moins 3 IV parfaits, comme dans les jeux récents. */
-/** Légendaire offert : 3 IV parfaits ; expédition légendaire de PE minimale `minPower`. */
-const legendary = (speciesId: number, level: number, minPower: number): QuestPokemon => ({
-  speciesId,
-  level,
-  perfectIvs: 3,
-  expedition: defaultLegendaryExpedition(speciesId, null, minPower),
-  roaming: null,
-});
-/** Fuyard : il change de zone de Johto à chaque heure au lieu d'une expédition légendaire. */
-const roamer = (speciesId: number, level: number): QuestPokemon => ({
-  ...legendary(speciesId, level, 0),
-  roaming: DEFAULT_ROAMING_CHANCE,
-});
-const step = (name: string, description: string, condition: QuestCondition): QuestStep => ({
-  name,
-  description,
-  condition,
-});
-const catchOf = (count: number, pokemonType: string | null): QuestCondition => ({
-  type: 'catchPokemon',
-  count,
-  pokemonType,
-  speciesId: null,
-  zoneId: null,
-});
-/** Expédition réussie dans une zone de quête, avec des Pokémon d'un type et d'une PE donnés. */
-const questExpedition = (
-  zoneId: string,
-  memberType: string | null,
-  memberCount: number,
-  minMemberPower: number,
-  count = 1,
-): QuestCondition => ({
-  type: 'expedition',
-  zoneId,
-  count,
-  memberType,
-  memberCount,
-  minMemberPower,
-});
-const quest = (q: Omit<Quest, 'image' | 'regionId' | 'enabled'>): Quest => ({
-  image: null,
-  regionId: 'johto',
-  enabled: true,
-  ...q,
-});
-const BEAST_REWARD = reward({ currency: 12_000, items: [{ itemId: 'bottle-cap', quantity: 1 }] });
-
-/** Quêtes des légendaires de Johto : les trois bêtes, les deux gardiens des tours, puis Celebi. */
-export const johtoQuests: Quest[] = [
-  quest({
-    id: 'raikou',
-    order: 0,
-    name: 'La bête du tonnerre',
-    description: 'Un grondement de tonnerre résonne sous la Tour Cendrée.',
-    unlock: defeated('maitre-peter'),
-    steps: [
-      step('Orage', 'Capture 10 Pokémon Électrik.', catchOf(10, 'electric')),
-      step('Les cendres', 'Capture 5 Pokémon Feu.', catchOf(5, 'fire')),
-      step(
-        'Le sous-sol de la tour',
-        'Réussis une expédition à la Tour Cendrée avec 2 Pokémon Électrik de PE 350 ou plus.',
-        questExpedition('tour-cendree', 'electric', 2, 350),
-      ),
-    ],
-    rewards: { ...BEAST_REWARD, pokemon: [roamer(243, 50)] },
-  }),
-  quest({
-    id: 'entei',
-    order: 1,
-    name: 'La bête du volcan',
-    description: 'Une bête de feu aurait fui la Tour Cendrée en faisant trembler la terre.',
-    unlock: defeated('maitre-peter'),
-    steps: [
-      step('Braises', 'Capture 10 Pokémon Feu.', catchOf(10, 'fire')),
-      step('Sur ses traces', 'Capture 40 % du Pokédex de Johto.', johtoDex(40)),
-      step(
-        'Le brasier',
-        'Réussis une expédition à la Tour Cendrée avec 2 Pokémon Feu de PE 450 ou plus.',
-        questExpedition('tour-cendree', 'fire', 2, 450),
-      ),
-    ],
-    rewards: { ...BEAST_REWARD, pokemon: [roamer(244, 50)] },
-  }),
-  quest({
-    id: 'suicune',
-    order: 2,
-    name: 'La bête des aurores',
-    description: 'Une bête aux reflets de cristal court sur l’eau du Lac Colère.',
-    unlock: defeated('maitre-peter'),
-    steps: [
-      step('Eaux pures', 'Capture 15 Pokémon Eau.', catchOf(15, 'water')),
-      step('Le vent du nord', 'Bats Frédo, le Champion d’Acajou.', defeated('fredo')),
-      step(
-        'Sur le lac',
-        'Réussis une expédition au Lac Colère avec 2 Pokémon Eau de PE 500 ou plus.',
-        questExpedition('lac-colere', 'water', 2, 500),
-      ),
-    ],
-    rewards: { ...BEAST_REWARD, pokemon: [roamer(245, 50)] },
-  }),
-  quest({
-    id: 'lugia',
-    order: 3,
-    name: 'Le gardien des mers',
-    description: 'Les tourbillons des Tourb’Îles cacheraient un Pokémon aux ailes d’argent.',
-    unlock: defeated('maitre-peter'),
-    steps: [
-      step(
-        'Plongée',
-        'Capture 20 Pokémon Eau pour franchir les tourbillons.',
-        catchOf(20, 'water'),
-      ),
-      step('Le chant des kimonos', 'Bats Sandra, la Championne d’Ebenelle.', defeated('sandra')),
-      step('Esprits', 'Capture 10 Pokémon Psy.', catchOf(10, 'psychic')),
-      step(
-        'Les profondeurs',
-        'Réussis une expédition aux Tourb’Îles avec 2 Pokémon Psy de PE 600 ou plus.',
-        questExpedition('tourb-iles', 'psychic', 2, 600),
-      ),
-    ],
-    rewards: {
-      ...reward({ currency: 40_000, items: [{ itemId: 'gold-bottle-cap', quantity: 1 }] }),
-      pokemon: [legendary(249, 70, 3000)],
-    },
-  }),
-  quest({
-    id: 'ho-oh',
-    order: 4,
-    name: 'L’oiseau arc-en-ciel',
-    description: 'Les cloches de la Tour Carillon attendent un dresseur digne de l’oiseau sacré.',
-    unlock: defeated('maitre-peter'),
-    steps: [
-      step(
-        'Les trois bêtes',
-        'Termine les quêtes de Raikou, d’Entei et de Suicune.',
-        allOf(
-          { type: 'questCompleted', questId: 'raikou' },
-          { type: 'questCompleted', questId: 'entei' },
-          { type: 'questCompleted', questId: 'suicune' },
-        ),
-      ),
-      step('Maître de Johto', 'Bats Peter, le Maître de la Ligue.', defeated('maitre-peter')),
-      step('Chercheur', 'Capture 80 % du Pokédex de Johto.', johtoDex(80)),
-      step(
-        'Le sommet de la tour',
-        'Réussis une expédition à la Tour Carillon avec 3 Pokémon Feu de PE 750 ou plus.',
-        questExpedition('tour-carillon', 'fire', 3, 750),
-      ),
-    ],
-    rewards: {
-      ...reward({ currency: 50_000, items: [{ itemId: 'gold-bottle-cap', quantity: 1 }] }),
-      pokemon: [legendary(250, 70, 4000)],
-    },
-  }),
-  quest({
-    id: 'celebi',
-    order: 5,
-    name: 'Le voyageur du temps',
-    description: 'Lugia et Ho-Oh apaisés, l’autel du Bois aux Chênes se met à briller.',
-    unlock: allOf(
-      { type: 'questCompleted', questId: 'lugia' },
-      { type: 'questCompleted', questId: 'ho-oh' },
-    ),
-    steps: [
-      step('Générations', 'Fais éclore 40 œufs.', { type: 'eggsHatched', count: 40 }),
-      step('Presque complet', 'Capture 95 % du Pokédex de Johto.', johtoDex(95)),
-      step('Le souffle des bois', 'Capture 30 Pokémon Plante.', catchOf(30, 'grass')),
-      step(
-        'L’autel',
-        'Réussis 3 expéditions à l’Autel du Bois aux Chênes.',
-        questExpedition('autel-bois-aux-chenes', null, 0, 0, 3),
-      ),
-    ],
-    rewards: {
-      ...reward({ items: [{ itemId: 'ability-patch', quantity: 1 }] }),
-      pokemon: [legendary(251, 30, 3600)],
-    },
-  }),
-];

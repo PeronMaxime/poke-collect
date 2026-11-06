@@ -267,17 +267,59 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
         break;
       }
       case 'expedition':
+      case 'questItem': {
         if (!zoneIds.has(condition.zoneId))
           report('error', `zone « ${condition.zoneId} » inconnue`);
         if (condition.memberType && !KNOWN_TYPES.has(condition.memberType)) {
           report('error', `type « ${condition.memberType} » inconnu`);
         }
-        if (condition.memberCount > balance.expeditions.maxTeamSize) {
+        if (
+          Math.max(condition.memberCount, condition.speciesIds.length) >
+          balance.expeditions.maxTeamSize
+        ) {
           report('error', 'plus de Pokémon requis que la taille d’équipe maximale');
         }
+        const zone = content.zones.find((z) => z.id === condition.zoneId);
+        // Seuls les Pokémon du Pokédex de la région de la zone partent en expédition.
+        const zoneRegion = content.regions.find((r) => r.id === zone?.regionId);
+        for (const speciesId of condition.speciesIds) {
+          const species = getSpecies(speciesId);
+          if (!species) report('error', `espèce ${speciesId} inconnue`);
+          else if (zoneRegion && !zoneRegion.speciesIds.includes(speciesId)) {
+            report(
+              'warning',
+              `${species.nameFr} n’est pas du Pokédex de ${zoneRegion.name} : il ne peut pas y partir en expédition`,
+            );
+          }
+        }
+        for (const w of condition.weathers) {
+          if (
+            w !== 'clear' &&
+            zone &&
+            !zone.weathers.some((zw) => zw.weather === w && zw.weight > 0)
+          ) {
+            report('warning', `la météo « ${w} » ne tombe jamais sur ${zone.name}`);
+          }
+        }
+        if (condition.type === 'questItem') {
+          const item = content.items.find((i) => i.id === condition.itemId);
+          if (!item) report('error', `objet « ${condition.itemId} » inconnu`);
+          else if (item.category !== 'quest') {
+            report('warning', `« ${item.name} » n’est pas un objet de quête`);
+          }
+        }
         break;
+      }
       default:
         checkUnlock('quest', id, condition);
+        // Seuls les dresseurs de la quête s'affrontent dans ses étapes (pas de Champion…).
+        for (const part of unlockParts(condition)) {
+          if (part.type !== 'trainerDefeated') continue;
+          const trainer = content.trainers.find((t) => t.id === part.trainerId);
+          if (trainer && trainer.questId !== id) {
+            report('error', `« ${trainer.name} » n’est pas un dresseur de cette quête`);
+          }
+        }
     }
   };
 
@@ -591,6 +633,28 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
       report('warning', 'Aucune récompense de victoire');
     }
     checkUnlock('trainer', trainer.id, trainer.unlock);
+    if (trainer.questId) {
+      const quest = questsById.get(trainer.questId);
+      if (!quest) report('error', `Quête « ${trainer.questId} » inconnue`);
+      else {
+        const asked = quest.steps.some((s) =>
+          unlockParts(s.condition).some(
+            (p) => p.type === 'trainerDefeated' && p.trainerId === trainer.id,
+          ),
+        );
+        if (!asked) {
+          report(
+            'warning',
+            `Aucune étape de la quête « ${quest.name} » ne demande de le battre : il n’apparaîtra jamais`,
+          );
+        }
+        if (quest.regionId && quest.regionId !== trainer.regionId) {
+          report('warning', `Pas dans la région de la quête « ${quest.name} »`);
+        }
+      }
+      if (trainer.repeatable) report('error', 'Un dresseur de quête ne se bat qu’une fois');
+      if (trainer.badge) report('error', 'Un dresseur de quête ne donne pas de badge');
+    }
   }
 
   // Donjons
@@ -760,20 +824,18 @@ export function contentIssues(content: GameContentData): ContentIssue[] {
         add('warning', 'quest', quest.id, 'Pokémon fuyard : aucune zone ordinaire dans la région');
       }
     }
-    for (const { expedition } of quest.rewards.pokemon) {
-      for (const t of [
-        ...expedition.affinityTypes,
-        ...expedition.requiredTypes.map((r) => r.type),
-      ]) {
+    for (const { battle, roaming } of quest.rewards.pokemon) {
+      if (roaming !== null) continue;
+      for (const t of battle.requiredTypes.map((r) => r.type)) {
         if (!KNOWN_TYPES.has(t)) add('error', 'quest', quest.id, `Type « ${t} » inconnu`);
       }
-      const requiredCount = expedition.requiredTypes.reduce((sum, r) => sum + r.count, 0);
-      if (requiredCount > balance.expeditions.maxTeamSize) {
+      const requiredCount = battle.requiredTypes.reduce((sum, r) => sum + r.count, 0);
+      if (requiredCount > balance.battles.maxTeamSize) {
         add(
           'error',
           'quest',
           quest.id,
-          'Expédition légendaire : plus de Pokémon requis que la taille d’équipe maximale',
+          'Combat légendaire : plus de Pokémon requis que la taille d’équipe maximale',
         );
       }
     }
@@ -873,6 +935,11 @@ export function findUsages(
       }
       for (const q of content.quests) {
         if (q.rewards.items.some((s) => s.itemId === id)) usages.push(`Quête « ${q.name} »`);
+        q.steps.forEach((st, i) => {
+          if (st.condition.type === 'questItem' && st.condition.itemId === id) {
+            usages.push(`Quête « ${q.name} », étape ${i + 1}`);
+          }
+        });
       }
       for (const d of content.dungeons) {
         if (d.gemItemId === id) usages.push(`Donjon « ${d.name} »`);
@@ -924,13 +991,18 @@ export function findUsages(
       }
       const steps = unlockables(content).filter(
         (e) =>
-          (e.unlock.type === 'expedition' || e.unlock.type === 'catchPokemon') &&
+          (e.unlock.type === 'expedition' ||
+            e.unlock.type === 'catchPokemon' ||
+            e.unlock.type === 'questItem') &&
           e.unlock.zoneId === id,
       );
       for (const e of steps) usages.push(e.name);
       break;
     }
     case 'quest': {
+      for (const t of content.trainers) {
+        if (t.questId === id) usages.push(`Dresseur de quête « ${t.name} »`);
+      }
       const unlocks = unlockables(content).filter(
         (e) =>
           (e.unlock.type === 'questStepsDone' || e.unlock.type === 'questCompleted') &&

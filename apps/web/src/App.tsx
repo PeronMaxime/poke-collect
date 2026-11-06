@@ -1,8 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import type { MeResponse, PublicContentDto } from '@poke/shared';
-import { ApiError, api } from './lib/api';
-import { keys } from './lib/game';
+import type { PublicContentDto } from '@poke/shared';
+import { keys, meQuery } from './lib/game';
 import { AuthPage, RESET_PASSWORD_PATH } from './pages/AuthPage';
 import { CHANGELOG_PATH, ChangelogPage } from './pages/ChangelogPage';
 import { CreateProfilePage } from './pages/CreateProfilePage';
@@ -47,15 +46,7 @@ function useContentVersionWatch(serverVersion: number | null | undefined) {
  */
 export function App() {
   const me = useQuery({
-    queryKey: ['me'],
-    queryFn: async () => {
-      try {
-        return await api<MeResponse>('/api/me');
-      } catch (err) {
-        if (err instanceof ApiError && err.status === 401) return null;
-        throw err;
-      }
-    },
+    ...meQuery,
     // Après des essais ratés, on retente toutes les 5 s tant que le serveur ne répond pas. Connecté,
     // un rappel toutes les 5 min suffit à voir passer une nouvelle version du contenu.
     refetchInterval: (query) =>

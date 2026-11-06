@@ -1,9 +1,15 @@
 import { and, eq, isNull, sql } from 'drizzle-orm';
 import { playerProfiles, questProgress } from '@poke/db';
 import type { Db } from '@poke/db';
-import { NEW_QUEST, advanceQuest, questStatus, questStepsDone } from '@poke/game-core';
+import {
+  NEW_QUEST,
+  advanceQuest,
+  questItemsGained,
+  questStatus,
+  questStepsDone,
+} from '@poke/game-core';
 import type { GameContext, PlayerSlots, QuestEvent } from '@poke/game-core';
-import type { QuestReward } from '@poke/content';
+import type { ItemStack, QuestReward } from '@poke/content';
 import type { QuestProgressDto } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
@@ -25,6 +31,8 @@ interface QuestWrite {
     stepStartedAt: Date;
     completedAt: Date | null;
   };
+  /** Objets de quête trouvés par l'événement (étape « objet de quête » en cours). */
+  items: ItemStack | null;
 }
 
 /** Avancement à enregistrer, sans rien écrire : vide quand les lignes sont déjà à jour. */
@@ -55,6 +63,7 @@ function planQuestSync(
         stepStartedAt: !row || next.step !== record.step ? now : row.stepStartedAt,
         completedAt: next.step >= quest.steps.length ? now : null,
       },
+      items: event ? questItemsGained(quest, record, next) : null,
     });
   }
   return writes;
@@ -62,7 +71,8 @@ function planQuestSync(
 
 /**
  * Enregistre l'avancement des quêtes débloquées : crée la ligne d'une quête qui apparaît, valide
- * les étapes remplies et applique l'événement (expédition récupérée) à l'étape en cours.
+ * les étapes remplies et applique l'événement (expédition récupérée) à l'étape en cours ; les
+ * objets de quête trouvés vont dans le sac (et dans `gained`, s'il est donné).
  * À appeler dans la transaction qui a modifié l'état du joueur.
  */
 export async function syncQuests(
@@ -71,10 +81,15 @@ export async function syncQuests(
   userId: string,
   now: Date,
   event?: QuestEvent,
+  gained?: ItemStack[],
 ): Promise<QuestProgressRow[]> {
   const [base, rows] = await Promise.all([baseProgress(db, userId), questRows(db, userId)]);
   const byId = new Map(rows.map((r) => [r.questId, r]));
-  for (const { questId, values } of planQuestSync(ctx, base, rows, now, event)) {
+  for (const { questId, values, items } of planQuestSync(ctx, base, rows, now, event)) {
+    if (items) {
+      await addItems(db, userId, [items]);
+      gained?.push(items);
+    }
     const [saved] = await db
       .insert(questProgress)
       .values({
@@ -106,6 +121,7 @@ export function toQuestProgressDto(
     completedAt: row.completedAt?.toISOString() ?? null,
     claimedAt: row.claimedAt?.toISOString() ?? null,
     pokemonCaught: row.pokemonCaught,
+    restartOnRelease: row.restartOnRelease,
   };
 }
 
@@ -133,7 +149,8 @@ export async function questsState(
 
 /**
  * Réclame la récompense d'une quête terminée (une seule fois) : argent, objets, emplacements et
- * bonus permanents. Les Pokémon se capturent ensuite en expédition légendaire.
+ * bonus permanents. Les Pokémon se capturent ensuite : en combat légendaire depuis les quêtes,
+ * ou en expédition pour un fuyard.
  */
 export async function claimQuest(
   db: Db,

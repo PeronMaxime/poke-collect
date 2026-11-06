@@ -217,12 +217,17 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const questsReady = quests.data?.quests.filter((q) => q.status === 'completed').length ?? 0;
   // Articles débloqués pas encore vus (évalués par le serveur à chaque chargement de la boutique).
   const shopNew = shop.data?.entries.filter((e) => e.isNew).length ?? 0;
-  // Œufs à faire éclore + pensions où des œufs attendent d'être ramassés.
+  // Œufs à faire éclore + œufs du sac qu'une place libre de la couveuse attend + pensions où des
+  // œufs attendent d'être ramassés.
+  const incubatorFree = daycare.data
+    ? Math.max(0, daycare.data.maxEggs - daycare.data.eggs.length)
+    : 0;
   const daycareReady =
     (daycare.data?.eggs.filter((e) => Date.parse(e.hatchAt) <= now).length ?? 0) +
+    Math.min(daycare.data?.bagEggs.length ?? 0, incubatorFree) +
     (ctx && daycare.data
       ? daycare.data.pensions.filter(
-          (p) => eggsLaid(ctx, new Date(p.startedAt), new Date(now), p.eggMinutes) > 0,
+          (p) => p.breeds && eggsLaid(ctx, new Date(p.startedAt), new Date(now), p.eggMinutes) > 0,
         ).length
       : 0);
 

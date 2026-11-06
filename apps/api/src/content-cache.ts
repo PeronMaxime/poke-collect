@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { getPublishedVersion, loadContent } from '@poke/db';
 import type { Db } from '@poke/db';
 import { createGameContext, playableContent } from '@poke/game-core';
@@ -63,10 +64,13 @@ export class ContentCache {
    */
   publicJson(): Promise<PublicContentBody> {
     if (!this.publicBody) {
-      this.publicBody = this.get().then((ctx) => ({
-        body: JSON.stringify(ctx.content),
-        etag: `W/"content-${ctx.content.versionId}"`,
-      }));
+      this.publicBody = this.get().then((ctx) => {
+        const body = JSON.stringify(ctx.content);
+        // Le numéro de version ne suffit pas : une migration peut corriger le contenu publié sans
+        // en créer une nouvelle, et le navigateur garderait alors l'ancien (réponse 304).
+        const hash = createHash('sha1').update(body).digest('base64url');
+        return { body, etag: `W/"content-${ctx.content.versionId}-${hash}"` };
+      });
       this.publicBody.catch(() => {
         this.publicBody = null;
       });

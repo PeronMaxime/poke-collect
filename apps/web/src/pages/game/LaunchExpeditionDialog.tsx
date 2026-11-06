@@ -293,6 +293,7 @@ export function LaunchExpeditionDialog({
         renderTeam={(power, env) => (
           <TeamPicker ctx={ctx} zone={zone} picker={picker} power={power} abilityEnv={env} />
         )}
+        onAutoTeam={() => picker.autoSelect(ctx.balance.expeditions.maxTeamSize)}
         pending={start.isPending}
         error={
           start.error &&
@@ -327,6 +328,7 @@ export function LaunchExpeditionForm({
   team,
   members,
   renderTeam,
+  onAutoTeam,
   extra,
   pending,
   error,
@@ -358,6 +360,8 @@ export function LaunchExpeditionForm({
   members: PokemonDto[];
   /** Choix de l'équipe, selon sa PE et l'environnement des talents de l'expédition. */
   renderTeam: (power: number, env: AbilityEnv) => ReactNode;
+  /** Sélection automatique de l'équipe (bouton à côté de « Gérer l'équipe »). */
+  onAutoTeam?: () => void;
   /** Réglages supplémentaires, sous l'aperçu de la durée. */
   extra?: ReactNode;
   pending: boolean;
@@ -619,6 +623,7 @@ export function LaunchExpeditionForm({
         minPower={zone.minPower}
         xpNote={`≈ ${formatXp(xp)} par Pokémon ${per} (moyenne, selon les rencontres).`}
         errors={check.errors.map(teamErrorText)}
+        onAutoSelect={onAutoTeam}
       >
         {renderTeam(check.power, env)}
       </TeamSection>

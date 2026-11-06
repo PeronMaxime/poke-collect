@@ -45,6 +45,7 @@ export const combatSettings: CombatSettings = {
   critChance: 0.0625,
   critMultiplier: 1.5,
   recallCooldownSeconds: 5,
+  chipTickSeconds: 3,
   enemyAbilities: false,
   attacks: {
     normal: { name: 'Plaquage', power: 80 },

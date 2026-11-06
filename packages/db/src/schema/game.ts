@@ -199,7 +199,7 @@ export const pokemon = pgTable(
 );
 
 /**
- * Œufs en couveuse. Les parents sont figés au moment de la ponte (`parents`) : l'éclosion se
+ * Œufs en couveuse ou rangés dans le sac. Les parents sont figés au moment de la ponte (`parents`) : l'éclosion se
  * calcule avec le seed et la version de contenu de la ponte, même si un parent a été transféré.
  */
 export const eggs = pgTable(
@@ -214,15 +214,21 @@ export const eggs = pgTable(
     parentBId: uuid('parent_b_id').references(() => pokemon.id, { onDelete: 'set null' }),
     parents: jsonb('parents').$type<[DaycareParent, DaycareParent]>().notNull(),
     motherIndex: smallint('mother_index').notNull().default(0),
-    /** Place de la couveuse (son assistant agit sur la durée d'éclosion). */
-    slotIndex: smallint('slot_index').notNull().default(0),
+    /**
+     * Place de la couveuse (son assistant agit sur la durée d'éclosion) ; null = œuf rangé dans le
+     * sac, pas encore couvé.
+     */
+    slotIndex: smallint('slot_index'),
     /** Assistant de la Pension au ramassage (son talent agit à l'éclosion) ; null = aucun. */
     helper: jsonb('helper').$type<AbilityHolder>(),
     contentVersionId: integer('content_version_id')
       .notNull()
       .references(() => contentVersions.id),
     laidAt: timestamp('laid_at', { withTimezone: true }).notNull().defaultNow(),
-    hatchAt: timestamp('hatch_at', { withTimezone: true }).notNull(),
+    /** Mise en couveuse (null tant que l'œuf est dans le sac). */
+    incubatedAt: timestamp('incubated_at', { withTimezone: true }),
+    /** Éclosion prévue (null tant que l'œuf est dans le sac). */
+    hatchAt: timestamp('hatch_at', { withTimezone: true }),
     seed: bigint('seed', { mode: 'number' }).notNull(),
     hatched: boolean('hatched').notNull().default(false),
     /** Notification push « prêt à éclore » envoyée. */
@@ -314,6 +320,8 @@ export const daycareSlots = pgTable(
     heldItemBId: text('held_item_b_id'),
     /** Début du cycle de ponte en cours (dépôt, ou dernier ramassage). */
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Dépôt du couple : l'XP gagnée en pension se compte depuis ce moment (rendue au retrait). */
+    depositedAt: timestamp('deposited_at', { withTimezone: true }).notNull().defaultNow(),
   },
   (t) => [uniqueIndex('daycare_slots_owner_slot').on(t.ownerId, t.slotIndex)],
 );
@@ -516,6 +524,56 @@ export const trainerRuns = pgTable(
   ],
 );
 
+/**
+ * Combats légendaires : le légendaire d'une quête réclamée (non fuyard), affronté en temps réel
+ * comme un dresseur. Vaincu, il se capture d'une seule Ball (`capturedAt`) ; une tentative sans
+ * capture (défaite, fuite, Ball ratée) se termine à `endedAt` et lance le délai avant la suivante.
+ */
+export const legendaryBattles = pgTable(
+  'legendary_battles',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: ownerId(),
+    questId: text('quest_id').notNull(),
+    /** Pokémon de la récompense affronté (index dans `rewards.pokemon`). */
+    pokemonIndex: smallint('pokemon_index').notNull(),
+    team: jsonb('team').$type<string[]>().notNull(),
+    setup: jsonb('setup').$type<DungeonSetup>().notNull(),
+    commands: jsonb('commands').$type<DungeonCommand[]>().notNull().default([]),
+    contentVersionId: integer('content_version_id')
+      .notNull()
+      .references(() => contentVersions.id),
+    /** Tirages du Pokémon capturé et de la Ball. */
+    seed: bigint('seed', { mode: 'number' }).notNull(),
+    /** Légendaire chromatique (décidé au départ, visible pendant le combat). */
+    isShiny: boolean('is_shiny').notNull().default(false),
+    startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Fin au plus tard (temps imparti). */
+    endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+    /** Fuite : millisecondes écoulées depuis le départ. */
+    fledAtMs: integer('fled_at_ms'),
+    /** Combat réglé (XP, K.O.) ; une victoire attend ensuite la Ball. */
+    claimedAt: timestamp('claimed_at', { withTimezone: true }),
+    resultSeenAt: timestamp('result_seen_at', { withTimezone: true }),
+    outcome: text('outcome', { enum: ['win', 'loss', 'timeout', 'fled'] }),
+    result: jsonb('result'),
+    /** Ball lancée sur le légendaire vaincu, et son issue. */
+    ballItemId: text('ball_item_id'),
+    capturedAt: timestamp('captured_at', { withTimezone: true }),
+    captured: boolean('captured'),
+    pokemonId: uuid('pokemon_id'),
+    /** Fin d'une tentative sans capture : début du délai avant la suivante. */
+    endedAt: timestamp('ended_at', { withTimezone: true }),
+  },
+  (t) => [
+    index('legendary_battles_owner_quest').on(t.ownerId, t.questId, t.startedAt),
+    // Un seul combat légendaire en cours à la fois.
+    uniqueIndex('legendary_battles_owner_active')
+      .on(t.ownerId)
+      .where(sql`${t.claimedAt} is null`),
+  ],
+);
+
 /** Bilan du joueur dans chaque donjon (temps de recharge, gemmes obtenues). */
 export const dungeonProgress = pgTable(
   'dungeon_progress',
@@ -698,6 +756,11 @@ export const questProgress = pgTable(
     claimedAt: timestamp('claimed_at', { withTimezone: true }),
     /** Pokémon de la récompense déjà capturés (expéditions légendaires), dans l'ordre. */
     pokemonCaught: smallint('pokemon_caught').notNull().default(0),
+    /**
+     * Légendaire capturé avant la réécriture des quêtes (0123) : le relâcher fait recommencer
+     * toute la quête (ligne supprimée) au lieu du seul combat.
+     */
+    restartOnRelease: boolean('restart_on_release').notNull().default(false),
     /**
      * Cachette d'un fuyard vu mais pas capturé : il a fui vers cette zone, où il reste jusqu'à la
      * fin de l'heure `hour` (voir `weatherHour`) ; ensuite il reprend son trajet habituel.

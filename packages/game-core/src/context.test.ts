@@ -133,9 +133,6 @@ describe('createGameContext', () => {
       'sulfura',
       'mewtwo',
       'mew',
-      'artikodin-galar',
-      'electhor-galar',
-      'sulfura-galar',
       'raikou',
       'entei',
       'suicune',
@@ -152,6 +149,9 @@ describe('createGameContext', () => {
       'rayquaza',
       'jirachi',
       'deoxys',
+      'artikodin-galar',
+      'electhor-galar',
+      'sulfura-galar',
     ]);
   });
 

@@ -46,6 +46,7 @@ content.quests.push({
         speciesId: null,
         zoneId: null,
       },
+      outcome: '',
     },
   ],
   rewards: {
@@ -137,8 +138,9 @@ describe('Pokémon fuyards', () => {
       { questId: 'fuyard-test', speciesId: 243, encounterChance: 100 },
     ]);
     expect(['route-1', 'foret-de-jade']).toContain(await roamerZone());
-    const legendary = await call<{ error: string }>('POST', '/api/quests/fuyard-test/expedition', {
+    const legendary = await call<{ error: string }>('POST', '/api/quests/fuyard-test/battle', {
       team: [starter.id],
+      moves: [{ type: 'water', category: 'special' }],
     });
     expect(legendary.body.error).toBe('QUEST_POKEMON_ROAMING');
   });

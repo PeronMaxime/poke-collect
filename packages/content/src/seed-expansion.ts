@@ -468,6 +468,7 @@ const trainer = (
 ): Trainer => ({
   sprite: null,
   enabled: true,
+  questId: null,
   timeLimitSeconds: defaultTrainerTimeLimitSeconds(t.team.length),
   rules: noRules(),
   money: 300,

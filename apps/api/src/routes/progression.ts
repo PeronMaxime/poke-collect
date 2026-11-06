@@ -9,7 +9,6 @@ import {
   claimRewardInputSchema,
   evolveInputSchema,
   megaEvolveInputSchema,
-  startQuestExpeditionInputSchema,
   useItemInputSchema,
 } from '@poke/shared';
 import type {
@@ -23,17 +22,10 @@ import type {
   UseItemResponse,
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
-import { startQuestExpedition } from '../game/expeditions';
 import { claimReward, evolve, megaEvolve, megaRevert, useItemOnPokemon } from '../game/progression';
 import { claimQuest, questsState } from '../game/quests';
 import { trainerCard } from '../game/stats';
-import {
-  claimedRewards,
-  playerProgress,
-  pokemonActivities,
-  toExpeditionDto,
-  toPokemonDto,
-} from '../game/store';
+import { claimedRewards, playerProgress, pokemonActivities, toPokemonDto } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
 interface Deps {
@@ -145,14 +137,5 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
     const userId = request.user!.id;
     const result = await claimQuest(db, content, userId, id, now());
     return { questId: id, rewards: result.rewards, currency: result.currency, slots: result.slots };
-  });
-
-  /** Expédition légendaire : tenter de capturer le Pokémon d'une quête réclamée. */
-  app.post('/api/quests/:id/expedition', async (request, reply) => {
-    const { id } = questParams.parse(request.params);
-    const input = startQuestExpeditionInputSchema.parse(request.body);
-    const row = await startQuestExpedition(db, content, request.user!.id, id, input, now());
-    hooks.invalidateSettle(request.user!.id);
-    return reply.code(201).send(toExpeditionDto(row));
   });
 }

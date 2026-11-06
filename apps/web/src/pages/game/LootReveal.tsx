@@ -273,6 +273,7 @@ export function ExpeditionRevealView({
           </motion.p>
         )}
 
+        {/* Anciennes expéditions légendaires (historique). */}
         {questId && encounters[0] && (
           <motion.p
             className={`mt-3 rounded-xl px-3 py-2 text-center text-sm ${
@@ -287,8 +288,8 @@ export function ExpeditionRevealView({
             {captured > 0
               ? `${speciesName(ctx, encounters[0].speciesId, encounters[0].formId)} a été capturé !`
               : encounters[0].outcome === 'fled'
-                ? 'Tu as pris la fuite. Relance l’expédition légendaire depuis les Quêtes pour allonger la chaîne chromatique.'
-                : `${speciesName(ctx, encounters[0].speciesId, encounters[0].formId)} s’est enfui… Tu peux retenter une expédition légendaire depuis les Quêtes.`}
+                ? 'Tu as pris la fuite.'
+                : `${speciesName(ctx, encounters[0].speciesId, encounters[0].formId)} s’est enfui…`}
           </motion.p>
         )}
 
@@ -381,6 +382,25 @@ export function ExpeditionRevealView({
           >
             {escapedCount} Pokémon se {escapedCount > 1 ? 'sont échappés' : 'est échappé'}
           </motion.p>
+        )}
+
+        {result.questItems && result.questItems.length > 0 && (
+          <motion.div
+            className="mt-3 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-200"
+            initial={instant ? false : { opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: after, type: 'spring' }}
+          >
+            <p className="font-semibold">✦ Objet de quête trouvé !</p>
+            <ul className="mt-1 flex flex-wrap gap-x-4 gap-y-1">
+              {result.questItems.map((q) => (
+                <li key={q.itemId} className="flex items-center gap-1.5">
+                  <img src={itemIcon(ctx, q.itemId)} alt="" className="h-7 w-7" />
+                  {itemName(ctx, q.itemId)} <span className="font-semibold">× {q.quantity}</span>
+                </li>
+              ))}
+            </ul>
+          </motion.div>
         )}
 
         {transferred && (

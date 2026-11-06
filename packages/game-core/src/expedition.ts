@@ -19,7 +19,7 @@ import {
 } from './pokemon';
 import type { PokemonInstance } from './pokemon';
 import { outOfRegionSpecies } from './progress';
-import { NO_BONUSES } from './progression';
+import { NO_BONUSES, pokemonXpGain } from './progression';
 import type { PlayerBonuses } from './progression';
 import {
   abilityBonuses,
@@ -32,6 +32,7 @@ import {
   durationWithAbility,
   effectiveAbility,
   memberPower,
+  resolveWeather,
   teamMemberPowers,
 } from './abilities';
 import type { AbilityEnv } from './abilities';
@@ -800,19 +801,35 @@ export interface ExpeditionResult {
   encounterBerriesUsed?: number;
   /** Probabilité shiny de chaque rencontre (multiplicateurs compris). */
   shinyChance: number;
+  /**
+   * Tirages de butin de l'expédition, table de butin ou non (chances d'objet de quête) ; absent
+   * des résultats anciens.
+   */
+  lootRolls?: number;
+  /**
+   * Météo de l'expédition : celle qu'impose un talent de l'équipe, sinon celle de la zone au
+   * départ (conditions de météo des quêtes) ; null = temps clair, absent des résultats anciens.
+   */
+  weather?: Weather | null;
 }
 
-/** XP (plafonnée au niveau maximal) et bonheur (borné entre 0 et 255) gagnés par l'équipe. */
+/**
+ * XP (plafonnée au niveau maximal) et bonheur (borné entre 0 et 255) gagnés par l'équipe. `xp`
+ * est l'XP de chaque membre avant les bonus de région (complétions d'expédition), propres à
+ * chacun.
+ */
 export function applyTeamXp(
   ctx: GameContext,
   team: readonly TeamMember[],
   xp: number,
   happinessDelta: number,
+  bonuses?: Pick<PlayerBonuses, 'regionXp'>,
 ): TeamMemberResult[] {
   return team.map((m) => {
     const growth = ctx.species(m.speciesId, m.formId)?.growthRate;
     const xpCap = growth ? xpForLevel(growth, MAX_LEVEL) : m.xp;
-    const xpAfter = Math.max(m.xp, Math.min(m.xp + xp, xpCap));
+    const gained = pokemonXpGain(ctx, bonuses, m.speciesId, xp);
+    const xpAfter = Math.max(m.xp, Math.min(m.xp + gained, xpCap));
     return {
       id: m.id,
       xpGained: xpAfter - m.xp,
@@ -971,7 +988,10 @@ export function createExpeditionRun(
         boostMultiplier:
           encounterTime(clock, n) <= captureBerryMinutes + EPSILON ? captureBerry!.multiplier : 1,
         affinityCount,
-        bonusMultiplier: bonuses.capture,
+        // Fuyard : capture facilitée (équilibrage des légendaires).
+        bonusMultiplier:
+          bonuses.capture *
+          ('questId' in extra ? ctx.balance.legendary.roamerCaptureMultiplier : 1),
       });
       ballsUsed++;
       const captured = rng.chance(captureChance);
@@ -997,8 +1017,8 @@ export function createExpeditionRun(
       const lootRng = createRng(input.seed ^ LOOT_SEED_MASK);
       const lootTotals = new Map<string, number>();
       const lootTable = zone.lootTableId ? ctx.lootTable(zone.lootTableId) : undefined;
+      const { lootRolls } = expeditionPlan(ctx, elapsedMinutes, env, input.encounterBerries);
       if (lootTable) {
-        const { lootRolls } = expeditionPlan(ctx, elapsedMinutes, env, input.encounterBerries);
         for (let i = 0; i < lootRolls; i++) addStacks(lootTotals, rollLoot(lootRng, lootTable));
       }
       return {
@@ -1009,6 +1029,7 @@ export function createExpeditionRun(
           input.team,
           xpPerMember,
           abilityHappiness(ctx, env, ctx.balance.xp.happinessPerExpedition),
+          bonuses,
         ),
         xpPerMember,
         pity: Object.fromEntries([...touched].map((id) => [id, pity.get(id) ?? 0])),
@@ -1021,6 +1042,8 @@ export function createExpeditionRun(
             ? berriesConsumed(ctx, input.encounterBerries!.quantity, elapsedMinutes)
             : 0,
         shinyChance,
+        lootRolls,
+        weather: resolveWeather(ctx, env),
       };
     },
   };

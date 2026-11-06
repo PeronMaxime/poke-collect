@@ -1,6 +1,7 @@
 import type { ImposedWeather, Zone } from '@poke/content';
 import { WEATHER_LABELS, hasVariableWeather, nextWeatherRoll, zoneWeather } from '@poke/game-core';
 import { HoverBubble } from '../../components/ui';
+import { useGameContext } from '../../lib/game';
 
 const ICONS: Record<ImposedWeather, string> = {
   clear: '🌤️',
@@ -10,14 +11,14 @@ const ICONS: Record<ImposedWeather, string> = {
   hail: '🌨️',
 };
 
-/** Effets directs en combat, donjons et dresseurs (voir `weatherDamageMultiplier` et les dégâts de fin d'attaque). */
-const COMBAT_EFFECTS: Record<ImposedWeather, string> = {
+/** Effets directs en combat, donjons et dresseurs (voir `weatherDamageMultiplier` et les pertes à intervalle fixe, `chipTickSeconds`). */
+const combatEffects = (tick: string): Record<ImposedWeather, string> => ({
   clear: 'Aucun effet de météo.',
   sun: 'Attaques Feu ×1,5 et Eau ×0,5. Aucun Pokémon ne peut être gelé.',
   rain: 'Attaques Eau ×1,5 et Feu ×0,5.',
-  sand: 'Chaque Pokémon perd 1/16 de ses PV max après chacune de ses attaques, sauf les types Roche, Sol et Acier.',
-  hail: 'Chaque Pokémon perd 1/16 de ses PV max après chacune de ses attaques, sauf le type Glace.',
-};
+  sand: `Les deux Pokémon en face perdent 1/16 de leurs PV max toutes les ${tick}, sauf les types Roche, Sol et Acier.`,
+  hail: `Les deux Pokémon en face perdent 1/16 de leurs PV max toutes les ${tick}, sauf le type Glace.`,
+});
 
 /** Précision d'une météo qui n'est pas celle du lieu. */
 export const TEAM_WEATHER_NOTE = 'Imposée par un talent de ton équipe.';
@@ -40,6 +41,7 @@ export function WeatherIcon({
   className?: string;
 }) {
   const label = WEATHER_LABELS[weather];
+  const tick = useGameContext()?.balance.combat.chipTickSeconds ?? 3;
   return (
     <HoverBubble
       width={220}
@@ -50,7 +52,7 @@ export function WeatherIcon({
           <span className="block font-semibold">Météo : {label}</span>
           <span className="mt-1 block text-slate-500">
             {activity !== 'expedition'
-              ? COMBAT_EFFECTS[weather]
+              ? combatEffects(`${String(tick).replace('.', ',')} s`)[weather]
               : weather === 'clear'
                 ? 'Aucune météo : les talents qui en dépendent sont inactifs.'
                 : 'Pas d’effet direct : active les talents qui dépendent de cette météo.'}

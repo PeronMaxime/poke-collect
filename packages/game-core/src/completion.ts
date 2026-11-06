@@ -1,4 +1,10 @@
-import type { ExpeditionCompletion, ProgressReward, Region, Zone } from '@poke/content';
+import type {
+  ExpeditionCompletion,
+  ProgressReward,
+  Region,
+  RegionBonus,
+  Zone,
+} from '@poke/content';
 import type { GameContext } from './context';
 import type { ClaimedRewards, DexCatches, RewardState } from './progression';
 
@@ -142,5 +148,34 @@ export function claimedCompletionRewards(
   return [...claimed.completionIds].flatMap((rewardId) => {
     const completion = byId.get(rewardId.slice(0, rewardId.indexOf(':')));
     return completion ? [completion.rewards] : [];
+  });
+}
+
+/** Région d'une cible de complétion : la région elle-même, ou celle de l'expédition. */
+export function completionTargetRegionId(
+  ctx: GameContext,
+  completion: ExpeditionCompletion,
+  targetId: string,
+): string | null {
+  if (completion.scope === 'region') return targetId;
+  return ctx.zone(targetId)?.regionId ?? null;
+}
+
+/**
+ * Bonus de région des complétions réclamées encore présentes dans le contenu, avec la région
+ * de l'expédition (ou la région complétée) à laquelle chacun s'applique.
+ */
+export function claimedCompletionRegionBonuses(
+  ctx: GameContext,
+  claimed: ClaimedRewards,
+): { regionId: string; bonus: RegionBonus }[] {
+  if (!claimed.completionIds?.size) return [];
+  const byId = new Map(expeditionCompletions(ctx).map((c) => [c.id, c]));
+  return [...claimed.completionIds].flatMap((rewardId) => {
+    const sep = rewardId.indexOf(':');
+    const completion = byId.get(rewardId.slice(0, sep));
+    if (!completion?.regionBonuses.length) return [];
+    const regionId = completionTargetRegionId(ctx, completion, rewardId.slice(sep + 1));
+    return regionId ? completion.regionBonuses.map((bonus) => ({ regionId, bonus })) : [];
   });
 }

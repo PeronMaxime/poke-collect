@@ -8,6 +8,7 @@ import {
   MAX_LEVEL,
   abilityEffectText,
   applyCandies,
+  candiesForLevel,
   candiesToMaxLevel,
   computeStats,
   effectActivities,
@@ -20,6 +21,7 @@ import {
   lineageId,
   megaOptions,
   memberPower,
+  releasableQuest,
   transferCandies,
   xpForLevel,
 } from '@poke/game-core';
@@ -32,10 +34,10 @@ import type {
 import type {
   AssistantDto,
   EvolveResponse,
-  ExpeditionDto,
   InventoryEntryDto,
   MegaEvolveInput,
   PokemonDto,
+  ReleaseLegendaryResponse,
   TransferPokemonResponse,
   UseItemInput,
   UseItemResponse,
@@ -52,6 +54,7 @@ import {
   useNow,
 } from '../../components/ui';
 import { PokemonTagBadges, TagManagerDialog, TagPicker } from '../../components/tags';
+import { usePlayerBonuses } from './XpPreview';
 import { api } from '../../lib/api';
 import {
   PROGRESS_KEYS,
@@ -65,7 +68,6 @@ import {
   useAssistants,
   useCandies,
   useEvolutionChecker,
-  useExpeditions,
   useHeal,
   useRevive,
   useReviveStacks,
@@ -74,6 +76,7 @@ import {
   useItemQuantities,
   usePlayerProgress,
   usePokemon,
+  useQuests,
   useTags,
   utcOffsetMinutes,
 } from '../../lib/game';
@@ -122,6 +125,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   // Transfert demandé alors qu'il retirerait le dernier exemplaire d'une espèce : à confirmer.
   const [confirmingLast, setConfirmingLast] = useState(false);
   const [transferResult, setTransferResult] = useState<TransferPokemonResponse | null>(null);
+  const [released, setReleased] = useState<string | null>(null);
   const queryClient = useQueryClient();
   const transfer = useMutation({
     mutationFn: async (ids: string[]) => {
@@ -293,6 +297,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
           {transfer.error && <p className="w-full text-red-600">{errorText(transfer.error)}</p>}
         </div>
       )}
+      {released && <p className="mb-4 text-sm text-emerald-600">{released}</p>}
       {transferResult && (
         <p className="mb-4 text-sm text-emerald-600">
           {transferResult.transferred} Pokémon transféré(s) :{' '}
@@ -393,7 +398,13 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
                 pokemon={selected}
                 evolutions={evolutionsOf(selected)}
                 onTransferred={(data) => {
+                  setReleased(null);
                   setTransferResult(data);
+                  setSelectedId(next?.p.id ?? previous?.p.id ?? null);
+                }}
+                onReleased={(message) => {
+                  setTransferResult(null);
+                  setReleased(message);
                   setSelectedId(next?.p.id ?? previous?.p.id ?? null);
                 }}
               />
@@ -491,19 +502,16 @@ function KoDetail({ ctx, p }: { ctx: GameContext; p: PokemonDto }) {
 }
 
 /**
- * Activité où le talent d'un Pokémon occupé agit en ce moment (expédition, légendaire, combat,
+ * Activité où le talent d'un Pokémon occupé agit en ce moment (expédition, combat,
  * donjon, pension, poste d'assistant) ; undefined = Pokémon libre.
  */
 function busyAbilityActivities(
   p: PokemonDto,
   assistants: readonly AssistantDto[] | undefined,
-  expeditions: readonly ExpeditionDto[] | undefined,
 ): AbilityActivity[] | undefined {
   switch (p.activity) {
     case 'expedition':
-      return [
-        expeditions?.some((e) => e.questId && e.team.includes(p.id)) ? 'quest' : 'expedition',
-      ];
+      return ['expedition'];
     case 'battle':
     case 'dungeon':
       return [p.activity];
@@ -523,16 +531,18 @@ function PokemonDetail({
   pokemon: p,
   evolutions,
   onTransferred,
+  onReleased,
 }: {
   ctx: GameContext;
   pokemon: PokemonDto;
   evolutions: EvolutionCheck[];
   onTransferred: (data: TransferPokemonResponse) => void;
+  /** Légendaire relâché (message à afficher dans le PC). */
+  onReleased: (message: string) => void;
 }) {
   const queryClient = useQueryClient();
   const tags = useTags().data ?? [];
   const assistants = useAssistants();
-  const expeditions = useExpeditions();
   const [reveal, setReveal] = useState<EvolveResponse | null>(null);
   const [revealMega, setRevealMega] = useState(false);
   // Évolution : Pokémon mis à jour sur place ; Pokédex, quêtes… et sac seulement si la réponse le dit.
@@ -579,7 +589,7 @@ function PokemonDetail({
   const abilitySummary = abilityDetails(
     ctx,
     effectiveAbility(ctx, p),
-    busyAbilityActivities(p, assistants.data, expeditions.data?.active),
+    busyAbilityActivities(p, assistants.data),
   );
   const nature = getNature(p.nature);
   const levelXp = xpForLevel(species.growthRate, p.level);
@@ -595,11 +605,12 @@ function PokemonDetail({
   const candies = useCandies();
   const lineage = lineageId(ctx, p.speciesId);
   const ownedCandies = candies.data?.find((c) => c.lineageId === lineage)?.quantity ?? 0;
-  const usefulCandies = Math.min(ownedCandies, candiesToMaxLevel(ctx, p));
+  const bonuses = usePlayerBonuses(ctx);
+  const usefulCandies = Math.min(ownedCandies, candiesToMaxLevel(ctx, p, bonuses));
   const [candyCount, setCandyCount] = useState(1);
   const candiesToGive = Math.min(candyCount, usefulCandies);
   // Aperçu : XP gagnée et niveau atteint avec les Bonbons choisis.
-  const fed = applyCandies(ctx, p, candiesToGive);
+  const fed = applyCandies(ctx, p, candiesToGive, bonuses);
   const feed = useMutation({
     mutationFn: (count: number) =>
       api<PokemonDto>(`/api/pokemon/${p.id}/candies`, { method: 'POST', json: { count } }),
@@ -623,6 +634,38 @@ function PokemonDetail({
     onSuccess: async (data) => {
       onTransferred(data);
       await applyTransfer(queryClient, [p], data.gained);
+    },
+  });
+
+  // Légendaire : pas de transfert, mais le dernier capturé d'une quête peut être relâché.
+  const transferable = isTransferableSpecies(ctx, p.speciesId);
+  const quests = useQuests();
+  const releaseFrom = transferable
+    ? undefined
+    : releasableQuest(
+        ctx,
+        (quests.data?.quests ?? []).filter((q) => q.status === 'claimed'),
+        p,
+      );
+  const releaseQuest = releaseFrom ? ctx.quest(releaseFrom.questId) : undefined;
+  const releaseRoams = releaseQuest?.rewards.pokemon[releaseFrom!.pokemonIndex]?.roaming != null;
+  // Capturé avant la réécriture des quêtes : le relâcher fait recommencer toute la quête.
+  const releaseRestarts =
+    releaseFrom !== undefined &&
+    quests.data?.quests.find((q) => q.questId === releaseFrom.questId)?.restartOnRelease === true;
+  const release = useMutation({
+    mutationFn: () =>
+      api<ReleaseLegendaryResponse>(`/api/pokemon/${p.id}/release`, { method: 'POST' }),
+    onSuccess: async (data) => {
+      onReleased(
+        data.restarted
+          ? `${species.nameFr} a été relâché : la quête « ${releaseQuest?.name ?? ''} » recommence depuis le début.`
+          : releaseRoams
+            ? `${species.nameFr} a été relâché : il erre de nouveau, à recroiser en expédition.`
+            : `${species.nameFr} a été relâché : affronte-le de nouveau depuis l’onglet Quêtes.`,
+      );
+      await applyTransfer(queryClient, [p], []);
+      await refresh(queryClient, keys.quests, keys.legendaryBattles, keys.expeditions);
     },
   });
 
@@ -695,7 +738,11 @@ function PokemonDetail({
             <p className="font-medium">
               {candyName(ctx, lineage)} : {ownedCandies}
             </p>
-            <p className="text-slate-500">{ctx.balance.transfer.xpPerCandy} XP par Bonbon.</p>
+            {p.level < MAX_LEVEL && (
+              <p className="text-slate-500">
+                {candiesForLevel(ctx, p.level)} Bonbons pour passer le niveau {p.level}.
+              </p>
+            )}
             {usefulCandies > 0 && (
               <>
                 <div className="mt-2 flex items-center gap-1">
@@ -737,7 +784,48 @@ function PokemonDetail({
         )}
 
         <div className="mt-3 w-full text-xs">
-          {confirmTransfer ? (
+          {releaseQuest && confirmTransfer ? (
+            <div className="rounded-xl border border-red-200 p-3 dark:border-red-900">
+              <p>
+                Relâcher {species.nameFr} ? Aucun Bonbon :{' '}
+                {releaseRestarts
+                  ? `capturé avant la nouvelle version de la quête « ${releaseQuest.name} », il ne reviendra qu’en la refaisant entièrement, depuis la première étape.`
+                  : releaseRoams
+                    ? `il recommence à errer (quête « ${releaseQuest.name} »), à recroiser et capturer en expédition.`
+                    : `il retourne à la quête « ${releaseQuest.name} », où tu pourras de nouveau l’affronter et tenter de le capturer.`}{' '}
+                Ce Pokémon-ci (niveau, IV, chromatique) est perdu.
+              </p>
+              <div className="mt-2 flex justify-center gap-2">
+                <button
+                  className="btn-danger py-1"
+                  disabled={release.isPending}
+                  onClick={() => release.mutate()}
+                >
+                  Relâcher
+                </button>
+                <button className="btn-ghost py-1" onClick={() => setConfirmTransfer(false)}>
+                  Annuler
+                </button>
+              </div>
+            </div>
+          ) : releaseQuest ? (
+            <button
+              className="btn-danger w-full"
+              disabled={p.locked || p.busy}
+              title={
+                p.locked
+                  ? 'Retire-le des favoris pour pouvoir le relâcher'
+                  : p.busy
+                    ? 'Le Pokémon doit être disponible (ni en activité)'
+                    : releaseRestarts
+                      ? 'Aucun Bonbon : sa quête recommence depuis le début'
+                      : 'Aucun Bonbon : sa quête le propose de nouveau'
+              }
+              onClick={() => setConfirmTransfer(true)}
+            >
+              Relâcher
+            </button>
+          ) : confirmTransfer ? (
             <div className="rounded-xl border border-red-200 p-3 dark:border-red-900">
               <p>
                 Transférer {species.nameFr} contre {transferCandies(ctx, p)} ×{' '}
@@ -761,7 +849,7 @@ function PokemonDetail({
               className="btn-danger w-full"
               disabled={!canTransfer(ctx, p)}
               title={
-                !isTransferableSpecies(ctx, p.speciesId)
+                !transferable
                   ? 'Les légendaires et les fabuleux ne se transfèrent pas'
                   : p.locked
                     ? 'Retire-le des favoris pour pouvoir le transférer'
@@ -774,7 +862,9 @@ function PokemonDetail({
               Transférer
             </button>
           )}
-          {transfer.error && <p className="mt-1 text-red-600">{errorText(transfer.error)}</p>}
+          {(transfer.error ?? release.error) && (
+            <p className="mt-1 text-red-600">{errorText(transfer.error ?? release.error)}</p>
+          )}
         </div>
       </div>
 

@@ -4,8 +4,10 @@ import { z } from 'zod';
 import { candies } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
+  collectEggsInputSchema,
   depositDaycareInputSchema,
   feedCandiesInputSchema,
+  incubateEggsInputSchema,
   transferPokemonInputSchema,
 } from '@poke/shared';
 import type {
@@ -13,6 +15,7 @@ import type {
   CollectEggsResponse,
   DaycareResponse,
   HatchEggsResponse,
+  IncubateEggsResponse,
   PokemonDto,
   TransferPokemonResponse,
 } from '@poke/shared';
@@ -22,8 +25,11 @@ import {
   depositDaycare,
   feedCandies,
   hatchEggs,
+  incubateEggs,
+  isInBag,
   loadDaycare,
   pendingEggs,
+  toBagEggDto,
   toDaycareDto,
   toEggDto,
   transferPokemon,
@@ -72,7 +78,11 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
       eggsHatched,
       serverTime: now().toISOString(),
       pensions: slots.map((s) => toDaycareDto(ctx, s, parents, helpers.get(s.slotIndex) ?? null)),
-      eggs: eggRows.map(toEggDto),
+      eggs: eggRows.filter((e) => !isInBag(e)).map(toEggDto),
+      bagEggs: eggRows
+        .filter(isInBag)
+        .sort((x, y) => x.laidAt.getTime() - y.laidAt.getTime() || x.id.localeCompare(y.id))
+        .map(toBagEggDto),
     };
   });
 
@@ -88,14 +98,25 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
 
   app.post('/api/daycare/:slot/collect', async (request): Promise<CollectEggsResponse> => {
     const { slot } = slotParams.parse(request.params);
-    const result = await collectEggs(db, content, request.user!.id, slot, now());
-    return { eggs: result.eggs.map(toEggDto), waiting: result.waiting };
+    const { to } = collectEggsInputSchema.parse(request.body ?? {});
+    const result = await collectEggs(db, content, request.user!.id, slot, to, now());
+    return { incubated: result.incubated.map(toEggDto), bagged: result.bagged };
   });
 
   app.delete('/api/daycare/:slot', async (request): Promise<CollectEggsResponse> => {
     const { slot } = slotParams.parse(request.params);
     const result = await withdrawDaycare(db, content, request.user!.id, slot, now());
-    return { eggs: result.eggs.map(toEggDto), waiting: result.waiting };
+    return {
+      incubated: result.incubated.map(toEggDto),
+      bagged: result.bagged,
+      parents: result.parents,
+    };
+  });
+
+  app.post('/api/eggs/incubate', async (request): Promise<IncubateEggsResponse> => {
+    const { ids } = incubateEggsInputSchema.parse(request.body);
+    const incubated = await incubateEggs(db, content, request.user!.id, ids, now());
+    return { incubated: incubated.map(toEggDto) };
   });
 
   app.post('/api/eggs/hatch', async (request): Promise<HatchEggsResponse> => {

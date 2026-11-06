@@ -5,6 +5,8 @@ import { abilityFlat, abilityMultiplier, applyWildAbilities } from './abilities'
 import type { AbilityEnv, AbilityHolder } from './abilities';
 import { MAX_LEVEL, generatePokemon, levelForXp, withPerfectIvs, xpForLevel } from './pokemon';
 import type { PokemonInstance } from './pokemon';
+import { pokemonXpGain, pokemonXpMultiplier } from './progression';
+import type { PlayerBonuses } from './progression';
 import { createRng } from './rng';
 import { counterpartFormId, isEventForm } from './forms';
 import { isMasudaPair, shinyProbability } from './shiny';
@@ -192,6 +194,47 @@ export function eggsLaid(
   return Math.max(0, Math.floor(elapsed / (cycleMinutes * 60_000)));
 }
 
+// --- XP des parents ----------------------------------------------------------------------------
+
+export interface DaycareXp {
+  xpGained: number;
+  levelBefore: number;
+  levelAfter: number;
+  xpAfter: number;
+}
+
+/**
+ * XP gagnée par un parent depuis son dépôt en pension (`parentXpPerHour`, au prorata du temps,
+ * augmentée des bonus de sa région), plafonnée au niveau maximal. Elle n'est versée qu'au retrait.
+ */
+export function daycareXp(
+  ctx: GameContext,
+  parent: Pick<PokemonInstance, 'speciesId' | 'formId' | 'xp' | 'level'>,
+  depositedAt: Date,
+  now: Date,
+  bonuses?: Pick<PlayerBonuses, 'regionXp'>,
+): DaycareXp {
+  const growth = ctx.species(parent.speciesId, parent.formId)?.growthRate;
+  const hours = Math.max(0, now.getTime() - depositedAt.getTime()) / 3_600_000;
+  const earned = pokemonXpGain(
+    ctx,
+    bonuses,
+    parent.speciesId,
+    Math.floor(hours * ctx.balance.breeding.parentXpPerHour),
+  );
+  if (!growth) {
+    return { xpGained: 0, levelBefore: parent.level, levelAfter: parent.level, xpAfter: parent.xp };
+  }
+  const cap = xpForLevel(growth, MAX_LEVEL);
+  const xpAfter = Math.max(parent.xp, Math.min(parent.xp + earned, cap));
+  return {
+    xpGained: xpAfter - parent.xp,
+    levelBefore: parent.level,
+    levelAfter: Math.max(parent.level, levelForXp(growth, xpAfter)),
+    xpAfter,
+  };
+}
+
 // --- Éclosion --------------------------------------------------------------------------------
 
 export interface EggInput {
@@ -323,27 +366,77 @@ export function transferCandies(
   return Math.round(base * abilityMultiplier(ctx, env, 'candies'));
 }
 
-/** Bonbons nécessaires pour monter `pokemon` au niveau maximal (0 si déjà au max). */
+/** Marge des calculs en fractions de Bonbon (évite qu'un arrondi coûte un Bonbon de plus). */
+const CANDY_EPSILON = 1e-9;
+
+/**
+ * Bonbons pour passer du niveau `level` au suivant : de `candiesPerLevelStart` (niveau 1) à
+ * `candiesPerLevelEnd` (niveau 99), en ligne droite, arrondi à l'entier le plus proche.
+ */
+export function candiesForLevel(ctx: GameContext, level: number): number {
+  const { candiesPerLevelStart: start, candiesPerLevelEnd: end } = ctx.balance.transfer;
+  const t = Math.min(Math.max((level - 1) / (MAX_LEVEL - 2), 0), 1);
+  return Math.max(1, Math.round(start + (end - start) * t));
+}
+
+/**
+ * Bonbons nécessaires pour monter `pokemon` au niveau maximal (0 si déjà au max). Un Bonbon
+ * donne 1/N du niveau en cours (N = `candiesForLevel`) ; le surplus passe au niveau suivant.
+ */
 export function candiesToMaxLevel(
   ctx: GameContext,
   pokemon: Pick<PokemonInstance, 'speciesId' | 'xp'>,
+  bonuses?: Pick<PlayerBonuses, 'regionXp'>,
 ): number {
   const species = ctx.species(pokemon.speciesId);
-  const { xpPerCandy } = ctx.balance.transfer;
-  if (!species || xpPerCandy <= 0) return 0;
-  const missing = xpForLevel(species.growthRate, MAX_LEVEL) - pokemon.xp;
-  return Math.max(0, Math.ceil(missing / xpPerCandy));
+  if (!species) return 0;
+  const growth = species.growthRate;
+  let needed = 0;
+  for (let level = levelForXp(growth, pokemon.xp); level < MAX_LEVEL; level++) {
+    const start = xpForLevel(growth, level);
+    const next = xpForLevel(growth, level + 1);
+    const done = Math.max(0, pokemon.xp - start) / (next - start);
+    needed += Math.max(0, 1 - done) * candiesForLevel(ctx, level);
+  }
+  if (needed <= 0) return 0;
+  return Math.max(
+    1,
+    Math.ceil(needed / pokemonXpMultiplier(ctx, bonuses, pokemon.speciesId) - CANDY_EPSILON),
+  );
 }
 
-/** XP et niveau après avoir donné `count` Bonbons (plafonnés au niveau maximal). */
+/**
+ * XP et niveau après avoir donné `count` Bonbons (plafonnés au niveau maximal). Chaque Bonbon
+ * donne 1/N du niveau en cours ; celui qui termine un niveau reporte son surplus sur le suivant,
+ * en proportion du nouveau niveau.
+ */
 export function applyCandies(
   ctx: GameContext,
   pokemon: Pick<PokemonInstance, 'speciesId' | 'xp' | 'level'>,
   count: number,
+  bonuses?: Pick<PlayerBonuses, 'regionXp'>,
 ): { xp: number; level: number } {
   const species = ctx.species(pokemon.speciesId);
   if (!species) return { xp: pokemon.xp, level: pokemon.level };
-  const cap = xpForLevel(species.growthRate, MAX_LEVEL);
-  const xp = Math.min(cap, pokemon.xp + count * ctx.balance.transfer.xpPerCandy);
-  return { xp, level: Math.max(pokemon.level, levelForXp(species.growthRate, xp)) };
+  const growth = species.growthRate;
+  let xp = pokemon.xp;
+  let level = levelForXp(growth, xp);
+  // Bonus d'XP de région : +4 % → chaque Bonbon vaut 1,04 Bonbon.
+  let budget = Math.max(0, count) * pokemonXpMultiplier(ctx, bonuses, pokemon.speciesId);
+  while (budget > CANDY_EPSILON && level < MAX_LEVEL) {
+    const start = xpForLevel(growth, level);
+    const next = xpForLevel(growth, level + 1);
+    const span = next - start;
+    const cost = candiesForLevel(ctx, level);
+    const toFinish = ((next - xp) / span) * cost;
+    if (budget + CANDY_EPSILON >= toFinish) {
+      budget -= toFinish;
+      xp = next;
+      level++;
+    } else {
+      xp = Math.min(next - 1, xp + Math.floor((budget * span) / cost + CANDY_EPSILON));
+      budget = 0;
+    }
+  }
+  return { xp, level: Math.max(pokemon.level, levelForXp(growth, xp)) };
 }

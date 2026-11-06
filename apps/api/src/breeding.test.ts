@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
 import { createDb, ensureSeedContent, pokemon, users } from '@poke/db';
-import { getNature } from '@poke/game-core';
+import { candiesForLevel, getNature } from '@poke/game-core';
 import type { PokemonInstance } from '@poke/game-core';
 import type {
   CandyDto,
@@ -10,6 +10,7 @@ import type {
   DaycareDto,
   DaycareResponse,
   HatchEggsResponse,
+  IncubateEggsResponse,
   InventoryEntryDto,
   PokedexEntryDto,
   PokemonDto,
@@ -135,20 +136,23 @@ describe('pension et œufs', () => {
 
   it('affiche une pension vide', async () => {
     const res = await call<DaycareResponse>('GET', '/api/daycare');
-    expect(res.body).toMatchObject({ slots: 1, maxEggs: 6, pensions: [], eggs: [] });
+    expect(res.body).toMatchObject({
+      slots: 1,
+      maxEggs: 6,
+      pensions: [],
+      eggs: [],
+      bagEggs: [],
+    });
   });
 
-  it('refuse un couple incompatible ou un objet qui n’est pas d’élevage', async () => {
+  it('refuse deux fois le même Pokémon ou un objet qui n’est pas d’élevage', async () => {
     const bad = await call('POST', '/api/daycare', {
       parentAId: ivysaur,
-      parentBId: magikarp,
+      parentBId: ivysaur,
       heldItemAId: null,
       heldItemBId: null,
     });
-    expect(bad).toMatchObject({
-      status: 400,
-      body: { error: 'INCOMPATIBLE_PARENTS', errors: [{ code: 'NO_COMMON_EGG_GROUP' }] },
-    });
+    expect(bad).toMatchObject({ status: 400, body: { error: 'SAME_POKEMON' } });
     const notBreeding = await call('POST', '/api/daycare', {
       parentAId: ditto,
       parentBId: ivysaur,
@@ -196,14 +200,16 @@ describe('pension et œufs', () => {
     expect(early).toMatchObject({ status: 409, body: { error: 'NO_EGG_READY' } });
 
     advance(26); // 45 min : 2 œufs, 5 min entamées sur le suivant
-    const res = await call<CollectEggsResponse>('POST', '/api/daycare/0/collect');
+    const res = await call<CollectEggsResponse>('POST', '/api/daycare/0/collect', {
+      to: 'incubator',
+    });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
-    expect(res.body.eggs).toHaveLength(2);
+    expect(res.body.incubated).toHaveLength(2);
     // Une place de la couveuse chacun.
-    expect(res.body.eggs.map((e) => e.slotIndex)).toEqual([0, 1]);
-    expect(res.body.waiting).toBe(0);
+    expect(res.body.incubated.map((e) => e.slotIndex)).toEqual([0, 1]);
+    expect(res.body.bagged).toBe(0);
     // Bulbizarre : 20 cycles × 2 min.
-    expect(Date.parse(res.body.eggs[0]!.hatchAt) - clock.getTime()).toBe(40 * 60_000);
+    expect(Date.parse(res.body.incubated[0]!.hatchAt) - clock.getTime()).toBe(40 * 60_000);
 
     const daycare = await call<DaycareResponse>('GET', '/api/daycare');
     expect(daycare.body.eggs).toHaveLength(2);
@@ -234,23 +240,83 @@ describe('pension et œufs', () => {
     expect(dex.body.find((d) => d.speciesId === 1)?.caught).toBe(true);
   });
 
-  it('limite la couveuse et arrête la ponte quand la pension est pleine', async () => {
-    // 5 + 40 + 600 min depuis le début du cycle : la pension s'est arrêtée à 6 œufs.
+  it('arrête la ponte à 10 œufs et range dans le sac ce que la couveuse ne prend pas', async () => {
+    // 5 + 40 + 600 min depuis le début du cycle : la pension s'est arrêtée à 10 œufs.
     advance(10 * 60);
-    const res = await call<CollectEggsResponse>('POST', '/api/daycare/0/collect');
-    expect(res.body.eggs.map((e) => e.slotIndex)).toEqual([0, 1, 2, 3, 4, 5]);
-    expect(res.body.waiting).toBe(0);
+    const before = await call<DaycareResponse>('GET', '/api/daycare');
+    expect(before.body.eggs).toEqual([]);
+    const res = await call<CollectEggsResponse>('POST', '/api/daycare/0/collect', {
+      to: 'incubator',
+    });
+    expect(res.body.incubated.map((e) => e.slotIndex)).toEqual([0, 1, 2, 3, 4, 5]);
+    expect(res.body.bagged).toBe(4);
     // La ponte reprend au ramassage, sans temps entamé.
     const daycare = await call<DaycareResponse>('GET', '/api/daycare');
     expect(Date.parse(daycare.body.pensions[0]!.startedAt)).toBe(clock.getTime());
+    expect(daycare.body.eggs).toHaveLength(6);
+    expect(daycare.body.bagEggs).toHaveLength(4);
+    expect(daycare.body.bagEggs[0]).toMatchObject({ speciesId: 1, formId: null });
+
+    // Ramasser : tout dans le sac, même s'il restait de la place.
     advance(20);
-    const full = await call('POST', '/api/daycare/0/collect');
-    expect(full.body).toMatchObject({ error: 'INCUBATOR_FULL' });
+    const picked = await call<CollectEggsResponse>('POST', '/api/daycare/0/collect', {
+      to: 'bag',
+    });
+    expect(picked.body).toEqual({ incubated: [], bagged: 1 });
+    // Couver avec une couveuse pleine : le surplus va dans le sac.
+    advance(20);
+    const overflow = await call<CollectEggsResponse>('POST', '/api/daycare/0/collect', {
+      to: 'incubator',
+    });
+    expect(overflow.body).toEqual({ incubated: [], bagged: 1 });
+    expect((await call('POST', '/api/daycare/0/collect')).body).toMatchObject({
+      error: 'NO_EGG_READY',
+    });
   });
 
-  it('retire le couple et rend les objets tenus', async () => {
+  it('couve les œufs du sac quand une place se libère', async () => {
+    const { bagEggs } = (await call<DaycareResponse>('GET', '/api/daycare')).body;
+    expect(bagEggs).toHaveLength(6);
+    const ids = bagEggs.map((e) => e.id);
+    const full = await call('POST', '/api/eggs/incubate', { ids: ids.slice(0, 2) });
+    expect(full).toMatchObject({ status: 409, body: { error: 'INCUBATOR_FULL' } });
+
+    advance(40);
+    expect((await call<HatchEggsResponse>('POST', '/api/eggs/hatch')).body.hatched).toHaveLength(6);
+    const res = await call<IncubateEggsResponse>('POST', '/api/eggs/incubate', {
+      ids: ids.slice(0, 2),
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(res.body.incubated.map((e) => [e.id, e.slotIndex])).toEqual([
+      [ids[0], 0],
+      [ids[1], 1],
+    ]);
+    expect(Date.parse(res.body.incubated[0]!.incubatedAt)).toBe(clock.getTime());
+    expect(Date.parse(res.body.incubated[0]!.hatchAt) - clock.getTime()).toBe(40 * 60_000);
+    // Déjà couvés : plus dans le sac.
+    const again = await call('POST', '/api/eggs/incubate', { ids: ids.slice(0, 1) });
+    expect(again).toMatchObject({ status: 404, body: { error: 'EGG_NOT_FOUND' } });
+    const daycare = await call<DaycareResponse>('GET', '/api/daycare');
+    expect(daycare.body.eggs).toHaveLength(2);
+    expect(daycare.body.bagEggs.map((e) => e.id)).toEqual(ids.slice(2));
+  });
+
+  it('retire le couple, rend les objets tenus et verse l’XP du séjour', async () => {
+    const [dittoBefore] = await handle.db.select().from(pokemon).where(eq(pokemon.id, ditto));
     const res = await call<CollectEggsResponse>('DELETE', '/api/daycare/0');
     expect(res.status).toBe(200);
+    // 40 min depuis le dernier ramassage : 2 œufs, couvés (4 places libres).
+    expect(res.body.incubated).toHaveLength(2);
+    expect(res.body.bagged).toBe(0);
+    // 765 min en pension.
+    const xp = Math.floor((765 / 60) * seedContent.balance.breeding.parentXpPerHour);
+    expect(res.body.parents).toHaveLength(2);
+    const gain = res.body.parents!.find((p) => p.pokemonId === ditto)!;
+    expect(gain).toMatchObject({ xpGained: xp, levelBefore: 20 });
+    expect(gain.levelAfter).toBeGreaterThan(20);
+    const [dittoAfter] = await handle.db.select().from(pokemon).where(eq(pokemon.id, ditto));
+    expect(dittoAfter).toMatchObject({ xp: dittoBefore!.xp + xp, level: gain.levelAfter });
+
     const inv = await call<InventoryEntryDto[]>('GET', '/api/inventory');
     expect(inv.body).toEqual(
       expect.arrayContaining([
@@ -262,6 +328,27 @@ describe('pension et œufs', () => {
     expect(daycare.body.pensions).toEqual([]);
     const pc = await call<PokemonDto[]>('GET', '/api/pokemon');
     expect(pc.body.find((p) => p.id === ditto)).toMatchObject({ busy: false, activity: null });
+  });
+
+  it('accepte un couple qui ne peut pas s’accoupler : pas d’œuf, mais de l’XP', async () => {
+    const res = await call<DaycareDto>('POST', '/api/daycare', {
+      parentAId: ivysaur,
+      parentBId: magikarp,
+      heldItemAId: null,
+      heldItemBId: null,
+    });
+    expect(res.status, JSON.stringify(res.body)).toBe(201);
+    advance(3 * 60);
+    const daycare = await call<DaycareResponse>('GET', '/api/daycare');
+    expect(daycare.body.pensions[0]).toMatchObject({ breeds: false, eggSpeciesId: null });
+    const collect = await call('POST', '/api/daycare/0/collect', { to: 'bag' });
+    expect(collect).toMatchObject({ status: 409, body: { error: 'NO_EGG_READY' } });
+
+    const out = await call<CollectEggsResponse>('DELETE', '/api/daycare/0');
+    expect(out.status).toBe(200);
+    expect(out.body).toMatchObject({ incubated: [], bagged: 0 });
+    const xp = 3 * seedContent.balance.breeding.parentXpPerHour;
+    expect(out.body.parents!.map((p) => p.xpGained)).toEqual([xp, xp]);
   });
 });
 
@@ -287,12 +374,14 @@ describe('transfert et Bonbons de lignée', () => {
       { lineageId: 1, quantity: 14 },
     ]);
 
+    // Les Bonbons du niveau en cours (5 au niveau 1, 6 au niveau 5…) le font passer.
+    const ctx = await new ContentCache(handle.db).get();
+    const perLevel = candiesForLevel(ctx, starter.level);
     const fed = await call<PokemonDto>('POST', `/api/pokemon/${starter.id}/candies`, {
-      count: 2,
+      count: perLevel,
     });
     expect(fed.status, JSON.stringify(fed.body)).toBe(200);
-    expect(fed.body.xp).toBe(starter.xp + 1000);
-    expect(fed.body.level).toBeGreaterThan(starter.level);
+    expect(fed.body.level).toBe(starter.level + 1);
     const tooMany = await call('POST', `/api/pokemon/${starter.id}/candies`, { count: 13 });
     expect(tooMany.body).toMatchObject({ error: 'NOT_ENOUGH_CANDIES' });
 

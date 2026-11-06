@@ -100,7 +100,9 @@ export function WikiTutorialPage({ ctx }: { ctx: GameContext }) {
             <Go href="#quests">Quêtes</Go> : des objectifs à suivre, jusqu’aux Pokémon légendaires.
           </li>
           <li>
-            <Go href="#daycare">Pension</Go> : deux Pokémon compatibles y pondent des œufs.
+            <Go href="#daycare">Pension</Go> : deux Pokémon compatibles y pondent des œufs, et
+            gagnent de l’XP pendant leur séjour (deux Pokémon incompatibles peuvent y venir juste
+            pour l’XP).
           </li>
           <li>
             <Go href="#dungeons">Donjons</Go> : des combats en temps réel contre un boss, pour les

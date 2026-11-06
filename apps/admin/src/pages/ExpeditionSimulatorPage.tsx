@@ -370,6 +370,7 @@ function SimulatorDialog({
           caught={caught}
           team={picker.team}
           members={picker.members}
+          onAutoTeam={() => picker.autoSelect(ctx.balance.expeditions.maxTeamSize)}
           renderTeam={(power, env) => (
             <>
               <TeamPicker ctx={ctx} zone={zone} picker={picker} power={power} abilityEnv={env} />

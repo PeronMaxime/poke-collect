@@ -1,7 +1,8 @@
 import { species } from '@poke/data';
 import { describe, expect, it } from 'vitest';
 import { contentIssues, findUsages, gameContentSchema } from './integrity';
-import { defaultLegendaryExpedition } from './schemas';
+import { legendaryBattle } from './schemas';
+import { QUEST_ZONE_STEPS } from './seed-quests';
 import { seedContent } from './seed';
 import { formIdOf } from './seed-expansion';
 
@@ -249,7 +250,7 @@ describe('cohérence du contenu', () => {
       'Condition de déblocage de « Lot de coffre Hyper Ball (bronze-ultra-ball-x20) »',
       'Condition de déblocage de « Lot de coffre Hyper Ball (silver-ultra-ball-x20) »',
     ]);
-    expect(findUsages(seedContent, 'trainer', 'koga')).toEqual([
+    expect(findUsages(seedContent, 'trainer', 'quete-electhor-volt')).toEqual([
       'Condition de déblocage de « Quête L’oiseau de foudre, étape 3 »',
     ]);
     // Conditions combinées : chaque brique compte.
@@ -257,6 +258,7 @@ describe('cohérence du contenu', () => {
       'Condition de déblocage de « Dojo Karaté »',
     ]);
     expect(findUsages(seedContent, 'quest', 'sulfura')).toEqual([
+      'Dresseur de quête « Pyros »',
       'Condition de « Mont Braise »',
       'Condition de « Quête Le Pokémon génétique, étape 2 »',
     ]);
@@ -321,6 +323,33 @@ describe('cohérence du contenu', () => {
     expect(gameContentSchema.safeParse(empty).success).toBe(true);
   });
 
+  it('réserve les étapes de quête aux dresseurs de la quête', () => {
+    // Aucun dresseur ordinaire (Champion…) dans les étapes du seed.
+    for (const q of seedContent.quests) {
+      for (const s of q.steps) {
+        if (s.condition.type !== 'trainerDefeated') continue;
+        const { trainerId } = s.condition;
+        expect(seedContent.trainers.find((t) => t.id === trainerId)?.questId).toBe(q.id);
+      }
+    }
+    const bad = structuredClone(seedContent);
+    const electhor = bad.quests.find((q) => q.id === 'electhor')!;
+    electhor.steps[2]!.condition = { type: 'trainerDefeated', trainerId: 'major-bob' };
+    const volt = bad.trainers.find((t) => t.id === 'quete-electhor-volt')!;
+    volt.repeatable = true;
+    volt.badge = { name: 'Badge Volt', image: null };
+    const issues = contentIssues(bad).map((i) => `${i.severity}:${i.entityId}: ${i.message}`);
+    expect(issues).toEqual(
+      expect.arrayContaining([
+        'error:electhor: Étape 3 : « Major Bob » n’est pas un dresseur de cette quête',
+        'warning:quete-electhor-volt: Aucune étape de la quête « L’oiseau de foudre » ne demande de le battre : il n’apparaîtra jamais',
+        'error:quete-electhor-volt: Un dresseur de quête ne se bat qu’une fois',
+        'error:quete-electhor-volt: Un dresseur de quête ne donne pas de badge',
+      ]),
+    );
+    expect(findUsages(seedContent, 'quest', 'electhor')).toContain('Dresseur de quête « Volt »');
+  });
+
   it('vérifie les collections', () => {
     const bad = structuredClone(seedContent);
     bad.collections[2]!.rewards.items.push({ itemId: 'objet-inconnu', quantity: 1 });
@@ -361,7 +390,8 @@ describe('cohérence du contenu', () => {
 
   it('vérifie les quêtes et leurs références', () => {
     const bad = structuredClone(seedContent);
-    const [artikodin, electhor] = bad.quests;
+    const artikodin = bad.quests.find((q) => q.id === 'artikodin');
+    const electhor = bad.quests.find((q) => q.id === 'electhor');
     artikodin!.unlock = { type: 'questCompleted', questId: 'artikodin' };
     artikodin!.steps[0]!.condition = {
       type: 'catchPokemon',
@@ -377,15 +407,31 @@ describe('cohérence du contenu', () => {
       memberType: 'glace',
       memberCount: 2,
       minMemberPower: 0,
+      speciesIds: [9999],
+      weathers: [],
+      timeOfDay: null,
+    };
+    artikodin!.steps[1]!.condition = {
+      type: 'questItem',
+      itemId: 'potion-magique',
+      count: 1,
+      zoneId: 'iles-ecume',
+      chance: 5,
+      memberType: null,
+      memberCount: 0,
+      minMemberPower: 0,
+      speciesIds: [],
+      weathers: [],
+      timeOfDay: null,
     };
     artikodin!.rewards.pokemon.push({
       speciesId: 9999,
       level: 50,
       perfectIvs: 3,
-      expedition: { durationMinutes: 240, minPower: 0, requiredTypes: [], affinityTypes: ['feu'] },
+      battle: legendaryBattle({ requiredTypes: [{ type: 'feu', count: 1 }] }),
       roaming: null,
     });
-    electhor!.unlock = { type: 'questStepsDone', questId: 'sulfura', count: 4 };
+    electhor!.unlock = { type: 'questStepsDone', questId: 'sulfura', count: 6 };
     bad.items.find((i) => i.id === 'adamant-mint')!.effects = [{ type: 'mint', nature: 'grognon' }];
     const messages = contentIssues(bad)
       .filter((i) => i.severity === 'error')
@@ -397,47 +443,66 @@ describe('cohérence du contenu', () => {
         'artikodin: Étape 1 : Pikachu n’est pas du type demandé',
         'artikodin: Étape 3 : zone « atlantide » inconnue',
         'artikodin: Étape 3 : type « glace » inconnu',
+        'artikodin: Étape 3 : espèce 9999 inconnue',
+        'artikodin: Étape 2 : objet « potion-magique » inconnu',
         'artikodin: Récompense : espèce 9999 inconnue',
         'artikodin: Type « feu » inconnu',
-        'electhor: Condition de déblocage : 4 étape(s) requise(s), la quête « L’oiseau de feu » en a 3',
+        'electhor: Condition de déblocage : 6 étape(s) requise(s), la quête « L’oiseau de feu » en a 5',
         'adamant-mint: Aromate : nature « grognon » inconnue',
       ]),
     );
     expect(findUsages(seedContent, 'quest', 'mewtwo')).toEqual([
+      'Dresseur de quête « Kessler »',
       'Condition de « Grotte Azurée »',
       'Condition de « Le Pokémon fabuleux »',
-      'Condition de « L’oiseau au regard glacial »',
       'Condition de « L’oiseau aux pas de feu »',
       'Condition de « L’oiseau aux flammes sombres »',
     ]);
     expect(findUsages(seedContent, 'zone', 'iles-ecume')).toEqual([
+      'Dresseur « Neige »',
       'Quête L’oiseau des glaces, étape 2',
-      'Quête L’oiseau des glaces, étape 3',
+      'Quête L’oiseau des glaces, étape 4',
+      'Quête L’oiseau des glaces, étape 5',
     ]);
     expect(findUsages(seedContent, 'item', 'gold-bottle-cap')).toEqual([
       'Article de boutique « gold-bottle-cap »',
       'Quête « Le Pokémon génétique »',
+      'Quête « Le Pokémon fabuleux »',
       'Quête « Le gardien des mers »',
       'Quête « L’oiseau arc-en-ciel »',
+      'Quête « Le voyageur du temps »',
       'Quête « Le maître des océans »',
       'Quête « Le maître des continents »',
       'Quête « Le gardien du ciel »',
-      'Quête « L’étoile des vœux »',
       'Lot de coffre « gold-gold-bottle-cap »',
     ]);
   });
 });
 
-describe('expéditions légendaires', () => {
-  it('ont par défaut les faiblesses du Pokémon en affinité', () => {
-    const artikodin = seedContent.quests.find((q) => q.id === 'artikodin')!;
-    // Glace / Vol : faible au Feu, à l'Acier, à la Roche (×4) et à l'Électrik.
-    expect([...artikodin.rewards.pokemon[0]!.expedition.affinityTypes].sort()).toEqual(
-      ['electric', 'fire', 'rock', 'steel'].sort(),
+describe('quêtes légendaires', () => {
+  it('ouvrent leur zone à l’étape prévue', () => {
+    for (const [questId, { zoneId, count }] of Object.entries(QUEST_ZONE_STEPS)) {
+      const zone = seedContent.zones.find((z) => z.id === zoneId)!;
+      expect(zone.unlock).toEqual({ type: 'questStepsDone', questId, count });
+      const quest = seedContent.quests.find((q) => q.id === questId)!;
+      expect(count).toBeLessThan(quest.steps.length);
+    }
+  });
+
+  it('racontent une histoire : chaque étape a son dénouement', () => {
+    for (const quest of seedContent.quests) {
+      for (const step of quest.steps) expect(step.outcome.length).toBeGreaterThan(20);
+    }
+  });
+
+  it('ont des objets de quête invendables, trouvés pendant une seule étape', () => {
+    const used = seedContent.quests.flatMap((q) =>
+      q.steps.flatMap((s) => (s.condition.type === 'questItem' ? [s.condition.itemId] : [])),
     );
-    expect(defaultLegendaryExpedition(150)).toMatchObject({
-      durationMinutes: 240,
-      affinityTypes: ['bug', 'ghost', 'dark'],
-    });
+    expect(new Set(used).size).toBe(used.length);
+    for (const item of seedContent.items.filter((i) => i.category === 'quest')) {
+      expect(item.sellPrice).toBeNull();
+      expect(used).toContain(item.id);
+    }
   });
 });

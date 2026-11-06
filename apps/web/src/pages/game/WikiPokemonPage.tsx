@@ -685,7 +685,7 @@ function Locations({ ctx, entry }: { ctx: GameContext; entry: WikiEntry }) {
         Récompense de la quête <strong>{quest.name}</strong> (N.{level}), puis{' '}
         {roaming
           ? 'capture en expédition : c’est un fuyard, qui change de zone à chaque heure.'
-          : 'capture lors d’une expédition légendaire.'}
+          : 'combat légendaire depuis les Quêtes : une victoire permet de lancer une Ball.'}
       </p>,
     );
   }

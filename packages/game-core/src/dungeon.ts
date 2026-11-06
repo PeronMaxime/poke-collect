@@ -202,11 +202,23 @@ export interface DungeonFighter {
   types: string[];
   stats: Stats;
   maxHp: number;
+  /**
+   * PV sur lesquels se calculent les pertes et soins en part de ses PV max (météo, brûlure,
+   * poison, Peau Dure, Boom Final, absorption) : ceux d'avant le renfort d'un boss, pour que ses PV
+   * multipliés ne multiplient pas aussi ces pertes. Absent = PV max (combats antérieurs compris).
+   */
+  percentHp?: number;
   /** Type de l'attaque ; null = adversaire, qui choisit son meilleur type contre le Pokémon en face. */
   attackType: string | null;
   category: MoveCategory;
   /** Talent en vigueur (nom PokéAPI) ; absent = sans talent (tentatives antérieures). */
   ability?: string | null;
+  /**
+   * Déchaînement (légendaire) : la première fois que ses PV passent sous `hpFraction` de ses PV
+   * max, ses statistiques hors PV gagnent `percent` % jusqu'à la fin du combat. Ce n'est pas un
+   * talent : rien ne le neutralise. Absent = jamais.
+   */
+  enrage?: { hpFraction: number; percent: number };
   /** Effets de talent en donjon ; absent = aucun. */
   traits?: DungeonTraits;
   /** Statistiques sans ses propres talents (talent neutralisé) ; absent = `stats`. */
@@ -235,6 +247,12 @@ export type DungeonCombatSettings = Pick<
   Partial<Pick<CombatSettings, 'critChance' | 'critMultiplier'>> & {
     /** Délai avant qu'un Pokémon rappelé puisse revenir ; absent (tentatives antérieures) = aucun. */
     recallCooldownMs?: number;
+    /**
+     * Pertes de la météo (sable, grêle), de la brûlure et du poison : toutes les `chipTickMs` ms,
+     * pour les deux Pokémon en face, quelle que soit leur vitesse. Absent (tentatives
+     * antérieures) = à la fin de chacune de ses attaques.
+     */
+    chipTickMs?: number;
   };
 
 export interface DungeonSetup {
@@ -326,6 +344,7 @@ function fighter(
     types: [...species.types],
     stats,
     maxHp: Math.max(1, Math.round(stats.hp * hpMultiplier)),
+    ...(hpMultiplier !== 1 && { percentHp: Math.max(1, Math.round(stats.hp)) }),
     attackType: move.type,
     category: move.category,
   };
@@ -565,13 +584,15 @@ function withAbilities(
     const ability = effectiveAbility(ctx, env.team[index]!) || null;
     if (!changed) return { ...f, ability };
     const stats = { ...f.stats };
-    let { maxHp } = f;
+    let { maxHp, percentHp } = f;
     let statsChanged = false;
     const abilityStatPercents: Partial<Record<DungeonStat, number>> = {};
     for (const [stat, percent] of statPercent) {
       const mult = Math.max(0, 1 + percent / 100);
-      if (stat === 'hp') maxHp = Math.max(1, Math.round(maxHp * mult));
-      else {
+      if (stat === 'hp') {
+        maxHp = Math.max(1, Math.round(maxHp * mult));
+        if (percentHp !== undefined) percentHp = Math.max(1, Math.round(percentHp * mult));
+      } else {
         stats[stat] = Math.max(1, Math.round(stats[stat] * mult));
         abilityStatPercents[stat] = (mult - 1) * 100;
         statsChanged = true;
@@ -583,6 +604,7 @@ function withAbilities(
       ...f,
       stats,
       maxHp,
+      ...(percentHp !== undefined && { percentHp }),
       ability,
       traits,
       ...(statsChanged && { baseStats: f.stats, abilityStatPercents }),
@@ -762,6 +784,7 @@ export function buildCombatSetup(
       critChance: rest.critChance,
       critMultiplier: rest.critMultiplier,
       recallCooldownMs: rest.recallCooldownSeconds * 1000,
+      chipTickMs: rest.chipTickSeconds * 1000,
       attacks,
     },
     timeLimitMs: arena.timeLimitMs,
@@ -1022,6 +1045,8 @@ export type DungeonEvent =
   | { kind: 'item'; atMs: number; member: number; itemId: string; amount: number }
   /** Entrée en combat de l'adversaire suivant. */
   | { kind: 'enemy'; atMs: number; index: number }
+  /** L'adversaire se déchaîne (voir `DungeonFighter.enrage`) : statistiques +`percent` %. */
+  | { kind: 'enrage'; atMs: number; index: number; percent: number }
   /**
    * Talent qui se déclenche (`side`, `index` : son Pokémon). `amount` : PV soignés (immunité,
    * soin au rappel), PV perdus par l'attaquant (contact, explosion) ou % (Intimidation, Impudence).
@@ -1117,6 +1142,10 @@ const STATUS_TYPE_IMMUNITY: Record<Status, readonly string[]> = {
   sleep: [],
   freeze: ['ice'],
 };
+/** Perte ou soin d'une part de ses PV max (sur ses PV d'avant renfort, pour un boss). */
+const hpShare = (f: DungeonFighter, fraction: number) =>
+  Math.round(fraction * (f.percentHp ?? f.maxHp));
+
 /** Types insensibles aux dégâts de la météo. */
 const WEATHER_TYPE_IMMUNITY: Partial<Record<Weather, readonly string[]>> = {
   sand: ['rock', 'ground', 'steel'],
@@ -1194,6 +1223,8 @@ export function simulateDungeon(
   let endedAtMs: number | null = null;
   let t = 0;
   let ci = 0;
+  const chipTickMs = settings.chipTickMs ?? 0;
+  let nextTick = chipTickMs > 0 ? chipTickMs : Infinity;
 
   type Side = 'player' | 'enemy';
   const current = (side: Side) => (side === 'player' ? team[active]! : enemies[enemyIndex]!);
@@ -1207,6 +1238,18 @@ export function simulateDungeon(
   const other = (side: Side): Side => (side === 'player' ? 'enemy' : 'player');
   const upOf = (side: Side) => (side === 'player' ? teamUp : enemyUp);
   const suppressAnnounced = new Set<string>();
+  /** Adversaires déjà déchaînés. */
+  const enraged = new Set<number>();
+  /** Déchaînement de l'adversaire en face, dès que ses PV passent sous le seuil. */
+  const checkEnrage = () => {
+    const f = enemies[enemyIndex];
+    if (!f?.enrage || enraged.has(enemyIndex) || enemyHp <= 0) return;
+    if (enemyHp > f.enrage.hpFraction * f.maxHp) return;
+    enraged.add(enemyIndex);
+    const factor = 1 + f.enrage.percent / 100;
+    for (const stat of DUNGEON_STATS) enemyMods.stats[stat] *= factor;
+    events.push({ kind: 'enrage', atMs: t, index: enemyIndex, percent: f.enrage.percent });
+  };
   /** Talent neutralisé : le Pokémon en face a le Gaz Inhibiteur. */
   const neutralized = (side: Side) =>
     !!(side === 'player' ? enemies[enemyIndex] : team[active])?.traits?.suppressAbility;
@@ -1243,6 +1286,27 @@ export function simulateDungeon(
     change: 'inflicted' | 'cured' | 'skipped' | 'damage',
     amount = 0,
   ) => events.push({ kind: 'status', atMs: t, side, index: indexOf(side), status, change, amount });
+  /** Pertes de la brûlure, du poison et de la météo du Pokémon en face (événements compris). */
+  const chipLoss = (side: Side): number => {
+    const f = fighterOf(side);
+    const m = modsOf(side);
+    let total = 0;
+    const statusLoss = m.status ? (STATUS_DAMAGE[m.status] ?? 0) : 0;
+    if (statusLoss > 0) {
+      const lost = Math.max(1, hpShare(f, statusLoss));
+      total += lost;
+      statusEvent(side, m.status, 'damage', lost);
+    }
+    const weatherImmune =
+      !!f.traits?.weatherImmunity ||
+      f.types.some((ty) => (weather && WEATHER_TYPE_IMMUNITY[weather]?.includes(ty)) ?? false);
+    if ((weather === 'sand' || weather === 'hail') && !weatherImmune) {
+      const lost = Math.max(1, hpShare(f, WEATHER_DAMAGE));
+      total += lost;
+      statusEvent(side, null, 'damage', lost);
+    }
+    return total;
+  };
   const inflict = (side: Side, status: Status) => {
     const m = modsOf(side);
     if (!canGetStatus(fighterOf(side), m, status, weather, upOf(side))) return;
@@ -1340,7 +1404,7 @@ export function simulateDungeon(
 
   while (outcome === null) {
     const nextCommand = ci < queue.length ? queue[ci]!.atMs : Infinity;
-    const next = Math.min(nextCommand, nextPlayer, nextEnemy);
+    const next = Math.min(nextCommand, nextPlayer, nextEnemy, nextTick);
     if (next > stopAt || next > untilMs) {
       if (stopAt <= untilMs) {
         outcome = fledAtMs !== null && fledAtMs <= setup.timeLimitMs ? 'fled' : 'timeout';
@@ -1380,7 +1444,7 @@ export function simulateDungeon(
       ) {
         // Talents du Pokémon qui sort : Régé-Force (soin), Médic Nature (statut guéri).
         const leaving = fighterOf('player');
-        const regen = Math.round((leaving.traits?.regenerator ?? 0) * leaving.maxHp);
+        const regen = hpShare(leaving, leaving.traits?.regenerator ?? 0);
         if (regen > 0 && hp[active]! < leaving.maxHp) {
           const healed = Math.min(leaving.maxHp, hp[active]! + regen) - hp[active]!;
           hp[active] = hp[active]! + healed;
@@ -1399,6 +1463,19 @@ export function simulateDungeon(
         events.push({ kind: 'switch', atMs: t, member, auto: false });
         enter('player');
       }
+      continue;
+    }
+
+    // Pertes à intervalle fixe (météo, brûlure, poison) : l'adversaire tombe d'abord.
+    if (nextTick === t && nextTick < Math.min(nextPlayer, nextEnemy)) {
+      nextTick += chipTickMs;
+      for (const holder of ['enemy', 'player'] as const) {
+        const lost = chipLoss(holder);
+        if (lost > 0) setHp(holder, Math.max(0, hpOf(holder) - lost));
+      }
+      checkEnrage();
+      if (enemyHp === 0 && down('enemy')) break;
+      if (hp[active] === 0 && down('player')) break;
       continue;
     }
 
@@ -1429,7 +1506,7 @@ export function simulateDungeon(
     let effectiveness = 0;
     let critical = false;
     if (immunity) {
-      const healed = Math.min(defender.maxHp, before + Math.round(immunity.heal * defender.maxHp));
+      const healed = Math.min(defender.maxHp, before + hpShare(defender, immunity.heal));
       setHp(target, healed);
       trigger(target, 'immunity', healed - before);
     } else {
@@ -1536,36 +1613,22 @@ export function simulateDungeon(
         if (s.trigger === 'contact' && rng.chance(s.chance)) inflict(side, s.status);
       }
       if (defender.traits?.contactDamage) {
-        const lost = Math.max(1, Math.round(defender.traits.contactDamage * attacker.maxHp));
+        const lost = Math.max(1, hpShare(attacker, defender.traits.contactDamage));
         recoil += lost;
         trigger(target, 'contactDamage', lost);
       }
     }
     if (physical && ko && defender.traits?.aftermath) {
-      const lost = Math.max(1, Math.round(defender.traits.aftermath * attacker.maxHp));
+      const lost = Math.max(1, hpShare(attacker, defender.traits.aftermath));
       recoil += lost;
       trigger(target, 'aftermath', lost);
     }
-    // Fin de son attaque : brûlure, poison et météo.
-    const statusLoss = attackerMods.status ? (STATUS_DAMAGE[attackerMods.status] ?? 0) : 0;
-    if (statusLoss > 0) {
-      const lost = Math.max(1, Math.round(statusLoss * attacker.maxHp));
-      recoil += lost;
-      statusEvent(side, attackerMods.status, 'damage', lost);
-    }
-    const weatherImmune =
-      !!attacker.traits?.weatherImmunity ||
-      attacker.types.some(
-        (ty) => (weather && WEATHER_TYPE_IMMUNITY[weather]?.includes(ty)) ?? false,
-      );
-    if ((weather === 'sand' || weather === 'hail') && !weatherImmune) {
-      const lost = Math.max(1, Math.round(WEATHER_DAMAGE * attacker.maxHp));
-      recoil += lost;
-      statusEvent(side, null, 'damage', lost);
-    }
+    // Fin de son attaque : brûlure, poison et météo (sauf pertes à intervalle fixe).
+    if (!chipTickMs) recoil += chipLoss(side);
     if (recoil > 0) setHp(side, Math.max(0, hpOf(side) - recoil));
     const attackerKo = recoil > 0 && hpOf(side) === 0;
 
+    checkEnrage();
     // Le défenseur tombe d'abord (un boss vaincu est une victoire), puis l'attaquant.
     if (ko && down(target)) break;
     if (attackerKo && down(side)) break;
@@ -1826,7 +1889,7 @@ export function resolveDungeonRun(ctx: GameContext, input: DungeonRunInput): Dun
     endedAtMs: state.endedAtMs ?? setup.timeLimitMs,
     defeated: state.defeated,
     xpPerMember,
-    team: applyTeamXp(ctx, input.team, xpPerMember, happiness),
+    team: applyTeamXp(ctx, input.team, xpPerMember, happiness, bonuses),
     knockedOut: input.team.filter((_, i) => state.hp[i] === 0).map((m) => m.id),
     money: win ? Math.floor(dungeon.money * bonuses.money) : 0,
     loot: [...loot].map(([itemId, quantity]) => ({ itemId, quantity })),

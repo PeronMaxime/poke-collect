@@ -532,7 +532,7 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
           </Field>
           <Field
             label="Places des couveuses au départ"
-            hint="6 par couveuse, + paliers de Progression → Bâtiments. Aussi les œufs en attente dans une pension au maximum."
+            hint="6 par couveuse, + paliers de Progression → Bâtiments."
             error={err('breeding.maxEggs')}
           >
             <NumberInput
@@ -541,6 +541,33 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
               max={30}
               unit="œufs"
               onChange={set('breeding')('maxEggs')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Œufs en attente par pension"
+            hint="Une pension pleine arrête de pondre jusqu’au prochain ramassage."
+            error={err('breeding.pensionMaxEggs')}
+          >
+            <NumberInput
+              value={b.breeding.pensionMaxEggs}
+              min={1}
+              max={50}
+              unit="œufs"
+              onChange={set('breeding')('pensionMaxEggs')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="XP des parents en pension"
+            hint="Gagnée par chaque parent au fil du séjour, versée au retrait (plafonnée au niveau 100)."
+            error={err('breeding.parentXpPerHour')}
+          >
+            <NumberInput
+              value={b.breeding.parentXpPerHour}
+              min={0}
+              unit="XP / h"
+              onChange={set('breeding')('parentXpPerHour')}
               disabled={disabled}
             />
           </Field>
@@ -652,7 +679,7 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
       )}
 
       <Section title="Transfert et Bonbons de lignée">
-        <div className="grid gap-4 sm:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Bonbons par transfert" error={err('transfer.candiesPerPokemon')}>
             <NumberInput
               value={b.transfer.candiesPerPokemon}
@@ -674,15 +701,26 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
             />
           </Field>
           <Field
-            label="XP par Bonbon"
-            hint="Donné à un Pokémon de la même lignée."
-            error={err('transfer.xpPerCandy')}
+            label="Bonbons par niveau (niveau 1)"
+            hint="Un Bonbon donne 1/N du niveau en cours ; le surplus passe au niveau suivant."
+            error={err('transfer.candiesPerLevelStart')}
           >
             <NumberInput
-              value={b.transfer.xpPerCandy}
-              min={0}
-              unit="XP"
-              onChange={set('transfer')('xpPerCandy')}
+              value={b.transfer.candiesPerLevelStart}
+              min={1}
+              onChange={set('transfer')('candiesPerLevelStart')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Bonbons par niveau (niveau 99)"
+            hint="Le coût monte en ligne droite entre le niveau 1 et le niveau 99."
+            error={err('transfer.candiesPerLevelEnd')}
+          >
+            <NumberInput
+              value={b.transfer.candiesPerLevelEnd}
+              min={1}
+              onChange={set('transfer')('candiesPerLevelEnd')}
               disabled={disabled}
             />
           </Field>
@@ -838,6 +876,57 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
               min={-255}
               max={255}
               onChange={bat('happinessOnLoss')}
+              disabled={disabled}
+            />
+          </Field>
+        </div>
+      </Section>
+
+      <Section title="Légendaires">
+        <p className="text-xs text-slate-500">
+          Combats légendaires lancés depuis les Quêtes (renforcement et chance de capture : sur
+          chaque Pokémon de la récompense). Les fuyards, eux, se capturent en expédition.
+        </p>
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field
+            label="Délai avant de retenter"
+            hint="Après une défaite, une fuite ou une Ball ratée."
+            error={err('legendary.retryCooldownMinutes')}
+          >
+            <NumberInput
+              value={b.legendary.retryCooldownMinutes}
+              min={0}
+              unit="min"
+              onChange={set('legendary')('retryCooldownMinutes')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Multiplicateur d’XP"
+            hint="XP du légendaire vaincu, pour chaque membre."
+            error={err('legendary.xpMultiplier')}
+          >
+            <NumberInput
+              value={b.legendary.xpMultiplier}
+              min={0}
+              step={0.1}
+              unit="×"
+              onChange={set('legendary')('xpMultiplier')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Capture des fuyards"
+            hint="Multiplie la chance de capture habituelle d’un fuyard."
+            error={err('legendary.roamerCaptureMultiplier')}
+          >
+            <NumberInput
+              value={b.legendary.roamerCaptureMultiplier}
+              min={1}
+              max={100}
+              step={0.5}
+              unit="×"
+              onChange={set('legendary')('roamerCaptureMultiplier')}
               disabled={disabled}
             />
           </Field>
@@ -1286,6 +1375,21 @@ function CombatSettingsSections({
               step={0.5}
               unit="s"
               onChange={set('recallCooldownSeconds')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
+            label="Intervalle des pertes de météo et de statut"
+            hint="Sable, grêle, brûlure et poison retirent leur part de PV aux deux Pokémon en face à cet intervalle, quelle que soit leur vitesse. Les combats déjà lancés gardent l’ancien calcul (après chaque attaque)."
+            error={err('chipTickSeconds')}
+          >
+            <NumberInput
+              value={s.chipTickSeconds}
+              min={1}
+              max={30}
+              step={0.5}
+              unit="s"
+              onChange={set('chipTickSeconds')}
               disabled={disabled}
             />
           </Field>

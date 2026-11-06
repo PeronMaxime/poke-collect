@@ -1,12 +1,34 @@
 import { useState } from 'react';
 import { expeditionCompletionSchema } from '@poke/content';
-import type { ExpeditionCompletion, ExpeditionCompletionScope } from '@poke/content';
+import type {
+  ExpeditionCompletion,
+  ExpeditionCompletionScope,
+  RegionBonus,
+  RegionBonusType,
+} from '@poke/content';
 import { completableZones, completionTargets } from '@poke/game-core';
 import { VersionBanner } from '../../components/EntityPage';
-import { Field, SelectInput, TextInput, Toggle, validate } from '../../components/forms/fields';
+import {
+  Field,
+  NumberInput,
+  SelectInput,
+  TextInput,
+  Toggle,
+  validate,
+} from '../../components/forms/fields';
+import type { FieldErrors } from '../../components/forms/fields';
 import { RewardEditor, emptyReward, rewardSummary } from '../../components/forms/RewardEditor';
 import type { WorkingVersion } from '../../lib/content';
 import { errorMessage, useSaveBalance, useWorkingVersion } from '../../lib/content';
+
+const REGION_BONUS_LABELS: Record<RegionBonusType, string> = {
+  xp: 'XP gagnée (toutes sources : expéditions, combats, donjons, pensions, Bonbons)',
+};
+
+const REGION_BONUS_SHORT: Record<RegionBonusType, string> = { xp: 'XP' };
+
+const regionBonusSummary = (bonuses: readonly RegionBonus[]) =>
+  bonuses.map((b) => ` · +${b.percent} % ${REGION_BONUS_SHORT[b.type]} de la région`).join('');
 
 const SCOPES: { value: ExpeditionCompletionScope; label: string }[] = [
   { value: 'zone', label: 'Chaque expédition complétée' },
@@ -56,6 +78,7 @@ function CompletionsEditor({ working }: { working: WorkingVersion }) {
         zoneId: null,
         shiny: false,
         rewards: emptyReward(),
+        regionBonuses: [],
       },
     ]);
   }
@@ -116,6 +139,7 @@ function CompletionsEditor({ working }: { working: WorkingVersion }) {
                 <p className="text-xs text-slate-500">
                   {targets} {c.scope === 'zone' ? 'expédition(s)' : 'région(s)'} concernée(s) ·{' '}
                   {rewardSummary(c.rewards)}
+                  {regionBonusSummary(c.regionBonuses)}
                   {c.scope === 'zone' && targets > 1 && ' (chacune)'}
                 </p>
               </div>
@@ -223,6 +247,12 @@ function CompletionsEditor({ working }: { working: WorkingVersion }) {
               prefix="rewards"
               disabled={disabled}
             />
+            <RegionBonusEditor
+              value={c.regionBonuses}
+              onChange={(regionBonuses) => update(i, { regionBonuses })}
+              errors={errors}
+              disabled={disabled}
+            />
           </fieldset>
         );
       })}
@@ -232,5 +262,78 @@ function CompletionsEditor({ working }: { working: WorkingVersion }) {
         </button>
       )}
     </div>
+  );
+}
+
+/**
+ * Bonus permanents pour la région de l'expédition (ou la région complétée) : ils ne valent que
+ * pour les Pokémon du Pokédex de cette région.
+ */
+function RegionBonusEditor({
+  value,
+  onChange,
+  errors,
+  disabled,
+}: {
+  value: RegionBonus[];
+  onChange: (v: RegionBonus[]) => void;
+  errors: FieldErrors;
+  disabled: boolean;
+}) {
+  const setBonus = (i: number, patch: Partial<RegionBonus>) =>
+    onChange(value.map((b, j) => (j === i ? { ...b, ...patch } : b)));
+  return (
+    <Field
+      label="Bonus de région"
+      hint="Pour les Pokémon du Pokédex de la région de l’expédition (ou de la région complétée), dès que le joueur réclame la récompense. Cumulés entre eux (+2 % par expédition), multipliés avec les autres bonus d’XP."
+    >
+      <div className="space-y-2">
+        {value.map((b, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-2">
+            <SelectInput
+              value={b.type}
+              disabled={disabled}
+              onChange={(type) => setBonus(i, { type })}
+              options={(Object.keys(REGION_BONUS_LABELS) as RegionBonusType[]).map((t) => ({
+                value: t,
+                label: REGION_BONUS_LABELS[t],
+              }))}
+            />
+            <NumberInput
+              className="w-32"
+              value={b.percent}
+              min={0}
+              step={1}
+              unit="%"
+              disabled={disabled}
+              onChange={(percent) => setBonus(i, { percent })}
+            />
+            {!disabled && (
+              <button
+                type="button"
+                className="text-slate-400 hover:text-red-600"
+                onClick={() => onChange(value.filter((_, j) => j !== i))}
+              >
+                ✕
+              </button>
+            )}
+            {errors.get(`regionBonuses.${i}.percent`) && (
+              <span className="text-xs text-red-600">
+                {errors.get(`regionBonuses.${i}.percent`)}
+              </span>
+            )}
+          </div>
+        ))}
+        {!disabled && (
+          <button
+            type="button"
+            className="btn-ghost py-1 text-xs"
+            onClick={() => onChange([...value, { type: 'xp', percent: 2 }])}
+          >
+            + Bonus de région
+          </button>
+        )}
+      </div>
+    </Field>
   );
 }

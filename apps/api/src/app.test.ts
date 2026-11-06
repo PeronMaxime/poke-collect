@@ -225,7 +225,7 @@ describe('authentification et profil dresseur', () => {
     const first = await app.inject({ method: 'GET', url: '/api/content' });
     expect(first.statusCode).toBe(200);
     const etag = first.headers.etag as string;
-    expect(etag).toMatch(/^W\/"content-\d+"$/);
+    expect(etag).toMatch(/^W\/"content-\d+-[\w-]+"$/);
 
     const again = await app.inject({
       method: 'GET',

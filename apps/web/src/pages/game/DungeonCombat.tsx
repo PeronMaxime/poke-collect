@@ -138,6 +138,8 @@ const WEATHER_ICONS = { sun: '☀️', rain: '🌧️', sand: '🌪️', hail: '
  */
 const WEATHER_CHANGE_MS = 1200;
 const WEATHER_BANNER_MS = 2600;
+/** Annonce du déchaînement d'un légendaire (phase 2). */
+const ENRAGE_BANNER_MS = 2600;
 const WEATHER_CHANGE_TEXTS: Record<Weather | 'clear', string> = {
   sun: 'Le soleil brille fort !',
   rain: 'Il commence à pleuvoir !',
@@ -660,6 +662,12 @@ export function DungeonCombat<R extends CombatRun, C>({
   const hit = (side: 'player' | 'enemy') =>
     popups.some((e) => e.side !== side && displayMs - e.atMs < 220 && e.damage > 0);
   const remaining = setup.enemies.slice(shown.enemyIndex + 1);
+  // Phase 2 d'un légendaire : il se déchaîne sous une part de ses PV (annoncé quelques secondes).
+  const enrage = live.events.find(
+    (e): e is DungeonEvent & { kind: 'enrage' } =>
+      e.kind === 'enrage' && e.index === shown.enemyIndex && e.atMs <= displayMs,
+  );
+  const enrageAge = enrage ? displayMs - enrage.atMs : Infinity;
   const timeLeft = setup.timeLimitMs - displayMs;
 
   function send(member: number) {
@@ -795,6 +803,20 @@ export function DungeonCombat<R extends CombatRun, C>({
           </div>
         )}
 
+        {enrage && enrageAge < ENRAGE_BANNER_MS && (
+          <div className="pointer-events-none absolute inset-x-0 top-[40%] z-10 flex justify-center">
+            <p
+              className="animate-[dungeon-enter_400ms_ease-out] rounded-2xl bg-red-600/90 px-4 py-1.5 text-center text-sm font-bold text-white shadow-lg transition-opacity duration-500"
+              style={{ opacity: enrageAge > ENRAGE_BANNER_MS - 500 ? 0 : 1 }}
+            >
+              {fighterName(ctx, enemy)} se déchaîne !
+              <span className="block text-xs font-medium">
+                Ses statistiques augmentent de {enrage.percent} %.
+              </span>
+            </p>
+          </div>
+        )}
+
         {/* Adversaire, à droite. */}
         <div className="absolute top-12 left-3 sm:left-6">
           <FighterCard
@@ -803,6 +825,7 @@ export function DungeonCombat<R extends CombatRun, C>({
             level={enemy.level}
             hp={shown.enemyHp}
             maxHp={enemy.maxHp}
+            shiny={enemy.isShiny}
             status={shown.enemyStatus}
             ability={enemy.ability}
             neutralizedBy={suppressorAbility(player)}
@@ -817,11 +840,22 @@ export function DungeonCombat<R extends CombatRun, C>({
           }`}
         >
           <div className={hit('enemy') ? 'animate-[dungeon-hit_220ms_linear]' : ''}>
-            <PokemonSprite
-              speciesId={enemy.speciesId}
-              formId={enemy.formId}
-              size={bossLast && shown.enemyIndex === setup.enemies.length - 1 ? 144 : 120}
-            />
+            <div
+              className={
+                enrage
+                  ? enrageAge < 900
+                    ? 'animate-[dungeon-enrage_900ms_ease-out]'
+                    : 'enraged'
+                  : ''
+              }
+            >
+              <PokemonSprite
+                speciesId={enemy.speciesId}
+                formId={enemy.formId}
+                shiny={enemy.isShiny}
+                size={bossLast && shown.enemyIndex === setup.enemies.length - 1 ? 144 : 120}
+              />
+            </div>
           </div>
         </div>
 

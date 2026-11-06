@@ -1,0 +1,1 @@
+ALTER TABLE "legendary_battles" ALTER COLUMN "seed" SET DATA TYPE bigint;

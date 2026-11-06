@@ -17,6 +17,88 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '6 novembre 2026',
+    title: 'Combats légendaires, une pension plus généreuse et des Bonbons revus',
+    changes: [
+      {
+        section: 'À savoir : des quêtes recommencent',
+        items: [
+          'Si tu n’as pas encore capturé le légendaire d’une quête, elle recommence depuis la première étape avec sa nouvelle histoire, même si tu l’avais déjà terminée ou réclamée (sa récompense est de nouveau à gagner). Les expéditions légendaires pas encore récupérées sont annulées, et leurs Balls et baies te sont rendues.',
+          'Un légendaire déjà capturé reste à toi : sa quête ne bouge pas. Tu peux le relâcher, mais il faudra alors refaire toute la nouvelle quête pour le retrouver. Un légendaire capturé avec la nouvelle quête, lui, se recombat directement après avoir été relâché.',
+        ],
+      },
+      {
+        section: 'Légendaires',
+        items: [
+          'Fini les expéditions légendaires : une fois la récompense de sa quête réclamée, le légendaire s’affronte en combat en temps réel, lancé depuis l’onglet Quêtes, contre ton équipe de six Pokémon au plus (du Pokédex de la région de la quête).',
+          'Le légendaire est bien plus résistant qu’un Pokémon ordinaire, et sous la moitié de ses PV il se déchaîne : ses statistiques augmentent. Changements de Pokémon et objets restent permis pendant le combat.',
+          'Les plus grands d’entre eux (Mewtwo, Lugia, Ho-Oh, Kyogre et Groudon) sont encore plus coriaces : prévois une équipe solide et de quoi la soigner.',
+          'Victoire : lance la Ball de ton choix. Chaque légendaire a sa propre chance de capture, de 20 à 35 % selon sa rareté, affichée avant le lancer (la Master Ball, elle, ne rate jamais). Défaite, fuite ou Ball ratée : le légendaire se retire, et tu peux retenter le combat une heure plus tard.',
+          'Chaque tentative augmente un peu la chance qu’il soit chromatique, comme une chaîne de rencontres.',
+          'Les fuyards (Raikou, Entei, Suicune, Latias, Latios…) ne se combattent pas : ils restent à croiser en expédition, mais se capturent désormais trois fois plus facilement.',
+          'Un légendaire capturé peut être relâché depuis sa fiche du PC : il ne rapporte aucun Bonbon, mais retourne à sa quête, où tu peux de nouveau l’affronter et tenter de le capturer (un fuyard, lui, se remet à errer).',
+        ],
+      },
+      {
+        section: 'Quêtes',
+        items: [
+          'Toutes les quêtes de légendaires de Kanto, Johto et Hoenn ont été réécrites : une vraie histoire à suivre, étape par étape, avec un dénouement qui s’affiche une fois l’étape validée. Les étapes déjà validées gardent leur dénouement, à relire à tout moment.',
+          'Nouveau : les objets de quête. Certaines étapes demandent de trouver un objet en expédition dans une zone précise : chaque tirage de butin a une petite chance de le faire apparaître, seulement pendant cette étape. Ils se rangent dans une nouvelle catégorie du Sac.',
+          'Certaines étapes demandent aussi un Pokémon précis dans l’équipe, une météo particulière au départ de l’expédition (celle de la zone, ou celle qu’impose un talent de l’équipe comme Crachin ou Sécheresse) ou un départ de jour ou de nuit.',
+          'Nouveau : les dresseurs de quêtes. Plus de Champion d’arène à rebattre dans les étapes : chaque quête de légendaire fait affronter un dresseur propre à son histoire (Team Rocket, Aqua et Magma, chasseurs de légendes, gardiens…), marqué « (quête) ». Il n’apparaît qu’une fois l’étape atteinte, tout en bas de l’onglet Combats dans la section « Dresseurs de quêtes », et ne se bat qu’une fois : le bouton « Affronter » de l’étape mène directement à son combat. Les quêtes s’ouvrant après la Ligue, ils sont aussi forts que le Maître de la région.',
+        ],
+      },
+      {
+        section: 'Pension',
+        items: [
+          'Les parents gagnent de l’XP pendant tout leur séjour en pension. Tu la reçois en les retirant : l’XP déjà gagnée et le niveau atteint s’affichent sous chaque parent.',
+          'Une pension garde désormais jusqu’à 10 œufs en attente avant de faire une pause.',
+          'Deux boutons pour récupérer les œufs : « Ramasser » les range dans ton sac, « Couver » les place dans la couveuse, et ceux qui n’y tiennent pas vont dans le sac au lieu de rester à la pension.',
+          'Les œufs du sac s’affichent à la Pension, sous la couveuse : un clic suffit pour les couver dès qu’une place se libère. Tu les retrouves aussi dans ton Sac.',
+          'Au moment de déposer un couple, la liste ne propose par défaut que les partenaires compatibles avec le premier Pokémon choisi. Décoche ce filtre pour déposer deux Pokémon qui ne peuvent pas s’accoupler : ils ne pondront pas, mais gagneront de l’XP. Leur cœur est alors grisé.',
+        ],
+      },
+      {
+        section: 'Bonbons',
+        items: [
+          'Un Bonbon ne donne plus une quantité d’XP fixe, mais une part du niveau en cours : il faut 5 Bonbons pour passer un niveau au début, puis de plus en plus jusqu’à 20 pour les derniers niveaux. Le coût est le même pour tous les Pokémon, qu’ils montent vite ou lentement.',
+          'Le Bonbon qui termine un niveau reporte son surplus sur le suivant, et les bonus d’XP de région rendent chaque Bonbon plus efficace. Il faut désormais environ 1 240 Bonbons pour monter un Pokémon du niveau 1 au niveau 100.',
+          'La fiche du Pokémon au PC indique combien de Bonbons demande son niveau actuel.',
+        ],
+      },
+      {
+        section: 'Complétion des expéditions',
+        items: [
+          'Chaque expédition complétée (tous ses Pokémon capturés) donne une nouvelle récompense à réclamer dans le Pokédex, onglet « Expéditions » : +2 % d’XP pour tous les Pokémon de sa région, pour de bon. Les bonus s’additionnent : compléter 10 expéditions de Kanto, c’est +20 % d’XP pour tes Pokémon de Kanto.',
+          'Ce bonus compte pour toutes les façons de gagner de l’XP : expéditions, combats, donjons, pension et Bonbons. Les expéditions déjà complétées donnent aussi leur récompense.',
+          'L’onglet « Expéditions » du Pokédex se range par région, avec des onglets comme partout ailleurs. Un point signale les régions où une récompense attend, et le bonus d’XP déjà gagné dans la région s’affiche en haut.',
+          'Dans cet onglet, chaque expédition a une seule carte avec sa complétion normale, puis sa complétion chromatique juste en dessous. La complétion de la région n’a plus sa propre section : elle s’affiche en haut à droite des expéditions.',
+        ],
+      },
+      {
+        section: 'Équipes',
+        items: [
+          'Nouveau bouton « ⚡ Sélection auto » au départ des expéditions, des combats et des donjons : il choisit d’un clic tes Pokémon les plus forts en affinité, puis les plus forts sans affinité, en servant d’abord les types exigés. Il respecte les règles des dresseurs (types interdits, niveau maximal) et ne prend qu’un seul Méga-Évolué.',
+          'Le choix de l’équipe est réorganisé : ton équipe et sa PE en haut, avec « Sélection auto » et « Vider », puis la recherche, le tri et les filtres des Pokémon disponibles, avec un bouton pour remettre les filtres à zéro. Le tri par statistique est aussi proposé contre les dresseurs.',
+        ],
+      },
+      {
+        section: 'Sac',
+        items: [
+          'Le Sac se range en onglets : « Tout », puis un onglet par catégorie avec le nombre d’objets qu’elle contient. Les œufs et les Bonbons de lignée y ont aussi le leur.',
+        ],
+      },
+      {
+        section: 'Corrections',
+        items: [
+          'En combat, la tempête de sable, la grêle, la brûlure et le poison font perdre des PV toutes les 3 secondes aux deux Pokémon en face, et non plus après chaque attaque : un Pokémon rapide n’y perd plus davantage qu’un lent.',
+          'Contre un boss de donjon, ces pertes et celles des talents comme Peau Dure se calculent sur ses PV d’origine, et non plus sur ses PV renforcés : ses PV multipliés ne multiplient plus ces pertes. Même règle pour les légendaires.',
+          'Le bandeau « Connexion au serveur perdue » ne s’affiche plus après avoir réclamé une récompense, fait un achat ou terminé un combat : ton profil se recharge normalement.',
+        ],
+      },
+    ],
+  },
+  {
     date: '5 novembre 2026',
     title: 'Expéditions à durée libre et un jeu plus stable',
     changes: [

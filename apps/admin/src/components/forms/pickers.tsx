@@ -358,6 +358,7 @@ const ITEM_GROUP_LABELS: Record<ItemCategory, string> = {
   fossil: 'Fossiles',
   megaStone: 'Méga-Gemmes',
   chest: 'Coffres',
+  quest: 'Objets de quête',
   misc: 'Divers',
 };
 

@@ -4,6 +4,7 @@ import type { ContentCache } from './content-cache';
 
 vi.mock('./game/battles', () => ({ settleFinishedBattle: vi.fn() }));
 vi.mock('./game/dungeons', () => ({ settleFinishedDungeonRun: vi.fn() }));
+vi.mock('./game/legendary', () => ({ settleFinishedLegendaryBattle: vi.fn() }));
 vi.mock('./game/closed-places', () => ({ settleClosedPlaces: vi.fn() }));
 vi.mock('./game/expeditions', () => ({
   settleExpeditionBalls: vi.fn(),
@@ -14,6 +15,7 @@ import { settleFinishedBattle } from './game/battles';
 import { settleClosedPlaces } from './game/closed-places';
 import { settleFinishedDungeonRun } from './game/dungeons';
 import { nextExpeditionThrow, settleExpeditionBalls } from './game/expeditions';
+import { settleFinishedLegendaryBattle } from './game/legendary';
 import { PlayerSettler } from './game/settle';
 
 const db = {} as Db;
@@ -26,6 +28,7 @@ beforeEach(() => {
   clock = new Date('2026-11-04T10:00:00Z');
   vi.mocked(settleFinishedBattle).mockResolvedValue(false);
   vi.mocked(settleFinishedDungeonRun).mockResolvedValue(false);
+  vi.mocked(settleFinishedLegendaryBattle).mockResolvedValue(false);
   vi.mocked(nextExpeditionThrow).mockResolvedValue(null);
 });
 

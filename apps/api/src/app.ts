@@ -20,6 +20,7 @@ import { Monitoring, registerMonitoring, routeLabel } from './monitoring';
 import { registerRateLimits } from './rate-limit';
 import { adminRoutes } from './routes/admin';
 import { battleRoutes } from './routes/battles';
+import { legendaryRoutes } from './routes/legendary';
 import { dungeonRoutes } from './routes/dungeons';
 import { breedingRoutes } from './routes/breeding';
 import { centerRoutes } from './routes/center';
@@ -171,6 +172,7 @@ export async function buildApp({
   await app.register(farmRoutes, { db, content, hooks, now });
   await app.register(assistantRoutes, { db, content, hooks, now });
   await app.register(battleRoutes, { db, content, hooks, now });
+  await app.register(legendaryRoutes, { db, content, hooks, now });
   await app.register(dungeonRoutes, { db, content, hooks, now });
   await app.register(shopRoutes, { db, content, hooks, now });
   await app.register(guildRoutes, { db, content, hooks, now });

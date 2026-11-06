@@ -1,7 +1,11 @@
 import { DEX_FORM_SECTIONS, forms, speciesForms } from '@poke/data';
 import type { FormKind, PokemonForm } from '@poke/data';
 import type { Collection, PermanentBonusType, ProgressReward } from '@poke/content';
-import { claimableCompletionCount, claimedCompletionRewards } from './completion';
+import {
+  claimableCompletionCount,
+  claimedCompletionRegionBonuses,
+  claimedCompletionRewards,
+} from './completion';
 import type { GameContext } from './context';
 import type { DexProgress } from './progress';
 
@@ -150,14 +154,53 @@ export function playerSlots(ctx: GameContext, claimed: ClaimedRewards): PlayerSl
 }
 
 /** Multiplicateurs permanents (1 = aucun bonus), cumulés de façon additive. */
-export type PlayerBonuses = Record<PermanentBonusType, number>;
+export type PlayerBonuses = Record<PermanentBonusType, number> & {
+  /**
+   * Bonus d'XP par région (fraction : 0,02 = +2 %), gagnés par les complétions d'expédition,
+   * pour les Pokémon du Pokédex de la région, quelle que soit la source d'XP ; absent : aucun.
+   */
+  regionXp?: Readonly<Record<string, number>>;
+};
 
 export const NO_BONUSES: PlayerBonuses = { capture: 1, xp: 1, money: 1, shiny: 1 };
 
 export function playerBonuses(ctx: GameContext, claimed: ClaimedRewards): PlayerBonuses {
-  const bonuses = { ...NO_BONUSES };
+  const bonuses: PlayerBonuses = { ...NO_BONUSES };
   for (const reward of claimedRewardList(ctx, claimed)) {
     for (const b of reward.bonuses) bonuses[b.type] += b.percent / 100;
   }
+  const regionXp: Record<string, number> = {};
+  for (const { regionId, bonus } of claimedCompletionRegionBonuses(ctx, claimed)) {
+    if (bonus.type === 'xp') regionXp[regionId] = (regionXp[regionId] ?? 0) + bonus.percent / 100;
+  }
+  if (Object.keys(regionXp).length > 0) bonuses.regionXp = regionXp;
   return bonuses;
+}
+
+/**
+ * Multiplicateur d'XP propre à un Pokémon (1 = aucun bonus) : bonus des régions dont le Pokédex
+ * contient son espèce, cumulés entre eux et multipliés avec les autres bonus d'XP.
+ */
+export function pokemonXpMultiplier(
+  ctx: GameContext,
+  bonuses: Pick<PlayerBonuses, 'regionXp'> | undefined,
+  speciesId: number,
+): number {
+  const regionXp = bonuses?.regionXp;
+  if (!regionXp) return 1;
+  let multiplier = 1;
+  for (const [regionId, fraction] of Object.entries(regionXp)) {
+    if (ctx.region(regionId)?.speciesIds.includes(speciesId)) multiplier += fraction;
+  }
+  return multiplier;
+}
+
+/** XP gagnée par un Pokémon, augmentée des bonus de sa région (arrondie à l'inférieur). */
+export function pokemonXpGain(
+  ctx: GameContext,
+  bonuses: Pick<PlayerBonuses, 'regionXp'> | undefined,
+  speciesId: number,
+  xp: number,
+): number {
+  return Math.floor(xp * pokemonXpMultiplier(ctx, bonuses, speciesId));
 }

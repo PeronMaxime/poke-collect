@@ -1,11 +1,12 @@
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, QueryObserver } from '@tanstack/react-query';
 import type { CandyDto, InventoryEntryDto, PokemonDto } from '@poke/shared';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   PLAYER_STATE_KEYS,
   addCandies,
   applyTransfer,
   keys,
+  meQuery,
   patchPokemon,
   refresh,
   setItemQuantity,
@@ -82,5 +83,30 @@ describe('mises à jour du cache après une action', () => {
     const client = clientWith([mon('a')]);
     await refresh(client, keys.pokemon, keys.candies);
     expect(invalidated(client)).toEqual(['pokemon', 'candies']);
+  });
+});
+
+describe('profil du joueur', () => {
+  afterEach(() => vi.unstubAllGlobals());
+
+  it('se recharge après une invalidation, quel que soit le dernier composant abonné', async () => {
+    const fetch = vi.fn(async () =>
+      Response.json({ user: null, profile: null, contentVersion: 1 }),
+    );
+    vi.stubGlobal('fetch', fetch);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    // L'application, puis un composant qui lit l'avancement du joueur (`usePlayerProgress`).
+    const app = new QueryObserver(client, meQuery);
+    const stopApp = app.subscribe(() => {});
+    await vi.waitFor(() => expect(app.getCurrentResult().isSuccess).toBe(true));
+    const reader = new QueryObserver(client, { ...meQuery, refetchOnMount: false });
+    const stopReader = reader.subscribe(() => {});
+
+    // Une récompense réclamée recharge le profil.
+    await refresh(client, keys.me);
+    expect(app.getCurrentResult().isError).toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(2);
+    stopReader();
+    stopApp();
   });
 });

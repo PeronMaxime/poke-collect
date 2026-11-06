@@ -9,10 +9,15 @@ import type {
   LootEntry,
   ShopCategory,
   ShopEntry,
+  Zone,
 } from './schemas';
 import { forms, getSpecies } from '@poke/data';
 import type { PokemonForm } from '@poke/data';
-import { DEFAULT_GUILD_QUEST_TIERS, suggestedSellPrice } from './schemas';
+import {
+  DEFAULT_GUILD_QUEST_TIERS,
+  DEFAULT_LEGENDARY_SETTINGS,
+  suggestedSellPrice,
+} from './schemas';
 import {
   expansionItems,
   expansionRegions,
@@ -21,9 +26,17 @@ import {
   expansionZones,
 } from './seed-expansion';
 import { combatSettings, dungeonSettings, megaStoneItems, seedDungeons } from './seed-dungeons';
-import { hoennQuests, hoennRegion, hoennTrainers, hoennZones } from './seed-hoenn';
-import { johtoQuests, johtoRegion, johtoTrainers, johtoZones } from './seed-johto';
-import { kantoQuests, kantoTrainers, kantoZones } from './seed-kanto';
+import { hoennRegion, hoennTrainers, hoennZones } from './seed-hoenn';
+import { johtoRegion, johtoTrainers, johtoZones } from './seed-johto';
+import { kantoTrainers, kantoZones } from './seed-kanto';
+import {
+  QUEST_ZONE_STEPS,
+  hoennQuests,
+  johtoQuests,
+  kantoQuests,
+  questItems,
+  questTrainers,
+} from './seed-quests';
 import { withOwnLootTables } from './seed-loot';
 import { withSpecialEncounters } from './seed-special-encounters';
 import { chestEntries, guildChestItems, guildQuests } from './seed-guilds';
@@ -371,11 +384,18 @@ export const seedContent: GameContentData = withOwnLootTables({
       hatchMinutesPerCounter: 2,
       eggMinutes: 20,
       maxEggs: 6,
+      pensionMaxEggs: 10,
+      parentXpPerHour: 2000,
       inheritedIvCount: 3,
       hiddenAbilityInheritChance: 0.6,
       eggLevel: 1,
     },
-    transfer: { candiesPerPokemon: 1, shinyBonusCandies: 10, xpPerCandy: 500 },
+    transfer: {
+      candiesPerPokemon: 1,
+      shinyBonusCandies: 10,
+      candiesPerLevelStart: 5,
+      candiesPerLevelEnd: 20,
+    },
     daycare: { initialSlots: 1 },
     museum: { slots: 2 },
     center: { slots: 6, healMinutes: 30 },
@@ -387,6 +407,7 @@ export const seedContent: GameContentData = withOwnLootTables({
       happinessOnWin: 3,
       happinessOnLoss: -2,
     },
+    legendary: DEFAULT_LEGENDARY_SETTINGS,
     combat: combatSettings,
     dungeons: dungeonSettings,
     evolution: { tradeItemId: 'linking-cord', dayStartHour: 6, nightStartHour: 20 },
@@ -424,8 +445,8 @@ export const seedContent: GameContentData = withOwnLootTables({
       dungeons: { type: 'badgeCount', count: 1, regionId: 'kalos' },
       farm: { type: 'regionUnlocked', regionId: 'hoenn' },
     },
-    // Une couveuse par région entièrement complétée, +1 % de chromatique par expédition
-    // complétée en chromatique.
+    // Une couveuse par région entièrement complétée, +2 % d'XP pour les Pokémon de la région par
+    // expédition complétée, +1 % de chromatique par expédition complétée en chromatique.
     expeditionCompletions: [
       {
         id: 'region-complete',
@@ -442,6 +463,24 @@ export const seedContent: GameContentData = withOwnLootTables({
           incubators: 1,
           bonuses: [],
         },
+        regionBonuses: [],
+      },
+      {
+        id: 'expedition-complete',
+        name: 'Expédition complétée',
+        scope: 'zone',
+        regionId: null,
+        zoneId: null,
+        shiny: false,
+        rewards: {
+          currency: 0,
+          items: [],
+          expeditionSlots: 0,
+          daycareSlots: 0,
+          incubators: 0,
+          bonuses: [],
+        },
+        regionBonuses: [{ type: 'xp', percent: 2 }],
       },
       {
         id: 'expedition-chromatique',
@@ -458,6 +497,7 @@ export const seedContent: GameContentData = withOwnLootTables({
           incubators: 0,
           bonuses: [{ type: 'shiny', percent: 1 }],
         },
+        regionBonuses: [],
       },
     ],
   },
@@ -664,7 +704,7 @@ export const seedContent: GameContentData = withOwnLootTables({
     ...fossilItems(),
     ...megaStoneItems(regions),
     ...expansionItems,
-  ]).concat(guildChestItems, [
+  ]).concat(guildChestItems, questItems, [
     {
       id: 'parcelle-ferme',
       name: 'Parcelle de ferme',
@@ -748,8 +788,16 @@ export const seedContent: GameContentData = withOwnLootTables({
       ],
     },
   ],
-  zones: withSpecialEncounters([...kantoZones, ...johtoZones, ...hoennZones, ...expansionZones]),
-  trainers: [...kantoTrainers, ...johtoTrainers, ...hoennTrainers, ...expansionTrainers],
+  zones: withQuestZoneSteps(
+    withSpecialEncounters([...kantoZones, ...johtoZones, ...hoennZones, ...expansionZones]),
+  ),
+  trainers: [
+    ...kantoTrainers,
+    ...johtoTrainers,
+    ...hoennTrainers,
+    ...expansionTrainers,
+    ...questTrainers,
+  ],
   dungeons: seedDungeons(regions),
   shopCategories,
   shopEntries: [...shopEntries, ...expansionShopEntries],
@@ -773,6 +821,16 @@ function caveLoot(): LootEntry[] {
 type SeedItem = Omit<Item, 'sellPrice'>;
 
 /** Prix de revente : la moitié du prix boutique, sinon selon la rareté. */
+/** Zones de quête : ouvertes après l'étape de leur quête indiquée par `QUEST_ZONE_STEPS`. */
+function withQuestZoneSteps(zones: Zone[]): Zone[] {
+  return zones.map((zone) => {
+    const { unlock } = zone;
+    if (unlock.type !== 'questStepsDone') return zone;
+    const step = QUEST_ZONE_STEPS[unlock.questId];
+    return step?.zoneId === zone.id ? { ...zone, unlock: { ...unlock, count: step.count } } : zone;
+  });
+}
+
 function withSellPrices(items: SeedItem[]): Item[] {
   const entries = [...shopEntries, ...expansionShopEntries];
   return items.map((item) => ({ ...item, sellPrice: suggestedSellPrice(item, entries) }));

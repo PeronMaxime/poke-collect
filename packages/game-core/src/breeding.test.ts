@@ -2,9 +2,11 @@ import { describe, expect, it } from 'vitest';
 import { STAT_NAMES } from '@poke/data';
 import {
   applyCandies,
+  candiesForLevel,
   baseSpeciesId,
   candiesToMaxLevel,
   checkBreedingPair,
+  daycareXp,
   eggsLaid,
   hatchMinutes,
   inheritanceRules,
@@ -200,6 +202,31 @@ describe('durées', () => {
   });
 });
 
+describe('XP des parents en pension', () => {
+  const since = new Date('2026-11-05T10:00:00Z');
+  const at = (hours: number) => new Date(since.getTime() + hours * 3_600_000);
+
+  it('gagne de l’XP au prorata du temps passé', () => {
+    const p = parent(1, 'male');
+    const rate = ctx.balance.breeding.parentXpPerHour;
+    expect(daycareXp(ctx, p, since, at(0)).xpGained).toBe(0);
+    const gain = daycareXp(ctx, p, since, at(2.5));
+    expect(gain).toMatchObject({ xpGained: Math.floor(2.5 * rate), levelBefore: p.level });
+    expect(gain.xpAfter).toBe(p.xp + gain.xpGained);
+    expect(gain.levelAfter).toBeGreaterThanOrEqual(p.level);
+  });
+
+  it('plafonne au niveau maximal', () => {
+    const cap = xpForLevel(ctx.species(1)!.growthRate, MAX_LEVEL);
+    const p = { ...parent(1, 'male'), level: MAX_LEVEL - 1, xp: cap - 10 };
+    expect(daycareXp(ctx, p, since, at(100))).toMatchObject({
+      xpGained: 10,
+      levelAfter: MAX_LEVEL,
+      xpAfter: cap,
+    });
+  });
+});
+
 describe('transfert et Bonbons', () => {
   it('donne des Bonbons, avec un bonus pour les shiny', () => {
     expect(transferCandies(ctx, { speciesId: 129, isShiny: false })).toBe(1);
@@ -211,11 +238,46 @@ describe('transfert et Bonbons', () => {
     expect(transferCandies(ctx, { speciesId: 130, isShiny: true })).toBe(12);
   });
 
-  it('convertit les Bonbons en XP, plafonnée au niveau maximal', () => {
+  it('coûte de 5 Bonbons par niveau au début à 20 à la fin', () => {
+    expect(candiesForLevel(ctx, 1)).toBe(5);
+    expect(candiesForLevel(ctx, 10)).toBe(6);
+    expect(candiesForLevel(ctx, 50)).toBe(13);
+    expect(candiesForLevel(ctx, 99)).toBe(20);
+    let total = 0;
+    for (let level = 1; level < MAX_LEVEL; level++) total += candiesForLevel(ctx, level);
+    expect(total).toBe(1238);
+  });
+
+  it('donne une fraction du niveau en cours, quelle que soit la courbe d’XP', () => {
     const p = { speciesId: 129, level: 1, xp: 0 }; // courbe « slow »
-    expect(applyCandies(ctx, p, 2)).toEqual({ xp: 1000, level: 9 });
+    expect(applyCandies(ctx, p, 4).level).toBe(1);
+    expect(applyCandies(ctx, p, 5)).toEqual({ xp: xpForLevel('slow', 2), level: 2 });
+    expect(applyCandies(ctx, p, 20)).toEqual({ xp: xpForLevel('slow', 5), level: 5 });
+    const high = { speciesId: 129, level: 99, xp: xpForLevel('slow', 99) };
+    expect(applyCandies(ctx, high, 19).level).toBe(99);
+    expect(applyCandies(ctx, high, 20).level).toBe(MAX_LEVEL);
+  });
+
+  it('reporte le surplus du Bonbon sur le niveau suivant', () => {
+    // À mi-niveau 4 (5 Bonbons), puis 3 Bonbons : 2,5 finissent le niveau, 0,5 sur le niveau 5.
+    const start = xpForLevel('slow', 4);
+    const span = xpForLevel('slow', 5) - start;
+    const p = { speciesId: 129, level: 4, xp: start + span / 2 };
+    const next = xpForLevel('slow', 5);
+    const nextSpan = xpForLevel('slow', 6) - next;
+    expect(applyCandies(ctx, p, 3)).toEqual({
+      xp: next + Math.floor((0.5 * nextSpan) / candiesForLevel(ctx, 5)),
+      level: 5,
+    });
+  });
+
+  it('plafonne au niveau maximal et compte les Bonbons utiles', () => {
+    const p = { speciesId: 129, level: 1, xp: 0 };
     const cap = xpForLevel('slow', MAX_LEVEL);
     expect(applyCandies(ctx, p, 1_000_000)).toEqual({ xp: cap, level: MAX_LEVEL });
-    expect(candiesToMaxLevel(ctx, p)).toBe(Math.ceil(cap / 500));
+    expect(candiesToMaxLevel(ctx, p)).toBe(1238);
+    expect(applyCandies(ctx, p, 1237).level).toBe(99);
+    expect(applyCandies(ctx, p, 1238)).toEqual({ xp: cap, level: MAX_LEVEL });
+    expect(candiesToMaxLevel(ctx, { speciesId: 129, xp: cap })).toBe(0);
   });
 });
