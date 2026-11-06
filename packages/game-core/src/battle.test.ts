@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   battleMaxXp,
   buildBattleSetup,
+  isTrainerRevealed,
+  questTrainerStep,
   checkBattleTeam,
   resolveBattle,
   trainerEnemies,
@@ -11,6 +13,7 @@ import {
 } from './battle';
 import type { TeamMember } from './expedition';
 import type { Trainer } from '@poke/content';
+import { createGameContext, playableContent } from './context';
 import type { GameContext } from './context';
 import { member, testContext } from './test-helpers';
 
@@ -195,5 +198,38 @@ describe('disponibilité', () => {
     expect(trainerStatus(ctx, tom, progress(['gamin-tom']), old, now)).toEqual({
       state: 'available',
     });
+  });
+
+  it('ne fait apparaître un dresseur de quête qu’à l’étape qui demande de le battre', () => {
+    const volt = ctx.trainer('quete-electhor-volt')!;
+    expect(volt.questId).toBe('electhor');
+    expect(questTrainerStep(ctx, volt)).toBe(2);
+    expect(questTrainerStep(ctx, pierre)).toBeUndefined();
+    expect(isTrainerRevealed(ctx, pierre, {})).toBe(true);
+    const at = (step?: number) => ({
+      ...progress(),
+      questSteps: new Map(step === undefined ? [] : [['electhor', step]]),
+    });
+    // Quête pas commencée, ou étape pas encore atteinte : caché et verrouillé.
+    for (const step of [undefined, 0, 1]) {
+      expect(isTrainerRevealed(ctx, volt, at(step))).toBe(false);
+      expect(trainerStatus(ctx, volt, at(step), undefined, now)).toEqual({ state: 'locked' });
+    }
+    // Étape atteinte : affrontable ; une défaite se retente aussitôt, une victoire est définitive.
+    expect(isTrainerRevealed(ctx, volt, at(2))).toBe(true);
+    expect(trainerStatus(ctx, volt, at(2), { wins: 0, lastEndedAt: now }, now)).toEqual({
+      state: 'available',
+    });
+    expect(trainerStatus(ctx, volt, at(3), { wins: 1, lastEndedAt: now }, now)).toEqual({
+      state: 'defeated',
+    });
+    // Quête désactivée : il n'apparaît jamais.
+    const off = testContext((c) => {
+      c.quests.find((q) => q.id === 'electhor')!.enabled = false;
+    });
+    const playable = createGameContext(playableContent(off.content));
+    expect(isTrainerRevealed(playable, playable.trainer('quete-electhor-volt')!, at(3))).toBe(
+      false,
+    );
   });
 });

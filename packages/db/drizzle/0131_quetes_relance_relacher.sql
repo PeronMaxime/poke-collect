@@ -1,0 +1,1 @@
+ALTER TABLE "quest_progress" ADD COLUMN "restart_on_release" boolean DEFAULT false NOT NULL;

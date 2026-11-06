@@ -1,3 +1,4 @@
+import { unlockParts } from '@poke/content';
 import type { ItemStack, Trainer, TrainerPokemon } from '@poke/content';
 import { typeEffectiveness } from '@poke/data';
 import type { GameContext } from './context';
@@ -206,8 +207,40 @@ export type TrainerStatus =
   | { state: 'available' };
 
 /**
+ * Étape de sa quête qui fait affronter un dresseur de quête : la première dont la condition
+ * demande de le battre. undefined : dresseur ordinaire, quête inconnue ou désactivée, ou aucune
+ * étape ne le demande.
+ */
+export function questTrainerStep(ctx: GameContext, trainer: Trainer): number | undefined {
+  if (!trainer.questId) return undefined;
+  const steps = ctx.quest(trainer.questId)?.steps ?? [];
+  const index = steps.findIndex((s) =>
+    unlockParts(s.condition).some(
+      (p) => p.type === 'trainerDefeated' && p.trainerId === trainer.id,
+    ),
+  );
+  return index < 0 ? undefined : index;
+}
+
+/**
+ * Dresseur visible du joueur : un dresseur ordinaire l'est toujours (même verrouillé) ; un
+ * dresseur de quête n'apparaît qu'une fois sa quête arrivée à l'étape qui le fait affronter.
+ */
+export function isTrainerRevealed(
+  ctx: GameContext,
+  trainer: Trainer,
+  progress: Pick<PlayerProgress, 'questSteps'>,
+): boolean {
+  if (!trainer.questId) return true;
+  const step = questTrainerStep(ctx, trainer);
+  const done = progress.questSteps?.get(trainer.questId);
+  return step !== undefined && done !== undefined && done >= step;
+}
+
+/**
  * Un dresseur unique se retente aussitôt après une défaite et ne se combat plus une fois battu ;
- * un dresseur répétable se repose après chaque combat.
+ * un dresseur répétable se repose après chaque combat. Un dresseur de quête est verrouillé tant
+ * qu'il n'est pas apparu.
  */
 export function trainerStatus(
   ctx: GameContext,
@@ -219,7 +252,8 @@ export function trainerStatus(
   const region = ctx.region(trainer.regionId);
   if (!region || !isRegionUnlocked(ctx, region, progress)) return { state: 'locked' };
   if (!isUnlocked(ctx, trainer.unlock, progress)) return { state: 'locked' };
-  if (!trainer.repeatable) {
+  if (!isTrainerRevealed(ctx, trainer, progress)) return { state: 'locked' };
+  if (!trainer.repeatable || trainer.questId) {
     return record && record.wins > 0 ? { state: 'defeated' } : { state: 'available' };
   }
   if (record?.lastEndedAt) {
@@ -316,7 +350,7 @@ export function resolveBattle(ctx: GameContext, input: BattleInput): BattleResul
     endedAtMs: state.endedAtMs ?? setup.timeLimitMs,
     defeated: state.defeated,
     xpPerMember,
-    team: applyTeamXp(ctx, input.team, xpPerMember, happiness),
+    team: applyTeamXp(ctx, input.team, xpPerMember, happiness, bonuses),
     knockedOut: input.team.filter((_, i) => state.hp[i] === 0).map((m) => m.id),
     money: win ? Math.floor(trainer.money * bonuses.money) : 0,
     loot: [...loot].map(([itemId, quantity]) => ({ itemId, quantity })),

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { eggGroups } from '@poke/data';
-import { checkBreedingPair, hatchMinutes, inheritanceRules, isBreedable } from '@poke/game-core';
+import { checkBreedingPair, hatchMinutes, inheritanceRules } from '@poke/game-core';
 import type { BreedingError, GameContext } from '@poke/game-core';
 import { searchKey } from '@poke/shared';
 import type { DaycareDto, DepositDaycareInput, PokemonDto } from '@poke/shared';
@@ -12,6 +12,7 @@ import { isUsable, keys, refresh, useInventory, usePokemon } from '../../lib/gam
 import { errorText, formatDuration, speciesName } from '../../lib/labels';
 import { AbilityLine } from './AssistantCard';
 import { pillClass } from './LaunchExpeditionDialog';
+import { formatXp } from './XpPreview';
 
 const GENDER_LABELS = { male: '♂', female: '♀', genderless: '' } as const;
 
@@ -82,24 +83,26 @@ export function DepositDialog({
   const [eggGroup, setEggGroup] = useState('all');
   const [onlyShiny, setOnlyShiny] = useState(false);
   const [sort, setSort] = useState<Sort>('dex');
+  /** Remis à vrai à chaque premier parent choisi ; décoché, on peut déposer un couple pour l'XP. */
+  const [onlyCompatible, setOnlyCompatible] = useState(true);
 
-  const breedable = (pokemon.data ?? []).filter(
-    // Un Pokémon Méga-Évolué n'entre pas en pension (il transmettrait sa forme Méga).
-    (p) => isUsable(p, now) && !p.megaStone && isBreedable(ctx.species(p.speciesId, p.formId)!),
-  );
-  const byId = new Map(breedable.map((p) => [p.id, p]));
+  // Un Pokémon Méga-Évolué n'entre pas en pension (il transmettrait sa forme Méga). Les Pokémon
+  // qui ne peuvent pas avoir d'œuf y entrent quand même, pour gagner de l'XP.
+  const usable = (pokemon.data ?? []).filter((p) => isUsable(p, now) && !p.megaStone);
+  const byId = new Map(usable.map((p) => [p.id, p]));
   const [a, b] = parents.map((id) => (id ? byId.get(id) : undefined));
-  /** Une fois un parent choisi, seuls ses partenaires possibles restent proposés. */
+  /** Une fois un parent choisi, seuls ses partenaires possibles restent proposés (par défaut). */
   const partnerOf = a ?? b;
+  const compatibleFilter = !!partnerOf && onlyCompatible;
   const groupsInPc = [
-    ...new Set(breedable.flatMap((p) => ctx.species(p.speciesId, p.formId)!.eggGroups)),
+    ...new Set(usable.flatMap((p) => ctx.species(p.speciesId, p.formId)!.eggGroups)),
   ].sort((x, y) => eggGroupName(x).localeCompare(eggGroupName(y)));
   const needle = searchKey(search.trim());
-  const available = breedable
+  const available = usable
     .filter(
       (p) =>
         parents.includes(p.id) ||
-        ((!partnerOf || checkBreedingPair(ctx, partnerOf, p).ok) &&
+        ((!compatibleFilter || checkBreedingPair(ctx, partnerOf, p).ok) &&
           (!needle || searchKey(speciesName(ctx, p.speciesId, p.formId)).includes(needle)) &&
           (gender === 'all' || p.gender === gender) &&
           (eggGroup === 'all' ||
@@ -132,7 +135,10 @@ export function DepositDialog({
 
   function pick(p: PokemonDto) {
     // Premier parent choisi : la recherche le visait, ses partenaires peuvent avoir un autre nom.
-    if (!parents[0] && !parents[1]) setSearch('');
+    if (!parents[0] && !parents[1]) {
+      setSearch('');
+      setOnlyCompatible(true);
+    }
     setParents(([first, second]) => {
       if (first === p.id) return [second, null];
       if (second === p.id) return [first, null];
@@ -272,11 +278,20 @@ export function DepositDialog({
         </div>
       </div>
       {partnerOf && (
-        <p className="mt-2 text-xs text-slate-500">
-          Seuls les partenaires compatibles avec{' '}
-          {speciesName(ctx, partnerOf.speciesId, partnerOf.formId)}{' '}
-          {GENDER_LABELS[partnerOf.gender]} sont affichés.
-        </p>
+        <label className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+          <input
+            type="checkbox"
+            checked={onlyCompatible}
+            onChange={(e) => setOnlyCompatible(e.target.checked)}
+          />
+          <span>
+            Seulement les partenaires compatibles avec{' '}
+            {speciesName(ctx, partnerOf.speciesId, partnerOf.formId)}{' '}
+            {GENDER_LABELS[partnerOf.gender]}
+            {!onlyCompatible &&
+              ' (un couple qui ne peut pas s’accoupler ne pond pas, mais gagne de l’XP)'}
+          </span>
+        </label>
       )}
 
       <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto sm:grid-cols-5">
@@ -312,8 +327,8 @@ export function DepositDialog({
         })}
         {available.length === 0 && (
           <p className="col-span-full text-sm text-slate-500">
-            {breedable.length === 0
-              ? 'Aucun Pokémon disponible et élevable.'
+            {usable.length === 0
+              ? 'Aucun Pokémon disponible.'
               : 'Aucun Pokémon ne correspond à ces filtres.'}
           </p>
         )}
@@ -338,11 +353,18 @@ export function DepositDialog({
         </div>
       )}
       {check && !check.ok && (
-        <ul className="mt-4 space-y-1 text-sm text-red-600">
-          {check.errors.map((e) => (
-            <li key={e.code}>{breedingErrorText(ctx, e)}</li>
-          ))}
-        </ul>
+        <div className="mt-4 rounded-xl bg-amber-50 p-3 text-sm dark:bg-amber-950/40">
+          <p className="font-medium">Pas d’œuf avec ce couple</p>
+          <ul className="text-xs text-slate-600 dark:text-slate-400">
+            {check.errors.map((e) => (
+              <li key={e.code}>{breedingErrorText(ctx, e)}</li>
+            ))}
+          </ul>
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-400">
+            Ils peuvent quand même séjourner à la pension pour gagner{' '}
+            {formatXp(ctx.balance.breeding.parentXpPerHour)} par heure.
+          </p>
+        </div>
       )}
       {notEnough && (
         <p className="mt-2 text-sm text-red-600">Il te faut deux exemplaires de cet objet.</p>
@@ -355,7 +377,7 @@ export function DepositDialog({
         </button>
         <button
           className="btn-primary"
-          disabled={!check?.ok || notEnough || deposit.isPending}
+          disabled={!a || !b || notEnough || deposit.isPending}
           onClick={() =>
             deposit.mutate({
               parentAId: parents[0]!,

@@ -11,7 +11,11 @@ import {
   zoneCompletionPokemon,
 } from './completion';
 import { facilityPlaces } from './facilities';
-import { NO_CLAIMS, playerBonuses } from './progression';
+import { applyCandies, candiesForLevel, daycareXp } from './breeding';
+import { applyTeamXp } from './expedition';
+import { generatePokemon, xpForLevel } from './pokemon';
+import { createRng } from './rng';
+import { NO_CLAIMS, playerBonuses, pokemonXpMultiplier } from './progression';
 import type { ClaimedRewards, DexCatches } from './progression';
 import { shinyProbability } from './shiny';
 import { testContext } from './test-helpers';
@@ -26,6 +30,7 @@ const RULES: ExpeditionCompletion[] = [
     zoneId: null,
     shiny: false,
     rewards: { ...reward, incubators: 1 },
+    regionBonuses: [],
   },
   {
     id: 'expedition-chromatique',
@@ -35,6 +40,7 @@ const RULES: ExpeditionCompletion[] = [
     zoneId: null,
     shiny: true,
     rewards: { ...reward, incubators: 0, bonuses: [{ type: 'shiny', percent: 1 }] },
+    regionBonuses: [],
   },
 ];
 
@@ -120,5 +126,75 @@ describe('complétion des expéditions', () => {
       c.balance.expeditionCompletions = [];
     });
     expect(playerBonuses(removed, claimed).shiny).toBe(1);
+  });
+});
+
+describe('bonus de région des complétions', () => {
+  const xpRule: ExpeditionCompletion = {
+    id: 'expedition-complete',
+    name: 'Expédition complétée',
+    scope: 'zone',
+    regionId: null,
+    zoneId: null,
+    shiny: false,
+    rewards: { ...reward, incubators: 0 },
+    regionBonuses: [{ type: 'xp', percent: 2 }],
+  };
+  const xpCtx = testContext((c) => {
+    c.balance.expeditionCompletions = [...RULES, xpRule];
+  });
+  const kanto = xpCtx.region('kanto')!;
+  const inKanto = kanto.speciesIds[0]!;
+  const outside = xpCtx.regions
+    .flatMap((r) => r.speciesIds)
+    .find((id) => !kanto.speciesIds.includes(id) && xpCtx.species(id))!;
+  const claimed = claims(
+    completionRewardId(xpRule.id, kantoZones[0]!.id),
+    completionRewardId(xpRule.id, kantoZones[1]!.id),
+  );
+
+  it('+2 % d’XP par expédition complétée, pour les Pokémon de sa région seulement', () => {
+    const bonuses = playerBonuses(xpCtx, claimed);
+    expect(bonuses.regionXp?.kanto).toBeCloseTo(0.04);
+    expect(bonuses.xp).toBe(1);
+    expect(pokemonXpMultiplier(xpCtx, bonuses, inKanto)).toBeCloseTo(1.04);
+    expect(pokemonXpMultiplier(xpCtx, bonuses, outside)).toBe(1);
+    expect(playerBonuses(xpCtx, NO_CLAIMS).regionXp).toBeUndefined();
+  });
+
+  it('s’applique à toutes les sources d’XP', () => {
+    const bonuses = playerBonuses(xpCtx, claimed);
+    const make = (speciesId: number) =>
+      generatePokemon(xpCtx, createRng(1), speciesId, 5, { shinyProbability: 0 });
+    const [a, b] = [make(inKanto), make(outside)];
+    const team = [a, b].map((p, i) => ({ ...p, id: `p${i}` }));
+    const [ra, rb] = applyTeamXp(xpCtx, team, 1000, 0, bonuses);
+    expect(ra!.xpGained).toBe(1040);
+    expect(rb!.xpGained).toBe(1000);
+
+    const since = new Date(0);
+    const later = new Date(3_600_000);
+    const perHour = xpCtx.balance.breeding.parentXpPerHour;
+    expect(daycareXp(xpCtx, a, since, later, bonuses).xpGained).toBe(Math.floor(perHour * 1.04));
+    expect(daycareXp(xpCtx, b, since, later, bonuses).xpGained).toBe(perHour);
+
+    // Un Bonbon vaut 1,04 Bonbon : les Bonbons du niveau le passent, avec un surplus de 0,2 Bonbon.
+    const candies = candiesForLevel(xpCtx, 5);
+    const nextXp = (p: typeof a) => xpForLevel(xpCtx.species(p.speciesId)!.growthRate, 6);
+    const fedA = applyCandies(
+      xpCtx,
+      { ...a, level: 5, xp: xpForLevel(xpCtx.species(a.speciesId)!.growthRate, 5) },
+      candies,
+      bonuses,
+    );
+    const fedB = applyCandies(
+      xpCtx,
+      { ...b, level: 5, xp: xpForLevel(xpCtx.species(b.speciesId)!.growthRate, 5) },
+      candies,
+      bonuses,
+    );
+    expect(fedA.level).toBe(6);
+    expect(fedA.xp).toBeGreaterThan(nextXp(a));
+    expect(fedB).toEqual({ xp: nextXp(b), level: 6 });
   });
 });

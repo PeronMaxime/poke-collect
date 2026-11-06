@@ -1,19 +1,14 @@
-import { DEFAULT_ROAMING_CHANCE, defaultLegendaryExpedition } from '@poke/content';
-import type { LegendaryExpedition, QuestPokemon } from '@poke/content';
+import { DEFAULT_LEGENDARY_BATTLE, DEFAULT_ROAMING_CHANCE } from '@poke/content';
+import type { LegendaryBattle, QuestPokemon } from '@poke/content';
 import { pokemonTypes, typeWeaknesses } from '@poke/data';
 import type { GameContext } from '@poke/game-core';
 import { Field, NumberInput } from '../../components/forms/fields';
 import type { FieldErrors } from '../../components/forms/fields';
-import {
-  FormSelect,
-  SpeciesSelect,
-  TypeMultiSelect,
-  TypeSelect,
-} from '../../components/forms/pickers';
+import { FormSelect, SpeciesSelect, TypeSelect } from '../../components/forms/pickers';
 
 /**
- * Pokémon de la récompense d'une quête : espèce, niveau, IV parfaits garantis, et l'expédition
- * légendaire qui permet de le capturer (une seule Ball lancée), ou son réglage de fuyard.
+ * Pokémon de la récompense d'une quête : espèce, niveau, IV parfaits garantis, et le combat
+ * légendaire qui permet de le capturer, ou son réglage de fuyard.
  */
 export function PokemonRewardsEditor({
   ctx,
@@ -30,16 +25,6 @@ export function PokemonRewardsEditor({
 }) {
   const update = (i: number, patch: Partial<QuestPokemon>) =>
     onChange(value.map((p, j) => (j === i ? { ...p, ...patch } : p)));
-  /** Changement d'espèce ou de forme : les affinités reprennent ses faiblesses. */
-  const setSpecies = (i: number, speciesId: number, formId: number | null) =>
-    update(i, {
-      speciesId,
-      formId,
-      expedition: {
-        ...value[i]!.expedition,
-        affinityTypes: typeWeaknesses(pokemonTypes(speciesId, formId)),
-      },
-    });
   const err = (i: number) =>
     errors.get(`rewards.pokemon.${i}.level`) ??
     errors.get(`rewards.pokemon.${i}.perfectIvs`) ??
@@ -48,17 +33,18 @@ export function PokemonRewardsEditor({
   return (
     <div className="space-y-3">
       <p className="text-xs text-slate-500">
-        Une fois la récompense réclamée, chaque Pokémon se capture lors d’une expédition légendaire
-        (lancée depuis les quêtes, sur un emplacement d’expédition) : une seule Ball est lancée,
-        avec la formule de capture habituelle. Les membres de l’équipe d’un type d’affinité
-        augmentent la chance de capture ; par défaut, les faiblesses du Pokémon. L’équipe doit venir
-        du Pokédex de la région de la quête. IV aléatoires, dont au moins le nombre indiqué à 31 ;
-        le taux chromatique habituel s’applique (Charme Chroma compris). Un fuyard, lui, n’a pas
-        d’expédition légendaire : il change de zone à chaque heure parmi les zones ordinaires
-        débloquées par le joueur dans la région de la quête (ni zones de quête, ni zones à plusieurs
-        conditions), et chaque rencontre d’une expédition dans sa zone a le pourcentage indiqué de
-        chances d’être lui (une fois au plus). Une Ball lui est toujours lancée, quel que soit le
-        filtre de capture.
+        Une fois la récompense réclamée, chaque Pokémon s’affronte en combat légendaire, lancé
+        depuis l’onglet Quêtes : un combat en temps réel contre l’équipe du joueur (six membres au
+        plus, du Pokédex de la région de la quête). Le légendaire est renforcé (PV et statistiques
+        multipliés) et se déchaîne sous le seuil de PV indiqué. Une victoire permet de lancer une
+        Ball, qui le capture à la chance indiquée (Master Ball : toujours). Défaite, fuite ou Ball
+        ratée : nouveau combat après le délai des réglages (Équilibrage → Légendaires). IV
+        aléatoires, dont au moins le nombre indiqué à 31 ; le taux chromatique habituel s’applique,
+        chaque tentative allongeant la chaîne. Un fuyard, lui, n’a pas de combat : il change de zone
+        à chaque heure parmi les zones ordinaires débloquées par le joueur dans la région de la
+        quête, et chaque rencontre d’une expédition dans sa zone a le pourcentage indiqué de chances
+        d’être lui (une fois au plus). Une Ball lui est toujours lancée, quel que soit le filtre de
+        capture.
       </p>
       {value.map((p, i) => (
         <div
@@ -70,14 +56,14 @@ export function PokemonRewardsEditor({
               <SpeciesSelect
                 ctx={ctx}
                 value={p.speciesId}
-                onChange={(speciesId) => setSpecies(i, speciesId, null)}
+                onChange={(speciesId) => update(i, { speciesId, formId: null })}
                 disabled={disabled}
               />
               <FormSelect
                 speciesId={p.speciesId}
                 value={p.formId}
                 disabled={disabled}
-                onChange={(formId) => setSpecies(i, p.speciesId, formId)}
+                onChange={(formId) => update(i, { formId })}
               />
             </div>
             <NumberInput
@@ -135,12 +121,13 @@ export function PokemonRewardsEditor({
             )}
           </div>
           {p.roaming == null && (
-            <LegendaryExpeditionEditor
-              value={p.expedition}
+            <LegendaryBattleEditor
+              value={p.battle}
+              rewardLevel={p.level}
               weaknesses={typeWeaknesses(pokemonTypes(p.speciesId, p.formId))}
-              onChange={(expedition) => update(i, { expedition })}
+              onChange={(battle) => update(i, { battle })}
               errors={errors}
-              prefix={`rewards.pokemon.${i}.expedition`}
+              prefix={`rewards.pokemon.${i}.battle`}
               disabled={disabled}
             />
           )}
@@ -155,9 +142,10 @@ export function PokemonRewardsEditor({
               ...value,
               {
                 speciesId: 150,
+                formId: null,
                 level: 70,
                 perfectIvs: 3,
-                expedition: defaultLegendaryExpedition(150),
+                battle: { ...DEFAULT_LEGENDARY_BATTLE, requiredTypes: [] },
                 roaming: null,
               },
             ])
@@ -170,45 +158,145 @@ export function PokemonRewardsEditor({
   );
 }
 
-/** Expédition légendaire d'un Pokémon : durée, PE minimale, types requis, affinités. */
-function LegendaryExpeditionEditor({
+/** Combat légendaire d'un Pokémon : renforcement, phase déchaînée, conditions, capture. */
+function LegendaryBattleEditor({
   value,
+  rewardLevel,
   weaknesses,
   onChange,
   errors,
   prefix,
   disabled,
 }: {
-  value: LegendaryExpedition;
-  /** Faiblesses du Pokémon : affinités par défaut. */
+  value: LegendaryBattle;
+  rewardLevel: number;
+  /** Faiblesses du Pokémon : type proposé pour un nouveau type requis. */
   weaknesses: string[];
-  onChange: (v: LegendaryExpedition) => void;
+  onChange: (v: LegendaryBattle) => void;
   errors: FieldErrors;
   prefix: string;
   disabled: boolean;
 }) {
-  const set = <K extends keyof LegendaryExpedition>(key: K, v: LegendaryExpedition[K]) =>
+  const set = <K extends keyof LegendaryBattle>(key: K, v: LegendaryBattle[K]) =>
     onChange({ ...value, [key]: v });
   const err = (path: string) => errors.get(`${prefix}.${path}`);
-  const setRequired = (requiredTypes: LegendaryExpedition['requiredTypes']) =>
+  const setRequired = (requiredTypes: LegendaryBattle['requiredTypes']) =>
     set('requiredTypes', requiredTypes);
-  const isDefault =
-    value.affinityTypes.length === weaknesses.length &&
-    weaknesses.every((t) => value.affinityTypes.includes(t));
 
   return (
     <div className="space-y-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
-      <p className="text-xs font-semibold text-slate-500">Expédition légendaire</p>
+      <p className="text-xs font-semibold text-slate-500">Combat légendaire</p>
       <div className="flex flex-wrap items-end gap-3">
-        <Field label="Durée" error={err('durationMinutes')}>
+        <Field
+          label="Niveau en combat"
+          hint={value.level == null ? `Niveau de la récompense (${rewardLevel}).` : undefined}
+          error={err('level')}
+        >
+          <div className="flex items-center gap-2">
+            <label className="flex items-center gap-1 text-sm">
+              <input
+                type="checkbox"
+                checked={value.level == null}
+                disabled={disabled}
+                onChange={(e) => set('level', e.target.checked ? null : rewardLevel)}
+              />
+              Récompense
+            </label>
+            {value.level != null && (
+              <NumberInput
+                className="w-28"
+                value={value.level}
+                min={1}
+                max={100}
+                unit="niveau"
+                disabled={disabled}
+                onChange={(v) => set('level', v)}
+              />
+            )}
+          </div>
+        </Field>
+        <Field label="IV en combat" error={err('iv')}>
           <NumberInput
-            className="w-32"
-            value={value.durationMinutes}
-            min={1}
-            step={30}
-            unit="min"
+            className="w-24"
+            value={value.iv}
+            min={0}
+            max={31}
             disabled={disabled}
-            onChange={(v) => set('durationMinutes', v)}
+            onChange={(v) => set('iv', v)}
+          />
+        </Field>
+        <Field label="PV" error={err('hpMultiplier')}>
+          <NumberInput
+            className="w-24"
+            value={value.hpMultiplier}
+            min={1}
+            max={100}
+            step={0.5}
+            unit="×"
+            disabled={disabled}
+            onChange={(v) => set('hpMultiplier', v)}
+          />
+        </Field>
+        <Field label="Statistiques (hors PV)" error={err('statMultiplier')}>
+          <NumberInput
+            className="w-24"
+            value={value.statMultiplier}
+            min={0.1}
+            max={10}
+            step={0.05}
+            unit="×"
+            disabled={disabled}
+            onChange={(v) => set('statMultiplier', v)}
+          />
+        </Field>
+        <Field label="Durée maximale" error={err('timeLimitSeconds')}>
+          <NumberInput
+            className="w-28"
+            value={value.timeLimitSeconds}
+            min={30}
+            max={3600}
+            step={30}
+            unit="s"
+            disabled={disabled}
+            onChange={(v) => set('timeLimitSeconds', v)}
+          />
+        </Field>
+      </div>
+      <div className="flex flex-wrap items-end gap-3">
+        <Field label="Se déchaîne sous" hint="0 % = jamais." error={err('enrageHpFraction')}>
+          <NumberInput
+            className="w-28"
+            value={Math.round(value.enrageHpFraction * 100)}
+            min={0}
+            max={100}
+            step={5}
+            unit="% PV"
+            disabled={disabled}
+            onChange={(v) => set('enrageHpFraction', v / 100)}
+          />
+        </Field>
+        <Field label="Gain de statistiques" error={err('enragePercent')}>
+          <NumberInput
+            className="w-28"
+            value={value.enragePercent}
+            min={0}
+            max={500}
+            step={5}
+            unit="%"
+            disabled={disabled}
+            onChange={(v) => set('enragePercent', v)}
+          />
+        </Field>
+        <Field label="Chance de capture" error={err('captureChance')}>
+          <NumberInput
+            className="w-28"
+            value={value.captureChance}
+            min={0.1}
+            max={100}
+            step={1}
+            unit="%"
+            disabled={disabled}
+            onChange={(v) => set('captureChance', v)}
           />
         </Field>
         <Field label="PE minimale de l’équipe" error={err('minPower')}>
@@ -265,32 +353,6 @@ function LegendaryExpeditionEditor({
               }
             >
               + Type requis
-            </button>
-          )}
-        </div>
-      </Field>
-      <Field
-        label="Affinités"
-        hint={
-          isDefault
-            ? 'Faiblesses du Pokémon (par défaut).'
-            : 'Modifiées : différentes des faiblesses du Pokémon.'
-        }
-        error={err('affinityTypes')}
-      >
-        <div className="space-y-1">
-          <TypeMultiSelect
-            value={value.affinityTypes}
-            onChange={(v) => set('affinityTypes', v)}
-            disabled={disabled}
-          />
-          {!disabled && !isDefault && (
-            <button
-              type="button"
-              className="btn-ghost py-1 text-xs"
-              onClick={() => set('affinityTypes', weaknesses)}
-            >
-              Revenir aux faiblesses
             </button>
           )}
         </div>

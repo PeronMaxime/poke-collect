@@ -15,6 +15,7 @@ import {
   rewardClaims,
   trainerProgress,
   trainerRuns,
+  legendaryBattles,
 } from '@poke/db';
 import type { Db } from '@poke/db';
 import { tabUnlock } from '@poke/content';
@@ -185,7 +186,7 @@ export async function pokemonActivities(
   db: Db,
   ownerId: string,
 ): Promise<Map<string, PokemonActivity>> {
-  const [running, battles, pensions, runs, helpers] = await Promise.all([
+  const [running, battles, legendary, pensions, runs, helpers] = await Promise.all([
     db
       .select({ team: expeditions.team })
       .from(expeditions)
@@ -194,6 +195,10 @@ export async function pokemonActivities(
       .select({ team: trainerRuns.team })
       .from(trainerRuns)
       .where(and(eq(trainerRuns.ownerId, ownerId), isNull(trainerRuns.claimedAt))),
+    db
+      .select({ team: legendaryBattles.team })
+      .from(legendaryBattles)
+      .where(and(eq(legendaryBattles.ownerId, ownerId), isNull(legendaryBattles.claimedAt))),
     db
       .select({ a: daycareSlots.parentAId, b: daycareSlots.parentBId })
       .from(daycareSlots)
@@ -206,7 +211,7 @@ export async function pokemonActivities(
   ]);
   const activities = new Map<string, PokemonActivity>();
   for (const r of running) for (const id of r.team) activities.set(id, 'expedition');
-  for (const b of battles) for (const id of b.team) activities.set(id, 'battle');
+  for (const b of [...battles, ...legendary]) for (const id of b.team) activities.set(id, 'battle');
   for (const r of runs) for (const id of r.team) activities.set(id, 'dungeon');
   for (const p of pensions) {
     for (const id of [p.a, p.b]) if (id) activities.set(id, 'daycare');

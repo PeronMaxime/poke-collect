@@ -38,7 +38,7 @@ export function TrainersPage() {
   return (
     <EntityPage<Trainer>
       title="Dresseurs"
-      description="Équipe (PE calculée), conditions d’équipe, temps imparti, récompenses, badge, rejouabilité, déblocage."
+      description="Équipe (PE calculée), conditions d’équipe, temps imparti, récompenses, badge, rejouabilité, déblocage, dresseurs de quêtes."
       collection="trainers"
       entityKind="trainer"
       schema={trainerSchema}
@@ -57,6 +57,7 @@ export function TrainersPage() {
               className={`block truncate font-medium ${t.enabled && w.ctx.region(t.regionId)?.enabled !== false ? '' : 'line-through'}`}
             >
               {t.trainerClass} {t.name}
+              {t.questId ? ' (quête)' : ''}
             </span>
             <span className="block truncate text-xs text-slate-500">
               PE {trainerPower(w.ctx, t)} · {t.team.length} Pokémon ·{' '}
@@ -91,6 +92,7 @@ export function TrainersPage() {
         cooldownMinutes: null,
         enabled: true,
         unlock: { type: 'always' },
+        questId: null,
       })}
       duplicate={(t) => ({ ...structuredClone(t), id: `${t.id}-copie`, name: `${t.name} (copie)` })}
       renderForm={(p) => <TrainerForm {...p} />}
@@ -383,7 +385,7 @@ function TrainerForm({
         <Toggle
           label="Donne un badge à la première victoire"
           checked={t.badge !== null}
-          disabled={disabled}
+          disabled={disabled || !!t.questId}
           onChange={(on) =>
             set('badge', on ? { name: `Badge de ${t.name || '…'}`, image: null } : null)
           }
@@ -409,11 +411,46 @@ function TrainerForm({
         )}
       </Section>
 
+      <Section title="Dresseur de quête">
+        <p className="text-xs text-slate-500">
+          Réservé à une quête : il n’apparaît aux joueurs, dans la section « Dresseurs de quêtes »
+          tout en bas de la liste et avec la mention « (quête) », qu’une fois atteinte l’étape de
+          cette quête qui demande de le battre (condition « Avoir battu un dresseur »). Il ne se bat
+          qu’une fois et ne donne pas de badge. Seuls les dresseurs d’une quête peuvent être
+          demandés dans ses étapes.
+        </p>
+        <Field label="Quête" error={errors.get('questId')}>
+          <select
+            className="input"
+            value={t.questId ?? ''}
+            disabled={disabled}
+            onChange={(e) => {
+              const questId = e.target.value || null;
+              onChange({
+                ...t,
+                questId,
+                ...(questId && { repeatable: false, cooldownMinutes: null, badge: null }),
+              });
+            }}
+          >
+            <option value="">Aucune (dresseur ordinaire)</option>
+            {t.questId && !working.content.quests.some((q) => q.id === t.questId) && (
+              <option value={t.questId}>{t.questId} (inconnue)</option>
+            )}
+            {working.content.quests.map((q) => (
+              <option key={q.id} value={q.id}>
+                {q.name} ({q.id})
+              </option>
+            ))}
+          </select>
+        </Field>
+      </Section>
+
       <Section title="Rejouabilité et défaite">
         <Toggle
           label="Répétable (sinon : une seule victoire possible)"
           checked={t.repeatable}
-          disabled={disabled}
+          disabled={disabled || !!t.questId}
           onChange={(v) => set('repeatable', v)}
         />
         <div className="grid gap-4 sm:grid-cols-2">

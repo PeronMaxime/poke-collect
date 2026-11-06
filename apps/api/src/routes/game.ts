@@ -13,7 +13,6 @@ import {
 } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
-  claimExpeditionInputSchema,
   favoriteZoneInputSchema,
   startExpeditionInputSchema,
   updatePokemonInputSchema,
@@ -23,7 +22,6 @@ import type {
   ExpeditionDto,
   ExpeditionsResponse,
   InventoryEntryDto,
-  LegendaryEncounterDto,
   PokedexEntryDto,
   PokedexFormEntryDto,
   PokemonDto,
@@ -34,9 +32,7 @@ import {
   claimExpedition,
   expeditionPaces,
   expeditionSlots,
-  legendaryEncounter,
   playerRoamers,
-  questChainKey,
   requireStartedProfile,
   shinyChains,
   startExpedition,
@@ -166,10 +162,6 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
         const s = chains.get(z.id);
         return s ? [{ zoneId: z.id, ...chainDto(s) }] : [];
       }),
-      questChains: ctx.quests.flatMap((q) => {
-        const s = chains.get(questChainKey(q.id));
-        return s ? [{ questId: q.id, ...chainDto(s) }] : [];
-      }),
       favoriteZoneIds: profile?.favoriteZoneIds ?? [],
       roamers: roamers.map((r) => ({
         questId: r.questId,
@@ -225,25 +217,11 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     return reply.code(204).send();
   });
 
-  /** Légendaire rencontré au retour d'une expédition légendaire, avant la Ball ou la fuite. */
-  app.get('/api/expeditions/:id/encounter', async (request): Promise<LegendaryEncounterDto> => {
-    const { id } = uuidParams.parse(request.params);
-    return legendaryEncounter(db, content, request.user!.id, id, now());
-  });
-
   app.post('/api/expeditions/:id/claim', async (request): Promise<ClaimExpeditionResponse> => {
     const { id } = uuidParams.parse(request.params);
-    const decision = request.body ? claimExpeditionInputSchema.parse(request.body) : undefined;
     const userId = request.user!.id;
     await requireStartedProfile(db, userId);
-    const { expedition, captured } = await claimExpedition(
-      db,
-      content,
-      userId,
-      id,
-      now(),
-      decision,
-    );
+    const { expedition, captured } = await claimExpedition(db, content, userId, id, now());
     return {
       expedition: toExpeditionDto(expedition),
       captured: captured.map((r) => toPokemonDto(r)),

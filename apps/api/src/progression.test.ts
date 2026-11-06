@@ -361,4 +361,25 @@ describe('complétion des expéditions', () => {
     const daycare = await call<DaycareResponse>('GET', '/api/daycare');
     expect(daycare.body.maxEggs).toBe(seedContent.balance.breeding.maxEggs + 6);
   });
+
+  it('une expédition complétée donne +2 % d’XP à sa région ; le jeu se recharge ensuite', async () => {
+    const res = await claim('expedition-complete', zone.id);
+    expect(res.status, JSON.stringify(res.body)).toBe(200);
+    const progression = await call<ProgressionResponse>('GET', '/api/progression');
+    expect(progression.body.bonuses.regionXp?.[zone.regionId]).toBeCloseTo(0.02);
+    // Tout ce que le jeu recharge après une récompense répond, même en parallèle comme le jeu.
+    const urls = [
+      '/api/me',
+      '/api/inventory',
+      '/api/quests',
+      '/api/shop',
+      '/api/trainer-card',
+      '/api/expeditions',
+      '/api/daycare',
+      '/api/museum',
+      '/api/farm',
+    ];
+    const results = await Promise.all(urls.map((url) => call<unknown>('GET', url)));
+    results.forEach((r, i) => expect(r.status, `${urls[i]} : ${JSON.stringify(r.body)}`).toBe(200));
+  });
 });

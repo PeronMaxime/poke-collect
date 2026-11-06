@@ -39,7 +39,6 @@ import {
   usePokedex,
   usePokedexForms,
   usePokemon,
-  useQuests,
   useShinyBonus,
   useShinyCharm,
 } from '../../lib/game';
@@ -56,7 +55,6 @@ import {
 } from '../../lib/labels';
 import { ActiveAbilities } from './ActiveAbilities';
 import { LaunchExpeditionDialog } from './LaunchExpeditionDialog';
-import { LegendaryEncounterDialog } from './LegendaryEncounterDialog';
 import { LootReveal } from './LootReveal';
 import {
   AutoTransferButton,
@@ -83,12 +81,10 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   const pokedex = usePokedex();
   const pokedexForms = usePokedexForms();
   const pokemon = usePokemon();
-  const quests = useQuests();
   const charm = useShinyCharm(ctx);
   const now = useNow();
   const [launchZone, setLaunchZone] = useState<Zone | null>(null);
   const [reveal, setReveal] = useState<ClaimExpeditionResponse | null>(null);
-  const [encounter, setEncounter] = useState<ExpeditionDto | null>(null);
   const [selectedRegion, setSelectedRegion] = useSavedRegionTab('expeditions');
   const [linkedZoneId, setLinkedZoneId] = useState(zoneFromHash);
   const [notice, setNotice] = useState<string | null>(null);
@@ -140,20 +136,14 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   const slots = expeditions.data?.slots ?? 0;
   const freeSlots = slots - active.filter((e) => e.slotIndex < slots).length;
   const pokemonById = new Map(pokemon.data?.map((p) => [p.id, p]));
-  const questStates = new Map(quests.data?.quests.map((q) => [q.questId, q]));
-  /**
-   * Talents d'une expédition en cours, à l'heure du départ : zone explorée, ou expédition du
-   * légendaire visé (le prochain de la récompense pas encore capturé) ; undefined = inconnu.
-   */
+  /** Talents d'une expédition en cours, à l'heure du départ (zone explorée) ; undefined = inconnu. */
   const abilityEnvOf = (e: ExpeditionDto, team: PokemonDto[]): AbilityEnv | undefined => {
     const zone = e.zoneId ? ctx.zone(e.zoneId) : undefined;
     if (zone) {
       const site = { ...zone, weather: zoneWeather(zone, Date.parse(e.startedAt)) };
       return expeditionEnv(site, team, e.localHour);
     }
-    const state = e.questId ? questStates.get(e.questId) : undefined;
-    const target = state && ctx.quest(state.questId)?.rewards.pokemon[state.pokemonCaught];
-    return target ? expeditionEnv(target.expedition, team, e.localHour, 'quest') : undefined;
+    return undefined;
   };
   const chains = new Map(expeditions.data?.chains.map((c) => [c.zoneId, c]));
   const roamers = expeditions.data?.roamers ?? [];
@@ -293,10 +283,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
                   abilityEnv={abilityEnvOf(exp, team)}
                   charm={charm}
                   claiming={claim.isPending && claim.variables === exp.id}
-                  onClaim={() =>
-                    // Expédition légendaire : on découvre le légendaire avant de lancer la Ball.
-                    exp.questId && exp.balls === 0 ? setEncounter(exp) : claim.mutate(exp.id)
-                  }
+                  onClaim={() => claim.mutate(exp.id)}
                   cancelling={cancel.isPending && cancel.variables === exp.id}
                   onCancel={() => cancel.mutate(exp.id)}
                 />
@@ -367,17 +354,6 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
           onClose={() => setLaunchZone(null)}
         />
       )}
-      {encounter && (
-        <LegendaryEncounterDialog
-          ctx={ctx}
-          expedition={encounter}
-          onClose={() => setEncounter(null)}
-          onClaimed={(data) => {
-            setEncounter(null);
-            setReveal(data);
-          }}
-        />
-      )}
       <LootReveal ctx={ctx} data={reveal} onClose={() => setReveal(null)} />
       <GlobalAutoTransferDialog
         open={autoTransferOpen}
@@ -423,7 +399,6 @@ function ActiveExpedition({
   const stoppable = serverNow >= minEnd;
   const zone = expedition.zoneId ? ctx.zone(expedition.zoneId) : undefined;
   const quest = expedition.questId ? ctx.quest(expedition.questId) : undefined;
-  const legendary = !!expedition.questId && expedition.balls === 0;
   // Compté au rythme calculé par le serveur (contenu, équipe et météo du départ) : exact.
   const elapsedMinutes = (Math.min(serverNow, end) - start) / 60_000;
   const sofar = expedition.pace ? planAfter(expedition.pace, Math.max(0, elapsedMinutes)) : null;
@@ -445,7 +420,7 @@ function ActiveExpedition({
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           {expedition.questId && (
-            <p className="text-xs font-medium text-amber-600">✦ Expédition légendaire</p>
+            <p className="text-xs font-medium text-amber-600">✦ Ancienne expédition légendaire</p>
           )}
           {tracked.length > 0 && (
             <p className="text-xs font-medium text-amber-600">
@@ -509,13 +484,7 @@ function ActiveExpedition({
         </span>
         {stoppable ? (
           <button className="btn-primary shrink-0" disabled={claiming} onClick={onClaim}>
-            {claiming
-              ? 'Ouverture…'
-              : legendary
-                ? 'Découvrir le légendaire'
-                : done
-                  ? 'Récupérer'
-                  : 'Arrêter et récupérer'}
+            {claiming ? 'Ouverture…' : done ? 'Récupérer' : 'Arrêter et récupérer'}
           </button>
         ) : (
           <CancelButton label="Annuler l’expédition" pending={cancelling} onConfirm={onCancel} />
@@ -552,7 +521,6 @@ function ExpeditionSummary({
   const filter = e.captureFilter;
   const time = (iso: string) =>
     new Date(iso).toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
-  const legendary = !!e.questId && e.balls === 0;
   const rows: [string, string][] = [
     e.minEndsAt === e.endsAt
       ? ['Retour', time(e.endsAt)]
@@ -563,8 +531,7 @@ function ExpeditionSummary({
     const weather = resolveWeather(ctx, abilityEnv);
     rows.push(['Météo', `${weather ? WEATHER_LABELS[weather] : 'Temps clair'} (au départ)`]);
   }
-  if (legendary) rows.push(['Ball', 'au choix au retour (une seule lancée)']);
-  else if (e.ballPlan) {
+  if (e.ballPlan) {
     const plan = e.ballPlan;
     const ball = (itemId: string | null) => (itemId ? itemName(ctx, itemId) : 'aucune');
     rows.push(['Nouveau', ball(plan.new)]);
@@ -587,14 +554,12 @@ function ExpeditionSummary({
       e.ballItemId ? `${e.balls} × ${itemName(ctx, e.ballItemId)}` : 'aucune (observation)',
     ]);
   }
-  if (!legendary) {
-    const berries = [
-      e.berryItemId && `${e.berries} × ${itemName(ctx, e.berryItemId)}`,
-      e.encounterBerryItemId && `${e.encounterBerries} × ${itemName(ctx, e.encounterBerryItemId)}`,
-    ].filter(Boolean);
-    rows.push(['Baies', berries.length > 0 ? berries.join(' · ') : 'aucune']);
-    if (e.zoneId) rows.push(['Transfert auto', autoTransferLabel(e.autoTransfer)]);
-  }
+  const berries = [
+    e.berryItemId && `${e.berries} × ${itemName(ctx, e.berryItemId)}`,
+    e.encounterBerryItemId && `${e.encounterBerries} × ${itemName(ctx, e.encounterBerryItemId)}`,
+  ].filter(Boolean);
+  rows.push(['Baies', berries.length > 0 ? berries.join(' · ') : 'aucune']);
+  if (e.zoneId) rows.push(['Transfert auto', autoTransferLabel(e.autoTransfer)]);
   // Comme au serveur : chaîne du départ, Charme Chroma et bonus permanent au retour et, hors
   // expédition légendaire, talents de l'équipe.
   const shinyRate = Math.min(
@@ -629,7 +594,7 @@ function ExpeditionSummary({
             <dd>{value}</dd>
           </Fragment>
         ))}
-        {!legendary && !e.ballPlan && (
+        {!e.ballPlan && (
           <>
             <dt className="text-slate-500">Captures</dt>
             <dd>

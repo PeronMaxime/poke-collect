@@ -18,7 +18,7 @@ import type { BattleDto, StartBattleInput } from '@poke/shared';
 import { HoverBubble, Modal, PokemonSprite, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
 import { keys, refresh, utcOffsetMinutes } from '../../lib/game';
-import { errorText, formatDuration, formatMoney, typeLabel } from '../../lib/labels';
+import { errorText, formatDuration, formatMoney, trainerName, typeLabel } from '../../lib/labels';
 import { BadgeIcon, TrainerRules, TrainerSprite, formatTimeLimit } from './BattlesPage';
 import { CombatTeamOrder, EnemyInfo, combatMove } from './CombatTeamOrder';
 import { TeamPicker, useTeamPicker } from './TeamPicker';
@@ -26,7 +26,7 @@ import { TEAM_WEATHER_NOTE, WeatherIcon, zoneWeatherForecast } from './WeatherIc
 import { TeamSection } from './TeamSection';
 import { formatXp, usePlayerBonuses } from './XpPreview';
 
-function ruleText(e: BattleError): string {
+export function ruleText(e: BattleError): string {
   switch (e.code) {
     case 'TEAM_EMPTY':
       return 'Choisis au moins un Pokémon.';
@@ -71,7 +71,10 @@ export function LaunchBattleDialog({
     requiredTypes: trainer.rules.requiredTypes,
     affinityTypes: [...new Set(enemies.flatMap((e) => typeWeaknesses(e.types)))],
   };
-  const picker = useTeamPicker(ctx, site);
+  const picker = useTeamPicker(ctx, site, undefined, {
+    forbiddenTypes: trainer.rules.forbiddenTypes,
+    maxLevel: trainer.rules.maxLevel,
+  });
   const [moves, setMoves] = useState<Record<string, DungeonMove>>({});
   const maxTeamSize = trainer.rules.teamSize ?? ctx.balance.battles.maxTeamSize;
   const bonuses = usePlayerBonuses(ctx);
@@ -121,7 +124,7 @@ export function LaunchBattleDialog({
         <div className="min-w-0 flex-1">
           <p className="text-sm text-slate-500">{trainer.trainerClass}</p>
           <h2 className="flex items-center gap-2 text-xl font-bold">
-            {trainer.name}
+            {trainerName(trainer)}
             {(weather || placeWeather || forecast) && (
               <WeatherIcon
                 weather={weather ?? 'clear'}
@@ -155,7 +158,7 @@ export function LaunchBattleDialog({
 
       <TeamSection
         ctx={ctx}
-        title={`Équipe · ${trainer.name}`}
+        title={`Équipe · ${trainerName(trainer)}`}
         env={env}
         members={members}
         xp={maxXp}
@@ -163,6 +166,7 @@ export function LaunchBattleDialog({
         power={power}
         minPower={trainer.rules.minPower}
         errors={errors.map(ruleText)}
+        onAutoSelect={() => picker.autoSelect(maxTeamSize)}
       >
         <TeamPicker
           ctx={ctx}

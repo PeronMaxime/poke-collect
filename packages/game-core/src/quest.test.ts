@@ -1,5 +1,4 @@
 import { describe, expect, it } from 'vitest';
-import { captureProbability, checkTeam, countAffinity } from './expedition';
 import { MAX_IV, pokemonPower } from './pokemon';
 import type { PlayerProgress } from './progress';
 import { isZoneUnlocked } from './progress';
@@ -9,19 +8,20 @@ import {
   eventProgress,
   generateQuestPokemon,
   NEW_QUEST,
-  legendarySite,
+  questExpeditionMisses,
+  questItemsFound,
+  questItemsGained,
   questStatus,
   questStepsDone,
-  questCaptureChance,
-  questEncounter,
-  resolveQuestExpedition,
 } from './quest';
 import type { QuestEvent } from './quest';
+import { resolveExpedition } from './expedition';
 import { createRng } from './rng';
-import { member, testContext } from './test-helpers';
+import { member, testContext, withWeatherAbilities } from './test-helpers';
 
 const ctx = testContext();
 const quest = (id: string) => ctx.quest(id)!;
+const condition = (questId: string, step: number) => quest(questId).steps[step]!.condition;
 
 const progress = (patch: Partial<PlayerProgress> = {}): PlayerProgress => ({
   caughtSpeciesIds: new Set(),
@@ -29,7 +29,6 @@ const progress = (patch: Partial<PlayerProgress> = {}): PlayerProgress => ({
   eggsHatched: 0,
   ...patch,
 });
-const twoBadges = progress({ defeatedTrainerIds: new Set(['pierre', 'ondine']) });
 
 const expedition = (patch: Partial<QuestEvent>): QuestEvent => ({
   type: 'expedition',
@@ -40,124 +39,198 @@ const expedition = (patch: Partial<QuestEvent>): QuestEvent => ({
 });
 
 describe('avancement des quêtes', () => {
-  it('compte les captures du bon type pendant l’étape en cours', () => {
-    const artikodin = quest('artikodin');
-    // 2 Pokémon Eau (Magicarpe, Psykokwak) et un Rattata : seuls les premiers comptent.
-    const event = expedition({ captured: [129, 54, 19].map((speciesId) => ({ speciesId })) });
-    expect(advanceQuest(ctx, artikodin, NEW_QUEST, twoBadges, event)).toEqual({
-      step: 0,
-      count: 2,
-    });
-    expect(advanceQuest(ctx, artikodin, { step: 0, count: 13 }, twoBadges, event)).toEqual({
-      step: 1,
+  it('compte les captures du bon type, dans la zone de l’étape', () => {
+    const sulfura = quest('sulfura');
+    const atStep = { step: 1, count: 0 };
+    // 2 Pokémon Feu (Caninos, Goupix) et un Rattata : seuls les premiers comptent.
+    const captured = [58, 37, 19].map((speciesId) => ({ speciesId }));
+    const atBraise = expedition({ captured, zoneId: 'mont-braise' });
+    expect(advanceQuest(ctx, sulfura, atStep, progress(), atBraise)).toEqual({ step: 1, count: 2 });
+    expect(advanceQuest(ctx, sulfura, atStep, progress(), expedition({ captured }))).toEqual(
+      atStep,
+    );
+    expect(advanceQuest(ctx, sulfura, { step: 1, count: 4 }, progress(), atBraise)).toEqual({
+      step: 2,
       count: 0,
     });
   });
 
   it('un même événement ne compte que pour l’étape en cours', () => {
+    // Étape 4 d’Artikodin (capturer Lokhlass) terminée : l’expédition, pourtant valable pour
+    // l’étape 5, ne compte pas.
     const artikodin = quest('artikodin');
-    // L'étape 1 se termine : les captures Glace de la même expédition ne comptent pas pour l'étape 2.
-    const event = expedition({ captured: [129, 87, 87].map((speciesId) => ({ speciesId })) });
-    expect(advanceQuest(ctx, artikodin, { step: 0, count: 13 }, twoBadges, event)).toEqual({
-      step: 1,
+    const team = [member('a', 131, 50), member('b', 87, 50)];
+    const event = expedition({
+      zoneId: 'iles-ecume',
+      team,
+      weather: 'hail',
+      captured: [{ speciesId: 131 }],
+    });
+    expect(advanceQuest(ctx, artikodin, { step: 3, count: 0 }, progress(), event)).toEqual({
+      step: 4,
+      count: 0,
+    });
+    expect(advanceQuest(ctx, artikodin, { step: 4, count: 0 }, progress(), event)).toEqual({
+      step: 5,
       count: 0,
     });
   });
 
-  it('ne compte les captures d’une étape sans zone que dans la région de la quête', () => {
-    const electhor = quest('electhor');
-    const captured = [25, 81].map((speciesId) => ({ speciesId }));
-    expect(
-      advanceQuest(
-        ctx,
-        electhor,
-        NEW_QUEST,
-        progress(),
-        expedition({ captured, zoneId: 'route-29' }),
-      ),
-    ).toEqual(NEW_QUEST);
-    expect(
-      advanceQuest(
-        ctx,
-        electhor,
-        NEW_QUEST,
-        progress(),
-        expedition({ captured, zoneId: 'route-1' }),
-      ),
-    ).toEqual({ step: 0, count: 2 });
+  it('expédition : Pokémon précis exigés dans l’équipe', () => {
+    const c = condition('electhor', 0);
+    if (c.type !== 'expedition') throw new Error('étape inattendue');
+    const at = (team: QuestEvent['team'], zoneId = 'routes-9-10') =>
+      eventProgress(ctx, c, expedition({ zoneId, team }), 'kanto');
+    expect(at([member('a', 25, 20)])).toBe(1);
+    expect(at([member('a', 26, 20)])).toBe(0);
+    expect(at([member('a', 25, 20)], 'centrale')).toBe(0);
+    expect(questExpeditionMisses(ctx, c, { zoneId: 'centrale', team: [] })).toEqual([
+      { code: 'zone' },
+      { code: 'species', speciesIds: [25] },
+    ]);
   });
 
-  it('ne compte les captures d’une étape limitée à une zone que dans cette zone', () => {
-    const electhor = quest('electhor');
-    const captured = [25, 81, 19].map((speciesId) => ({ speciesId }));
-    const atStep2 = { step: 1, count: 0 };
-    // Étape 1 (toutes zones) : les captures comptent partout.
-    expect(advanceQuest(ctx, electhor, NEW_QUEST, progress(), expedition({ captured }))).toEqual({
-      step: 0,
-      count: 2,
+  it('expédition : assez de Pokémon du type et de la PE demandés', () => {
+    const c = condition('artikodin', 0);
+    if (c.type !== 'expedition') throw new Error('étape inattendue');
+    const strong = member('a', 9, 100);
+    expect(pokemonPower(ctx.species(9)!, strong)).toBeGreaterThanOrEqual(600);
+    const at = (team: QuestEvent['team']) =>
+      eventProgress(ctx, c, expedition({ zoneId: 'routes-maritimes', team }), 'kanto');
+    expect(at([strong, member('b', 131, 100)])).toBe(1);
+    expect(at([strong, member('b', 131, 5)])).toBe(0);
+    expect(at([strong, member('b', 59, 100)])).toBe(0);
+  });
+
+  it('expédition : météo au départ (inconnue = non vérifiée)', () => {
+    const c = condition('artikodin', 4);
+    if (c.type !== 'expedition') throw new Error('étape inattendue');
+    const team = [member('a', 131, 50), member('b', 87, 50)];
+    const at = (weather: QuestEvent['weather']) =>
+      eventProgress(ctx, c, expedition({ zoneId: 'iles-ecume', team, weather }), 'kanto');
+    expect(at('hail')).toBe(1);
+    expect(at('rain')).toBe(0);
+    expect(at(null)).toBe(0);
+    expect(at(undefined)).toBe(1);
+  });
+
+  it('expédition : la météo d’un talent de l’équipe compte comme celle du départ', () => {
+    const wctx = testContext(withWeatherAbilities);
+    const c = condition('artikodin', 4);
+    if (c.type !== 'expedition') throw new Error('étape inattendue');
+    // Lokhlass à Alerte Neige en tête : grêle, même si la zone est sous un temps clair.
+    const team = [member('a', 131, 50, { ability: 'snow-warning' }), member('b', 87, 50)];
+    const zone = ctx.zone('iles-ecume')!;
+    const run = (weather: QuestEvent['weather']) =>
+      resolveExpedition(wctx, {
+        zone,
+        elapsedMinutes: 30,
+        seed: 1,
+        team,
+        balls: null,
+        berries: null,
+        pity: {},
+        weather,
+      });
+    const at = (weather: QuestEvent['weather']) =>
+      eventProgress(wctx, c, expedition({ zoneId: 'iles-ecume', team, weather }), 'kanto');
+    expect(at(run(null).weather)).toBe(1);
+    expect(at(run('rain').weather)).toBe(1);
+    // Sans le talent, il faut la grêle de la zone.
+    const plain = [member('a', 131, 50), member('b', 87, 50)];
+    const plainRun = resolveExpedition(wctx, {
+      zone,
+      elapsedMinutes: 30,
+      seed: 1,
+      team: plain,
+      balls: null,
+      berries: null,
+      pity: {},
+      weather: null,
     });
-    // Étape 2 (Centrale) : rien ailleurs, seulement le bon type à la Centrale.
-    expect(advanceQuest(ctx, electhor, atStep2, progress(), expedition({ captured }))).toEqual(
-      atStep2,
-    );
-    expect(
-      advanceQuest(
-        ctx,
-        electhor,
-        atStep2,
-        progress(),
-        expedition({ captured, zoneId: 'centrale' }),
-      ),
-    ).toEqual({ step: 1, count: 2 });
+    expect(plainRun.weather).toBeNull();
   });
 
-  it('valide une expédition avec assez de Pokémon du type et de la PE demandés', () => {
-    const condition = quest('artikodin').steps[2]!.condition;
-    if (condition.type !== 'expedition') throw new Error('étape inattendue');
-    const strong = member('a', 87, 50);
-    const weak = member('b', 87, 5);
-    expect(pokemonPower(ctx.species(87)!, strong)).toBeGreaterThanOrEqual(400);
-    const at = (team: QuestEvent['team'], zoneId = 'iles-ecume') =>
-      eventProgress(ctx, condition, expedition({ zoneId, team }), 'kanto');
-    expect(at([strong, member('c', 91, 50)])).toBe(1);
-    expect(at([strong, weak])).toBe(0);
-    expect(at([strong, member('d', 129, 50)])).toBe(0);
-    expect(at([strong, member('c', 91, 50)], 'route-1')).toBe(0);
+  it('expédition : lancée de jour ou de nuit', () => {
+    const c = condition('sulfura', 0);
+    if (c.type !== 'expedition') throw new Error('étape inattendue');
+    const team = [member('a', 59, 50), member('b', 38, 50)];
+    const at = (hour: QuestEvent['hour']) =>
+      eventProgress(ctx, c, expedition({ zoneId: 'manoir-pokemon', team, hour }), 'kanto');
+    expect(at(23)).toBe(1);
+    expect(at(3)).toBe(1);
+    expect(at(12)).toBe(0);
+    expect(at(null)).toBe(0);
+    expect(at(undefined)).toBe(1);
+  });
+
+  it('objets de quête : chance par tirage de butin, tirages fixés par le seed', () => {
+    const c = condition('electhor', 1);
+    if (c.type !== 'questItem') throw new Error('étape inattendue');
+    const team = [member('a', 25, 50), member('b', 81, 50)];
+    const event = (seed: number, patch: Partial<QuestEvent> = {}) =>
+      expedition({ zoneId: 'centrale', team, lootRolls: 20, seed, ...patch });
+    const found = Array.from({ length: 400 }, (_, seed) => questItemsFound(ctx, c, event(seed)));
+    const mean = found.reduce((a, b) => a + b, 0) / found.length;
+    // 20 tirages de butin (deux heures) à 4 % : 0,8 objet en moyenne.
+    expect(mean).toBeGreaterThan(0.6);
+    expect(mean).toBeLessThan(1);
+    expect(found.some((n) => n === 0)).toBe(true);
+    expect(questItemsFound(ctx, c, event(7))).toBe(questItemsFound(ctx, c, event(7)));
+    // Sans les conditions (un seul Électrik), rien ; sans tirage de butin, rien.
+    expect(questItemsFound(ctx, c, event(7, { team: [team[0]!] }))).toBe(0);
+    expect(questItemsFound(ctx, c, event(7, { lootRolls: 0 }))).toBe(0);
+  });
+
+  it('objets de quête : gagnés sans dépasser le nombre demandé', () => {
+    const electhor = quest('electhor');
+    const sure = testContext((content) => {
+      const s = content.quests.find((q) => q.id === 'electhor')!.steps[1]!;
+      if (s.condition.type === 'questItem') s.condition.chance = 100;
+    });
+    const team = [member('a', 25, 50), member('b', 81, 50)];
+    const event = expedition({ zoneId: 'centrale', team, lootRolls: 20, seed: 1 });
+    const before = { step: 1, count: 2 };
+    const after = advanceQuest(sure, sure.quest('electhor')!, before, progress(), event);
+    // Étape 3 (battre Volt) non remplie : on s'y arrête.
+    expect(after).toEqual({ step: 2, count: 0 });
+    expect(questItemsGained(electhor, before, after)).toEqual({
+      itemId: 'fragment-magnetique',
+      quantity: 1,
+    });
+    expect(questItemsGained(electhor, { step: 1, count: 0 }, { step: 1, count: 2 })).toEqual({
+      itemId: 'fragment-magnetique',
+      quantity: 2,
+    });
+    expect(questItemsGained(electhor, before, before)).toBeNull();
+    expect(questItemsGained(electhor, NEW_QUEST, { step: 1, count: 0 })).toBeNull();
   });
 
   it('valide paresseusement les étapes « état » et s’arrête à la première non remplie', () => {
     const mewtwo = quest('mewtwo');
-    const champion = progress({ defeatedTrainerIds: new Set(['maitre-blue']) });
-    expect(advanceQuest(ctx, mewtwo, NEW_QUEST, progress())).toEqual({ step: 0, count: 0 });
-    // Étape 2 : les trois quêtes des oiseaux (condition combinée), pas encore terminées.
-    expect(advanceQuest(ctx, mewtwo, NEW_QUEST, champion)).toEqual({ step: 1, count: 0 });
+    const atStep = { step: 1, count: 0 };
+    const kanto = new Set(Array.from({ length: 151 }, (_, i) => i + 1));
     const birds = new Map([
-      ['artikodin', 3],
+      ['artikodin', 5],
       ['electhor', 4],
-      ['sulfura', 3],
+      ['sulfura', 5],
     ]);
-    expect(advanceQuest(ctx, mewtwo, NEW_QUEST, { ...champion, questSteps: birds })).toEqual({
-      step: 2,
-      count: 0,
-    });
-    birds.set('sulfura', 2);
-    expect(advanceQuest(ctx, mewtwo, NEW_QUEST, { ...champion, questSteps: birds }).step).toBe(1);
+    const ready = progress({ caughtSpeciesIds: kanto, questSteps: birds });
+    expect(advanceQuest(ctx, mewtwo, atStep, ready)).toEqual({ step: 2, count: 0 });
+    expect(advanceQuest(ctx, mewtwo, atStep, progress({ questSteps: birds }))).toEqual(atStep);
+    birds.set('sulfura', 4);
+    expect(advanceQuest(ctx, mewtwo, atStep, ready).step).toBe(1);
   });
 
   it('calcule les étapes validées, quêtes dépendantes comprises', () => {
-    const records = new Map([['mewtwo', { step: 4, count: 0 }]]);
-    const fourBadges = progress({
-      defeatedTrainerIds: new Set(['pierre', 'ondine', 'major-bob', 'erika']),
-    });
-    const steps = questStepsDone(ctx, fourBadges, records);
-    expect(steps.get('mewtwo')).toBe(4);
-    // Mew se débloque quand Mewtwo est terminé ; son étape 1 (20 œufs) n'est pas remplie.
+    const records = new Map([['mewtwo', { step: 5, count: 0 }]]);
+    const steps = questStepsDone(ctx, progress(), records);
+    expect(steps.get('mewtwo')).toBe(5);
+    // Mew se débloque quand Mewtwo est terminé ; son étape 1 (500 œufs) n'est pas remplie.
     expect(steps.get('mew')).toBe(0);
-    // Les oiseaux s'ouvrent après la victoire contre le Maître de la Ligue (étape 1 : des captures).
+    // Les oiseaux s'ouvrent après la victoire contre le Maître de la Ligue.
     expect(steps.has('electhor')).toBe(false);
-    const afterLeague = progress({
-      defeatedTrainerIds: new Set([...fourBadges.defeatedTrainerIds, 'maitre-blue']),
-    });
+    const afterLeague = progress({ defeatedTrainerIds: new Set(['maitre-blue']) });
     expect(questStepsDone(ctx, afterLeague, records).get('electhor')).toBe(0);
     expect(questStepsDone(ctx, progress(), new Map()).size).toBe(0);
   });
@@ -165,17 +238,17 @@ describe('avancement des quêtes', () => {
   it('ouvre les zones de quête selon les étapes validées', () => {
     const grotte = ctx.zone('grotte-azuree')!;
     const at = (step: number) =>
-      isZoneUnlocked(ctx, grotte, { ...twoBadges, questSteps: new Map([['mewtwo', step]]) });
-    expect(at(2)).toBe(false);
-    expect(at(3)).toBe(true);
+      isZoneUnlocked(ctx, grotte, { ...progress(), questSteps: new Map([['mewtwo', step]]) });
+    expect(at(1)).toBe(false);
+    expect(at(2)).toBe(true);
   });
 
   it('donne un statut à chaque quête', () => {
     const q = quest('artikodin');
     expect(questStatus(q, undefined, false)).toBe('locked');
     expect(questStatus(q, 1, false)).toBe('active');
-    expect(questStatus(q, 3, false)).toBe('completed');
-    expect(questStatus(q, 3, true)).toBe('claimed');
+    expect(questStatus(q, 5, false)).toBe('completed');
+    expect(questStatus(q, 5, true)).toBe('claimed');
   });
 });
 
@@ -197,126 +270,12 @@ describe('récompenses de quête', () => {
 
   it('compte les emplacements des quêtes réclamées', () => {
     const custom = testContext((c) => {
-      c.quests[0]!.rewards.expeditionSlots = 1;
+      c.quests.find((q) => q.id === 'artikodin')!.rewards.expeditionSlots = 1;
     });
     const base = { collectionIds: new Set<string>() };
     const before = playerSlots(custom, base).expeditions;
     expect(playerSlots(custom, { ...base, questIds: new Set(['artikodin']) }).expeditions).toBe(
       before + 1,
     );
-  });
-});
-
-describe('expédition légendaire', () => {
-  const artikodin = quest('artikodin');
-  const target = artikodin.rewards.pokemon[0]!;
-  const site = legendarySite(artikodin, target);
-  const team = [member('a', 59, 50), member('b', 19, 50)]; // Arcanin (Feu), Rattata
-  const input = { target, seed: 7, team, ballItemId: 'ultra-ball', berryItemId: null };
-
-  it('règles du repaire : région de la quête, PE minimale et affinités configurées', () => {
-    expect(site).toMatchObject({
-      regionId: 'kanto',
-      minPower: target.expedition.minPower,
-    });
-    expect(countAffinity(ctx, site, team)).toBe(1); // le Feu, faiblesse d'Artikodin
-    expect(checkTeam(ctx, site, [member('c', 152, 50)]).errors).toContainEqual(
-      expect.objectContaining({ code: 'WRONG_REGION' }), // Germignon : Pokédex de Johto
-    );
-    expect(
-      checkTeam(ctx, { ...site, regionId: null }, [member('c', 152, 100)]).errors,
-    ).not.toContainEqual(expect.objectContaining({ code: 'WRONG_REGION' }));
-  });
-
-  it('Calque : le porteur compte comme ayant le type d’affinité de la zone', () => {
-    const withTrace = testContext((c) => {
-      c.abilities = [
-        { id: 'trace', description: '', effects: [{ type: 'copyZoneAffinity', conditions: [] }] },
-      ];
-    });
-    const traced = [member('a', 59, 50), member('b', 19, 50, { ability: 'trace' })];
-    expect(countAffinity(withTrace, site, traced)).toBe(2);
-    expect(countAffinity(withTrace, { ...site, affinityTypes: [] }, traced)).toBe(0);
-  });
-
-  it('une seule rencontre, une seule Ball, avec la formule de capture des expéditions', () => {
-    const result = resolveQuestExpedition(ctx, input);
-    expect(result.encounters).toHaveLength(1);
-    expect(result).toMatchObject({ ballsUsed: 1, berriesUsed: 0, loot: [] });
-    const [encounter] = result.encounters;
-    expect(encounter).toMatchObject({ speciesId: 144, level: target.level });
-    expect(encounter!.captureChance).toBeCloseTo(
-      captureProbability(ctx, {
-        captureRate: ctx.species(144)!.captureRate,
-        ballMultiplier: ctx.itemEffect('ultra-ball', 'ball')!.catchMultiplier,
-        affinityCount: 1,
-      }),
-    );
-    expect(result.team.every((m) => m.xpGained > 0)).toBe(true);
-    // Déterministe : même seed, même issue.
-    expect(resolveQuestExpedition(ctx, input)).toEqual(result);
-  });
-
-  it('capturé : IV parfaits garantis ; échappé : aucun Pokémon', () => {
-    const outcomes = Array.from(
-      { length: 300 },
-      (_, seed) => resolveQuestExpedition(ctx, { ...input, seed }).encounters[0]!,
-    );
-    const caught = outcomes.filter((e) => e.outcome === 'captured');
-    expect(caught.length).toBeGreaterThan(0);
-    expect(caught.length).toBeLessThan(outcomes.length);
-    for (const e of caught) {
-      expect(
-        Object.values(e.pokemon!.ivs).filter((iv) => iv === MAX_IV).length,
-      ).toBeGreaterThanOrEqual(target.perfectIvs);
-    }
-    expect(outcomes.filter((e) => e.outcome === 'escaped').every((e) => !e.pokemon)).toBe(true);
-  });
-
-  it('talents de l’équipe : la chance affichée est celle du lancer (Pression : +10 %)', () => {
-    const withPressure = testContext((c) => {
-      c.abilities = [
-        {
-          id: 'pressure',
-          description: '',
-          effects: [
-            { type: 'modifier', param: 'capture', value: 10, scope: 'team', conditions: [] },
-          ],
-        },
-      ];
-    });
-    const pressured = [member('a', 59, 50, { ability: 'pressure' }), member('b', 19, 50)];
-    const withTalent = { ...input, team: pressured };
-    const base = resolveQuestExpedition(withPressure, input).encounters[0]!.captureChance;
-    const boosted = resolveQuestExpedition(withPressure, withTalent).encounters[0]!.captureChance;
-    expect(boosted).toBeCloseTo(base * 1.1);
-    expect(questCaptureChance(withPressure, withTalent)).toBe(boosted);
-  });
-
-  it('la baie augmente la chance de capture et est consommée', () => {
-    const berry = ctx.content.items.find((i) => ctx.itemEffect(i.id, 'captureBoost'))!;
-    const without = resolveQuestExpedition(ctx, input);
-    const withBerry = resolveQuestExpedition(ctx, { ...input, berryItemId: berry.id });
-    expect(withBerry.berriesUsed).toBe(1);
-    expect(withBerry.encounters[0]!.captureChance).toBeGreaterThan(
-      without.encounters[0]!.captureChance,
-    );
-  });
-
-  it('fuir : le même légendaire vu, ni Ball ni XP pour l’équipe', () => {
-    const fled = resolveQuestExpedition(ctx, { ...input, ballItemId: null });
-    expect(fled).toMatchObject({ ballsUsed: 0, berriesUsed: 0, xpPerMember: 0, team: [] });
-    expect(fled.encounters[0]).toMatchObject({ outcome: 'fled', speciesId: 144 });
-    expect(fled.encounters[0]!.pokemon).toBeUndefined();
-    expect(fled.encounters[0]!.isShiny).toBe(questEncounter(ctx, input).pokemon.isShiny);
-  });
-
-  it('la chaîne ne touche qu’au taux shiny : les IV parfaits restent ceux de la récompense', () => {
-    for (let seed = 0; seed < 50; seed++) {
-      const base = questEncounter(ctx, { target, seed });
-      const chained = questEncounter(ctx, { target, seed, shiny: { chain: 999 } });
-      expect(chained.shinyChance).toBeGreaterThan(base.shinyChance);
-      expect(chained.pokemon.ivs).toEqual(base.pokemon.ivs);
-    }
   });
 });

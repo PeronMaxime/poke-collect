@@ -209,6 +209,8 @@ export const trainers = pgTable(
     cooldownMinutes: integer('cooldown_minutes'),
     enabled: boolean('enabled').notNull().default(true),
     unlock: jsonb('unlock').$type<UnlockCondition>().notNull(),
+    /** Dresseur de quête (réservé à une étape de cette quête) ; null = dresseur ordinaire. */
+    questId: text('quest_id'),
   },
   (t) => [primaryKey({ columns: [t.contentVersionId, t.id] })],
 );

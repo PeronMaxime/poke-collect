@@ -187,6 +187,7 @@ export function LaunchDungeonDialog({
         maxTeamSize={maxTeamSize}
         power={power}
         errors={errors.map(ruleText)}
+        onAutoSelect={() => picker.autoSelect(maxTeamSize)}
       >
         <TeamPicker
           ctx={ctx}

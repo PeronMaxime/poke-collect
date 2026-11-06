@@ -4,16 +4,17 @@ import type { StatName } from '@poke/data';
 import {
   MAX_MEGAS_PER_TEAM,
   abilityEffectText,
+  autoTeam,
   computeStats,
-  copiesZoneAffinity,
   effectiveAbility,
+  hasAffinity,
   isMegaForm,
   isRegionalSpecies,
   megaCount,
   memberPower,
   possibleAbilityEffects,
 } from '@poke/game-core';
-import type { AbilityEnv, ExpeditionSite, GameContext } from '@poke/game-core';
+import type { AbilityEnv, AutoTeamRules, ExpeditionSite, GameContext } from '@poke/game-core';
 import { searchKey } from '@poke/shared';
 import type { PokemonDto, PokemonTagDto, PokemonTeamDto } from '@poke/shared';
 import { PokemonTagBadges, TagFilterSelect, useTagFilterOver } from '../../components/tags';
@@ -30,13 +31,15 @@ import { isUsable, usePokemon, useTags, useTeams } from '../../lib/game';
 import { STAT_LABELS, abilityLabel, typeLabel } from '../../lib/labels';
 
 const SORTS = {
-  power: 'PE',
-  affinity: 'Affinité',
+  power: 'PE (plus forts)',
+  affinity: 'Affinité d’abord',
   level: 'Niveau',
-  tag: 'Étiquette',
 } as const;
-/** `stat` : tri par la statistique choisie (proposé dans les donjons). */
+/** `stat` : tri par la statistique choisie (proposé dans les combats et donjons). */
 type Sort = keyof typeof SORTS | 'stat';
+
+/** Règles d'une activité, en plus de celles du lieu, pour la sélection automatique. */
+export type AutoTeamLimits = Pick<AutoTeamRules, 'forbiddenTypes' | 'maxLevel'>;
 
 /** Types de Pokémon, sans les types techniques des données (Stellaire, ???, Obscur). */
 const NON_POKEMON_TYPES = new Set(['stellar', 'unknown', 'shadow']);
@@ -79,17 +82,47 @@ export function nameMatcher(search: string) {
 export function NameSearch({
   value,
   onChange,
+  className = 'ml-1 w-32 py-0.5 text-xs',
 }: {
   value: string;
   onChange: (value: string) => void;
+  className?: string;
 }) {
   return (
     <input
-      className="input ml-1 w-32 py-0.5 text-xs"
-      placeholder="Rechercher…"
+      type="search"
+      className={`input ${className}`}
+      placeholder="Rechercher un Pokémon…"
+      aria-label="Rechercher par nom"
       value={value}
       onChange={(e) => onChange(e.target.value)}
     />
+  );
+}
+
+/**
+ * Bouton « Sélection auto » : les plus forts en affinité, puis les plus forts sans affinité
+ * (types requis servis d'abord). Grisé sans Pokémon disponible.
+ */
+export function AutoSelectButton({
+  onClick,
+  disabled = false,
+  className = 'btn-ghost',
+}: {
+  onClick: () => void;
+  disabled?: boolean;
+  className?: string;
+}) {
+  return (
+    <button
+      type="button"
+      className={className}
+      onClick={onClick}
+      disabled={disabled}
+      title="Choisir d’un clic les Pokémon les plus forts en affinité, puis les plus forts sans affinité (types requis compris)"
+    >
+      ⚡ Sélection auto
+    </button>
   );
 }
 
@@ -215,11 +248,15 @@ export const pillClass = (active: boolean) =>
  * s'il en a une), triables et filtrables par étiquette, ceux en affinité mis en évidence.
  * Renvoie les membres choisis (dans l'ordre de sélection) pour valider l'équipe.
  */
-/** `initialTeam` : équipe préparée à reprendre (lue une fois, à l'ouverture). */
+/**
+ * `initialTeam` : équipe préparée à reprendre (lue une fois, à l'ouverture) ; `limits` : règles
+ * de l'activité respectées par la sélection automatique (dresseurs).
+ */
 export function useTeamPicker(
   ctx: GameContext,
   zone: ExpeditionSite,
   initialTeam?: () => string[],
+  limits?: AutoTeamLimits,
 ) {
   return useTeamPickerOver(
     ctx,
@@ -228,6 +265,7 @@ export function useTeamPicker(
     useTags().data ?? [],
     useTeams().data ?? [],
     initialTeam,
+    limits,
   );
 }
 
@@ -261,6 +299,7 @@ export function useTeamPickerOver(
   /** Équipes enregistrées proposées d'un clic (aucune dans le simulateur de l'admin). */
   savedTeams: readonly PokemonTeamDto[] = [],
   initialTeam?: () => string[],
+  limits: AutoTeamLimits = {},
 ) {
   const [team, setTeam] = useState<string[]>(() => initialTeam?.() ?? []);
   const [sort, setSort] = useState<Sort>('power');
@@ -294,9 +333,7 @@ export function useTeamPickerOver(
         species,
         power: memberPower(ctx, p),
         stats: computeStats(species, p),
-        affinity:
-          species.types.some((t) => zone.affinityTypes.includes(t)) ||
-          (zone.affinityTypes.length > 0 && copiesZoneAffinity(ctx, p)),
+        affinity: hasAffinity(ctx, p, zone.affinityTypes),
       };
     })
     // Les membres déjà choisis restent visibles, quels que soient les filtres.
@@ -314,14 +351,40 @@ export function useTeamPickerOver(
         selectionRank(pinned, a.p.id) - selectionRank(pinned, b.p.id) ||
         (sort === 'affinity' ? Number(b.affinity) - Number(a.affinity) : 0) ||
         (sort === 'level' ? b.p.level - a.p.level : 0) ||
-        (sort === 'tag' ? tagFilter.compare(a.p, b.p) : 0) ||
         (sort === 'stat' ? b.stats[stat] - a.stats[stat] : 0) ||
         b.power - a.power,
     );
   const members = team.flatMap((id) => available.find((a) => a.p.id === id)?.p ?? []);
+  /** Équipe choisie d'un clic parmi tous les Pokémon disponibles (sans tenir compte des filtres). */
+  const autoSelect = (size: number) =>
+    setTeam(
+      autoTeam(ctx, usablePokemon, {
+        size,
+        affinityTypes: zone.affinityTypes,
+        requiredTypes: zone.requiredTypes,
+        minPower: zone.minPower,
+        ...limits,
+      }),
+    );
+  const activeFilters =
+    Number(tagFilter.filter !== 'all') +
+    Number(type !== 'all') +
+    Number(search.trim() !== '') +
+    Number(abilityOnly) +
+    Number(favoritesOnly);
+  const resetFilters = () => {
+    tagFilter.setFilter('all');
+    setType('all');
+    setSearch('');
+    setAbilityOnly(false);
+    setFavoritesOnly(false);
+  };
   return {
     team,
     setTeam,
+    autoSelect,
+    activeFilters,
+    resetFilters,
     sort,
     setSort,
     stat,
@@ -367,6 +430,9 @@ export function TeamPicker({
   const {
     team,
     setTeam,
+    autoSelect,
+    activeFilters,
+    resetFilters,
     sort,
     setSort,
     stat,
@@ -402,6 +468,8 @@ export function TeamPicker({
     abilityEnv && abilityOnly
       ? withAbility.filter((c) => c.activeAbility || team.includes(c.p.id))
       : withAbility;
+  // « Talent actif » ne compte que là où il est proposé.
+  const filterCount = activeFilters - Number(abilityOnly && !abilityEnv);
 
   function toggle(p: PokemonDto) {
     if (megaLocked(p, members)) return;
@@ -412,6 +480,33 @@ export function TeamPicker({
 
   return (
     <>
+      {/* 1. L'équipe : état et choix rapides. */}
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2">
+        <h3 className="text-sm font-semibold">
+          Équipe ({team.length} / {maxTeamSize})
+          <span
+            className={`ml-2 font-medium ${power >= zone.minPower ? 'text-emerald-600' : 'text-red-600'}`}
+          >
+            PE {power}
+            {zone.minPower > 0 && ` / ${zone.minPower}`}
+          </span>
+        </h3>
+        <div className="flex flex-wrap gap-2">
+          <AutoSelectButton
+            className="btn-ghost px-3 py-1.5 text-xs"
+            onClick={() => autoSelect(maxTeamSize)}
+            disabled={usable.size === 0}
+          />
+          <button
+            type="button"
+            className="btn-ghost px-3 py-1.5 text-xs"
+            onClick={() => setTeam([])}
+            disabled={team.length === 0}
+          >
+            Vider
+          </button>
+        </div>
+      </div>
       <SavedTeamsBar
         ctx={ctx}
         teams={savedTeams}
@@ -421,55 +516,59 @@ export function TeamPicker({
         current={team}
         onPick={setTeam}
       />
-      <div className="mt-5 flex flex-wrap items-baseline justify-between gap-2">
-        <h3 className="text-sm font-semibold">
-          Équipe ({team.length} / {maxTeamSize})
-        </h3>
-        <div className="flex flex-wrap items-center gap-1 text-xs">
-          <span className="text-slate-500">Trier par</span>
-          {(Object.keys(SORTS) as (keyof typeof SORTS)[]).map((key) => (
-            <button
-              key={key}
-              type="button"
-              onClick={() => setSort(key)}
-              className={pillClass(sort === key)}
-            >
-              {SORTS[key]}
-            </button>
-          ))}
-          {statSort && (
+
+      {/* 2. Les Pokémon disponibles : recherche et tri, puis filtres. */}
+      <div className="mt-4 space-y-2 rounded-xl border border-slate-200 bg-slate-50 p-2 text-xs dark:border-slate-800 dark:bg-slate-900/60">
+        <div className="flex flex-wrap items-center gap-2">
+          <NameSearch
+            value={search}
+            onChange={setSearch}
+            className="min-w-40 flex-1 py-1 text-xs"
+          />
+          <label className="flex items-center gap-1.5">
+            <span className="font-medium text-slate-500">Trier par</span>
             <select
-              className={`input w-auto py-0.5 text-xs ${sort === 'stat' ? 'border-brand-500 ring-1 ring-brand-500' : ''}`}
-              value={sort === 'stat' ? stat : ''}
+              className="input w-auto py-1 text-xs"
+              value={sort === 'stat' ? `stat:${stat}` : sort}
               onChange={(e) => {
-                setStat(e.target.value as StatName);
-                setSort('stat');
+                const value = e.target.value;
+                if (value.startsWith('stat:')) {
+                  setStat(value.slice(5) as StatName);
+                  setSort('stat');
+                } else setSort(value as Sort);
               }}
-              aria-label="Trier par statistique"
             >
-              <option value="" disabled>
-                Statistique…
-              </option>
-              {STAT_NAMES.map((s) => (
-                <option key={s} value={s}>
-                  {STAT_LABELS[s]}
+              {(Object.keys(SORTS) as (keyof typeof SORTS)[]).map((key) => (
+                <option key={key} value={key}>
+                  {SORTS[key]}
                 </option>
               ))}
+              {statSort && (
+                <optgroup label="Statistique">
+                  {STAT_NAMES.map((s) => (
+                    <option key={s} value={`stat:${s}`}>
+                      {STAT_LABELS[s]}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
-          )}
+          </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <span className="font-medium text-slate-500">Filtrer</span>
+          <TypeFilterSelect value={type} onChange={setType} className="py-1 text-xs" />
           <TagFilterSelect
             tags={tagFilter.tags}
             value={tagFilter.filter}
             onChange={tagFilter.setFilter}
-            className="ml-1 py-0.5 text-xs"
+            className="py-1 text-xs"
           />
-          <TypeFilterSelect value={type} onChange={setType} />
-          <NameSearch value={search} onChange={setSearch} />
           <button
             type="button"
             onClick={() => setFavoritesOnly(!favoritesOnly)}
             title="N'afficher que les Pokémon favoris (♥)"
-            className={`ml-1 ${pillClass(favoritesOnly)}`}
+            className={pillClass(favoritesOnly)}
           >
             ♥ Favoris
           </button>
@@ -478,15 +577,24 @@ export function TeamPicker({
               type="button"
               onClick={() => setAbilityOnly(!abilityOnly)}
               title="N'afficher que les Pokémon dont le talent agit ici (lieu, heure, météo, équipiers)"
-              className={`ml-1 ${pillClass(abilityOnly)}`}
+              className={pillClass(abilityOnly)}
             >
-              Talent actif
+              ✦ Talent actif
+            </button>
+          )}
+          {filterCount > 0 && (
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="ml-auto text-brand-600 hover:underline dark:text-brand-400"
+            >
+              Effacer les filtres ({filterCount})
             </button>
           )}
         </div>
         {zone.requiredTypes.length > 0 && (
-          <div className="flex w-full flex-wrap items-center gap-1 text-xs">
-            <span className="text-slate-500">Types requis :</span>
+          <div className="flex flex-wrap items-center gap-1.5">
+            <span className="font-medium text-slate-500">Types requis</span>
             {zone.requiredTypes.map((r) => (
               <button
                 key={r.type}
@@ -497,24 +605,30 @@ export function TeamPicker({
                     ? 'Retirer le filtre'
                     : `N'afficher que les Pokémon de type ${typeLabel(r.type)}`
                 }
-                className={`rounded-full transition ${
+                className={`flex items-center gap-1 rounded-full transition ${
                   type === r.type
                     ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900'
                     : 'opacity-70 hover:opacity-100'
                 }`}
               >
                 <TypeBadge type={r.type} />
+                {r.count > 1 && <span className="pr-1 text-slate-500">× {r.count}</span>}
               </button>
             ))}
           </div>
         )}
-        <span
-          className={`text-sm font-medium ${power >= zone.minPower ? 'text-emerald-600' : 'text-red-600'}`}
-        >
-          PE {power}
-          {zone.minPower > 0 && ` / ${zone.minPower}`}
-        </span>
       </div>
+      <p className="mt-2 flex flex-wrap items-center justify-between gap-1 text-xs text-slate-500">
+        <span>
+          {available.length} Pokémon{from} affiché{available.length > 1 ? 's' : ''}
+        </span>
+        {zone.affinityTypes.length > 0 && (
+          <span className="flex items-center gap-1.5">
+            <span className="inline-block h-2.5 w-2.5 rounded-full border border-emerald-400 shadow-[0_0_4px_1px_rgba(52,211,153,0.65)]" />
+            En affinité
+          </span>
+        )}
+      </p>
       <div className="mt-2 grid max-h-64 grid-cols-3 gap-2 overflow-y-auto p-1 sm:grid-cols-5">
         <ProgressiveItems
           items={available}
@@ -585,13 +699,20 @@ export function TeamPicker({
         </ProgressiveItems>
         {available.length === 0 && (
           <p className="col-span-full text-sm text-slate-500">
-            {tagFilter.filter === 'all' &&
-            type === 'all' &&
-            !search.trim() &&
-            !abilityOnly &&
-            !favoritesOnly
-              ? `Aucun Pokémon${from} disponible : ils sont occupés, K.O., ou pas encore capturés.`
-              : `Aucun Pokémon${from} disponible avec ces filtres.`}
+            {filterCount === 0 ? (
+              `Aucun Pokémon${from} disponible : ils sont occupés, K.O., ou pas encore capturés.`
+            ) : (
+              <>
+                Aucun Pokémon{from} disponible avec ces filtres.{' '}
+                <button
+                  type="button"
+                  onClick={resetFilters}
+                  className="text-brand-600 hover:underline dark:text-brand-400"
+                >
+                  Effacer les filtres
+                </button>
+              </>
+            )}
           </p>
         )}
       </div>

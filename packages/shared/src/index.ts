@@ -33,6 +33,7 @@ import type {
   Gender,
   GuildJoinMode,
   GuildRole,
+  LegendaryBattleResult,
   PlayerBonuses,
   PlayerSlots,
   QuestStatus,
@@ -433,8 +434,10 @@ export interface QuestProgressDto {
   stepStartedAt: string;
   completedAt: string | null;
   claimedAt: string | null;
-  /** Pokémon de la récompense déjà capturés en expédition légendaire. */
+  /** Pokémon de la récompense déjà capturés (combat légendaire ou fuyard). */
   pokemonCaught: number;
+  /** Relâcher son légendaire fait recommencer toute la quête (capturé avant sa réécriture). */
+  restartOnRelease: boolean;
 }
 
 export interface QuestsResponse {
@@ -443,7 +446,7 @@ export interface QuestsResponse {
 
 export interface ClaimQuestResponse {
   questId: string;
-  /** Les Pokémon de la récompense se capturent ensuite en expédition légendaire. */
+  /** Les Pokémon de la récompense se capturent ensuite (combat légendaire ou fuyard). */
   rewards: QuestReward;
   currency: number;
   slots: PlayerSlots;
@@ -505,6 +508,18 @@ export const depositDaycareInputSchema = z.object({
 });
 export type DepositDaycareInput = z.infer<typeof depositDaycareInputSchema>;
 
+/** Ramasser (`bag`) range les œufs dans le sac ; couver (`incubator`) remplit la couveuse d'abord. */
+export const collectEggsInputSchema = z.object({
+  to: z.enum(['bag', 'incubator']).default('incubator'),
+});
+export type CollectEggsInput = z.infer<typeof collectEggsInputSchema>;
+
+/** Œufs du sac à mettre en couveuse (autant que de places libres, dans l'ordre donné). */
+export const incubateEggsInputSchema = z.object({
+  ids: z.array(z.uuid()).min(1).max(200),
+});
+export type IncubateEggsInput = z.infer<typeof incubateEggsInputSchema>;
+
 export interface DaycareDto {
   slotIndex: number;
   parentAId: string | null;
@@ -513,23 +528,36 @@ export interface DaycareDto {
   heldItemBId: string | null;
   /** Début du cycle de ponte en cours. */
   startedAt: string;
+  /** Dépôt du couple : les parents gagnent de l'XP depuis ce moment (reçue au retrait). */
+  depositedAt: string;
   /** Espèce des œufs pondus (null si un parent a disparu). */
   eggSpeciesId: number | null;
   /** Forme des œufs pondus (régionale, héritée de la mère). */
   eggFormId: number | null;
   /** Minutes entre deux œufs (talents des parents et de l'assistant compris). */
   eggMinutes: number;
+  /** Les parents peuvent s'accoupler. Sinon la pension ne pond pas : ils ne font que gagner de l'XP. */
+  breeds: boolean;
 }
 
-/** Un œuf ne révèle rien de son contenu avant l'éclosion, à part l'espèce. */
+/** Un œuf en couveuse ne révèle rien de son contenu avant l'éclosion, à part l'espèce. */
 export interface EggDto {
   id: string;
   speciesId: number;
   formId: number | null;
   /** Place de la couveuse. */
   slotIndex: number;
-  laidAt: string;
+  /** Mise en couveuse. */
+  incubatedAt: string;
   hatchAt: string;
+}
+
+/** Œuf rangé dans le sac, en attente d'une place en couveuse. */
+export interface BagEggDto {
+  id: string;
+  speciesId: number;
+  formId: number | null;
+  laidAt: string;
 }
 
 export interface DaycareResponse {
@@ -539,13 +567,31 @@ export interface DaycareResponse {
   eggsHatched: number;
   serverTime: string;
   pensions: DaycareDto[];
+  /** Œufs en couveuse. */
   eggs: EggDto[];
+  /** Œufs rangés dans le sac, du plus ancien au plus récent. */
+  bagEggs: BagEggDto[];
+}
+
+/** XP gagnée par un parent pendant son séjour en pension (reçue au retrait). */
+export interface DaycareXpDto {
+  pokemonId: string;
+  xpGained: number;
+  levelBefore: number;
+  levelAfter: number;
 }
 
 export interface CollectEggsResponse {
-  eggs: EggDto[];
-  /** Œufs restés en attente dans la pension, faute de place dans la couveuse. */
-  waiting: number;
+  /** Œufs mis en couveuse. */
+  incubated: EggDto[];
+  /** Œufs rangés dans le sac (ramassés, ou faute de place dans la couveuse). */
+  bagged: number;
+  /** Retrait du couple : XP gagnée par chaque parent. */
+  parents?: DaycareXpDto[];
+}
+
+export interface IncubateEggsResponse {
+  incubated: EggDto[];
 }
 
 export interface HatchEggsResponse {
@@ -668,37 +714,6 @@ export const startExpeditionInputSchema = z.object({
 });
 export type StartExpeditionInput = z.infer<typeof startExpeditionInputSchema>;
 
-/** Expédition légendaire d'une quête réclamée : l'équipe seulement, la Ball se choisit au retour. */
-export const startQuestExpeditionInputSchema = z.object({
-  team: z.array(z.uuid()).min(1).max(6),
-  utcOffsetMinutes: utcOffsetSchema.optional(),
-});
-export type StartQuestExpeditionInput = z.infer<typeof startQuestExpeditionInputSchema>;
-
-/**
- * Décision au retour d'une expédition légendaire : une Ball (et une baie) à lancer, ou la fuite
- * (`ballItemId` null). Ignorée pour une expédition normale.
- */
-export const claimExpeditionInputSchema = z.object({
-  ballItemId: slugSchema.nullable(),
-  berryItemId: slugSchema.nullable(),
-});
-export type ClaimExpeditionInput = z.infer<typeof claimExpeditionInputSchema>;
-
-/** Légendaire rencontré au retour, avant de lancer la Ball ou de fuir. */
-export interface LegendaryEncounterDto {
-  expeditionId: string;
-  questId: string;
-  speciesId: number;
-  formId: number | null;
-  level: number;
-  gender: PokemonDto['gender'];
-  isShiny: boolean;
-  shinyChance: number;
-  /** Maillon de la chaîne de la quête au départ. */
-  shinyChain: number;
-}
-
 /** Résultat stocké : chaque Pokémon capturé reçoit son identifiant en base. */
 export interface StoredExpeditionResult extends ExpeditionResult {
   encounters: (ExpeditionResult['encounters'][number] & {
@@ -717,6 +732,8 @@ export interface StoredExpeditionResult extends ExpeditionResult {
    * `pokemonId`) et Bonbons gagnés ; absent = aucun transfert.
    */
   autoTransferred?: { count: number; candies: { lineageId: number; quantity: number }[] };
+  /** Objets de quête trouvés pendant l'expédition ; absent = aucun. */
+  questItems?: ItemStack[];
 }
 
 export interface ExpeditionDto {
@@ -792,19 +809,10 @@ export interface ExpeditionsResponse {
   active: ExpeditionDto[];
   /** Chaînes de zone actives (les zones absentes repartent de 0). */
   chains: ShinyChainDto[];
-  /** Chaînes des expéditions légendaires, par quête (relancer pour viser un shiny). */
-  questChains: QuestChainDto[];
   /** Zones mises en favori, dans l'ordre où elles ont été ajoutées. */
   favoriteZoneIds: string[];
   /** Pokémon fuyards en fuite et leur zone actuelle. */
   roamers: RoamerDto[];
-}
-
-/** Chaîne d'une expédition légendaire : comme une chaîne de zone, propre à la quête. */
-export interface QuestChainDto {
-  questId: string;
-  chain: number;
-  expiresAt: string | null;
 }
 
 export const favoriteZoneInputSchema = z.object({ favorite: z.boolean() });
@@ -895,6 +903,95 @@ export interface ClaimBattleResponse {
 export interface BattleTeamErrorBody {
   error: 'TEAM_INVALID';
   errors: BattleError[];
+}
+
+// --- Combats légendaires ----------------------------------------------------------
+
+/** Combat contre le légendaire d'une quête réclamée : équipe dans l'ordre, attaque de chacun. */
+export const startLegendaryBattleInputSchema = z
+  .object({
+    team: z.array(z.uuid()).min(1).max(6),
+    moves: z.array(dungeonMoveSchema).min(1).max(6),
+    /** Heure locale du joueur (talents de jour ou de nuit). */
+    utcOffsetMinutes: utcOffsetSchema.optional(),
+  })
+  .refine((i) => i.moves.length === i.team.length, {
+    message: 'Une attaque par Pokémon',
+    path: ['moves'],
+  });
+export type StartLegendaryBattleInput = z.infer<typeof startLegendaryBattleInputSchema>;
+
+/** Ball lancée sur le légendaire vaincu. */
+export const legendaryCaptureInputSchema = z.object({ ballItemId: slugSchema });
+export type LegendaryCaptureInput = z.infer<typeof legendaryCaptureInputSchema>;
+
+export type StoredLegendaryResult = LegendaryBattleResult;
+
+/** Combat légendaire en temps réel (même déroulé qu'un combat de dresseur), puis sa capture. */
+export interface LegendaryBattleDto {
+  id: string;
+  questId: string;
+  /** Pokémon de la récompense affronté (index). */
+  pokemonIndex: number;
+  team: string[];
+  setup: DungeonSetup;
+  commands: DungeonCommand[];
+  fledAtMs: number | null;
+  contentVersionId: number;
+  isShiny: boolean;
+  startedAt: string;
+  endsAt: string;
+  claimedAt: string | null;
+  resultSeenAt: string | null;
+  outcome: DungeonOutcome | null;
+  result: StoredLegendaryResult | null;
+  /** Chance de capture d'une Ball ordinaire (0-1). */
+  captureChance: number;
+  /** Ball lancée, et son issue : null tant que le légendaire vaincu attend la Ball. */
+  ballItemId: string | null;
+  captured: boolean | null;
+  capturedAt: string | null;
+  pokemonId: string | null;
+  /** Fin d'une tentative sans capture (début du délai avant la suivante). */
+  endedAt: string | null;
+}
+
+/** Où en est le joueur avec le légendaire d'une quête réclamée. */
+export interface LegendaryQuestStateDto {
+  questId: string;
+  pokemonIndex: number;
+  /** Combats déjà livrés contre ce légendaire. */
+  attempts: number;
+  /** Fin du délai avant de retenter le combat ; null = possible tout de suite. */
+  retryAt: string | null;
+  /** Légendaire vaincu qui attend la Ball : combat, et légendaire chromatique ou non. */
+  pendingCapture: { id: string; isShiny: boolean } | null;
+}
+
+export interface LegendaryBattlesResponse {
+  serverTime: string;
+  /** Combat en cours (ou terminé, pas encore réglé). */
+  active: LegendaryBattleDto | null;
+  /** Dernier combat réglé (résultat ou Ball à lancer). */
+  last: LegendaryBattleDto | null;
+  quests: LegendaryQuestStateDto[];
+}
+
+export interface ClaimLegendaryBattleResponse {
+  battle: LegendaryBattleDto;
+}
+
+/** Légendaire relâché : la quête qui le propose de nouveau. */
+export interface ReleaseLegendaryResponse {
+  questId: string;
+  /** Toute la quête est à refaire (légendaire capturé avant la réécriture des quêtes). */
+  restarted: boolean;
+}
+
+export interface LegendaryCaptureResponse {
+  battle: LegendaryBattleDto;
+  /** Le légendaire capturé ; null si la Ball a échoué. */
+  pokemon: PokemonDto | null;
 }
 
 // --- Donjons ----------------------------------------------------------------------------

@@ -1,6 +1,7 @@
-import { questSchema, unlockParts } from '@poke/content';
-import type { Quest, QuestCondition, QuestStep } from '@poke/content';
+import { IMPOSED_WEATHERS, questSchema, unlockParts } from '@poke/content';
+import type { Quest, QuestCondition, QuestExpeditionCondition, QuestStep } from '@poke/content';
 import { types } from '@poke/data';
+import { WEATHER_LABELS } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import { EntityPage } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
@@ -14,7 +15,7 @@ import {
 } from '../../components/forms/fields';
 import type { FieldErrors } from '../../components/forms/fields';
 import { emptyReward, rewardSummary, RewardEditor } from '../../components/forms/RewardEditor';
-import { SpeciesSelect, Sprite, UnlockEditor } from '../../components/forms/pickers';
+import { ItemSelect, SpeciesSelect, Sprite, UnlockEditor } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
 import { PokemonRewardsEditor } from './QuestPokemonEditor';
 
@@ -24,13 +25,14 @@ const newStep = (): QuestStep => ({
   name: 'Nouvelle étape',
   description: '',
   condition: { type: 'speciesCaught', count: 10 },
+  outcome: '',
 });
 
 export function QuestsPage() {
   return (
     <EntityPage<Quest>
       title="Quêtes"
-      description="Chaînes de quêtes : condition d’apparition, étapes validées dans l’ordre, récompenses ; les Pokémon (IV parfaits garantis) se capturent ensuite en expédition légendaire."
+      description="Chaînes de quêtes : condition d’apparition, étapes validées dans l’ordre, récompenses ; les Pokémon (IV parfaits garantis) s’affrontent ensuite en combat légendaire, lancé depuis les Quêtes."
       collection="quests"
       entityKind="quest"
       schema={questSchema}
@@ -190,8 +192,9 @@ function QuestForm({
       <Section title="Étapes">
         <p className="text-xs text-slate-500">
           Validées dans l’ordre. Une condition d’état (Pokédex, dresseur battu…) se valide dès
-          qu’elle est remplie ; une action (captures, expédition) ne compte qu’à partir du début de
-          l’étape, à la récupération des expéditions.
+          qu’elle est remplie ; une action (captures, expédition, objet de quête) ne compte qu’à
+          partir du début de l’étape, à la récupération des expéditions. Un objet de quête ne se
+          trouve que pendant son étape.
         </p>
         {q.steps.map((step, i) => (
           <div
@@ -259,6 +262,18 @@ function QuestForm({
               prefix={`steps.${i}.condition`}
               disabled={disabled}
             />
+            <Field
+              label="Dénouement"
+              hint="Affiché une fois l’étape validée : la suite de l’histoire (facultatif)."
+              error={errors.get(`steps.${i}.outcome`)}
+            >
+              <TextInput
+                value={step.outcome}
+                onChange={(outcome) => setStep(i, { ...step, outcome })}
+                disabled={disabled}
+                multiline
+              />
+            </Field>
           </div>
         ))}
         {errors.get('steps') && <p className="text-xs text-red-600">{errors.get('steps')}</p>}
@@ -273,7 +288,7 @@ function QuestForm({
         )}
       </Section>
 
-      <Section title="Pokémon à capturer (expéditions légendaires)">
+      <Section title="Pokémon à capturer (combats légendaires)">
         <PokemonRewardsEditor
           ctx={ctx}
           value={q.rewards.pokemon}
@@ -297,9 +312,12 @@ function QuestForm({
   );
 }
 
-type ConditionMode = 'catchPokemon' | 'expedition' | 'state';
+type ConditionMode = 'catchPokemon' | 'expedition' | 'questItem' | 'state';
 
-/** Condition d'une étape : action (captures, expédition) ou condition d'état (brique de déblocage). */
+/**
+ * Condition d'une étape : action (captures, expédition, objet de quête) ou condition d'état
+ * (brique de déblocage).
+ */
 function QuestConditionEditor({
   ctx,
   questId,
@@ -318,7 +336,9 @@ function QuestConditionEditor({
   disabled: boolean;
 }) {
   const mode: ConditionMode =
-    value.type === 'catchPokemon' || value.type === 'expedition' ? value.type : 'state';
+    value.type === 'catchPokemon' || value.type === 'expedition' || value.type === 'questItem'
+      ? value.type
+      : 'state';
   const err = (path: string) => errors.get(`${prefix}.${path}`);
   const initial = (m: ConditionMode): QuestCondition => {
     switch (m) {
@@ -332,6 +352,23 @@ function QuestConditionEditor({
           memberType: null,
           memberCount: 1,
           minMemberPower: 0,
+          speciesIds: [],
+          weathers: [],
+          timeOfDay: null,
+        };
+      case 'questItem':
+        return {
+          type: m,
+          itemId: ctx.content.items.find((i) => i.category === 'quest')?.id ?? '',
+          count: 1,
+          zoneId: ctx.zones[0]?.id ?? '',
+          chance: 10,
+          memberType: null,
+          memberCount: 0,
+          minMemberPower: 0,
+          speciesIds: [],
+          weathers: [],
+          timeOfDay: null,
         };
       case 'state':
         return { type: 'speciesCaught', count: 10 };
@@ -348,6 +385,7 @@ function QuestConditionEditor({
       >
         <option value="catchPokemon">Capturer des Pokémon (pendant l’étape)</option>
         <option value="expedition">Réussir une expédition (pendant l’étape)</option>
+        <option value="questItem">Trouver un objet de quête (pendant l’étape)</option>
         <option value="state">Condition d’état (Pokédex, dresseur, badges, quête…)</option>
       </select>
 
@@ -471,16 +509,241 @@ function QuestConditionEditor({
         </div>
       )}
 
-      {mode === 'state' && value.type !== 'catchPokemon' && value.type !== 'expedition' && (
-        <UnlockEditor
+      {value.type === 'questItem' && (
+        <div className="space-y-2">
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="Objet" hint="Objets de la catégorie « quête »." error={err('itemId')}>
+              <ItemSelect
+                ctx={ctx}
+                value={value.itemId || null}
+                filter={(id) => ctx.item(id)?.category === 'quest'}
+                onChange={(itemId) => onChange({ ...value, itemId: itemId ?? '' })}
+                disabled={disabled}
+              />
+            </Field>
+            <Field label="Quantité" error={err('count')}>
+              <NumberInput
+                className="w-24"
+                value={value.count}
+                min={1}
+                max={99}
+                unit="×"
+                disabled={disabled}
+                onChange={(count) => onChange({ ...value, count })}
+              />
+            </Field>
+            <Field label="Zone" error={err('zoneId')}>
+              <ZoneSelect
+                ctx={ctx}
+                value={value.zoneId}
+                onChange={(zoneId) => onChange({ ...value, zoneId })}
+                disabled={disabled}
+              />
+            </Field>
+            <Field label="Chance par tirage de butin" error={err('chance')}>
+              <NumberInput
+                className="w-28"
+                value={value.chance}
+                min={0.1}
+                max={100}
+                step={1}
+                unit="%"
+                disabled={disabled}
+                onChange={(chance) => onChange({ ...value, chance })}
+              />
+            </Field>
+          </div>
+          <div className="flex flex-wrap items-end gap-3">
+            <Field label="Avec au moins" error={err('memberCount')}>
+              <NumberInput
+                className="w-28"
+                value={value.memberCount}
+                min={0}
+                max={6}
+                unit="Pokémon"
+                disabled={disabled}
+                onChange={(memberCount) => onChange({ ...value, memberCount })}
+              />
+            </Field>
+            <Field label="de type">
+              <TypeOrAny
+                value={value.memberType}
+                onChange={(memberType) => onChange({ ...value, memberType })}
+                disabled={disabled}
+              />
+            </Field>
+            <Field label="PE individuelle ≥" error={err('minMemberPower')}>
+              <NumberInput
+                className="w-32"
+                value={value.minMemberPower}
+                min={0}
+                step={50}
+                unit="PE"
+                disabled={disabled}
+                onChange={(minMemberPower) => onChange({ ...value, minMemberPower })}
+              />
+            </Field>
+          </div>
+        </div>
+      )}
+
+      {(value.type === 'expedition' || value.type === 'questItem') && (
+        <ExpeditionRequirementsEditor
+          ctx={ctx}
           value={value}
           onChange={onChange}
-          regions={ctx.regions}
-          trainers={ctx.trainers}
-          quests={ctx.quests.filter((q) => q.id !== questId)}
           disabled={disabled}
         />
       )}
+
+      {value.type !== 'catchPokemon' &&
+        value.type !== 'expedition' &&
+        value.type !== 'questItem' && (
+          <>
+            <p className="basis-full text-xs text-slate-500">
+              « Avoir battu un dresseur » : seuls les dresseurs de cette quête (Dresseurs → Dresseur
+              de quête) sont proposés ; ils apparaissent aux joueurs quand l’étape est atteinte.
+            </p>
+            <UnlockEditor
+              value={value}
+              onChange={onChange}
+              regions={ctx.regions}
+              trainers={ctx.trainers.filter((t) => t.questId === questId)}
+              quests={ctx.quests.filter((q) => q.id !== questId)}
+              disabled={disabled}
+            />
+          </>
+        )}
+    </div>
+  );
+}
+
+/** Zone d'une condition d'expédition, y compris une zone inconnue (supprimée). */
+function ZoneSelect({
+  ctx,
+  value,
+  onChange,
+  disabled,
+}: {
+  ctx: GameContext;
+  value: string;
+  onChange: (v: string) => void;
+  disabled: boolean;
+}) {
+  return (
+    <select
+      className="input w-auto"
+      value={value}
+      disabled={disabled}
+      onChange={(e) => onChange(e.target.value)}
+    >
+      {!ctx.zone(value) && <option value={value}>{value || '—'} (inconnue)</option>}
+      {ctx.zones.map((z) => (
+        <option key={z.id} value={z.id}>
+          {z.name}
+        </option>
+      ))}
+    </select>
+  );
+}
+
+/**
+ * Conditions de départ d'une expédition de quête : Pokémon précis dans l'équipe, météo de la
+ * zone au départ, moment du départ (heure locale du joueur).
+ */
+function ExpeditionRequirementsEditor<C extends QuestExpeditionCondition>({
+  ctx,
+  value,
+  onChange,
+  disabled,
+}: {
+  ctx: GameContext;
+  value: C;
+  onChange: (v: C) => void;
+  disabled: boolean;
+}) {
+  const setSpecies = (speciesIds: number[]) => onChange({ ...value, speciesIds });
+  const toggleWeather = (w: (typeof IMPOSED_WEATHERS)[number]) =>
+    onChange({
+      ...value,
+      weathers: value.weathers.includes(w)
+        ? value.weathers.filter((x) => x !== w)
+        : [...value.weathers, w],
+    });
+  return (
+    <div className="space-y-2 rounded-lg bg-slate-50 p-2 dark:bg-slate-900">
+      <p className="text-xs font-semibold text-slate-500">Conditions de départ (facultatives)</p>
+      <Field label="Pokémon dans l’équipe" hint="Toutes formes ; chacun doit être présent.">
+        <div className="flex flex-wrap items-center gap-2">
+          {value.speciesIds.map((id, i) => (
+            <div key={i} className="flex items-center gap-1">
+              <SpeciesSelect
+                ctx={ctx}
+                value={id}
+                onChange={(speciesId) =>
+                  setSpecies(value.speciesIds.map((x, j) => (j === i ? speciesId : x)))
+                }
+                disabled={disabled}
+              />
+              {!disabled && (
+                <button
+                  type="button"
+                  className="px-1 text-slate-400 hover:text-red-600"
+                  onClick={() => setSpecies(value.speciesIds.filter((_, j) => j !== i))}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+          {!disabled && value.speciesIds.length < 6 && (
+            <button
+              type="button"
+              className="btn-ghost py-1 text-xs"
+              onClick={() => setSpecies([...value.speciesIds, 25])}
+            >
+              + Pokémon
+            </button>
+          )}
+        </div>
+      </Field>
+      <div className="flex flex-wrap items-end gap-4">
+        <Field
+          label="Météo au départ"
+          hint="Aucune cochée : toutes. Celle de la zone, ou celle qu’impose un talent de l’équipe (Crachin, Sécheresse…)."
+        >
+          <div className="flex flex-wrap gap-3 text-sm">
+            {IMPOSED_WEATHERS.map((w) => (
+              <label key={w} className="flex items-center gap-1">
+                <input
+                  type="checkbox"
+                  checked={value.weathers.includes(w)}
+                  disabled={disabled}
+                  onChange={() => toggleWeather(w)}
+                />
+                {WEATHER_LABELS[w]}
+              </label>
+            ))}
+          </div>
+        </Field>
+        <Field label="Moment du départ">
+          <select
+            className="input w-auto"
+            value={value.timeOfDay ?? ''}
+            disabled={disabled}
+            onChange={(e) =>
+              onChange({
+                ...value,
+                timeOfDay: (e.target.value || null) as C['timeOfDay'],
+              })
+            }
+          >
+            <option value="">Jour comme nuit</option>
+            <option value="day">De jour</option>
+            <option value="night">De nuit</option>
+          </select>
+        </Field>
+      </div>
     </div>
   );
 }

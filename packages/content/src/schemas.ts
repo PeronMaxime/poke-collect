@@ -84,6 +84,11 @@ export const combatSettingsSchema = z.object({
   critMultiplier: z.number().min(1).max(5),
   /** Délai avant qu'un Pokémon rappelé par le joueur puisse revenir au combat. */
   recallCooldownSeconds: z.number().min(0).max(60),
+  /**
+   * Pertes de la météo (sable, grêle), de la brûlure et du poison : toutes les `chipTickSeconds`
+   * secondes pour les deux Pokémon en face, quelle que soit leur vitesse.
+   */
+  chipTickSeconds: z.number().min(1).max(30).default(3),
   /** Attaque de chaque type (clé : type PokéAPI, ex. `fire`). */
   attacks: z.record(z.string().min(1), dungeonAttackSchema),
   /** Les adversaires ont le premier talent de leur espèce (ou de leur forme). */
@@ -244,6 +249,17 @@ export const permanentBonusSchema = z.discriminatedUnion('type', [
 export type PermanentBonus = z.infer<typeof permanentBonusSchema>;
 export type PermanentBonusType = PermanentBonus['type'];
 
+/**
+ * Bonus permanents d'une région (complétions d'expédition) : ils ne valent que pour les Pokémon
+ * du Pokédex de la région de l'expédition (ou de la région complétée).
+ */
+export const regionBonusSchema = z.discriminatedUnion('type', [
+  /** XP gagnée de toutes les sources : expéditions, combats, donjons, pensions et Bonbons. */
+  z.object({ type: z.literal('xp'), percent: z.number().positive().max(1000) }),
+]);
+export type RegionBonus = z.infer<typeof regionBonusSchema>;
+export type RegionBonusType = RegionBonus['type'];
+
 /** Récompense d'un palier ou d'une collection, accordée quand le joueur la réclame. */
 export const progressRewardSchema = z.object({
   currency: z.int().min(0).max(100_000_000),
@@ -274,6 +290,8 @@ export const expeditionCompletionSchema = z.object({
   zoneId: slugSchema.nullable(),
   shiny: z.boolean(),
   rewards: progressRewardSchema,
+  /** Bonus permanents pour la région de l'expédition ; absent des anciens contenus. */
+  regionBonuses: z.array(regionBonusSchema).default([]),
 });
 export type ExpeditionCompletion = z.infer<typeof expeditionCompletionSchema>;
 export type ExpeditionCompletionScope = ExpeditionCompletion['scope'];
@@ -452,6 +470,22 @@ export const guildSettingsSchema = z.object({
 });
 export type GuildSettings = z.infer<typeof guildSettingsSchema>;
 
+/** Combats contre les légendaires des quêtes (le combat suit `combat`) et fuyards. */
+export const legendarySettingsSchema = z.object({
+  /** Délai avant de retenter le combat après une tentative sans capture (défaite, fuite, Ball ratée). */
+  retryCooldownMinutes: z.int().min(0),
+  /** XP par membre = XP du légendaire vaincu × multiplicateur. */
+  xpMultiplier: z.number().min(0),
+  /** Multiplicateur de la chance de capture d'un fuyard (expéditions). */
+  roamerCaptureMultiplier: z.number().min(1).max(100),
+});
+export type LegendarySettings = z.infer<typeof legendarySettingsSchema>;
+export const DEFAULT_LEGENDARY_SETTINGS: LegendarySettings = {
+  retryCooldownMinutes: 60,
+  xpMultiplier: 1,
+  roamerCaptureMultiplier: 3,
+};
+
 export const balanceSettingsSchema = z.object({
   expeditions: z.object({
     initialSlots: z.int().min(1).max(6),
@@ -515,11 +549,12 @@ export const balanceSettingsSchema = z.object({
     hatchMinutesPerCounter: z.number().positive(),
     /** Un couple en pension pond un œuf toutes les `eggMinutes` minutes. */
     eggMinutes: z.number().positive(),
-    /**
-     * Places des couveuses au départ (6 par couveuse, + `facilityUnlocks`) ; aussi le nombre
-     * d'œufs en attente dans une pension au maximum.
-     */
+    /** Places des couveuses au départ (6 par couveuse, + `facilityUnlocks`). */
     maxEggs: z.int().min(1).max(30),
+    /** Œufs en attente dans une pension au maximum : pleine, elle arrête de pondre. */
+    pensionMaxEggs: z.int().min(1).max(50),
+    /** XP gagnée par heure par chaque parent en pension (reçue au retrait). */
+    parentXpPerHour: z.number().min(0),
     /** IV transmis par les parents sans objet (3 dans les jeux récents). */
     inheritedIvCount: z.int().min(0).max(6),
     /** Chance de transmettre le talent caché de la mère (ou du parent non Métamorph). */
@@ -531,8 +566,12 @@ export const balanceSettingsSchema = z.object({
     candiesPerPokemon: z.int().min(0),
     /** Bonus pour un Pokémon shiny (s'ajoute). */
     shinyBonusCandies: z.int().min(0),
-    /** XP donnée par un Bonbon de lignée. */
-    xpPerCandy: z.int().min(0),
+    /**
+     * Bonbons de lignée pour passer un niveau : `candiesPerLevelStart` au niveau 1, puis en ligne
+     * droite jusqu'à `candiesPerLevelEnd` au niveau 99. Un Bonbon donne 1/N du niveau en cours.
+     */
+    candiesPerLevelStart: z.int().min(1),
+    candiesPerLevelEnd: z.int().min(1),
   }),
   daycare: z.object({
     /** Pensions au départ (+ récompenses et `facilityUnlocks`, sans maximum). */
@@ -568,6 +607,8 @@ export const balanceSettingsSchema = z.object({
     happinessOnWin: z.int().min(-255).max(255),
     happinessOnLoss: z.int().min(-255).max(255),
   }),
+  /** Combats contre les légendaires des quêtes et capture des fuyards. */
+  legendary: legendarySettingsSchema.default(DEFAULT_LEGENDARY_SETTINGS),
   /** Réglages communs aux combats en temps réel (donjons et dresseurs). */
   combat: combatSettingsSchema,
   dungeons: dungeonSettingsSchema,
@@ -896,6 +937,8 @@ export const ITEM_CATEGORIES = [
   'fossil',
   'megaStone',
   'chest',
+  /** Objet de quête : trouvé seulement pendant l'étape qui le demande, ni vendu ni utilisé. */
+  'quest',
   'misc',
 ] as const;
 export const itemCategorySchema = z.enum(ITEM_CATEGORIES);
@@ -1192,6 +1235,12 @@ export const trainerSchema = z.object({
   /** Désactivé : caché aux joueurs, plus aucun combat ne peut être lancé contre lui. */
   enabled: z.boolean().default(true),
   unlock: unlockConditionSchema,
+  /**
+   * Dresseur de quête : réservé à une étape de cette quête, il n'apparaît (dans la section des
+   * dresseurs de quêtes) qu'une fois cette étape atteinte, et ne se bat qu'une fois.
+   * null = dresseur ordinaire.
+   */
+  questId: slugSchema.nullable().default(null),
 });
 export type Trainer = z.infer<typeof trainerSchema>;
 
@@ -1375,6 +1424,18 @@ export type Collection = z.infer<typeof collectionSchema>;
 
 // --- Quêtes (légendaires) --------------------------------------------------------------
 
+/**
+ * Conditions de départ d'une expédition de quête : Pokémon précis dans l'équipe (espèces, toutes
+ * formes), météo au départ (celle de la zone, ou celle qu'impose un talent de l'équipe ; « clear »
+ * = temps clair ; vide = toutes) et moment du
+ * départ (heure locale du joueur ; null = jour comme nuit).
+ */
+const questExpeditionRequirements = {
+  speciesIds: z.array(z.int().positive()).max(6).default([]),
+  weathers: z.array(imposedWeatherSchema).default([]),
+  timeOfDay: z.enum(['day', 'night']).nullable().default(null),
+};
+
 /** Conditions d'étape propres aux quêtes, comptées à partir du début de l'étape. */
 const questActionConditions = [
   /** Capturer N Pokémon en expédition (filtrés par type et / ou espèce), dans la zone indiquée ou, sans zone, dans la région de la quête. */
@@ -1396,6 +1457,23 @@ const questActionConditions = [
     memberType: z.string().min(1).nullable(),
     memberCount: z.int().min(0).max(6),
     minMemberPower: z.int().min(0),
+    ...questExpeditionRequirements,
+  }),
+  /**
+   * Trouver N objets de quête en expédition dans une zone : chaque rencontre d'une expédition qui
+   * remplit les conditions (équipe, météo et moment du départ) a `chance` % d'en faire trouver un.
+   * L'objet n'est trouvé que pendant cette étape ; il rejoint le sac.
+   */
+  z.object({
+    type: z.literal('questItem'),
+    itemId: slugSchema,
+    count: z.int().min(1).max(99),
+    zoneId: slugSchema,
+    chance: z.number().gt(0).max(100),
+    memberType: z.string().min(1).nullable().default(null),
+    memberCount: z.int().min(0).max(6).default(0),
+    minMemberPower: z.int().min(0).default(0),
+    ...questExpeditionRequirements,
   }),
 ] as const;
 
@@ -1408,7 +1486,15 @@ export const questConditionSchema = z.discriminatedUnion('type', [
   ...questActionConditions,
 ]);
 export type QuestCondition = z.infer<typeof questConditionSchema>;
-export type QuestActionCondition = Extract<QuestCondition, { type: 'catchPokemon' | 'expedition' }>;
+export type QuestActionCondition = Extract<
+  QuestCondition,
+  { type: 'catchPokemon' | 'expedition' | 'questItem' }
+>;
+/** Étape jouée en expédition, avec ses conditions de départ. */
+export type QuestExpeditionCondition = Extract<
+  QuestCondition,
+  { type: 'expedition' | 'questItem' }
+>;
 
 /** Briques d'une condition : celles d'un « toutes ces conditions », ou la condition elle-même. */
 export function unlockParts(condition: UnlockCondition): BaseUnlockCondition[];
@@ -1437,24 +1523,48 @@ export const questStepSchema = z.object({
   name: nameSchema,
   description: z.string().max(500),
   condition: questConditionSchema,
+  /** Dénouement, affiché une fois l'étape validée (la suite de l'histoire) ; vide = aucun. */
+  outcome: z.string().max(1000).default(''),
 });
 export type QuestStep = z.infer<typeof questStepSchema>;
 
 /**
- * Expédition légendaire : une fois la récompense réclamée, le Pokémon se capture lors d'une
- * expédition dédiée (lancée depuis les quêtes) où une seule Ball est lancée. Les membres de
- * l'équipe du type d'affinité (par défaut, les faiblesses du Pokémon) augmentent la capture.
+ * Combat légendaire : une fois la récompense réclamée, le Pokémon s'affronte en combat en temps
+ * réel (lancé depuis les quêtes), seul contre l'équipe du joueur. Il est renforcé (PV et
+ * statistiques multipliés) et, sous `enrageHpFraction` de ses PV, se déchaîne : ses statistiques
+ * (hors PV) gagnent `enragePercent` %. Une victoire permet de lancer une Ball, qui le capture à
+ * `captureChance` % (Ball à capture assurée : 100 %).
  */
-export const legendaryExpeditionSchema = z.object({
-  durationMinutes: z
-    .int()
-    .positive()
-    .max(7 * 24 * 60),
+export const legendaryBattleSchema = z.object({
+  /** Niveau en combat ; null = niveau de la récompense. */
+  level: z.int().min(1).max(100).nullable(),
+  /** IV de chaque statistique en combat. */
+  iv: z.int().min(0).max(31),
+  hpMultiplier: z.number().min(1).max(100),
+  /** Multiplicateur des statistiques hors PV. */
+  statMultiplier: z.number().min(0.1).max(10),
+  enrageHpFraction: z.number().min(0).max(1),
+  enragePercent: z.number().min(0).max(500),
+  timeLimitSeconds: z.int().min(30).max(3600),
   minPower: z.int().min(0),
   requiredTypes: z.array(z.object({ type: z.string().min(1), count: z.int().min(1).max(6) })),
-  affinityTypes: z.array(z.string().min(1)),
+  captureChance: z.number().gt(0).max(100),
 });
-export type LegendaryExpedition = z.infer<typeof legendaryExpeditionSchema>;
+export type LegendaryBattle = z.infer<typeof legendaryBattleSchema>;
+
+/** Combat légendaire par défaut (niveau de la récompense). */
+export const DEFAULT_LEGENDARY_BATTLE: LegendaryBattle = {
+  level: null,
+  iv: 31,
+  hpMultiplier: 5,
+  statMultiplier: 1.1,
+  enrageHpFraction: 0.5,
+  enragePercent: 20,
+  timeLimitSeconds: 300,
+  minPower: 0,
+  requiredTypes: [],
+  captureChance: 30,
+};
 
 /** Pokémon offert (légendaire…) : IV aléatoires, dont au moins `perfectIvs` à 31. */
 export const questPokemonSchema = z.object({
@@ -1462,12 +1572,13 @@ export const questPokemonSchema = z.object({
   formId: formIdSchema,
   level: z.int().min(1).max(100),
   perfectIvs: z.int().min(0).max(6),
-  expedition: legendaryExpeditionSchema,
+  /** Combat légendaire (sans effet pour un fuyard). */
+  battle: legendaryBattleSchema.default(DEFAULT_LEGENDARY_BATTLE),
   /**
-   * Pokémon fuyard : pas d'expédition légendaire ; une fois la récompense réclamée, il change de
+   * Pokémon fuyard : pas de combat légendaire ; une fois la récompense réclamée, il change de
    * zone à chaque heure (zones ordinaires débloquées de la région de la quête) et chaque rencontre
    * d'une expédition dans sa zone a `roaming` % de chances d'être lui (une fois au plus).
-   * null = expédition légendaire.
+   * null = combat légendaire.
    */
   roaming: z.number().gt(0).max(100).nullable().default(null),
 });
@@ -1596,9 +1707,6 @@ export const DEFAULT_ROAMING_CHANCE = 3;
 /** Chances par défaut qu'une rencontre soit la rencontre spéciale (%), équipe requise présente. */
 export const DEFAULT_SPECIAL_ENCOUNTER_CHANCE = 2;
 
-/** Durée par défaut d'une expédition légendaire. */
-export const DEFAULT_LEGENDARY_EXPEDITION_MINUTES = 240;
-
 /**
  * Affinités d'une zone d'expédition : les types super efficaces sur le type le plus présent parmi
  * ses Pokémon. Égalités départagées par le poids de rencontre cumulé ; à égalité parfaite, les
@@ -1627,16 +1735,7 @@ export function zoneAffinityTypes(encounters: readonly Encounter[]): string[] {
   return types.map((t) => t.name).filter((t) => weak.has(t));
 }
 
-/** Expédition légendaire par défaut : 4 h, les faiblesses du Pokémon en affinité. */
-export function defaultLegendaryExpedition(
-  speciesId: number,
-  formId?: number | null,
-  minPower = 0,
-): LegendaryExpedition {
-  return {
-    durationMinutes: DEFAULT_LEGENDARY_EXPEDITION_MINUTES,
-    minPower,
-    requiredTypes: [],
-    affinityTypes: typeWeaknesses(pokemonTypes(speciesId, formId)),
-  };
+/** Combat légendaire d'une récompense, avec ses réglages par-dessus ceux par défaut. */
+export function legendaryBattle(overrides: Partial<LegendaryBattle> = {}): LegendaryBattle {
+  return { ...DEFAULT_LEGENDARY_BATTLE, ...overrides };
 }

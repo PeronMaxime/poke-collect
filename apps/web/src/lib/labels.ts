@@ -11,12 +11,15 @@ import type { StatName } from '@poke/data';
 import { CHEST_RARITY_LABELS } from '@poke/content';
 import type {
   EvolutionMethod,
+  ImposedWeather,
   GuildObjective,
   ItemEffect,
   PermanentBonus,
   ProgressReward,
   QuestCondition,
   Rarity,
+  RegionBonus,
+  Trainer,
   UnlockCondition,
 } from '@poke/content';
 import type { EvolutionRequirement, GameContext } from '@poke/game-core';
@@ -158,6 +161,10 @@ export const formatMultiplier = (m: number) =>
 const regionName = (ctx: GameContext, id: string) =>
   ctx.region(id)?.name ?? id.charAt(0).toUpperCase() + id.slice(1);
 
+/** Nom d'un dresseur, suivi de « (quête) » pour un dresseur de quête. */
+export const trainerName = (trainer: Pick<Trainer, 'name' | 'questId'>) =>
+  trainer.questId ? `${trainer.name} (quête)` : trainer.name;
+
 /** Condition de déblocage en clair (null pour « toujours ») : à afficher avec un cadenas. */
 export function unlockConditionText(ctx: GameContext, u: UnlockCondition): string | null {
   switch (u.type) {
@@ -167,7 +174,7 @@ export function unlockConditionText(ctx: GameContext, u: UnlockCondition): strin
       return `Capture ${u.percent} % du Pokédex de ${regionName(ctx, u.regionId)}`;
     case 'trainerDefeated': {
       const other = ctx.trainer(u.trainerId);
-      return `Bats ${other ? `${other.trainerClass} ${other.name}` : u.trainerId}`;
+      return `Bats ${other ? `${other.trainerClass} ${trainerName(other)}` : u.trainerId}`;
     }
     case 'regionUnlocked':
       return `Débloque la région ${regionName(ctx, u.regionId)}`;
@@ -201,7 +208,6 @@ export function unlockConditionText(ctx: GameContext, u: UnlockCondition): strin
 
 /** Condition d'une étape de quête en clair. */
 export function questConditionText(ctx: GameContext, c: QuestCondition): string {
-  const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
   switch (c.type) {
     case 'catchPokemon': {
       const what = c.speciesId
@@ -213,10 +219,13 @@ export function questConditionText(ctx: GameContext, c: QuestCondition): string 
     case 'expedition': {
       const zone = ctx.zone(c.zoneId)?.name ?? c.zoneId;
       const times = c.count > 1 ? `${c.count} expéditions` : 'une expédition';
-      if (c.memberCount === 0) return `Réussis ${times} : ${zone}`;
-      const members = `${plural(c.memberCount, 'Pokémon')}${c.memberType ? ` ${typeLabel(c.memberType)}` : ''}`;
-      const power = c.minMemberPower > 0 ? ` de PE ${c.minMemberPower} ou plus` : '';
-      return `Réussis ${times} (${zone}) avec ${members}${power}`;
+      return `Réussis ${times} (${zone})${questRequirementsText(ctx, c)}`;
+    }
+    case 'questItem': {
+      const zone = ctx.zone(c.zoneId)?.name ?? c.zoneId;
+      const what =
+        c.count > 1 ? `${c.count} × ${itemName(ctx, c.itemId)}` : itemName(ctx, c.itemId);
+      return `Trouve ${what} en expédition (${zone})${questRequirementsText(ctx, c)}`;
     }
     case 'always':
       return 'Aucune condition';
@@ -226,6 +235,43 @@ export function questConditionText(ctx: GameContext, c: QuestCondition): string 
 }
 
 const TIME_OF_DAY_LABELS = { day: 'de jour', night: 'de nuit' } as const;
+
+/** Météo au départ d'une expédition, en complément de « lancée … ». */
+const START_WEATHER_TEXTS: Record<ImposedWeather, string> = {
+  clear: 'par temps clair',
+  sun: 'sous un grand soleil',
+  rain: 'sous la pluie',
+  sand: 'dans une tempête de sable',
+  hail: 'sous la grêle',
+};
+
+/**
+ * Conditions de départ d'une étape d'expédition : « avec 2 Pokémon Eau de PE 600 ou plus et
+ * Lokhlass, lancée sous la pluie, de nuit ». Vide sans condition.
+ */
+export function questRequirementsText(
+  ctx: GameContext,
+  c: Extract<QuestCondition, { type: 'expedition' | 'questItem' }>,
+): string {
+  const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
+  const team = [
+    c.memberCount > 0 &&
+      `${plural(c.memberCount, 'Pokémon')}${c.memberType ? ` ${typeLabel(c.memberType)}` : ''}${
+        c.minMemberPower > 0 ? ` de PE ${c.minMemberPower} ou plus` : ''
+      }`,
+    ...c.speciesIds.map((id) => speciesName(ctx, id)),
+  ].filter(Boolean);
+  const start = [
+    c.weathers.length > 0 && c.weathers.map((w) => START_WEATHER_TEXTS[w]).join(' ou '),
+    c.timeOfDay && TIME_OF_DAY_LABELS[c.timeOfDay],
+  ].filter(Boolean);
+  return [
+    team.length > 0 && ` avec ${team.join(' et ')}`,
+    start.length > 0 && `, lancée ${start.join(', ')}`,
+  ]
+    .filter(Boolean)
+    .join('');
+}
 
 /** Méthode d'évolution en clair : « N.16 », « Pierre Lune », « Bonheur 160 · de nuit ». */
 export function evolutionMethodText(ctx: GameContext, m: EvolutionMethod): string {
@@ -260,6 +306,15 @@ const BONUS_LABELS: Record<PermanentBonus['type'], string> = {
 };
 
 export const bonusText = (b: PermanentBonus) => `+${b.percent} % ${BONUS_LABELS[b.type]}`;
+
+const REGION_BONUS_LABELS: Record<RegionBonus['type'], string> = { xp: 'd’XP' };
+
+/**
+ * Bonus de région d'une complétion : « +2 % d’XP pour les Pokémon de Kanto ». `where` complète
+ * « les Pokémon … » (« de Kanto », « de la région de l’expédition »).
+ */
+export const regionBonusText = (b: RegionBonus, where: string) =>
+  `+${b.percent} % ${REGION_BONUS_LABELS[b.type]} pour les Pokémon ${where}`;
 
 /** Lignes d'une récompense de progression (objets à part, avec leur icône). */
 export function rewardLines(r: ProgressReward): string[] {
@@ -313,17 +368,22 @@ export const GAME_ERRORS: Record<string, string> = {
   INVALID_STARTER: 'Ce starter n’est pas disponible.',
   REGION_LOCKED: 'Cette région n’est pas encore débloquée.',
   REGION_NOT_FOUND: 'Région introuvable.',
+  SAME_POKEMON: 'Choisis deux Pokémon différents.',
   INCOMPATIBLE_PARENTS: 'Ces deux Pokémon ne peuvent pas avoir d’œuf ensemble.',
   NOT_A_BREEDING_ITEM: 'Cet objet n’a pas d’effet en pension.',
   ITEM_MISSING: 'Tu n’as plus cet objet.',
   NO_EGG_READY: 'Aucun œuf n’est prêt.',
   INCUBATOR_FULL: 'La couveuse est pleine : fais d’abord éclore des œufs.',
+  EGG_NOT_FOUND: 'Cet œuf n’est plus dans le sac.',
   ALREADY_COLLECTED: 'Ces œufs ont déjà été ramassés.',
   DAYCARE_EMPTY: 'Cette pension est vide.',
   PARENT_MISSING: 'Un des parents a disparu.',
   POKEMON_LOCKED: 'Les favoris ne peuvent pas être transférés.',
   POKEMON_LEGENDARY: 'Les Pokémon légendaires et fabuleux ne peuvent pas être transférés.',
   LAST_POKEMON: 'Tu dois garder au moins un Pokémon.',
+  NOT_RELEASABLE: 'Seul le dernier légendaire capturé d’une quête réclamée peut être relâché.',
+  LEGENDARY_BATTLE_RUNNING:
+    'Un combat légendaire de cette quête est en cours (ou attend ta Ball) : termine-le d’abord.',
   NOT_ENOUGH_CANDIES: 'Pas assez de Bonbons.',
   MAX_LEVEL: 'Ce Pokémon est déjà au niveau maximal.',
   POKEMON_KO: 'Un de ces Pokémon est K.O. : soigne-le d’abord au Centre Pokémon.',
@@ -362,10 +422,11 @@ export const GAME_ERRORS: Record<string, string> = {
   QUEST_NOT_CLAIMED: 'Réclame d’abord la récompense de la quête.',
   QUEST_POKEMON_CAUGHT: 'Le légendaire de cette quête est déjà capturé.',
   QUEST_POKEMON_ROAMING:
-    'Ce légendaire est un fuyard : il se trouve dans les expéditions, pas dans une expédition légendaire.',
-  QUEST_EXPEDITION_RUNNING: 'Une expédition légendaire est déjà en cours pour cette quête.',
-  DECISION_REQUIRED: 'Choisis une Ball ou prends la fuite.',
-  NOT_A_LEGENDARY_EXPEDITION: 'Ce n’est pas une expédition légendaire en attente.',
+    'Ce légendaire est un fuyard : il se trouve dans les expéditions, pas en combat légendaire.',
+  LEGENDARY_AWAITS_BALL: 'Le légendaire vaincu attend ta Ball : lance-la d’abord.',
+  LEGENDARY_COOLDOWN: 'Le légendaire s’est retiré : retente le combat un peu plus tard.',
+  NOTHING_TO_CAPTURE: 'Aucun légendaire vaincu n’attend de Ball.',
+  NOT_A_BALL: 'Cet objet n’est pas une Ball.',
   QUEST_HAS_NO_LAIR: 'Cette quête n’a pas de repaire à explorer.',
   NO_EFFECT: 'Cet objet n’aurait aucun effet sur ce Pokémon.',
   CHOICE_REQUIRED: 'Choisis d’abord la statistique ou le talent.',

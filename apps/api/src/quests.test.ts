@@ -1,18 +1,20 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
-import { createDb, ensureSeedContent, inventory, users } from '@poke/db';
+import { createDb, ensureSeedContent, inventory, pokemon, questProgress, users } from '@poke/db';
 import type {
   ClaimExpeditionResponse,
   ClaimQuestResponse,
   ExpeditionDto,
-  ExpeditionsResponse,
   InventoryEntryDto,
-  LegendaryEncounterDto,
+  LegendaryBattleDto,
+  LegendaryBattlesResponse,
+  LegendaryCaptureResponse,
   PokemonDto,
   QuestsResponse,
   UseItemResponse,
 } from '@poke/shared';
+import { legendaryBattle } from '@poke/content';
 import { buildApp } from './app';
 import { loadEnv } from './env';
 
@@ -21,7 +23,9 @@ const env = loadEnv({ NODE_ENV: 'test' });
 let clock = new Date('2026-10-07T10:00:00Z');
 let app: Awaited<ReturnType<typeof buildApp>>['app'];
 
-// Quête de test : 1 capture, puis 1 expédition sur la Route 1 ; la Forêt de Jade ouvre à l'étape 2.
+// Quête de test : 1 capture, 1 expédition sur la Route 1, puis 2 objets de quête sur la Route 1 ;
+// la Forêt de Jade ouvre à l'étape 2. Deux légendaires faibles à combattre : Mew (capture presque
+// impossible, sauf Master Ball) puis Mewtwo (capture assurée).
 const content = structuredClone(seedContent);
 content.balance.capture.globalMultiplier = 1000;
 content.quests.push({
@@ -44,6 +48,7 @@ content.quests.push({
         speciesId: null,
         zoneId: null,
       },
+      outcome: '',
     },
     {
       name: 'Explorer',
@@ -55,7 +60,29 @@ content.quests.push({
         memberType: null,
         memberCount: 1,
         minMemberPower: 0,
+        speciesIds: [],
+        weathers: [],
+        timeOfDay: null,
       },
+      outcome: '',
+    },
+    {
+      name: 'Chercher',
+      description: '',
+      condition: {
+        type: 'questItem',
+        itemId: 'fragment-magnetique',
+        count: 2,
+        zoneId: 'route-1',
+        chance: 100,
+        memberType: null,
+        memberCount: 0,
+        minMemberPower: 0,
+        speciesIds: [],
+        weathers: [],
+        timeOfDay: null,
+      },
+      outcome: '',
     },
   ],
   rewards: {
@@ -67,15 +94,31 @@ content.quests.push({
     bonuses: [],
     pokemon: [
       {
+        speciesId: 151,
+        level: 50,
+        perfectIvs: 3,
+        battle: legendaryBattle({
+          level: 2,
+          iv: 0,
+          hpMultiplier: 1,
+          statMultiplier: 0.1,
+          timeLimitSeconds: 60,
+          captureChance: 0.0001,
+        }),
+        roaming: null,
+      },
+      {
         speciesId: 150,
         level: 70,
         perfectIvs: 3,
-        expedition: {
-          durationMinutes: 60,
-          minPower: 0,
-          requiredTypes: [],
-          affinityTypes: ['water'],
-        },
+        battle: legendaryBattle({
+          level: 2,
+          iv: 0,
+          hpMultiplier: 1,
+          statMultiplier: 0.1,
+          timeLimitSeconds: 60,
+          captureChance: 100,
+        }),
         roaming: null,
       },
     ],
@@ -193,16 +236,27 @@ describe('quêtes', () => {
     await run('foret-de-jade');
     expect(await quest()).toMatchObject({ step: 1, count: 0 });
     await run('route-1');
-    expect(await quest()).toMatchObject({ status: 'completed', step: 2 });
+    expect(await quest()).toMatchObject({ status: 'active', step: 2, count: 0 });
+
+    // Étape 3 : une chance sur une par rencontre, sans dépasser les 2 objets demandés.
+    const found = await run('route-1');
+    expect(found.expedition.result!.questItems).toEqual([
+      { itemId: 'fragment-magnetique', quantity: 2 },
+    ]);
+    const bag = await call<InventoryEntryDto[]>('GET', '/api/inventory');
+    expect(bag.body.find((i) => i.itemId === 'fragment-magnetique')?.quantity).toBe(2);
+    expect(await quest()).toMatchObject({ status: 'completed', step: 3 });
   });
 
-  const legendaryRun = { team: [] as string[] };
+  const legendaryRun = { team: [] as string[], moves: [{ type: 'water', category: 'special' }] };
+  const legendary = async () =>
+    (await call<LegendaryBattlesResponse>('GET', '/api/legendary-battles')).body;
 
-  it('donne la récompense une seule fois, sans le Pokémon (à capturer en expédition)', async () => {
+  it('donne la récompense une seule fois, sans le Pokémon (à combattre ensuite)', async () => {
     legendaryRun.team = [starter.id];
     const early = await call<{ error: string }>(
       'POST',
-      '/api/quests/quete-test/expedition',
+      '/api/quests/quete-test/battle',
       legendaryRun,
     );
     expect(early.body.error).toBe('QUEST_NOT_CLAIMED');
@@ -219,94 +273,233 @@ describe('quêtes', () => {
     expect(again.body.error).toBe('ALREADY_CLAIMED');
   });
 
-  it('expédition légendaire : rencontre au retour, fuite, relance en chaîne puis une seule Ball', async () => {
-    const started = await call<ExpeditionDto>(
+  async function fight(): Promise<LegendaryBattleDto> {
+    const started = await call<LegendaryBattleDto>(
       'POST',
-      '/api/quests/quete-test/expedition',
+      '/api/quests/quete-test/battle',
       legendaryRun,
     );
     expect(started.status, JSON.stringify(started.body)).toBe(201);
-    expect(started.body).toMatchObject({
-      questId: 'quete-test',
-      zoneId: null,
-      durationMinutes: 60,
-      ballItemId: null,
-      balls: 0,
-      shinyChain: 0,
+    return started.body;
+  }
+
+  it('combat légendaire : fuite, délai, victoire, Ball ratée puis capture', async () => {
+    expect((await legendary()).quests).toEqual([
+      {
+        questId: 'quete-test',
+        pokemonIndex: 0,
+        attempts: 0,
+        retryAt: null,
+        pendingCapture: null,
+      },
+    ]);
+    const first = await fight();
+    expect(first).toMatchObject({ questId: 'quete-test', pokemonIndex: 0, outcome: null });
+    expect(first.setup.enemies).toMatchObject([{ speciesId: 151, level: 2 }]);
+    // L'équipe est occupée pendant le combat.
+    const busy = await call<{ error: string }>('POST', '/api/expeditions', {
+      zoneId: 'route-1',
+      team: [starter.id],
+      balls: { new: null, shiny: null, caught: null },
+      berryItemId: null,
     });
+    expect(busy.body.error).toBe('POKEMON_BUSY');
     const twice = await call<{ error: string }>(
       'POST',
-      '/api/quests/quete-test/expedition',
+      '/api/quests/quete-test/battle',
       legendaryRun,
     );
-    expect(twice.body.error).toBe('QUEST_EXPEDITION_RUNNING');
-    const early = await call<{ error: string }>(
-      'GET',
-      `/api/expeditions/${started.body.id}/encounter`,
-    );
-    expect(early.body.error).toBe('NOT_FINISHED');
+    expect(twice.body.error).toBe('BATTLE_BUSY');
 
+    // Fuite : aucune XP, et le délai avant de retenter commence.
+    const fled = await call<{ battle: LegendaryBattleDto }>(
+      'POST',
+      `/api/legendary-battles/${first.id}/flee`,
+    );
+    expect(fled.body.battle).toMatchObject({ outcome: 'fled', captured: null });
+    expect(fled.body.battle.endedAt).not.toBeNull();
+    const cooldown = await call<{ error: string }>(
+      'POST',
+      '/api/quests/quete-test/battle',
+      legendaryRun,
+    );
+    expect(cooldown.body.error).toBe('LEGENDARY_COOLDOWN');
+    expect((await legendary()).quests[0]).toMatchObject({ attempts: 1 });
+    expect((await legendary()).quests[0]!.retryAt).not.toBeNull();
+
+    // Victoire : le légendaire attend la Ball.
     advance(60);
-    const encounter = await call<LegendaryEncounterDto>(
-      'GET',
-      `/api/expeditions/${started.body.id}/encounter`,
-    );
-    expect(encounter.body).toMatchObject({ speciesId: 150, level: 70, shinyChain: 0 });
-    const undecided = await call<{ error: string }>(
+    const second = await fight();
+    advance(2);
+    const won = await call<{ battle: LegendaryBattleDto }>(
       'POST',
-      `/api/expeditions/${started.body.id}/claim`,
+      `/api/legendary-battles/${second.id}/claim`,
     );
-    expect(undecided.body.error).toBe('DECISION_REQUIRED');
+    expect(won.body.battle).toMatchObject({ outcome: 'win', captured: null, endedAt: null });
+    expect(won.body.battle.result!.xpPerMember).toBeGreaterThan(0);
+    expect((await legendary()).quests[0]).toMatchObject({ pendingCapture: { id: second.id } });
+    const waiting = await call<{ error: string }>(
+      'POST',
+      '/api/quests/quete-test/battle',
+      legendaryRun,
+    );
+    expect(waiting.body.error).toBe('LEGENDARY_AWAITS_BALL');
+
+    // Ball ratée (chance quasi nulle) : il s'enfuit, nouveau délai.
     const balls = await ballCount();
-    const fled = await call<ClaimExpeditionResponse>(
+    const missed = await call<LegendaryCaptureResponse>(
       'POST',
-      `/api/expeditions/${started.body.id}/claim`,
-      { ballItemId: null, berryItemId: null },
+      `/api/legendary-battles/${second.id}/capture`,
+      { ballItemId: 'poke-ball' },
     );
-    expect(fled.status, JSON.stringify(fled.body)).toBe(200);
-    expect(fled.body.captured).toEqual([]);
-    expect(fled.body.expedition.result).toMatchObject({ team: [], xpPerMember: 0, ballsUsed: 0 });
-    expect(fled.body.expedition.result!.encounters).toMatchObject([
-      { speciesId: 150, outcome: 'fled', isShiny: encounter.body.isShiny },
-    ]);
-    expect(await ballCount()).toBe(balls);
+    expect(missed.status, JSON.stringify(missed.body)).toBe(200);
+    expect(missed.body).toMatchObject({ pokemon: null, battle: { captured: false } });
+    expect(await ballCount()).toBe(balls - 1);
+    const twiceBall = await call<{ error: string }>(
+      'POST',
+      `/api/legendary-battles/${second.id}/capture`,
+      { ballItemId: 'poke-ball' },
+    );
+    expect(twiceBall.body.error).toBe('NOTHING_TO_CAPTURE');
     expect(await quest()).toMatchObject({ pokemonCaught: 0 });
 
-    // Relancée dans le délai : la chaîne de la quête prend un maillon.
-    const chains = await call<ExpeditionsResponse>('GET', '/api/expeditions');
-    expect(chains.body.questChains).toMatchObject([{ questId: 'quete-test', chain: 1 }]);
-    const again = await call<ExpeditionDto>(
-      'POST',
-      '/api/quests/quete-test/expedition',
-      legendaryRun,
-    );
-    expect(again.body).toMatchObject({ shinyChain: 1 });
+    // Master Ball : capture assurée ; la quête passe à Mewtwo.
+    await handle.db
+      .insert(inventory)
+      .values({ ownerId: userId, itemId: 'master-ball', quantity: 1 });
     advance(60);
-    const claimed = await call<ClaimExpeditionResponse>(
+    const third = await fight();
+    advance(2);
+    await call('POST', `/api/legendary-battles/${third.id}/claim`);
+    const mew = await call<LegendaryCaptureResponse>(
       'POST',
-      `/api/expeditions/${again.body.id}/claim`,
-      { ballItemId: 'poke-ball', berryItemId: null },
+      `/api/legendary-battles/${third.id}/capture`,
+      { ballItemId: 'master-ball' },
     );
-    expect(claimed.status, JSON.stringify(claimed.body)).toBe(200);
-    expect(await ballCount()).toBe(balls - 1);
-    const [mewtwo] = claimed.body.captured;
-    expect(mewtwo).toMatchObject({ speciesId: 150, level: 70, origin: 'quest' });
-    expect(Object.values(mewtwo!.ivs).filter((iv) => iv === 31).length).toBeGreaterThanOrEqual(3);
-    expect(claimed.body.expedition.result).toMatchObject({ ballsUsed: 1, newSpeciesIds: [150] });
-    expect(claimed.body.expedition.result!.encounters).toHaveLength(1);
+    expect(mew.body.pokemon).toMatchObject({
+      speciesId: 151,
+      level: 50,
+      origin: 'quest',
+      isShiny: third.isShiny,
+    });
     expect(await quest()).toMatchObject({ pokemonCaught: 1 });
+
+    // Mewtwo : pas de délai (nouveau légendaire), capture assurée par sa chance de combat.
+    const fourth = await fight();
+    expect(fourth).toMatchObject({ pokemonIndex: 1 });
+    advance(2);
+    await call('POST', `/api/legendary-battles/${fourth.id}/claim`);
+    const mewtwo = await call<LegendaryCaptureResponse>(
+      'POST',
+      `/api/legendary-battles/${fourth.id}/capture`,
+      { ballItemId: 'poke-ball' },
+    );
+    expect(mewtwo.body.pokemon).toMatchObject({ speciesId: 150, level: 70, origin: 'quest' });
+    expect(
+      Object.values(mewtwo.body.pokemon!.ivs).filter((iv) => iv === 31).length,
+    ).toBeGreaterThanOrEqual(3);
+    expect(await quest()).toMatchObject({ pokemonCaught: 2 });
+    expect((await legendary()).quests).toEqual([]);
 
     const done = await call<{ error: string }>(
       'POST',
-      '/api/quests/quete-test/expedition',
+      '/api/quests/quete-test/battle',
       legendaryRun,
     );
     expect(done.body.error).toBe('QUEST_POKEMON_CAUGHT');
+
+    // Relâcher : seulement le dernier légendaire capturé de la quête, sans Bonbon ; la quête le
+    // propose de nouveau (combat et capture à refaire).
+    const notLast = await call<{ error: string }>(
+      'POST',
+      `/api/pokemon/${mew.body.pokemon!.id}/release`,
+    );
+    expect(notLast.body.error).toBe('NOT_RELEASABLE');
+    const released = await call<{ questId: string }>(
+      'POST',
+      `/api/pokemon/${mewtwo.body.pokemon!.id}/release`,
+    );
+    expect(released.status, JSON.stringify(released.body)).toBe(200);
+    expect(released.body).toEqual({ questId: 'quete-test', restarted: false });
+    expect(await quest()).toMatchObject({ pokemonCaught: 1 });
+    const pc = await call<PokemonDto[]>('GET', '/api/pokemon');
+    expect(pc.body.some((p) => p.id === mewtwo.body.pokemon!.id)).toBe(false);
+    const again = await call<{ error: string }>(
+      'POST',
+      `/api/pokemon/${mewtwo.body.pokemon!.id}/release`,
+    );
+    expect(again.body.error).toBe('POKEMON_NOT_FOUND');
+    const rematch = await fight();
+    expect(rematch).toMatchObject({ pokemonIndex: 1 });
+    // Combat de la quête en cours : Mew (redevenu le dernier capturé) attend qu'il se termine.
+    const busyQuest = await call<{ error: string }>(
+      'POST',
+      `/api/pokemon/${mew.body.pokemon!.id}/release`,
+    );
+    expect(busyQuest.body.error).toBe('LEGENDARY_BATTLE_RUNNING');
+    advance(2);
+    await call('POST', `/api/legendary-battles/${rematch.id}/claim`);
+    const recaught = await call<LegendaryCaptureResponse>(
+      'POST',
+      `/api/legendary-battles/${rematch.id}/capture`,
+      { ballItemId: 'poke-ball' },
+    );
+    expect(recaught.body.pokemon).toMatchObject({ speciesId: 150 });
+    expect(await quest()).toMatchObject({ pokemonCaught: 2, restartOnRelease: false });
   });
 
   it('refuse une quête verrouillée ou inconnue', async () => {
     expect((await call('POST', '/api/quests/mewtwo/claim')).status).toBe(409);
     expect((await call('POST', '/api/quests/inconnue/claim')).status).toBe(404);
+  });
+
+  it('relâcher un légendaire capturé avant la réécriture des quêtes la fait recommencer', async () => {
+    // Électhor capturé avec l'ancienne quête (marqué par la migration 0132).
+    const [current] = await handle.db
+      .select({ contentVersionId: questProgress.contentVersionId })
+      .from(questProgress)
+      .where(eq(questProgress.ownerId, userId));
+    const at = new Date(clock);
+    await handle.db.insert(questProgress).values({
+      ownerId: userId,
+      questId: 'electhor',
+      contentVersionId: current!.contentVersionId,
+      step: 5,
+      completedAt: at,
+      claimedAt: at,
+      pokemonCaught: 1,
+      restartOnRelease: true,
+    });
+    const [zapdos] = await handle.db
+      .insert(pokemon)
+      .values({
+        ownerId: userId,
+        speciesId: 145,
+        level: 50,
+        ivHp: 31,
+        ivAtk: 31,
+        ivDef: 31,
+        ivSpa: 31,
+        ivSpd: 31,
+        ivSpe: 31,
+        nature: 'hardy',
+        ability: 'pressure',
+        gender: 'genderless',
+        origin: 'quest',
+      })
+      .returning();
+    const released = await call<{ questId: string; restarted: boolean }>(
+      'POST',
+      `/api/pokemon/${zapdos!.id}/release`,
+    );
+    expect(released.body).toEqual({ questId: 'electhor', restarted: true });
+    // Toute la quête est à refaire : plus d'avancement (elle repartira de l'étape 0).
+    const rows = await handle.db
+      .select()
+      .from(questProgress)
+      .where(and(eq(questProgress.ownerId, userId), eq(questProgress.questId, 'electhor')));
+    expect(rows).toEqual([]);
+    expect((await call('POST', '/api/quests/electhor/battle', legendaryRun)).status).toBe(409);
   });
 
   it('cache les régions, zones et quêtes désactivées', async () => {

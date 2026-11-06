@@ -39,3 +39,24 @@ export function member(
     ...extra,
   };
 }
+
+/** Talents qui imposent une météo (Crachin ; Sécheresse et Alerte Neige en tête d'équipe). */
+export function withWeatherAbilities(c: GameContentData) {
+  c.abilities.push(
+    {
+      id: 'drizzle',
+      description: '',
+      effects: [{ type: 'setWeather', weather: 'rain', conditions: [] }],
+    },
+    {
+      id: 'drought',
+      description: '',
+      effects: [{ type: 'setWeather', weather: 'sun', conditions: [{ type: 'leader' }] }],
+    },
+    {
+      id: 'snow-warning',
+      description: '',
+      effects: [{ type: 'setWeather', weather: 'hail', conditions: [{ type: 'leader' }] }],
+    },
+  );
+}

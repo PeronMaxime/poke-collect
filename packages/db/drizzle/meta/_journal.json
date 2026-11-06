@@ -820,6 +820,118 @@
       "when": 1793834176215,
       "tag": "0116_regions_75_zigzaton",
       "breakpoints": true
+    },
+    {
+      "idx": 117,
+      "version": "7",
+      "when": 1793881154509,
+      "tag": "0117_pension_xp_oeufs_sac",
+      "breakpoints": true
+    },
+    {
+      "idx": 118,
+      "version": "7",
+      "when": 1793881931956,
+      "tag": "0118_pension_reglages_rattrapage",
+      "breakpoints": true
+    },
+    {
+      "idx": 119,
+      "version": "7",
+      "when": 1793882513853,
+      "tag": "0119_pension_xp_2000",
+      "breakpoints": true
+    },
+    {
+      "idx": 120,
+      "version": "7",
+      "when": 1793889046400,
+      "tag": "0120_completion_xp_region",
+      "breakpoints": true
+    },
+    {
+      "idx": 121,
+      "version": "7",
+      "when": 1793896064685,
+      "tag": "0121_bonbons_cout_par_niveau",
+      "breakpoints": true
+    },
+    {
+      "idx": 122,
+      "version": "7",
+      "when": 1793900434838,
+      "tag": "0122_combats_legendaires",
+      "breakpoints": true
+    },
+    {
+      "idx": 123,
+      "version": "7",
+      "when": 1793900564970,
+      "tag": "0123_legendaires_contenu",
+      "breakpoints": true
+    },
+    {
+      "idx": 124,
+      "version": "7",
+      "when": 1793901030081,
+      "tag": "0124_graine_combats_legendaires",
+      "breakpoints": true
+    },
+    {
+      "idx": 125,
+      "version": "7",
+      "when": 1793919387033,
+      "tag": "0125_objets_quete_par_tirage",
+      "breakpoints": true
+    },
+    {
+      "idx": 126,
+      "version": "7",
+      "when": 1793920570965,
+      "tag": "0126_dresseurs_quete",
+      "breakpoints": true
+    },
+    {
+      "idx": 127,
+      "version": "7",
+      "when": 1793921699190,
+      "tag": "0127_dresseurs_quetes_partout",
+      "breakpoints": true
+    },
+    {
+      "idx": 128,
+      "version": "7",
+      "when": 1793922171051,
+      "tag": "0128_dresseurs_quetes_galar",
+      "breakpoints": true
+    },
+    {
+      "idx": 129,
+      "version": "7",
+      "when": 1793925304827,
+      "tag": "0129_tablettes_plaques",
+      "breakpoints": true
+    },
+    {
+      "idx": 130,
+      "version": "7",
+      "when": 1793928079489,
+      "tag": "0130_combats_legendaires_renforces",
+      "breakpoints": true
+    },
+    {
+      "idx": 131,
+      "version": "7",
+      "when": 1793929805517,
+      "tag": "0131_quetes_relance_relacher",
+      "breakpoints": true
+    },
+    {
+      "idx": 132,
+      "version": "7",
+      "when": 1793929807005,
+      "tag": "0132_quetes_legendaires_relance",
+      "breakpoints": true
     }
   ]
 }

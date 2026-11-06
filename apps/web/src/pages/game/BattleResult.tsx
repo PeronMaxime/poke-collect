@@ -2,6 +2,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import type { GameContext } from '@poke/game-core';
 import type { BattleDto } from '@poke/shared';
 import { Modal } from '../../components/ui';
+import { trainerName } from '../../lib/labels';
 import { BadgeIcon, TrainerSprite } from './BattlesPage';
 import { CombatResultDetails, OUTCOME_TITLES } from './DungeonResult';
 
@@ -48,7 +49,7 @@ function ResultContent({
   return (
     <div>
       <h2 className="text-xl font-bold">
-        Combat contre {trainer ? `${trainer.trainerClass} ${trainer.name}` : 'un dresseur'}
+        Combat contre {trainer ? `${trainer.trainerClass} ${trainerName(trainer)}` : 'un dresseur'}
       </h2>
       <div className="mt-3 flex items-center justify-center gap-4">
         {trainer && (

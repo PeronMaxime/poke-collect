@@ -31,6 +31,7 @@ export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   fossil: 'Fossile',
   megaStone: 'Méga-Gemme',
   chest: 'Coffre',
+  quest: 'Objet de quête',
   misc: 'Divers',
 };
 

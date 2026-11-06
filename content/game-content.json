@@ -40,6 +40,8 @@
       "hatchMinutesPerCounter": 2,
       "eggMinutes": 20,
       "maxEggs": 6,
+      "pensionMaxEggs": 10,
+      "parentXpPerHour": 2000,
       "inheritedIvCount": 3,
       "hiddenAbilityInheritChance": 0.6,
       "eggLevel": 1
@@ -47,7 +49,8 @@
     "transfer": {
       "candiesPerPokemon": 1,
       "shinyBonusCandies": 10,
-      "xpPerCandy": 500
+      "candiesPerLevelStart": 5,
+      "candiesPerLevelEnd": 20
     },
     "daycare": {
       "initialSlots": 1
@@ -70,6 +73,11 @@
       "happinessOnWin": 3,
       "happinessOnLoss": -2
     },
+    "legendary": {
+      "retryCooldownMinutes": 60,
+      "xpMultiplier": 1,
+      "roamerCaptureMultiplier": 3
+    },
     "combat": {
       "baseAttackIntervalMs": 2000,
       "referenceSpeed": 150,
@@ -81,6 +89,7 @@
       "critChance": 0.0625,
       "critMultiplier": 1.5,
       "recallCooldownSeconds": 5,
+      "chipTickSeconds": 3,
       "attacks": {
         "bug": {
           "name": "Plaie-Croix",
@@ -368,7 +377,8 @@
           "daycareSlots": 0,
           "incubators": 1,
           "bonuses": []
-        }
+        },
+        "regionBonuses": []
       },
       {
         "id": "expedition-chromatique",
@@ -389,7 +399,30 @@
               "percent": 1
             }
           ]
-        }
+        },
+        "regionBonuses": []
+      },
+      {
+        "id": "expedition-complete",
+        "name": "Expédition complétée",
+        "scope": "zone",
+        "regionId": null,
+        "zoneId": null,
+        "shiny": false,
+        "rewards": {
+          "currency": 0,
+          "items": [],
+          "expeditionSlots": 0,
+          "daycareSlots": 0,
+          "incubators": 0,
+          "bonuses": []
+        },
+        "regionBonuses": [
+          {
+            "type": "xp",
+            "percent": 2
+          }
+        ]
       }
     ]
   },
@@ -5024,6 +5057,26 @@
       ]
     },
     {
+      "id": "arcenciaile",
+      "name": "Arcenci’aile",
+      "description": "Plume aux sept couleurs, tombée des ailes de l’oiseau sacré.",
+      "icon": "/api/sprites/items/rainbow-wing.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "argentaile",
+      "name": "Argentaile",
+      "description": "Plume argentée qui brille comme la lune. Elle appartient au gardien des mers.",
+      "icon": "/api/sprites/items/silver-wing.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
       "id": "armor-fossil",
       "name": "Fossile Armure",
       "description": "Un fossile ancien. Le Musée peut en faire renaître un Dinoclier.",
@@ -5162,6 +5215,16 @@
       ]
     },
     {
+      "id": "braise-eternelle",
+      "name": "Braise éternelle",
+      "description": "Braise qui ne s’éteint jamais, née du rugissement d’Entei.",
+      "icon": "/api/sprites/items/fire-gem.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
       "id": "brave-mint",
       "name": "Aromate Brave",
       "description": "Utilisé sur un Pokémon : sa nature effective devient Brave.",
@@ -5220,6 +5283,16 @@
           "nature": "careful"
         }
       ]
+    },
+    {
+      "id": "cendre-ardente",
+      "name": "Cendre ardente",
+      "description": "Plume consumée par les flammes de Sulfura, encore brûlante des heures après sa chute.",
+      "icon": "/api/sprites/items/heat-rock.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
     },
     {
       "id": "charizardite-x",
@@ -5310,6 +5383,16 @@
       ]
     },
     {
+      "id": "clochette-oceane",
+      "name": "Clochette Océane",
+      "description": "Cloche ancienne qui tinte au rythme des vagues. Elle apaise les courants des Tourb’Îles.",
+      "icon": "/api/sprites/items/tidal-bell.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
       "id": "clover-sweet",
       "name": "Trèfle en Sucre",
       "description": "Un bonbon en forme de trèfle. Quand on le donne à un Crèmy, il danse de bonheur.",
@@ -5327,6 +5410,16 @@
       "category": "evolution",
       "rarity": "epic",
       "sellPrice": 3000,
+      "effects": []
+    },
+    {
+      "id": "cristal-aurore",
+      "name": "Cristal aurore",
+      "description": "Cristal qui s’illumine en présence d’ondes psychiques venues de l’espace.",
+      "icon": "/api/sprites/items/psychic-gem.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
       "effects": []
     },
     {
@@ -5438,6 +5531,46 @@
       "effects": []
     },
     {
+      "id": "eau-purifiee",
+      "name": "Eau purifiée",
+      "description": "Eau d’une pureté parfaite, puisée là où Suicune a couru.",
+      "icon": "/api/sprites/items/mystic-water.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "echantillon-adn",
+      "name": "Échantillon d’ADN",
+      "description": "Trace génétique laissée par Mewtwo au fond de la Grotte Azurée.",
+      "icon": "/api/sprites/items/dna-splicers.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "eclat-de-givre",
+      "name": "Éclat de givre",
+      "description": "Cristal de glace tombé des ailes d’Artikodin. Il ne fond jamais.",
+      "icon": "/api/sprites/items/never-melt-ice.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "eclat-de-tonnerre",
+      "name": "Éclat de tonnerre",
+      "description": "Cristal tombé là où la foudre a frappé. On y entend gronder Raikou.",
+      "icon": "/api/sprites/items/electric-gem.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
       "id": "electirizer",
       "name": "Électriseur",
       "description": "Une boîte remplie d’une énorme quantité d’énergie électrique. Appréciée d’un certain Pokémon.",
@@ -5495,6 +5628,26 @@
       "category": "evolution",
       "rarity": "epic",
       "sellPrice": 3000,
+      "effects": []
+    },
+    {
+      "id": "fragment-de-meteorite",
+      "name": "Fragment de météorite",
+      "description": "Fragment encore tiède, qui pulse d’une énergie venue de l’espace.",
+      "icon": "/api/sprites/items/meteorite.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "fragment-magnetique",
+      "name": "Fragment magnétique",
+      "description": "Éclat de métal aimanté arraché aux machines de la Centrale. Il pointe toujours vers le ciel.",
+      "icon": "/api/sprites/items/magnet.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
       "effects": []
     },
     {
@@ -6286,6 +6439,36 @@
       ]
     },
     {
+      "id": "orbe-bleu",
+      "name": "Orbe Bleu",
+      "description": "Orbe qui renferme le pouvoir des océans. Il pulse quand la pluie tombe.",
+      "icon": "/api/sprites/items/blue-orb.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "orbe-de-jade",
+      "name": "Orbe de Jade",
+      "description": "Orbe qui vibre au rythme du vent, lié au gardien du ciel.",
+      "icon": "/api/sprites/items/jade-orb.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "orbe-rouge",
+      "name": "Orbe Rouge",
+      "description": "Orbe qui renferme le pouvoir des continents. Il brûle quand le soleil tape.",
+      "icon": "/api/sprites/items/red-orb.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
       "id": "oval-stone",
       "name": "Pierre Ovale",
       "description": "Une pierre étrange qui fait évoluer certaines espèces de Pokémon. Elle a la forme d’un œuf.",
@@ -6293,6 +6476,16 @@
       "category": "evolution",
       "rarity": "rare",
       "sellPrice": 1500,
+      "effects": []
+    },
+    {
+      "id": "page-du-journal",
+      "name": "Page du journal",
+      "description": "Page arrachée au journal d’un scientifique du Manoir Pokémon.",
+      "icon": "/api/sprites/items/journal.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
       "effects": []
     },
     {
@@ -6351,6 +6544,56 @@
       ]
     },
     {
+      "id": "plume-foudre",
+      "name": "Plume Foudre",
+      "description": "Plume jaune qui grésille au moindre contact. Elle sent l’orage.",
+      "icon": "/api/sprites/items/health-wing.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "plume-martiale",
+      "name": "Plume martiale",
+      "description": "Plume rouge et dure comme l’acier, perdue lors d’une course effrénée.",
+      "icon": "/api/sprites/items/muscle-wing.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "plume-psychique",
+      "name": "Plume psychique",
+      "description": "Plume violette qui plonge celui qui la regarde dans une légère torpeur.",
+      "icon": "/api/sprites/items/clever-wing.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "plume-sombre",
+      "name": "Plume sombre",
+      "description": "Plume aux reflets noirs, chargée de rancœur.",
+      "icon": "/api/sprites/items/resist-wing.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "poil-soyeux",
+      "name": "Poil soyeux",
+      "description": "Poil rose d’une douceur incroyable, retrouvé dans les hautes herbes de l’Île Lointaine.",
+      "icon": "/api/sprites/items/fluffy-tail.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
       "id": "poke-ball",
       "name": "Poké Ball",
       "description": "La Ball de base.",
@@ -6385,6 +6628,16 @@
           "maxYield": 3
         }
       ]
+    },
+    {
+      "id": "poussiere-d-etoile",
+      "name": "Poussière d’étoile",
+      "description": "Poussière scintillante tombée du ciel les nuits où passe la comète.",
+      "icon": "/api/sprites/items/stardust.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
     },
     {
       "id": "premier-ball",
@@ -6603,6 +6856,16 @@
           "minutes": 180
         }
       ]
+    },
+    {
+      "id": "rosee-du-voile-rouge",
+      "name": "Rosée du voile rouge",
+      "description": "Goutte de rosée qui reflète la lumière en rouge, laissée par Latias.",
+      "icon": "/api/sprites/items/soul-dew.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
     },
     {
       "id": "sablenite",
@@ -6875,6 +7138,16 @@
       ]
     },
     {
+      "id": "statuette-de-l-autel",
+      "name": "Statuette de l’autel",
+      "description": "Statuette d’un petit Pokémon ailé. Au revers : « Rends-moi à l’autel. »",
+      "icon": "/api/sprites/items/relic-statue.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
       "id": "steelixite",
       "name": "Steelixite",
       "description": "Une Méga-Gemme, laissée par Méga-Steelix au fond de son donjon.",
@@ -6945,6 +7218,36 @@
       "effects": []
     },
     {
+      "id": "tablette-d-acier",
+      "name": "Tablette d’acier",
+      "description": "Tablette métallique qui bourdonne doucement, comme si elle était vivante.",
+      "icon": "/api/sprites/items/iron-plate.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "tablette-de-glace",
+      "name": "Tablette de glace",
+      "description": "Tablette de glace éternelle, gravée de points en relief.",
+      "icon": "/api/sprites/items/icicle-plate.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "tablette-de-roche",
+      "name": "Tablette de roche",
+      "description": "Tablette couverte d’inscriptions en relief, sortie des sables du désert.",
+      "icon": "/api/sprites/items/stone-plate.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
       "id": "tart-apple",
       "name": "Pomme Acidulée",
       "description": "Une pomme mystérieuse très acide qui permet de faire évoluer un certain Pokémon.",
@@ -6962,6 +7265,16 @@
       "category": "evolution",
       "rarity": "rare",
       "sellPrice": 1500,
+      "effects": []
+    },
+    {
+      "id": "ticket-eon",
+      "name": "Ticket Éon",
+      "description": "Ticket mystérieux qui porte le dessin d’un Pokémon bleu aux ailes de jet.",
+      "icon": "/api/sprites/items/eon-ticket.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
       "effects": []
     },
     {
@@ -7058,6 +7371,16 @@
           "formId": 10279
         }
       ]
+    },
+    {
+      "id": "vieille-carte-marine",
+      "name": "Vieille carte marine",
+      "description": "Carte jaunie qui indique une île absente de toutes les cartes modernes.",
+      "icon": "/api/sprites/items/old-sea-map.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
     },
     {
       "id": "water-stone",
@@ -19733,7 +20056,8 @@
       "enabled": true,
       "unlock": {
         "type": "always"
-      }
+      },
+      "questId": null
     },
     {
       "id": "gamin-joey",
@@ -19774,7 +20098,8 @@
       "enabled": true,
       "unlock": {
         "type": "always"
-      }
+      },
+      "questId": null
     },
     {
       "id": "gamin-tom",
@@ -19809,7 +20134,8 @@
       "enabled": true,
       "unlock": {
         "type": "always"
-      }
+      },
+      "questId": null
     },
     {
       "id": "gamin-unys",
@@ -19850,7 +20176,8 @@
       "enabled": true,
       "unlock": {
         "type": "always"
-      }
+      },
+      "questId": null
     },
     {
       "id": "ilima",
@@ -19903,7 +20230,8 @@
         "type": "regionDexPercent",
         "regionId": "alola",
         "percent": 5
-      }
+      },
+      "questId": null
     },
     {
       "id": "katy",
@@ -19955,7 +20283,8 @@
         "type": "regionDexPercent",
         "regionId": "paldea",
         "percent": 5
-      }
+      },
+      "questId": null
     },
     {
       "id": "nouvel",
@@ -19998,7 +20327,8 @@
       "enabled": true,
       "unlock": {
         "type": "always"
-      }
+      },
+      "questId": null
     },
     {
       "id": "percy",
@@ -20044,7 +20374,8 @@
         "type": "regionDexPercent",
         "regionId": "galar",
         "percent": 5
-      }
+      },
+      "questId": null
     },
     {
       "id": "pierrick",
@@ -20096,7 +20427,8 @@
         "type": "regionDexPercent",
         "regionId": "sinnoh",
         "percent": 5
-      }
+      },
+      "questId": null
     },
     {
       "id": "violette",
@@ -20143,7 +20475,8 @@
         "type": "regionDexPercent",
         "regionId": "kalos",
         "percent": 5
-      }
+      },
+      "questId": null
     },
     {
       "id": "aloe",
@@ -20188,7 +20521,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "gamin-unys"
-      }
+      },
+      "questId": null
     },
     {
       "id": "cornelia",
@@ -20240,7 +20574,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "violette"
-      }
+      },
+      "questId": null
     },
     {
       "id": "fillette-lise",
@@ -20282,7 +20617,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "gamin-tom"
-      }
+      },
+      "questId": null
     },
     {
       "id": "scout-arthur",
@@ -20331,7 +20667,8 @@
         "type": "regionDexPercent",
         "regionId": "hoenn",
         "percent": 3
-      }
+      },
+      "questId": null
     },
     {
       "id": "scout-willy",
@@ -20380,7 +20717,8 @@
         "type": "regionDexPercent",
         "regionId": "johto",
         "percent": 3
-      }
+      },
+      "questId": null
     },
     {
       "id": "tarak",
@@ -20430,7 +20768,8 @@
         "type": "regionDexPercent",
         "regionId": "galar",
         "percent": 50
-      }
+      },
+      "questId": null
     },
     {
       "id": "sage-li",
@@ -20478,7 +20817,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "scout-willy"
-      }
+      },
+      "questId": null
     },
     {
       "id": "sbire-aqua-clementi",
@@ -20526,7 +20866,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "scout-arthur"
-      }
+      },
+      "questId": null
     },
     {
       "id": "scout-rick",
@@ -20575,7 +20916,8 @@
         "type": "regionDexPercent",
         "regionId": "kanto",
         "percent": 3
-      }
+      },
+      "questId": null
     },
     {
       "id": "albert",
@@ -20620,7 +20962,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "sage-li"
-      }
+      },
+      "questId": null
     },
     {
       "id": "pierre",
@@ -20665,7 +21008,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "scout-rick"
-      }
+      },
+      "questId": null
     },
     {
       "id": "roxanne",
@@ -20710,7 +21054,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "sbire-aqua-clementi"
-      }
+      },
+      "questId": null
     },
     {
       "id": "campeur-jose",
@@ -20759,7 +21104,8 @@
         "type": "badgeCount",
         "count": 1,
         "regionId": "hoenn"
-      }
+      },
+      "questId": null
     },
     {
       "id": "campeur-leo",
@@ -20802,7 +21148,8 @@
         "type": "badgeCount",
         "count": 1,
         "regionId": "kanto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "pecheur-raoul",
@@ -20851,7 +21198,8 @@
         "type": "badgeCount",
         "count": 1,
         "regionId": "johto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "intello-miguel",
@@ -20899,7 +21247,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "campeur-leo"
-      }
+      },
+      "questId": null
     },
     {
       "id": "montagnard-anthony",
@@ -20947,7 +21296,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "pecheur-raoul"
-      }
+      },
+      "questId": null
     },
     {
       "id": "montagnard-bruno",
@@ -20995,7 +21345,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "campeur-jose"
-      }
+      },
+      "questId": null
     },
     {
       "id": "pique-niqueuse-ali",
@@ -21043,7 +21394,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "intello-miguel"
-      }
+      },
+      "questId": null
     },
     {
       "id": "sbire-magma-poivressel",
@@ -21091,7 +21443,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "montagnard-bruno"
-      }
+      },
+      "questId": null
     },
     {
       "id": "sbire-puits",
@@ -21139,7 +21492,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "montagnard-anthony"
-      }
+      },
+      "questId": null
     },
     {
       "id": "bastien",
@@ -21190,7 +21544,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "sbire-magma-poivressel"
-      }
+      },
+      "questId": null
     },
     {
       "id": "hector",
@@ -21241,7 +21596,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "sbire-puits"
-      }
+      },
+      "questId": null
     },
     {
       "id": "ondine",
@@ -21286,7 +21642,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "pique-niqueuse-ali"
-      }
+      },
+      "questId": null
     },
     {
       "id": "cycliste-ludo",
@@ -21335,7 +21692,8 @@
         "type": "badgeCount",
         "count": 2,
         "regionId": "hoenn"
-      }
+      },
+      "questId": null
     },
     {
       "id": "marin-hugo",
@@ -21384,7 +21742,8 @@
         "type": "badgeCount",
         "count": 2,
         "regionId": "kanto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "scout-hugo",
@@ -21433,7 +21792,8 @@
         "type": "badgeCount",
         "count": 2,
         "regionId": "johto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "major-bob",
@@ -21484,7 +21844,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "marin-hugo"
-      }
+      },
+      "questId": null
     },
     {
       "id": "pique-niqueuse-gina",
@@ -21532,7 +21893,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "scout-hugo"
-      }
+      },
+      "questId": null
     },
     {
       "id": "pique-niqueuse-lina",
@@ -21580,7 +21942,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "cycliste-ludo"
-      }
+      },
+      "questId": null
     },
     {
       "id": "blanche",
@@ -21631,7 +21994,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "pique-niqueuse-gina"
-      }
+      },
+      "questId": null
     },
     {
       "id": "montagnard-ivan",
@@ -21686,7 +22050,8 @@
         "type": "badgeCount",
         "count": 3,
         "regionId": "kanto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "voltere",
@@ -21737,7 +22102,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "pique-niqueuse-lina"
-      }
+      },
+      "questId": null
     },
     {
       "id": "erika",
@@ -21788,7 +22154,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "montagnard-ivan"
-      }
+      },
+      "questId": null
     },
     {
       "id": "mediume-edith",
@@ -21843,7 +22210,8 @@
         "type": "badgeCount",
         "count": 3,
         "regionId": "johto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "sbire-magma-chimnee",
@@ -21898,7 +22266,8 @@
         "type": "badgeCount",
         "count": 3,
         "regionId": "hoenn"
-      }
+      },
+      "questId": null
     },
     {
       "id": "adriane",
@@ -21955,7 +22324,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "sbire-magma-chimnee"
-      }
+      },
+      "questId": null
     },
     {
       "id": "mediume-paula",
@@ -22010,7 +22380,8 @@
         "type": "badgeCount",
         "count": 4,
         "regionId": "kanto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "mortimer",
@@ -22067,7 +22438,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "mediume-edith"
-      }
+      },
+      "questId": null
     },
     {
       "id": "motard-rex",
@@ -22121,7 +22493,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "mediume-paula"
-      }
+      },
+      "questId": null
     },
     {
       "id": "nageuse-maeva",
@@ -22176,7 +22549,8 @@
         "type": "badgeCount",
         "count": 4,
         "regionId": "hoenn"
-      }
+      },
+      "questId": null
     },
     {
       "id": "nageuse-marina",
@@ -22231,7 +22605,8 @@
         "type": "badgeCount",
         "count": 4,
         "regionId": "johto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "chuck",
@@ -22288,7 +22663,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "nageuse-marina"
-      }
+      },
+      "questId": null
     },
     {
       "id": "koga",
@@ -22345,7 +22721,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "motard-rex"
-      }
+      },
+      "questId": null
     },
     {
       "id": "norman",
@@ -22402,7 +22779,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "nageuse-maeva"
-      }
+      },
+      "questId": null
     },
     {
       "id": "karateka-kiyo",
@@ -22457,7 +22835,8 @@
         "type": "badgeCount",
         "count": 5,
         "regionId": "kanto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "marin-gilles",
@@ -22512,7 +22891,8 @@
         "type": "badgeCount",
         "count": 5,
         "regionId": "johto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "ornithologue-elie",
@@ -22567,7 +22947,8 @@
         "type": "badgeCount",
         "count": 5,
         "regionId": "hoenn"
-      }
+      },
+      "questId": null
     },
     {
       "id": "alizee",
@@ -22624,7 +23005,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "ornithologue-elie"
-      }
+      },
+      "questId": null
     },
     {
       "id": "jasmine",
@@ -22681,7 +23063,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "marin-gilles"
-      }
+      },
+      "questId": null
     },
     {
       "id": "sbire-rocket",
@@ -22736,7 +23119,8 @@
         "type": "badgeCount",
         "count": 5,
         "regionId": "kanto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "morgane",
@@ -22793,7 +23177,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "sbire-rocket"
-      }
+      },
+      "questId": null
     },
     {
       "id": "sbire-aqua-memoria",
@@ -22848,7 +23233,8 @@
         "type": "badgeCount",
         "count": 6,
         "regionId": "hoenn"
-      }
+      },
+      "questId": null
     },
     {
       "id": "sbire-qg-rocket",
@@ -22903,7 +23289,8 @@
         "type": "badgeCount",
         "count": 6,
         "regionId": "johto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "fredo",
@@ -22966,7 +23353,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "sbire-qg-rocket"
-      }
+      },
+      "questId": null
     },
     {
       "id": "levy-tatia",
@@ -23029,7 +23417,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "sbire-aqua-memoria"
-      }
+      },
+      "questId": null
     },
     {
       "id": "nageuse-lena",
@@ -23084,7 +23473,8 @@
         "type": "badgeCount",
         "count": 6,
         "regionId": "kanto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "auguste",
@@ -23141,7 +23531,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "nageuse-lena"
-      }
+      },
+      "questId": null
     },
     {
       "id": "pecheur-tomas",
@@ -23202,7 +23593,8 @@
         "type": "badgeCount",
         "count": 7,
         "regionId": "hoenn"
-      }
+      },
+      "questId": null
     },
     {
       "id": "skieuse-rosa",
@@ -23263,7 +23655,8 @@
         "type": "badgeCount",
         "count": 7,
         "regionId": "johto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "juan",
@@ -23326,7 +23719,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "pecheur-tomas"
-      }
+      },
+      "questId": null
     },
     {
       "id": "sandra",
@@ -23389,7 +23783,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "skieuse-rosa"
-      }
+      },
+      "questId": null
     },
     {
       "id": "scientifique-hector",
@@ -23450,7 +23845,8 @@
         "type": "badgeCount",
         "count": 7,
         "regionId": "kanto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "giovanni",
@@ -23513,7 +23909,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "scientifique-hector"
-      }
+      },
+      "questId": null
     },
     {
       "id": "topdresseur-gaston",
@@ -23574,7 +23971,8 @@
         "type": "badgeCount",
         "count": 8,
         "regionId": "johto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "topdresseuse-vanessa",
@@ -23635,7 +24033,8 @@
         "type": "badgeCount",
         "count": 8,
         "regionId": "hoenn"
-      }
+      },
+      "questId": null
     },
     {
       "id": "clement",
@@ -23705,7 +24104,8 @@
             "trainerId": "topdresseur-gaston"
           }
         ]
-      }
+      },
+      "questId": null
     },
     {
       "id": "damien",
@@ -23775,7 +24175,8 @@
             "trainerId": "topdresseuse-vanessa"
           }
         ]
-      }
+      },
+      "questId": null
     },
     {
       "id": "topdresseuse-alice",
@@ -23836,7 +24237,8 @@
         "type": "badgeCount",
         "count": 8,
         "regionId": "kanto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "koga-conseil",
@@ -23896,7 +24298,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "clement"
-      }
+      },
+      "questId": null
     },
     {
       "id": "olga",
@@ -23966,7 +24369,8 @@
             "trainerId": "topdresseuse-alice"
           }
         ]
-      }
+      },
+      "questId": null
     },
     {
       "id": "spectra",
@@ -24026,7 +24430,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "damien"
-      }
+      },
+      "questId": null
     },
     {
       "id": "aldo",
@@ -24086,7 +24491,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "olga"
-      }
+      },
+      "questId": null
     },
     {
       "id": "aldo-johto",
@@ -24146,7 +24552,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "koga-conseil"
-      }
+      },
+      "questId": null
     },
     {
       "id": "glacia",
@@ -24206,7 +24613,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "spectra"
-      }
+      },
+      "questId": null
     },
     {
       "id": "agatha",
@@ -24266,7 +24674,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "aldo"
-      }
+      },
+      "questId": null
     },
     {
       "id": "aragon",
@@ -24326,7 +24735,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "glacia"
-      }
+      },
+      "questId": null
     },
     {
       "id": "marion",
@@ -24386,7 +24796,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "aldo-johto"
-      }
+      },
+      "questId": null
     },
     {
       "id": "maitre-marc",
@@ -24452,7 +24863,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "aragon"
-      }
+      },
+      "questId": null
     },
     {
       "id": "maitre-peter",
@@ -24518,7 +24930,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "marion"
-      }
+      },
+      "questId": null
     },
     {
       "id": "peter",
@@ -24578,7 +24991,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "agatha"
-      }
+      },
+      "questId": null
     },
     {
       "id": "maitre-blue",
@@ -24644,7 +25058,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "peter"
-      }
+      },
+      "questId": null
     },
     {
       "id": "pierre-rochard",
@@ -24710,7 +25125,8 @@
       "unlock": {
         "type": "trainerDefeated",
         "trainerId": "maitre-marc"
-      }
+      },
+      "questId": null
     },
     {
       "id": "red",
@@ -24785,7 +25201,8 @@
             "trainerId": "maitre-blue"
           }
         ]
-      }
+      },
+      "questId": null
     },
     {
       "id": "touriste-maya",
@@ -24837,7 +25254,1736 @@
         "type": "regionDexPercent",
         "regionId": "kanto",
         "percent": 50
-      }
+      },
+      "questId": null
+    },
+    {
+      "id": "quete-electhor-volt",
+      "regionId": "kanto",
+      "zoneId": "centrale",
+      "order": 100,
+      "name": "Volt",
+      "trainerClass": "Scientifique Rocket",
+      "sprite": "/api/sprites/trainers/scientist.png",
+      "team": [
+        {
+          "speciesId": 82,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 101,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 137,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 125,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 135,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 26,
+          "formId": null,
+          "level": 78,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "electhor"
+    },
+    {
+      "id": "quete-artikodin-neige",
+      "regionId": "kanto",
+      "zoneId": "iles-ecume",
+      "order": 101,
+      "name": "Neige",
+      "trainerClass": "Skieuse",
+      "sprite": "/api/sprites/trainers/skier.png",
+      "team": [
+        {
+          "speciesId": 87,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 91,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 124,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 55,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 121,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 131,
+          "formId": null,
+          "level": 78,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "artikodin"
+    },
+    {
+      "id": "quete-sulfura-pyros",
+      "regionId": "kanto",
+      "zoneId": "mont-braise",
+      "order": 102,
+      "name": "Pyros",
+      "trainerClass": "Cracheur de feu",
+      "sprite": "/api/sprites/trainers/biker.png",
+      "team": [
+        {
+          "speciesId": 78,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 38,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 136,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 76,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 126,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 59,
+          "formId": null,
+          "level": 78,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "sulfura"
+    },
+    {
+      "id": "quete-mewtwo-kessler",
+      "regionId": "kanto",
+      "zoneId": "grotte-azuree",
+      "order": 103,
+      "name": "Kessler",
+      "trainerClass": "Généticien",
+      "sprite": "/api/sprites/trainers/supernerd.png",
+      "team": [
+        {
+          "speciesId": 65,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 97,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 110,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 103,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 122,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 132,
+          "formId": null,
+          "level": 78,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "mewtwo"
+    },
+    {
+      "id": "quete-mew-celia",
+      "regionId": "kanto",
+      "zoneId": "ile-lointaine",
+      "order": 104,
+      "name": "Célia",
+      "trainerClass": "Exploratrice",
+      "sprite": "/api/sprites/trainers/picnicker-gen3.png",
+      "team": [
+        {
+          "speciesId": 149,
+          "formId": null,
+          "level": 78,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 143,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 59,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 121,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 65,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 115,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "mew"
+    },
+    {
+      "id": "quete-artikodin-galar-selene",
+      "regionId": "galar",
+      "zoneId": null,
+      "order": 105,
+      "name": "Sélène",
+      "trainerClass": "Médium",
+      "sprite": "/api/sprites/trainers/medium.png",
+      "team": [
+        {
+          "speciesId": 858,
+          "formId": null,
+          "level": 78,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 826,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 876,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 866,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 869,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 884,
+          "formId": null,
+          "level": 78,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "artikodin-galar"
+    },
+    {
+      "id": "quete-electhor-galar-kenzo",
+      "regionId": "galar",
+      "zoneId": null,
+      "order": 106,
+      "name": "Kenzo",
+      "trainerClass": "Karatéka",
+      "sprite": "/api/sprites/trainers/blackbelt.png",
+      "team": [
+        {
+          "speciesId": 853,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 865,
+          "formId": null,
+          "level": 78,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 870,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 812,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 823,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 879,
+          "formId": null,
+          "level": 79,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "electhor-galar"
+    },
+    {
+      "id": "quete-sulfura-galar-ambre",
+      "regionId": "galar",
+      "zoneId": null,
+      "order": 107,
+      "name": "Ambre",
+      "trainerClass": "Exorciste",
+      "sprite": "/api/sprites/trainers/channeler-gen3.png",
+      "team": [
+        {
+          "speciesId": 887,
+          "formId": null,
+          "level": 79,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 855,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 864,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 867,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 851,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 861,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "sulfura-galar"
+    },
+    {
+      "id": "quete-raikou-kanji",
+      "regionId": "johto",
+      "zoneId": "tour-cendree",
+      "order": 108,
+      "name": "Kanji",
+      "trainerClass": "Chasseur de légendes",
+      "sprite": "/api/sprites/trainers/acetrainer-gen4.png",
+      "team": [
+        {
+          "speciesId": 181,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 171,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 229,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 212,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 248,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 197,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "raikou"
+    },
+    {
+      "id": "quete-entei-roc",
+      "regionId": "johto",
+      "zoneId": "mont-creuset",
+      "order": 109,
+      "name": "Roc",
+      "trainerClass": "Montagnard",
+      "sprite": "/api/sprites/trainers/hiker-gen3.png",
+      "team": [
+        {
+          "speciesId": 157,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 229,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 219,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 232,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 208,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 185,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "entei"
+    },
+    {
+      "id": "quete-suicune-ruben",
+      "regionId": "johto",
+      "zoneId": "lac-colere",
+      "order": 110,
+      "name": "Ruben",
+      "trainerClass": "Pêcheur",
+      "sprite": "/api/sprites/trainers/fisherman-gen3.png",
+      "team": [
+        {
+          "speciesId": 160,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 171,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 199,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 195,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 224,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 230,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "suicune"
+    },
+    {
+      "id": "quete-lugia-corbin",
+      "regionId": "johto",
+      "zoneId": "tourb-iles",
+      "order": 111,
+      "name": "Corbin",
+      "trainerClass": "Admin Rocket",
+      "sprite": "/api/sprites/trainers/rocketgrunt.png",
+      "team": [
+        {
+          "speciesId": 229,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 198,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 169,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 215,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 197,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 248,
+          "formId": null,
+          "level": 78,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "lugia"
+    },
+    {
+      "id": "quete-ho-oh-ho",
+      "regionId": "johto",
+      "zoneId": "tour-carillon",
+      "order": 112,
+      "name": "Hô",
+      "trainerClass": "Grand Sage",
+      "sprite": "/api/sprites/trainers/sage.png",
+      "team": [
+        {
+          "speciesId": 178,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 164,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 196,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 203,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 227,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 242,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "ho-oh"
+    },
+    {
+      "id": "quete-celebi-vasco",
+      "regionId": "johto",
+      "zoneId": "autel-bois-aux-chenes",
+      "order": 113,
+      "name": "Vasco",
+      "trainerClass": "Braconnier",
+      "sprite": "/api/sprites/trainers/camper-gen3.png",
+      "team": [
+        {
+          "speciesId": 214,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 212,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 168,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 169,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 189,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 205,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "celebi"
+    },
+    {
+      "id": "quete-latias-marina",
+      "regionId": "hoenn",
+      "zoneId": "routes-124-128",
+      "order": 114,
+      "name": "Marina",
+      "trainerClass": "Nageuse",
+      "sprite": "/api/sprites/trainers/swimmerf-gen3.png",
+      "team": [
+        {
+          "speciesId": 370,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 340,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 272,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 369,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 368,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 350,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "latias"
+    },
+    {
+      "id": "quete-latios-faucon",
+      "regionId": "hoenn",
+      "zoneId": "routes-119-120",
+      "order": 115,
+      "name": "Faucon",
+      "trainerClass": "Ornithologue",
+      "sprite": "/api/sprites/trainers/birdkeeper-gen3.png",
+      "team": [
+        {
+          "speciesId": 277,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 279,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 357,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 334,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 373,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 330,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "latios"
+    },
+    {
+      "id": "quete-regirock-basalte",
+      "regionId": "hoenn",
+      "zoneId": "desert-hoenn",
+      "order": 116,
+      "name": "Basalte",
+      "trainerClass": "Archéologue",
+      "sprite": "/api/sprites/trainers/hiker-gen4.png",
+      "team": [
+        {
+          "speciesId": 306,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 348,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 346,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 344,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 324,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 297,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "regirock"
+    },
+    {
+      "id": "quete-registeel-ferrine",
+      "regionId": "hoenn",
+      "zoneId": "routes-119-120",
+      "order": 117,
+      "name": "Ferrine",
+      "trainerClass": "Topdresseuse",
+      "sprite": "/api/sprites/trainers/acetrainerf-gen3.png",
+      "team": [
+        {
+          "speciesId": 303,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 375,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 308,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 302,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 317,
+          "formId": null,
+          "level": 74,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 376,
+          "formId": null,
+          "level": 78,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "registeel"
+    },
+    {
+      "id": "quete-regice-boree",
+      "regionId": "hoenn",
+      "zoneId": "routes-124-128",
+      "order": 118,
+      "name": "Borée",
+      "trainerClass": "Loup de mer",
+      "sprite": "/api/sprites/trainers/sailor.png",
+      "team": [
+        {
+          "speciesId": 365,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 362,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 260,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 364,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 319,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 321,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "regice"
+    },
+    {
+      "id": "quete-kyogre-abysse",
+      "regionId": "hoenn",
+      "zoneId": "grotte-sous-marine",
+      "order": 119,
+      "name": "Abysse",
+      "trainerClass": "Admin Aqua",
+      "sprite": "/api/sprites/trainers/aquagruntf.png",
+      "team": [
+        {
+          "speciesId": 319,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 342,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 262,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 367,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 279,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 321,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "kyogre"
+    },
+    {
+      "id": "quete-groudon-fumerol",
+      "regionId": "hoenn",
+      "zoneId": "grotte-originelle",
+      "order": 120,
+      "name": "Fumerol",
+      "trainerClass": "Admin Magma",
+      "sprite": "/api/sprites/trainers/magmagrunt.png",
+      "team": [
+        {
+          "speciesId": 323,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 324,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 262,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 330,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 336,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 344,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "groudon"
+    },
+    {
+      "id": "quete-rayquaza-zephyra",
+      "regionId": "hoenn",
+      "zoneId": "pilier-celeste",
+      "order": 121,
+      "name": "Zéphyra",
+      "trainerClass": "Gardienne du Pilier",
+      "sprite": "/api/sprites/trainers/acetrainerf.png",
+      "team": [
+        {
+          "speciesId": 373,
+          "formId": null,
+          "level": 79,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 334,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 330,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 350,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 357,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 376,
+          "formId": null,
+          "level": 78,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 20000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "rayquaza"
+    },
+    {
+      "id": "quete-jirachi-stella",
+      "regionId": "hoenn",
+      "zoneId": "chutes-meteore",
+      "order": 122,
+      "name": "Stella",
+      "trainerClass": "Astronome",
+      "sprite": "/api/sprites/trainers/lass-gen4.png",
+      "team": [
+        {
+          "speciesId": 282,
+          "formId": null,
+          "level": 77,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 344,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 337,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 338,
+          "formId": null,
+          "level": 75,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 358,
+          "formId": null,
+          "level": 76,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 376,
+          "formId": null,
+          "level": 78,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 15000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "jirachi"
+    },
+    {
+      "id": "quete-deoxys-orion",
+      "regionId": "hoenn",
+      "zoneId": "ile-aurore",
+      "order": 123,
+      "name": "Orion",
+      "trainerClass": "Chercheur spatial",
+      "sprite": "/api/sprites/trainers/scientist.png",
+      "team": [
+        {
+          "speciesId": 359,
+          "formId": null,
+          "level": 80,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 302,
+          "formId": null,
+          "level": 79,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 344,
+          "formId": null,
+          "level": 79,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 282,
+          "formId": null,
+          "level": 80,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 373,
+          "formId": null,
+          "level": 81,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 376,
+          "formId": null,
+          "level": 82,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 20000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "deoxys"
     }
   ],
   "dungeons": [
@@ -31587,7 +33733,7 @@
       "id": "electhor",
       "order": 0,
       "name": "L’oiseau de foudre",
-      "description": "Des éclairs zèbrent le ciel au-dessus de la Centrale abandonnée.",
+      "description": "Depuis quelques nuits, Céladopole est plongée dans le noir. Quelque chose aspire l’électricité de tout Kanto.",
       "image": null,
       "regionId": "kanto",
       "enabled": true,
@@ -31597,38 +33743,69 @@
       },
       "steps": [
         {
-          "name": "Haute tension",
-          "description": "Capture 50 Pokémon Électrik pour trouver l’entrée de la Centrale.",
-          "condition": {
-            "type": "catchPokemon",
-            "count": 50,
-            "pokemonType": "electric",
-            "speciesId": null,
-            "zoneId": null
-          }
-        },
-        {
-          "name": "Courts-circuits",
-          "description": "Capture 100 Pokémon Électrik à la Centrale.",
-          "condition": {
-            "type": "catchPokemon",
-            "count": 100,
-            "pokemonType": "electric",
-            "speciesId": null,
-            "zoneId": "centrale"
-          }
-        },
-        {
-          "name": "Le cœur de la Centrale",
-          "description": "Réussis une expédition à la Centrale avec 2 Pokémon Électrik de PE 600 ou plus.",
+          "name": "Coupures de courant",
+          "description": "Réussis une expédition sur les Routes 9 et 10 avec un Pikachu dans l’équipe.",
           "condition": {
             "type": "expedition",
-            "zoneId": "centrale",
+            "zoneId": "routes-9-10",
             "count": 1,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              25
+            ],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Les joues de ton Pikachu crépitent dès que vous longez la rivière. Un pêcheur t’indique un bâtiment oublié en amont : la Centrale. Ses portes rouillées viennent de s’ouvrir."
+        },
+        {
+          "name": "Courants vagabonds",
+          "description": "Trouve 3 Fragments magnétiques à la Centrale, avec 2 Pokémon Électrik dans l’équipe.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "fragment-magnetique",
+            "count": 3,
+            "zoneId": "centrale",
+            "chance": 4,
             "memberType": "electric",
             "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Posés côte à côte, les fragments s’orientent tous vers le toit de la Centrale, comme attirés par un orage qui ne finit jamais."
+        },
+        {
+          "name": "Le saboteur du toit",
+          "description": "Sur le toit de la Centrale, un scientifique de la Team Rocket détourne le courant de Kanto vers ses machines : bats Volt (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-electhor-volt"
+          },
+          "outcome": "« Mes machines n’y suffiront jamais… Électhor ne descend recharger ses ailes que sous l’orage ! » Volt s’enfuit en abandonnant ses câbles, et les lumières de Céladopole se rallument. Il ne reste plus qu’à attendre la pluie."
+        },
+        {
+          "name": "Plume d’orage",
+          "description": "Trouve une Plume Foudre à la Centrale, lors d’une expédition lancée sous la pluie.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "plume-foudre",
+            "count": 1,
+            "zoneId": "centrale",
+            "chance": 6,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "rain"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "La plume grésille entre tes doigts. Un cri strident déchire le ciel au-dessus de la Centrale : Électhor est là, et il n’aime pas les visiteurs."
         }
       ],
       "rewards": {
@@ -31648,14 +33825,17 @@
             "speciesId": 145,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 3000,
+            "battle": {
+              "level": 70,
+              "iv": 31,
+              "hpMultiplier": 4,
+              "statMultiplier": 1.1,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "rock",
-                "ice"
-              ]
+              "captureChance": 35
             },
             "roaming": null
           }
@@ -31666,7 +33846,7 @@
       "id": "latias",
       "order": 0,
       "name": "L’éon au voile rouge",
-      "description": "Un oiseau rouge aux reflets de verre aurait été aperçu au-dessus de la mer.",
+      "description": "Des voyageurs parlent d’un Pokémon rouge qui se rend invisible en reflétant la lumière, au-dessus de la mer de Hoenn.",
       "image": null,
       "regionId": "hoenn",
       "enabled": true,
@@ -31677,26 +33857,60 @@
       "steps": [
         {
           "name": "Ondes psychiques",
-          "description": "Capture 50 Pokémon Psy.",
+          "description": "Capture 10 Pokémon Psy à Hoenn.",
           "condition": {
             "type": "catchPokemon",
-            "count": 50,
+            "count": 10,
             "pokemonType": "psychic",
             "speciesId": null,
             "zoneId": null
-          }
+          },
+          "outcome": "Tes Pokémon Psy perçoivent une présence douce et joueuse, qui t’observe sans se montrer."
+        },
+        {
+          "name": "Un reflet rouge",
+          "description": "Trouve 2 Rosées du voile rouge sur les Routes 105 à 108, lors d’expéditions lancées de jour.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "rosee-du-voile-rouge",
+            "count": 2,
+            "zoneId": "routes-105-108",
+            "chance": 4,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "day"
+          },
+          "outcome": "Chaque goutte reflète un éclat rouge. Quelque chose plane au-dessus des vagues, invisible, et semble s’amuser de te voir chercher."
+        },
+        {
+          "name": "La nageuse du large",
+          "description": "Une nageuse des Routes 124 à 128 a aperçu le reflet rouge et défie quiconque s’en approche : bats Marina (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-latias-marina"
+          },
+          "outcome": "« D’accord, tu nages mieux que moi… » Marina sourit : « Ce reflet adore les Lovdisc, il les suit partout au-dessus des vagues. Emmènes-en un, et il viendra peut-être jouer avec toi. »"
         },
         {
           "name": "Au-dessus des vagues",
-          "description": "Réussis une expédition sur les Routes 105 à 108 avec 2 Pokémon Psy de PE 600 ou plus.",
+          "description": "Réussis une expédition sur les Routes 124 à 128 avec Lovdisc dans l’équipe.",
           "condition": {
             "type": "expedition",
-            "zoneId": "routes-105-108",
+            "zoneId": "routes-124-128",
             "count": 1,
-            "memberType": "psychic",
-            "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              370
+            ],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Lovdisc saute hors de l’eau, et un reflet rouge s’arrête net pour le regarder. Latias se dévoile… puis repart d’un battement d’ailes. Elle parcourt désormais Hoenn."
         }
       ],
       "rewards": {
@@ -31716,18 +33930,17 @@
             "speciesId": 380,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
+            "battle": {
+              "level": null,
+              "iv": 31,
+              "hpMultiplier": 5,
+              "statMultiplier": 1.1,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
               "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "bug",
-                "ghost",
-                "ice",
-                "dragon",
-                "dark",
-                "fairy"
-              ]
+              "captureChance": 30
             },
             "roaming": 3
           }
@@ -31738,7 +33951,7 @@
       "id": "raikou",
       "order": 0,
       "name": "La bête du tonnerre",
-      "description": "Un grondement de tonnerre résonne sous la Tour Cendrée.",
+      "description": "Selon la légende d’Écorcia, trois Pokémon périrent dans l’incendie de la Tour Cendrée, et Ho-Oh les ramena à la vie.",
       "image": null,
       "regionId": "johto",
       "enabled": true,
@@ -31748,27 +33961,61 @@
       },
       "steps": [
         {
-          "name": "Orage",
-          "description": "Capture 50 Pokémon Électrik.",
+          "name": "Orage d’été",
+          "description": "Capture 10 Pokémon Électrik à Johto.",
           "condition": {
             "type": "catchPokemon",
-            "count": 50,
+            "count": 10,
             "pokemonType": "electric",
             "speciesId": null,
             "zoneId": null
-          }
+          },
+          "outcome": "Les Pokémon Électrik de Johto sont nerveux, comme avant un gros orage. Pourtant, le ciel est clair."
+        },
+        {
+          "name": "Là où frappe la foudre",
+          "description": "Trouve 2 Éclats de tonnerre sur les Routes 42 à 44, lors d’expéditions lancées sous la pluie.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "eclat-de-tonnerre",
+            "count": 2,
+            "zoneId": "routes-42-44",
+            "chance": 6,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "rain"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "À chaque coup de tonnerre, un rugissement répond au loin. La bête ne s’arrête jamais de courir."
+        },
+        {
+          "name": "Le chasseur de légendes",
+          "description": "Un chasseur de légendes a posé ses pièges autour de la Tour Cendrée et ne veut pas de concurrent : bats Kanji (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-raikou-kanji"
+          },
+          "outcome": "« Trop lent, encore une fois… » Kanji montre les traces calcinées au pied de la tour : « Il revient toujours là où il est né. Mais pour l’approcher, il te faudra des Pokémon aussi vifs que la foudre. »"
         },
         {
           "name": "Le sous-sol de la tour",
-          "description": "Réussis une expédition à la Tour Cendrée avec 2 Pokémon Électrik de PE 600 ou plus.",
+          "description": "Réussis une expédition à la Tour Cendrée avec 2 Pokémon Électrik de PE 700 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "tour-cendree",
             "count": 1,
             "memberType": "electric",
             "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "minMemberPower": 700,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Dans les ruines de la Tour Cendrée, Raikou se dresse un instant devant toi… puis file comme l’éclair. Il parcourt désormais Johto."
         }
       ],
       "rewards": {
@@ -31788,13 +34035,17 @@
             "speciesId": 243,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 850,
+            "battle": {
+              "level": null,
+              "iv": 31,
+              "hpMultiplier": 5,
+              "statMultiplier": 1.1,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "ground"
-              ]
+              "captureChance": 30
             },
             "roaming": 3
           }
@@ -31805,7 +34056,7 @@
       "id": "artikodin",
       "order": 1,
       "name": "L’oiseau des glaces",
-      "description": "Un oiseau légendaire ferait tomber la neige sur les Îles Écume.",
+      "description": "Les pêcheurs de Cramois’Île jurent avoir vu la mer geler en plein été autour des Îles Écume.",
       "image": null,
       "regionId": "kanto",
       "enabled": true,
@@ -31815,38 +34066,79 @@
       },
       "steps": [
         {
-          "name": "Les pieds dans l’eau",
-          "description": "Capture 50 Pokémon Eau pour préparer la traversée.",
+          "name": "Traversée glacée",
+          "description": "Réussis une expédition sur les Routes maritimes avec 2 Pokémon Eau de PE 600 ou plus.",
           "condition": {
-            "type": "catchPokemon",
-            "count": 50,
-            "pokemonType": "water",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "type": "expedition",
+            "zoneId": "routes-maritimes",
+            "count": 1,
+            "memberType": "water",
+            "memberCount": 2,
+            "minMemberPower": 600,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Au large de Parmanie, l’eau se couvre de givre. Tes Pokémon Eau ouvrent un passage jusqu’aux Îles Écume, perdues dans la brume."
         },
         {
-          "name": "Le froid des îles",
-          "description": "Capture 75 Pokémon Glace aux Îles Écume.",
+          "name": "Givre éternel",
+          "description": "Trouve 3 Éclats de givre aux Îles Écume, lors d’expéditions lancées de nuit.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "eclat-de-givre",
+            "count": 3,
+            "zoneId": "iles-ecume",
+            "chance": 4,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "night"
+          },
+          "outcome": "Les éclats ne fondent pas, même au soleil. Un vieux pêcheur murmure qu’ils tombent des ailes d’un oiseau qui ne se montre que par grand froid."
+        },
+        {
+          "name": "La skieuse des glaces",
+          "description": "Une skieuse garde l’entrée de la grotte gelée des Îles Écume et repousse les curieux : bats Neige (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-artikodin-neige"
+          },
+          "outcome": "« Tu as du cran, pour venir jusqu’ici. » Neige caresse son Lokhlass : « Lui seul retrouve l’oiseau dans le blizzard : son chant porte jusqu’au cœur de la tempête. Capture le tien, et écoute-le. »"
+        },
+        {
+          "name": "Le chant de Lokhlass",
+          "description": "Capture un Lokhlass aux Îles Écume.",
           "condition": {
             "type": "catchPokemon",
-            "count": 75,
-            "pokemonType": "ice",
-            "speciesId": null,
+            "count": 1,
+            "pokemonType": null,
+            "speciesId": 131,
             "zoneId": "iles-ecume"
-          }
+          },
+          "outcome": "Ton Lokhlass entonne un chant mélancolique. Au loin, au cœur du blizzard, quelque chose lui répond."
         },
         {
-          "name": "Le nid d’Artikodin",
-          "description": "Réussis une expédition aux Îles Écume avec 2 Pokémon Glace de PE 600 ou plus.",
+          "name": "Dans la tempête",
+          "description": "Réussis une expédition aux Îles Écume sous la grêle, avec Lokhlass et 2 Pokémon Glace dans l’équipe.",
           "condition": {
             "type": "expedition",
             "zoneId": "iles-ecume",
             "count": 1,
             "memberType": "ice",
             "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "minMemberPower": 0,
+            "speciesIds": [
+              131
+            ],
+            "weathers": [
+              "hail"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Guidé par le chant de Lokhlass, tu atteins le cœur de la tempête. Artikodin déploie ses ailes de cristal et pousse un cri glacial : il te défie."
         }
       ],
       "rewards": {
@@ -31866,16 +34158,17 @@
             "speciesId": 144,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 3000,
+            "battle": {
+              "level": 70,
+              "iv": 31,
+              "hpMultiplier": 4.5,
+              "statMultiplier": 1.2,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "rock",
-                "steel",
-                "fire",
-                "electric"
-              ]
+              "captureChance": 35
             },
             "roaming": null
           }
@@ -31886,7 +34179,7 @@
       "id": "entei",
       "order": 1,
       "name": "La bête du volcan",
-      "description": "Une bête de feu aurait fui la Tour Cendrée en faisant trembler la terre.",
+      "description": "Chaque fois qu’Entei rugit, dit-on, un volcan entre en éruption quelque part dans le monde.",
       "image": null,
       "regionId": "johto",
       "enabled": true,
@@ -31897,26 +34190,60 @@
       "steps": [
         {
           "name": "Braises",
-          "description": "Capture 50 Pokémon Feu.",
+          "description": "Capture 10 Pokémon Feu à Johto.",
           "condition": {
             "type": "catchPokemon",
-            "count": 50,
+            "count": 10,
             "pokemonType": "fire",
             "speciesId": null,
             "zoneId": null
-          }
+          },
+          "outcome": "Des feux de broussaille éclatent ici et là, sans raison. Les anciens d’Écorcia parlent de la bête du volcan."
+        },
+        {
+          "name": "Le rugissement",
+          "description": "Trouve 2 Braises éternelles à la Tour Cendrée, lors d’expéditions lancées sous un grand soleil.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "braise-eternelle",
+            "count": 2,
+            "zoneId": "tour-cendree",
+            "chance": 6,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "sun"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Les braises brûlent sans jamais s’éteindre. La terre tremble sous la Tour Cendrée."
+        },
+        {
+          "name": "Le gardien du Mont Creuset",
+          "description": "Un montagnard qui vit au pied du Mont Creuset barre la route aux dresseurs trop peu préparés : bats Roc (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-entei-roc"
+          },
+          "outcome": "« Pas mal, pour quelqu’un d’en bas. » Roc essuie la suie de son front : « La montagne gronde depuis des jours. Si tu montes, prends des Pokémon Feu : eux seuls supporteront la chaleur du brasier. »"
         },
         {
           "name": "Le brasier",
-          "description": "Réussis une expédition à la Tour Cendrée avec 2 Pokémon Feu de PE 600 ou plus.",
+          "description": "Réussis une expédition au Mont Creuset avec 2 Pokémon Feu de PE 700 ou plus.",
           "condition": {
             "type": "expedition",
-            "zoneId": "tour-cendree",
+            "zoneId": "mont-creuset",
             "count": 1,
             "memberType": "fire",
             "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "minMemberPower": 700,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Au cœur du Mont Creuset, Entei surgit des flammes, rugit, et disparaît dans un nuage de cendres. Il parcourt désormais Johto."
         }
       ],
       "rewards": {
@@ -31936,15 +34263,17 @@
             "speciesId": 244,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 850,
+            "battle": {
+              "level": null,
+              "iv": 31,
+              "hpMultiplier": 5,
+              "statMultiplier": 1.1,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "ground",
-                "rock",
-                "water"
-              ]
+              "captureChance": 30
             },
             "roaming": 3
           }
@@ -31955,7 +34284,7 @@
       "id": "latios",
       "order": 1,
       "name": "L’éon au voile bleu",
-      "description": "Un oiseau bleu fend le ciel de Hoenn plus vite qu’un avion de ligne.",
+      "description": "Un Pokémon bleu fend le ciel de Hoenn plus vite qu’un avion de ligne. Il ne se montre qu’aux cœurs sincères.",
       "image": null,
       "regionId": "hoenn",
       "enabled": true,
@@ -31966,26 +34295,60 @@
       "steps": [
         {
           "name": "Courants marins",
-          "description": "Capture 50 Pokémon Eau.",
+          "description": "Capture 10 Pokémon Eau à Hoenn.",
           "condition": {
             "type": "catchPokemon",
-            "count": 50,
+            "count": 10,
             "pokemonType": "water",
             "speciesId": null,
             "zoneId": null
-          }
+          },
+          "outcome": "Un capitaine de Poivressel te montre un ticket trouvé dans ses filets, frappé d’un Pokémon bleu aux ailes de jet."
+        },
+        {
+          "name": "Le Ticket Éon",
+          "description": "Trouve le Ticket Éon sur les Routes 119 et 120, lors d’une expédition lancée sous la pluie.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "ticket-eon",
+            "count": 1,
+            "zoneId": "routes-119-120",
+            "chance": 5,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "rain"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Le ticket indique un rendez-vous au-dessus des nuages, là où la pluie tombe sur la forêt."
+        },
+        {
+          "name": "L’ornithologue",
+          "description": "Un ornithologue guette le Pokémon bleu depuis des semaines et refuse qu’on lui vole sa découverte : bats Faucon (quête) sur les Routes 119 et 120.",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-latios-faucon"
+          },
+          "outcome": "« Rien ne vole plus vite que lui… » Faucon referme son carnet : « On dit qu’il répond aux pensées sincères. Des Pokémon Psy pourraient l’appeler, sous la pluie de la forêt. »"
         },
         {
           "name": "Sous la pluie",
-          "description": "Réussis une expédition sur les Routes 119 et 120 avec 2 Pokémon Psy de PE 600 ou plus.",
+          "description": "Réussis une expédition sur les Routes 119 et 120 avec 2 Pokémon Psy de PE 700 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "routes-119-120",
             "count": 1,
             "memberType": "psychic",
             "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "minMemberPower": 700,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Un sifflement fend l’air : Latios passe au ras des arbres, fait demi-tour pour te saluer, et repart plus vite qu’il n’est venu. Il parcourt désormais Hoenn."
         }
       ],
       "rewards": {
@@ -32005,18 +34368,17 @@
             "speciesId": 381,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
+            "battle": {
+              "level": null,
+              "iv": 31,
+              "hpMultiplier": 5,
+              "statMultiplier": 1.1,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
               "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "bug",
-                "ghost",
-                "ice",
-                "dragon",
-                "dark",
-                "fairy"
-              ]
+              "captureChance": 30
             },
             "roaming": 3
           }
@@ -32027,7 +34389,7 @@
       "id": "regirock",
       "order": 2,
       "name": "Le colosse de roche",
-      "description": "Des inscriptions en braille, sous le désert, parlent d’un géant fait de pierres.",
+      "description": "Au fond de la mer, des ruines englouties portent des inscriptions en relief : elles parlent de trois géants endormis.",
       "image": null,
       "regionId": "hoenn",
       "enabled": true,
@@ -32037,38 +34399,84 @@
       },
       "steps": [
         {
-          "name": "Roches anciennes",
-          "description": "Capture 50 Pokémon Roche.",
+          "name": "Les ruines englouties",
+          "description": "Réussis une expédition sur les Routes 105 à 108 avec Relicanth et Wailord dans l’équipe.",
           "condition": {
-            "type": "catchPokemon",
-            "count": 50,
-            "pokemonType": "rock",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "type": "expedition",
+            "zoneId": "routes-105-108",
+            "count": 1,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              369,
+              321
+            ],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Wailord plonge, Relicanth te guide entre les algues : au fond, une salle couverte de points en relief. « Dans le désert dort le géant de roche. »"
         },
         {
-          "name": "Éboulements",
-          "description": "Capture 75 Pokémon Roche au Désert de la Route 111.",
-          "condition": {
-            "type": "catchPokemon",
-            "count": 75,
-            "pokemonType": "ground",
-            "speciesId": null,
-            "zoneId": "desert-hoenn"
-          }
-        },
-        {
-          "name": "Le tombeau du désert",
-          "description": "Réussis une expédition au Désert de la Route 111 avec 2 Pokémon Roche de PE 600 ou plus.",
+          "name": "Sous les sables",
+          "description": "Réussis une expédition dans le Désert de la Route 111, lancée pendant une tempête de sable, avec 2 Pokémon Sol.",
           "condition": {
             "type": "expedition",
             "zoneId": "desert-hoenn",
             "count": 1,
-            "memberType": "rock",
+            "memberType": "ground",
             "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "sand"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "La tempête dégage l’entrée de ruines enfouies. Sur le mur, un nouveau message en relief."
+        },
+        {
+          "name": "Le pilleur de ruines",
+          "description": "Un archéologue sans scrupules fouille les ruines enfouies et veut garder le géant pour lui : bats Basalte (quête) dans le Désert de la Route 111.",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-regirock-basalte"
+          },
+          "outcome": "« Ces ruines m’appartiennent… enfin, m’appartenaient. » Basalte désigne une dalle à moitié enterrée : « La tablette est là-dessous, coincée dans la roche. Seuls des Pokémon Combat pourraient l’en arracher. »"
+        },
+        {
+          "name": "La tablette",
+          "description": "Trouve la Tablette de roche dans le Désert de la Route 111, avec 2 Pokémon Combat dans l’équipe.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "tablette-de-roche",
+            "count": 1,
+            "zoneId": "desert-hoenn",
+            "chance": 4,
+            "memberType": "fighting",
+            "memberCount": 2,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "La tablette vibre dans tes mains. Tu la poses dans l’encoche du mur : les ruines se mettent à trembler."
+        },
+        {
+          "name": "Le réveil",
+          "description": "Réussis une expédition dans le Désert de la Route 111 avec 3 Pokémon de PE 800 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "desert-hoenn",
+            "count": 1,
+            "memberType": null,
+            "memberCount": 3,
+            "minMemberPower": 800,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Le mur s’effondre. Dans un grondement de rocaille, Regirock se lève, ses yeux s’allument : il ne laissera personne troubler son sommeil."
         }
       ],
       "rewards": {
@@ -32088,17 +34496,17 @@
             "speciesId": 377,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 3000,
+            "battle": {
+              "level": 75,
+              "iv": 31,
+              "hpMultiplier": 6,
+              "statMultiplier": 1.2,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "fighting",
-                "ground",
-                "steel",
-                "water",
-                "grass"
-              ]
+              "captureChance": 35
             },
             "roaming": null
           }
@@ -32109,7 +34517,7 @@
       "id": "suicune",
       "order": 2,
       "name": "La bête des aurores",
-      "description": "Une bête aux reflets de cristal court sur l’eau du Lac Colère.",
+      "description": "Suicune court sur l’eau et purifie tout ce qu’il touche. On l’a aperçu près du Lac Colère.",
       "image": null,
       "regionId": "johto",
       "enabled": true,
@@ -32119,27 +34527,61 @@
       },
       "steps": [
         {
-          "name": "Eaux pures",
-          "description": "Capture 50 Pokémon Eau.",
+          "name": "Eaux troubles",
+          "description": "Capture 10 Pokémon Eau à Johto.",
           "condition": {
             "type": "catchPokemon",
-            "count": 50,
+            "count": 10,
             "pokemonType": "water",
             "speciesId": null,
             "zoneId": null
-          }
+          },
+          "outcome": "Les rivières de Johto sont troubles depuis des semaines. Seul le Lac Colère reste d’une pureté étonnante."
+        },
+        {
+          "name": "Eau purifiée",
+          "description": "Trouve 2 Eaux purifiées au Lac Colère, lors d’expéditions lancées sous la pluie.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "eau-purifiee",
+            "count": 2,
+            "zoneId": "lac-colere",
+            "chance": 6,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "rain"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Sous la pluie, l’eau du lac devient limpide comme du cristal. Des traces de pattes courent à sa surface."
+        },
+        {
+          "name": "Le pêcheur du lac",
+          "description": "Depuis que l’eau du Lac Colère est redevenue pure, un pêcheur la protège farouchement : bats Ruben (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-suicune-ruben"
+          },
+          "outcome": "« Tu n’es pas venu salir le lac, je le vois bien. » Ruben range sa canne : « La bête court sur l’eau les nuits de lune. Viens avec des Pokémon Eau solides : ils sentiront sa trace. »"
         },
         {
           "name": "Sur le lac",
-          "description": "Réussis une expédition au Lac Colère avec 2 Pokémon Eau de PE 500 ou plus.",
+          "description": "Réussis une expédition au Lac Colère, lancée de nuit, avec 2 Pokémon Eau de PE 700 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "lac-colere",
             "count": 1,
             "memberType": "water",
             "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "minMemberPower": 700,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "night"
+          },
+          "outcome": "Sous la lune, Suicune court sur le lac, s’arrête… et te regarde. Puis le vent du nord l’emporte. Il parcourt désormais Johto."
         }
       ],
       "rewards": {
@@ -32159,14 +34601,17 @@
             "speciesId": 245,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 2400,
+            "battle": {
+              "level": null,
+              "iv": 31,
+              "hpMultiplier": 5,
+              "statMultiplier": 1.1,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "grass",
-                "electric"
-              ]
+              "captureChance": 30
             },
             "roaming": 3
           }
@@ -32177,7 +34622,7 @@
       "id": "sulfura",
       "order": 2,
       "name": "L’oiseau de feu",
-      "description": "Le Mont Braise gronde : un oiseau de flammes y aurait été aperçu.",
+      "description": "Le Mont Braise gronde à nouveau. La nuit, une lueur vole au-dessus du cratère.",
       "image": null,
       "regionId": "kanto",
       "enabled": true,
@@ -32187,38 +34632,77 @@
       },
       "steps": [
         {
-          "name": "Explorateur",
-          "description": "Capture 50 Pokémon feu pour démarrer l'escalade du Mont Braise",
+          "name": "Lueur dans la nuit",
+          "description": "Réussis une expédition au Manoir Pokémon, lancée de nuit, avec 2 Pokémon Feu dans l’équipe.",
           "condition": {
-            "type": "catchPokemon",
-            "count": 50,
-            "pokemonType": "fire",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "type": "expedition",
+            "zoneId": "manoir-pokemon",
+            "count": 1,
+            "memberType": "fire",
+            "memberCount": 2,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "night"
+          },
+          "outcome": "Depuis les ruines du Manoir, tu vois une traînée de flammes filer vers le volcan voisin. Le chemin du Mont Braise s’ouvre devant toi."
         },
         {
           "name": "Coulées de lave",
-          "description": "Capture 75 Pokémon Feu au Mont Braise.",
+          "description": "Capture 5 Pokémon Feu au Mont Braise.",
           "condition": {
             "type": "catchPokemon",
-            "count": 75,
+            "count": 5,
             "pokemonType": "fire",
             "speciesId": null,
             "zoneId": "mont-braise"
-          }
+          },
+          "outcome": "Les Pokémon du volcan sont agités, presque froids : quelque chose, au sommet, leur vole leur chaleur."
+        },
+        {
+          "name": "Le cracheur de feu",
+          "description": "Un cracheur de feu s’est installé sur les pentes du Mont Braise et prétend que le volcan lui appartient : bats Pyros (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-sulfura-pyros"
+          },
+          "outcome": "« Le volcan n’a jamais été aussi froid… même mes flammes faiblissent. » Pyros lève les yeux vers le cratère : « Les jours de grand soleil, des cendres brûlantes tombent du sommet. Ramasse-les, elles te diront qui vit là-haut. »"
+        },
+        {
+          "name": "Cendres ardentes",
+          "description": "Trouve 3 Cendres ardentes au Mont Braise, lors d’expéditions lancées sous un grand soleil.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "cendre-ardente",
+            "count": 3,
+            "zoneId": "mont-braise",
+            "chance": 5,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "sun"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Les cendres brûlent encore des heures plus tard. Ce sont des plumes consumées : Sulfura est en train de muer au sommet."
         },
         {
           "name": "Le sommet du volcan",
-          "description": "Réussis une expédition au Mont Braise avec 2 Pokémon Feu de PE 600 ou plus.",
+          "description": "Réussis une expédition au Mont Braise avec 3 Pokémon Feu de PE 700 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "mont-braise",
             "count": 1,
             "memberType": "fire",
-            "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "memberCount": 3,
+            "minMemberPower": 700,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Au bord du cratère, une colonne de flammes s’élève et prend la forme d’un oiseau immense. Sulfura t’a repéré."
         }
       ],
       "rewards": {
@@ -32238,15 +34722,17 @@
             "speciesId": 146,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 3000,
+            "battle": {
+              "level": 70,
+              "iv": 31,
+              "hpMultiplier": 5,
+              "statMultiplier": 1.2,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "rock",
-                "water",
-                "electric"
-              ]
+              "captureChance": 35
             },
             "roaming": null
           }
@@ -32257,7 +34743,7 @@
       "id": "lugia",
       "order": 3,
       "name": "Le gardien des mers",
-      "description": "Les tourbillons des Tourb’Îles cacheraient un Pokémon aux ailes d’argent.",
+      "description": "Les tourbillons des Tourb’Îles cacheraient un Pokémon aux ailes d’argent, qui dort au fond de la mer.",
       "image": null,
       "regionId": "johto",
       "enabled": true,
@@ -32268,7 +34754,7 @@
       "steps": [
         {
           "name": "Les trois bêtes",
-          "description": "Termine les quêtes de Raikou, d’Entei et de Suicune.",
+          "description": "Termine les quêtes de Raikou, Entei et Suicune.",
           "condition": {
             "type": "allOf",
             "conditions": [
@@ -32285,41 +34771,73 @@
                 "questId": "suicune"
               }
             ]
-          }
+          },
+          "outcome": "Les trois bêtes ont croisé ta route. Un vieil homme d’Oliville t’arrête : « Toi, tu as vu les bêtes de Ho-Oh. Alors écoute : le gardien des mers dort aux Tourb’Îles, mais les courants en interdisent l’accès. »"
         },
         {
-          "name": "Plongée",
-          "description": "Capture 30 Pokémon Eau pour franchir les tourbillons.",
+          "name": "La lumière du phare",
+          "description": "Trouve la Clochette Océane au Phare d’Oliville, avec Pharamp dans l’équipe.",
           "condition": {
-            "type": "catchPokemon",
-            "count": 30,
-            "pokemonType": "water",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "type": "questItem",
+            "itemId": "clochette-oceane",
+            "count": 1,
+            "zoneId": "phare-oliville",
+            "chance": 4,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              181
+            ],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Pharamp rallume la lanterne ; sur son rebord, une cloche ancienne tinte au rythme des vagues. Au loin, les courants des Tourb’Îles s’apaisent : le passage est ouvert."
         },
         {
-          "name": "Esprits",
-          "description": "Capture 30 Pokémon Psy.",
+          "name": "Une plume argentée",
+          "description": "Trouve l’Argentaile aux Tourb’Îles, lors d’une expédition lancée sous la pluie.",
           "condition": {
-            "type": "catchPokemon",
-            "count": 30,
-            "pokemonType": "psychic",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "type": "questItem",
+            "itemId": "argentaile",
+            "count": 1,
+            "zoneId": "tourb-iles",
+            "chance": 5,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "rain"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "La plume brille comme la lune, même au fond des grottes. La Clochette Océane se met à tinter toute seule."
+        },
+        {
+          "name": "Les pillards des tourbillons",
+          "description": "La Team Rocket veut capturer le gardien des mers pendant son sommeil : bats l’Admin Corbin (quête) aux Tourb’Îles.",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-lugia-corbin"
+          },
+          "outcome": "Corbin bat en retraite en jurant : « Le boss voulait cette cloche pour réveiller la bête une nuit, quand personne ne regarde. » Au fond de la grotte, les tourbillons grondent : à toi de le faire avant eux."
         },
         {
           "name": "Les profondeurs",
-          "description": "Réussis une expédition aux Tourb’Îles avec 2 Pokémon Psy de PE 600 ou plus.",
+          "description": "Réussis une expédition aux Tourb’Îles, lancée de nuit, avec 3 Pokémon de PE 900 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "tourb-iles",
             "count": 1,
-            "memberType": "psychic",
-            "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "memberType": null,
+            "memberCount": 3,
+            "minMemberPower": 900,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "night"
+          },
+          "outcome": "La cloche résonne dans toute la grotte. Les eaux s’ouvrent : Lugia s’éveille, et sa colère soulève la mer."
         }
       ],
       "rewards": {
@@ -32339,17 +34857,17 @@
             "speciesId": 249,
             "level": 70,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 4500,
+            "battle": {
+              "level": 70,
+              "iv": 31,
+              "hpMultiplier": 8,
+              "statMultiplier": 1.2,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "rock",
-                "ghost",
-                "electric",
-                "ice",
-                "dark"
-              ]
+              "captureChance": 25
             },
             "roaming": null
           }
@@ -32360,7 +34878,7 @@
       "id": "mewtwo",
       "order": 3,
       "name": "Le Pokémon génétique",
-      "description": "Une créature née d’expériences interdites se cacherait au fond de la Grotte Azurée.",
+      "description": "Dans les décombres du Manoir Pokémon, un journal raconte la création d’une créature aux pouvoirs terrifiants, qui se serait enfuie.",
       "image": null,
       "regionId": "kanto",
       "enabled": true,
@@ -32370,8 +34888,26 @@
       },
       "steps": [
         {
-          "name": "Les trois oiseaux",
-          "description": "Termine les quêtes d’Artikodin, d’Électhor et de Sulfura.",
+          "name": "Le journal du Manoir",
+          "description": "Trouve 2 Pages du journal au Manoir Pokémon, avec un Pokémon Psy dans l’équipe.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "page-du-journal",
+            "count": 2,
+            "zoneId": "manoir-pokemon",
+            "chance": 4,
+            "memberType": "psychic",
+            "memberCount": 1,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "« 5 février. Mew a donné naissance à un petit. Nous l’avons appelé Mewtwo. » Plus loin : « Il est bien trop puissant. Nous ne pouvons plus le contrôler… » La suite est arrachée."
+        },
+        {
+          "name": "La confiance des légendes",
+          "description": "Termine les quêtes d’Artikodin, d’Électhor et de Sulfura, et capture 80 % du Pokédex de Kanto.",
           "condition": {
             "type": "allOf",
             "conditions": [
@@ -32386,30 +34922,60 @@
               {
                 "type": "questCompleted",
                 "questId": "sulfura"
+              },
+              {
+                "type": "regionDexPercent",
+                "regionId": "kanto",
+                "percent": 80
               }
             ]
-          }
+          },
+          "outcome": "Le Prof. Chen lit les pages, l’air grave : « Seul un dresseur respecté des trois oiseaux pourrait approcher une telle créature. » Le garde de la Grotte Azurée s’écarte sur ton passage."
         },
         {
-          "name": "Chercheur",
-          "description": "Capture 80 % du Pokédex de Kanto.",
-          "condition": {
-            "type": "regionDexPercent",
-            "regionId": "kanto",
-            "percent": 80
-          }
-        },
-        {
-          "name": "La Grotte Azurée",
-          "description": "Réussis une expédition dans la Grotte Azurée avec 3 Pokémon de PE 800 ou plus.",
+          "name": "Ondes hostiles",
+          "description": "Réussis une expédition dans la Grotte Azurée avec 2 Pokémon Spectre de PE 800 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "grotte-azuree",
             "count": 1,
+            "memberType": "ghost",
+            "memberCount": 2,
+            "minMemberPower": 800,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Les parois de la grotte vibrent. Une pression mentale écrasante te fait vaciller ; seuls tes Pokémon Spectre semblent y résister."
+        },
+        {
+          "name": "Le créateur",
+          "description": "Au fond de la Grotte Azurée, un ancien chercheur du Manoir Pokémon veut reprendre sa créature : bats Kessler (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-mewtwo-kessler"
+          },
+          "outcome": "« Je voulais seulement le ramener… Il ne m’a jamais pardonné. » Kessler te tend un flacon vide : « Mewtwo ne se montre à personne, mais il ne résiste pas à sa propre image. Un Métamorph pourrait la lui renvoyer. »"
+        },
+        {
+          "name": "Le reflet",
+          "description": "Trouve un Échantillon d’ADN dans la Grotte Azurée, avec un Métamorph dans l’équipe.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "echantillon-adn",
+            "count": 1,
+            "zoneId": "grotte-azuree",
+            "chance": 4,
             "memberType": null,
-            "memberCount": 3,
-            "minMemberPower": 800
-          }
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              132
+            ],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Ton Métamorph se fige, puis prend une forme qu’il n’avait jamais prise : une silhouette mauve à la longue queue. Une voix résonne dans ta tête : « Pourquoi me cherches-tu ? » Mewtwo se dresse devant toi."
         }
       ],
       "rewards": {
@@ -32429,15 +34995,17 @@
             "speciesId": 150,
             "level": 70,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 4500,
+            "battle": {
+              "level": 68,
+              "iv": 31,
+              "hpMultiplier": 8,
+              "statMultiplier": 1.1,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "bug",
-                "ghost",
-                "dark"
-              ]
+              "captureChance": 25
             },
             "roaming": null
           }
@@ -32448,7 +35016,7 @@
       "id": "registeel",
       "order": 3,
       "name": "Le colosse d’acier",
-      "description": "Un tombeau caché près de Cimetronelle abriterait un géant au corps de métal.",
+      "description": "Près de la Route 120, un tombeau ancien résonne d’un bourdonnement métallique, de jour comme de nuit.",
       "image": null,
       "regionId": "hoenn",
       "enabled": true,
@@ -32459,37 +35027,60 @@
       "steps": [
         {
           "name": "Métal",
-          "description": "Capture 50 Pokémon Acier.",
+          "description": "Capture 8 Pokémon Acier à Hoenn.",
           "condition": {
             "type": "catchPokemon",
-            "count": 50,
+            "count": 8,
             "pokemonType": "steel",
             "speciesId": null,
             "zoneId": null
-          }
+          },
+          "outcome": "Tes Pokémon Acier vibrent à l’unisson, comme appelés par quelque chose de bien plus lourd qu’eux."
         },
         {
-          "name": "Champ magnétique",
-          "description": "Capture 75 Pokémon Acier à New Lavandia.",
+          "name": "La tablette",
+          "description": "Trouve la Tablette d’acier sur les Routes 119 et 120, lors d’une expédition lancée sous la pluie avec un Pokémon Acier.",
           "condition": {
-            "type": "catchPokemon",
-            "count": 75,
-            "pokemonType": "electric",
-            "speciesId": null,
-            "zoneId": "new-lavandia"
-          }
+            "type": "questItem",
+            "itemId": "tablette-d-acier",
+            "count": 1,
+            "zoneId": "routes-119-120",
+            "chance": 5,
+            "memberType": "steel",
+            "memberCount": 1,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "rain"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Mouillée par la pluie, la tablette révèle des points en relief : « Le géant d’acier ne s’éveille que la nuit. »"
         },
         {
-          "name": "Le tombeau de la forêt",
-          "description": "Réussis une expédition à New Lavandia avec 2 Pokémon Acier de PE 600 ou plus.",
+          "name": "La gardienne du tombeau",
+          "description": "Une dresseuse veille sur le tombeau ancien de la Route 120 et en interdit l’entrée : bats Ferrine (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-registeel-ferrine"
+          },
+          "outcome": "« Le géant d’acier ne craint qu’une chose : la chaleur. » Ferrine s’écarte : « Reviens la nuit avec des Pokémon Feu, et les portes s’ouvriront. »"
+        },
+        {
+          "name": "Le tombeau ancien",
+          "description": "Réussis une expédition sur les Routes 119 et 120, lancée de nuit, avec 2 Pokémon Feu de PE 800 ou plus.",
           "condition": {
             "type": "expedition",
-            "zoneId": "new-lavandia",
+            "zoneId": "routes-119-120",
             "count": 1,
-            "memberType": "steel",
+            "memberType": "fire",
             "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "minMemberPower": 800,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "night"
+          },
+          "outcome": "Le bourdonnement devient assourdissant. Les portes du tombeau s’ouvrent sur Registeel, dont le corps d’acier luit dans le noir."
         }
       ],
       "rewards": {
@@ -32509,15 +35100,17 @@
             "speciesId": 379,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 3000,
+            "battle": {
+              "level": 75,
+              "iv": 31,
+              "hpMultiplier": 6,
+              "statMultiplier": 1.2,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "fighting",
-                "ground",
-                "fire"
-              ]
+              "captureChance": 35
             },
             "roaming": null
           }
@@ -32528,7 +35121,7 @@
       "id": "ho-oh",
       "order": 4,
       "name": "L’oiseau arc-en-ciel",
-      "description": "Les cloches de la Tour Carillon attendent un dresseur digne de l’oiseau sacré.",
+      "description": "Il y a cent cinquante ans, la foudre frappa la Tour Cendrée et Ho-Oh quitta Johto. Il ne reviendra que pour un dresseur au cœur pur.",
       "image": null,
       "regionId": "johto",
       "enabled": true,
@@ -32539,7 +35132,7 @@
       "steps": [
         {
           "name": "Les trois bêtes",
-          "description": "Termine les quêtes de Raikou, d’Entei et de Suicune.",
+          "description": "Termine les quêtes de Raikou, Entei et Suicune.",
           "condition": {
             "type": "allOf",
             "conditions": [
@@ -32556,41 +35149,69 @@
                 "questId": "suicune"
               }
             ]
-          }
+          },
+          "outcome": "Les bêtes ressuscitées par Ho-Oh t’ont jugé digne. Les sages d’Écorcia acceptent de te recevoir."
         },
         {
-          "name": "La tour carillon",
-          "description": "Capture 50 Pokémon Feu.",
+          "name": "Les cendres de la tour",
+          "description": "Réussis une expédition à la Tour Cendrée avec 2 Pokémon Feu de PE 700 ou plus.",
           "condition": {
-            "type": "catchPokemon",
-            "count": 30,
-            "pokemonType": "fire",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "type": "expedition",
+            "zoneId": "tour-cendree",
+            "count": 1,
+            "memberType": "fire",
+            "memberCount": 2,
+            "minMemberPower": 700,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Dans les cendres, tu retrouves les cloches brisées de l’ancienne tour. Les sages t’ouvrent alors les portes de la Tour Carillon, où Ho-Oh se posait jadis."
         },
         {
-          "name": "Chercheur",
-          "description": "Capture 30 Pokémon Vol.",
+          "name": "Une plume aux sept couleurs",
+          "description": "Trouve l’Arcenci’aile à la Tour Carillon, lors d’une expédition lancée sous un grand soleil.",
           "condition": {
-            "type": "catchPokemon",
-            "count": 30,
-            "pokemonType": "flying",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "type": "questItem",
+            "itemId": "arcenciaile",
+            "count": 1,
+            "zoneId": "tour-carillon",
+            "chance": 5,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "sun"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Sous le soleil, la plume s’illumine de sept couleurs. Au sommet de la tour, quelque chose répond à sa lumière."
+        },
+        {
+          "name": "L’épreuve du Grand Sage",
+          "description": "Avant de te laisser monter au sommet, le Grand Sage de la Tour Carillon veut éprouver ton cœur : bats Hô (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-ho-oh-ho"
+          },
+          "outcome": "« Ton cœur est pur, et tes Pokémon te suivent sans crainte. » Le Grand Sage s’incline : « Ho-Oh se pose sur le toit les jours de soleil. Monte, la tour t’est ouverte. »"
         },
         {
           "name": "Le sommet de la tour",
-          "description": "Réussis une expédition à la Tour Carillon avec 3 Pokémon Feu de PE 750 ou plus.",
+          "description": "Réussis une expédition à la Tour Carillon, lancée de jour, avec 3 Pokémon de PE 900 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "tour-carillon",
             "count": 1,
-            "memberType": "fire",
+            "memberType": null,
             "memberCount": 3,
-            "minMemberPower": 600
-          }
+            "minMemberPower": 900,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "day"
+          },
+          "outcome": "Un arc-en-ciel se dessine au-dessus de la tour. Ho-Oh se pose sur le toit et t’observe : il veut savoir si ton cœur est aussi pur qu’on le dit."
         }
       ],
       "rewards": {
@@ -32610,15 +35231,17 @@
             "speciesId": 250,
             "level": 70,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 4500,
+            "battle": {
+              "level": 70,
+              "iv": 31,
+              "hpMultiplier": 8,
+              "statMultiplier": 1.2,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "rock",
-                "water",
-                "electric"
-              ]
+              "captureChance": 25
             },
             "roaming": null
           }
@@ -32629,7 +35252,7 @@
       "id": "mew",
       "order": 4,
       "name": "Le Pokémon fabuleux",
-      "description": "Mewtwo n’est qu’une copie. L’original jouerait sur une île absente des cartes.",
+      "description": "Mewtwo n’est qu’une copie. Le journal du Manoir parle d’une île des tropiques où l’original aurait été trouvé.",
       "image": null,
       "regionId": "kanto",
       "enabled": true,
@@ -32639,33 +35262,86 @@
       },
       "steps": [
         {
-          "name": "Origines",
-          "description": "Fais éclore 500 œufs.",
+          "name": "La page blanche",
+          "description": "Fais éclore 500 œufs et capture 95 % du Pokédex de Kanto.",
           "condition": {
-            "type": "eggsHatched",
-            "count": 500
-          }
+            "type": "allOf",
+            "conditions": [
+              {
+                "type": "eggsHatched",
+                "count": 500
+              },
+              {
+                "type": "regionDexPercent",
+                "regionId": "kanto",
+                "percent": 95
+              }
+            ]
+          },
+          "outcome": "Le Prof. Chen feuillette ton Pokédex : il n’y manque presque rien… sauf une page, celle d’un Pokémon qu’aucun dresseur n’a jamais enregistré."
         },
         {
-          "name": "Presque complet",
-          "description": "Capture 95 % du Pokédex de Kanto.",
+          "name": "La carte du vieux marin",
+          "description": "Trouve la Vieille carte marine sur les Routes maritimes, avec 2 Pokémon Eau dans l’équipe.",
           "condition": {
-            "type": "regionDexPercent",
-            "regionId": "kanto",
-            "percent": 95
-          }
+            "type": "questItem",
+            "itemId": "vieille-carte-marine",
+            "count": 1,
+            "zoneId": "routes-maritimes",
+            "chance": 3,
+            "memberType": "water",
+            "memberCount": 2,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "La carte indique une île au sud de Kanto, absente de toutes les cartes modernes : l’Île Lointaine. Tu embarques aussitôt."
         },
         {
           "name": "Les hautes herbes",
-          "description": "Réussis une expédition sur l'île Lointaine avec 3 Pokémon de PE 800 ou plus.",
+          "description": "Réussis 3 expéditions sur l’Île Lointaine, lancées de jour.",
           "condition": {
             "type": "expedition",
             "zoneId": "ile-lointaine",
             "count": 3,
             "memberType": null,
-            "memberCount": 3,
-            "minMemberPower": 800
-          }
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "day"
+          },
+          "outcome": "Une bulle rose flotte au-dessus des herbes et disparaît en riant. Quelque chose joue à cache-cache avec toi."
+        },
+        {
+          "name": "La rivale de l’île",
+          "description": "Une exploratrice a suivi la bulle rose jusqu’ici et compte bien la capturer la première : bats Célia (quête) sur l’Île Lointaine.",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-mew-celia"
+          },
+          "outcome": "« Elle m’a filé entre les doigts trois fois… Elle adore qu’on joue avec elle, pas qu’on la chasse. » Célia rembarque bredouille. La bulle rose, elle, revient flotter près de toi."
+        },
+        {
+          "name": "Jeu de miroirs",
+          "description": "Trouve 3 Poils soyeux sur l’Île Lointaine, avec un Métamorph dans l’équipe.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "poil-soyeux",
+            "count": 3,
+            "zoneId": "ile-lointaine",
+            "chance": 3,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              132
+            ],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Ton Métamorph s’amuse à imiter la bulle rose… qui s’arrête, intriguée. Mew se dévoile, ravi d’avoir trouvé un compagnon de jeu — à sa façon."
         }
       ],
       "rewards": {
@@ -32685,15 +35361,17 @@
             "speciesId": 151,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 4500,
+            "battle": {
+              "level": 70,
+              "iv": 31,
+              "hpMultiplier": 5,
+              "statMultiplier": 1.2,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "bug",
-                "ghost",
-                "dark"
-              ]
+              "captureChance": 30
             },
             "roaming": null
           }
@@ -32704,7 +35382,7 @@
       "id": "regice",
       "order": 4,
       "name": "Le colosse de glace",
-      "description": "Un tombeau gelé sur une île de la Route 105 renfermerait un géant de glace.",
+      "description": "Une grotte gelée, au large de Hoenn, renfermerait un géant de glace plus froid que l’hiver lui-même.",
       "image": null,
       "regionId": "hoenn",
       "enabled": true,
@@ -32715,37 +35393,62 @@
       "steps": [
         {
           "name": "Glace éternelle",
-          "description": "Capture 50 Pokémon Glace.",
+          "description": "Capture 8 Pokémon Glace à Hoenn.",
           "condition": {
             "type": "catchPokemon",
-            "count": 50,
+            "count": 8,
             "pokemonType": "ice",
             "speciesId": null,
             "zoneId": null
-          }
+          },
+          "outcome": "Un plongeur de Pacifiville te parle d’une grotte où la glace ne fond jamais, même en plein été."
         },
         {
-          "name": "Le froid des profondeurs",
-          "description": "Capture 75 Pokémon Glace à la Grotte Tréfonds.",
+          "name": "La tablette",
+          "description": "Trouve la Tablette de glace dans la Grotte Tréfonds, lors d’une expédition lancée sous la grêle.",
           "condition": {
-            "type": "catchPokemon",
-            "count": 75,
-            "pokemonType": "ice",
-            "speciesId": null,
-            "zoneId": "grotte-trefonds"
-          }
+            "type": "questItem",
+            "itemId": "tablette-de-glace",
+            "count": 1,
+            "zoneId": "grotte-trefonds",
+            "chance": 5,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "hail"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "La tablette est si froide qu’elle te brûle les doigts. Ses points en relief disent : « Le géant de glace attend la tempête. »"
+        },
+        {
+          "name": "Le loup de mer",
+          "description": "Un vieux loup de mer de Pacifiville connaît l’île du tombeau, mais n’y conduit que ceux qui l’ont battu : bats Borée (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-regice-boree"
+          },
+          "outcome": "« Bien joué, moussaillon. » Borée pointe une île minuscule au large : « Le géant n’en sort que pendant la grêle. Et crois-moi, il déteste la chaleur. »"
         },
         {
           "name": "Le tombeau de l’île",
-          "description": "Réussis une expédition à la Grotte Tréfonds avec 2 Pokémon Glace de PE 600 ou plus.",
+          "description": "Réussis une expédition sur les Routes 124 à 128, lancée sous la grêle, avec 2 Pokémon Feu de PE 800 ou plus.",
           "condition": {
             "type": "expedition",
-            "zoneId": "grotte-trefonds",
+            "zoneId": "routes-124-128",
             "count": 1,
-            "memberType": "ice",
+            "memberType": "fire",
             "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "minMemberPower": 800,
+            "speciesIds": [],
+            "weathers": [
+              "hail"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Au cœur de la tempête, le sol se craquelle. Regice se dresse dans un nuage de givre, et l’air gèle autour de toi."
         }
       ],
       "rewards": {
@@ -32765,16 +35468,17 @@
             "speciesId": 378,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 3000,
+            "battle": {
+              "level": 75,
+              "iv": 31,
+              "hpMultiplier": 6,
+              "statMultiplier": 1.2,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "fighting",
-                "rock",
-                "steel",
-                "fire"
-              ]
+              "captureChance": 35
             },
             "roaming": null
           }
@@ -32785,7 +35489,7 @@
       "id": "artikodin-galar",
       "order": 5,
       "name": "L’oiseau au regard glacial",
-      "description": "Un oiseau aux ailes violettes, venu d’une région lointaine, plongerait les esprits de Kanto dans la torpeur.",
+      "description": "Des dresseurs de Kanto tombent dans une étrange torpeur. Tous disent avoir croisé un oiseau aux ailes violettes.",
       "image": null,
       "regionId": "galar",
       "enabled": true,
@@ -32796,37 +35500,58 @@
       "steps": [
         {
           "name": "Ondes étranges",
-          "description": "Capture 15 Pokémon Psy.",
+          "description": "Capture 15 Pokémon Psy à Kanto.",
           "condition": {
             "type": "catchPokemon",
             "count": 15,
             "pokemonType": "psychic",
             "speciesId": null,
             "zoneId": null
-          }
+          },
+          "outcome": "Tes Pokémon Psy captent des ondes qui ne ressemblent à rien de connu à Kanto."
         },
         {
-          "name": "Dans le ciel",
-          "description": "Capture 10 Pokémon Vol.",
+          "name": "Plumes violettes",
+          "description": "Trouve 2 Plumes psychiques sur la Route Victoire, avec 2 Pokémon Psy dans l’équipe.",
           "condition": {
-            "type": "catchPokemon",
-            "count": 10,
-            "pokemonType": "flying",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "type": "questItem",
+            "itemId": "plume-psychique",
+            "count": 2,
+            "zoneId": "route-victoire",
+            "chance": 4,
+            "memberType": "psychic",
+            "memberCount": 2,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Les plumes émettent un faible halo violet. Leur propriétaire n’est pas loin, mais il ne tient jamais en place."
+        },
+        {
+          "name": "La médium hypnotisée",
+          "description": "Sur la Route Victoire, une médium tombée sous l’emprise de l’oiseau attaque tous ceux qui approchent : bats Sélène (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-artikodin-galar-selene"
+          },
+          "outcome": "Sélène vacille, puis rouvre des yeux clairs : « Il m’a plongée dans un rêve… » Elle frissonne : « Il ne chasse que la nuit, et seuls les esprits solides lui résistent. »"
         },
         {
           "name": "Sur sa piste",
-          "description": "Réussis une expédition sur la Route Victoire avec 2 Pokémon Psy de PE 800 ou plus.",
+          "description": "Réussis une expédition sur la Route Victoire, lancée de nuit, avec 2 Pokémon Psy de PE 800 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "route-victoire",
             "count": 1,
             "memberType": "psychic",
             "memberCount": 2,
-            "minMemberPower": 800
-          }
+            "minMemberPower": 800,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "night"
+          },
+          "outcome": "Il était là, au bout du tunnel. Il t’a fixé de ses yeux rougeoyants, puis s’est envolé. Il rôde désormais au loin : à toi de le traquer."
         }
       ],
       "rewards": {
@@ -32847,17 +35572,17 @@
             "formId": 10169,
             "level": 70,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
+            "battle": {
+              "level": null,
+              "iv": 31,
+              "hpMultiplier": 5,
+              "statMultiplier": 1.1,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
               "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "rock",
-                "ghost",
-                "electric",
-                "ice",
-                "dark"
-              ]
+              "captureChance": 30
             },
             "roaming": 3
           }
@@ -32868,7 +35593,7 @@
       "id": "celebi",
       "order": 5,
       "name": "Le voyageur du temps",
-      "description": "Lugia et Ho-Oh apaisés, l’autel du Bois aux Chênes se met à briller.",
+      "description": "Lugia et Ho-Oh apaisés, le vieux charbonnier du Bois aux Chênes parle d’un petit Pokémon qui protège la forêt… et voyage dans le temps.",
       "image": null,
       "regionId": "johto",
       "enabled": true,
@@ -32893,30 +35618,65 @@
             "type": "regionDexPercent",
             "regionId": "johto",
             "percent": 95
-          }
+          },
+          "outcome": "Le charbonnier hoche la tête : « Tu connais la forêt et ses Pokémon. Alors peut-être qu’il acceptera de se montrer. »"
         },
         {
-          "name": "Le souffle des bois",
-          "description": "Capture 50 Pokémon Plante.",
+          "name": "La statuette",
+          "description": "Trouve la Statuette de l’autel au Bois aux Chênes, lors d’une expédition lancée de nuit avec 2 Pokémon Plante.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "statuette-de-l-autel",
+            "count": 1,
+            "zoneId": "bois-aux-chenes",
+            "chance": 3,
+            "memberType": "grass",
+            "memberCount": 2,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "night"
+          },
+          "outcome": "La statuette représente un petit Pokémon ailé. Au revers, une inscription : « Rends-moi à l’autel. » Un sentier que tu n’avais jamais vu s’ouvre entre les arbres."
+        },
+        {
+          "name": "La forêt s’éveille",
+          "description": "Capture 5 Pokémon Plante à l’Autel du Bois aux Chênes.",
           "condition": {
             "type": "catchPokemon",
-            "count": 50,
+            "count": 5,
             "pokemonType": "grass",
             "speciesId": null,
-            "zoneId": null
-          }
+            "zoneId": "autel-bois-aux-chenes"
+          },
+          "outcome": "La forêt reprend vie autour de l’autel. Des feuilles tournoient sans le moindre vent."
+        },
+        {
+          "name": "Le braconnier",
+          "description": "Un braconnier a tendu des filets autour de l’autel pour attraper le protecteur de la forêt : bats Vasco (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-celebi-vasco"
+          },
+          "outcome": "Vasco s’enfuit en abandonnant ses filets. Les arbres semblent soupirer de soulagement, et le charbonnier te souffle : « Il ne revient que les jours de pluie, quand la forêt boit. »"
         },
         {
           "name": "L’autel",
-          "description": "Réussis 3 expéditions à l’Autel du Bois aux Chênes avec 3 Pokémon de PE 800 ou plus.",
+          "description": "Réussis une expédition à l’Autel du Bois aux Chênes, lancée sous la pluie, avec 3 Pokémon de PE 900 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "autel-bois-aux-chenes",
-            "count": 3,
+            "count": 1,
             "memberType": null,
             "memberCount": 3,
-            "minMemberPower": 800
-          }
+            "minMemberPower": 900,
+            "speciesIds": [],
+            "weathers": [
+              "rain"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Sous la pluie, l’autel s’illumine. Une petite silhouette verte apparaît, venue d’une autre époque — et elle n’a pas l’air de vouloir repartir sans t’avoir mis à l’épreuve."
         }
       ],
       "rewards": {
@@ -32936,19 +35696,17 @@
             "speciesId": 251,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 4500,
+            "battle": {
+              "level": 70,
+              "iv": 31,
+              "hpMultiplier": 5,
+              "statMultiplier": 1.2,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "flying",
-                "poison",
-                "bug",
-                "ghost",
-                "fire",
-                "ice",
-                "dark"
-              ]
+              "captureChance": 30
             },
             "roaming": null
           }
@@ -32970,7 +35728,7 @@
       "steps": [
         {
           "name": "Les trois colosses",
-          "description": "Termine les quêtes de Regirock, de Registeel et de Regice.",
+          "description": "Termine les quêtes de Regirock, Registeel et Regice.",
           "condition": {
             "type": "allOf",
             "conditions": [
@@ -32987,41 +35745,65 @@
                 "questId": "regice"
               }
             ]
-          }
+          },
+          "outcome": "Les trois colosses éveillés, la mer elle-même semble s’agiter. Au Mont Mémoria, un vieux couple t’attendait."
         },
         {
-          "name": "Plongée",
-          "description": "Capture 30 Pokémon Eau pour atteindre la grotte.",
+          "name": "L’Orbe Bleu",
+          "description": "Trouve l’Orbe Bleu au Mont Mémoria, avec 2 Pokémon Eau dans l’équipe.",
           "condition": {
-            "type": "catchPokemon",
-            "count": 30,
-            "pokemonType": "water",
-            "speciesId": null,
-            "zoneId": null
-          }
-        },
-        {
-          "name": "Les ténèbres",
-          "description": "Capture 30 Pokémon Ténèbres.",
-          "condition": {
-            "type": "catchPokemon",
-            "count": 30,
-            "pokemonType": "dark",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "type": "questItem",
+            "itemId": "orbe-bleu",
+            "count": 1,
+            "zoneId": "mont-memoria",
+            "chance": 3,
+            "memberType": "water",
+            "memberCount": 2,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "« La Team Aqua l’a cherché partout. Garde-le loin d’eux. » L’Orbe pulse doucement ; au fond de la Route 128, l’entrée de la Grotte Sous-Marine vient d’apparaître."
         },
         {
           "name": "La grotte noyée",
-          "description": "Réussis une expédition à la Grotte Sous-Marine avec 2 Pokémon Eau de PE 600 ou plus.",
+          "description": "Capture 6 Pokémon Eau dans la Grotte Sous-Marine.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 6,
+            "pokemonType": "water",
+            "speciesId": null,
+            "zoneId": "grotte-sous-marine"
+          },
+          "outcome": "Plus tu avances, plus l’eau est noire et froide. L’Orbe Bleu brille de plus en plus fort."
+        },
+        {
+          "name": "L’embuscade de la Team Aqua",
+          "description": "La Team Aqua t’a suivi jusqu’au fond de la grotte et réclame l’Orbe Bleu : bats l’Admin Abysse (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-kyogre-abysse"
+          },
+          "outcome": "Abysse recule, furieuse : « Garde-le, ton Orbe ! Le chef dit que Kyogre ne s’éveille que sous un déluge… et qu’il ne craint que la foudre. » Elle disparaît dans l’eau noire."
+        },
+        {
+          "name": "Pluies diluviennes",
+          "description": "Réussis une expédition dans la Grotte Sous-Marine, lancée sous la pluie, avec 2 Pokémon Électrik de PE 900 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "grotte-sous-marine",
             "count": 1,
-            "memberType": "water",
+            "memberType": "electric",
             "memberCount": 2,
-            "minMemberPower": 600
-          }
+            "minMemberPower": 900,
+            "speciesIds": [],
+            "weathers": [
+              "rain"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "L’Orbe Bleu s’embrase de lumière. Kyogre émerge de l’eau noire, et la pluie se fait torrentielle sur tout Hoenn."
         }
       ],
       "rewards": {
@@ -33041,14 +35823,17 @@
             "speciesId": 382,
             "level": 70,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 4500,
+            "battle": {
+              "level": 70,
+              "iv": 31,
+              "hpMultiplier": 8,
+              "statMultiplier": 1.2,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "grass",
-                "electric"
-              ]
+              "captureChance": 25
             },
             "roaming": null
           }
@@ -33059,7 +35844,7 @@
       "id": "electhor-galar",
       "order": 6,
       "name": "L’oiseau aux pas de feu",
-      "description": "Un oiseau aux pattes puissantes, venu d’une région lointaine, courrait à travers Kanto plus vite que l’éclair.",
+      "description": "Des traces de pas fumantes parcourent les routes de Kanto, comme si quelqu’un courait plus vite que l’éclair.",
       "image": null,
       "regionId": "galar",
       "enabled": true,
@@ -33070,34 +35855,60 @@
       "steps": [
         {
           "name": "Coups de pied",
-          "description": "Capture 15 Pokémon Combat.",
+          "description": "Capture 15 Pokémon Combat à Kanto.",
           "condition": {
             "type": "catchPokemon",
             "count": 15,
             "pokemonType": "fighting",
             "speciesId": null,
             "zoneId": null
-          }
+          },
+          "outcome": "Au Dojo Karaté, on ne parle que de ça : un oiseau aurait battu tous les élèves à la course."
         },
         {
-          "name": "Grand voyageur",
-          "description": "Capture 140 espèces différentes.",
+          "name": "Plumes martiales",
+          "description": "Trouve 2 Plumes martiales au Dojo Karaté, avec 2 Pokémon Combat dans l’équipe.",
           "condition": {
-            "type": "speciesCaught",
-            "count": 140
-          }
+            "type": "questItem",
+            "itemId": "plume-martiale",
+            "count": 2,
+            "zoneId": "dojo-karate",
+            "chance": 4,
+            "memberType": "fighting",
+            "memberCount": 2,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Les plumes sont dures comme l’acier. Le maître du dojo te conseille de lancer son meilleur coureur à sa poursuite."
         },
         {
-          "name": "Sur sa piste",
-          "description": "Réussis une expédition au Dojo Karaté avec 2 Pokémon Combat de PE 800 ou plus.",
+          "name": "Le meilleur élève",
+          "description": "Au Dojo Karaté, le meilleur élève veut rattraper l’oiseau lui-même et refuse de te laisser passer : bats Kenzo (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-electhor-galar-kenzo"
+          },
+          "outcome": "« Je ne l’ai jamais rattrapé… ses pas brûlent le sol. » Kenzo s’incline : « Il ne court qu’après les plus rapides. Le Kicklee du dojo, peut-être… »"
+        },
+        {
+          "name": "La course",
+          "description": "Réussis une expédition au Dojo Karaté avec Kicklee dans l’équipe.",
           "condition": {
             "type": "expedition",
             "zoneId": "dojo-karate",
             "count": 1,
-            "memberType": "fighting",
-            "memberCount": 2,
-            "minMemberPower": 800
-          }
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              106
+            ],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Kicklee s’élance à sa poursuite sans parvenir à le rattraper. L’oiseau file désormais à travers les terres lointaines."
         }
       ],
       "rewards": {
@@ -33118,17 +35929,17 @@
             "formId": 10170,
             "level": 70,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
+            "battle": {
+              "level": null,
+              "iv": 31,
+              "hpMultiplier": 5,
+              "statMultiplier": 1.1,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
               "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "flying",
-                "electric",
-                "psychic",
-                "ice",
-                "fairy"
-              ]
+              "captureChance": 30
             },
             "roaming": 3
           }
@@ -33150,7 +35961,7 @@
       "steps": [
         {
           "name": "Les trois colosses",
-          "description": "Termine les quêtes de Regirock, de Registeel et de Regice.",
+          "description": "Termine les quêtes de Regirock, Registeel et Regice.",
           "condition": {
             "type": "allOf",
             "conditions": [
@@ -33167,41 +35978,65 @@
                 "questId": "regice"
               }
             ]
-          }
+          },
+          "outcome": "Les trois colosses éveillés, la terre gronde sous Hoenn. Au Mont Chimnée, la Team Magma s’agite."
+        },
+        {
+          "name": "L’Orbe Rouge",
+          "description": "Trouve l’Orbe Rouge au Mont Chimnée, lors d’une expédition lancée sous un grand soleil avec 2 Pokémon Feu.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "orbe-rouge",
+            "count": 1,
+            "zoneId": "mont-chimnee",
+            "chance": 4,
+            "memberType": "fire",
+            "memberCount": 2,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "sun"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Tu arraches l’Orbe Rouge aux mains de la Team Magma. Il brûle dans ton sac ; à Atalanopolis, l’entrée de la Grotte Originelle s’est ouverte."
         },
         {
           "name": "La terre tremble",
-          "description": "Capture 30 Pokémon Sol.",
+          "description": "Capture 6 Pokémon Sol dans la Grotte Originelle.",
           "condition": {
             "type": "catchPokemon",
-            "count": 30,
+            "count": 6,
             "pokemonType": "ground",
             "speciesId": null,
-            "zoneId": null
-          }
+            "zoneId": "grotte-originelle"
+          },
+          "outcome": "La chaleur devient insoutenable. Les Pokémon de la grotte fuient vers la sortie."
         },
         {
-          "name": "Le magma",
-          "description": "Capture 30 Pokémon Feu.",
+          "name": "L’embuscade de la Team Magma",
+          "description": "La Team Magma veut reprendre l’Orbe Rouge avant que tu n’atteignes le cœur de la grotte : bats l’Admin Fumerol (quête).",
           "condition": {
-            "type": "catchPokemon",
-            "count": 30,
-            "pokemonType": "fire",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "type": "trainerDefeated",
+            "trainerId": "quete-groudon-fumerol"
+          },
+          "outcome": "« Rien ne peut arrêter Groudon ! » Battu, Fumerol s’enfuit vers la sortie en toussant : « Rien… sauf l’eau, peut-être. » Derrière lui, le magma bouillonne de plus belle."
         },
         {
           "name": "Le cœur de la grotte",
-          "description": "Réussis une expédition à la Grotte Originelle avec 3 Pokémon Sol de PE 600 ou plus.",
+          "description": "Réussis une expédition dans la Grotte Originelle avec 2 Pokémon Eau de PE 900 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "grotte-originelle",
             "count": 1,
-            "memberType": "ground",
-            "memberCount": 3,
-            "minMemberPower": 600
-          }
+            "memberType": "water",
+            "memberCount": 2,
+            "minMemberPower": 900,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Le magma s’écarte. Groudon ouvre les yeux, et le soleil se met à brûler au-dessus de Hoenn."
         }
       ],
       "rewards": {
@@ -33221,15 +36056,17 @@
             "speciesId": 383,
             "level": 70,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 4500,
+            "battle": {
+              "level": 75,
+              "iv": 31,
+              "hpMultiplier": 8,
+              "statMultiplier": 1.2,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "water",
-                "grass",
-                "ice"
-              ]
+              "captureChance": 25
             },
             "roaming": null
           }
@@ -33259,47 +36096,89 @@
       },
       "steps": [
         {
-          "name": "Chercheur",
+          "name": "La légende des Chutes",
+          "description": "Réussis une expédition aux Chutes Météore avec 2 Pokémon Dragon.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "chutes-meteore",
+            "count": 1,
+            "memberType": "dragon",
+            "memberCount": 2,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Une ancienne du peuple des Chutes Météore te raconte : « Quand la terre et la mer se battent, le gardien du ciel descend de son pilier pour les séparer. »"
+        },
+        {
+          "name": "L’Orbe de Jade",
+          "description": "Trouve l’Orbe de Jade sur les Routes 124 à 128, lors d’une expédition lancée sous la grêle.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "orbe-de-jade",
+            "count": 1,
+            "zoneId": "routes-124-128",
+            "chance": 4,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "hail"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "L’Orbe vibre au rythme du vent. À l’horizon, une tour se dresse au-dessus des nuages : le Pilier Céleste."
+        },
+        {
+          "name": "Le savoir des anciens",
           "description": "Capture 80 % du Pokédex de Hoenn.",
           "condition": {
             "type": "regionDexPercent",
             "regionId": "hoenn",
             "percent": 80
-          }
+          },
+          "outcome": "L’ancienne t’avertit : « Le gardien ne se montre qu’à ceux qui connaissent la terre, la mer et le ciel. Tu es prêt. »"
         },
         {
-          "name": "Dragons",
-          "description": "Capture 20 Pokémon Dragon.",
+          "name": "Les ailes du pilier",
+          "description": "Capture 2 Altaria au Pilier Céleste.",
           "condition": {
             "type": "catchPokemon",
-            "count": 20,
-            "pokemonType": "dragon",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "count": 2,
+            "pokemonType": null,
+            "speciesId": 334,
+            "zoneId": "pilier-celeste"
+          },
+          "outcome": "Tes Altaria chantent face au vent. Au sommet du pilier, un grondement leur répond."
         },
         {
-          "name": "Le ciel",
-          "description": "Capture 50 Pokémon Vol.",
+          "name": "La gardienne du pilier",
+          "description": "La petite-fille de l’ancienne des Chutes Météore garde la dernière volée de marches du Pilier Céleste : bats Zéphyra (quête).",
           "condition": {
-            "type": "catchPokemon",
-            "count": 50,
-            "pokemonType": "flying",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "type": "trainerDefeated",
+            "trainerId": "quete-rayquaza-zephyra"
+          },
+          "outcome": "« Grand-mère avait raison à ton sujet. » Zéphyra t’ouvre la dernière porte : « Le gardien du ciel ne craint ni le feu ni la foudre, mais la glace le fait plier. Monte quand la grêle tombera. »"
         },
         {
           "name": "Le sommet du pilier",
-          "description": "Réussis une expédition au Pilier Céleste avec 3 Pokémon Dragon de PE 800 ou plus.",
+          "description": "Réussis une expédition au Pilier Céleste, lancée sous la grêle, avec 2 Pokémon Glace de PE 1000 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "pilier-celeste",
             "count": 1,
-            "memberType": "dragon",
+            "memberType": "ice",
             "memberCount": 2,
-            "minMemberPower": 800
-          }
+            "minMemberPower": 1000,
+            "speciesIds": [],
+            "weathers": [
+              "hail"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "L’air se charge d’électricité. Rayquaza fond sur toi depuis la couche d’ozone, en rugissant : personne ne grimpe impunément sur son pilier."
         }
       ],
       "rewards": {
@@ -33319,16 +36198,17 @@
             "speciesId": 384,
             "level": 70,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 5000,
+            "battle": {
+              "level": 70,
+              "iv": 31,
+              "hpMultiplier": 4.5,
+              "statMultiplier": 1.15,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "rock",
-                "ice",
-                "dragon",
-                "fairy"
-              ]
+              "captureChance": 20
             },
             "roaming": null
           }
@@ -33339,7 +36219,7 @@
       "id": "sulfura-galar",
       "order": 7,
       "name": "L’oiseau aux flammes sombres",
-      "description": "Un oiseau aux flammes noires, venu d’une région lointaine, se nourrirait de la rancœur des Pokémon de Kanto.",
+      "description": "À Lavanville, les Pokémon Spectre s’agitent : une flamme noire tourne autour de la Tour Pokémon.",
       "image": null,
       "regionId": "galar",
       "enabled": true,
@@ -33350,35 +36230,60 @@
       "steps": [
         {
           "name": "Rancœur",
-          "description": "Capture 12 Pokémon Spectre.",
+          "description": "Capture 12 Pokémon Spectre à Kanto.",
           "condition": {
             "type": "catchPokemon",
             "count": 12,
             "pokemonType": "ghost",
             "speciesId": null,
             "zoneId": null
-          }
+          },
+          "outcome": "Plus tu captures de Pokémon Spectre, plus la flamme noire semble s’intéresser à toi."
         },
         {
-          "name": "Presque complet",
-          "description": "Capture 90 % du Pokédex de Kanto.",
+          "name": "Plumes sombres",
+          "description": "Trouve 2 Plumes sombres à la Tour Pokémon, lors d’expéditions lancées de nuit.",
           "condition": {
-            "type": "regionDexPercent",
-            "regionId": "kanto",
-            "percent": 90
-          }
+            "type": "questItem",
+            "itemId": "plume-sombre",
+            "count": 2,
+            "zoneId": "tour-pokemon",
+            "chance": 4,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "night"
+          },
+          "outcome": "Les plumes sont glacées et pleines de rancœur. Elles tombent toujours au même endroit : le sommet de la tour."
         },
         {
-          "name": "Sur sa piste",
-          "description": "Réussis une expédition à la Tour Pokémon avec 2 Pokémon Spectre de PE 800 ou plus.",
+          "name": "L’exorciste de la tour",
+          "description": "L’exorciste de la Tour Pokémon veut chasser elle-même la flamme noire de Lavanville et voit en toi une rivale : bats Ambre (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-sulfura-galar-ambre"
+          },
+          "outcome": "« Mes prières ne l’atteignent pas… » Ambre soupire : « La flamme noire se nourrit de la rancœur des nuits de pluie. C’est là qu’elle se montrera. »"
+        },
+        {
+          "name": "La flamme noire",
+          "description": "Réussis une expédition à la Tour Pokémon, lancée de nuit sous la pluie, avec 2 Pokémon Spectre de PE 800 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "tour-pokemon",
             "count": 1,
             "memberType": "ghost",
             "memberCount": 2,
-            "minMemberPower": 800
-          }
+            "minMemberPower": 800,
+            "speciesIds": [],
+            "weathers": [
+              "rain"
+            ],
+            "timeOfDay": "night"
+          },
+          "outcome": "La flamme noire se dresse face à toi, puis s’enfuit dans la nuit. Elle hante désormais des terres lointaines."
         }
       ],
       "rewards": {
@@ -33399,16 +36304,17 @@
             "formId": 10171,
             "level": 70,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
+            "battle": {
+              "level": null,
+              "iv": 31,
+              "hpMultiplier": 5,
+              "statMultiplier": 1.1,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
               "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "rock",
-                "electric",
-                "ice",
-                "fairy"
-              ]
+              "captureChance": 30
             },
             "roaming": 3
           }
@@ -33444,30 +36350,70 @@
             "type": "regionDexPercent",
             "regionId": "hoenn",
             "percent": 95
-          }
+          },
+          "outcome": "Ce soir-là, une comète traverse le ciel de Hoenn. Une vieille légende dit qu’elle réveille un Pokémon capable d’exaucer les vœux."
         },
         {
-          "name": "Étoiles d’acier",
-          "description": "Capture 50 Pokémon Acier.",
+          "name": "Pluie d’étoiles",
+          "description": "Trouve 3 Poussières d’étoile dans le Désert de la Route 111, lors d’expéditions lancées de nuit.",
           "condition": {
-            "type": "catchPokemon",
-            "count": 50,
-            "pokemonType": "steel",
-            "speciesId": null,
-            "zoneId": null
-          }
+            "type": "questItem",
+            "itemId": "poussiere-d-etoile",
+            "count": 3,
+            "zoneId": "desert-hoenn",
+            "chance": 4,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "night"
+          },
+          "outcome": "La poussière scintille au creux de ta main et dessine une traînée vers les Chutes Météore."
         },
         {
-          "name": "La pluie d’étoiles",
-          "description": "Réussis 3 expéditions aux Chutes Météore avec 3 Pokémon de PE 800 ou plus.",
+          "name": "Le soleil et la lune",
+          "description": "Réussis une expédition aux Chutes Météore, lancée de nuit, avec Séléroc et Solaroc dans l’équipe.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "chutes-meteore",
+            "count": 1,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              337,
+              338
+            ],
+            "weathers": [],
+            "timeOfDay": "night"
+          },
+          "outcome": "Séléroc et Solaroc se mettent à briller ensemble. Au cœur des chutes, un cocon de lumière s’ouvre…"
+        },
+        {
+          "name": "L’astronome",
+          "description": "Une astronome a suivi la comète jusqu’aux Chutes Météore et veut garder le cocon de lumière pour elle : bats Stella (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-jirachi-stella"
+          },
+          "outcome": "« Je voulais seulement lui demander de faire revenir la comète… » Stella range sa lunette : « Il lui faut des compagnons forts pour s’éveiller tout à fait. Reste près de lui, et il viendra à toi. »"
+        },
+        {
+          "name": "Le vœu",
+          "description": "Réussis 3 expéditions aux Chutes Météore avec 3 Pokémon de PE 900 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "chutes-meteore",
             "count": 3,
             "memberType": null,
             "memberCount": 3,
-            "minMemberPower": 800
-          }
+            "minMemberPower": 900,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Jirachi ouvre les yeux, s’étire et sourit. Il n’a que sept jours d’éveil devant lui : il compte bien jouer — et se battre — avant de se rendormir."
         }
       ],
       "rewards": {
@@ -33487,16 +36433,17 @@
             "speciesId": 385,
             "level": 50,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 4500,
+            "battle": {
+              "level": 70,
+              "iv": 31,
+              "hpMultiplier": 4.5,
+              "statMultiplier": 1.15,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "ground",
-                "ghost",
-                "fire",
-                "dark"
-              ]
+              "captureChance": 30
             },
             "roaming": null
           }
@@ -33507,7 +36454,7 @@
       "id": "deoxys",
       "order": 9,
       "name": "Le visiteur de l’espace",
-      "description": "Rayquaza a abattu une météorite au-dessus de l’Île Aurore. Quelque chose en est sorti.",
+      "description": "Rayquaza a abattu une météorite au-dessus de Hoenn. Quelque chose en est sorti.",
       "image": null,
       "regionId": "hoenn",
       "enabled": true,
@@ -33526,27 +36473,77 @@
       },
       "steps": [
         {
+          "name": "La météorite",
+          "description": "Trouve un Fragment de météorite aux Chutes Météore, avec 2 Pokémon Psy dans l’équipe.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "fragment-de-meteorite",
+            "count": 1,
+            "zoneId": "chutes-meteore",
+            "chance": 3,
+            "memberType": "psychic",
+            "memberCount": 2,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Le fragment pulse d’une énergie inconnue. Les scientifiques de la Station Spatiale le relient à des signaux venus d’une île lointaine : l’Île Aurore."
+        },
+        {
           "name": "Signaux",
-          "description": "Capture 30 Pokémon Psy.",
+          "description": "Capture 3 Pokémon Psy sur l’Île Aurore.",
           "condition": {
             "type": "catchPokemon",
-            "count": 30,
+            "count": 3,
             "pokemonType": "psychic",
             "speciesId": null,
-            "zoneId": null
-          }
+            "zoneId": "ile-aurore"
+          },
+          "outcome": "Les Pokémon Psy de l’île sont désorientés, comme brouillés par une onde venue d’en haut."
+        },
+        {
+          "name": "Cristaux d’aurore",
+          "description": "Trouve 3 Cristaux aurore sur l’Île Aurore, lors d’expéditions lancées de nuit.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "cristal-aurore",
+            "count": 3,
+            "zoneId": "ile-aurore",
+            "chance": 4,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "night"
+          },
+          "outcome": "Réunis, les cristaux projettent une aurore au-dessus de l’île. Au sommet, une pyramide de lumière se forme."
+        },
+        {
+          "name": "Le chercheur de la Station",
+          "description": "Un chercheur de la Station Spatiale veut ramener l’être venu de l’espace dans son laboratoire : bats Orion (quête) sur l’Île Aurore.",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-deoxys-orion"
+          },
+          "outcome": "« Ses ondes brouillent tout ce qui pense… mes Pokémon n’ont rien pu faire. » Orion range ses instruments : « Seuls des Pokémon Ténèbres garderaient l’esprit clair face à lui, la nuit, quand l’aurore s’allume. »"
         },
         {
           "name": "La pyramide",
-          "description": "Réussis 3 expéditions à l’Île Aurore avec 3 Pokémon de PE 800 ou plus.",
+          "description": "Réussis une expédition sur l’Île Aurore, lancée de nuit, avec 2 Pokémon Ténèbres de PE 1000 ou plus.",
           "condition": {
             "type": "expedition",
             "zoneId": "ile-aurore",
-            "count": 3,
-            "memberType": null,
-            "memberCount": 3,
-            "minMemberPower": 800
-          }
+            "count": 1,
+            "memberType": "dark",
+            "memberCount": 2,
+            "minMemberPower": 1000,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": "night"
+          },
+          "outcome": "La pyramide se brise. Deoxys se matérialise, change de forme sous tes yeux, et attaque sans un bruit."
         }
       ],
       "rewards": {
@@ -33566,15 +36563,17 @@
             "speciesId": 386,
             "level": 80,
             "perfectIvs": 3,
-            "expedition": {
-              "durationMinutes": 240,
-              "minPower": 5500,
+            "battle": {
+              "level": 75,
+              "iv": 31,
+              "hpMultiplier": 6,
+              "statMultiplier": 1.2,
+              "enrageHpFraction": 0.5,
+              "enragePercent": 20,
+              "timeLimitSeconds": 300,
+              "minPower": 0,
               "requiredTypes": [],
-              "affinityTypes": [
-                "bug",
-                "ghost",
-                "dark"
-              ]
+              "captureChance": 20
             },
             "roaming": null
           }

@@ -1,50 +1,73 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
-import type { Quest } from '@poke/content';
-import { chainMultiplier, isActionCondition, isUnlocked } from '@poke/game-core';
+import { unlockParts } from '@poke/content';
+import type { Quest, QuestCondition, QuestPokemon } from '@poke/content';
+import { isActionCondition, isUnlocked, legendaryTarget } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type {
+  ClaimLegendaryBattleResponse,
   ClaimQuestResponse,
-  ExpeditionDto,
-  QuestChainDto,
+  LegendaryBattleDto,
+  LegendaryQuestStateDto,
   QuestProgressDto,
 } from '@poke/shared';
 import { Modal, PokemonSprite, ProgressBar, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { refreshAfterReward, useExpeditions, usePlayerProgress, useQuests } from '../../lib/game';
+import {
+  keys,
+  refresh,
+  refreshAfterReward,
+  useExpeditions,
+  useLegendaryBattles,
+  usePlayerProgress,
+  useQuests,
+} from '../../lib/game';
 import {
   errorText,
   formatCountdown,
-  formatDuration,
-  formatMultiplier,
+  itemIcon,
+  itemName,
   questConditionText,
   speciesName,
+  trainerName,
   unlockConditionText,
 } from '../../lib/labels';
+import { trainerBattleLink } from './BattlesPage';
+import { CombatWindow, OngoingCombatBanner, useCombatWindow } from './CombatWindow';
+import { DungeonCombat } from './DungeonCombat';
 import { zoneLink } from './ExpeditionsPage';
+import {
+  LaunchLegendaryDialog,
+  LegendaryCaptureDialog,
+  LegendaryDefeatDialog,
+  formatCaptureChance,
+} from './LegendaryViews';
 import { RewardList } from './ProgressionViews';
-import { QuestExpeditionDialog } from './QuestExpeditionDialog';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 
 /** Onglet des quêtes rattachées à aucune région. */
 const OTHER_TAB = { id: '__autres', label: 'Autres' };
 
-/** Expédition légendaire d'une quête dont le Pokémon reste à capturer. */
+/** Légendaire d'une quête réclamée, pas encore capturé. */
 interface Hunt {
-  /** Expédition en cours (une seule à la fois par quête). */
-  running: ExpeditionDto | undefined;
-  /** Temps restant de l'expédition en cours (ms). */
-  endsIn: number;
-  durationMinutes: number;
-  /** Chaîne shiny de la quête (expéditions légendaires relancées de suite). */
-  chain: QuestChainDto | undefined;
-  /** Temps restant pour relancer avant que la chaîne retombe à 0 (ms) ; null = sans délai. */
-  chainExpiresIn: number | null;
-  canLaunch: boolean;
-  onLaunch: () => void;
-  /** Pokémon fuyard : pas d'expédition légendaire, il se cache dans les zones de la région. */
+  target: QuestPokemon;
+  /** Pokémon fuyard : pas de combat, il se cache dans les zones de la région. */
   roaming: Roaming | null;
+  /** Légendaire à combattre (non fuyard). */
+  battle: HuntBattle | null;
+}
+
+interface HuntBattle {
+  state: LegendaryQuestStateDto | undefined;
+  /** Combat en cours contre ce légendaire. */
+  fighting: boolean;
+  /** Un autre combat légendaire est en cours. */
+  busy: boolean;
+  /** Temps restant avant de retenter (ms) ; null = possible tout de suite. */
+  retryIn: number | null;
+  onLaunch: () => void;
+  onCapture: () => void;
 }
 
 interface Roaming {
@@ -58,7 +81,7 @@ interface Roaming {
 
 /**
  * Quêtes (légendaires) : étapes à valider dans l'ordre, puis récompense à réclamer ; le légendaire
- * se capture ensuite en expédition légendaire, lancée d'ici uniquement.
+ * s'affronte ensuite en combat depuis cette page (les fuyards, eux, en expédition).
  */
 export function QuestsPage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
@@ -67,29 +90,51 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
   const [reveal, setReveal] = useState<ClaimQuestResponse | null>(null);
   const [selectedRegion, setSelectedRegion] = useSavedRegionTab('quests');
   const expeditions = useExpeditions();
+  const legendary = useLegendaryBattles();
   const now = useNow();
-  const [huntQuest, setHuntQuest] = useState<Quest | null>(null);
+  const [launchQuest, setLaunchQuest] = useState<Quest | null>(null);
+  const [capture, setCapture] = useState<{
+    battleId: string;
+    questId: string;
+    isShiny: boolean;
+  } | null>(null);
+  const [defeat, setDefeat] = useState<LegendaryBattleDto | null>(null);
+  const [overBattle, setOverBattle] = useState<string | null>(null);
+  const [claimBattle, setClaimBattle] = useState<string | null>(null);
   const claim = useMutation({
     mutationFn: (questId: string) =>
       api<ClaimQuestResponse>(`/api/quests/${questId}/claim`, { method: 'POST' }),
     onSuccess: (data) => {
       setReveal(data);
-      return refreshAfterReward(queryClient);
+      return Promise.all([
+        refreshAfterReward(queryClient),
+        refresh(queryClient, keys.legendaryBattles),
+      ]);
     },
   });
+
+  const active = legendary.data?.active ?? null;
+  const activeId = active?.id ?? null;
+  const { open: combatOpen, show: showCombat } = useCombatWindow(
+    'legendary-combat-hidden',
+    activeId,
+  );
+  const markOver = useCallback(() => setOverBattle(activeId), [activeId]);
 
   if (ctx.quests.length === 0) {
     return <p className="text-slate-500">Aucune quête pour le moment.</p>;
   }
   const byId = new Map(quests.data?.quests.map((q) => [q.questId, q]));
-  // Décalage entre l'horloge du serveur et celle du navigateur, pour les comptes à rebours.
-  const offset = expeditions.data
+  // Décalages entre l'horloge du serveur et celle du navigateur, pour les comptes à rebours.
+  const expeditionOffset = expeditions.data
     ? Date.parse(expeditions.data.serverTime) - expeditions.dataUpdatedAt
     : 0;
-  const active = expeditions.data?.active ?? [];
-  const slots = expeditions.data?.slots ?? 0;
-  const freeSlot = active.filter((e) => e.slotIndex < slots).length < slots;
-  /** Pokémon à capturer en expédition légendaire : récompense réclamée, pas encore capturé. */
+  const legendaryOffset = legendary.data
+    ? Date.parse(legendary.data.serverTime) - legendary.dataUpdatedAt
+    : 0;
+  const running = expeditions.data?.active ?? [];
+  const states = new Map(legendary.data?.quests.map((s) => [s.questId, s]));
+  /** Pokémon à capturer : récompense réclamée, pas encore capturé. */
   const targetOf = (q: Quest) => {
     const state = byId.get(q.id);
     return state?.status === 'claimed' ? q.rewards.pokemon[state.pokemonCaught] : undefined;
@@ -97,26 +142,43 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
   const huntOf = (q: Quest): Hunt | null => {
     const target = targetOf(q);
     if (!target) return null;
-    const running = active.find((e) => e.questId === q.id);
-    const chain = expeditions.data?.questChains.find((c) => c.questId === q.id);
-    const roamer = expeditions.data?.roamers.find((r) => r.questId === q.id);
+    if (target.roaming != null) {
+      const roamer = expeditions.data?.roamers.find((r) => r.questId === q.id);
+      return {
+        target,
+        battle: null,
+        roaming: {
+          zoneId: roamer?.zoneId ?? null,
+          movesIn: roamer ? Date.parse(roamer.movesAt) - (now + expeditionOffset) : 0,
+          engaged: running.some((e) => e.roamerQuestIds.includes(q.id)),
+        },
+      };
+    }
+    const state = states.get(q.id);
+    const retryIn = state?.retryAt ? Date.parse(state.retryAt) - (now + legendaryOffset) : null;
     return {
-      running,
-      endsIn: running ? Date.parse(running.endsAt) - (now + offset) : 0,
-      durationMinutes: target.expedition.durationMinutes,
-      chain,
-      chainExpiresIn: chain?.expiresAt ? Date.parse(chain.expiresAt) - (now + offset) : null,
-      canLaunch: freeSlot,
-      onLaunch: () => setHuntQuest(q),
-      roaming:
-        target.roaming == null
-          ? null
-          : {
-              zoneId: roamer?.zoneId ?? null,
-              movesIn: roamer ? Date.parse(roamer.movesAt) - (now + offset) : 0,
-              engaged: active.some((e) => e.roamerQuestIds.includes(q.id)),
-            },
+      target,
+      roaming: null,
+      battle: {
+        state,
+        fighting: active?.questId === q.id,
+        busy: !!active && active.questId !== q.id,
+        retryIn: retryIn !== null && retryIn > 0 ? retryIn : null,
+        onLaunch: () => setLaunchQuest(q),
+        onCapture: () =>
+          state?.pendingCapture &&
+          setCapture({ battleId: state.pendingCapture.id, questId: q.id, ...state.pendingCapture }),
+      },
     };
+  };
+  // Prêt à agir : récompense à réclamer, Ball à lancer, combat à livrer.
+  const actionable = (q: Quest) => {
+    if (byId.get(q.id)?.status === 'completed') return true;
+    const hunt = huntOf(q);
+    if (!hunt) return false;
+    if (hunt.roaming) return !hunt.roaming.engaged;
+    const b = hunt.battle!;
+    return !!b.state?.pendingCapture || (!b.fighting && !b.busy && b.retryIn === null);
   };
   // Quêtes à réclamer d'abord, légendaires à capturer, en cours, verrouillées, terminées.
   const rank = (q: Quest) =>
@@ -131,26 +193,59 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
   const toClaim = (id: string) =>
     ctx.quests.some((q) => tabOf(q) === id && byId.get(q.id)?.status === 'completed')
       ? 'Récompense à réclamer'
-      : ctx.quests.some(
-            (q) =>
-              tabOf(q) === id &&
-              targetOf(q) &&
-              !active.some((e) => e.questId === q.id || e.roamerQuestIds.includes(q.id)),
-          )
+      : ctx.quests.some((q) => tabOf(q) === id && targetOf(q) && actionable(q))
         ? 'Légendaire à capturer'
         : null;
-  const huntTarget = huntQuest && targetOf(huntQuest);
+  const launchTarget = launchQuest && targetOf(launchQuest);
+  const activeQuest = active ? ctx.quest(active.questId) : undefined;
+  const activeTarget = active && activeQuest?.rewards.pokemon[active.pokemonIndex];
+  const activeTitle = activeTarget
+    ? `Combat légendaire : ${speciesName(ctx, activeTarget.speciesId, activeTarget.formId)}`
+    : 'Combat légendaire';
+  const captureTarget = capture && ctx.quest(capture.questId);
+
+  function finished(data: ClaimLegendaryBattleResponse) {
+    setClaimBattle(null);
+    const { battle } = data;
+    if (battle.outcome === 'win') {
+      setCapture({ battleId: battle.id, questId: battle.questId, isShiny: battle.isShiny });
+    } else {
+      setDefeat(battle);
+    }
+  }
 
   return (
     <div className="space-y-4">
+      {active && !combatOpen && (
+        <OngoingCombatBanner
+          title={activeTitle}
+          portrait={
+            activeTarget && (
+              <PokemonSprite
+                speciesId={activeTarget.speciesId}
+                formId={activeTarget.formId}
+                shiny={active.isShiny}
+                size={72}
+              />
+            )
+          }
+          over={overBattle === active.id}
+          claiming={claimBattle === active.id}
+          onShow={() => {
+            if (overBattle === active.id) setClaimBattle(active.id);
+            else showCombat(true);
+          }}
+        />
+      )}
       <p className="text-sm text-slate-500">
         Les légendaires ne se rencontrent pas en expédition : chaque quête les met à ta portée. Les
-        étapes se valident dans l’ordre ; captures et expéditions ne comptent qu’à partir du début
-        de l’étape. Une fois la récompense réclamée, pars à la recherche du légendaire lors d’une
-        expédition légendaire : au retour, tu vois s’il est chromatique avant de lancer ta Ball (une
-        seule) ou de fuir. Relancer de suite allonge la chaîne chromatique. Les fuyards, eux, se
-        cachent dans les expéditions ordinaires et changent de zone à chaque heure : repère leur
-        logo sur les zones.
+        étapes se valident dans l’ordre ; captures, expéditions et objets de quête ne comptent qu’à
+        partir du début de l’étape. Les objets de quête se trouvent en expédition, une chance par
+        tirage de butin, quand l’équipe et la météo du départ remplissent les conditions. Un talent
+        de l’équipe qui impose une météo (Crachin, Sécheresse…) compte comme la météo du départ. Une
+        fois la récompense réclamée, affronte le légendaire avec une équipe de 6 : vaincu, il se
+        capture d’une seule Ball. Les fuyards, eux, se cachent dans les expéditions ordinaires et
+        changent de zone à chaque heure.
       </p>
       <RegionTabs
         ctx={ctx}
@@ -179,20 +274,87 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
             claiming={claim.isPending && claim.variables === quest.id}
             onClaim={() => claim.mutate(quest.id)}
             hunt={huntOf(quest)}
+            highlight={actionable(quest)}
           />
         ))}
       </div>
       <QuestReveal ctx={ctx} data={reveal} onClose={() => setReveal(null)} />
-      {huntQuest && huntTarget && (
-        <QuestExpeditionDialog
+
+      {active && (
+        <CombatWindow open={combatOpen} onClose={() => showCombat(false)}>
+          <DungeonCombat<LegendaryBattleDto, ClaimLegendaryBattleResponse>
+            key={active.id}
+            ctx={ctx}
+            title={activeTitle}
+            apiBase="/api/legendary-battles"
+            queryKey={keys.legendaryBattles}
+            bossLast
+            run={active}
+            offsetMs={legendaryOffset}
+            visible={combatOpen}
+            onHide={() => showCombat(false)}
+            claimRequested={claimBattle === active.id}
+            onOver={markOver}
+            onClaimError={() => {
+              setClaimBattle(null);
+              showCombat(true);
+            }}
+            onFinished={finished}
+          />
+        </CombatWindow>
+      )}
+      {launchQuest && launchTarget && (
+        <LaunchLegendaryDialog
           ctx={ctx}
-          quest={huntQuest}
-          target={huntTarget}
-          chain={expeditions.data?.questChains.find((c) => c.questId === huntQuest.id)?.chain ?? 0}
-          onClose={() => setHuntQuest(null)}
+          quest={launchQuest}
+          target={launchTarget}
+          attempts={states.get(launchQuest.id)?.attempts ?? 0}
+          onClose={() => setLaunchQuest(null)}
         />
       )}
+      {capture && captureTarget && (
+        <CaptureForQuest
+          ctx={ctx}
+          quest={captureTarget}
+          battleId={capture.battleId}
+          isShiny={capture.isShiny}
+          onClose={() => setCapture(null)}
+        />
+      )}
+      <LegendaryDefeatDialog ctx={ctx} battle={defeat} onClose={() => setDefeat(null)} />
     </div>
+  );
+}
+
+/** Fenêtre de capture du légendaire en attente de la Ball d'une quête. */
+function CaptureForQuest({
+  ctx,
+  quest,
+  battleId,
+  isShiny,
+  onClose,
+}: {
+  ctx: GameContext;
+  quest: Quest;
+  battleId: string;
+  isShiny: boolean;
+  onClose: () => void;
+}) {
+  const quests = useQuests();
+  // Pokémon visé figé à l'ouverture : la capture fait passer la quête au suivant.
+  const [target] = useState(() => {
+    const caught = quests.data?.quests.find((q) => q.questId === quest.id)?.pokemonCaught ?? 0;
+    return legendaryTarget(quest, caught);
+  });
+  if (!target) return null;
+  return (
+    <LegendaryCaptureDialog
+      ctx={ctx}
+      battleId={battleId}
+      target={target}
+      isShiny={isShiny}
+      onClose={onClose}
+    />
   );
 }
 
@@ -204,6 +366,7 @@ function QuestCard({
   claiming,
   onClaim,
   hunt,
+  highlight,
 }: {
   ctx: GameContext;
   quest: Quest;
@@ -212,6 +375,7 @@ function QuestCard({
   claiming: boolean;
   onClaim: () => void;
   hunt: Hunt | null;
+  highlight: boolean;
 }) {
   const status = state?.status ?? 'locked';
   const featured = quest.rewards.pokemon[0];
@@ -220,9 +384,7 @@ function QuestCard({
   return (
     <div
       className={`card flex flex-col gap-3 p-4 ${status === 'locked' ? 'opacity-60' : ''} ${
-        status === 'completed' || (hunt && !hunt.running && !hunt.roaming?.engaged)
-          ? 'ring-2 ring-amber-400'
-          : ''
+        highlight ? 'ring-2 ring-amber-400' : ''
       }`}
     >
       <div className="flex items-start gap-3">
@@ -247,7 +409,7 @@ function QuestCard({
           {status === 'claimed' &&
             (hunt ? (
               <p className="mt-1 text-xs font-medium text-amber-600">
-                ✦ {hunt.roaming ? 'Fuyard à capturer' : 'Légendaire à capturer'}
+                ✦ {hunt.roaming ? 'Fuyard à capturer' : 'Légendaire à affronter'}
               </p>
             ) : (
               <p className="mt-1 text-xs text-emerald-600">✓ Terminée</p>
@@ -273,14 +435,40 @@ function QuestCard({
                 <div className="flex items-start gap-2">
                   <span className="w-4 shrink-0">{isDone ? '✓' : current ? '▶' : '·'}</span>
                   <div className="min-w-0 flex-1">
-                    <p className={current ? 'font-medium' : ''}>
-                      {current || isDone ? step.name : `Étape ${i + 1}`}
-                    </p>
+                    {isDone && step.outcome ? (
+                      // Dénouement de l'étape : la suite de l'histoire, à déplier.
+                      <details className="group">
+                        <summary className="cursor-pointer list-none">
+                          {step.name}{' '}
+                          <span className="text-xs text-slate-400 group-open:hidden">· lire</span>
+                        </summary>
+                        <p className="mt-1 border-l-2 border-amber-300 pl-2 text-xs text-slate-600 italic dark:border-amber-700 dark:text-slate-300">
+                          {step.outcome}
+                        </p>
+                      </details>
+                    ) : (
+                      <p className={current ? 'font-medium' : ''}>
+                        {current || isDone ? step.name : `Étape ${i + 1}`}
+                      </p>
+                    )}
                     {current && (
                       <p className="text-xs text-slate-500">
                         {step.description || questConditionText(ctx, condition)}
                       </p>
                     )}
+                    {current && step.description && condition.type !== 'allOf' && (
+                      <p className="text-[11px] text-slate-400">
+                        {questConditionText(ctx, condition)}
+                      </p>
+                    )}
+                    {current && condition.type === 'questItem' && (
+                      <p className="mt-0.5 flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
+                        <img src={itemIcon(ctx, condition.itemId)} alt="" className="h-5 w-5" />
+                        {itemName(ctx, condition.itemId)} : {condition.chance} % de chances par
+                        tirage de butin
+                      </p>
+                    )}
+                    {current && <StepTrainerLinks ctx={ctx} condition={condition} />}
                     {current &&
                       condition.type === 'catchPokemon' &&
                       !condition.zoneId &&
@@ -327,38 +515,71 @@ function QuestCard({
           </button>
         )}
         {hunt?.roaming && <RoamingStatus ctx={ctx} roaming={hunt.roaming} />}
-        {hunt &&
-          !hunt.roaming &&
-          (hunt.running ? (
-            <p className="rounded-lg bg-brand-500/10 px-2 py-1.5 text-center text-sm">
-              Expédition légendaire{' '}
-              {hunt.endsIn > 0
-                ? `en cours · ${formatCountdown(hunt.endsIn)}`
-                : 'terminée : découvre le légendaire dans l’onglet Expéditions'}
-            </p>
-          ) : (
-            <button
-              className="btn-primary w-full"
-              disabled={!hunt.canLaunch}
-              onClick={hunt.onLaunch}
-            >
-              {hunt.canLaunch
-                ? `Partir à sa recherche (${formatDuration(hunt.durationMinutes)})`
-                : 'Aucun emplacement d’expédition libre'}
-            </button>
-          ))}
-        {hunt?.chain && (hunt.chainExpiresIn === null || hunt.chainExpiresIn > 0) && (
-          <p
-            className="rounded-lg bg-amber-50 px-2 py-1 text-center text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-            title="Relance l’expédition légendaire avant la fin du délai pour allonger la chaîne."
-          >
-            ✦ Chaîne {hunt.chain.chain} : shiny{' '}
-            {formatMultiplier(chainMultiplier(ctx, hunt.chain.chain))}
-            {hunt.chainExpiresIn !== null &&
-              ` · à relancer sous ${formatCountdown(hunt.chainExpiresIn)}`}
-          </p>
-        )}
+        {hunt?.battle && <BattleStatus ctx={ctx} target={hunt.target} battle={hunt.battle} />}
       </div>
+    </div>
+  );
+}
+
+/** Où en est le combat contre le légendaire d'une quête : combat, Ball ou délai. */
+function BattleStatus({
+  ctx,
+  target,
+  battle,
+}: {
+  ctx: GameContext;
+  target: QuestPokemon;
+  battle: HuntBattle;
+}) {
+  const name = speciesName(ctx, target.speciesId, target.formId);
+  if (battle.state?.pendingCapture) {
+    return (
+      <button className="btn-primary w-full" onClick={battle.onCapture}>
+        {name} est vaincu : lancer une Ball ({formatCaptureChance(target)})
+      </button>
+    );
+  }
+  if (battle.fighting) {
+    return (
+      <p className="rounded-lg bg-brand-500/10 px-2 py-1.5 text-center text-sm">
+        Combat en cours contre {name}
+      </p>
+    );
+  }
+  if (battle.retryIn !== null) {
+    return (
+      <p className="rounded-lg bg-slate-100 px-2 py-1.5 text-center text-sm text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+        {name} reprend des forces : nouveau combat dans {formatCountdown(battle.retryIn)}
+      </p>
+    );
+  }
+  return (
+    <button className="btn-primary w-full" disabled={battle.busy} onClick={battle.onLaunch}>
+      {battle.busy ? 'Un autre combat légendaire est en cours' : `Affronter ${name}`}
+    </button>
+  );
+}
+
+/** Dresseurs que l'étape en cours demande de battre (pas encore battus) : un lien vers leur combat. */
+function StepTrainerLinks({ ctx, condition }: { ctx: GameContext; condition: QuestCondition }) {
+  const progress = usePlayerProgress();
+  const trainers = unlockParts(condition).flatMap((part) =>
+    part.type === 'trainerDefeated' && !progress.defeatedTrainerIds.has(part.trainerId)
+      ? (ctx.trainer(part.trainerId) ?? [])
+      : [],
+  );
+  if (trainers.length === 0) return null;
+  return (
+    <div className="mt-1.5 space-y-1">
+      {trainers.map((trainer) => (
+        <a
+          key={trainer.id}
+          href={trainerBattleLink(trainer.id)}
+          className="btn-primary block w-full text-center"
+        >
+          Affronter {trainer.trainerClass} {trainerName(trainer)}
+        </a>
+      ))}
     </div>
   );
 }
@@ -387,7 +608,7 @@ function RoamingStatus({ ctx, roaming }: { ctx: GameContext; roaming: Roaming })
   );
 }
 
-/** Récompense réclamée : les légendaires attendent leur expédition légendaire (ou fuient). */
+/** Récompense réclamée : les légendaires attendent leur combat (ou fuient). */
 function QuestReveal({
   ctx,
   data,
@@ -398,11 +619,16 @@ function QuestReveal({
   onClose: () => void;
 }) {
   const reduced = useReducedMotion();
+  const quest = data ? ctx.quest(data.questId) : undefined;
+  const ending = quest?.steps.at(-1)?.outcome;
   return (
     <Modal open={!!data} onClose={onClose}>
       {data && (
         <div className="text-center">
           <h2 className="text-xl font-bold">Quête terminée !</h2>
+          {ending && (
+            <p className="mt-2 text-sm text-slate-600 italic dark:text-slate-300">{ending}</p>
+          )}
           {data.rewards.pokemon.length > 0 && (
             <>
               <div className="mt-4 flex flex-wrap justify-center gap-4">
@@ -429,7 +655,7 @@ function QuestReveal({
                   .join(', ')}{' '}
                 {data.rewards.pokemon.some((p) => p.roaming != null)
                   ? 's’est enfui ! C’est un fuyard : il change de zone à chaque heure. Repère son logo sur les zones d’expédition et envoie une équipe avec des Balls à sa poursuite.'
-                  : 't’attend : pars à sa recherche avec une expédition légendaire. Une seule Ball sera lancée, prépare bien ton équipe !'}
+                  : 't’attend : affronte-le depuis cette quête avec ton équipe. Vaincu, il se capture d’une seule Ball, prépare-toi bien !'}
               </p>
             </>
           )}

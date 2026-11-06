@@ -3,6 +3,7 @@ import type { ContentCache } from '../content-cache';
 import { settleFinishedBattle } from './battles';
 import { settleClosedPlaces } from './closed-places';
 import { settleFinishedDungeonRun } from './dungeons';
+import { settleFinishedLegendaryBattle } from './legendary';
 import { nextExpeditionThrow, settleExpeditionBalls } from './expeditions';
 
 /** Au plus tard, un joueur est revérifié après ce délai (ce que rien ne date : places fermées…). */
@@ -71,7 +72,8 @@ export class PlayerSettler {
       // Les rattrapages se suivent : ils peuvent réclamer les mêmes Pokémon.
       const dungeon = await settleFinishedDungeonRun(db, content, userId, now);
       const battle = await settleFinishedBattle(db, content, userId, now);
-      busy = dungeon || battle;
+      const legendary = await settleFinishedLegendaryBattle(db, content, userId, now);
+      busy = dungeon || battle || legendary;
       await settleClosedPlaces(db, content, userId, now);
     }
     await settleExpeditionBalls(db, content, userId, now);

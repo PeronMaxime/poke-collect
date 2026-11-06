@@ -11,7 +11,8 @@ import type { PokemonDto } from '@poke/shared';
 import { Modal, PokemonSprite, ShinyStar } from '../../components/ui';
 import { abilityLabel, speciesName } from '../../lib/labels';
 import { ActiveAbilities } from './ActiveAbilities';
-import { formatXp } from './XpPreview';
+import { AutoSelectButton } from './TeamPicker';
+import { formatXp, usePlayerBonuses } from './XpPreview';
 
 /**
  * Équipe d'une activité (expédition, donjon, combat) : la fiche n'en montre que le
@@ -28,6 +29,7 @@ export function TeamSection({
   minPower = 0,
   xpNote,
   errors,
+  onAutoSelect,
   children,
 }: {
   ctx: GameContext;
@@ -47,6 +49,8 @@ export function TeamSection({
   xpNote?: ReactNode;
   /** Règles non respectées par l'équipe, rappelées dans le popup. */
   errors: readonly string[];
+  /** Sélection automatique de l'équipe, sans ouvrir le popup (absente = pas de bouton). */
+  onAutoSelect?: () => void;
   /** Choix de l'équipe (sélecteur, ordre, attaques…). */
   children: ReactNode;
 }) {
@@ -63,9 +67,12 @@ export function TeamSection({
             {minPower > 0 && ` / ${minPower}`}
           </span>
         </h3>
-        <button type="button" className="btn-primary" onClick={() => setOpen(true)}>
-          {members.length > 0 ? 'Gérer l’équipe' : 'Choisir l’équipe'}
-        </button>
+        <div className="flex flex-wrap gap-2">
+          {onAutoSelect && <AutoSelectButton onClick={onAutoSelect} />}
+          <button type="button" className="btn-primary" onClick={() => setOpen(true)}>
+            {members.length > 0 ? 'Gérer l’équipe' : 'Choisir l’équipe'}
+          </button>
+        </div>
       </div>
       <TeamRecap ctx={ctx} env={env} members={members} xp={xp} />
       {members.length > 0 && xpNote && <p className="mt-1 text-xs text-slate-500">{xpNote}</p>}
@@ -120,6 +127,7 @@ export function TeamRecap({
   /** XP par membre. */
   xp: number;
 }) {
+  const bonuses = usePlayerBonuses(ctx);
   if (members.length === 0) {
     return (
       <p className="mt-2 rounded-xl border border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700">
@@ -127,7 +135,7 @@ export function TeamRecap({
       </p>
     );
   }
-  const results = applyTeamXp(ctx, members, xp, 0);
+  const results = applyTeamXp(ctx, members, xp, 0, bonuses);
   const active = activityAbilityEffects(ctx, env);
   return (
     <ul className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-3">

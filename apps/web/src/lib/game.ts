@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { skipToken, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { queryOptions, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { QueryClient } from '@tanstack/react-query';
 import {
   ASSISTANT_POST_PLACES,
@@ -20,6 +20,7 @@ import type {
 import type {
   AssistantDto,
   BattlesResponse,
+  LegendaryBattlesResponse,
   CandyDto,
   DungeonsResponse,
   DaycareResponse,
@@ -47,7 +48,7 @@ import type {
   TrainerProfileResponse,
   TrainerSearchResultDto,
 } from '@poke/shared';
-import { api } from './api';
+import { ApiError, api } from './api';
 
 /** Clés TanStack Query de l'état du joueur (invalidées après chaque action). */
 export const keys = {
@@ -64,6 +65,7 @@ export const keys = {
   assistants: ['assistants'],
   candies: ['candies'],
   battles: ['battles'],
+  legendaryBattles: ['legendary-battles'],
   dungeons: ['dungeons'],
   shop: ['shop'],
   progression: ['progression'],
@@ -73,6 +75,23 @@ export const keys = {
   /** Profil (argent) : voir `App`. */
   me: ['me'],
 } as const;
+
+/**
+ * Profil du joueur (`null` : non connecté). Tous les `useQuery` de `keys.me` partent de ces
+ * options : une invalidation relance la requête avec les options du dernier abonné, qui doit
+ * donc toujours savoir la charger (un abonné en `skipToken` la faisait échouer).
+ */
+export const meQuery = queryOptions({
+  queryKey: keys.me,
+  queryFn: async (): Promise<MeResponse | null> => {
+    try {
+      return await api<MeResponse>('/api/me');
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 401) return null;
+      throw err;
+    }
+  },
+});
 
 /** Toutes les données du joueur : réservé aux changements qui touchent tout (choix du starter). */
 export const PLAYER_STATE_KEYS = [
@@ -87,6 +106,7 @@ export const PLAYER_STATE_KEYS = [
   keys.assistants,
   keys.candies,
   keys.battles,
+  keys.legendaryBattles,
   keys.dungeons,
   keys.shop,
   keys.progression,
@@ -299,6 +319,13 @@ export const useAssistants = () =>
 export const useBattles = () =>
   useQuery({ queryKey: keys.battles, queryFn: () => api<BattlesResponse>('/api/battles') });
 
+/** Combat légendaire en cours, dernier combat réglé et état de chaque légendaire à combattre. */
+export const useLegendaryBattles = () =>
+  useQuery({
+    queryKey: keys.legendaryBattles,
+    queryFn: () => api<LegendaryBattlesResponse>('/api/legendary-battles'),
+  });
+
 /** Donjon en cours, dernière tentative et bilan de chaque donjon. */
 export const useDungeons = () =>
   useQuery({ queryKey: keys.dungeons, queryFn: () => api<DungeonsResponse>('/api/dungeons') });
@@ -385,8 +412,8 @@ export function usePlayerProgress(): PlayerProgress {
   const battles = useBattles();
   const daycare = useDaycare();
   const quests = useQuests();
-  // Profil du joueur, déjà chargé par l'application (aucune requête ici).
-  const me = useQuery<MeResponse | null>({ queryKey: ['me'], queryFn: skipToken });
+  // Profil du joueur, déjà chargé par l'application : pas de nouvelle requête à l'affichage.
+  const me = useQuery({ ...meQuery, refetchOnMount: false });
   const opened = me.data?.profile?.openedRegions;
   return useMemo(
     () => ({

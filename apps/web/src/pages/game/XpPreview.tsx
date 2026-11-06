@@ -28,7 +28,7 @@ export function XpPreview({
   /** Texte de l'XP gagnée (estimation, victoire / défaite…). */
   children: ReactNode;
 }) {
-  const results = applyTeamXp(ctx, members, xp, 0);
+  const results = applyTeamXp(ctx, members, xp, 0, usePlayerBonuses(ctx));
   return (
     <div className="mt-3">
       <p className="text-sm">

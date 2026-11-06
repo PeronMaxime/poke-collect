@@ -18,7 +18,7 @@ import {
 } from './expedition';
 import type { ExpeditionInput } from './expedition';
 import { simulateZone } from './simulate';
-import { member, testContext } from './test-helpers';
+import { member, testContext, withWeatherAbilities } from './test-helpers';
 
 const ctx = testContext();
 const route1 = ctx.zone('route-1')!;
@@ -71,6 +71,30 @@ describe('temps d’une expédition', () => {
     expect(short.encounters).toHaveLength(10);
     expect(long.encounters.slice(0, 10)).toEqual(short.encounters);
     expect(long.encounters).toHaveLength(80);
+  });
+
+  it('donne la météo de l’expédition : celle qu’impose un talent, sinon celle de la zone', () => {
+    const wctx = testContext(withWeatherAbilities);
+    const input: ExpeditionInput = {
+      zone: route1,
+      elapsedMinutes: 30,
+      seed: 7,
+      team: [member('a', 25, 50)],
+      balls: null,
+      berries: null,
+      pity: {},
+      weather: null,
+    };
+    const drizzle = member('b', 25, 50, { ability: 'drizzle' });
+    const drought = member('c', 25, 50, { ability: 'drought' });
+    expect(resolveExpedition(wctx, input).weather).toBeNull();
+    expect(resolveExpedition(wctx, { ...input, weather: 'sand' }).weather).toBe('sand');
+    expect(resolveExpedition(wctx, { ...input, team: [drizzle] }).weather).toBe('rain');
+    // Sécheresse n'agit qu'en tête d'équipe.
+    expect(resolveExpedition(wctx, { ...input, team: [drought] }).weather).toBe('sun');
+    expect(
+      resolveExpedition(wctx, { ...input, team: [input.team[0]!, drought] }).weather,
+    ).toBeNull();
   });
 });
 

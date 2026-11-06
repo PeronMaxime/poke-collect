@@ -1,17 +1,18 @@
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { BattleRules, Trainer } from '@poke/content';
-import { trainerStatus } from '@poke/game-core';
+import { isTrainerRevealed, trainerStatus } from '@poke/game-core';
 import type { GameContext, TrainerStatus } from '@poke/game-core';
 import type { BattleDto, ClaimBattleResponse, TrainerRecordDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, serverOffset, useBattles, usePlayerProgress } from '../../lib/game';
+import { keys, serverOffset, useBattles, usePlayerProgress, useQuests } from '../../lib/game';
 import {
   formatCountdown,
   formatMoney,
   itemIcon,
   itemName,
+  trainerName,
   unlockConditionText,
 } from '../../lib/labels';
 import { BattleResult } from './BattleResult';
@@ -20,6 +21,14 @@ import { DungeonCombat } from './DungeonCombat';
 import { LaunchBattleDialog } from './LaunchBattleDialog';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 import { ZoneWeatherIcon } from './WeatherIcon';
+
+/** Lien vers le combat d'un dresseur (`#battles/<dresseur>`), depuis une étape de quête. */
+export const trainerBattleLink = (trainerId: string) => `#battles/${encodeURIComponent(trainerId)}`;
+
+function trainerFromHash(): string | null {
+  const [tab, trainerId] = window.location.hash.slice(1).split('/');
+  return tab === 'battles' && trainerId ? decodeURIComponent(trainerId) : null;
+}
 
 /** Au-delà, le résultat d'un combat réclamé en l'absence du joueur n'est plus montré. */
 const RESULT_MAX_AGE_MS = 3 * 24 * 3600_000;
@@ -127,6 +136,7 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const battles = useBattles();
   const progress = usePlayerProgress();
+  const quests = useQuests();
   const now = useNow();
   const [selectedRegion, setSelectedRegion] = useSavedRegionTab('battles');
   const [launch, setLaunch] = useState<Trainer | null>(null);
@@ -136,6 +146,9 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
   // Combat terminé, et celui dont le joueur a demandé le résultat.
   const [overBattle, setOverBattle] = useState<string | null>(null);
   const [claimBattle, setClaimBattle] = useState<string | null>(null);
+  // Arrivée par le lien d'un dresseur (étape de quête), et ce qui empêche de le défier.
+  const [linkedTrainerId, setLinkedTrainerId] = useState(trainerFromHash);
+  const [notice, setNotice] = useState<string | null>(null);
 
   const offset = serverOffset(battles.data, battles.dataUpdatedAt);
   const serverNow = now + offset;
@@ -144,7 +157,12 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
   const records = new Map(battles.data?.records.map((r) => [r.trainerId, r]));
   const regionId = currentRegionTab(ctx, progress, selectedRegion);
   const region = ctx.regions.find((r) => r.id === regionId);
-  const trainers = ctx.trainers.filter((t) => t.regionId === regionId);
+  const regionTrainers = ctx.trainers.filter((t) => t.regionId === regionId);
+  const trainers = regionTrainers.filter((t) => !t.questId);
+  // Dresseurs de quêtes : à part, en bas, et seulement une fois leur étape atteinte.
+  const questTrainers = regionTrainers.filter(
+    (t) => t.questId && isTrainerRevealed(ctx, t, progress),
+  );
   const badges = trainers.filter((t) => t.badge);
   const badgesEarned = badges.filter((t) => (records.get(t.id)?.wins ?? 0) > 0).length;
   const elites = trainers.filter((t) => leagueRank(t) === 'elite');
@@ -174,8 +192,44 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
   const markOver = useCallback(() => setOverBattle(activeId), [activeId]);
   const activeTrainer = active ? ctx.trainer(active.trainerId) : undefined;
   const activeTitle = activeTrainer
-    ? `Combat contre ${activeTrainer.trainerClass} ${activeTrainer.name}`
+    ? `Combat contre ${activeTrainer.trainerClass} ${trainerName(activeTrainer)}`
     : 'Combat de dresseur';
+
+  const trainerCard = (trainer: Trainer) => ({
+    ctx,
+    trainer,
+    status: trainerStatus(ctx, trainer, progress, records.get(trainer.id), serverNow),
+    record: records.get(trainer.id),
+    fighting: active?.trainerId === trainer.id,
+    busy: !!active,
+    serverNow,
+    onLaunch: () => setLaunch(trainer),
+  });
+
+  // Lien d'un dresseur : l'ancre est consommée, puis, une fois les combats et les quêtes connus,
+  // sa région s'affiche et le départ s'ouvre s'il peut être défié (sinon, ce qui l'en empêche).
+  useEffect(() => {
+    const consume = () => {
+      const trainerId = trainerFromHash();
+      if (trainerId) history.replaceState(null, '', '#battles');
+      return trainerId;
+    };
+    consume();
+    const onHash = () => setLinkedTrainerId(consume());
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+  if (linkedTrainerId && battles.data && quests.data) {
+    setLinkedTrainerId(null);
+    const trainer = ctx.trainer(linkedTrainerId);
+    if (trainer) {
+      const card = trainerCard(trainer);
+      setSelectedRegion(trainer.regionId);
+      setNotice(linkNotice(ctx, trainer, card));
+      if (card.fighting) showCombat(true);
+      else if (!card.busy && card.status.state === 'available') setLaunch(trainer);
+    }
+  }
 
   function closeResult() {
     if (shownResult) {
@@ -205,6 +259,15 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
         />
       )}
 
+      {notice && (
+        <p className="flex items-start justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          {notice}
+          <button onClick={() => setNotice(null)} aria-label="Fermer">
+            ✕
+          </button>
+        </p>
+      )}
+
       <section>
         <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
           <h2 className="text-lg font-semibold">
@@ -232,16 +295,7 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
         ) : (
           <div className="grid gap-3 md:grid-cols-2">
             {shown.map((trainer) => {
-              const card = {
-                ctx,
-                trainer,
-                status: trainerStatus(ctx, trainer, progress, records.get(trainer.id), serverNow),
-                record: records.get(trainer.id),
-                fighting: active?.trainerId === trainer.id,
-                busy: !!active,
-                serverNow,
-                onLaunch: () => setLaunch(trainer),
-              };
+              const card = trainerCard(trainer);
               const rank = leagueRank(trainer);
               return rank ? (
                 <FeaturedTrainerCard
@@ -263,6 +317,21 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
           </p>
         )}
       </section>
+
+      {questTrainers.length > 0 && (
+        <section>
+          <h2 className="mb-1 text-lg font-semibold">Dresseurs de quêtes</h2>
+          <p className="mb-3 text-sm text-slate-500">
+            Ils n’apparaissent qu’à l’étape de quête qui demande de les battre, et ne se battent
+            qu’une fois (une défaite se retente aussitôt).
+          </p>
+          <div className="grid gap-3 md:grid-cols-2">
+            {questTrainers.map((trainer) => (
+              <TrainerCard key={trainer.id} {...trainerCard(trainer)} />
+            ))}
+          </div>
+        </section>
+      )}
 
       {active && (
         <CombatWindow open={combatOpen} onClose={() => showCombat(false)}>
@@ -310,6 +379,33 @@ interface TrainerCardProps {
   onLaunch: () => void;
 }
 
+/** Ce qui empêche de défier le dresseur d'un lien (rien s'il peut l'être ou s'il est en cours). */
+function linkNotice(
+  ctx: GameContext,
+  trainer: Trainer,
+  {
+    status,
+    fighting,
+    busy,
+    serverNow,
+  }: Pick<TrainerCardProps, 'status' | 'fighting' | 'busy' | 'serverNow'>,
+): string | null {
+  const name = trainerName(trainer);
+  if (fighting) return null;
+  switch (status.state) {
+    case 'locked':
+      return trainer.questId
+        ? `${name} n’est pas encore apparu : avance dans sa quête.`
+        : `${name} est verrouillé : ${unlockText(ctx, trainer)}.`;
+    case 'defeated':
+      return `${name} est déjà battu.`;
+    case 'cooldown':
+      return `${name} se repose encore ${formatCountdown(status.until.getTime() - serverNow)}.`;
+    case 'available':
+      return busy ? `Tu affrontes déjà un dresseur : termine ce combat pour défier ${name}.` : null;
+  }
+}
+
 /** Un dresseur sans condition n'est verrouillé que par sa région. */
 const unlockText = (ctx: GameContext, trainer: Trainer) =>
   unlockConditionText(ctx, trainer.unlock) ?? 'Région verrouillée';
@@ -330,7 +426,8 @@ function TrainerHeading({
     <div className="min-w-0">
       <p className="text-xs text-slate-500">{trainer.trainerClass}</p>
       <h3 className={`font-semibold ${large ? 'text-xl' : ''}`}>
-        {trainer.name} {status.state === 'defeated' && <span className="text-emerald-600">✓</span>}
+        {trainerName(trainer)}{' '}
+        {status.state === 'defeated' && <span className="text-emerald-600">✓</span>}
         {zone && (
           <ZoneWeatherIcon
             zone={zone}
