@@ -149,7 +149,7 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
             Pokémon d’une lignée capable de méga-évoluer pour révéler son donjon.
           </p>
         ) : (
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {listed.map(({ dungeon, status }) => (
               <DungeonCard
                 key={dungeon.id}

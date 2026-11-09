@@ -351,8 +351,10 @@ export function TypeSelect({
 /** Séparateurs du sélecteur d'objets, dans l'ordre des catégories du contenu. */
 const ITEM_GROUP_LABELS: Record<ItemCategory, string> = {
   ball: 'Balls',
+  heal: 'Soin',
   berry: 'Baies',
   evolution: 'Évolution',
+  training: 'Entraînement',
   breeding: 'Élevage',
   endgame: 'Endgame',
   fossil: 'Fossiles',

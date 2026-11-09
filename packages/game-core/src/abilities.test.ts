@@ -144,9 +144,9 @@ describe('talents : expéditions', () => {
     expect(expeditionMinMinutes(ctx, 120, env)).toBe(90);
     // Jamais moins que le temps d'une rencontre.
     expect(expeditionMinMinutes(ctx, 3, env)).toBe(3);
-    const base = expeditionPlan(ctx, 120);
+    // Talent ×1,5 sur le rythme, intervalle allongé compris : (20 + 60 / 3,5) × 1,5 = 55,7.
     const plan = expeditionPlan(ctx, 120, env);
-    expect(plan.encounters).toBe(Math.round(base.encounters * 1.5));
+    expect(plan.encounters).toBe(Math.floor((20 + 60 / 3.5) * 1.5));
     expect(expedition(team).encounters).toHaveLength(
       Math.round(expeditionPlan(ctx, 60).encounters * 1.5),
     );

@@ -124,6 +124,13 @@ export const SECTIONS: AdminSection[] = [
     phase: 0,
   },
   {
+    path: '/bag',
+    label: 'Sac du jeu',
+    description:
+      'Onglets du Sac, rubriques (catégories d’objets) qu’ils regroupent et leurs titres.',
+    phase: 0,
+  },
+  {
     path: '/telemetry',
     label: 'Télémétrie',
     description: 'Temps de complétion, goulets (dresseurs, quêtes, zones), activité, économie.',

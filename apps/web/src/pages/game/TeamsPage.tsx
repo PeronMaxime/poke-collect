@@ -1,4 +1,6 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
+import type { KeyboardEvent, PointerEvent } from 'react';
+import { motion } from 'motion/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { memberPower } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
@@ -126,7 +128,7 @@ export function TeamsPage({ ctx }: { ctx: GameContext }) {
       </div>
 
       {saved.length > 0 && (
-        <div className="mb-4 grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {saved.map((t) => {
             const list = t.pokemonIds.flatMap((id) => byId.get(id) ?? []);
             const editing = draft?.id === t.id;
@@ -176,7 +178,7 @@ export function TeamsPage({ ctx }: { ctx: GameContext }) {
       )}
 
       {draft && (
-        <div className="card sticky top-2 z-10 mb-4 p-3 shadow-lg">
+        <div className="card sticky top-[calc(var(--hud-h,0px)+0.5rem)] z-10 mb-4 p-3 shadow-lg">
           <div className="flex flex-wrap items-center gap-2">
             <input
               className="input max-w-56"
@@ -221,79 +223,21 @@ export function TeamsPage({ ctx }: { ctx: GameContext }) {
               </button>
             </div>
           </div>
-          <div className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
-            {Array.from({ length: TEAM_MAX_SIZE }, (_, i) => {
-              const p = members[i];
-              if (!p)
-                return (
-                  <div
-                    key={i}
-                    className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-slate-300 p-1 text-center text-xs text-slate-400 dark:border-slate-700"
-                  >
-                    {i === members.length ? 'Touche un Pokémon du PC' : ''}
-                  </div>
-                );
-              const species = ctx.species(p.speciesId, p.formId);
-              return (
-                <div
-                  key={p.id}
-                  className="relative flex flex-col items-center rounded-xl border border-brand-500 bg-brand-500/10 p-1 text-xs"
-                >
-                  <span className="absolute top-0.5 left-1.5 text-[10px] font-semibold text-slate-500">
-                    {i + 1}
-                  </span>
-                  <button
-                    type="button"
-                    className="absolute top-0 right-1 text-slate-400 hover:text-red-600"
-                    onClick={() => toggle(p)}
-                    aria-label={`Retirer ${species?.nameFr ?? 'ce Pokémon'}`}
-                    title="Retirer de l'équipe"
-                  >
-                    ✕
-                  </button>
-                  <PokemonSprite
-                    speciesId={p.speciesId}
-                    formId={p.formId}
-                    shiny={p.isShiny}
-                    size={48}
-                  />
-                  <span className="max-w-full truncate">
-                    {species?.nameFr} {p.isShiny && <ShinyStar />}
-                  </span>
-                  <span className="text-slate-500">N.{p.level}</span>
-                  <span className="flex gap-1">
-                    <button
-                      type="button"
-                      className="px-1 text-slate-400 hover:text-slate-900 disabled:opacity-30 dark:hover:text-slate-100"
-                      disabled={i === 0}
-                      onClick={() => move(i, -1)}
-                      aria-label="Avancer"
-                      title="Avancer dans l'ordre de passage"
-                    >
-                      ‹
-                    </button>
-                    <button
-                      type="button"
-                      className="px-1 text-slate-400 hover:text-slate-900 disabled:opacity-30 dark:hover:text-slate-100"
-                      disabled={i === members.length - 1}
-                      onClick={() => move(i, 1)}
-                      aria-label="Reculer"
-                      title="Reculer dans l'ordre de passage"
-                    >
-                      ›
-                    </button>
-                  </span>
-                </div>
-              );
-            })}
-          </div>
+          <TeamSlots
+            ctx={ctx}
+            members={members}
+            onReorder={(pokemonIds) => setDraft({ ...draft, pokemonIds })}
+            onMove={move}
+            onRemove={toggle}
+          />
           {error && <p className="mt-2 text-sm text-red-600">{errorText(error)}</p>}
         </div>
       )}
 
       <h3 className="mb-2 font-semibold">PC</h3>
       <PcFilterBar ctx={ctx} browser={browser} />
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+      {/* Mêmes cases bornées que le PC : le nombre de colonnes suit la largeur de l'écran. */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))]">
         <ProgressiveItems items={browser.filtered} resetKey={browser.viewKey}>
           {(entry) => {
             const { p } = entry;
@@ -338,6 +282,155 @@ export function TeamsPage({ ctx }: { ctx: GameContext }) {
       {browser.filtered.length === 0 && !pokemon.isPending && (
         <p className="text-sm text-slate-500">Aucun Pokémon ne correspond.</p>
       )}
+    </div>
+  );
+}
+
+/** Glisser en cours : ordre provisoire et décalage de la carte tenue par rapport à sa case. */
+interface SlotDrag {
+  id: string;
+  order: string[];
+  dx: number;
+  dy: number;
+}
+
+/**
+ * Emplacements de l'équipe en cours : l'ordre de passage se change en glissant les cartes (souris
+ * ou doigt), ou au clavier avec les flèches gauche et droite sur une carte. La grille passe sur
+ * deux lignes sur mobile : le glisser vise la case la plus proche du pointeur, quelle que soit la
+ * ligne.
+ */
+function TeamSlots({
+  ctx,
+  members,
+  onReorder,
+  onMove,
+  onRemove,
+}: {
+  ctx: GameContext;
+  members: readonly PokemonDto[];
+  onReorder: (pokemonIds: string[]) => void;
+  onMove: (index: number, delta: number) => void;
+  onRemove: (p: PokemonDto) => void;
+}) {
+  const gridRef = useRef<HTMLDivElement>(null);
+  const [drag, setDrag] = useState<SlotDrag | null>(null);
+  const ids = members.map((p) => p.id);
+  const byId = new Map(members.map((p) => [p.id, p]));
+  const shown = (drag?.order ?? ids).flatMap((id) => byId.get(id) ?? []);
+
+  function start(e: PointerEvent<HTMLDivElement>, id: string) {
+    const grid = gridRef.current;
+    if (!grid || e.button !== 0 || (e.target as Element).closest('button')) return;
+    const from = ids.indexOf(id);
+    const origin = grid.getBoundingClientRect();
+    // Cases de la grille dans l'ordre, relatives à la grille : elles ne bougent pas pendant le
+    // glisser, seules les cartes changent de case.
+    const cells = [...grid.children].map((el) => {
+      const r = el.getBoundingClientRect();
+      return { left: r.left - origin.left, top: r.top - origin.top, w: r.width, h: r.height };
+    });
+    const grabX = e.clientX - origin.left - cells[from]!.left;
+    const grabY = e.clientY - origin.top - cells[from]!.top;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    let order = ids;
+    let active = false;
+
+    const onPointerMove = (ev: globalThis.PointerEvent) => {
+      if (!active && Math.hypot(ev.clientX - startX, ev.clientY - startY) < 5) return;
+      active = true;
+      // Grille relue à chaque mouvement : la page peut défiler pendant le glisser.
+      const g = grid.getBoundingClientRect();
+      const x = ev.clientX - g.left;
+      const y = ev.clientY - g.top;
+      // Case occupée la plus proche du pointeur (les cases vides restent derrière l'équipe).
+      let target = 0;
+      let best = Infinity;
+      for (let i = 0; i < ids.length; i++) {
+        const c = cells[i]!;
+        const d = Math.hypot(x - (c.left + c.w / 2), y - (c.top + c.h / 2));
+        if (d < best) [best, target] = [d, i];
+      }
+      if (order.indexOf(id) !== target) {
+        order = order.filter((other) => other !== id);
+        order.splice(target, 0, id);
+      }
+      const cell = cells[target]!;
+      setDrag({ id, order, dx: x - grabX - cell.left, dy: y - grabY - cell.top });
+    };
+    const finish = (commit: boolean) => () => {
+      window.removeEventListener('pointermove', onPointerMove);
+      window.removeEventListener('pointerup', onUp);
+      window.removeEventListener('pointercancel', onCancel);
+      setDrag(null);
+      if (commit && active && order !== ids) onReorder(order);
+    };
+    const onUp = finish(true);
+    const onCancel = finish(false);
+    window.addEventListener('pointermove', onPointerMove);
+    window.addEventListener('pointerup', onUp);
+    window.addEventListener('pointercancel', onCancel);
+  }
+
+  function onKeyDown(e: KeyboardEvent<HTMLDivElement>, index: number) {
+    if (e.target !== e.currentTarget || (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight')) return;
+    e.preventDefault();
+    const card = e.currentTarget;
+    onMove(index, e.key === 'ArrowLeft' ? -1 : 1);
+    // La carte change de place dans le DOM : elle garde le focus.
+    requestAnimationFrame(() => card.focus());
+  }
+
+  return (
+    <div ref={gridRef} className="mt-2 grid grid-cols-3 gap-2 sm:grid-cols-6">
+      {shown.map((p, i) => {
+        const species = ctx.species(p.speciesId, p.formId);
+        const held = drag?.id === p.id;
+        return (
+          <motion.div
+            key={p.id}
+            layout={held ? false : 'position'}
+            transition={{ duration: 0.15 }}
+            style={{ x: held ? drag.dx : 0, y: held ? drag.dy : 0 }}
+            tabIndex={0}
+            aria-label={`${i + 1}. ${species?.nameFr ?? 'Pokémon'} (flèches gauche et droite pour changer l'ordre)`}
+            title="Glisser pour changer l'ordre de passage"
+            onPointerDown={(e) => start(e, p.id)}
+            onKeyDown={(e) => onKeyDown(e, i)}
+            // Image du sprite inerte : sinon le navigateur lance son propre glisser d'image.
+            className={`card relative flex cursor-grab touch-none flex-col items-center p-1 text-xs select-none [&_img]:pointer-events-none ${
+              held ? 'z-20 cursor-grabbing shadow-xl!' : ''
+            }`}
+          >
+            <span className="absolute top-0.5 left-1.5 text-[10px] font-semibold text-slate-500">
+              {i + 1}
+            </span>
+            <button
+              type="button"
+              className="absolute top-0 right-1 text-slate-400 hover:text-red-600"
+              onClick={() => onRemove(p)}
+              aria-label={`Retirer ${species?.nameFr ?? 'ce Pokémon'}`}
+              title="Retirer de l'équipe"
+            >
+              ✕
+            </button>
+            <PokemonSprite speciesId={p.speciesId} formId={p.formId} shiny={p.isShiny} size={48} />
+            <span className="max-w-full truncate">
+              {species?.nameFr} {p.isShiny && <ShinyStar />}
+            </span>
+            <span className="text-slate-500">N.{p.level}</span>
+          </motion.div>
+        );
+      })}
+      {Array.from({ length: TEAM_MAX_SIZE - shown.length }, (_, k) => (
+        <div
+          key={`empty-${k}`}
+          className="flex min-h-24 items-center justify-center rounded-xl border border-dashed border-slate-300 p-1 text-center text-xs text-slate-400 dark:border-slate-700"
+        >
+          {k === 0 ? 'Touche un Pokémon du PC' : ''}
+        </div>
+      ))}
     </div>
   );
 }

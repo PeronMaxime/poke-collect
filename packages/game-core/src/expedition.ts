@@ -62,52 +62,104 @@ export function expeditionMinMinutes(
   return Math.min(maxDurationMinutes, Math.max(encounterIntervalMinutes, minutes));
 }
 
-/** Rythme des rencontres : talents de l'équipe, et baies de rencontres depuis le départ. */
+/**
+ * Rythme des rencontres : talents de l'équipe, baies de rencontres depuis le départ, et intervalle
+ * qui s'allonge à chaque heure passée (par palier).
+ */
 export interface EncounterClock {
+  /** Rencontres par minute pendant la première heure, talents compris (hors baies). */
   perMinute: number;
   boost: number;
   boostMinutes: number;
+  /** Intervalle de base et son allongement par heure passée, en minutes ; absents = constant. */
+  intervalMinutes?: number;
+  intervalGrowthMinutes?: number;
 }
+
+const HOUR_MINUTES = 60;
 
 function encounterClock(
   ctx: GameContext,
   env?: AbilityEnv,
   encounterBerries?: ItemStack | null,
+  growthMinutes?: number,
 ): EncounterClock {
-  const { encounterIntervalMinutes, berryDurationMinutes } = ctx.balance.expeditions;
+  const { encounterIntervalMinutes, encounterIntervalGrowthMinutes, berryDurationMinutes } =
+    ctx.balance.expeditions;
   const effect = encounterBerries && ctx.itemEffect(encounterBerries.itemId, 'encounterBoost');
   return {
     perMinute: (env ? abilityMultiplier(ctx, env, 'encounters') : 1) / encounterIntervalMinutes,
     boost: effect ? effect.multiplier : 1,
     boostMinutes: effect ? encounterBerries.quantity * berryDurationMinutes : 0,
+    intervalMinutes: encounterIntervalMinutes,
+    intervalGrowthMinutes: growthMinutes ?? encounterIntervalGrowthMinutes ?? 0,
   };
+}
+
+/** Intervalle de base entre deux rencontres pendant l'heure `hour` (0 = la première). */
+export function encounterIntervalAt(ctx: GameContext, hour: number): number {
+  const { encounterIntervalMinutes, encounterIntervalGrowthMinutes } = ctx.balance.expeditions;
+  return encounterIntervalMinutes + (encounterIntervalGrowthMinutes ?? 0) * Math.max(0, hour);
+}
+
+/** Rythme (hors baies) pendant l'heure `hour` : les talents s'appliquent à l'intervalle allongé. */
+function hourRate(clock: EncounterClock, hour: number): number {
+  const growth = clock.intervalGrowthMinutes ?? 0;
+  const interval = clock.intervalMinutes ?? 0;
+  if (growth <= 0 || interval <= 0) return clock.perMinute;
+  return (clock.perMinute * interval) / (interval + growth * hour);
+}
+
+/** Tranches de rythme constant, de proche en proche : une par heure, coupée à la fin des baies. */
+function* clockSegments(clock: EncounterClock) {
+  let start = 0;
+  for (let hour = 0; ; hour++) {
+    const end = (hour + 1) * HOUR_MINUTES;
+    const rate = hourRate(clock, hour);
+    if (start < clock.boostMinutes && clock.boostMinutes < end) {
+      yield { start, end: clock.boostMinutes, rate: rate * clock.boost };
+      start = clock.boostMinutes;
+    }
+    yield { start, end, rate: start < clock.boostMinutes ? rate * clock.boost : rate };
+    start = end;
+  }
 }
 
 /** Rencontres survenues après `minutes` : le temps sous l'effet d'une baie compte davantage. */
 function encountersAfter(clock: EncounterClock, minutes: number): number {
-  const boosted = Math.min(minutes, clock.boostMinutes);
-  return Math.floor(clock.perMinute * (minutes + (clock.boost - 1) * boosted) + EPSILON);
+  let total = 0;
+  for (const s of clockSegments(clock)) {
+    if (s.start >= minutes) break;
+    total += s.rate * (Math.min(s.end, minutes) - s.start);
+  }
+  return Math.floor(total + EPSILON);
 }
 
 /** Moment de la n-ième rencontre (à partir de 1). */
 function encounterTime(clock: EncounterClock, n: number): number {
-  const boostedEncounters = clock.perMinute * clock.boost * clock.boostMinutes;
-  return n <= boostedEncounters
-    ? n / (clock.perMinute * clock.boost)
-    : clock.boostMinutes + (n - boostedEncounters) / clock.perMinute;
+  if (n <= 0) return 0;
+  if (!(clock.perMinute > 0)) return Infinity;
+  let total = 0;
+  for (const s of clockSegments(clock)) {
+    const count = s.rate * (s.end - s.start);
+    if (total + count >= n - EPSILON) return Math.max(s.start, s.start + (n - total) / s.rate);
+    total += count;
+  }
+  return Infinity; // jamais atteint : les tranches sont sans fin
 }
 
 /**
- * Moment de la n-ième rencontre (à partir de 1), en minutes depuis le départ : talents de l'équipe
- * et baies de rencontres compris.
+ * Moment de la n-ième rencontre (à partir de 1), en minutes depuis le départ : talents de l'équipe,
+ * baies de rencontres et allongement de l'intervalle (figé au départ, réglage actuel par défaut).
  */
 export function encounterMinutes(
   ctx: GameContext,
   n: number,
   env?: AbilityEnv,
   encounterBerries?: ItemStack | null,
+  growthMinutes?: number,
 ): number {
-  return encounterTime(encounterClock(ctx, env, encounterBerries), n);
+  return encounterTime(encounterClock(ctx, env, encounterBerries, growthMinutes), n);
 }
 
 /** Baies entamées après `minutes` : une pour chaque tranche d'effet commencée. */
@@ -385,8 +437,9 @@ export function expeditionPlan(
   minutes: number,
   env?: AbilityEnv,
   encounterBerries?: ItemStack | null,
+  growthMinutes?: number,
 ): ExpeditionPlan {
-  return planAfter(expeditionPace(ctx, env, encounterBerries), minutes);
+  return planAfter(expeditionPace(ctx, env, encounterBerries, growthMinutes), minutes);
 }
 
 /**
@@ -402,9 +455,10 @@ export function expeditionPace(
   ctx: GameContext,
   env?: AbilityEnv,
   encounterBerries?: ItemStack | null,
+  growthMinutes?: number,
 ): ExpeditionPace {
   return {
-    ...encounterClock(ctx, env, encounterBerries),
+    ...encounterClock(ctx, env, encounterBerries, growthMinutes),
     lootPerMinute:
       (env ? abilityMultiplier(ctx, env, 'lootRolls') : 1) /
       ctx.balance.expeditions.lootIntervalMinutes,
@@ -674,6 +728,11 @@ export interface ExpeditionInput {
   berries: ItemStack | null;
   /** Baies de rencontres : les rencontres s'accélèrent le temps de leur effet, depuis le départ. */
   encounterBerries?: ItemStack | null;
+  /**
+   * Allongement de l'intervalle entre deux rencontres par heure passée, figé au départ (0 pour
+   * les anciennes expéditions) ; par défaut, le réglage du contenu.
+   */
+  intervalGrowthMinutes?: number;
   /** Échecs de capture accumulés par espèce. */
   pity: Readonly<Record<number, number>>;
   /** Par défaut, calculée à partir de l'équipe (le simulateur la fixe directement). */
@@ -892,7 +951,7 @@ export function createExpeditionRun(
   const bonuses = abilityBonuses(ctx, env, input.bonuses ?? NO_BONUSES);
   const attracted = attractedTypes(ctx, env);
   const extraLevels = Math.round(abilityModifier(ctx, env, 'wildLevel'));
-  const clock = encounterClock(ctx, env, input.encounterBerries);
+  const clock = encounterClock(ctx, env, input.encounterBerries, input.intervalGrowthMinutes);
   // Copie enrichie au fil des captures : un nouveau Pokémon capturé ne l'est plus ensuite.
   const caught = {
     speciesIds: new Set(input.caught?.speciesIds),

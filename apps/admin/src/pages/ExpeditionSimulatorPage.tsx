@@ -22,7 +22,7 @@ import { TagBadge, TagToggleList } from '@web/components/tags';
 import { Modal, PokemonSprite } from '@web/components/ui';
 import { ZoneCard } from '@web/pages/game/ExpeditionsPage';
 import { NewbornActionsView } from '@web/pages/game/HatchReveal';
-import { LaunchExpeditionForm } from '@web/pages/game/LaunchExpeditionDialog';
+import { LAUNCH_DIALOG_CLASS, LaunchExpeditionForm } from '@web/pages/game/LaunchExpeditionDialog';
 import { ExpeditionRevealView } from '@web/pages/game/LootReveal';
 import { TeamPicker, nameMatcher, pillClass, useTeamPickerOver } from '@web/pages/game/TeamPicker';
 import { VersionBanner } from '../components/EntityPage';
@@ -356,9 +356,14 @@ function SimulatorDialog({
   }
 
   return (
-    <Modal open onClose={sim ? () => setSim(null) : onClose} wide>
+    <Modal
+      open
+      onClose={sim ? () => setSim(null) : onClose}
+      wide={sim ? true : 'xl'}
+      className={LAUNCH_DIALOG_CLASS}
+    >
       {/* Le formulaire reste monté pendant le résultat : ses réglages sont conservés. */}
-      <div hidden={!!sim}>
+      <div hidden={!!sim} className="flex min-h-0 flex-1 flex-col">
         <LaunchExpeditionForm
           ctx={ctx}
           zone={zone}
@@ -371,20 +376,30 @@ function SimulatorDialog({
           team={picker.team}
           members={picker.members}
           onAutoTeam={() => picker.autoSelect(ctx.balance.expeditions.maxTeamSize)}
-          renderTeam={(power, env) => (
-            <>
-              <TeamPicker ctx={ctx} zone={zone} picker={picker} power={power} abilityEnv={env} />
-              <VirtualPcEditor
-                ctx={ctx}
-                regionId={zone.regionId}
-                pc={pc}
-                onChange={(next) => {
-                  // Un Pokémon retiré du PC quitte aussi l'équipe.
-                  picker.setTeam((t) => t.filter((id) => next.some((p) => p.id === id)));
-                  onPcChange(next);
-                }}
-              />
-            </>
+          renderTeam={({ power, env, errors, onDone }) => (
+            <TeamPicker
+              ctx={ctx}
+              zone={zone}
+              picker={picker}
+              power={power}
+              abilityEnv={env}
+              errors={errors}
+              onDone={onDone}
+              extra={
+                <div className="p-2">
+                  <VirtualPcEditor
+                    ctx={ctx}
+                    regionId={zone.regionId}
+                    pc={pc}
+                    onChange={(next) => {
+                      // Un Pokémon retiré du PC quitte aussi l'équipe.
+                      picker.setTeam((t) => t.filter((id) => next.some((p) => p.id === id)));
+                      onPcChange(next);
+                    }}
+                  />
+                </div>
+              }
+            />
           )}
           extra={
             <div className="mt-3 space-y-2 rounded-xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
@@ -443,13 +458,14 @@ function SimulatorDialog({
         <ExpeditionRevealView
           key={runs}
           ctx={ctx}
-          expedition={{ zoneId: zone.id, questId: null, shinyChain: sim.chain, result: sim.result }}
+          expedition={{ zoneId: zone.id, questId: null, result: sim.result }}
           pokemon={(id) =>
             pcById.get(id) ?? sim.result.encounters.find((e) => e.pokemonId === id)?.pokemon
           }
           renderNewborn={(id) => <SimNewbornActions key={`${runs}:${id}`} />}
+          onClose={() => setSim(null)}
           footer={
-            <div className="mt-6 flex flex-wrap items-center justify-end gap-2">
+            <>
               <span className="mr-auto text-xs text-slate-400">Graine {sim.seed}</span>
               <button
                 className="btn-ghost"
@@ -465,10 +481,10 @@ function SimulatorDialog({
               >
                 ↻ Relancer
               </button>
-              <button className="btn-primary" onClick={() => setSim(null)}>
+              <button className="btn-primary px-6 py-3" onClick={() => setSim(null)}>
                 Continuer
               </button>
-            </div>
+            </>
           }
         />
       )}

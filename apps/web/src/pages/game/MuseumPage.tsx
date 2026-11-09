@@ -25,6 +25,7 @@ import {
   speciesName,
 } from '../../lib/labels';
 import { AssistantCard } from './AssistantCard';
+import { BuildingSection, EMPTY_PLACE, Notice, SMALL_BUTTON, StateTag } from './BuildingParts';
 import { HatchReveal } from './HatchReveal';
 
 /** Musée : les fossiles trouvés en expédition y redeviennent des Pokémon, après un délai. */
@@ -78,15 +79,14 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
   const error = deposit.error ?? cancel.error ?? revive.error;
 
   return (
-    <div className="space-y-8">
-      <section>
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-semibold">
-            Musée{' '}
-            <span className="text-sm font-normal text-slate-500">
-              {revivals.length} / {slots}
-            </span>
-          </h2>
+    <div className="space-y-5">
+      <BuildingSection
+        id="museum.places"
+        title="Musée"
+        label="le Musée"
+        count={`${revivals.filter((r) => r.slotIndex < slots).length}/${slots}`}
+        countTitle="Fossiles en restauration / places"
+        actions={
           <button
             className="btn-primary"
             disabled={ready === 0 || pending}
@@ -94,13 +94,17 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
           >
             {revive.isPending ? 'Restauration…' : `Récupérer${ready ? ` (${ready})` : ''}`}
           </button>
-        </div>
-        <p className="mb-3 text-sm text-slate-500">
-          Confie un fossile aux scientifiques du Musée : après quelques heures, il redevient un
-          Pokémon. Chaque place a son assistant : son talent agit sur le fossile qu’on y dépose (la
-          première place libre).
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
+        }
+        intro={
+          <>
+            Confie un fossile aux scientifiques du Musée : après quelques heures, il redevient un
+            Pokémon. Chaque place a son assistant : son talent agit sur le fossile qu’on y dépose
+            (la première place libre).
+          </>
+        }
+      >
+        {error && <Notice tone="bad">{errorText(error)}</Notice>}
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-3.5">
           {Array.from({ length: shown }, (_, i) => {
             const revival = revivals.find((r) => r.slotIndex === i);
             return revival ? (
@@ -116,9 +120,9 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
             ) : (
               <div
                 key={`empty-${i}`}
-                className="flex min-h-36 flex-col gap-2 rounded-2xl border-2 border-dashed border-slate-300 p-4 dark:border-slate-700"
+                className={`flex min-h-44 flex-col gap-2.5 p-2.5 ${EMPTY_PLACE}`}
               >
-                <span className="grid flex-1 place-items-center text-center text-sm text-slate-500">
+                <span className="grid flex-1 place-items-center text-center text-sm">
                   {i < slots ? 'Place libre' : 'Place fermée'}
                 </span>
                 <AssistantCard ctx={ctx} post="museum" slot={i} closed={i >= slots} />
@@ -126,31 +130,38 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
             );
           })}
         </div>
-      </section>
+      </BuildingSection>
 
-      <section>
-        <h2 className="mb-3 text-lg font-semibold">Tes fossiles</h2>
+      <BuildingSection
+        id="museum.fossils"
+        title="Tes fossiles"
+        label="tes fossiles"
+        count={fossils.reduce((n, s) => n + s.quantity, 0)}
+        countTitle="Fossiles dans le sac"
+      >
         {fossils.length === 0 ? (
-          <p className="text-sm text-slate-500">
+          <p className="text-sm text-slate-500 dark:text-slate-400">
             Aucun fossile dans ton sac.
             {digSites.length > 0 &&
               ` On en trouve parfois en expédition : ${digSites.map((z) => z.name).join(', ')}.`}
           </p>
         ) : (
-          <ul className="grid gap-2 sm:grid-cols-2">
+          <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-2.5">
             {fossils.map((s) => {
               const effect = fossilEffect(ctx, s.itemId)!;
               return (
-                <li key={s.itemId} className="card flex items-center gap-3 p-3">
-                  <img
-                    src={itemIcon(ctx, s.itemId)}
-                    alt=""
-                    className="h-10 w-10 shrink-0 [image-rendering:pixelated]"
-                  />
+                <li key={s.itemId} className="tile flex items-center gap-3 p-2.5">
+                  <span className="sprite-well size-12 shrink-0">
+                    <img
+                      src={itemIcon(ctx, s.itemId)}
+                      alt=""
+                      className="size-10 [image-rendering:pixelated]"
+                    />
+                  </span>
                   <div className="min-w-0 flex-1 text-sm">
                     <p className="flex items-baseline justify-between gap-2">
-                      <span className="font-medium">{itemName(ctx, s.itemId)}</span>
-                      <span className="font-mono">× {s.quantity}</span>
+                      <span className="truncate font-medium">{itemName(ctx, s.itemId)}</span>
+                      <span className="shrink-0 font-mono text-slate-500">× {s.quantity}</span>
                     </p>
                     <p className="text-xs text-slate-500">
                       {speciesName(ctx, effect.speciesId, effect.formId)} · N.{effect.level} ·{' '}
@@ -158,7 +169,7 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
                     </p>
                   </div>
                   <button
-                    className="btn-primary"
+                    className="btn-primary px-3 py-2"
                     disabled={full || pending}
                     title={full ? 'Toutes les places du Musée sont occupées.' : undefined}
                     onClick={() => deposit.mutate(s.itemId)}
@@ -170,16 +181,13 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
             })}
           </ul>
         )}
-      </section>
-
-      {error && <p className="text-sm text-red-600">{errorText(error)}</p>}
+      </BuildingSection>
 
       <HatchReveal
         ctx={ctx}
         data={revived && { ...revived, hatched: revived.revived }}
         onClose={() => setRevived(null)}
-        title={(n) => `${n} fossile${n > 1 ? 's' : ''} restauré${n > 1 ? 's' : ''} !`}
-        cover={<FossilStone />}
+        kind="fossil"
       />
     </div>
   );
@@ -204,53 +212,56 @@ function RevivalCard({
   const end = Date.parse(revival.readyAt);
   const ready = serverNow >= end;
   return (
-    <div className={`card flex flex-col gap-2 p-4 ${ready ? 'ring-2 ring-brand-500/50' : ''}`}>
-      <div className="flex items-center gap-3">
-        <img
-          src={itemIcon(ctx, revival.itemId)}
-          alt=""
-          className="h-10 w-10 shrink-0 [image-rendering:pixelated]"
-        />
-        <span className="text-slate-400" aria-hidden>
-          →
+    <div className={`tile flex flex-col gap-2.5 p-2.5 ${ready ? 'border-amber-600 bg-done' : ''}`}>
+      <div className="flex items-center gap-2">
+        <span className="sprite-well size-14 shrink-0">
+          <img
+            src={itemIcon(ctx, revival.itemId)}
+            alt=""
+            className="size-10 [image-rendering:pixelated]"
+          />
         </span>
-        <span className={ready ? '' : 'opacity-40 brightness-0 dark:invert'}>
-          <PokemonSprite speciesId={revival.speciesId} formId={revival.formId} size={56} />
+        <span className="font-pixel text-[10px] text-slate-400" aria-hidden>
+          ▶
+        </span>
+        <span className="sprite-well relative h-14 flex-1 overflow-hidden">
+          <span className={ready ? '' : 'opacity-40 brightness-0 dark:invert'}>
+            <PokemonSprite speciesId={revival.speciesId} formId={revival.formId} size={56} />
+          </span>
+          {ready && (
+            <span className="absolute top-1 right-1">
+              <StateTag tone="ready">Prêt</StateTag>
+            </span>
+          )}
         </span>
       </div>
-      <p className="text-sm font-medium">
-        {itemName(ctx, revival.itemId)} → {speciesName(ctx, revival.speciesId, revival.formId)}
+      <p className="text-sm leading-tight font-medium">
+        {speciesName(ctx, revival.speciesId, revival.formId)}
+        <span className="block text-xs font-normal text-slate-500">
+          {itemName(ctx, revival.itemId)}
+        </span>
       </p>
       <ProgressBar value={(serverNow - start) / (end - start)} />
-      <div className="flex items-center justify-between gap-2 text-xs">
-        <span className="font-mono text-slate-500">
+      <div className="flex min-h-8 items-center justify-between gap-2 text-xs">
+        <span
+          className={
+            ready ? 'font-bold text-amber-800 dark:text-[#f8d878]' : 'font-mono text-slate-500'
+          }
+        >
           {ready ? 'Restauré !' : formatCountdown(end - serverNow)}
         </span>
         {!ready && (
           <button
-            className="text-slate-500 hover:underline disabled:opacity-50"
+            className={`btn-ghost ${SMALL_BUTTON}`}
             disabled={busy}
             onClick={onCancel}
-            title="Le fossile revient dans ton sac."
+            title="Le fossile revient dans ton sac ; sa restauration repartira de zéro."
           >
-            Reprendre
+            Retirer
           </button>
         )}
       </div>
       <AssistantCard ctx={ctx} post="museum" slot={revival.slotIndex} closed={closed} />
-    </div>
-  );
-}
-
-/** Pierre fossile (animation de restauration). */
-function FossilStone({ size = 64 }: { size?: number }) {
-  return (
-    <div
-      aria-hidden
-      className="relative rounded-[45%_55%_50%_50%/55%_50%_50%_45%] border border-stone-400 bg-gradient-to-br from-stone-200 to-stone-400 shadow-inner dark:border-stone-600 dark:from-stone-400 dark:to-stone-600"
-      style={{ width: size, height: size * 0.82 }}
-    >
-      <span className="absolute inset-[22%] rounded-full border-4 border-dotted border-stone-500/60" />
     </div>
   );
 }

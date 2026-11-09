@@ -15,7 +15,14 @@ import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
 import { playerTransaction } from './tx';
 import { requireStartedProfile } from './expeditions';
-import { addItems, baseProgress, playerSlotsNow, questRecords, questRows } from './store';
+import {
+  addItems,
+  baseProgress,
+  playerSlotsNow,
+  questRecords,
+  questRowStep,
+  questRows,
+} from './store';
 import type { QuestProgressRow } from './store';
 
 /**
@@ -43,7 +50,7 @@ function planQuestSync(
   now: Date,
   event?: QuestEvent,
 ): QuestWrite[] {
-  const records = questRecords(rows);
+  const records = questRecords(ctx, rows);
   const progress = { ...base, questSteps: questStepsDone(ctx, base, records) };
   const byId = new Map(rows.map((r) => [r.questId, r]));
   const writes: QuestWrite[] = [];
@@ -111,7 +118,7 @@ export function toQuestProgressDto(
 ): QuestProgressDto | null {
   const quest = ctx.quest(row.questId);
   if (!quest) return null; // quête supprimée du contenu
-  const step = Math.min(row.step, quest.steps.length);
+  const step = Math.min(questRowStep(ctx, row), quest.steps.length);
   return {
     questId: row.questId,
     status: questStatus(quest, step, row.claimedAt !== null) as QuestProgressDto['status'],
@@ -167,7 +174,8 @@ export async function claimQuest(
   return playerTransaction(db, userId, async (tx) => {
     const rows = await syncQuests(tx, ctx, userId, now);
     const row = rows.find((r) => r.questId === quest.id);
-    if (!row || row.step < quest.steps.length) throw new GameError(409, 'QUEST_NOT_COMPLETED');
+    if (!row || questRowStep(ctx, row) < quest.steps.length)
+      throw new GameError(409, 'QUEST_NOT_COMPLETED');
     // Verrou : seule la première réclamation passe.
     const [locked] = await tx
       .update(questProgress)

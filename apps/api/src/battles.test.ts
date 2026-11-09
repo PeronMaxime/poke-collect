@@ -17,7 +17,19 @@ let app: Awaited<ReturnType<typeof buildApp>>['app'];
 
 beforeAll(async () => {
   await handle.migrate();
-  await ensureSeedContent(handle.db, seedContent);
+  // Un talent utile à la Pension, pour y affecter un assistant (un assistant inutile est refusé).
+  await ensureSeedContent(handle.db, {
+    ...seedContent,
+    abilities: [
+      {
+        id: 'torrent',
+        description: '',
+        effects: [
+          { type: 'modifier', param: 'eggSpeed', value: 10, scope: 'team', conditions: [] },
+        ],
+      },
+    ],
+  });
   ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
 });
 afterAll(async () => {
@@ -242,6 +254,8 @@ describe('combats de dresseurs', () => {
     const notKo = await call('POST', '/api/center', { pokemonIds: [starter.id] });
     expect(notKo).toMatchObject({ status: 409, body: { error: 'POKEMON_NOT_KO' } });
 
+    // Talent utile à la Pension (les Pokémon obtenus arrivent sans talent).
+    await handle.db.update(pokemon).set({ ability: 'torrent' }).where(eq(pokemon.id, weak!.id));
     const ko = await call('PUT', '/api/assistants/daycare/0', { pokemonId: weak!.id });
     expect(ko.body).toMatchObject({ error: 'POKEMON_KO' });
     const healed = await call<PokemonDto[]>('POST', '/api/center', { pokemonIds: [weak!.id] });

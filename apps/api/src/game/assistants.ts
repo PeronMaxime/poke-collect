@@ -72,7 +72,7 @@ export async function assignAssistant(
     if (!canAssist(ctx, post, row)) {
       throw new GameError(
         400,
-        ASSISTANT_POST_INFO[post].requiredParam ? 'ASSISTANT_NO_ABILITY' : 'ASSISTANT_WRONG_TYPE',
+        ASSISTANT_POST_INFO[post].requiredType ? 'ASSISTANT_WRONG_TYPE' : 'ASSISTANT_NO_ABILITY',
       );
     }
     // Changement d'arroseur : les pousses s'arrêtent à la vitesse de l'ancien, puis reprennent.

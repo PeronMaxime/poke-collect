@@ -18,6 +18,7 @@ import { DungeonsPage } from './pages/content/DungeonsPage';
 import { EvolutionsPage } from './pages/content/EvolutionsPage';
 import { ItemsPage } from './pages/content/ItemsPage';
 import { LootTablesPage } from './pages/content/LootTablesPage';
+import { BagPage } from './pages/content/BagPage';
 import { MenuPage } from './pages/content/MenuPage';
 import { ProgressionPage } from './pages/content/ProgressionPage';
 import { QuestsPage } from './pages/content/QuestsPage';
@@ -63,6 +64,7 @@ const router = createBrowserRouter([
           { path: 'telemetry', element: <TelemetryPage /> },
           { path: 'players', element: <PlayersPage /> },
           { path: 'menu', element: <MenuPage /> },
+          { path: 'bag', element: <BagPage /> },
           ...SECTIONS.filter((s) => s.phase > CURRENT_PHASE).map((section) => ({
             path: section.path.slice(1),
             element: <PlaceholderPage section={section} />,

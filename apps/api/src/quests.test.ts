@@ -124,6 +124,20 @@ content.quests.push({
     ],
   },
 });
+// Quête qui suit la quête de test : ouverte (et validée) quand celle-ci est terminée.
+content.quests.push({
+  ...structuredClone(content.quests.at(-1)!),
+  id: 'quete-suite',
+  unlock: { type: 'questCompleted', questId: 'quete-test' },
+  steps: [
+    {
+      name: 'Suite',
+      description: '',
+      condition: { type: 'questCompleted', questId: 'quete-test' },
+      outcome: '',
+    },
+  ],
+});
 // Quête désactivée : jamais visible, même si sa condition est remplie.
 content.quests.push({
   ...structuredClone(content.quests.at(-1)!),
@@ -500,6 +514,34 @@ describe('quêtes', () => {
       .where(and(eq(questProgress.ownerId, userId), eq(questProgress.questId, 'electhor')));
     expect(rows).toEqual([]);
     expect((await call('POST', '/api/quests/electhor/battle', legendaryRun)).status).toBe(409);
+  });
+
+  it('une quête terminée avant d’avoir gagné des étapes compte toujours comme terminée', async () => {
+    // Comme les quêtes légendaires gardées par 0132 : terminées à l'étape 3 de l'ancienne version.
+    const other = await newPlayer('quete-ancienne@example.com', 'Ancien', 1);
+    const [current] = await handle.db
+      .select({ contentVersionId: questProgress.contentVersionId })
+      .from(questProgress)
+      .where(eq(questProgress.ownerId, userId));
+    const at = new Date(clock);
+    await handle.db.insert(questProgress).values({
+      ownerId: other.userId,
+      questId: 'quete-test',
+      contentVersionId: current!.contentVersionId,
+      step: 1,
+      completedAt: at,
+      claimedAt: at,
+      pokemonCaught: 2,
+    });
+    const { body } = await other.call<QuestsResponse>('GET', '/api/quests');
+    expect(body.quests.find((q) => q.questId === 'quete-test')).toMatchObject({
+      status: 'claimed',
+      step: 3,
+    });
+    expect(body.quests.find((q) => q.questId === 'quete-suite')).toMatchObject({
+      status: 'completed',
+      step: 1,
+    });
   });
 
   it('cache les régions, zones et quêtes désactivées', async () => {

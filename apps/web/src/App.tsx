@@ -2,8 +2,9 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PublicContentDto } from '@poke/shared';
 import { keys, meQuery } from './lib/game';
+import { usePokemonShadows } from './lib/pokemon-shadows';
 import { AuthPage, RESET_PASSWORD_PATH } from './pages/AuthPage';
-import { CHANGELOG_PATH, ChangelogPage } from './pages/ChangelogPage';
+import { CHANGELOG_PATH, ChangelogDialog, openChangelog } from './pages/ChangelogPage';
 import { CreateProfilePage } from './pages/CreateProfilePage';
 import { HomePage } from './pages/HomePage';
 import { LEGAL_PATHS, LegalPage } from './pages/LegalPages';
@@ -39,12 +40,22 @@ function useContentVersionWatch(serverVersion: number | null | undefined) {
   }, [queryClient, serverVersion]);
 }
 
-/**
- * Aiguillage : lien de réinitialisation du mot de passe → nouveau mot de passe ; nouveautés et
- * pages légales (accessibles sans compte) ; non connecté → connexion ; sans profil → création du dresseur ;
- * sinon → jeu.
- */
+/** Écran affiché, et la popup des nouveautés par-dessus (ouverte depuis n'importe quel écran). */
 export function App() {
+  return (
+    <>
+      <Screens />
+      <ChangelogDialog />
+    </>
+  );
+}
+
+/**
+ * Aiguillage : lien de réinitialisation du mot de passe → nouveau mot de passe ; pages légales
+ * (accessibles sans compte) ; non connecté → connexion ; sans profil → création du dresseur ;
+ * sinon → jeu. L'ancienne adresse des nouveautés ramène à l'accueil et ouvre leur popup.
+ */
+function Screens() {
   const me = useQuery({
     ...meQuery,
     // Après des essais ratés, on retente toutes les 5 s tant que le serveur ne répond pas. Connecté,
@@ -54,9 +65,15 @@ export function App() {
   });
   useContentVersionWatch(me.data?.contentVersion);
   const pathname = usePathname();
+  usePokemonShadows(me.data?.profile?.starterSpeciesId != null);
+  useEffect(() => {
+    if (pathname !== CHANGELOG_PATH) return;
+    window.history.replaceState(null, '', '/');
+    window.dispatchEvent(new PopStateEvent('popstate'));
+    openChangelog();
+  }, [pathname]);
 
   if (pathname === RESET_PASSWORD_PATH) return <ResetPasswordPage />;
-  if (pathname === CHANGELOG_PATH) return <ChangelogPage />;
   if (LEGAL_PATHS.includes(pathname)) return <LegalPage pathname={pathname} />;
   if (me.isPending) {
     return <div className="grid min-h-screen place-items-center text-slate-500">Chargement…</div>;

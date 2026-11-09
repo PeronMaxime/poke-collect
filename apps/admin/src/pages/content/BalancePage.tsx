@@ -157,6 +157,20 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
             />
           </Field>
           <Field
+            label="Allongement par heure passée"
+            hint="Ajouté à l’intervalle entre deux rencontres à chaque heure d’expédition (par palier) ; 0 = rythme constant. Talents et baies s’appliquent à l’intervalle allongé. Figé au départ de chaque expédition."
+            error={err('expeditions.encounterIntervalGrowthMinutes')}
+          >
+            <NumberInput
+              value={b.expeditions.encounterIntervalGrowthMinutes}
+              min={0}
+              step={0.5}
+              unit="min"
+              onChange={exp('encounterIntervalGrowthMinutes')}
+              disabled={disabled}
+            />
+          </Field>
+          <Field
             label="Un tirage de butin toutes les"
             error={err('expeditions.lootIntervalMinutes')}
           >
@@ -194,7 +208,7 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
               </tr>
             </thead>
             <tbody>
-              {[60, 480, b.expeditions.maxDurationMinutes].map((d) => (
+              {[60, 240, 480, 720, b.expeditions.maxDurationMinutes].map((d) => (
                 <tr key={d}>
                   <td className="pr-6">{formatMinutes(d)}</td>
                   <td className="pr-6 font-mono">{expeditionPlan(preview, d).encounters}</td>

@@ -134,7 +134,7 @@ describe('notifications push', () => {
     const first = await expedition();
     advance(10);
     expect(await round()).toBe(0); // arrêt possible, mais pas encore de retour de lui-même
-    advance(2880);
+    advance(1440);
     expect(await round()).toBe(0); // pas encore abonné : rien n'est marqué
 
     const sub = await player.call(
@@ -158,7 +158,7 @@ describe('notifications push', () => {
     const settings = { expeditions: false, eggs: true, fossils: true };
     expect((await player.call('PUT', '/api/push/settings', settings)).body).toEqual(settings);
     const exp = await expedition();
-    advance(2880);
+    advance(1440);
     expect(await round()).toBe(0);
     await player.call('POST', `/api/expeditions/${exp.id}/claim`);
     await player.call('PUT', '/api/push/settings', { ...settings, expeditions: true });
@@ -208,7 +208,7 @@ describe('télémétrie (admin)', () => {
     expect(t.zones.find((z) => z.zoneId === 'route-1')).toMatchObject({
       expeditions: 2,
       players: 1,
-      avgDurationMinutes: 2880, // plafonnée à la durée maximale,
+      avgDurationMinutes: 1440, // plafonnée à la durée maximale,
     });
     expect(t.dexDistribution.reduce((s, b) => s + b.players, 0)).toBe(2);
     expect(t.quests.find((q) => q.questId === 'artikodin')?.steps.length).toBeGreaterThan(0);

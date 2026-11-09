@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactNode } from 'react';
-import { CHANGELOG_PATH } from './ChangelogPage';
+import { openChangelog } from './ChangelogPage';
 
 /**
  * Pages légales (mentions légales, confidentialité), lisibles sans être connecté. Le texte décrit
@@ -34,7 +34,9 @@ function InternalLink({ to, children }: { to: string; children: ReactNode }) {
 export function LegalLinks() {
   return (
     <span className="inline-flex gap-3">
-      <InternalLink to={CHANGELOG_PATH}>Nouveautés</InternalLink>
+      <button type="button" onClick={openChangelog} className="cursor-pointer hover:underline">
+        Nouveautés
+      </button>
       <InternalLink to={LEGAL_NOTICE_PATH}>Mentions légales</InternalLink>
       <InternalLink to={PRIVACY_PATH}>Confidentialité</InternalLink>
     </span>

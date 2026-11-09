@@ -40,22 +40,60 @@ import { usePlayerBonuses } from './XpPreview';
 
 type Progress = DexCatches;
 
+type ClaimInput = { kind: RewardKind; rewardId: string; targetId?: string };
+
+const postClaim = (input: ClaimInput) =>
+  api<ClaimRewardResponse>('/api/progression/claim', { method: 'POST', json: input });
+
 /**
- * Réclamation d'une récompense (collection ou complétion d'expédition), avec le détail de
- * ce qui a été reçu.
+ * Réclamation d'une récompense (collection ou complétion d'expédition), ou de plusieurs à la
+ * suite (« Tout réclamer »), avec le détail de ce qui a été reçu.
  */
 function useClaim() {
   const queryClient = useQueryClient();
-  const [last, setLast] = useState<ClaimRewardResponse | null>(null);
+  const [last, setLast] = useState<ClaimRewardResponse[] | null>(null);
   const claim = useMutation({
-    mutationFn: (input: { kind: RewardKind; rewardId: string; targetId?: string }) =>
-      api<ClaimRewardResponse>('/api/progression/claim', { method: 'POST', json: input }),
+    mutationFn: postClaim,
     onSuccess: (data) => {
-      setLast(data);
+      setLast([data]);
       return refreshAfterReward(queryClient);
     },
   });
-  return { claim, last };
+  // Une à une : chacune est vérifiée par le serveur ; celles déjà reçues restent affichées si
+  // une suivante échoue.
+  const claimAll = useMutation({
+    mutationFn: async (inputs: readonly ClaimInput[]) => {
+      const done: ClaimRewardResponse[] = [];
+      try {
+        for (const input of inputs) done.push(await postClaim(input));
+      } finally {
+        if (done.length > 0) setLast(done);
+      }
+      return done;
+    },
+    onSettled: () => refreshAfterReward(queryClient),
+  });
+  return { claim, claimAll, last };
+}
+
+/** Récompenses additionnées (bandeau de « Tout réclamer »). */
+function mergeRewards(list: readonly ProgressReward[]): ProgressReward {
+  const items = new Map<string, number>();
+  const bonuses = new Map<ProgressReward['bonuses'][number]['type'], number>();
+  for (const r of list) {
+    for (const s of r.items) items.set(s.itemId, (items.get(s.itemId) ?? 0) + s.quantity);
+    for (const b of r.bonuses) bonuses.set(b.type, (bonuses.get(b.type) ?? 0) + b.percent);
+  }
+  const sum = (key: 'currency' | 'expeditionSlots' | 'daycareSlots' | 'incubators') =>
+    list.reduce((n, r) => n + r[key], 0);
+  return {
+    currency: sum('currency'),
+    items: [...items].map(([itemId, quantity]) => ({ itemId, quantity })),
+    expeditionSlots: sum('expeditionSlots'),
+    daycareSlots: sum('daycareSlots'),
+    incubators: sum('incubators'),
+    bonuses: [...bonuses].map(([type, percent]) => ({ type, percent })),
+  };
 }
 
 /**
@@ -108,9 +146,21 @@ function ClaimButton({
   onClaim: () => void;
 }) {
   if (state === 'claimed') return <span className="text-xs text-emerald-600">✓ Réclamé</span>;
+  // Verrouillé : rouge (et peu estompé) pour ne pas ressembler à un bouton bleu indisponible.
+  if (state === 'locked') {
+    return (
+      <button
+        className="btn bg-brand-500 py-1 text-white disabled:opacity-80"
+        disabled
+        aria-label="Verrouillé"
+      >
+        🔒
+      </button>
+    );
+  }
   return (
-    <button className="btn-primary py-1" disabled={state === 'locked' || pending} onClick={onClaim}>
-      {state === 'locked' ? '🔒' : 'Réclamer'}
+    <button className="btn-primary py-1" disabled={pending} onClick={onClaim}>
+      Réclamer
     </button>
   );
 }
@@ -124,19 +174,31 @@ function claimedRegionLines(ctx: GameContext, data: ClaimRewardResponse): string
   return completionRegionLines(ctx, completion, regionId);
 }
 
-/** Bandeau de confirmation après une réclamation. */
-function ClaimedToast({ ctx, data }: { ctx: GameContext; data: ClaimRewardResponse | null }) {
+/** Bandeau de confirmation après une réclamation (ou plusieurs, additionnées). */
+function ClaimedToast({ ctx, data }: { ctx: GameContext; data: ClaimRewardResponse[] | null }) {
+  const regionLines = new Map<string, number>();
+  for (const d of data ?? []) {
+    for (const line of claimedRegionLines(ctx, d)) {
+      regionLines.set(line, (regionLines.get(line) ?? 0) + 1);
+    }
+  }
   return (
     <AnimatePresence>
-      {data && (
+      {data && data.length > 0 && (
         <motion.div
-          key={`${data.kind}:${data.rewardId}:${data.targetId ?? ''}`}
+          key={data.map((d) => `${d.kind}:${d.rewardId}:${d.targetId ?? ''}`).join(',')}
           initial={{ opacity: 0, y: -8, scale: 0.97 }}
           animate={{ opacity: 1, y: 0, scale: 1 }}
           className="card border-amber-300 bg-amber-50 p-3 text-sm dark:border-amber-800 dark:bg-amber-950/40"
         >
-          <p className="mb-2 font-semibold">🎉 Récompense obtenue !</p>
-          <RewardList ctx={ctx} rewards={data.rewards} extraLines={claimedRegionLines(ctx, data)} />
+          <p className="mb-2 font-semibold">
+            🎉 {data.length > 1 ? `${data.length} récompenses obtenues !` : 'Récompense obtenue !'}
+          </p>
+          <RewardList
+            ctx={ctx}
+            rewards={mergeRewards(data.map((d) => d.rewards))}
+            extraLines={[...regionLines].map(([line, n]) => (n > 1 ? `${line} (×${n})` : line))}
+          />
         </motion.div>
       )}
     </AnimatePresence>
@@ -174,7 +236,7 @@ export function CollectionsView({ ctx, progress }: { ctx: GameContext; progress:
       {groups.map((g) => (
         <section key={g.id} className="space-y-2">
           {g.name && <h2 className="font-semibold text-slate-600 dark:text-slate-300">{g.name}</h2>}
-          <ul className="grid gap-2 md:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
             {g.list.map((c) => (
               <CollectionCard
                 key={c.id}
@@ -373,7 +435,7 @@ function CompletionProgress({
       </div>
       <ProgressBar
         value={p.total ? p.caught / p.total : 0}
-        barClassName={c.shiny ? 'bg-amber-400' : 'bg-brand-500'}
+        barClassName={c.shiny ? 'bg-amber-400' : 'bg-[#48c048]'}
       />
     </div>
   );
@@ -425,7 +487,8 @@ const cardStyle = (states: readonly RewardState[]) =>
  */
 export function CompletionsView({ ctx, progress }: { ctx: GameContext; progress: Progress }) {
   const claimed = useClaimedRewards();
-  const { claim, last } = useClaim();
+  const { claim, claimAll, last } = useClaim();
+  const pending = claim.isPending || claimAll.isPending;
   const playerProgress = usePlayerProgress();
   const [selectedRegion, setSelectedRegion] = useSavedRegionTab('completions');
   const regionId = currentRegionTab(ctx, playerProgress, selectedRegion);
@@ -449,6 +512,12 @@ export function CompletionsView({ ctx, progress }: { ctx: GameContext; progress:
   // Pastille sur les onglets des régions qui ont une récompense à réclamer.
   const claimableIn = (rid: string) =>
     completions.some((c) => targetsIn(c, rid).some((t) => stateOf(c, t) === 'claimable'));
+  // « Tout réclamer » : chaque récompense prête, toutes régions confondues.
+  const allClaimable: ClaimInput[] = completions.flatMap((c) =>
+    completionTargets(ctx, c)
+      .filter((t) => stateOf(c, t) === 'claimable')
+      .map((t) => ({ kind: 'completion' as const, rewardId: c.id, targetId: t.id })),
+  );
 
   /** Complétion de la région de l'onglet : avancement, bouton et récompenses de chaque règle. */
   function regionAside() {
@@ -474,7 +543,7 @@ export function CompletionsView({ ctx, progress }: { ctx: GameContext; progress:
               target={t}
               progress={progress}
               state={state}
-              pending={claim.isPending}
+              pending={pending}
               onClaim={claimOf(c, t)}
             />
             <RewardList
@@ -522,7 +591,7 @@ export function CompletionsView({ ctx, progress }: { ctx: GameContext; progress:
         aside={regionAside()}
       >
         {zones.length > 0 && (
-          <ul className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {zones.map(({ zone, entries }) => (
               <li
                 key={zone.id}
@@ -537,7 +606,7 @@ export function CompletionsView({ ctx, progress }: { ctx: GameContext; progress:
                     target={t}
                     progress={progress}
                     state={state}
-                    pending={claim.isPending}
+                    pending={pending}
                     onClaim={claimOf(c, t)}
                   />
                 ))}
@@ -558,9 +627,23 @@ export function CompletionsView({ ctx, progress }: { ctx: GameContext; progress:
         onSelect={setSelectedRegion}
         marker={(id) => (claimableIn(id) ? 'Récompense à réclamer' : null)}
       />
+      {allClaimable.length > 0 && (
+        <div className="flex justify-end">
+          <button
+            className="btn-primary py-1"
+            disabled={pending}
+            onClick={() => claimAll.mutate(allClaimable)}
+            title="Réclame chaque récompense prête, dans toutes les régions"
+          >
+            {claimAll.isPending ? 'Réclamation…' : `Tout réclamer (${allClaimable.length})`}
+          </button>
+        </div>
+      )}
       <ClaimedToast ctx={ctx} data={last} />
       <RegionXpSummary ctx={ctx} regionId={regionId} />
-      {claim.error && <p className="text-sm text-red-600">{errorText(claim.error)}</p>}
+      {(claim.error ?? claimAll.error) && (
+        <p className="text-sm text-red-600">{errorText(claim.error ?? claimAll.error)}</p>
+      )}
       {hasContent ? (
         zoneSection()
       ) : (

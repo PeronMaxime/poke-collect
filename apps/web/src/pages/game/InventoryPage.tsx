@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { ITEM_CATEGORIES } from '@poke/content';
-import type { ItemCategory } from '@poke/content';
+import { ITEM_CATEGORIES, normalizeBag } from '@poke/content';
+import type { BagSectionId, ItemCategory } from '@poke/content';
 import type { GameContext } from '@poke/game-core';
-import { Egg, PokemonSprite } from '../../components/ui';
+import { CollapseBody, CollapseButton, useCollapsedSection } from '../../components/Collapsible';
+import { Egg, PokemonSprite, ViewTabs } from '../../components/ui';
 import { useCandies, useDaycare, useInventory } from '../../lib/game';
 import {
   RARITY_LABELS,
@@ -21,31 +22,16 @@ import { HappinessDialog } from './HappinessDialog';
 import { useSavedRegionTab } from './RegionTabs';
 import { ReviveDialog } from './ReviveDialog';
 
-const CATEGORY_LABELS: Record<ItemCategory, string> = {
-  ball: 'Balls',
-  berry: 'Baies',
-  evolution: 'Objets d’évolution',
-  breeding: 'Élevage',
-  endgame: 'Objets rares',
-  fossil: 'Fossiles',
-  megaStone: 'Méga-Gemmes',
-  quest: 'Objets de quête',
-  chest: 'Coffres de guilde',
-  misc: 'Divers',
-};
-
 /** Coffres ouverts d'un coup au plus (« Tout ouvrir »). */
 const MAX_CHESTS = 50;
 
 /** Onglet qui affiche tout le sac, rubrique par rubrique. */
 const ALL_TAB = 'all';
 
-/** Une rubrique du sac : son onglet, et sa section dans « Tout ». */
+/** Une rubrique du sac : sa section dans son onglet et dans « Tout ». */
 interface BagSection {
-  id: string;
+  id: BagSectionId;
   label: string;
-  /** Nombre d'objets de la rubrique (quantités cumulées), affiché dans l'onglet. */
-  count: number;
   content: ReactNode;
 }
 
@@ -75,6 +61,8 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
   }
 
   const categoryOf = (itemId: string): ItemCategory => ctx.item(itemId)?.category ?? 'misc';
+  // Rangement en onglets et titres des rubriques : réglés dans l'admin (Sac).
+  const layout = normalizeBag(ctx.content.balance.bag);
   const sections: BagSection[] = [];
 
   for (const category of ITEM_CATEGORIES) {
@@ -82,8 +70,7 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
     if (inCategory.length === 0) continue;
     sections.push({
       id: category,
-      label: CATEGORY_LABELS[category],
-      count: inCategory.reduce((sum, s) => sum + s.quantity, 0),
+      label: layout.sectionTitles[category],
       content: (
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
           {inCategory.map((s) => {
@@ -168,33 +155,20 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
   if (bagEggs.length > 0) {
     sections.push({
       id: 'eggs',
-      label: 'Œufs',
-      count: bagEggs.length,
+      label: layout.sectionTitles.eggs,
       content: (
-        <>
-          <p className="mb-2 text-xs text-slate-500">
-            Ramassés à la pension. Pour les faire éclore, place-les dans la couveuse depuis la{' '}
-            <a
-              href="#daycare"
-              className="font-medium text-brand-600 hover:underline dark:text-brand-500"
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {groupBagEggs(bagEggs).map((g) => (
+            <li
+              key={`${g.speciesId}:${g.formId}`}
+              className="card flex items-center gap-2 p-2 text-sm"
             >
-              Pension
-            </a>
-            .
-          </p>
-          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {groupBagEggs(bagEggs).map((g) => (
-              <li
-                key={`${g.speciesId}:${g.formId}`}
-                className="card flex items-center gap-2 p-2 text-sm"
-              >
-                <Egg size={32} />
-                <span className="flex-1">{speciesName(ctx, g.speciesId, g.formId)} ?</span>
-                <span className="font-mono">× {g.ids.length}</span>
-              </li>
-            ))}
-          </ul>
-        </>
+              <Egg size={32} />
+              <span className="flex-1">{speciesName(ctx, g.speciesId, g.formId)} ?</span>
+              <span className="font-mono">× {g.ids.length}</span>
+            </li>
+          ))}
+        </ul>
       ),
     });
   }
@@ -202,74 +176,53 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
   if (candyStacks.length > 0) {
     sections.push({
       id: 'candies',
-      label: 'Bonbons de lignée',
-      count: candyStacks.reduce((sum, c) => sum + c.quantity, 0),
+      label: layout.sectionTitles.candies,
       content: (
-        <>
-          <p className="mb-2 text-xs text-slate-500">
-            Obtenus en transférant des Pokémon (PC). Donne-les à un Pokémon de la même lignée pour
-            le faire monter de niveau : {ctx.balance.transfer.candiesPerLevelStart} Bonbons par
-            niveau au début, jusqu’à {ctx.balance.transfer.candiesPerLevelEnd} pour les derniers.
-          </p>
-          <ul className="grid grid-cols-1 gap-2 sm:grid-cols-3">
-            {candyStacks.map((c) => {
-              const speciesId = lineageSpeciesId(c.lineageId);
-              return (
-                <li key={c.lineageId} className="card flex items-center gap-2 p-2 text-sm">
-                  {speciesId && <PokemonSprite speciesId={speciesId} size={40} />}
-                  <span className="flex-1">{candyName(ctx, c.lineageId)}</span>
-                  <span className="font-mono">× {c.quantity}</span>
-                </li>
-              );
-            })}
-          </ul>
-        </>
+        <ul className="grid grid-cols-1 gap-2 sm:grid-cols-3">
+          {candyStacks.map((c) => {
+            const speciesId = lineageSpeciesId(c.lineageId);
+            return (
+              <li key={c.lineageId} className="card flex items-center gap-2 p-2 text-sm">
+                {speciesId && <PokemonSprite speciesId={speciesId} size={40} />}
+                <span className="flex-1">{candyName(ctx, c.lineageId)}</span>
+                <span className="font-mono">× {c.quantity}</span>
+              </li>
+            );
+          })}
+        </ul>
       ),
     });
   }
 
-  // Une rubrique vidée (dernier coffre ouvert…) renvoie sur « Tout ».
-  const tab = sections.some((s) => s.id === savedTab) ? savedTab! : ALL_TAB;
+  // Un onglet a pour identifiant sa première rubrique (stable si on renomme l'onglet).
+  const groups = layout.tabs
+    .map((t) => ({
+      id: t.sections[0]!,
+      label: t.title,
+      sections: t.sections,
+      shown: t.sections.flatMap((id) => sections.filter((s) => s.id === id)),
+    }))
+    .filter((g) => g.shown.length > 0);
+  // Onglet enregistré : celui qui contient cette rubrique (même si l'admin a réordonné).
+  // Un onglet vidé (dernier coffre ouvert…) renvoie sur « Tout ».
+  const group = groups.find((g) => g.sections.some((id) => id === savedTab));
+  const tab = group?.id ?? ALL_TAB;
   const tabs = [
-    { id: ALL_TAB, label: 'Tout', count: null as number | null },
-    ...sections.map((s) => ({ id: s.id, label: s.label, count: s.count as number | null })),
+    { id: ALL_TAB, label: 'Tout' },
+    ...groups.map((g) => ({ id: g.id, label: g.label })),
   ];
-  const shown = tab === ALL_TAB ? sections : sections.filter((s) => s.id === tab);
+  const shown = group?.shown ?? groups.flatMap((g) => g.shown);
 
   return (
     <div className="space-y-6">
-      {sections.length > 1 && (
-        <div className="flex flex-wrap gap-1" role="tablist">
-          {tabs.map((t) => (
-            <button
-              key={t.id}
-              role="tab"
-              aria-selected={t.id === tab}
-              onClick={() => setTab(t.id)}
-              className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                t.id === tab
-                  ? 'bg-brand-500 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-              }`}
-            >
-              {t.label}
-              {t.count !== null && (
-                <span
-                  className={`font-mono text-xs ${t.id === tab ? 'text-white/80' : 'text-slate-400'}`}
-                >
-                  {t.count.toLocaleString('fr-FR')}
-                </span>
-              )}
-            </button>
-          ))}
-        </div>
+      {groups.length > 1 && <ViewTabs tabs={tabs} selected={tab} onSelect={setTab} />}
+      {shown.map((s) =>
+        shown.length > 1 ? (
+          <BagSectionView key={s.id} section={s} />
+        ) : (
+          <section key={s.id}>{s.content}</section>
+        ),
       )}
-      {shown.map((s) => (
-        <section key={s.id}>
-          {tab === ALL_TAB && <h2 className="mb-2 font-semibold">{s.label}</h2>}
-          {s.content}
-        </section>
-      ))}
       {reviving && <ReviveDialog ctx={ctx} itemId={reviving} onClose={() => setReviving(null)} />}
       {cheering && (
         <HappinessDialog ctx={ctx} itemId={cheering} onClose={() => setCheering(null)} />
@@ -283,5 +236,27 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
         />
       )}
     </div>
+  );
+}
+
+/** Rubrique repliable en accordéon, comme les widgets, fermée par défaut ; l'état est gardé dans le navigateur. */
+function BagSectionView({ section }: { section: BagSection }) {
+  const [collapsed, toggle] = useCollapsedSection(`bag.${section.id}`, true);
+  return (
+    <section>
+      <div className="flex items-center gap-2">
+        <CollapseButton
+          collapsed={collapsed}
+          onToggle={toggle}
+          label={`la rubrique ${section.label}`}
+        />
+        <h2 className="cursor-pointer font-semibold select-none" onClick={toggle}>
+          {section.label}
+        </h2>
+      </div>
+      <CollapseBody open={!collapsed} className="mt-2">
+        {section.content}
+      </CollapseBody>
+    </section>
   );
 }

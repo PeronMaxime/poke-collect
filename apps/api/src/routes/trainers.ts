@@ -3,8 +3,14 @@ import { and, asc, eq, inArray, isNotNull, like, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { playerProfiles, pokedex, pokedexForms, pokemon } from '@poke/db';
 import type { Db } from '@poke/db';
-import { featuredPokemonInputSchema, searchKey, trainerSearchQuerySchema } from '@poke/shared';
+import {
+  favoritePokemonInputSchema,
+  featuredPokemonInputSchema,
+  searchKey,
+  trainerSearchQuerySchema,
+} from '@poke/shared';
 import type {
+  FavoritePokemonDto,
   FeaturedPokemonDto,
   TrainerPokedexResponse,
   TrainerProfileResponse,
@@ -12,6 +18,7 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from '../game/errors';
+import { displayedFavorite, favoriteColumns, setFavorite } from '../game/favorite';
 import { featuredPokemon, trainerCard } from '../game/stats';
 import { playerProgress } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
@@ -56,18 +63,14 @@ export async function trainerRoutes(app: FastifyInstance, { db, content, hooks }
     const lower = searchKey(q);
     const pattern = `%${lower.replace(/[\\%_]/g, (c) => `\\${c}`)}%`;
     const name = sql<string>`translate(lower(${playerProfiles.trainerName}), ${ACCENTED}, ${UNACCENTED})`;
-    return (
-      db
-        .select({
-          trainerName: playerProfiles.trainerName,
-          starterSpeciesId: playerProfiles.starterSpeciesId,
-        })
-        .from(playerProfiles)
-        .where(and(isNotNull(playerProfiles.starterSpeciesId), like(name, pattern)))
-        // Nom exact, puis noms qui commencent par la recherche, puis ordre alphabétique.
-        .orderBy(sql`${name} = ${lower} desc`, sql`starts_with(${name}, ${lower}) desc`, asc(name))
-        .limit(SEARCH_LIMIT)
-    );
+    const rows = await db
+      .select({ trainerName: playerProfiles.trainerName, ...favoriteColumns })
+      .from(playerProfiles)
+      .where(and(isNotNull(playerProfiles.starterSpeciesId), like(name, pattern)))
+      // Nom exact, puis noms qui commencent par la recherche, puis ordre alphabétique.
+      .orderBy(sql`${name} = ${lower} desc`, sql`starts_with(${name}, ${lower}) desc`, asc(name))
+      .limit(SEARCH_LIMIT);
+    return rows.map((r) => ({ trainerName: r.trainerName, favorite: displayedFavorite(r) }));
   });
 
   app.get('/api/trainers/:name', async (request): Promise<TrainerProfileResponse> => {
@@ -84,7 +87,7 @@ export async function trainerRoutes(app: FastifyInstance, { db, content, hooks }
     ]);
     return {
       trainerName: profile.trainerName,
-      starterSpeciesId: profile.starterSpeciesId,
+      favorite: displayedFavorite(profile),
       createdAt: profile.createdAt.toISOString(),
       currency: profile.currency,
       isMe: profile.userId === request.user!.id,
@@ -121,6 +124,12 @@ export async function trainerRoutes(app: FastifyInstance, { db, content, hooks }
         firstCaughtAt: firstCaughtAt.toISOString(),
       })),
     };
+  });
+
+  /** Pokémon favori de sa Fiche Dresseur (null : revenir au starter). */
+  app.put('/api/trainer-card/favorite', async (request): Promise<FavoritePokemonDto | null> => {
+    const { favorite } = favoritePokemonInputSchema.parse(request.body);
+    return setFavorite(db, request.user!.id, favorite);
   });
 
   /** Pokémon du PC mis en avant sur sa Fiche Dresseur (remplace la sélection). */

@@ -932,6 +932,48 @@
       "when": 1793929807005,
       "tag": "0132_quetes_legendaires_relance",
       "breakpoints": true
+    },
+    {
+      "idx": 133,
+      "version": "7",
+      "when": 1793983384033,
+      "tag": "0133_pension_depot_par_pokemon",
+      "breakpoints": true
+    },
+    {
+      "idx": 134,
+      "version": "7",
+      "when": 1794069784033,
+      "tag": "0134_sprites_badges",
+      "breakpoints": true
+    },
+    {
+      "idx": 135,
+      "version": "7",
+      "when": 1794099297129,
+      "tag": "0135_sac_soin_entrainement",
+      "breakpoints": true
+    },
+    {
+      "idx": 136,
+      "version": "7",
+      "when": 1794260741758,
+      "tag": "0136_expeditions_24h_rencontres",
+      "breakpoints": true
+    },
+    {
+      "idx": 137,
+      "version": "7",
+      "when": 1794262343290,
+      "tag": "0137_dresseurs_paliers",
+      "breakpoints": true
+    },
+    {
+      "idx": 138,
+      "version": "7",
+      "when": 1794263330674,
+      "tag": "0138_pokemon_favori",
+      "breakpoints": true
     }
   ]
 }

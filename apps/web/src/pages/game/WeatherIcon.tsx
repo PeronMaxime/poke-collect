@@ -3,7 +3,7 @@ import { WEATHER_LABELS, hasVariableWeather, nextWeatherRoll, zoneWeather } from
 import { HoverBubble } from '../../components/ui';
 import { useGameContext } from '../../lib/game';
 
-const ICONS: Record<ImposedWeather, string> = {
+export const WEATHER_ICONS: Record<ImposedWeather, string> = {
   clear: '🌤️',
   sun: '☀️',
   rain: '🌧️',
@@ -63,7 +63,7 @@ export function WeatherIcon({
       }
     >
       <span role="img" aria-label={`Météo : ${label}`}>
-        {ICONS[weather]}
+        {WEATHER_ICONS[weather]}
       </span>
     </HoverBubble>
   );

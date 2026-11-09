@@ -265,6 +265,7 @@ export async function expeditionPaces(
         row.encounterBerryItemId
           ? { itemId: row.encounterBerryItemId, quantity: row.encounterBerries }
           : null,
+        row.encounterIntervalGrowthMinutes,
       ),
     );
   }
@@ -295,6 +296,7 @@ async function planRunInput(
     encounterBerries: row.encounterBerryItemId
       ? { itemId: row.encounterBerryItemId, quantity: row.encounterBerries }
       : null,
+    intervalGrowthMinutes: row.encounterIntervalGrowthMinutes,
     pity: snapshot.pity,
     bonuses,
     // Chaîne figée au départ ; Charme Chroma possédé maintenant.
@@ -520,7 +522,7 @@ export async function startExpedition(
         throw new GameError(409, 'STOCK_CHANGED');
       return quantity;
     };
-    const { maxDurationMinutes } = ctx.balance.expeditions;
+    const { maxDurationMinutes, encounterIntervalGrowthMinutes } = ctx.balance.expeditions;
     const env = expeditionEnv(site, team, hour);
     const berryLimit = maxExpeditionBerries(ctx);
     const encounterBerries = await reserve(
@@ -561,6 +563,7 @@ export async function startExpedition(
         encounterBerries > 0
           ? { itemId: input.encounterBerryItemId!, quantity: encounterBerries }
           : null,
+        encounterIntervalGrowthMinutes,
       ),
     );
     const endsAt = minutesAfter(now, maxDurationMinutes);
@@ -587,6 +590,7 @@ export async function startExpedition(
         berries,
         encounterBerryItemId: encounterBerries > 0 ? input.encounterBerryItemId : null,
         encounterBerries,
+        encounterIntervalGrowthMinutes,
         contentVersionId: ctx.content.versionId,
         startedAt: now,
         minEndsAt: minutesAfter(now, expeditionMinMinutes(ctx, zone.minDurationMinutes, env)),
@@ -757,6 +761,7 @@ export async function claimExpedition(
         encounterBerries: found.encounterBerryItemId
           ? { itemId: found.encounterBerryItemId, quantity: found.encounterBerries }
           : null,
+        intervalGrowthMinutes: found.encounterIntervalGrowthMinutes,
         pity: Object.fromEntries(pityRows.map((r) => [r.speciesId, r.misses])),
         bonuses,
         // Chaîne figée au départ ; Charme Chroma possédé à la réclamation.

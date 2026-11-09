@@ -12,8 +12,10 @@ import {
   users,
 } from '@poke/db';
 import type {
+  FavoritePokemonDto,
   FeaturedPokemonDto,
   LeaderboardResponse,
+  MeResponse,
   TrainerPokedexResponse,
   TrainerProfileResponse,
   TrainerSearchResultDto,
@@ -143,7 +145,9 @@ describe('Fiches Dresseur des autres joueurs', () => {
     const search = await ondine.call<TrainerSearchResultDto[]>('GET', '/api/trainers?q=sach');
     expect(search.status).toBe(200);
     // Sans starter : introuvable.
-    expect(search.body).toEqual([{ trainerName: 'Sacha', starterSpeciesId: 1 }]);
+    expect(search.body).toEqual([
+      { trainerName: 'Sacha', favorite: { speciesId: 1, formId: null, shiny: false } },
+    ]);
     expect((await ondine.call('GET', '/api/trainers?q=')).status).toBe(400);
     expect((await ondine.call('GET', '/api/trainers?q=%25')).body).toEqual([]);
     // Ni la casse ni les accents ne comptent.
@@ -153,7 +157,9 @@ describe('Fiches Dresseur des autres joueurs', () => {
         'GET',
         `/api/trainers?q=${encodeURIComponent(q)}`,
       );
-      expect(found.body).toEqual([{ trainerName: 'Éloïse', starterSpeciesId: 4 }]);
+      expect(found.body).toEqual([
+        { trainerName: 'Éloïse', favorite: { speciesId: 4, formId: null, shiny: false } },
+      ]);
     }
 
     const [starter] = await handle.db
@@ -179,7 +185,11 @@ describe('Fiches Dresseur des autres joueurs', () => {
 
     const card = await ondine.call<TrainerProfileResponse>('GET', '/api/trainers/sacha');
     expect(card.status).toBe(200);
-    expect(card.body).toMatchObject({ trainerName: 'Sacha', starterSpeciesId: 1, isMe: false });
+    expect(card.body).toMatchObject({
+      trainerName: 'Sacha',
+      favorite: { speciesId: 1, formId: null, shiny: false },
+      isMe: false,
+    });
     expect(card.body.progress.caughtSpeciesIds).toContain(1);
     expect(card.body.card.featured.map((p) => [p.speciesId, p.isShiny])).toEqual([
       [16, true],
@@ -198,5 +208,53 @@ describe('Fiches Dresseur des autres joueurs', () => {
     );
     const after = await ondine.call<TrainerProfileResponse>('GET', '/api/trainers/Sacha');
     expect(after.body.card.featured.map((p) => p.speciesId)).toEqual([1]);
+  });
+});
+
+describe('Pokémon favori', () => {
+  it('remplace le starter sur la fiche, le classement et la recherche', async () => {
+    const pierre = await newPlayer('pierre-fav@example.com', 'PierreFav', 1);
+    const regis = await newPlayer('regis-fav@example.com', 'RegisFav', 4);
+    await handle.db.insert(pokedex).values([
+      { ownerId: pierre.userId, speciesId: 16, seen: true, caught: true, caughtShiny: true },
+      { ownerId: pierre.userId, speciesId: 19, seen: true, caught: true },
+      { ownerId: pierre.userId, speciesId: 25, seen: true, caught: false },
+    ]);
+    // Rattata d'Alola capturé, pas en chromatique.
+    await handle.db
+      .insert(pokedexForms)
+      .values({ ownerId: pierre.userId, formId: 10091, firstCaughtAt: new Date() });
+
+    const put = (favorite: unknown) =>
+      pierre.call<FavoritePokemonDto | null>('PUT', '/api/trainer-card/favorite', { favorite });
+    const pidgey = { speciesId: 16, formId: null, shiny: true };
+    expect(await put(pidgey)).toEqual({ status: 200, body: pidgey });
+
+    const me = await pierre.call<MeResponse>('GET', '/api/me');
+    expect(me.body.profile?.favorite).toEqual(pidgey);
+    const card = await regis.call<TrainerProfileResponse>('GET', '/api/trainers/PierreFav');
+    expect(card.body.favorite).toEqual(pidgey);
+    const search = await regis.call<TrainerSearchResultDto[]>('GET', '/api/trainers?q=pierrefav');
+    expect(search.body).toEqual([{ trainerName: 'PierreFav', favorite: pidgey }]);
+    const board = await regis.call<LeaderboardResponse>('GET', '/api/leaderboard/species');
+    expect(board.body.entries.find((e) => e.trainerName === 'PierreFav')?.favorite).toEqual(pidgey);
+
+    // Forme capturée, en normal seulement.
+    const alolan = { speciesId: 19, formId: 10091, shiny: false };
+    expect((await put(alolan)).body).toEqual(alolan);
+    expect((await put({ ...alolan, shiny: true })).status).toBe(400);
+    // Espèce vue mais pas capturée, chromatique jamais capturé, forme d'une autre espèce.
+    expect((await put({ speciesId: 25, formId: null, shiny: false })).status).toBe(400);
+    expect((await put({ speciesId: 19, formId: null, shiny: true })).status).toBe(400);
+    expect((await put({ speciesId: 16, formId: 10091, shiny: false })).status).toBe(400);
+    // Le favori n'a pas changé après les refus.
+    expect(
+      (await regis.call<TrainerProfileResponse>('GET', '/api/trainers/PierreFav')).body.favorite,
+    ).toEqual(alolan);
+
+    // Retour au starter.
+    expect(await put(null)).toEqual({ status: 200, body: null });
+    const back = await regis.call<TrainerProfileResponse>('GET', '/api/trainers/PierreFav');
+    expect(back.body.favorite).toEqual({ speciesId: 1, formId: null, shiny: false });
   });
 });

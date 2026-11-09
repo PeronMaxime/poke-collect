@@ -7,14 +7,54 @@ import type { DungeonRunDto } from '@poke/shared';
 import { Modal, PokemonSprite, ShinySparkles, ShinyStar, useNow } from '../../components/ui';
 import { centerState, useHeal, usePlayerProgress, usePokemon } from '../../lib/game';
 import { errorText, formatMoney, itemIcon, itemName, speciesName } from '../../lib/labels';
+import { StateTag } from './BuildingParts';
+import { LAUNCH_DIALOG_CLASS, ResultFrame, SheetSection } from './dialogParts';
 
 /** Issue d'un combat en temps réel (donjon ou dresseur). */
 export const OUTCOME_TITLES = {
-  win: { text: 'Victoire !', className: 'text-emerald-600' },
-  loss: { text: 'Défaite…', className: 'text-red-600' },
-  timeout: { text: 'Temps écoulé…', className: 'text-red-600' },
-  fled: { text: 'Fuite', className: 'text-slate-500' },
+  win: { text: 'Victoire !', className: 'text-emerald-600 dark:text-emerald-400' },
+  loss: { text: 'Défaite…', className: 'text-red-600 dark:text-red-400' },
+  timeout: { text: 'Temps écoulé…', className: 'text-red-600 dark:text-red-400' },
+  fled: { text: 'Fuite', className: 'text-slate-500 dark:text-slate-400' },
 } as const;
+
+/** Issue du combat : portrait (dresseur, boss), titre animé et adversaires vaincus. */
+export function CombatOutcome({
+  outcome,
+  portrait,
+  subtitle,
+}: {
+  outcome: DungeonOutcome;
+  portrait: ReactNode;
+  subtitle: string;
+}) {
+  const reduced = useReducedMotion();
+  const title = OUTCOME_TITLES[outcome];
+  return (
+    <div
+      className={`card flex items-center justify-center gap-4 p-3 ${outcome === 'win' ? 'bg-done' : ''}`}
+    >
+      {portrait && (
+        <span
+          className={`sprite-well size-24 shrink-0 overflow-hidden ${outcome === 'win' ? 'opacity-50 grayscale' : ''}`}
+        >
+          {portrait}
+        </span>
+      )}
+      <div className="text-center">
+        <motion.p
+          className={`font-pixel text-base uppercase sm:text-lg ${title.className}`}
+          initial={reduced ? false : { scale: 0, opacity: 0 }}
+          animate={{ scale: [0, 1.3, 1], opacity: 1 }}
+          transition={{ duration: 0.5 }}
+        >
+          {title.text}
+        </motion.p>
+        <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">{subtitle}</p>
+      </div>
+    </div>
+  );
+}
 
 /** Résultat d'une tentative de donjon : issue, Méga-Gemme, argent, butin, XP et K.O. */
 export function DungeonResult({
@@ -30,7 +70,7 @@ export function DungeonResult({
   onClose: () => void;
 }) {
   return (
-    <Modal open={!!run?.result} onClose={onClose} wide>
+    <Modal open={!!run?.result} onClose={onClose} wide className={LAUNCH_DIALOG_CLASS}>
       {run?.result && <ResultContent ctx={ctx} run={run} currency={currency} onClose={onClose} />}
     </Modal>
   );
@@ -51,44 +91,30 @@ function ResultContent({
   const result = run.result!;
   const dungeon = ctx.dungeon(run.dungeonId);
   const boss = run.setup.enemies.at(-1);
-  const title = OUTCOME_TITLES[result.outcome];
   const win = result.outcome === 'win';
   const gemChance = dungeon ? Math.round(dungeon.gemChance * 100) : null;
 
   return (
-    <div>
-      <h2 className="text-xl font-bold">Donjon : {dungeon?.name ?? run.dungeonId}</h2>
-      <div className="mt-3 flex items-center justify-center gap-4">
-        {boss && (
-          <PokemonSprite
-            speciesId={boss.speciesId}
-            formId={boss.formId}
-            size={96}
-            kind="artwork"
-            className={win ? 'opacity-40 grayscale' : ''}
-          />
-        )}
-        <div className="text-center">
-          <motion.p
-            className={`text-3xl font-black ${title.className}`}
-            initial={reduced ? false : { scale: 0, opacity: 0 }}
-            animate={{ scale: [0, 1.3, 1], opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            {title.text}
-          </motion.p>
-          <p className="text-sm text-slate-500">
-            {result.defeated} / {run.setup.enemies.length} adversaires vaincus
-          </p>
-        </div>
-      </div>
+    <ResultFrame title={`Donjon : ${dungeon?.name ?? run.dungeonId}`} onClose={onClose}>
+      <CombatOutcome
+        outcome={result.outcome}
+        portrait={
+          boss && (
+            <PokemonSprite
+              speciesId={boss.speciesId}
+              formId={boss.formId}
+              size={88}
+              kind="artwork"
+            />
+          )
+        }
+        subtitle={`${result.defeated} / ${run.setup.enemies.length} adversaires vaincus`}
+      />
 
       {win && dungeon?.gemItemId && (
         <motion.div
-          className={`relative mx-auto mt-4 flex max-w-sm items-center gap-3 rounded-2xl p-3 ${
-            result.gemItemId
-              ? 'bg-gradient-to-br from-amber-100 to-fuchsia-100 dark:from-amber-950 dark:to-fuchsia-950'
-              : 'bg-slate-100 dark:bg-slate-800/60'
+          className={`card relative mx-auto flex max-w-sm items-center gap-3 p-3 ${
+            result.gemItemId ? 'shiny-card bg-done' : ''
           }`}
           initial={reduced ? false : { opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
@@ -119,13 +145,7 @@ function ResultContent({
       )}
 
       <CombatResultDetails ctx={ctx} result={result} currency={currency} />
-
-      <div className="mt-6 text-right">
-        <button className="btn-primary" onClick={onClose}>
-          Continuer
-        </button>
-      </div>
-    </div>
+    </ResultFrame>
   );
 }
 
@@ -169,11 +189,14 @@ export function CombatResultDetails({
     result.knockedOut.length > 0 &&
     result.knockedOut.every((id) => isHealing(pokemonById.get(id)?.healUntil ?? null, now));
   return (
-    <div className="mt-4 grid gap-4 sm:grid-cols-2">
-      <div>
-        <h3 className="text-sm font-semibold">Récompenses</h3>
-        <ul className="mt-2 space-y-1 text-sm">
-          {result.money > 0 && <li className="text-lg font-bold">+{formatMoney(result.money)}</li>}
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <SheetSection title="Récompenses">
+        <ul className="space-y-1 text-sm">
+          {result.money > 0 && (
+            <li className="text-lg font-bold text-amber-700 dark:text-[#f8d878]">
+              +{formatMoney(result.money)}
+            </li>
+          )}
           {result.loot.map((l) => (
             <li key={l.itemId} className="flex items-center gap-2">
               <img src={itemIcon(ctx, l.itemId)} alt="" className="h-7 w-7" />
@@ -220,39 +243,34 @@ export function CombatResultDetails({
             Les Pokémon mis K.O. sont en soins au Centre Pokémon.
           </p>
         )}
-      </div>
-      <div>
-        <h3 className="text-sm font-semibold">Équipe</h3>
-        <ul className="mt-2 space-y-1 text-sm">
+      </SheetSection>
+      <SheetSection title="Équipe">
+        <ul className="space-y-1 text-sm">
           {result.team.map((m) => {
             const p = pokemonById.get(m.id);
             return (
               p && (
                 <li key={m.id} className="flex items-center gap-2">
-                  <PokemonSprite
-                    speciesId={p.speciesId}
-                    formId={p.formId}
-                    shiny={p.isShiny}
-                    size={32}
-                  />
+                  <span className="sprite-well size-9 shrink-0">
+                    <PokemonSprite
+                      speciesId={p.speciesId}
+                      formId={p.formId}
+                      shiny={p.isShiny}
+                      size={32}
+                    />
+                  </span>
                   <span className="flex-1 truncate">
                     {speciesName(ctx, p.speciesId, p.formId)} {p.isShiny && <ShinyStar />}
                   </span>
                   <span className="text-slate-500">+{m.xpGained} XP</span>
                   {m.levelAfter > m.levelBefore && (
-                    <span className="rounded-full bg-emerald-100 px-2 text-xs font-semibold text-emerald-700 dark:bg-emerald-950 dark:text-emerald-300">
-                      Niveau {m.levelAfter} !
-                    </span>
+                    <StateTag tone="ok">N.{m.levelAfter} !</StateTag>
                   )}
                   {knockedOut.has(m.id) &&
                     (isHealing(p.healUntil, now) ? (
-                      <span className="rounded bg-pink-100 px-1 text-[10px] text-pink-700 dark:bg-pink-950 dark:text-pink-300">
-                        En soins
-                      </span>
+                      <StateTag tone="heal">En soins</StateTag>
                     ) : (
-                      <span className="rounded bg-red-100 px-1 text-[10px] text-red-700 dark:bg-red-950 dark:text-red-300">
-                        K.O.
-                      </span>
+                      <StateTag tone="bad">K.O.</StateTag>
                     ))}
                   {p.knockedOut && knockedOut.has(m.id) && waiting.length > 1 && free > 0 && (
                     <button
@@ -268,7 +286,7 @@ export function CombatResultDetails({
             );
           })}
         </ul>
-      </div>
+      </SheetSection>
     </div>
   );
 }

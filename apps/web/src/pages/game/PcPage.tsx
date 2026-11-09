@@ -36,6 +36,7 @@ import type {
   EvolveResponse,
   InventoryEntryDto,
   MegaEvolveInput,
+  PokemonActivity,
   PokemonDto,
   ReleaseLegendaryResponse,
   TransferPokemonResponse,
@@ -44,7 +45,6 @@ import type {
 } from '@poke/shared';
 import { TRANSFER_BATCH_MAX } from '@poke/shared';
 import {
-  HoverBubble,
   Modal,
   PokemonSprite,
   ProgressBar,
@@ -53,7 +53,7 @@ import {
   TypeBadge,
   useNow,
 } from '../../components/ui';
-import { PokemonTagBadges, TagManagerDialog, TagPicker } from '../../components/tags';
+import { TagManagerDialog, TagPicker } from '../../components/tags';
 import { usePlayerBonuses } from './XpPreview';
 import { api } from '../../lib/api';
 import {
@@ -77,7 +77,6 @@ import {
   usePlayerProgress,
   usePokemon,
   useQuests,
-  useTags,
   utcOffsetMinutes,
 } from '../../lib/game';
 import {
@@ -90,6 +89,7 @@ import {
   formatCountdown,
   itemIcon,
   itemName,
+  lineageSpeciesId,
   natureLabel,
   requirementText,
   speciesName,
@@ -98,6 +98,18 @@ import { DuplicateSettingsDialog, duplicates, loadDuplicateSettings } from './Du
 import { EvolutionReveal } from './EvolutionReveal';
 import { ProgressiveItems } from '../../components/ProgressiveGrid';
 import { GENDER_LABELS, PcFilterBar, PcPokemonCard, usePcBrowser } from './PcBrowser';
+import type { PcEntry } from './PcBrowser';
+import { DexSheet, dexSlotState } from './DexSheet';
+import type { DexSlot } from './DexSheet';
+import {
+  CollapsibleSheetSection,
+  InfoCell,
+  LAUNCH_DIALOG_CLASS,
+  SELECTED_CELL,
+  SheetSection,
+  StatusPill,
+} from './dialogParts';
+import { wikiAbilityLink } from './wiki';
 
 const ORIGIN_LABELS: Record<PokemonDto['origin'], string> = {
   starter: 'Starter',
@@ -215,6 +227,12 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
     setToTransfer(new Set(duplicates(ctx, shown, duplicateSettings)));
   }
 
+  function exitTransferMode() {
+    setTransferMode(false);
+    setToTransfer(new Set());
+    setConfirmingLast(false);
+  }
+
   function toggleTransfer(p: PokemonDto) {
     if (!canTransfer(ctx, p)) return;
     setConfirmingLast(false);
@@ -229,74 +247,33 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
   return (
     <div>
       <PcFilterBar ctx={ctx} browser={browser}>
-        <button className="btn-ghost" onClick={() => setTagsOpen(true)}>
-          Étiquettes
-        </button>
-        <button
-          className={transferMode ? 'btn-primary' : 'btn-ghost'}
-          onClick={() => {
-            setTransferMode(!transferMode);
-            setToTransfer(new Set());
-            setConfirmingLast(false);
-            setTransferResult(null);
-          }}
-        >
-          {transferMode ? 'Terminer' : 'Transférer…'}
-        </button>
+        {transferMode ? (
+          <span className="text-sm font-medium text-red-700 dark:text-red-300">
+            Mode transfert : touche les Pokémon à transférer.
+          </span>
+        ) : (
+          <>
+            <button
+              className="btn-ghost"
+              onClick={() => setTagsOpen(true)}
+              title="Créer, renommer ou supprimer tes étiquettes"
+            >
+              🏷 Gérer les étiquettes
+            </button>
+            <button
+              className="btn-danger"
+              onClick={() => {
+                setTransferMode(true);
+                setTransferResult(null);
+              }}
+              title="Choisir des Pokémon à échanger contre des Bonbons de lignée"
+            >
+              ⇄ Transférer des Pokémon
+            </button>
+          </>
+        )}
       </PcFilterBar>
 
-      {transferMode && (
-        <div className="card mb-4 flex flex-wrap items-center gap-2 p-3 text-sm">
-          <span className="flex-1">
-            Touche les Pokémon à transférer contre des Bonbons de lignée (favoris, légendaires,
-            fabuleux et Pokémon occupés exclus). <strong>{toTransfer.size}</strong> sélectionné(s),
-            +{candiesGained} Bonbon
-            {candiesGained > 1 ? 's' : ''}.
-          </span>
-          <button className="btn-ghost" onClick={selectDuplicates}>
-            Sélectionner les doublons
-          </button>
-          <button
-            className="btn-ghost px-2.5"
-            onClick={() => setDuplicateSettingsOpen(true)}
-            title="Régler le filtre des doublons"
-            aria-label="Régler le filtre des doublons"
-          >
-            ⚙
-          </button>
-          <button
-            className="btn-danger"
-            disabled={toTransfer.size === 0 || transfer.isPending}
-            onClick={requestTransfer}
-          >
-            Transférer ({toTransfer.size})
-          </button>
-          {confirmingLast && lastCopies.length > 0 && (
-            <div className="flex w-full flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
-              <span className="flex-1">
-                ⚠ Tu transfères ton dernier exemplaire de :{' '}
-                {lastCopies
-                  .slice(0, 5)
-                  .map((p) => speciesName(ctx, p.speciesId, p.formId))
-                  .join(', ')}
-                {lastCopies.length > 5 && ` et ${lastCopies.length - 5} autre(s)`}. Ils resteront au
-                Pokédex mais tu n'en auras plus aucun.
-              </span>
-              <button
-                className="btn-danger py-1"
-                disabled={transfer.isPending}
-                onClick={() => transfer.mutate([...toTransfer])}
-              >
-                Transférer quand même
-              </button>
-              <button className="btn-ghost py-1" onClick={() => setConfirmingLast(false)}>
-                Annuler
-              </button>
-            </div>
-          )}
-          {transfer.error && <p className="w-full text-red-600">{errorText(transfer.error)}</p>}
-        </div>
-      )}
       {released && <p className="mb-4 text-sm text-emerald-600">{released}</p>}
       {transferResult && (
         <p className="mb-4 text-sm text-emerald-600">
@@ -308,7 +285,9 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
         </p>
       )}
 
-      <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-6">
+      {/* Cases de largeur bornée : le nombre de colonnes suit la largeur de l'écran
+          (moins de cartes sur un petit écran, plus sur un grand) au lieu d'étirer ou d'écraser les cartes. */}
+      <div className="grid grid-cols-[repeat(auto-fill,minmax(6.5rem,1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(8.5rem,1fr))]">
         <ProgressiveItems items={filtered} resetKey={browser.viewKey}>
           {(entry) => {
             const { p } = entry;
@@ -336,6 +315,85 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
       {filtered.length === 0 && !pokemon.isPending && (
         <p className="text-sm text-slate-500">Aucun Pokémon ne correspond.</p>
       )}
+      {transferMode && (
+        // Collée au bas de l'écran pendant qu'on fait défiler la grille : sélection toujours en vue.
+        // Fond rosé et liseré rouge (index.css, `.action-bar`) : se détache des cartes en dessous.
+        <div className="card action-bar sticky bottom-2 z-10 mt-4 flex flex-col gap-2 p-3 text-sm">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="flex-1">
+              <strong>{toTransfer.size}</strong> sélectionné(s) · +{candiesGained} Bonbon
+              {candiesGained > 1 ? 's' : ''} de lignée
+              <span className="block text-xs text-slate-500">
+                Favoris, légendaires, fabuleux et Pokémon occupés exclus.
+              </span>
+            </span>
+            <div className="flex items-center">
+              <button
+                className="btn-ghost rounded-r-none"
+                onClick={selectDuplicates}
+                title="Parmi les Pokémon affichés (onglet, recherche et filtres en cours)"
+              >
+                Sélectionner les doublons
+              </button>
+              <button
+                className="btn-ghost rounded-l-none border-l-0 px-2.5"
+                onClick={() => setDuplicateSettingsOpen(true)}
+                title="Régler le filtre des doublons"
+                aria-label="Régler le filtre des doublons"
+              >
+                ⚙
+              </button>
+            </div>
+            {toTransfer.size > 0 && (
+              <button
+                className="btn-ghost"
+                onClick={() => {
+                  setToTransfer(new Set());
+                  setConfirmingLast(false);
+                }}
+              >
+                Tout désélectionner
+              </button>
+            )}
+            <span className="flex gap-2 sm:ml-2">
+              <button className="btn-ghost" onClick={exitTransferMode}>
+                Annuler
+              </button>
+              <button
+                className="btn-danger"
+                disabled={toTransfer.size === 0 || transfer.isPending}
+                onClick={requestTransfer}
+              >
+                Transférer ({toTransfer.size})
+              </button>
+            </span>
+          </div>
+          {confirmingLast && lastCopies.length > 0 && (
+            <div className="flex w-full flex-wrap items-center gap-2 rounded-lg bg-amber-50 px-3 py-2 text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+              <span className="flex-1">
+                ⚠ Tu transfères ton dernier exemplaire de :{' '}
+                {lastCopies
+                  .slice(0, 5)
+                  .map((p) => speciesName(ctx, p.speciesId, p.formId))
+                  .join(', ')}
+                {lastCopies.length > 5 && ` et ${lastCopies.length - 5} autre(s)`}. Ils resteront au
+                Pokédex mais tu n'en auras plus aucun.
+              </span>
+              <button
+                className="btn-danger py-1"
+                disabled={transfer.isPending}
+                onClick={() => transfer.mutate([...toTransfer])}
+              >
+                Transférer quand même
+              </button>
+              <button className="btn-ghost py-1" onClick={() => setConfirmingLast(false)}>
+                Annuler
+              </button>
+            </div>
+          )}
+          {transfer.error && <p className="w-full text-red-600">{errorText(transfer.error)}</p>}
+        </div>
+      )}
 
       <TagManagerDialog open={tagsOpen} onClose={() => setTagsOpen(false)} />
       <DuplicateSettingsDialog
@@ -344,72 +402,32 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
         onClose={() => setDuplicateSettingsOpen(false)}
         onSave={setDuplicateSettings}
       />
-      {/* Taille fixe : les boutons de navigation restent au même endroit d'une fiche à l'autre. */}
-      <Modal
-        open={!!selected}
-        onClose={closeDetail}
-        wide
-        className="flex h-[min(44rem,calc(100dvh-2rem))] flex-col"
-      >
+      <Modal open={!!selected} onClose={closeDetail} wide="xl" className={PC_SHEET_CLASS}>
         {selected && (
-          <>
-            <div className="-mt-2 mb-2 flex shrink-0 items-center justify-end gap-1">
-              {selectedIndex >= 0 && (
-                <>
-                  <button
-                    type="button"
-                    className="btn-ghost px-2.5 py-1"
-                    disabled={!previous}
-                    onClick={() => previous && setSelectedId(previous.p.id)}
-                    aria-label="Pokémon précédent"
-                    title="Pokémon précédent (←)"
-                  >
-                    ‹
-                  </button>
-                  <span className="min-w-16 text-center text-xs text-slate-500">
-                    {selectedIndex + 1} / {filtered.length}
-                  </span>
-                  <button
-                    type="button"
-                    className="btn-ghost px-2.5 py-1"
-                    disabled={!next}
-                    onClick={() => next && setSelectedId(next.p.id)}
-                    aria-label="Pokémon suivant"
-                    title="Pokémon suivant (→)"
-                  >
-                    ›
-                  </button>
-                </>
-              )}
-              <button
-                type="button"
-                className="btn-ghost ml-2 px-2.5 py-1"
-                onClick={closeDetail}
-                aria-label="Fermer"
-                title="Fermer (Échap)"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="-mx-6 -mb-6 min-h-0 flex-1 overflow-y-auto px-6 pb-6">
-              <PokemonDetail
-                key={selected.id}
-                ctx={ctx}
-                pokemon={selected}
-                evolutions={evolutionsOf(selected)}
-                onTransferred={(data) => {
-                  setReleased(null);
-                  setTransferResult(data);
-                  setSelectedId(next?.p.id ?? previous?.p.id ?? null);
-                }}
-                onReleased={(message) => {
-                  setTransferResult(null);
-                  setReleased(message);
-                  setSelectedId(next?.p.id ?? previous?.p.id ?? null);
-                }}
-              />
-            </div>
-          </>
+          <PokemonDetail
+            key={selected.id}
+            ctx={ctx}
+            pokemon={selected}
+            evolutions={evolutionsOf(selected)}
+            nav={
+              selectedIndex >= 0
+                ? { previous, next, index: selectedIndex, total: filtered.length }
+                : undefined
+            }
+            onSelect={setSelectedId}
+            onClose={closeDetail}
+            onManageTags={() => setTagsOpen(true)}
+            onTransferred={(data) => {
+              setReleased(null);
+              setTransferResult(data);
+              setSelectedId(next?.p.id ?? previous?.p.id ?? null);
+            }}
+            onReleased={(message) => {
+              setTransferResult(null);
+              setReleased(message);
+              setSelectedId(next?.p.id ?? previous?.p.id ?? null);
+            }}
+          />
         )}
       </Modal>
     </div>
@@ -451,6 +469,55 @@ function FavoriteToggle({ pokemon: p }: { pokemon: PokemonDto }) {
   );
 }
 
+/** Taille fixe : l'en-tête et ses ‹ › restent au même endroit d'une fiche à l'autre. */
+const PC_SHEET_CLASS = 'flex h-[min(50rem,calc(100dvh-2rem))] flex-col overflow-hidden p-0';
+
+/** Pastille du bandeau de la fiche (numéro, niveau, PE). */
+const HUD_PILL =
+  'pixel-label shrink-0 rounded border-2 border-hud-line bg-hud-pill px-1.5 text-[9px]';
+
+const SHEET_ACTIVITY_LABELS: Record<PokemonActivity, string> = {
+  expedition: 'En expédition',
+  battle: 'En combat',
+  daycare: 'À la pension',
+  dungeon: 'En donjon',
+  assistant: 'Assistant',
+};
+
+const STATUS_TONES = {
+  ok: 'border-emerald-700 bg-emerald-50 text-emerald-800 dark:border-emerald-400 dark:bg-emerald-950 dark:text-emerald-300',
+  busy: 'border-sky-700 bg-sky-50 text-sky-800 dark:border-sky-400 dark:bg-sky-950 dark:text-sky-300',
+  heal: 'border-pink-600 bg-pink-50 text-pink-700 dark:border-pink-400 dark:bg-pink-950 dark:text-pink-300',
+  bad: 'border-red-700 bg-red-50 text-red-700 dark:border-red-400 dark:bg-red-950 dark:text-red-300',
+} as const;
+
+/** Pokémon voisins de la fiche, dans l'ordre et avec les filtres de la grille du PC. */
+interface SheetNav {
+  previous?: PcEntry;
+  next?: PcEntry;
+  index: number;
+  total: number;
+}
+
+/** État du Pokémon, dans le coin de l'illustration : disponible, occupé, K.O. ou en soins. */
+function StatusTag({ p }: { p: PokemonDto }) {
+  const now = useNow();
+  const [text, tone]: [string, keyof typeof STATUS_TONES] = p.knockedOut
+    ? ['K.O.', 'bad']
+    : isHealing(p.healUntil, now)
+      ? [`Soins ${formatCountdown(Date.parse(p.healUntil!) - now)}`, 'heal']
+      : p.activity
+        ? [SHEET_ACTIVITY_LABELS[p.activity], 'busy']
+        : ['Disponible', 'ok'];
+  return (
+    <span
+      className={`pixel-label absolute top-2 right-2 rounded border-2 px-1.5 text-[8px] ${STATUS_TONES[tone]}`}
+    >
+      ● {text}
+    </span>
+  );
+}
+
 /** K.O. (avec l'envoi au Centre Pokémon s'il reste de la place) ou en soins. */
 function KoDetail({ ctx, p }: { ctx: GameContext; p: PokemonDto }) {
   const now = useNow();
@@ -464,38 +531,44 @@ function KoDetail({ ctx, p }: { ctx: GameContext; p: PokemonDto }) {
     const pending = heal.isPending || revive.isPending;
     const error = heal.error ?? revive.error;
     return (
-      <div className="mt-1 text-sm">
-        <p className="text-red-600">K.O. : il doit être soigné au Centre Pokémon.</p>
-        <div className="mt-1 flex flex-wrap justify-center gap-2">
-          {free > 0 && (
-            <button
-              className="btn-primary py-1 text-sm"
-              disabled={pending}
-              onClick={() => heal.mutate([p.id])}
-            >
-              Envoyer au Centre Pokémon
-            </button>
-          )}
-          {reviveStack && (
-            <button
-              className="btn-ghost py-1 text-sm"
-              disabled={pending}
-              onClick={() => revive.mutate({ itemId: reviveStack.itemId, pokemonIds: [p.id] })}
-            >
-              Utiliser un rappel ({reviveStack.quantity})
-            </button>
-          )}
-        </div>
-        {free === 0 && (
-          <p className="text-xs text-slate-500">Le Centre Pokémon est plein pour l’instant.</p>
+      <div className="rounded-lg border-[3px] border-red-600 bg-red-50 p-3 text-sm dark:border-red-400 dark:bg-red-950/40">
+        <p className="font-semibold text-red-700 dark:text-red-300">
+          K.O. : à soigner au Centre Pokémon.
+        </p>
+        {(free > 0 || reviveStack) && (
+          <div className="mt-2 flex flex-wrap gap-2">
+            {free > 0 && (
+              <button
+                className="btn-primary flex-1"
+                disabled={pending}
+                onClick={() => heal.mutate([p.id])}
+              >
+                Envoyer au Centre
+              </button>
+            )}
+            {reviveStack && (
+              <button
+                className="btn-ghost flex-1"
+                disabled={pending}
+                onClick={() => revive.mutate({ itemId: reviveStack.itemId, pokemonIds: [p.id] })}
+              >
+                Rappel ({reviveStack.quantity})
+              </button>
+            )}
+          </div>
         )}
-        {error && <p className="text-xs text-red-600">{errorText(error)}</p>}
+        {free === 0 && (
+          <p className="mt-1 text-xs text-slate-600 dark:text-slate-300">
+            Le Centre Pokémon est plein pour l’instant.
+          </p>
+        )}
+        {error && <p className="mt-1 text-xs text-red-600">{errorText(error)}</p>}
       </div>
     );
   }
   if (!isHealing(p.healUntil, now)) return null;
   return (
-    <p className="mt-1 text-sm text-pink-600 dark:text-pink-400">
+    <p className="rounded-lg border-[3px] border-pink-500 bg-pink-50 p-3 text-sm font-semibold text-pink-700 dark:border-pink-400 dark:bg-pink-950/40 dark:text-pink-300">
       En soins au Centre Pokémon encore {formatCountdown(Date.parse(p.healUntil!) - now)}
     </p>
   );
@@ -526,23 +599,39 @@ function busyAbilityActivities(
   }
 }
 
+const formatNumber = (n: number) => n.toLocaleString('fr-FR');
+
+/**
+ * Fiche d'un Pokémon du PC, dans la même fenêtre que la fiche du Pokédex : bandeau (numéro, nom,
+ * types, niveau, PE, voisins), illustration et blocs, barre d'actions en bas.
+ */
 function PokemonDetail({
   ctx,
   pokemon: p,
   evolutions,
+  nav,
+  onSelect,
+  onClose,
+  onManageTags,
   onTransferred,
   onReleased,
 }: {
   ctx: GameContext;
   pokemon: PokemonDto;
   evolutions: EvolutionCheck[];
+  nav?: SheetNav;
+  onSelect: (id: string) => void;
+  onClose: () => void;
+  onManageTags: () => void;
   onTransferred: (data: TransferPokemonResponse) => void;
   /** Légendaire relâché (message à afficher dans le PC). */
   onReleased: (message: string) => void;
 }) {
   const queryClient = useQueryClient();
-  const tags = useTags().data ?? [];
   const assistants = useAssistants();
+  const dex = useDexIndex();
+  const progress = usePlayerProgress();
+  const [dexSlot, setDexSlot] = useState<DexSlot | null>(null);
   const [reveal, setReveal] = useState<EvolveResponse | null>(null);
   const [revealMega, setRevealMega] = useState(false);
   // Évolution : Pokémon mis à jour sur place ; Pokédex, quêtes… et sac seulement si la réponse le dit.
@@ -586,12 +675,18 @@ function PokemonDetail({
   });
   const species = ctx.species(p.speciesId, p.formId)!;
   const stats = computeStats(species, p);
+  const power = memberPower(ctx, p);
   const abilitySummary = abilityDetails(
     ctx,
     effectiveAbility(ctx, p),
     busyAbilityActivities(p, assistants.data),
   );
   const nature = getNature(p.nature);
+  const natureUp =
+    nature?.increasedStat && nature.increasedStat !== nature.decreasedStat
+      ? nature.increasedStat
+      : undefined;
+  const natureDown = natureUp ? nature?.decreasedStat : undefined;
   const levelXp = xpForLevel(species.growthRate, p.level);
   const nextXp = xpForLevel(species.growthRate, Math.min(MAX_LEVEL, p.level + 1));
   const ivTotal = STAT_NAMES.reduce((sum, s) => sum + p.ivs[s], 0);
@@ -601,9 +696,12 @@ function PokemonDetail({
       api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { locked: !p.locked } }),
     onSuccess: (updated) => patchPokemon(queryClient, updated),
   });
+  // Affichage optimiste : le cœur change dès le clic.
+  const locked = toggleLock.isPending ? !p.locked : p.locked;
 
   const candies = useCandies();
   const lineage = lineageId(ctx, p.speciesId);
+  const candySpecies = lineage !== undefined ? lineageSpeciesId(lineage) : undefined;
   const ownedCandies = candies.data?.find((c) => c.lineageId === lineage)?.quantity ?? 0;
   const bonuses = usePlayerBonuses(ctx);
   const usefulCandies = Math.min(ownedCandies, candiesToMaxLevel(ctx, p, bonuses));
@@ -669,337 +767,587 @@ function PokemonDetail({
     },
   });
 
-  if (reveal) {
+  // Raison affichée à côté du bouton Transférer / Relâcher quand il est grisé.
+  const verb = releaseQuest ? 'relâcher' : 'transférer';
+  const blocked =
+    !transferable && !releaseQuest
+      ? 'Les légendaires et les fabuleux ne se transfèrent pas'
+      : locked
+        ? `Favori : retire-le des favoris pour le ${verb}`
+        : p.busy
+          ? 'Le Pokémon doit être disponible (ni en activité)'
+          : undefined;
+  const gain = transferCandies(ctx, p);
+  const candyLabel = lineage !== undefined ? candyName(ctx, lineage) : 'Bonbon';
+
+  const navButton = (entry: PcEntry | undefined, side: 'prev' | 'next', className: string) => {
+    if (!entry) return <span />;
+    const name = entry.species?.nameFr ?? '?';
     return (
-      <EvolutionReveal ctx={ctx} data={reveal} mega={revealMega} onDone={() => setReveal(null)} />
+      <button
+        type="button"
+        className={className}
+        onClick={() => onSelect(entry.p.id)}
+        aria-label={`${side === 'prev' ? 'Pokémon précédent' : 'Pokémon suivant'} : ${name}`}
+        title={side === 'prev' ? 'Pokémon précédent (←)' : 'Pokémon suivant (→)'}
+      >
+        <span className="truncate">{side === 'prev' ? `‹ ${name}` : `${name} ›`}</span>
+      </button>
     );
-  }
+  };
+  const counter = nav && (
+    <span className="pixel-label shrink-0 text-center text-[9px] opacity-75">
+      {nav.index + 1} / {nav.total}
+    </span>
+  );
+
+  const actions = confirmTransfer ? (
+    <div className="flex w-full flex-wrap items-center gap-2">
+      <p className="min-w-0 flex-1 basis-64 text-sm">
+        {releaseQuest ? (
+          <>
+            <strong>Relâcher {species.nameFr} ?</strong> Aucun Bonbon :{' '}
+            {releaseRestarts
+              ? `capturé avant la nouvelle version de la quête « ${releaseQuest.name} », il ne reviendra qu’en la refaisant entièrement, depuis la première étape.`
+              : releaseRoams
+                ? `il recommence à errer (quête « ${releaseQuest.name} »), à recroiser et capturer en expédition.`
+                : `il retourne à la quête « ${releaseQuest.name} », où tu pourras de nouveau l’affronter et tenter de le capturer.`}{' '}
+            Ce Pokémon-ci (niveau, IV, chromatique) est perdu.
+          </>
+        ) : (
+          <>
+            <strong>Transférer {species.nameFr}</strong> contre {gain} × {candyLabel} ? C’est
+            définitif.
+          </>
+        )}
+      </p>
+      <div className="flex gap-2 max-sm:w-full">
+        <button className="btn-ghost max-sm:flex-1" onClick={() => setConfirmTransfer(false)}>
+          Annuler
+        </button>
+        {releaseQuest ? (
+          <button
+            className="btn-danger max-sm:flex-1"
+            disabled={release.isPending}
+            onClick={() => release.mutate()}
+          >
+            Relâcher
+          </button>
+        ) : (
+          <button
+            className="btn-danger max-sm:flex-1"
+            disabled={transfer.isPending}
+            onClick={() => transfer.mutate()}
+          >
+            Transférer
+          </button>
+        )}
+      </div>
+    </div>
+  ) : (
+    <div className="flex w-full flex-wrap items-center gap-2">
+      <button
+        className="btn-ghost max-sm:flex-1"
+        disabled={usable.length === 0}
+        title={usable.length === 0 ? 'Aucun objet utilisable sur ce Pokémon' : undefined}
+        onClick={() => setItemsOpen(true)}
+      >
+        {usable[0] && (
+          <img
+            src={itemIcon(ctx, usable[0].itemId)}
+            alt=""
+            width={20}
+            height={20}
+            className="-my-1 [image-rendering:pixelated]"
+          />
+        )}
+        Objet{usable.length > 0 && ` (${usable.length})`}
+      </button>
+      <button
+        className="btn-ghost max-sm:flex-1"
+        onClick={() => setDexSlot({ speciesId: p.speciesId, formId: p.formId })}
+        title="Fiche de l’espèce dans le Pokédex"
+      >
+        <img
+          src={itemIcon(ctx, 'poke-ball')}
+          alt=""
+          width={20}
+          height={20}
+          className="-my-1 [image-rendering:pixelated]"
+        />
+        Pokédex
+      </button>
+      <span className="flex-1 max-sm:hidden" />
+      {blocked && (
+        <span className="text-xs text-slate-500 max-sm:order-last max-sm:w-full max-sm:text-center">
+          {blocked}
+        </span>
+      )}
+      <button
+        className="btn-danger max-sm:w-full"
+        disabled={!!blocked}
+        title={
+          releaseQuest
+            ? releaseRestarts
+              ? 'Aucun Bonbon : sa quête recommence depuis le début'
+              : 'Aucun Bonbon : sa quête le propose de nouveau'
+            : undefined
+        }
+        onClick={() => setConfirmTransfer(true)}
+      >
+        {releaseQuest
+          ? 'Relâcher'
+          : transferable
+            ? `Transférer · ${gain} Bonbon${gain > 1 ? 's' : ''}`
+            : 'Transférer'}
+      </button>
+      {(transfer.error ?? release.error) && (
+        <p className="w-full text-xs text-red-600">{errorText(transfer.error ?? release.error)}</p>
+      )}
+    </div>
+  );
 
   return (
-    <div className="grid gap-6 md:grid-cols-[200px_1fr]">
-      <div className="flex flex-col items-center text-center">
-        <div className="relative">
-          {p.isShiny && <ShinySparkles loop radius={110} />}
-          <PokemonSprite
-            speciesId={p.speciesId}
-            formId={p.formId}
-            shiny={p.isShiny}
-            kind="artwork"
-            size={180}
-          />
-        </div>
-        <h2 className="mt-2 text-xl font-bold">
-          {species.nameFr} <span className="text-slate-400">{GENDER_LABELS[p.gender]}</span>{' '}
-          {p.isShiny && <ShinyStar />}
+    <>
+      <header className="flex shrink-0 items-center gap-2 border-b-[3px] border-ink bg-hud px-3 py-2.5 text-white sm:gap-3 sm:px-4">
+        <span className={HUD_PILL}>N° {String(p.speciesId).padStart(3, '0')}</span>
+        <h2 className="min-w-0 truncate font-pixel text-xs text-[#f8d030] uppercase sm:text-sm">
+          {species.nameFr}
         </h2>
-        <p className="text-sm text-slate-500">
-          N° {String(p.speciesId).padStart(3, '0')} · Niveau {p.level}
-        </p>
-        <PokemonTagBadges
-          pokemon={p}
-          tags={tags}
-          className="mt-1 gap-1"
-          badgeClassName="px-2 text-xs leading-5"
-        />
-        <KoDetail ctx={ctx} p={p} />
-        <div className="mt-2 flex gap-1">
+        {p.gender !== 'genderless' && (
+          <span
+            className={`shrink-0 font-bold ${p.gender === 'male' ? 'text-sky-300' : 'text-pink-300'}`}
+            aria-label={p.gender === 'male' ? 'Mâle' : 'Femelle'}
+          >
+            {GENDER_LABELS[p.gender]}
+          </span>
+        )}
+        {p.isShiny && <ShinyStar className="shrink-0" />}
+        <div className="hidden shrink-0 gap-1.5 sm:flex">
           {species.types.map((t) => (
             <TypeBadge key={t} type={t} />
           ))}
         </div>
-        <div className="mt-4 flex flex-wrap justify-center gap-2">
-          <button
-            className="btn-ghost"
-            disabled={toggleLock.isPending}
-            onClick={() => toggleLock.mutate()}
+        <span className={`${HUD_PILL} hidden sm:inline`}>N.{p.level}</span>
+        <span className={`${HUD_PILL} hidden text-[#f8d030] sm:inline`}>PE {power}</span>
+        <div className="flex-1" />
+        {nav && (
+          <nav
+            className="hidden max-w-[45%] min-w-0 items-center gap-2 lg:flex"
+            aria-label="Pokémon voisins"
           >
-            {p.locked ? '♥ Retirer des favoris' : '♡ Ajouter aux favoris'}
-          </button>
-          <button
-            className="btn-ghost"
-            disabled={usable.length === 0}
-            title={usable.length === 0 ? 'Aucun objet utilisable sur ce Pokémon' : undefined}
-            onClick={() => setItemsOpen(true)}
-          >
-            Objet
-          </button>
-        </div>
-        <TagPicker pokemon={p} />
-        <ItemUseDialog
-          ctx={ctx}
-          pokemon={p}
-          items={usable}
-          open={itemsOpen}
-          onClose={() => setItemsOpen(false)}
-        />
+            {navButton(
+              nav.previous,
+              'prev',
+              'btn min-w-0 border-hud-line bg-hud-pill px-3 py-1.5 text-white',
+            )}
+            {counter}
+            {navButton(
+              nav.next,
+              'next',
+              'btn min-w-0 border-hud-line bg-hud-pill px-3 py-1.5 text-white',
+            )}
+          </nav>
+        )}
+        <button
+          type="button"
+          className="btn size-10 shrink-0 border-[#0b0f1e] bg-brand-500 p-0 text-white"
+          onClick={onClose}
+          aria-label="Fermer"
+          title="Fermer (Échap)"
+        >
+          ✕
+        </button>
+      </header>
 
-        {lineage !== undefined && (
-          <div className="mt-4 w-full rounded-xl border border-slate-200 p-3 text-left text-xs dark:border-slate-800">
-            <p className="font-medium">
-              {candyName(ctx, lineage)} : {ownedCandies}
-            </p>
-            {p.level < MAX_LEVEL && (
-              <p className="text-slate-500">
-                {candiesForLevel(ctx, p.level)} Bonbons pour passer le niveau {p.level}.
-              </p>
-            )}
-            {usefulCandies > 0 && (
-              <>
-                <div className="mt-2 flex items-center gap-1">
-                  <input
-                    type="number"
-                    className="input min-w-0 flex-1 px-2 py-1"
-                    min={1}
-                    max={usefulCandies}
-                    value={candiesToGive}
-                    onChange={(e) => setCandyCount(Math.max(1, Number(e.target.value) || 1))}
+      <div className="min-h-0 flex-1 overflow-y-auto p-3 sm:p-5">
+        {reveal ? (
+          <EvolutionReveal
+            ctx={ctx}
+            data={reveal}
+            mega={revealMega}
+            onDone={() => setReveal(null)}
+          />
+        ) : (
+          <div className="grid gap-4 md:grid-cols-[20rem_minmax(0,1fr)] lg:grid-cols-[22rem_minmax(0,1fr)]">
+            <div className="space-y-3">
+              <div className="flex flex-wrap items-center justify-center gap-1.5 sm:hidden">
+                {species.types.map((t) => (
+                  <TypeBadge key={t} type={t} />
+                ))}
+                <span className="pixel-label rounded border-2 border-ink bg-white px-1.5 text-[9px] dark:bg-slate-900">
+                  N.{p.level}
+                </span>
+                <span className="pixel-label rounded border-2 border-ink bg-hud px-1.5 text-[9px] text-[#f8d030]">
+                  PE {power}
+                </span>
+              </div>
+              <div className={`sprite-well relative h-60 sm:h-68 ${p.isShiny ? 'shiny-well' : ''}`}>
+                <div className="relative">
+                  {p.isShiny && <ShinySparkles loop radius={110} />}
+                  <PokemonSprite
+                    speciesId={p.speciesId}
+                    formId={p.formId}
+                    shiny={p.isShiny}
+                    kind="artwork"
+                    size={200}
+                    priority
+                    alt={species.nameFr}
+                    className={p.knockedOut ? 'opacity-70 grayscale-[60%]' : ''}
                   />
-                  <button
-                    className="btn-ghost shrink-0 px-2 py-1"
-                    disabled={candiesToGive === usefulCandies}
-                    onClick={() => setCandyCount(usefulCandies)}
-                    title="Autant de Bonbons que possible (jusqu’au niveau maximal)"
-                  >
-                    Max
-                  </button>
-                  <button
-                    className="btn-ghost shrink-0 px-2 py-1"
-                    disabled={feed.isPending}
-                    onClick={() => feed.mutate(candiesToGive)}
-                  >
-                    Donner
-                  </button>
                 </div>
-                <p className="mt-1 text-slate-500">
-                  +{fed.xp - p.xp} XP →{' '}
-                  <span className={fed.level > p.level ? 'font-semibold text-emerald-600' : ''}>
-                    niveau {fed.level}
+                <button
+                  type="button"
+                  className={`absolute top-2 left-2 grid size-11 place-items-center rounded-md border-2 border-ink text-2xl leading-none shadow-[inset_0_-3px_0_rgb(0_0_0/0.12)] transition hover:scale-105 ${
+                    locked
+                      ? 'bg-done text-amber-500'
+                      : 'bg-white text-slate-400 hover:text-amber-400 dark:bg-slate-900'
+                  }`}
+                  disabled={toggleLock.isPending}
+                  onClick={() => toggleLock.mutate()}
+                  aria-pressed={locked}
+                  aria-label={locked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                  title={locked ? 'Retirer des favoris' : 'Ajouter aux favoris'}
+                >
+                  {locked ? '♥' : '♡'}
+                </button>
+                <StatusTag p={p} />
+                {p.isShiny && (
+                  <span className="pixel-label absolute right-2 bottom-2 rounded border-2 border-amber-600 bg-done px-1.5 text-[8px] text-amber-800 dark:text-[#f8d878]">
+                    ★ Chromatique
                   </span>
-                  {fed.level >= MAX_LEVEL && ' (max)'}
+                )}
+              </div>
+
+              <KoDetail ctx={ctx} p={p} />
+
+              <SheetSection
+                title={`Niveau ${p.level}`}
+                aside={
+                  <span className="pixel-label text-[9px] text-slate-500">
+                    {p.level >= MAX_LEVEL ? 'Max' : `→ N.${p.level + 1}`}
+                  </span>
+                }
+              >
+                <ProgressBar
+                  value={p.level >= MAX_LEVEL ? 1 : (p.xp - levelXp) / (nextXp - levelXp)}
+                  barClassName="bg-[#48a8e8]"
+                />
+                <p className="mt-1 text-xs text-slate-500">
+                  {p.level >= MAX_LEVEL
+                    ? 'Niveau maximal atteint'
+                    : `XP ${formatNumber(p.xp - levelXp)} / ${formatNumber(nextXp - levelXp)}`}
                 </p>
-              </>
-            )}
-            {feed.error && <p className="mt-1 text-red-600">{errorText(feed.error)}</p>}
+                {lineage !== undefined && (
+                  <div className="mt-3 space-y-2 border-t-2 border-dashed border-slate-200 pt-3 text-sm dark:border-slate-700">
+                    <div className="flex items-center gap-2">
+                      {candySpecies && (
+                        <PokemonSprite speciesId={candySpecies} size={36} className="shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="font-semibold">
+                          {candyLabel} × {formatNumber(ownedCandies)}
+                        </p>
+                        {p.level < MAX_LEVEL && (
+                          <p className="text-xs text-slate-500">
+                            {candiesForLevel(ctx, p.level)} Bonbons pour passer le niveau {p.level}.
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {usefulCandies > 0 && (
+                      <>
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            className="btn-ghost size-9 shrink-0 p-0"
+                            disabled={candiesToGive <= 1}
+                            onClick={() => setCandyCount(candiesToGive - 1)}
+                            aria-label="Un Bonbon de moins"
+                          >
+                            −
+                          </button>
+                          <input
+                            type="number"
+                            className="input w-16 px-1 py-1.5 text-center"
+                            aria-label="Nombre de Bonbons"
+                            min={1}
+                            max={usefulCandies}
+                            value={candiesToGive}
+                            onChange={(e) =>
+                              setCandyCount(Math.max(1, Number(e.target.value) || 1))
+                            }
+                          />
+                          <button
+                            className="btn-ghost size-9 shrink-0 p-0"
+                            disabled={candiesToGive >= usefulCandies}
+                            onClick={() => setCandyCount(candiesToGive + 1)}
+                            aria-label="Un Bonbon de plus"
+                          >
+                            +
+                          </button>
+                          <button
+                            className="btn-ghost shrink-0 px-2.5"
+                            disabled={candiesToGive === usefulCandies}
+                            onClick={() => setCandyCount(usefulCandies)}
+                            title="Autant de Bonbons que possible (jusqu’au niveau maximal)"
+                          >
+                            Max
+                          </button>
+                          <button
+                            className="btn-primary ml-auto shrink-0"
+                            disabled={feed.isPending}
+                            onClick={() => feed.mutate(candiesToGive)}
+                          >
+                            Donner
+                          </button>
+                        </div>
+                        <p className="text-xs text-slate-500">
+                          +{formatNumber(fed.xp - p.xp)} XP →{' '}
+                          <span
+                            className={
+                              fed.level > p.level
+                                ? 'font-semibold text-emerald-700 dark:text-emerald-400'
+                                : ''
+                            }
+                          >
+                            niveau {fed.level}
+                          </span>
+                          {fed.level >= MAX_LEVEL && ' (max)'}
+                        </p>
+                      </>
+                    )}
+                    {feed.error && <p className="text-xs text-red-600">{errorText(feed.error)}</p>}
+                  </div>
+                )}
+              </SheetSection>
+
+              <dl className="grid grid-cols-3 gap-2 text-sm">
+                <InfoCell label="Bonheur" value={`${p.happiness} / 255`} />
+                <InfoCell
+                  label="Origine"
+                  value={
+                    p.originRegion
+                      ? (ctx.region(p.originRegion)?.name ?? p.originRegion)
+                      : ORIGIN_LABELS[p.origin]
+                  }
+                  sub={p.originRegion ? ORIGIN_LABELS[p.origin] : undefined}
+                />
+                <InfoCell
+                  label="Obtenu le"
+                  value={new Date(p.caughtAt).toLocaleDateString('fr-FR', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: '2-digit',
+                  })}
+                  sub={new Date(p.caughtAt).toLocaleTimeString('fr-FR', {
+                    hour: '2-digit',
+                    minute: '2-digit',
+                  })}
+                />
+              </dl>
+
+              <SheetSection
+                title="Étiquettes"
+                aside={
+                  <button
+                    type="button"
+                    className="pixel-label text-[8px] text-brand-600 hover:underline dark:text-brand-500"
+                    onClick={onManageTags}
+                  >
+                    Gérer
+                  </button>
+                }
+              >
+                <TagPicker pokemon={p} bare />
+              </SheetSection>
+            </div>
+
+            <div className="min-w-0 space-y-3 text-sm">
+              <EvolutionPanel
+                ctx={ctx}
+                pokemon={p}
+                evolutions={evolutions}
+                pending={evolve.isPending}
+                error={evolve.error}
+                onEvolve={(option) => evolve.mutate(option)}
+              />
+              <MegaPanel
+                ctx={ctx}
+                pokemon={p}
+                pending={megaEvolve.isPending || megaRevert.isPending}
+                error={megaEvolve.error ?? megaRevert.error}
+                onMega={(itemId) => megaEvolve.mutate({ itemId })}
+                onRevert={() => megaRevert.mutate()}
+              />
+
+              <SheetSection title="Nature et talent">
+                <dl className="grid grid-cols-[5rem_minmax(0,1fr)] gap-x-3 gap-y-3">
+                  <dt className="pixel-label pt-0.5 text-[8px] text-slate-500 uppercase">Nature</dt>
+                  <dd>
+                    <span className="font-semibold">{natureLabel(p.nature)}</span>
+                    {natureUp && natureDown ? (
+                      <>
+                        <span className="ml-2 text-xs text-red-600 dark:text-red-400">
+                          ▲ {STAT_LABELS[natureUp]}
+                        </span>
+                        <span className="ml-2 text-xs text-sky-700 dark:text-sky-400">
+                          ▼ {STAT_LABELS[natureDown]}
+                        </span>
+                      </>
+                    ) : (
+                      <span className="text-xs text-slate-500"> — neutre</span>
+                    )}
+                    {p.originalNature && (
+                      <span className="block text-xs text-slate-500">
+                        Aromate · d’origine {natureLabel(p.originalNature)}
+                      </span>
+                    )}
+                  </dd>
+                  <dt className="pixel-label pt-0.5 text-[8px] text-slate-500 uppercase">Talent</dt>
+                  <dd>
+                    {p.megaStone && species.abilities[0] ? (
+                      <AbilityDetail
+                        name={species.abilities[0].name}
+                        summary={abilitySummary}
+                        note={`Méga-Évolution · ${
+                          p.ability
+                            ? `d’origine ${abilityLabel(p.ability)}`
+                            : 'sans talent d’origine'
+                        }`}
+                      />
+                    ) : (
+                      <AbilityDetail
+                        name={p.ability}
+                        hidden={species.abilities.find((a) => a.name === p.ability)?.isHidden}
+                        summary={abilitySummary}
+                        note={
+                          p.ability
+                            ? undefined
+                            : 'Pilule Talent ou Patch Talent pour en débloquer un'
+                        }
+                      />
+                    )}
+                  </dd>
+                </dl>
+              </SheetSection>
+
+              <SheetSection
+                title="Statistiques"
+                aside={
+                  <span className="pixel-label text-[9px] text-slate-500">
+                    IV {ivTotal} / {MAX_IV * 6}
+                  </span>
+                }
+              >
+                <table className="w-full text-left">
+                  <thead className="pixel-label text-[8px] text-slate-500 uppercase">
+                    <tr>
+                      <th className="pb-1.5 font-normal">Stat</th>
+                      <th className="pb-1.5 font-normal">Base</th>
+                      <th className="pb-1.5 font-normal">IV</th>
+                      <th className="pb-1.5 text-right font-normal">Valeur</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {STAT_NAMES.map((s) => {
+                      const up = natureUp === s;
+                      const down = natureDown === s;
+                      const maxed = p.ivs[s] === MAX_IV;
+                      return (
+                        <tr key={s} className="border-t-2 border-slate-100 dark:border-slate-800">
+                          <td
+                            className={`py-1 font-semibold ${
+                              up
+                                ? 'text-red-600 dark:text-red-400'
+                                : down
+                                  ? 'text-sky-700 dark:text-sky-400'
+                                  : ''
+                            }`}
+                          >
+                            {up ? '▲ ' : down ? '▼ ' : ''}
+                            {STAT_LABELS[s]}
+                          </td>
+                          <td className="py-1 text-slate-500">{species.baseStats[s]}</td>
+                          <td className="py-1">
+                            <div className="flex items-center gap-2">
+                              <span
+                                className={`w-6 ${maxed ? 'font-bold text-amber-600 dark:text-amber-400' : ''}`}
+                              >
+                                {p.ivs[s]}
+                              </span>
+                              <ProgressBar
+                                className="w-16 sm:w-28"
+                                value={p.ivs[s] / MAX_IV}
+                                barClassName={maxed ? 'bg-[#f8c838]' : undefined}
+                              />
+                            </div>
+                          </td>
+                          <td className="py-1 text-right font-mono font-semibold">{stats[s]}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-[3px] border-ink dark:border-slate-600">
+                      <td className="pixel-label pt-2 text-[9px] uppercase">Total</td>
+                      <td />
+                      <td className="pt-2 text-xs text-slate-500">
+                        {ivTotal} / {MAX_IV * 6}
+                      </td>
+                      <td className="pt-2 text-right">
+                        <span className="pixel-label rounded bg-hud px-1.5 py-0.5 text-[9px] text-[#f8d030]">
+                          PE {expeditionPower(stats)}
+                        </span>
+                      </td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </SheetSection>
+            </div>
+
+            {/* Téléphone : actions en fin de fiche, la barre du bas garde ‹ ›. */}
+            <div className="sm:hidden">{actions}</div>
           </div>
         )}
-
-        <div className="mt-3 w-full text-xs">
-          {releaseQuest && confirmTransfer ? (
-            <div className="rounded-xl border border-red-200 p-3 dark:border-red-900">
-              <p>
-                Relâcher {species.nameFr} ? Aucun Bonbon :{' '}
-                {releaseRestarts
-                  ? `capturé avant la nouvelle version de la quête « ${releaseQuest.name} », il ne reviendra qu’en la refaisant entièrement, depuis la première étape.`
-                  : releaseRoams
-                    ? `il recommence à errer (quête « ${releaseQuest.name} »), à recroiser et capturer en expédition.`
-                    : `il retourne à la quête « ${releaseQuest.name} », où tu pourras de nouveau l’affronter et tenter de le capturer.`}{' '}
-                Ce Pokémon-ci (niveau, IV, chromatique) est perdu.
-              </p>
-              <div className="mt-2 flex justify-center gap-2">
-                <button
-                  className="btn-danger py-1"
-                  disabled={release.isPending}
-                  onClick={() => release.mutate()}
-                >
-                  Relâcher
-                </button>
-                <button className="btn-ghost py-1" onClick={() => setConfirmTransfer(false)}>
-                  Annuler
-                </button>
-              </div>
-            </div>
-          ) : releaseQuest ? (
-            <button
-              className="btn-danger w-full"
-              disabled={p.locked || p.busy}
-              title={
-                p.locked
-                  ? 'Retire-le des favoris pour pouvoir le relâcher'
-                  : p.busy
-                    ? 'Le Pokémon doit être disponible (ni en activité)'
-                    : releaseRestarts
-                      ? 'Aucun Bonbon : sa quête recommence depuis le début'
-                      : 'Aucun Bonbon : sa quête le propose de nouveau'
-              }
-              onClick={() => setConfirmTransfer(true)}
-            >
-              Relâcher
-            </button>
-          ) : confirmTransfer ? (
-            <div className="rounded-xl border border-red-200 p-3 dark:border-red-900">
-              <p>
-                Transférer {species.nameFr} contre {transferCandies(ctx, p)} ×{' '}
-                {lineage !== undefined ? candyName(ctx, lineage) : 'Bonbon'} ? C’est définitif.
-              </p>
-              <div className="mt-2 flex justify-center gap-2">
-                <button
-                  className="btn-danger py-1"
-                  disabled={transfer.isPending}
-                  onClick={() => transfer.mutate()}
-                >
-                  Transférer
-                </button>
-                <button className="btn-ghost py-1" onClick={() => setConfirmTransfer(false)}>
-                  Annuler
-                </button>
-              </div>
-            </div>
-          ) : (
-            <button
-              className="btn-danger w-full"
-              disabled={!canTransfer(ctx, p)}
-              title={
-                !transferable
-                  ? 'Les légendaires et les fabuleux ne se transfèrent pas'
-                  : p.locked
-                    ? 'Retire-le des favoris pour pouvoir le transférer'
-                    : p.busy
-                      ? 'Le Pokémon doit être disponible (ni en activité)'
-                      : undefined
-              }
-              onClick={() => setConfirmTransfer(true)}
-            >
-              Transférer
-            </button>
-          )}
-          {(transfer.error ?? release.error) && (
-            <p className="mt-1 text-red-600">{errorText(transfer.error ?? release.error)}</p>
-          )}
-        </div>
       </div>
 
-      <div className="space-y-4 text-sm">
-        <EvolutionPanel
-          ctx={ctx}
-          pokemon={p}
-          evolutions={evolutions}
-          pending={evolve.isPending}
-          error={evolve.error}
-          onEvolve={(option) => evolve.mutate(option)}
-        />
-        <MegaPanel
-          ctx={ctx}
-          pokemon={p}
-          pending={megaEvolve.isPending || megaRevert.isPending}
-          error={megaEvolve.error ?? megaRevert.error}
-          onMega={(itemId) => megaEvolve.mutate({ itemId })}
-          onRevert={() => megaRevert.mutate()}
-        />
-        <dl className="grid grid-cols-2 gap-x-4 gap-y-1">
-          <dt className="text-slate-500">Nature</dt>
-          <dd>
-            {natureLabel(p.nature)}
-            {nature?.increasedStat && nature.increasedStat !== nature.decreasedStat && (
-              <span className="text-xs text-slate-500">
-                {' '}
-                (+{STAT_LABELS[nature.increasedStat]}, −{STAT_LABELS[nature.decreasedStat!]})
-              </span>
-            )}
-            {p.originalNature && (
-              <span className="block text-xs text-slate-500">
-                Aromate · d’origine {natureLabel(p.originalNature)}
-              </span>
-            )}
-          </dd>
-          <dt className="text-slate-500">Talent</dt>
-          <dd>
-            {p.megaStone && species.abilities[0] ? (
-              <>
-                <AbilityName name={species.abilities[0].name} summary={abilitySummary} />
-                <span className="block text-xs text-slate-500">
-                  Méga-Évolution ·{' '}
-                  {p.ability ? `d’origine ${abilityLabel(p.ability)}` : 'sans talent d’origine'}
-                </span>
-              </>
-            ) : (
-              <>
-                <AbilityName name={p.ability} summary={abilitySummary} />
-                {species.abilities.find((a) => a.name === p.ability)?.isHidden && (
-                  <span className="ml-1 text-xs text-violet-600">(caché)</span>
-                )}
-                {!p.ability && (
-                  <span className="block text-xs text-slate-500">
-                    Pilule Talent ou Patch Talent pour en débloquer un
-                  </span>
-                )}
-              </>
-            )}
-          </dd>
-          <dt className="text-slate-500">Puissance (PE)</dt>
-          <dd className="font-semibold">{memberPower(ctx, p)}</dd>
-          <dt className="text-slate-500">Bonheur</dt>
-          <dd>{p.happiness} / 255</dd>
-          <dt className="text-slate-500">Origine</dt>
-          <dd>
-            {ORIGIN_LABELS[p.origin]}
-            {p.originRegion && ` · ${ctx.region(p.originRegion)?.name ?? p.originRegion}`}
-          </dd>
-          <dt className="text-slate-500">Obtenu le</dt>
-          <dd>
-            {new Date(p.caughtAt).toLocaleString('fr-FR', {
-              dateStyle: 'short',
-              timeStyle: 'short',
-            })}
-          </dd>
-        </dl>
+      {!reveal && (
+        <footer className="hidden shrink-0 border-t-[3px] border-ink bg-slate-50 px-3 py-2.5 sm:flex sm:px-4 dark:bg-hud-pill">
+          {actions}
+        </footer>
+      )}
+      {/* Sous la largeur d'un grand écran, les voisins passent du bandeau à la barre du bas. */}
+      {!reveal && nav && (nav.previous || nav.next) && (
+        <nav
+          className="grid shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 border-t-[3px] border-ink bg-slate-50 px-3 py-2.5 lg:hidden dark:bg-hud-pill"
+          aria-label="Pokémon voisins"
+        >
+          {navButton(nav.previous, 'prev', 'btn-ghost min-w-0 px-2')}
+          {counter}
+          {navButton(nav.next, 'next', 'btn-ghost min-w-0 px-2')}
+        </nav>
+      )}
 
-        <div>
-          <div className="flex justify-between text-xs text-slate-500">
-            <span>
-              XP {p.xp - levelXp} / {nextXp - levelXp}
-            </span>
-            <span>{p.level >= MAX_LEVEL ? 'Niveau max' : `→ N.${p.level + 1}`}</span>
-          </div>
-          <ProgressBar value={p.level >= MAX_LEVEL ? 1 : (p.xp - levelXp) / (nextXp - levelXp)} />
-        </div>
-
-        <table className="w-full text-left">
-          <thead className="text-xs text-slate-500">
-            <tr>
-              <th className="py-1 font-normal">Stat</th>
-              <th className="py-1 font-normal">Base</th>
-              <th className="py-1 font-normal">IV</th>
-              <th className="py-1 text-right font-normal">Valeur</th>
-            </tr>
-          </thead>
-          <tbody>
-            {STAT_NAMES.map((s) => {
-              const up = nature?.increasedStat === s && nature.decreasedStat !== s;
-              const down = nature?.decreasedStat === s && nature.increasedStat !== s;
-              return (
-                <tr key={s} className="border-t border-slate-100 dark:border-slate-800">
-                  <td className={`py-1 ${up ? 'text-red-600' : down ? 'text-sky-600' : ''}`}>
-                    {STAT_LABELS[s]}
-                  </td>
-                  <td className="py-1 text-slate-500">{species.baseStats[s]}</td>
-                  <td className="py-1">
-                    <div className="flex items-center gap-2">
-                      <span
-                        className={`w-6 ${p.ivs[s] === MAX_IV ? 'font-bold text-amber-600' : ''}`}
-                      >
-                        {p.ivs[s]}
-                      </span>
-                      <ProgressBar className="w-20" value={p.ivs[s] / MAX_IV} />
-                    </div>
-                  </td>
-                  <td className="py-1 text-right font-mono">{stats[s]}</td>
-                </tr>
-              );
-            })}
-          </tbody>
-          <tfoot className="text-xs text-slate-500">
-            <tr className="border-t border-slate-200 dark:border-slate-700">
-              <td className="py-1">Total</td>
-              <td />
-              <td className="py-1">
-                {ivTotal} / {MAX_IV * 6}
-              </td>
-              <td className="py-1 text-right font-mono">{expeditionPower(stats)}</td>
-            </tr>
-          </tfoot>
-        </table>
-      </div>
-    </div>
+      <ItemUseDialog
+        ctx={ctx}
+        pokemon={p}
+        items={usable}
+        open={itemsOpen}
+        onClose={() => setItemsOpen(false)}
+      />
+      {dexSlot && (
+        <DexSheet
+          ctx={ctx}
+          slot={dexSlot}
+          stateOf={(slot) => dexSlotState(dex.bySpecies, dex.byForm, slot, false)}
+          initialShiny={p.isShiny}
+          foreign={false}
+          progress={progress}
+          onSelect={setDexSlot}
+          onClose={() => setDexSlot(null)}
+        />
+      )}
+    </>
   );
 }
 
@@ -1028,40 +1376,56 @@ function abilityDetails(
   return description || effects.length > 0 ? { description, effects } : null;
 }
 
-/** Nom du talent ; sa description et ses effets s'affichent au survol. */
-function AbilityName({ name, summary }: { name: string; summary: AbilityDetails | null }) {
-  if (!summary) return <>{abilityLabel(name)}</>;
+/** Talent : nom (lien vers le Wiki), puis ses effets en clair, grisés hors de l'activité en cours. */
+function AbilityDetail({
+  name,
+  hidden,
+  summary,
+  note,
+}: {
+  name: string;
+  hidden?: boolean;
+  summary: AbilityDetails | null;
+  note?: string;
+}) {
   return (
-    <HoverBubble
-      width={260}
-      // Une ligne par effet (souvent sur deux lignes), plus la description.
-      height={16 + 30 * summary.effects.length + (summary.description ? 30 : 0)}
-      className="inline-block cursor-help underline decoration-slate-400 decoration-dotted underline-offset-2"
-      content={
-        <span className="block space-y-1">
-          {summary.description && (
-            <span className="block text-slate-600 dark:text-slate-300">{summary.description}</span>
+    <>
+      {name ? (
+        <a
+          href={wikiAbilityLink(name)}
+          className="font-semibold text-brand-600 hover:underline dark:text-brand-500"
+        >
+          {abilityLabel(name)}
+        </a>
+      ) : (
+        <span className="font-semibold">{abilityLabel(name)}</span>
+      )}
+      {hidden && (
+        <span className="pixel-label ml-1.5 rounded border-2 border-ink bg-slate-100 px-1 text-[8px] dark:bg-slate-800">
+          Caché
+        </span>
+      )}
+      {note && <span className="block text-xs text-slate-500">{note}</span>}
+      {summary && (
+        <ul className="mt-1 space-y-0.5 text-xs">
+          {summary.description && summary.effects.length === 0 && (
+            <li className="text-slate-500">{summary.description}</li>
           )}
           {summary.effects.map((e, i) => (
-            <span
+            <li
               key={i}
-              className={`block ${
-                e.active ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'
-              }`}
+              className={e.active ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-400'}
             >
+              {e.active ? '● ' : '○ '}
               {e.text}
-            </span>
+            </li>
           ))}
           {summary.effects.some((e) => !e.active) && (
-            <span className="block text-slate-400 italic">
-              Grisés : sans effet sur son activité en cours
-            </span>
+            <li className="text-slate-400 italic">Grisés : sans effet sur son activité en cours</li>
           )}
-        </span>
-      }
-    >
-      {abilityLabel(name)}
-    </HoverBubble>
+        </ul>
+      )}
+    </>
   );
 }
 
@@ -1099,15 +1463,14 @@ function EvolutionPanel({
   };
 
   return (
-    <div className="rounded-xl border border-slate-200 p-3 dark:border-slate-800">
-      <p className="mb-2 font-medium">Évolution</p>
+    <SheetSection title="Évolution">
       <ul className="space-y-2">
         {evolutions.map(({ option, method, methods }) => {
           const state = dexState(option.toSpeciesId, option.toFormId);
           return (
             <li
               key={`${option.toSpeciesId}:${option.toFormId ?? ''}`}
-              className="flex items-center gap-3"
+              className="flex flex-wrap items-center gap-3 rounded-md border-2 border-well-line bg-well p-2"
             >
               <PokemonSprite
                 speciesId={option.toSpeciesId}
@@ -1117,8 +1480,8 @@ function EvolutionPanel({
                 silhouette={!state.seen}
                 className={state.seen && !state.caught ? 'opacity-50 grayscale' : ''}
               />
-              <div className="min-w-0 flex-1 text-xs">
-                <p className="text-sm font-medium">
+              <div className="min-w-0 flex-1 basis-40 text-xs">
+                <p className="text-sm font-semibold">
                   {speciesName(ctx, option.toSpeciesId, option.toFormId)}
                 </p>
                 {methods.length === 0 && (
@@ -1128,14 +1491,23 @@ function EvolutionPanel({
                   <p
                     key={i}
                     className={`flex flex-wrap items-center gap-1 ${
-                      missing.length === 0 ? 'text-emerald-600' : 'text-slate-500'
+                      missing.length === 0
+                        ? 'text-emerald-700 dark:text-emerald-400'
+                        : 'text-slate-500'
                     }`}
                   >
                     {m.itemId && (
-                      <img src={itemIcon(ctx, m.itemId)} alt="" width={18} height={18} />
+                      <img
+                        src={itemIcon(ctx, m.itemId)}
+                        alt=""
+                        width={18}
+                        height={18}
+                        className="[image-rendering:pixelated]"
+                      />
                     )}
                     <span>
                       {i > 0 && 'ou '}
+                      {missing.length === 0 && '✓ '}
                       {evolutionMethodText(ctx, m)}
                     </span>
                     {missing.length > 0 && (
@@ -1148,22 +1520,24 @@ function EvolutionPanel({
               </div>
               {method && (
                 <button
-                  className="btn-primary shrink-0 py-1"
+                  className="btn-primary ml-auto shrink-0 max-sm:w-full"
                   disabled={pending || !usable}
-                  title={
-                    usable ? undefined : 'Le Pokémon doit être disponible (ni occupé, ni K.O.)'
-                  }
                   onClick={() => onEvolve(option)}
                 >
                   Faire évoluer
                 </button>
+              )}
+              {method && !usable && (
+                <p className="w-full text-xs text-slate-500 sm:text-right">
+                  Le Pokémon doit être disponible (ni occupé, ni K.O.)
+                </p>
               )}
             </li>
           );
         })}
       </ul>
       {!!error && <p className="mt-2 text-xs text-red-600">{errorText(error)}</p>}
-    </div>
+    </SheetSection>
   );
 }
 
@@ -1195,19 +1569,24 @@ function MegaPanel({
   const dungeonOf = (itemId: string) => ctx.dungeons.find((d) => d.gemItemId === itemId);
 
   return (
-    <div className="rounded-xl border border-violet-200 p-3 dark:border-violet-900">
-      <p className="mb-2 font-medium">Méga-Évolution</p>
+    <SheetSection title="Méga-Évolution">
       {p.megaStone ? (
-        <div className="flex flex-wrap items-center gap-3 text-xs">
-          <img src={itemIcon(ctx, p.megaStone)} alt="" width={32} height={32} />
+        <div className="flex flex-wrap items-center gap-3 rounded-md border-2 border-well-line bg-well p-2 text-xs">
+          <img
+            src={itemIcon(ctx, p.megaStone)}
+            alt=""
+            width={32}
+            height={32}
+            className="[image-rendering:pixelated]"
+          />
           <div className="min-w-32 flex-1">
-            <p className="text-sm font-medium">Tient : {itemName(ctx, p.megaStone)}</p>
+            <p className="text-sm font-semibold">Tient : {itemName(ctx, p.megaStone)}</p>
             <p className="text-slate-500">
               En la retirant, il retrouve sa forme normale et la gemme revient dans ton sac.
             </p>
           </div>
           <button
-            className="btn-ghost shrink-0 py-1"
+            className="btn-ghost shrink-0 max-sm:w-full"
             disabled={pending || p.busy}
             title={busyTitle}
             onClick={onRevert}
@@ -1224,7 +1603,12 @@ function MegaPanel({
               const quantity = owned(itemId);
               const dungeon = dungeonOf(itemId);
               return (
-                <li key={`${form.id}:${itemId}`} className="flex items-center gap-3">
+                <li
+                  key={`${form.id}:${itemId}`}
+                  className={`flex flex-wrap items-center gap-3 rounded-md border-2 border-well-line p-2 ${
+                    quantity > 0 ? 'bg-well' : 'border-dashed'
+                  }`}
+                >
                   <PokemonSprite
                     speciesId={p.speciesId}
                     formId={form.id}
@@ -1232,14 +1616,20 @@ function MegaPanel({
                     size={48}
                     className={caught ? '' : 'opacity-50 grayscale'}
                   />
-                  <div className="min-w-0 flex-1 text-xs">
-                    <p className="text-sm font-medium">{form.nameFr}</p>
+                  <div className="min-w-0 flex-1 basis-40 text-xs">
+                    <p className="text-sm font-semibold">{form.nameFr}</p>
                     <p
                       className={`flex flex-wrap items-center gap-1 ${
-                        quantity > 0 ? 'text-emerald-600' : 'text-slate-500'
+                        quantity > 0 ? 'text-emerald-700 dark:text-emerald-400' : 'text-slate-500'
                       }`}
                     >
-                      <img src={itemIcon(ctx, itemId)} alt="" width={18} height={18} />
+                      <img
+                        src={itemIcon(ctx, itemId)}
+                        alt=""
+                        width={18}
+                        height={18}
+                        className={`[image-rendering:pixelated] ${quantity > 0 ? '' : 'opacity-60 grayscale'}`}
+                      />
                       <span>
                         {itemName(ctx, itemId)}
                         {quantity > 0 && ` × ${quantity}`}
@@ -1253,7 +1643,7 @@ function MegaPanel({
                   </div>
                   {quantity > 0 && (
                     <button
-                      className="btn-primary shrink-0 py-1"
+                      className="btn-primary ml-auto shrink-0 max-sm:w-full"
                       disabled={pending || p.busy}
                       title={busyTitle}
                       onClick={() => onMega(itemId)}
@@ -1268,7 +1658,7 @@ function MegaPanel({
         </ul>
       )}
       {!!error && <p className="mt-2 text-xs text-red-600">{errorText(error)}</p>}
-    </div>
+    </SheetSection>
   );
 }
 
@@ -1288,7 +1678,46 @@ function usableItems(ctx: GameContext, p: PokemonDto, inventory: InventoryEntryD
     });
 }
 
-/** Popin « Objet » de la fiche : le serveur vérifie de nouveau et consomme l'objet. */
+type UsableItem = ReturnType<typeof usableItems>[number];
+type ItemEffectType = UsableItem['options']['effect']['type'];
+
+/** Rubriques de la popin « Objet », dans l'ordre d'affichage. */
+const ITEM_GROUPS: { type: ItemEffectType; title: string }[] = [
+  { type: 'levelUp', title: 'Niveau' },
+  { type: 'ivCap', title: 'IV' },
+  { type: 'abilityChange', title: 'Talent' },
+  { type: 'mint', title: 'Nature (Aromates)' },
+  { type: 'happiness', title: 'Bonheur' },
+];
+
+/** Effet d'un objet, sans le « Sur un Pokémon : » du Sac (on est déjà sur sa fiche). */
+const itemEffectText = (item: UsableItem) => {
+  const text = effectText(item.options.effect).replace(/^Sur un Pokémon : /, '');
+  return text.charAt(0).toUpperCase() + text.slice(1);
+};
+
+/** Pourquoi l'objet ne ferait rien sur ce Pokémon. */
+function uselessReason(item: UsableItem): string {
+  const { effect } = item.options;
+  switch (effect.type) {
+    case 'ivCap':
+      return 'Tous ses IV sont déjà à 31';
+    case 'mint':
+      return 'Nature actuelle';
+    case 'abilityChange':
+      return effect.hidden ? 'Pas de talent caché à lui donner' : 'Aucun autre talent à lui donner';
+    case 'happiness':
+      return 'Bonheur déjà au maximum';
+    case 'levelUp':
+      return 'Déjà au niveau maximal';
+  }
+}
+
+/**
+ * Popin « Objet » de la fiche du PC : objets du sac rangés par effet (niveau, IV, talent,
+ * nature, bonheur), avec l'état actuel du Pokémon en tête. Le serveur vérifie de nouveau et
+ * consomme l'objet.
+ */
 function ItemUseDialog({
   ctx,
   pokemon: p,
@@ -1298,95 +1727,266 @@ function ItemUseDialog({
 }: {
   ctx: GameContext;
   pokemon: PokemonDto;
-  items: ReturnType<typeof usableItems>;
+  items: UsableItem[];
   open: boolean;
   onClose: () => void;
 }) {
   const queryClient = useQueryClient();
-  const [stat, setStat] = useState<StatName | ''>('');
+  // IV choisi pour chaque Capsule « 1 IV au choix ».
+  const [chosenStats, setChosenStats] = useState<Record<string, StatName>>({});
+  const [done, setDone] = useState<string | null>(null);
   const use = useMutation({
     mutationFn: (input: UseItemInput) =>
       api<UseItemResponse>(`/api/pokemon/${p.id}/use-item`, { method: 'POST', json: input }),
-    onSuccess: (data) => {
-      setStat('');
+    onSuccess: (data, input) => {
+      setChosenStats({});
+      setDone(
+        `${itemName(ctx, input.itemId)} utilisé sur ${speciesName(ctx, p.speciesId, p.formId)}.`,
+      );
       patchPokemon(queryClient, data.pokemon);
       setItemQuantity(queryClient, data.itemId, data.remaining);
     },
   });
+  const close = () => {
+    setDone(null);
+    use.reset();
+    onClose();
+  };
+
+  const species = ctx.species(p.speciesId, p.formId);
+  const nature = getNature(p.nature);
+  const natureUp =
+    nature?.increasedStat && nature.increasedStat !== nature.decreasedStat
+      ? nature.increasedStat
+      : undefined;
+  const ivTotal = STAT_NAMES.reduce((sum, s) => sum + p.ivs[s], 0);
+  const disabled = use.isPending || p.busy;
+  const busyTitle = p.busy ? 'Le Pokémon doit être disponible (ni en activité)' : undefined;
+  const run = (item: UsableItem) => {
+    const stat = chosenStats[item.itemId];
+    setDone(null);
+    use.mutate({ itemId: item.itemId, ...(stat && { stat }) });
+  };
+
+  const natureStats = (natureId: string) => {
+    const n = getNature(natureId);
+    if (!n?.increasedStat || n.increasedStat === n.decreasedStat) {
+      return <span className="text-slate-500">Neutre</span>;
+    }
+    return (
+      <>
+        <span className="text-red-600 dark:text-red-400">▲ {STAT_LABELS[n.increasedStat]}</span>{' '}
+        <span className="text-sky-700 dark:text-sky-400">▼ {STAT_LABELS[n.decreasedStat!]}</span>
+      </>
+    );
+  };
+
+  const itemRow = (item: UsableItem) => {
+    const { itemId, quantity, options } = item;
+    const { effect } = options;
+    const needsStat = effect.type === 'ivCap' && !effect.all;
+    const stat = chosenStats[itemId];
+    const ready = options.usable && (!needsStat || !!stat);
+    return (
+      <li
+        key={itemId}
+        className={`flex flex-wrap items-center gap-3 rounded-md border-2 border-well-line p-2 ${
+          options.usable ? 'bg-well' : 'border-dashed'
+        }`}
+      >
+        <img
+          src={itemIcon(ctx, itemId)}
+          alt=""
+          width={32}
+          height={32}
+          className={`shrink-0 [image-rendering:pixelated] ${options.usable ? '' : 'opacity-50 grayscale'}`}
+        />
+        <div className="min-w-0 flex-1 basis-48">
+          <p className="font-semibold">
+            {itemName(ctx, itemId)}{' '}
+            <span className="font-mono text-sm font-normal text-slate-500">× {quantity}</span>
+          </p>
+          <p className="text-xs text-slate-500">
+            {options.usable ? itemEffectText(item) : uselessReason(item)}
+          </p>
+          {options.usable && options.abilities.length > 0 && (
+            <p className="text-xs text-emerald-700 dark:text-emerald-400">
+              {options.abilities.length > 1 ? 'Au hasard : ' : 'Talent obtenu : '}
+              {options.abilities.map(abilityLabel).join(' ou ')}
+            </p>
+          )}
+        </div>
+        {options.usable && (
+          <button
+            className="btn-primary ml-auto shrink-0 max-sm:w-full"
+            disabled={!ready || disabled}
+            title={busyTitle ?? (needsStat && !stat ? 'Choisis d’abord l’IV à monter' : undefined)}
+            onClick={() => run(item)}
+          >
+            Utiliser
+          </button>
+        )}
+        {options.usable && needsStat && (
+          <div className="w-full">
+            <p className="mb-1 text-xs text-slate-500">IV à monter à {MAX_IV} :</p>
+            <div className="grid grid-cols-3 gap-1.5 sm:grid-cols-6">
+              {STAT_NAMES.map((s) => {
+                const maxed = p.ivs[s] >= MAX_IV;
+                const selected = stat === s;
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    disabled={maxed}
+                    aria-pressed={selected}
+                    onClick={() => setChosenStats((cur) => ({ ...cur, [itemId]: s }))}
+                    className={`flex flex-col items-center rounded-md border-2 px-1 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-45 ${
+                      selected
+                        ? SELECTED_CELL
+                        : 'border-well-line bg-white hover:border-slate-400 dark:bg-slate-900'
+                    }`}
+                  >
+                    <span className="font-semibold">{STAT_LABELS[s]}</span>
+                    <span
+                      className={`font-mono ${maxed ? 'text-amber-600 dark:text-amber-400' : 'text-slate-500'}`}
+                    >
+                      {p.ivs[s]}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        )}
+      </li>
+    );
+  };
+
+  const mintTile = (item: UsableItem) => {
+    const { itemId, quantity, options } = item;
+    const { effect } = options;
+    if (effect.type !== 'mint') return null;
+    return (
+      <li
+        key={itemId}
+        className={`flex flex-col gap-1 rounded-md border-2 p-2 text-sm ${
+          options.usable ? 'border-well-line bg-well' : SELECTED_CELL
+        }`}
+      >
+        <div className="flex items-center gap-1.5">
+          <img
+            src={itemIcon(ctx, itemId)}
+            alt=""
+            width={24}
+            height={24}
+            className="shrink-0 [image-rendering:pixelated]"
+          />
+          <span className="min-w-0 truncate font-semibold">{natureLabel(effect.nature)}</span>
+          <span className="ml-auto shrink-0 font-mono text-xs text-slate-500">× {quantity}</span>
+        </div>
+        <p className="text-xs">{natureStats(effect.nature)}</p>
+        {options.usable ? (
+          <button
+            className="btn-primary mt-auto w-full py-1.5"
+            disabled={disabled}
+            title={busyTitle}
+            onClick={() => run(item)}
+          >
+            Utiliser
+          </button>
+        ) : (
+          <p className="pixel-label mt-auto py-1.5 text-center text-[8px] text-amber-800 dark:text-[#f8d878]">
+            ▶ Nature actuelle
+          </p>
+        )}
+      </li>
+    );
+  };
 
   return (
-    <Modal open={open} onClose={onClose}>
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h3 className="font-semibold">Objet · {speciesName(ctx, p.speciesId, p.formId)}</h3>
+    <Modal open={open} onClose={close} wide className={LAUNCH_DIALOG_CLASS}>
+      <header className="flex shrink-0 items-center gap-2 border-b-[3px] border-ink bg-hud px-3 py-2 text-white sm:gap-3 sm:px-4">
+        <PokemonSprite
+          speciesId={p.speciesId}
+          formId={p.formId}
+          shiny={p.isShiny}
+          size={40}
+          className="-my-1 shrink-0"
+        />
+        <h2 className="min-w-0 truncate font-pixel text-xs text-[#f8d030] uppercase sm:text-sm">
+          Objets · {species?.nameFr}
+        </h2>
+        <span className={HUD_PILL}>N.{p.level}</span>
+        <div className="flex-1" />
         <button
           type="button"
-          className="btn-ghost px-2.5 py-1"
-          onClick={onClose}
+          className="btn size-10 shrink-0 border-[#0b0f1e] bg-brand-500 p-0 text-white"
+          onClick={close}
           aria-label="Fermer"
           title="Fermer (Échap)"
         >
           ✕
         </button>
-      </div>
-      {items.length === 0 && (
-        <p className="text-sm text-slate-500">Aucun objet utilisable sur ce Pokémon.</p>
-      )}
-      <ul className="max-h-[60dvh] space-y-2 overflow-y-auto">
-        {items.map(({ itemId, quantity, options }) => {
-          const { effect } = options;
-          const needsStat = effect.type === 'ivCap' && !effect.all;
-          const ready = options.usable && (!needsStat || stat !== '');
+      </header>
+
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-3 sm:p-4">
+        <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-4">
+          <InfoCell
+            label="Nature"
+            value={natureLabel(p.nature)}
+            sub={
+              natureUp
+                ? `+${STAT_LABELS[natureUp]}, −${STAT_LABELS[nature!.decreasedStat!]}`
+                : 'Neutre'
+            }
+          />
+          <InfoCell
+            label="Talent"
+            value={abilityLabel(effectiveAbility(ctx, p))}
+            sub={
+              species?.abilities.find((a) => a.name === p.ability)?.isHidden ? 'Caché' : undefined
+            }
+          />
+          <InfoCell label="IV" value={`${ivTotal} / ${MAX_IV * 6}`} />
+          <InfoCell label="Bonheur" value={`${p.happiness} / 255`} />
+        </dl>
+
+        {p.busy && (
+          <p className="rounded-md border-2 border-sky-700 bg-sky-50 px-3 py-2 text-sm text-sky-800 dark:border-sky-400 dark:bg-sky-950 dark:text-sky-300">
+            Le Pokémon doit être disponible (ni en activité) pour recevoir un objet.
+          </p>
+        )}
+        {done && <StatusPill tone="ok" text={done} />}
+        {!!use.error && <StatusPill tone="bad" text={errorText(use.error)} />}
+
+        {items.length === 0 && (
+          <p className="text-sm text-slate-500">Aucun objet utilisable sur ce Pokémon.</p>
+        )}
+        {ITEM_GROUPS.map(({ type, title }) => {
+          const group = items.filter((i) => i.options.effect.type === type);
+          if (group.length === 0) return null;
           return (
-            <li key={itemId} className="flex flex-wrap items-center gap-2 text-xs">
-              <img src={itemIcon(ctx, itemId)} alt="" width={24} height={24} />
-              <div className="min-w-32 flex-1">
-                <p className="text-sm font-medium">
-                  {itemName(ctx, itemId)} <span className="text-slate-400">× {quantity}</span>
-                </p>
-                <p className="text-slate-500">
-                  {options.usable ? effectText(effect) : 'Sans effet sur ce Pokémon'}
-                </p>
-                {options.usable && options.abilities.length > 0 && (
-                  <p className="text-slate-500">
-                    {options.abilities.length > 1 ? 'Au hasard : ' : 'Talent obtenu : '}
-                    {options.abilities.map(abilityLabel).join(' ou ')}
-                  </p>
-                )}
-              </div>
-              {options.usable && needsStat && (
-                <select
-                  className="input w-auto py-1 text-xs"
-                  value={stat}
-                  onChange={(e) => setStat(e.target.value as StatName | '')}
-                >
-                  <option value="">IV à monter…</option>
-                  {options.stats.map((s) => (
-                    <option key={s} value={s}>
-                      {STAT_LABELS[s]} ({p.ivs[s]})
-                    </option>
-                  ))}
-                </select>
+            <CollapsibleSheetSection
+              key={type}
+              id={`pc.items.${type}`}
+              title={title}
+              aside={
+                <span className="pixel-label text-[9px] text-slate-500">
+                  {type === 'mint'
+                    ? `${group.length} Aromate${group.length > 1 ? 's' : ''}`
+                    : `${group.length} objet${group.length > 1 ? 's' : ''}`}
+                </span>
+              }
+            >
+              {type === 'mint' ? (
+                <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">{group.map(mintTile)}</ul>
+              ) : (
+                <ul className="space-y-2">{group.map(itemRow)}</ul>
               )}
-              {options.usable && (
-                <button
-                  className="btn-primary shrink-0 py-1"
-                  disabled={!ready || use.isPending || p.busy}
-                  title={p.busy ? 'Le Pokémon doit être disponible (ni en activité)' : undefined}
-                  onClick={() =>
-                    use.mutate({
-                      itemId,
-                      ...(needsStat && stat && { stat }),
-                    })
-                  }
-                >
-                  Utiliser
-                </button>
-              )}
-            </li>
+            </CollapsibleSheetSection>
           );
         })}
-      </ul>
-      {!!use.error && <p className="mt-2 text-xs text-red-600">{errorText(use.error)}</p>}
+      </div>
     </Modal>
   );
 }

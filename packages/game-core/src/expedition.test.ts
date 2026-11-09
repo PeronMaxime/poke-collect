@@ -9,7 +9,10 @@ import {
   berriesConsumed,
   expectedExpeditionXp,
   expeditionMinMinutes,
+  encounterIntervalAt,
+  encounterMinutes,
   expeditionPlan,
+  planAfter,
   maxExpeditionBerries,
   lootProbabilities,
   matchesCaptureFilter,
@@ -24,10 +27,46 @@ const ctx = testContext();
 const route1 = ctx.zone('route-1')!;
 
 describe('temps d’une expédition', () => {
-  it('une rencontre toutes les 3 min, un butin toutes les 6 min, sans rendement décroissant', () => {
-    const plans = [2, 3, 5, 6, 60, 480, 2880].map((m) => expeditionPlan(ctx, m));
-    expect(plans.map((p) => p.encounters)).toEqual([0, 1, 1, 2, 20, 160, 960]);
-    expect(plans.map((p) => p.lootRolls)).toEqual([0, 0, 0, 1, 10, 80, 480]);
+  it('une rencontre toutes les 3 min, un butin toutes les 6 min (rythme constant)', () => {
+    const plans = [2, 3, 5, 6, 60, 480, 1440].map((m) =>
+      expeditionPlan(ctx, m, undefined, null, 0),
+    );
+    expect(plans.map((p) => p.encounters)).toEqual([0, 1, 1, 2, 20, 160, 480]);
+    expect(plans.map((p) => p.lootRolls)).toEqual([0, 0, 0, 1, 10, 80, 240]);
+  });
+
+  it('intervalle allongé de 30 s à chaque heure passée, par palier ; butin inchangé', () => {
+    expect([0, 1, 2, 23].map((h) => encounterIntervalAt(ctx, h))).toEqual([3, 3.5, 4, 14.5]);
+    const plans = [60, 120, 180, 480, 1440].map((m) => expeditionPlan(ctx, m));
+    // 20, puis 60 / 3,5 = 17,1 la deuxième heure, 60 / 4 = 15 la troisième…
+    expect(plans.map((p) => p.encounters)).toEqual([20, 37, 52, 107, 201]);
+    expect(plans.map((p) => p.lootRolls)).toEqual([10, 20, 30, 80, 240]);
+    // Deuxième heure : une rencontre toutes les 3,5 min.
+    expect(encounterMinutes(ctx, 20)).toBeCloseTo(60);
+    expect(encounterMinutes(ctx, 21)).toBeCloseTo(63.5);
+    expect(encounterMinutes(ctx, 22)).toBeCloseTo(67);
+  });
+
+  it('talents et baies de rencontres accélèrent aussi l’intervalle allongé', () => {
+    const custom = testContext((c) => {
+      c.balance.expeditions.encounterIntervalMinutes = 4;
+      c.balance.expeditions.encounterIntervalGrowthMinutes = 1;
+    });
+    const clock = { perMinute: 2 / 4, boost: 2, boostMinutes: 90, intervalMinutes: 4 };
+    // Talent ×2 et baie ×2 : 60 la première heure ; puis 5 min (2,5 avec le talent) : 24 en 30 min
+    // sous la baie, 12 ensuite.
+    const pace = { ...clock, intervalGrowthMinutes: 1, lootPerMinute: 0 };
+    expect(planAfter(pace, 60).encounters).toBe(60);
+    expect(planAfter(pace, 90).encounters).toBe(84);
+    expect(planAfter(pace, 120).encounters).toBe(96);
+    // Le moment d'une rencontre et le compte restent d'accord, au fil des paliers et des baies.
+    for (let n = 1; n <= 80; n++) {
+      const t = encounterMinutes(custom, n, undefined, null);
+      expect(expeditionPlan(custom, t).encounters).toBeGreaterThanOrEqual(n);
+      expect(expeditionPlan(custom, t - 0.01).encounters).toBe(n - 1);
+    }
+    // Expédition partie sans allongement : rythme constant.
+    expect(expeditionPlan(custom, 120, undefined, null, 0).encounters).toBe(30);
   });
 
   it('lit les réglages, pas de valeurs en dur', () => {
@@ -45,7 +84,7 @@ describe('temps d’une expédition', () => {
   it('durée minimum : au moins le temps d’une rencontre, au plus la durée maximale', () => {
     expect(expeditionMinMinutes(ctx, 60)).toBe(60);
     expect(expeditionMinMinutes(ctx, 1)).toBe(3);
-    expect(expeditionMinMinutes(ctx, 9999)).toBe(2880);
+    expect(expeditionMinMinutes(ctx, 9999)).toBe(1440);
   });
 
   it('une baie entamée compte, les suivantes restent à rendre', () => {
@@ -70,7 +109,7 @@ describe('temps d’une expédition', () => {
     const long = resolveExpedition(ctx, { ...input, elapsedMinutes: 240 });
     expect(short.encounters).toHaveLength(10);
     expect(long.encounters.slice(0, 10)).toEqual(short.encounters);
-    expect(long.encounters).toHaveLength(80);
+    expect(long.encounters).toHaveLength(65); // 20 + 17 + 15 + 13 : intervalle allongé chaque heure
   });
 
   it('donne la météo de l’expédition : celle qu’impose un talent, sinon celle de la zone', () => {
