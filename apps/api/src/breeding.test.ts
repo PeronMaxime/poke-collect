@@ -1,10 +1,11 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
-import { createDb, ensureSeedContent, pokemon, users } from '@poke/db';
+import { createDb, eggs, ensureSeedContent, pokemon, users } from '@poke/db';
 import { candiesForLevel, getNature } from '@poke/game-core';
 import type { PokemonInstance } from '@poke/game-core';
 import type {
+  BagEggDto,
   CandyDto,
   CollectEggsResponse,
   DaycareDto,
@@ -299,6 +300,28 @@ describe('pension et œufs', () => {
     const daycare = await call<DaycareResponse>('GET', '/api/daycare');
     expect(daycare.body.eggs).toHaveLength(2);
     expect(daycare.body.bagEggs.map((e) => e.id)).toEqual(ids.slice(2));
+
+    // Retiré de la couveuse : il revient dans le sac, sa place se libère.
+    const out = await call<BagEggDto>('DELETE', `/api/eggs/${ids[1]}`);
+    expect(out).toMatchObject({ status: 200, body: { id: ids[1], speciesId: 1 } });
+    const after = (await call<DaycareResponse>('GET', '/api/daycare')).body;
+    expect(after.eggs.map((e) => e.id)).toEqual([ids[0]]);
+    expect(after.bagEggs.map((e) => e.id)).toContain(ids[1]);
+    expect(await call('DELETE', `/api/eggs/${ids[1]}`)).toMatchObject({
+      status: 404,
+      body: { error: 'EGG_NOT_INCUBATED' },
+    });
+    // Remis en couveuse : l'incubation repart de zéro.
+    const back = await call<IncubateEggsResponse>('POST', '/api/eggs/incubate', { ids: [ids[1]] });
+    expect(back.body.incubated.map((e) => [e.id, e.slotIndex])).toEqual([[ids[1], 1]]);
+    // À terme, il se fait éclore au lieu d'être retiré.
+    const [first] = await handle.db.select().from(eggs).where(eq(eggs.id, ids[0]!));
+    await handle.db.update(eggs).set({ hatchAt: clock }).where(eq(eggs.id, ids[0]!));
+    expect(await call('DELETE', `/api/eggs/${ids[0]}`)).toMatchObject({
+      status: 409,
+      body: { error: 'EGG_READY' },
+    });
+    await handle.db.update(eggs).set({ hatchAt: first!.hatchAt }).where(eq(eggs.id, ids[0]!));
   });
 
   it('retire le couple, rend les objets tenus et verse l’XP du séjour', async () => {
@@ -349,6 +372,72 @@ describe('pension et œufs', () => {
     expect(out.body).toMatchObject({ incubated: [], bagged: 0 });
     const xp = 3 * seedContent.balance.breeding.parentXpPerHour;
     expect(out.body.parents!.map((p) => p.xpGained)).toEqual([xp, xp]);
+  });
+
+  it('dépose, change et retire les Pokémon un par un', async () => {
+    const { parentXpPerHour } = seedContent.balance.breeding;
+    const pensionAt0 = async () =>
+      (await call<DaycareResponse>('GET', '/api/daycare')).body.pensions[0];
+
+    const first = await call('PUT', '/api/daycare/0/parents/0', { pokemonId: ivysaur });
+    expect(first.status, JSON.stringify(first.body)).toBe(200);
+    // Seul, il ne pond pas mais gagne de l'XP.
+    expect(await pensionAt0()).toMatchObject({
+      parentAId: ivysaur,
+      parentBId: null,
+      breeds: false,
+    });
+
+    advance(60);
+    const second = await call('PUT', '/api/daycare/0/parents/1', {
+      pokemonId: ditto,
+      heldItemId: 'everstone',
+    });
+    expect(second.status, JSON.stringify(second.body)).toBe(200);
+    const couple = await pensionAt0();
+    expect(couple).toMatchObject({ parentAId: ivysaur, parentBId: ditto, breeds: true });
+    const dittoSince = couple!.parentBDepositedAt;
+    const inv = await call<InventoryEntryDto[]>('GET', '/api/inventory');
+    expect(inv.body.find((i) => i.itemId === 'everstone')).toBeUndefined();
+    const same = await call('PUT', '/api/daycare/0/parents/0', { pokemonId: ditto });
+    expect(same.body).toMatchObject({ error: 'SAME_POKEMON' });
+
+    // Changement d'Herbizarre : ses œufs prêts sont couvés, il reçoit l'XP de ses 2 h.
+    advance(60);
+    const swap = await call<CollectEggsResponse>('PUT', '/api/daycare/0/parents/0', {
+      pokemonId: magikarp,
+    });
+    expect(swap.status, JSON.stringify(swap.body)).toBe(200);
+    expect(swap.body.incubated.length + swap.body.bagged).toBe(3);
+    expect(swap.body.parents).toEqual([
+      expect.objectContaining({ pokemonId: ivysaur, xpGained: 2 * parentXpPerHour }),
+    ]);
+    // Métamorph reste, avec son XP en cours ; la ponte reprend avec le nouveau couple.
+    const swapped = await pensionAt0();
+    expect(swapped).toMatchObject({
+      parentAId: magikarp,
+      parentBId: ditto,
+      parentBDepositedAt: dittoSince,
+      startedAt: clock.toISOString(),
+      eggSpeciesId: 129,
+    });
+    const pc = await call<PokemonDto[]>('GET', '/api/pokemon');
+    expect(pc.body.find((p) => p.id === ivysaur)).toMatchObject({ busy: false });
+
+    advance(30);
+    const out = await call<CollectEggsResponse>('DELETE', '/api/daycare/0/parents/1');
+    expect(out.status, JSON.stringify(out.body)).toBe(200);
+    expect(out.body.parents).toEqual([
+      expect.objectContaining({ pokemonId: ditto, xpGained: Math.floor(1.5 * parentXpPerHour) }),
+    ]);
+    const back = await call<InventoryEntryDto[]>('GET', '/api/inventory');
+    expect(back.body).toEqual(expect.arrayContaining([{ itemId: 'everstone', quantity: 1 }]));
+    expect(await pensionAt0()).toMatchObject({ parentAId: magikarp, parentBId: null });
+
+    expect((await call('DELETE', '/api/daycare/0/parents/0')).status).toBe(200);
+    expect(await pensionAt0()).toBeUndefined();
+    const empty = await call('DELETE', '/api/daycare/0/parents/0');
+    expect(empty).toMatchObject({ status: 409, body: { error: 'DAYCARE_EMPTY' } });
   });
 });
 

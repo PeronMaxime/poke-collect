@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
-import { createDb, ensureSeedContent, users } from '@poke/db';
+import { createDb, ensureSeedContent, pokemon, users } from '@poke/db';
 import type { PokemonInstance } from '@poke/game-core';
 import type { AssistantDto, PokemonDto } from '@poke/shared';
 import { buildApp } from './app';
@@ -15,7 +15,27 @@ let app: Awaited<ReturnType<typeof buildApp>>['app'];
 
 beforeAll(async () => {
   await handle.migrate();
-  await ensureSeedContent(handle.db, seedContent);
+  // Un talent utile à chaque poste (un assistant inutile est refusé), et un talent sans effet.
+  const team = { scope: 'team' as const, conditions: [] };
+  await ensureSeedContent(handle.db, {
+    ...seedContent,
+    abilities: [
+      {
+        id: 'overgrow',
+        description: '',
+        effects: [
+          { type: 'modifier', param: 'shinyChance', value: 10, ...team },
+          { type: 'modifier', param: 'hatchTime', value: -10, ...team },
+          { type: 'modifier', param: 'koDuration', value: -10, ...team },
+        ],
+      },
+      {
+        id: 'blaze',
+        description: '',
+        effects: [{ type: 'modifier', param: 'damageDealt', value: 10, ...team }],
+      },
+    ],
+  });
   ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
 });
 afterAll(async () => {
@@ -49,7 +69,7 @@ function client(cookie: string) {
   };
 }
 
-async function give(userId: string, speciesId: number, formId?: number) {
+async function give(userId: string, speciesId: number, formId?: number, ability = 'overgrow') {
   const instance: PokemonInstance = {
     speciesId,
     formId,
@@ -64,7 +84,7 @@ async function give(userId: string, speciesId: number, formId?: number) {
       speed: 10,
     },
     nature: 'hardy',
-    ability: 'overgrow',
+    ability,
     isShiny: false,
     gender: 'male',
     happiness: 70,
@@ -74,7 +94,9 @@ async function give(userId: string, speciesId: number, formId?: number) {
     originRegion: 'kanto',
     at: clock,
   });
-  return row!;
+  // Les Pokémon obtenus arrivent sans talent : on le débloque.
+  await handle.db.update(pokemon).set({ ability }).where(eq(pokemon.id, row!.id));
+  return { ...row!, ability };
 }
 
 describe('assistants', () => {
@@ -88,6 +110,7 @@ describe('assistants', () => {
     call = client(signed.cookie);
     await call('POST', '/api/profile', { trainerName: 'Assistants' });
     starter = (await call<PokemonDto>('POST', '/api/starter', { speciesId: 1 })).body;
+    await handle.db.update(pokemon).set({ ability: 'overgrow' }).where(eq(pokemon.id, starter.id));
   });
 
   it('affecte un Pokémon à une place d’un bâtiment, qui devient occupé', async () => {
@@ -107,6 +130,19 @@ describe('assistants', () => {
     for (const url of ['/api/assistants/daycare/0', '/api/assistants/museum/1']) {
       expect((await call('PUT', url, { pokemonId: starter.id })).body).toMatchObject({
         error: 'POKEMON_BUSY',
+      });
+    }
+  });
+
+  it('refuse un assistant dont le talent n’agit pas à ce poste', async () => {
+    const useless = await give(userId, 4, undefined, 'blaze');
+    for (const url of [
+      '/api/assistants/museum/0',
+      '/api/assistants/daycare/0',
+      '/api/assistants/center/0',
+    ]) {
+      expect((await call('PUT', url, { pokemonId: useless.id })).body).toMatchObject({
+        error: 'ASSISTANT_NO_ABILITY',
       });
     }
   });

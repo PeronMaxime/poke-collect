@@ -127,7 +127,7 @@ export function WikiAbilitiesPage({
       {list.length === 0 ? (
         <p className="text-slate-500">Aucun talent ne correspond à ces critères.</p>
       ) : (
-        <div className="grid gap-3 lg:grid-cols-2">
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
           {list.map((a) => (
             <AbilityCard key={a.id} ability={a} />
           ))}

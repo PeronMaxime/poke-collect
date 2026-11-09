@@ -130,10 +130,13 @@ export function TagFilterSelect({
 export function TagPicker({
   pokemon: p,
   compact = false,
+  bare = false,
 }: {
   pokemon: PokemonDto;
   /** Sans légende, centré : pour les petites cartes (éclosions). */
   compact?: boolean;
+  /** Sans légende ni marge : dans une section qui porte déjà le titre (fiche du PC). */
+  bare?: boolean;
 }) {
   const queryClient = useQueryClient();
   const tags = useTags().data ?? [];
@@ -149,6 +152,7 @@ export function TagPicker({
       tags={tags}
       current={current}
       compact={compact}
+      bare={bare}
       pending={assign.isPending}
       error={assign.error}
       onToggle={(id) =>
@@ -163,6 +167,7 @@ export function TagToggleList({
   tags,
   current,
   compact = false,
+  bare = false,
   pending = false,
   error,
   onToggle,
@@ -171,6 +176,7 @@ export function TagToggleList({
   /** Étiquettes actives. */
   current: readonly string[];
   compact?: boolean;
+  bare?: boolean;
   pending?: boolean;
   error?: unknown;
   onToggle: (tagId: string) => void;
@@ -178,14 +184,14 @@ export function TagToggleList({
   if (tags.length === 0) {
     if (compact) return null;
     return (
-      <p className="mt-3 text-xs text-slate-500">
+      <p className={`text-xs text-slate-500 ${bare ? '' : 'mt-3'}`}>
         Crée des étiquettes depuis le bouton « Étiquettes » du PC pour classer tes Pokémon.
       </p>
     );
   }
   return (
-    <div className={compact ? 'mt-1 w-full' : 'mt-3 w-full text-left'}>
-      {!compact && (
+    <div className={compact ? 'mt-1 w-full' : bare ? 'w-full text-left' : 'mt-3 w-full text-left'}>
+      {!compact && !bare && (
         <p className="mb-1 text-xs text-slate-500">Étiquettes (touche pour ajouter ou retirer)</p>
       )}
       <div className={`flex flex-wrap gap-1.5 ${compact ? 'justify-center' : ''}`}>

@@ -1,16 +1,19 @@
-import type { Dispatch, SetStateAction } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import type { AbilityEffect } from '@poke/content';
 import { STAT_NAMES, types } from '@poke/data';
 import {
+  abilityEffectText,
   computeStats,
   dungeonAttack,
   dungeonTypeEffectiveness,
+  effectiveAbility,
   effectiveDungeonMove,
 } from '@poke/game-core';
 import type { DungeonFighter, DungeonMove, GameContext } from '@poke/game-core';
 import type { PokemonDto } from '@poke/shared';
-import { PokemonSprite, ShinyStar, StatLines, TypeBadge } from '../../components/ui';
-import { STAT_LABELS } from '../../lib/labels';
-import { pillClass } from './TeamPicker';
+import { HoverBubble, PokemonSprite, ShinyStar, StatLines, TypeBadge } from '../../components/ui';
+import { STAT_LABELS, abilityLabel, speciesName } from '../../lib/labels';
+import { CrossIcon, ExpandableLine, SELECTED_CELL, SLOT_BUTTON, SLOT_CLASS } from './dialogParts';
 
 /** Multiplicateur lisible (×2, ×½, ×¼, ×⅛…). */
 export function effectivenessLabel(e: number): string {
@@ -56,12 +59,15 @@ export function combatMove(
 }
 
 /**
- * Ordre d'entrée de l'équipe et attaque de chaque Pokémon (un de ses types, physique ou
- * spéciale), avec son efficacité contre chaque adversaire de `targets`.
+ * Cases de l'équipe d'un combat, dans son ordre d'entrée : chaque Pokémon avec son talent (et son
+ * effet ici), ses flèches pour changer l'ordre, le retrait, puis son attaque (un de ses types, avec
+ * son efficacité contre chaque adversaire de `targets`, en physique ou en spécial).
+ * Rend des `<li>`, à poser dans la liste de l'équipe.
  */
 export function CombatTeamOrder({
   ctx,
   members,
+  effectsOf,
   moves,
   setMoves,
   setTeam,
@@ -69,6 +75,8 @@ export function CombatTeamOrder({
 }: {
   ctx: GameContext;
   members: readonly PokemonDto[];
+  /** Effets des talents qui agissent ici, par rang dans l'équipe. */
+  effectsOf: (index: number) => readonly AbilityEffect[];
   moves: Readonly<Record<string, DungeonMove>>;
   setMoves: Dispatch<SetStateAction<Record<string, DungeonMove>>>;
   setTeam: Dispatch<SetStateAction<string[]>>;
@@ -85,115 +93,205 @@ export function CombatTeamOrder({
   }
 
   return (
-    <section className="mt-5">
-      <h3 className="text-sm font-semibold">Ordre d’entrée et attaques</h3>
-      <p className="text-xs text-slate-500">
-        Le premier entre en combat ; quand un Pokémon est K.O., le suivant prend le relais. Chaque
-        Pokémon attaque avec un de ses types, en physique (Attaque) ou en spécial (Atq. Spé.).
-      </p>
-      <ol className="mt-2 space-y-2">
-        {members.map((p, i) => {
-          const species = ctx.species(p.speciesId, p.formId)!;
-          const stats = computeStats(species, p);
-          const current = combatMove(ctx, p, moves);
-          const setMove = (patch: Partial<DungeonMove>) =>
-            setMoves((m) => ({ ...m, [p.id]: { ...current, ...patch } }));
-          return (
-            <li
-              key={p.id}
-              className="flex flex-wrap items-center gap-2 rounded-xl border border-slate-200 p-2 dark:border-slate-800"
-            >
-              <span className="w-5 text-center font-mono text-sm text-slate-400">{i + 1}</span>
-              <PokemonSprite
-                speciesId={p.speciesId}
-                formId={p.formId}
-                shiny={p.isShiny}
-                size={40}
-              />
-              <span className="w-28 min-w-0 text-sm">
-                <span className="block truncate font-medium">
-                  {species.nameFr} {p.isShiny && <ShinyStar />}
-                </span>
-                <span className="text-xs text-slate-500">N.{p.level}</span>
+    <>
+      {members.map((p, i) => {
+        const species = ctx.species(p.speciesId, p.formId)!;
+        const stats = computeStats(species, p);
+        const current = combatMove(ctx, p, moves);
+        const setMove = (patch: Partial<DungeonMove>) =>
+          setMoves((m) => ({ ...m, [p.id]: { ...current, ...patch } }));
+        const effects = effectsOf(i);
+        const ability = abilityLabel(effectiveAbility(ctx, p));
+        const effectText = effects.map(abilityEffectText).join(' · ');
+        return (
+          <li
+            key={p.id}
+            className={`${SLOT_CLASS} flex flex-col gap-2 p-2 ${
+              effects.length > 0 ? 'border-emerald-500 dark:border-emerald-400' : 'border-well-line'
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              <span className="w-5 shrink-0 text-center font-pixel text-[10px] text-slate-500 dark:text-slate-400">
+                {i + 1}
               </span>
-              <span className="flex flex-wrap items-center gap-1">
-                {species.types.map((t) => {
-                  const factors = targets.map((target) => ({
-                    name: target.name,
-                    e: dungeonTypeEffectiveness(t, target.types),
-                  }));
+              <span className={`sprite-well size-12 shrink-0 ${p.isShiny ? 'shiny-well' : ''}`}>
+                <PokemonSprite
+                  speciesId={p.speciesId}
+                  formId={p.formId}
+                  shiny={p.isShiny}
+                  size={44}
+                />
+              </span>
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="truncate text-sm font-semibold">
+                  {species.nameFr} {p.isShiny && <ShinyStar />}{' '}
+                  <span className="font-normal text-slate-500 dark:text-slate-400">
+                    N.{p.level}
+                  </span>
+                </span>
+                {effects.length > 0 ? (
+                  <ExpandableLine
+                    className="text-xs text-emerald-700 dark:text-emerald-400"
+                    title={`${species.nameFr} · ${ability} : ${effectText}`}
+                  >
+                    ✦ {ability} : {effectText}
+                  </ExpandableLine>
+                ) : (
+                  <span className="truncate text-xs text-slate-500 dark:text-slate-400">
+                    {ability}
+                  </span>
+                )}
+              </span>
+              <button
+                type="button"
+                className={SLOT_BUTTON}
+                disabled={i === 0}
+                onClick={() => move(i, -1)}
+                aria-label={`Monter ${species.nameFr}`}
+              >
+                <svg viewBox="0 0 10 10" className="size-2.5" aria-hidden>
+                  <path d="M5 2L9 7H1z" fill="currentColor" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className={SLOT_BUTTON}
+                disabled={i === members.length - 1}
+                onClick={() => move(i, 1)}
+                aria-label={`Descendre ${species.nameFr}`}
+              >
+                <svg viewBox="0 0 10 10" className="size-2.5" aria-hidden>
+                  <path d="M5 8L1 3h8z" fill="currentColor" />
+                </svg>
+              </button>
+              <button
+                type="button"
+                className={`${SLOT_BUTTON} hover:border-red-500 hover:text-red-600 dark:hover:text-red-400`}
+                onClick={() => setTeam((t) => t.filter((id) => id !== p.id))}
+                aria-label={`Retirer ${species.nameFr}`}
+              >
+                <CrossIcon className="size-2.5" />
+              </button>
+            </div>
+            <div className="flex flex-wrap items-center gap-1.5 pl-7">
+              {species.types.map((t) => {
+                const factors = targets.map((target) => ({
+                  name: target.name,
+                  e: dungeonTypeEffectiveness(t, target.types),
+                }));
+                const on = current.type === t;
+                return (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setMove({ type: t })}
+                    aria-pressed={on}
+                    title={`${dungeonAttack(ctx.balance.combat, t).name} : ${factors
+                      .map((f) => `${effectivenessLabel(f.e)} contre ${f.name}`)
+                      .join(', ')}`}
+                    className={`flex items-center gap-1 rounded-md border-2 p-0.5 pr-1.5 text-[11px] transition ${
+                      on ? SELECTED_CELL : 'border-transparent opacity-60 hover:opacity-100'
+                    }`}
+                  >
+                    <TypeBadge type={t} />
+                    {factors.map((f, j) => (
+                      <span key={j} className={`font-bold ${effectivenessClass(f.e)}`}>
+                        {effectivenessLabel(f.e)}
+                      </span>
+                    ))}
+                  </button>
+                );
+              })}
+              <span
+                role="group"
+                aria-label="Catégorie de l’attaque"
+                className="ml-auto inline-flex overflow-hidden rounded-md border-2 border-ink text-xs"
+              >
+                {(['physical', 'special'] as const).map((category) => {
+                  const on = current.category === category;
+                  const statName = category === 'physical' ? 'attack' : 'special-attack';
                   return (
                     <button
-                      key={t}
+                      key={category}
                       type="button"
-                      onClick={() => setMove({ type: t })}
-                      title={`${dungeonAttack(ctx.balance.combat, t).name} : ${factors
-                        .map((f) => `${effectivenessLabel(f.e)} contre ${f.name}`)
-                        .join(', ')}`}
-                      className={`flex items-center gap-1 rounded-full p-0.5 pr-1.5 text-[11px] transition ${
-                        current.type === t
-                          ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900'
-                          : 'opacity-50 hover:opacity-100'
+                      onClick={() => setMove({ category })}
+                      aria-pressed={on}
+                      title={`${STAT_LABELS[statName]} ${stats[statName]}`}
+                      className={`px-2 py-1 whitespace-nowrap not-first:border-l-2 not-first:border-ink ${
+                        on
+                          ? 'bg-[#48a8e8] font-bold text-[#10203a]'
+                          : 'bg-white text-slate-600 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
                       }`}
                     >
-                      <TypeBadge type={t} />
-                      {factors.map((f, j) => (
-                        <span key={j} className={`font-semibold ${effectivenessClass(f.e)}`}>
-                          {effectivenessLabel(f.e)}
-                        </span>
-                      ))}
+                      {category === 'physical' ? 'Phys.' : 'Spé.'} {stats[statName]}
                     </button>
                   );
                 })}
               </span>
-              <span className="flex items-center gap-1 text-xs">
-                <button
-                  type="button"
-                  className={pillClass(current.category === 'physical')}
-                  onClick={() => setMove({ category: 'physical' })}
-                  title={`${STAT_LABELS.attack} ${stats.attack}`}
-                >
-                  Physique {stats.attack}
-                </button>
-                <button
-                  type="button"
-                  className={pillClass(current.category === 'special')}
-                  onClick={() => setMove({ category: 'special' })}
-                  title={`${STAT_LABELS['special-attack']} ${stats['special-attack']}`}
-                >
-                  Spécial {stats['special-attack']}
-                </button>
+            </div>
+          </li>
+        );
+      })}
+    </>
+  );
+}
+
+/** Adversaire montré dans l'en-tête du choix de l'équipe. */
+export interface CombatFoe {
+  speciesId: number;
+  formId?: number | null;
+  level: number;
+  types: readonly string[];
+  /** Fiche au survol (statistiques, faiblesses…). */
+  info?: ReactNode;
+  /** Boss d'un donjon : marqué d'une couronne. */
+  boss?: boolean;
+}
+
+/**
+ * Pokémon adverses, dans leur ordre d'entrée, avec leurs types : restent visibles pendant le
+ * choix de l'équipe. Au-delà de trois, seuls les sprites et niveaux restent (fiche au survol).
+ */
+export function CombatFoes({ ctx, foes }: { ctx: GameContext; foes: readonly CombatFoe[] }) {
+  const compact = foes.length > 3;
+  return (
+    <ol className="flex flex-wrap items-center gap-1.5" aria-label="Pokémon adverses">
+      {foes.map((f, i) => {
+        const name = speciesName(ctx, f.speciesId, f.formId);
+        const card = (
+          <span className="flex items-center gap-1.5 rounded-md border-2 border-ink bg-win p-0.5 pr-2">
+            <span className="sprite-well size-10">
+              <PokemonSprite speciesId={f.speciesId} formId={f.formId} size={36} alt={name} />
+            </span>
+            <span className="flex flex-col gap-0.5 text-xs">
+              <span className="font-semibold whitespace-nowrap">
+                {f.boss && '👑 '}
+                {!compact && `${name} `}
+                <span className="font-normal text-slate-500 dark:text-slate-400">N.{f.level}</span>
               </span>
-              <span className="ml-auto flex gap-1">
-                <button
-                  type="button"
-                  className="btn-ghost px-2 py-0.5"
-                  disabled={i === 0}
-                  onClick={() => move(i, -1)}
-                  aria-label="Monter"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="btn-ghost px-2 py-0.5"
-                  disabled={i === members.length - 1}
-                  onClick={() => move(i, 1)}
-                  aria-label="Descendre"
-                >
-                  ↓
-                </button>
-              </span>
-            </li>
-          );
-        })}
-      </ol>
-      {targets.length > 1 && (
-        <p className="mt-1 text-xs text-slate-500">
-          Efficacité de chaque type contre les Pokémon adverses, dans leur ordre d’entrée.
-        </p>
-      )}
-    </section>
+              {!compact && (
+                <span className="flex gap-0.5">
+                  {f.types.map((t) => (
+                    <TypeBadge key={t} type={t} />
+                  ))}
+                </span>
+              )}
+            </span>
+          </span>
+        );
+        return (
+          <li key={i}>
+            {f.info ? (
+              <HoverBubble width={232} height={420} content={f.info}>
+                {card}
+              </HoverBubble>
+            ) : (
+              card
+            )}
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

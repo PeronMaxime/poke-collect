@@ -64,7 +64,18 @@ export function RoamerSightingNotice({
 
   if (!ctx) return null;
   return (
-    <Modal open={unseen.length > 0} onClose={close}>
+    <Modal open={unseen.length > 0} onClose={close} className="dialog-box relative">
+      {/* Flèche qui clignote, comme au bas des boîtes de texte des anciens jeux. */}
+      <svg
+        viewBox="0 0 7 5"
+        width="14"
+        height="10"
+        shapeRendering="crispEdges"
+        aria-hidden
+        className="animate-blink absolute right-5 bottom-4 text-brand-500"
+      >
+        <path d="M0 0h7v1h-1v1h-1v1h-1v1h-1v-1h-1v-1h-1v-1h-1z" fill="currentColor" />
+      </svg>
       <div className="p-6 text-center">
         <p className="text-sm font-medium text-amber-600">✦ Pokémon fuyard croisé !</p>
         <div className="mt-3 flex justify-center gap-2">

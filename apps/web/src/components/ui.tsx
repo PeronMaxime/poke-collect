@@ -79,7 +79,7 @@ function markIfCached(img: HTMLImageElement | null) {
 export function TypeBadge({ type }: { type: string }) {
   return (
     <span
-      className="rounded-full px-2 py-0.5 text-[11px] font-semibold text-white uppercase"
+      className="rounded border-2 border-ink px-1.5 py-px text-[11px] font-bold text-white uppercase [text-shadow:1px_1px_0_rgb(0_0_0/0.35)]"
       style={{ backgroundColor: TYPE_COLORS[type] ?? '#888' }}
     >
       {typeLabel(type)}
@@ -210,7 +210,8 @@ export function Modal({
   open: boolean;
   onClose: () => void;
   children: ReactNode;
-  wide?: boolean;
+  /** `xl` : popup sur presque toute la largeur d'un ordinateur (lancement d'expédition). */
+  wide?: boolean | 'xl';
   /** Classes ajoutées à la boîte de dialogue (taille fixe, mise en page…). */
   className?: string;
 }) {
@@ -231,7 +232,7 @@ export function Modal({
     <AnimatePresence>
       {open && (
         <motion.div
-          className="fixed inset-0 z-50 grid place-items-center overflow-y-auto overscroll-contain bg-slate-950/60 p-4"
+          className="fixed inset-0 z-50 grid grid-cols-1 place-items-center overflow-y-auto overscroll-contain bg-slate-950/60 p-4"
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -241,7 +242,7 @@ export function Modal({
             ref={dialog}
             role="dialog"
             aria-modal="true"
-            className={`card w-full ${wide ? 'max-w-3xl' : 'max-w-lg'} ${className}`}
+            className={`card w-full ${wide === 'xl' ? 'max-w-5xl' : wide ? 'max-w-3xl' : 'max-w-lg'} ${className}`}
             initial={{ scale: 0.95, y: 10 }}
             animate={{ scale: 1, y: 0 }}
             exit={{ scale: 0.95, y: 10 }}
@@ -418,7 +419,7 @@ export function HoverBubble({
         createPortal(
           // Rendue dans <body> pour passer au-dessus des modales et des listes à défilement.
           <span
-            className="pointer-events-none fixed z-[60] -translate-x-1/2 rounded-lg border border-slate-200 bg-white p-2 text-left text-[11px] shadow-lg dark:border-slate-700 dark:bg-slate-900"
+            className="pointer-events-none fixed z-[60] -translate-x-1/2 rounded-md border-2 border-ink bg-win p-2 text-left text-[11px] shadow-lg"
             style={{
               width,
               left: Math.min(
@@ -467,12 +468,26 @@ export function StatLines({
 }
 
 /** IV d'un Pokémon dans une bulle, au survol de son contenu. */
-export function IvHover({ ivs, children }: { ivs: Stats | undefined; children: ReactNode }) {
+export function IvHover({
+  ivs,
+  children,
+  className,
+  focusable,
+}: {
+  ivs: Stats | undefined;
+  children: ReactNode;
+  /** Classe de l'enveloppe (par défaut `inline-block`). */
+  className?: string;
+  /** Faux autour d'un bouton, qui prend déjà le focus. */
+  focusable?: boolean;
+}) {
   if (!ivs) return children;
   const total = STAT_NAMES.reduce((sum, s) => sum + ivs[s], 0);
   return (
     <HoverBubble
       height={140}
+      className={className}
+      focusable={focusable}
       content={
         <StatLines
           values={ivs}
@@ -486,10 +501,185 @@ export function IvHover({ ivs, children }: { ivs: Stats | undefined; children: R
   );
 }
 
+/**
+ * Rangée sur une seule ligne qui défile horizontalement quand elle déborde (mobile surtout) :
+ * le bord qui cache encore des éléments s'estompe et porte une flèche (cliquable) qui invite à
+ * faire glisser. L'élément `[aria-selected="true"]` est ramené dans la zone visible à chaque
+ * changement de sélection.
+ */
+export function ScrollRow({
+  children,
+  selectedKey,
+  className = '',
+  role,
+}: {
+  children: ReactNode;
+  /** Change à chaque sélection : l'onglet choisi est alors ramené en vue. */
+  selectedKey?: string;
+  /** Classes de la rangée (espacement…). */
+  className?: string;
+  role?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [edges, setEdges] = useState({ left: false, right: false });
+
+  const update = useCallback(() => {
+    const el = ref.current;
+    if (!el) return;
+    const left = el.scrollLeft > 1;
+    const right = el.scrollLeft + el.clientWidth < el.scrollWidth - 1;
+    setEdges((e) => (e.left === left && e.right === right ? e : { left, right }));
+  }, []);
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    update();
+    const observer = new ResizeObserver(update);
+    observer.observe(el);
+    for (const child of Array.from(el.children)) observer.observe(child);
+    el.addEventListener('scroll', update, { passive: true });
+    return () => {
+      observer.disconnect();
+      el.removeEventListener('scroll', update);
+    };
+  });
+
+  useEffect(() => {
+    const reveal = () => {
+      const el = ref.current;
+      const tab = el?.querySelector<HTMLElement>('[aria-selected="true"]');
+      if (!el || !tab || el.scrollWidth <= el.clientWidth) return;
+      const start = tab.offsetLeft - el.offsetLeft;
+      const end = start + tab.offsetWidth;
+      if (start >= el.scrollLeft && end <= el.scrollLeft + el.clientWidth) return;
+      el.scrollTo({ left: start - (el.clientWidth - tab.offsetWidth) / 2, behavior: 'smooth' });
+    };
+    reveal();
+    // La police pixel peut arriver après le premier rendu et élargir les onglets.
+    let cancelled = false;
+    void document.fonts?.ready.then(() => {
+      if (!cancelled) reveal();
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedKey]);
+
+  const fade = 32;
+  const mask = `linear-gradient(to right, ${edges.left ? `transparent, #000 ${fade}px` : '#000'}, ${
+    edges.right ? `#000 calc(100% - ${fade}px), transparent` : '#000'
+  })`;
+  const scrollBy = (dir: 1 | -1) => {
+    const el = ref.current;
+    el?.scrollBy({ left: dir * el.clientWidth * 0.7, behavior: 'smooth' });
+  };
+  const arrow = (dir: 1 | -1) => (
+    <button
+      type="button"
+      tabIndex={-1}
+      aria-hidden
+      onClick={() => scrollBy(dir)}
+      className={`absolute top-1/2 z-10 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-full border-2 border-ink bg-[#f8d030] text-[10px] leading-none text-ink shadow-[2px_2px_0_rgb(40_48_72/0.35)] ${
+        dir === 1 ? 'right-0' : 'left-0'
+      }`}
+    >
+      <span className={dir === 1 ? 'animate-nudge-right' : 'animate-nudge-left'}>
+        {dir === 1 ? '▶' : '◀'}
+      </span>
+    </button>
+  );
+
+  return (
+    <div className="relative min-w-0">
+      <div
+        ref={ref}
+        role={role}
+        className={`no-scrollbar flex overflow-x-auto overscroll-x-contain ${className}`}
+        style={{ maskImage: mask, WebkitMaskImage: mask }}
+      >
+        {children}
+      </div>
+      {edges.left && arrow(-1)}
+      {edges.right && arrow(1)}
+    </div>
+  );
+}
+
+export interface ViewTab<T extends string> {
+  id: T;
+  label: ReactNode;
+  /** Compteur à droite du libellé (quantité, avancement…). */
+  badge?: ReactNode;
+  /** Le compteur signale une action à faire (récompense à réclamer…) : pastille jaune. */
+  alert?: boolean;
+}
+
+/**
+ * Onglets principaux d'une page : barre sombre pleine largeur, onglet actif en jaune. Ils se
+ * distinguent ainsi des onglets de région (pastilles rouges et blanches) et des filtres.
+ */
+export function ViewTabs<T extends string>({
+  tabs,
+  selected,
+  onSelect,
+  className = '',
+}: {
+  tabs: readonly ViewTab<T>[];
+  selected: T;
+  onSelect: (id: T) => void;
+  className?: string;
+}) {
+  return (
+    <nav
+      className={`rounded-lg border-2 border-ink bg-hud p-1 shadow-[3px_3px_0_rgb(40_48_72/0.3)] ${className}`}
+    >
+      <ScrollRow role="tablist" selectedKey={selected} className="gap-1">
+        {tabs.map((t) => {
+          const active = t.id === selected;
+          return (
+            <button
+              key={t.id}
+              type="button"
+              role="tab"
+              aria-selected={active}
+              onClick={() => onSelect(t.id)}
+              className={`flex flex-auto shrink-0 items-center justify-center gap-1.5 whitespace-nowrap pixel-label rounded-md px-3 py-2.5 transition ${
+                active
+                  ? 'bg-[#f8d030] text-ink shadow-[inset_0_-3px_0_rgb(0_0_0/0.2)]'
+                  : 'text-slate-300 hover:bg-hud-pill hover:text-white'
+              }`}
+            >
+              {t.label}
+              {t.badge !== undefined &&
+                t.badge !== null &&
+                (t.alert ? (
+                  <span
+                    className={`rounded-full px-1.5 text-[10px] ${
+                      active ? 'bg-ink text-[#f8d030]' : 'bg-[#f8d030] text-ink'
+                    }`}
+                  >
+                    {t.badge}
+                  </span>
+                ) : (
+                  <span
+                    className={`font-mono text-[10px] ${active ? 'text-ink/70' : 'text-slate-400'}`}
+                  >
+                    {t.badge}
+                  </span>
+                ))}
+            </button>
+          );
+        })}
+      </ScrollRow>
+    </nav>
+  );
+}
+
 export function ProgressBar({
   value,
   className = '',
-  barClassName = 'bg-brand-500',
+  barClassName = 'bg-[#48c048]',
 }: {
   value: number;
   className?: string;
@@ -497,11 +687,75 @@ export function ProgressBar({
   barClassName?: string;
 }) {
   return (
-    <div className={`h-2 overflow-hidden rounded-full bg-slate-200 dark:bg-slate-800 ${className}`}>
+    <div className={`h-3 overflow-hidden rounded-full border-2 border-ink bg-track ${className}`}>
       <div
-        className={`h-full rounded-full transition-[width] duration-500 ${barClassName}`}
+        className={`h-full shadow-[inset_0_2px_0_rgb(255_255_255/0.35)] transition-[width] duration-500 ${barClassName}`}
         style={{ width: `${Math.min(100, Math.max(0, value * 100))}%` }}
       />
+    </div>
+  );
+}
+
+/**
+ * Œuf dans une case ronde : l'anneau se remplit dans le sens des aiguilles d'une montre jusqu'à
+ * l'éclosion. Le temps restant n'est donné qu'au survol (`title`).
+ */
+export function EggTimer({
+  progress,
+  ready = false,
+  size = 48,
+  title,
+}: {
+  /** Avancement de l'incubation, de 0 à 1. */
+  progress: number;
+  ready?: boolean;
+  size?: number;
+  title?: string;
+}) {
+  const stroke = Math.max(3, Math.round(size / 12));
+  const r = (size - stroke) / 2;
+  const length = 2 * Math.PI * r;
+  const value = ready ? 1 : Math.min(1, Math.max(0, progress));
+  return (
+    <div
+      title={title}
+      role="img"
+      aria-label={title}
+      className={`relative grid shrink-0 place-items-center rounded-full ${ready ? 'bg-done' : 'bg-well'}`}
+      style={{ width: size, height: size }}
+    >
+      <svg
+        aria-hidden
+        className="absolute inset-0 -rotate-90"
+        width={size}
+        height={size}
+        viewBox={`0 0 ${size} ${size}`}
+      >
+        <circle
+          cx={size / 2}
+          cy={size / 2}
+          r={r}
+          fill="none"
+          strokeWidth={stroke}
+          className="stroke-well-line"
+        />
+        {value > 0 && (
+          <circle
+            cx={size / 2}
+            cy={size / 2}
+            r={r}
+            fill="none"
+            strokeWidth={stroke}
+            strokeLinecap={value < 1 ? 'round' : 'butt'}
+            strokeDasharray={length}
+            strokeDashoffset={length * (1 - value)}
+            className={`transition-[stroke-dashoffset] duration-1000 ease-linear ${
+              ready ? 'stroke-[#b07a10]' : 'stroke-[#48c048]'
+            }`}
+          />
+        )}
+      </svg>
+      <Egg size={Math.round(size * 0.46)} ready={ready} />
     </div>
   );
 }

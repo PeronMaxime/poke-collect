@@ -5,41 +5,23 @@ import {
   collectionState,
   dexProgress,
   isRegionUnlocked,
-  isZoneUnlocked,
 } from '@poke/game-core';
 import type { DexCatches, GameContext, PlayerProgress } from '@poke/game-core';
 import type { PokedexEntryDto, PokedexFormEntryDto } from '@poke/shared';
-import { PokemonSprite, ProgressBar, ShinyStar, TypeBadge } from '../../components/ui';
+import { PokemonSprite, ProgressBar, ShinyStar, ViewTabs } from '../../components/ui';
 import {
   useClaimedRewards,
   useDexCatches,
   usePokedex,
   usePokedexForms,
   usePlayerProgress,
-  useShinyBonus,
-  useShinyCharm,
 } from '../../lib/game';
-import { formatPercentBonus, formatShinyRate, unlockConditionText } from '../../lib/labels';
-import { zoneLink } from './ExpeditionsPage';
+import { DexSheet, dexSlotState } from './DexSheet';
+import type { DexSlot, SlotState } from './DexSheet';
 import { CollectionsView, CompletionsView, useVisibleCollections } from './ProgressionViews';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 
 type Filter = 'all' | 'caught' | 'missing';
-
-/** Case du Pokédex : une espèce (formId null) ou l'une de ses formes. */
-interface DexSlot {
-  speciesId: number;
-  formId: number | null;
-}
-
-/** État d'une case : inconnue (silhouette), vue ou capturée. */
-interface SlotState {
-  seen: boolean;
-  caught: boolean;
-  /** Date de première capture (ISO). */
-  caughtAt: string | null;
-  caughtShiny: boolean;
-}
 
 const VIEWS = [
   { id: 'dex', label: 'Pokédex' },
@@ -63,22 +45,15 @@ export function PokedexPage({ ctx }: { ctx: GameContext }) {
 
   return (
     <div className="space-y-4">
-      <nav className="flex gap-1">
-        {VIEWS.map((v) => (
-          <button
-            key={v.id}
-            onClick={() => setView(v.id)}
-            className={view === v.id ? 'btn-primary py-1.5' : 'btn-ghost py-1.5'}
-          >
-            {v.label}
-            {claimable[v.id] > 0 && (
-              <span className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950">
-                {claimable[v.id]}
-              </span>
-            )}
-          </button>
-        ))}
-      </nav>
+      <ViewTabs
+        tabs={VIEWS.map((v) => ({
+          ...v,
+          badge: claimable[v.id] > 0 ? claimable[v.id] : undefined,
+          alert: true,
+        }))}
+        selected={view}
+        onSelect={setView}
+      />
       {view === 'dex' && <DexView ctx={ctx} />}
       {view === 'collections' && <CollectionsView ctx={ctx} progress={progress} />}
       {view === 'completions' && <CompletionsView ctx={ctx} progress={progress} />}
@@ -101,8 +76,6 @@ export interface ForeignDex {
 export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignDex }) {
   const pokedex = usePokedex();
   const ownCatches = useDexCatches();
-  const charm = useShinyCharm(ctx);
-  const shinyBonus = useShinyBonus();
   const [savedRegion, setRegionId] = useSavedRegionTab(foreign ? 'pokedex-other' : 'pokedex');
   const [filter, setFilter] = useState<Filter>('all');
   const [shiny, setShiny] = useState(false);
@@ -143,29 +116,10 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
 
   const progress = dexProgress(ctx, region.id, catches, shiny);
   const seenCount = region.speciesIds.filter((id) => entries.get(id)?.seen).length;
-  const slotState = ({ speciesId, formId }: DexSlot): SlotState => {
-    const entry = entries.get(speciesId);
-    // Pokédex shiny : la case ne se dévoile qu'une fois la version shiny rencontrée.
-    const seen = (shiny ? entry?.seenShiny : entry?.seen) ?? false;
-    if (formId === null) {
-      return {
-        seen,
-        caught: (shiny ? entry?.caughtShiny : entry?.caught) ?? false,
-        caughtAt: entry?.firstCaughtAt ?? null,
-        caughtShiny: entry?.caughtShiny ?? false,
-      };
-    }
-    // Une forme se dévoile quand elle-même a été rencontrée ou capturée : avoir vu la forme
-    // normale de l'espèce ne suffit pas.
-    const formEntry = formEntries.get(formId);
-    const formSeen = (shiny ? entry?.seenShinyFormIds : entry?.seenFormIds)?.includes(formId);
-    return {
-      seen: (shiny ? !!formEntry?.caughtShiny : !!formEntry) || !!formSeen,
-      caught: shiny ? !!formEntry?.caughtShiny : !!formEntry,
-      caughtAt: formEntry?.firstCaughtAt ?? null,
-      caughtShiny: formEntry?.caughtShiny ?? false,
-    };
-  };
+  /** État d'une case, dans le Pokédex normal ou chromatique (`shinyMode`). */
+  const slotStateIn = (slot: DexSlot, shinyMode: boolean): SlotState =>
+    dexSlotState(entries, formEntries, slot, shinyMode);
+  const slotState = (slot: DexSlot) => slotStateIn(slot, shiny);
   const keep = (slot: DexSlot) => {
     const { caught } = slotState(slot);
     return filter === 'all' || (filter === 'caught' ? caught : !caught);
@@ -187,24 +141,21 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
   // formes de ses sections (régionales, Méga…) sont comptées à part.
   const formsCaught = formSections.reduce((n, s) => n + s.caught, 0);
   const formsTotal = formSections.reduce((n, s) => n + s.total, 0);
-  const detail = selected ? ctx.species(selected.speciesId, selected.formId) : undefined;
-  const detailState = selected ? slotState(selected) : undefined;
-  // Zones où l'espèce (ou cette forme précise) se rencontre ; celles des régions encore
-  // verrouillées restent cachées, comme sur la page des expéditions.
-  const allDetailZones = selected
-    ? ctx.zones.filter((z) =>
-        z.encounters.some(
-          (e) => e.speciesId === selected.speciesId && (e.formId ?? null) === selected.formId,
-        ),
+  // Cases voisines de la fiche ouverte : celles de la grille affichée, dans l'ordre, sans les
+  // silhouettes (fermées).
+  const visibleSlots = [...slots.filter(keep), ...formSections.flatMap((s) => s.slots)].filter(
+    (slot) => slotState(slot).seen,
+  );
+  const selectedIndex = selected
+    ? visibleSlots.findIndex(
+        (s) => s.speciesId === selected.speciesId && s.formId === selected.formId,
       )
-    : [];
-  const detailZones = allDetailZones.filter((z) => {
-    const zoneRegion = ctx.region(z.regionId);
-    return !!zoneRegion && isRegionUnlocked(ctx, zoneRegion, playerProgress);
-  });
+    : -1;
 
   const grid = (list: DexSlot[]) => (
-    <div className="grid grid-cols-4 gap-2 sm:grid-cols-6 md:grid-cols-8 lg:grid-cols-10">
+    // Cases de largeur bornée, comme au PC : le nombre de colonnes suit la largeur de l'écran
+    // au lieu d'étirer les cartes sur un grand écran ou de les écraser sur un petit.
+    <div className="grid grid-cols-[repeat(auto-fill,minmax(4.5rem,1fr))] gap-2 sm:grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))]">
       {list.map((slot) => (
         <DexTile
           key={`${slot.speciesId}:${slot.formId}`}
@@ -237,52 +188,56 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
         </div>
         <ProgressBar className="mt-3" value={progress.percent / 100} />
         {formsTotal > 0 && (
-          <p className="mt-1 text-xs text-slate-500">
-            Formes alternatives (hors pourcentage) : {formsCaught} / {formsTotal}
-          </p>
-        )}
-        {shiny && !foreign && (
-          <p className="mt-2 text-xs text-slate-500">
-            Taux chromatique de base : {formatShinyRate(1 / ctx.balance.shiny.baseRateDenominator)}
-            {charm > 1 && ` · Charme Chroma : × ${charm}`}
-            {shinyBonus > 1 && ` · bonus permanent : +${formatPercentBonus(shinyBonus)}`}. Relancer
-            une zone de suite allonge la chaîne ; des parents de régions différentes favorisent les
-            œufs chromatiques.
-          </p>
+          <>
+            <p className="mt-3 text-xs text-slate-500">
+              Formes alternatives (hors pourcentage) : {formsCaught} / {formsTotal} (
+              {((formsCaught / formsTotal) * 100).toFixed(1)} %)
+            </p>
+            <ProgressBar
+              className="mt-1"
+              value={formsCaught / formsTotal}
+              barClassName="bg-[#48a8e8]"
+            />
+          </>
         )}
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <button
-          className={shiny ? 'btn-ghost' : 'btn-primary'}
-          onClick={() => setShiny(false)}
-          aria-pressed={!shiny}
-        >
-          Normal
-        </button>
-        <button
-          className={shiny ? 'btn-primary' : 'btn-ghost'}
-          onClick={() => setShiny(true)}
-          aria-pressed={shiny}
-        >
-          <ShinyStar className={shiny ? 'text-white' : ''} /> Chromatique
-        </button>
-        <span className="mx-1 w-px bg-slate-200 dark:bg-slate-800" />
-        {(
-          [
-            ['all', 'Tous'],
-            ['caught', 'Capturés'],
-            ['missing', 'Manquants'],
-          ] as const
-        ).map(([value, label]) => (
+      {/* Mobile : deux rangées séparées par un trait horizontal ; bureau : une rangée, trait vertical. */}
+      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <div className="flex gap-2">
           <button
-            key={value}
-            className={filter === value ? 'btn-primary' : 'btn-ghost'}
-            onClick={() => setFilter(value)}
+            className={shiny ? 'btn-ghost' : 'btn-primary'}
+            onClick={() => setShiny(false)}
+            aria-pressed={!shiny}
           >
-            {label}
+            Normal
           </button>
-        ))}
+          <button
+            className={shiny ? 'btn-primary' : 'btn-ghost'}
+            onClick={() => setShiny(true)}
+            aria-pressed={shiny}
+          >
+            <ShinyStar className={shiny ? 'text-white' : ''} /> Chromatique
+          </button>
+        </div>
+        <span className="h-0.5 rounded-full bg-slate-300 sm:mx-1 sm:h-auto sm:w-0.5 dark:bg-slate-500" />
+        <div className="flex gap-1.5 sm:gap-2">
+          {(
+            [
+              ['all', 'Tous'],
+              ['caught', 'Capturés'],
+              ['missing', 'Manquants'],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              className={`${filter === value ? 'btn-primary' : 'btn-ghost'} max-sm:flex-1 max-sm:px-2 max-sm:py-2 max-sm:text-[9px]`}
+              onClick={() => setFilter(value)}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {grid(slots.filter(keep))}
@@ -303,75 +258,19 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
         </section>
       ))}
 
-      {selected && detail && detailState && (
-        <div className="card fixed inset-x-4 bottom-4 z-20 mx-auto flex max-w-md items-center gap-4 p-4 shadow-xl">
-          <PokemonSprite
-            speciesId={detail.id}
-            formId={selected.formId}
-            kind="artwork"
-            size={96}
-            shiny={shiny && detailState.caughtShiny}
-          />
-          <div className="flex-1 text-sm">
-            <p className="font-semibold">
-              N° {String(detail.id).padStart(3, '0')} — {detail.nameFr}
-            </p>
-            <div className="mt-1 flex gap-1">
-              {detail.types.map((t) => (
-                <TypeBadge key={t} type={t} />
-              ))}
-            </div>
-            <p className="mt-1 text-slate-500">
-              {detailState.caughtAt
-                ? `Capturé le ${new Date(detailState.caughtAt).toLocaleDateString('fr-FR')}`
-                : selected.formId === null
-                  ? 'Vu, pas encore capturé'
-                  : 'Forme pas encore capturée'}
-              {detailState.caughtShiny && ' · version chromatique obtenue ★'}
-            </p>
-            {/* Zones d'expédition : seulement dans son propre Pokédex (liens de départ). */}
-            {!foreign && (
-              <p className="mt-1">
-                <span className="text-slate-500">Expéditions : </span>
-                {detailZones.length === 0
-                  ? allDetailZones.length > 0
-                    ? 'dans une région pas encore débloquée'
-                    : 'aucune'
-                  : detailZones.map((zone, i) => {
-                      const unlocked = isZoneUnlocked(ctx, zone, playerProgress);
-                      return (
-                        <span key={zone.id}>
-                          {i > 0 && ', '}
-                          {unlocked ? (
-                            <a
-                              href={zoneLink(zone.id)}
-                              className="font-medium text-brand-600 hover:underline dark:text-brand-500"
-                              title="Envoyer une équipe dans cette zone"
-                            >
-                              {zone.name}
-                            </a>
-                          ) : (
-                            <span
-                              className="text-slate-400"
-                              title={unlockConditionText(ctx, zone.unlock) ?? 'Zone verrouillée'}
-                            >
-                              🔒 {zone.name}
-                            </span>
-                          )}
-                        </span>
-                      );
-                    })}
-              </p>
-            )}
-          </div>
-          <button
-            className="text-slate-400 hover:text-slate-600"
-            onClick={() => setSelected(null)}
-            aria-label="Fermer"
-          >
-            ✕
-          </button>
-        </div>
+      {selected && (
+        <DexSheet
+          ctx={ctx}
+          slot={selected}
+          stateOf={(slot) => slotStateIn(slot, false)}
+          initialShiny={shiny}
+          foreign={!!foreign}
+          progress={playerProgress}
+          prev={selectedIndex > 0 ? visibleSlots[selectedIndex - 1] : undefined}
+          next={selectedIndex >= 0 ? visibleSlots[selectedIndex + 1] : undefined}
+          onSelect={setSelected}
+          onClose={() => setSelected(null)}
+        />
       )}
     </div>
   );

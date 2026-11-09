@@ -4,7 +4,8 @@ import type { BattleDto } from '@poke/shared';
 import { Modal } from '../../components/ui';
 import { trainerName } from '../../lib/labels';
 import { BadgeIcon, TrainerSprite } from './BattlesPage';
-import { CombatResultDetails, OUTCOME_TITLES } from './DungeonResult';
+import { LAUNCH_DIALOG_CLASS, ResultFrame } from './dialogParts';
+import { CombatOutcome, CombatResultDetails } from './DungeonResult';
 
 /** Résultat d'un combat de dresseur : issue, badge, argent, butin, XP et K.O. */
 export function BattleResult({
@@ -20,7 +21,7 @@ export function BattleResult({
   onClose: () => void;
 }) {
   return (
-    <Modal open={!!battle?.result} onClose={onClose} wide>
+    <Modal open={!!battle?.result} onClose={onClose} wide className={LAUNCH_DIALOG_CLASS}>
       {battle?.result && (
         <ResultContent ctx={ctx} battle={battle} currency={currency} onClose={onClose} />
       )}
@@ -42,35 +43,18 @@ function ResultContent({
   const reduced = useReducedMotion();
   const result = battle.result!;
   const trainer = ctx.trainer(battle.trainerId);
-  const title = OUTCOME_TITLES[result.outcome];
-  const win = result.outcome === 'win';
   const badge = result.badgeEarned && trainer?.badge;
 
   return (
-    <div>
-      <h2 className="text-xl font-bold">
-        Combat contre {trainer ? `${trainer.trainerClass} ${trainerName(trainer)}` : 'un dresseur'}
-      </h2>
-      <div className="mt-3 flex items-center justify-center gap-4">
-        {trainer && (
-          <span className={win ? 'opacity-40 grayscale' : ''}>
-            <TrainerSprite trainer={trainer} size={96} />
-          </span>
-        )}
-        <div className="text-center">
-          <motion.p
-            className={`text-3xl font-black ${title.className}`}
-            initial={reduced ? false : { scale: 0, opacity: 0 }}
-            animate={{ scale: [0, 1.3, 1], opacity: 1 }}
-            transition={{ duration: 0.5 }}
-          >
-            {title.text}
-          </motion.p>
-          <p className="text-sm text-slate-500">
-            {result.defeated} / {battle.setup.enemies.length} Pokémon adverses vaincus
-          </p>
-        </div>
-      </div>
+    <ResultFrame
+      title={`Combat contre ${trainer ? `${trainer.trainerClass} ${trainerName(trainer)}` : 'un dresseur'}`}
+      onClose={onClose}
+    >
+      <CombatOutcome
+        outcome={result.outcome}
+        portrait={trainer && <TrainerSprite trainer={trainer} size={88} />}
+        subtitle={`${result.defeated} / ${battle.setup.enemies.length} Pokémon adverses vaincus`}
+      />
 
       <CombatResultDetails
         ctx={ctx}
@@ -79,7 +63,7 @@ function ResultContent({
         extraRewards={
           badge && (
             <motion.li
-              className="flex items-center gap-2 font-semibold text-amber-600"
+              className="flex items-center gap-2 font-semibold text-amber-700 dark:text-[#f8d878]"
               initial={reduced ? false : { scale: 0, rotate: -30 }}
               animate={{ scale: 1, rotate: 0 }}
               transition={{ delay: 0.6, type: 'spring' }}
@@ -89,12 +73,6 @@ function ResultContent({
           )
         }
       />
-
-      <div className="mt-6 text-right">
-        <button className="btn-primary" onClick={onClose}>
-          Continuer
-        </button>
-      </div>
-    </div>
+    </ResultFrame>
   );
 }

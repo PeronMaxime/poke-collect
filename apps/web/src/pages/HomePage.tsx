@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { MeResponse, PlayerProfileDto } from '@poke/shared';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -30,6 +30,9 @@ import {
 } from '../lib/game';
 import { formatMoney, unlockConditionText } from '../lib/labels';
 import { BattlesPage } from './game/BattlesPage';
+import { BUILDING_TABS, BuildingsColumn } from './game/BuildingsColumn';
+import { WidgetsDialog } from './game/WidgetsDialog';
+import { WIDGETS, useWidgetSettings, widgetTab } from '../lib/widgets';
 import { CenterPage } from './game/CenterPage';
 import { DaycarePage } from './game/DaycarePage';
 import { DungeonsPage } from './game/DungeonsPage';
@@ -64,6 +67,16 @@ type PageId = TabId | typeof WIKI_HASH;
 
 const PAGE_LABELS: Record<PageId, string> = { ...TAB_LABELS, [WIKI_HASH]: 'Wiki' };
 
+/** Pages découpées en plusieurs fenêtres (une par section) plutôt que tenues dans une seule. */
+const WINDOWED_TABS = new Set<PageId>([
+  'expeditions',
+  'battles',
+  'center',
+  'daycare',
+  'museum',
+  'farm',
+]);
+
 /** Sections du menu repliées par le joueur (par titre), gardées d'une visite à l'autre. */
 const CLOSED_SECTIONS_KEY = 'dexpedition.menuClosedSections';
 
@@ -96,6 +109,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const ctx = useGameContext();
   const [hashTab, setTab] = useState<PageId>(tabFromHash);
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [widgetsOpen, setWidgetsOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   // Sections d'onglets réglées dans l'admin (Menu du jeu), repliables une à une.
   const menuSections = useMemo(() => normalizeMenu(ctx?.content.balance.menu), [ctx]);
@@ -188,6 +202,20 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
     window.scrollTo(0, 0);
   }, [tab]);
 
+  // Hauteur du bandeau sticky du bureau, publiée en `--hud-h` pour que les éléments sticky de la
+  // page (menu de gauche…) se calent dessous. 0 sur mobile, où le bandeau est masqué.
+  const hudObserver = useRef<ResizeObserver | null>(null);
+  const hudRef = useCallback((el: HTMLElement | null) => {
+    hudObserver.current?.disconnect();
+    hudObserver.current = null;
+    if (!el) return;
+    const publish = () =>
+      document.documentElement.style.setProperty('--hud-h', `${el.offsetHeight}px`);
+    publish();
+    hudObserver.current = new ResizeObserver(publish);
+    hudObserver.current.observe(el);
+  }, []);
+
   useBodyScrollLock(menuOpen);
   useEffect(() => {
     if (!menuOpen) return;
@@ -264,6 +292,17 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
       ? '???'
       : TAB_LABELS[id];
 
+  // Grand écran : les bâtiments affichés en widget dans la colonne de droite (débloqués et non
+  // masqués depuis « Widgets ») quittent le menu ; le clic sur le widget ouvre leur page.
+  const widgetSettings = useWidgetSettings();
+  const widgetTabs = new Set<TabId>(
+    progressLoaded
+      ? WIDGETS.filter((id) => !widgetSettings.hidden.has(id))
+          .map(widgetTab)
+          .filter((id) => !lockedTabs.has(id))
+      : [],
+  );
+
   // Condition d'un onglet verrouillé affichée au toucher ; un toucher ailleurs la referme.
   const [hint, setHint] = useState<TabId | null>(null);
   useEffect(() => {
@@ -285,16 +324,25 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
       const open = sectionOpen(title);
       // Section repliée : un point signale qu'un de ses onglets attend le joueur.
       const waiting = !open && tabs.some((id) => !lockedTabs.has(id) && tabPending(id));
+      // Grand écran : section masquée quand tous ses onglets sont des widgets de la colonne.
+      // Le menu mobile n'existe pas à cette largeur, la règle ne concerne que la barre latérale.
+      const allWidgets = tabs.every((id) => widgetTabs.has(id));
+      // Première section affichée en grand écran : pas de séparateur au-dessus.
+      const firstOnXl = menuSections
+        .slice(0, i)
+        .every((s) => s.tabs.every((id) => widgetTabs.has(id)));
       return (
         <div
           key={`${i}:${title}`}
-          className={`flex flex-col gap-0.5 ${i > 0 ? 'mt-1 border-t border-slate-200 pt-1 dark:border-slate-800' : ''}`}
+          className={`flex flex-col gap-0.5 ${i > 0 ? 'mt-1 border-t-2 border-dashed border-slate-300 pt-1 dark:border-slate-700' : ''} ${
+            allWidgets ? 'xl:hidden' : ''
+          } ${i > 0 && firstOnXl ? 'xl:mt-0 xl:border-t-0 xl:pt-0' : ''}`}
         >
           <button
             type="button"
             onClick={() => toggleSection(title)}
             aria-expanded={open}
-            className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs font-bold tracking-wide text-slate-400 uppercase hover:bg-slate-200/60 hover:text-slate-600 dark:text-slate-500 dark:hover:bg-slate-800/60 dark:hover:text-slate-300"
+            className="flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left font-pixel text-[9px] leading-relaxed tracking-wide text-slate-500 uppercase hover:bg-slate-100 hover:text-slate-700 dark:text-slate-400 dark:hover:bg-slate-800 dark:hover:text-slate-200"
           >
             <span className="min-w-0 flex-1 truncate">{title}</span>
             {waiting && <span className="h-2 w-2 shrink-0 rounded-full bg-brand-500" />}
@@ -312,8 +360,8 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
             </svg>
           </button>
           <SectionPanel open={open}>
-            {/* Onglets légèrement décalés vers la droite, pour les distinguer du titre de section. */}
-            <div className="flex flex-col gap-0.5 pl-3">
+            {/* Onglets précédés de la place du curseur (flèche de l'onglet affiché). */}
+            <div className="flex flex-col gap-0.5">
               {tabs.map((id) =>
                 lockedTabs.has(id) ? (
                   // Onglet verrouillé : pas de page, sa condition au survol (au toucher sur mobile).
@@ -325,8 +373,9 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
                         e.pointerType !== 'mouse' && setHint(hint === id ? null : id)
                       }
                       aria-expanded={hint === id}
-                      className="flex w-full cursor-default items-center rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-400 md:py-2 dark:text-slate-600"
+                      className="flex w-full cursor-default items-center rounded-md px-2.5 py-2.5 text-left font-medium text-slate-400 md:py-2 dark:text-slate-500"
                     >
+                      <MenuCursor shown={false} />
                       {tabLabel(id)}
                       <span className="ml-auto text-xs" aria-label="Verrouillé">
                         🔒
@@ -334,7 +383,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
                     </button>
                     <p
                       role="tooltip"
-                      className={`absolute top-full left-3 z-20 mt-1 w-56 rounded-lg bg-slate-900 px-3 py-2 text-xs text-white shadow-lg md:top-1/2 md:left-full md:mt-0 md:ml-2 md:-translate-y-1/2 dark:bg-slate-700 ${
+                      className={`absolute top-full left-3 z-20 mt-1 w-56 rounded-md border-2 border-ink bg-slate-900 px-3 py-2 text-xs text-white shadow-lg md:top-1/2 md:left-full md:mt-0 md:ml-3 md:-translate-y-1/2 dark:bg-slate-700 ${
                         hint === id ? 'block' : 'hidden group-hover:block'
                       }`}
                     >
@@ -346,17 +395,18 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
                     key={id}
                     href={`#${id}`}
                     onClick={() => setMenuOpen(false)}
-                    className={`relative flex items-center rounded-lg px-3 py-2.5 text-sm font-medium transition md:py-2 ${
+                    aria-current={tab === id ? 'page' : undefined}
+                    className={`flex items-center rounded-md px-2.5 py-2.5 transition md:py-2 ${
+                      widgetTabs.has(id) ? 'xl:hidden' : ''
+                    } ${
                       tab === id
-                        ? 'bg-brand-500/10 text-brand-600 dark:text-brand-500'
-                        : 'text-slate-500 hover:bg-slate-200/60 hover:text-slate-900 dark:hover:bg-slate-800/60 dark:hover:text-slate-100'
+                        ? 'bg-selected font-bold text-slate-900 dark:text-slate-100'
+                        : 'font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100'
                     }`}
                   >
+                    <MenuCursor shown={tab === id} />
                     {tabLabel(id)}
                     {tabBadges(id)}
-                    {tab === id && (
-                      <span className="absolute inset-y-2 left-0 w-0.5 rounded bg-brand-500" />
-                    )}
                   </a>
                 ),
               )}
@@ -407,9 +457,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
           </span>
         )}
         {id === 'expeditions' && finished > 0 && (
-          <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
-            {finished}
-          </span>
+          <span className="ml-1.5 count-badge bg-brand-500 text-white">{finished}</span>
         )}
         {id === 'battles' && battles.data?.active && (
           <span
@@ -424,45 +472,34 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
           />
         )}
         {id === 'daycare' && daycareReady > 0 && (
-          <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
-            {daycareReady}
-          </span>
+          <span className="ml-1.5 count-badge bg-brand-500 text-white">{daycareReady}</span>
         )}
         {id === 'center' && koWaiting > 0 && (
-          <span
-            className="ml-1.5 rounded-full bg-red-500 px-1.5 text-xs text-white"
-            title="Pokémon K.O. à soigner"
-          >
+          <span className="ml-1.5 count-badge bg-red-500 text-white" title="Pokémon K.O. à soigner">
             {koWaiting}
           </span>
         )}
         {id === 'museum' && fossilsReady > 0 && (
-          <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
-            {fossilsReady}
-          </span>
+          <span className="ml-1.5 count-badge bg-brand-500 text-white">{fossilsReady}</span>
         )}
         {id === 'farm' && berriesReady > 0 && (
-          <span className="ml-1.5 rounded-full bg-brand-500 px-1.5 text-xs text-white">
-            {berriesReady}
-          </span>
+          <span className="ml-1.5 count-badge bg-brand-500 text-white">{berriesReady}</span>
         )}
         {id === 'quests' && questsReady > 0 && (
           <span
-            className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950"
+            className="ml-1.5 count-badge bg-[#f8d030] text-[#1a1400]"
             title="Récompenses de quête à réclamer"
           >
             {questsReady}
           </span>
         )}
         {id === 'shop' && shopNew > 0 && (
-          <span className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950">
-            {shopNew}
-          </span>
+          <span className="ml-1.5 count-badge bg-[#f8d030] text-[#1a1400]">{shopNew}</span>
         )}
         {id === 'pokedex' && ctx && <span className="ml-1.5 text-xs text-slate-400">{caught}</span>}
         {id === 'pokedex' && rewardsReady > 0 && (
           <span
-            className="ml-1.5 rounded-full bg-amber-400 px-1.5 text-xs text-amber-950"
+            className="ml-1.5 count-badge bg-[#f8d030] text-[#1a1400]"
             title="Récompenses à réclamer"
           >
             {rewardsReady}
@@ -470,7 +507,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
         )}
         {id === 'pc' && evolutionsReady > 0 && (
           <span
-            className="ml-1.5 rounded-full bg-emerald-500 px-1.5 text-xs text-white"
+            className="ml-1.5 count-badge bg-emerald-500 text-white"
             title="Pokémon prêts à évoluer"
           >
             {evolutionsReady}
@@ -480,8 +517,11 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
     );
   }
 
-  /** Liens du compte : en-tête sur ordinateur, bas du menu burger sur mobile. */
-  function accountLinks(className: string) {
+  /**
+   * Liens du compte : en-tête sur ordinateur, bas du menu burger sur mobile. « Widgets » n'est
+   * proposé que là où la colonne des widgets s'affiche (bandeau, grand écran).
+   */
+  function accountLinks(className: string, activeClassName: string, widgetsClassName?: string) {
     return (
       <>
         {me.user.role === 'admin' && (
@@ -497,18 +537,26 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
           Nouveautés
           {unseenChangelog && (
             <span
-              className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-slate-50 dark:ring-slate-950"
+              className="absolute -top-1 -right-1 h-2.5 w-2.5 rounded-full bg-red-500 ring-2 ring-ink"
               title="Nouvelle mise à jour"
             />
           )}
         </a>
         <a
-          className={`${className} ${tab === WIKI_HASH ? 'text-brand-600 dark:text-brand-500' : ''}`}
+          className={`${className} ${tab === WIKI_HASH ? activeClassName : ''}`}
           href={wikiLink()}
           onClick={() => setMenuOpen(false)}
         >
           Wiki
         </a>
+        {widgetsClassName !== undefined && (
+          <button
+            className={`${className} ${widgetsClassName}`}
+            onClick={() => setWidgetsOpen(true)}
+          >
+            Widgets
+          </button>
+        )}
         <button
           className={className}
           onClick={() => {
@@ -534,30 +582,49 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   }
 
   return (
-    <div className="mx-auto max-w-6xl px-4 pb-10">
-      <header className="hidden flex-wrap items-center justify-between gap-3 py-5 md:flex">
-        <div className="flex items-end gap-4">
-          <div>
-            <p className="text-xs text-slate-500">Dresseur</p>
-            <h1 className="text-xl font-bold">{profile.trainerName}</h1>
-          </div>
-          <p
-            className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300"
-            title="Poké Dollars"
-          >
-            {formatMoney(profile.currency)}
-          </p>
+    <div className="pb-10">
+      {/* Bureau : bandeau du dresseur sur toute la largeur. */}
+      {/* Trois colonnes : infos du dresseur à gauche, titre centré sur la bannière, compte à
+          droite. Les colonnes latérales font la même largeur (1fr) pour garder le titre au centre. */}
+      <header
+        ref={hudRef}
+        className="sticky top-0 z-30 hidden grid-cols-[1fr_auto_1fr] items-center gap-x-6 border-b-4 border-brand-500 bg-hud px-6 py-3 text-white md:grid"
+      >
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+          <HudPill label="Dresseur">
+            <span className="font-bold">{profile.trainerName}</span>
+          </HudPill>
+          <HudPill label="Argent" title="Poké Dollars">
+            <span className="font-bold text-[#f8d030]">{formatMoney(profile.currency)}</span>
+          </HudPill>
         </div>
-        <div className="flex items-center gap-2">{accountLinks('btn-ghost')}</div>
+        <a
+          href="#expeditions"
+          className="font-pixel text-lg text-[#f8d030] [text-shadow:3px_3px_0_#d83828]"
+        >
+          DEXPEDITION
+        </a>
+        <nav className="flex flex-wrap items-center justify-end gap-2" aria-label="Compte">
+          {accountLinks(
+            'cursor-pointer rounded-md border-2 border-hud-line px-3 py-1.5 text-sm text-white transition hover:bg-hud-pill',
+            'bg-hud-pill text-[#f8d030]',
+            'hidden xl:block',
+          )}
+        </nav>
       </header>
       <SettingsDialog open={settingsOpen} onClose={() => setSettingsOpen(false)} />
+      <WidgetsDialog
+        open={widgetsOpen}
+        onClose={() => setWidgetsOpen(false)}
+        lockedTabs={lockedTabs}
+      />
       <RoamerSightingNotice ctx={ctx} expeditions={expeditions.data?.active} />
 
-      <div className="md:flex md:items-start md:gap-6">
+      <div className="mx-auto max-w-[2200px] px-4 md:flex md:items-start md:gap-5 md:px-6 md:pt-5">
         {/* Mobile : barre avec bouton burger, menu en tiroir depuis la gauche. */}
-        <div className="sticky top-0 z-10 -mx-4 mb-6 flex items-center gap-2 border-b border-slate-200 bg-slate-50/90 px-2 py-2 backdrop-blur md:hidden dark:border-slate-800 dark:bg-slate-950/90">
+        <div className="sticky top-0 z-10 -mx-4 mb-4 flex items-center gap-2 border-b-4 border-brand-500 bg-hud px-2 py-2 text-white md:hidden">
           <button
-            className="relative rounded-lg p-2 text-slate-600 hover:bg-slate-200 dark:text-slate-300 dark:hover:bg-slate-800"
+            className="relative rounded-md p-2 text-white hover:bg-hud-pill"
             onClick={() => setMenuOpen(true)}
             aria-label="Ouvrir le menu"
             aria-expanded={menuOpen}
@@ -573,14 +640,14 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
               <path d="M4 6h16M4 12h16M4 18h16" />
             </svg>
             {pending && (
-              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-slate-50 dark:ring-slate-950" />
+              <span className="absolute top-1.5 right-1.5 h-2 w-2 rounded-full bg-brand-500 ring-2 ring-hud" />
             )}
           </button>
-          <span className="min-w-0 flex-1 truncate font-semibold">
+          <span className="min-w-0 flex-1 truncate font-pixel text-[10px] text-[#f8d030] uppercase">
             {tab === WIKI_HASH ? PAGE_LABELS[tab] : tabLabel(tab)}
           </span>
           <span
-            className="shrink-0 rounded-full bg-amber-100 px-2.5 py-0.5 text-sm font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300"
+            className="shrink-0 rounded-md border-2 border-hud-line bg-hud-pill px-2 py-0.5 text-sm font-bold text-[#f8d030]"
             title="Poké Dollars"
           >
             {formatMoney(profile.currency)}
@@ -589,12 +656,12 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
         </div>
         {menuOpen && (
           <div className="fixed inset-0 z-40 md:hidden">
-            <div className="absolute inset-0 bg-black/40" onClick={() => setMenuOpen(false)} />
-            <nav className="absolute inset-y-0 left-0 flex w-64 max-w-[80vw] flex-col gap-0.5 overflow-y-auto overscroll-contain bg-slate-50 p-3 shadow-xl dark:bg-slate-950">
-              <div className="mb-2 flex items-center justify-between px-3 py-1">
-                <span className="text-sm font-semibold text-slate-400">Menu</span>
+            <div className="absolute inset-0 bg-black/50" onClick={() => setMenuOpen(false)} />
+            <nav className="absolute inset-y-0 left-0 flex w-64 max-w-[80vw] flex-col gap-0.5 overflow-y-auto overscroll-contain border-r-4 border-ink bg-win p-3 shadow-xl">
+              <div className="mb-2 flex items-center justify-between px-2.5 py-1">
+                <span className="font-pixel text-[10px] text-title uppercase">Menu</span>
                 <button
-                  className="rounded-lg p-1.5 text-slate-500 hover:bg-slate-200 dark:hover:bg-slate-800"
+                  className="rounded-md p-1.5 text-slate-500 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800"
                   onClick={() => setMenuOpen(false)}
                   aria-label="Fermer le menu"
                 >
@@ -611,30 +678,35 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
                 </button>
               </div>
               {tabLinks()}
-              <div className="mt-2 flex flex-col gap-0.5 border-t border-slate-200 pt-2 dark:border-slate-800">
+              <div className="mt-2 flex flex-col gap-0.5 border-t-2 border-dashed border-slate-300 pt-2 dark:border-slate-700">
                 {accountLinks(
-                  'rounded-lg px-3 py-2.5 text-left text-sm font-medium text-slate-500 hover:bg-slate-200/60 hover:text-slate-900 dark:hover:bg-slate-800/60 dark:hover:text-slate-100',
+                  'rounded-md px-2.5 py-2.5 text-left font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-900 dark:text-slate-300 dark:hover:bg-slate-800 dark:hover:text-slate-100',
+                  'bg-selected font-bold text-slate-900 dark:text-slate-100',
                 )}
               </div>
             </nav>
           </div>
         )}
 
-        {/* Bureau : barre latérale fixe à gauche. */}
-        <nav className="sticky top-4 hidden w-48 shrink-0 flex-col gap-0.5 md:flex">
+        {/* Bureau : menu du jeu dans une fenêtre, fixe à gauche (façon menu START). `sticky` crée
+            un contexte d'empilement : sans z-index, les infobulles des onglets verrouillés passent
+            sous les fenêtres de la page (expéditions en cours…). */}
+        <nav className="card sticky top-[calc(var(--hud-h,0px)+1rem)] z-20 hidden w-60 shrink-0 flex-col gap-0.5 p-2.5 md:flex">
           {tabLinks()}
         </nav>
 
         <main className="min-w-0 flex-1">
           {!ctx ? (
-            <p className="text-slate-500">Chargement…</p>
+            <p className="text-slate-600 dark:text-slate-300">Chargement…</p>
           ) : (
             // Une erreur dans un onglet n'emporte pas la navigation ; changer d'onglet la réinitialise.
             <ErrorBoundary key={tab}>
               {gated && !progressLoaded ? (
-                <p className="text-slate-500">Chargement…</p>
+                <p className="text-slate-600 dark:text-slate-300">Chargement…</p>
               ) : (
-                <>
+                // Les Expéditions et les bâtiments découpent leur page en fenêtres ; les autres
+                // pages tiennent dans une.
+                <div className={WINDOWED_TABS.has(tab) ? '' : 'card p-3 md:p-5'}>
                   {tab === 'expeditions' && <ExpeditionsPage ctx={ctx} profile={profile} />}
                   {tab === 'battles' && <BattlesPage ctx={ctx} />}
                   {tab === 'dungeons' && <DungeonsPage ctx={ctx} />}
@@ -652,20 +724,65 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
                   {tab === 'guild' && <GuildPage ctx={ctx} />}
                   {tab === 'leaderboard' && <LeaderboardPage />}
                   {tab === WIKI_HASH && <WikiPage ctx={ctx} />}
-                </>
+                </div>
               )}
             </ErrorBoundary>
           )}
         </main>
+
+        {/* Grand écran : les bâtiments débloqués en version réduite, à droite. */}
+        {ctx && progressLoaded && (
+          <BuildingsColumn
+            ctx={ctx}
+            buildings={BUILDING_TABS.filter((id) => !lockedTabs.has(id))}
+          />
+        )}
       </div>
 
-      <footer className="mt-12 space-y-2 text-center text-xs text-slate-400">
+      <footer className="mt-12 space-y-2 px-4 text-center text-xs text-slate-600 dark:text-slate-400">
         <p>
           <FanDisclaimer /> Données : PokéAPI. Contenu v{ctx?.content.versionId ?? '…'}
         </p>
         <LegalLinks />
       </footer>
     </div>
+  );
+}
+
+/** Pastille du bandeau du dresseur : petit libellé pixel, puis la valeur. */
+function HudPill({
+  label,
+  title,
+  children,
+}: {
+  label: string;
+  title?: string;
+  children: ReactNode;
+}) {
+  return (
+    <div
+      className="flex items-center gap-2.5 rounded-md border-2 border-hud-line bg-hud-pill px-3 py-1.5"
+      title={title}
+    >
+      <span className="font-pixel text-[9px] text-[#b8c8e0] uppercase">{label}</span>
+      {children}
+    </div>
+  );
+}
+
+/** Flèche du menu devant l'onglet affiché (place gardée sur les autres, pour l'alignement). */
+function MenuCursor({ shown }: { shown: boolean }) {
+  return (
+    <svg
+      viewBox="0 0 4 7"
+      width="8"
+      height="14"
+      shapeRendering="crispEdges"
+      aria-hidden
+      className={`mr-2 shrink-0 text-brand-500 ${shown ? '' : 'invisible'}`}
+    >
+      <path d="M0 0h1v1h1v1h1v1h1v1h-1v1h-1v1h-1v1h-1z" fill="currentColor" />
+    </svg>
   );
 }
 

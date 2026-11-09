@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { GuildLeaderboardEntryDto, LeaderboardEntryDto, LeaderboardKind } from '@poke/shared';
-import { PokemonSprite } from '../../components/ui';
+import { PokemonSprite, ViewTabs } from '../../components/ui';
 import { useGuildLeaderboard, useLeaderboard } from '../../lib/game';
 import { formatMoney } from '../../lib/labels';
 import { guildLink, trainerLink } from './TrainerCardPage';
@@ -64,23 +64,11 @@ export function LeaderboardPage() {
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-wrap gap-1" role="tablist">
-        {BOARDS.map((b) => (
-          <button
-            key={b.id}
-            role="tab"
-            aria-selected={b.id === kind}
-            onClick={() => select(b.id)}
-            className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-              b.id === kind
-                ? 'bg-brand-500 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-            }`}
-          >
-            {b.label}
-          </button>
-        ))}
-      </div>
+      <ViewTabs
+        tabs={BOARDS.map((b) => ({ id: b.id, label: b.label }))}
+        selected={kind}
+        onSelect={select}
+      />
       <p className="text-sm text-slate-500">
         {board.hint}
         {guildBoard
@@ -95,13 +83,15 @@ export function LeaderboardPage() {
       ) : !data ? (
         <p className="text-slate-500">Chargement…</p>
       ) : (
-        <div className="card overflow-hidden">
+        <div className="card overflow-hidden max-sm:p-2">
           <table className="w-full text-sm">
             <thead className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-800">
               <tr>
-                <th className="w-16 px-4 py-2 font-medium">Rang</th>
-                <th className="px-4 py-2 font-medium">Dresseur</th>
-                <th className="px-4 py-2 text-right font-medium">{board.unit}</th>
+                <th className="w-9 px-1 py-2 text-center font-medium sm:w-16 sm:px-4 sm:text-left">
+                  Rang
+                </th>
+                <th className="px-2 py-2 font-medium sm:px-4">Dresseur</th>
+                <th className="px-2 py-2 text-right font-medium sm:px-4">{board.unit}</th>
               </tr>
             </thead>
             <tbody>
@@ -111,7 +101,7 @@ export function LeaderboardPage() {
               {data.me && !meShown && (
                 <>
                   <tr>
-                    <td colSpan={3} className="px-4 py-1 text-center text-slate-400">
+                    <td colSpan={3} className="px-2 py-1 sm:px-4 text-center text-slate-400">
                       ⋯
                     </td>
                   </tr>
@@ -133,13 +123,15 @@ function GuildBoard({ query }: { query: ReturnType<typeof useGuildLeaderboard> }
   if (data.total === 0) return <p className="text-slate-500">Aucune guilde pour l’instant.</p>;
   const meShown = data.entries.some((e) => e.isMine);
   return (
-    <div className="card overflow-hidden">
+    <div className="card overflow-hidden max-sm:p-2">
       <table className="w-full text-sm">
         <thead className="border-b border-slate-200 text-left text-xs text-slate-500 dark:border-slate-800">
           <tr>
-            <th className="w-16 px-4 py-2 font-medium">Rang</th>
-            <th className="px-4 py-2 font-medium">Guilde</th>
-            <th className="px-4 py-2 text-right font-medium">Quêtes</th>
+            <th className="w-9 px-1 py-2 text-center font-medium sm:w-16 sm:px-4 sm:text-left">
+              Rang
+            </th>
+            <th className="px-2 py-2 font-medium sm:px-4">Guilde</th>
+            <th className="px-2 py-2 text-right font-medium sm:px-4">Quêtes</th>
           </tr>
         </thead>
         <tbody>
@@ -149,7 +141,7 @@ function GuildBoard({ query }: { query: ReturnType<typeof useGuildLeaderboard> }
           {data.me && !meShown && (
             <>
               <tr>
-                <td colSpan={3} className="px-4 py-1 text-center text-slate-400">
+                <td colSpan={3} className="px-2 py-1 sm:px-4 text-center text-slate-400">
                   ⋯
                 </td>
               </tr>
@@ -169,25 +161,24 @@ function GuildRow({ entry }: { entry: GuildLeaderboardEntryDto }) {
         entry.isMine ? 'bg-brand-500/10 font-semibold' : ''
       }`}
     >
-      <td className="px-4 py-2 tabular-nums">
+      <td className="px-1 py-2 text-center tabular-nums sm:px-4 sm:text-left">
         <RankCell rank={entry.rank} />
       </td>
-      <td className="max-w-0 px-4 py-2">
-        <span className="flex items-baseline gap-2">
+      <td className="max-w-0 px-2 py-2 sm:px-4">
+        <span className="flex flex-wrap items-baseline gap-x-2">
           <a
             href={guildLink(entry.id)}
-            className="truncate hover:text-brand-600 hover:underline dark:hover:text-brand-500"
+            className="min-w-0 [overflow-wrap:anywhere] hover:text-brand-600 hover:underline dark:hover:text-brand-500"
             title="Voir la guilde"
           >
             {entry.name}
           </a>
           <span className="shrink-0 text-xs font-normal text-slate-500">
             {entry.memberCount} membre{entry.memberCount > 1 ? 's' : ''}
-            {entry.isMine && ' · (la tienne)'}
           </span>
         </span>
       </td>
-      <td className="px-4 py-2 text-right tabular-nums">
+      <td className="px-2 py-2 text-right whitespace-nowrap tabular-nums sm:px-4">
         {entry.questsCompleted.toLocaleString('fr-FR')}
       </td>
     </tr>
@@ -211,25 +202,34 @@ function Row({ entry, format }: { entry: LeaderboardEntryDto; format: (value: nu
         entry.isMe ? 'bg-brand-500/10 font-semibold' : ''
       }`}
     >
-      <td className="px-4 py-2 tabular-nums">
+      <td className="px-1 py-2 text-center tabular-nums sm:px-4 sm:text-left">
         <RankCell rank={entry.rank} />
       </td>
-      <td className="px-4 py-2">
+      <td className="px-2 py-2 sm:px-4">
         <span className="flex items-center gap-2">
-          {entry.starterSpeciesId !== null && (
-            <PokemonSprite speciesId={entry.starterSpeciesId} size={32} />
+          {entry.favorite && (
+            // Masqué sur mobile pour laisser toute la place au pseudo.
+            <span className="shrink-0 max-sm:hidden">
+              <PokemonSprite
+                speciesId={entry.favorite.speciesId}
+                formId={entry.favorite.formId}
+                shiny={entry.favorite.shiny}
+                size={32}
+              />
+            </span>
           )}
           <a
             href={entry.isMe ? '#trainer' : trainerLink(entry.trainerName)}
-            className="truncate hover:text-brand-600 hover:underline dark:hover:text-brand-500"
+            className="min-w-0 [overflow-wrap:anywhere] hover:text-brand-600 hover:underline dark:hover:text-brand-500"
             title="Voir sa fiche dresseur"
           >
             {entry.trainerName}
           </a>
-          {entry.isMe && <span className="text-xs font-normal text-slate-500">(vous)</span>}
         </span>
       </td>
-      <td className="px-4 py-2 text-right tabular-nums">{format(entry.value)}</td>
+      <td className="px-2 py-2 text-right whitespace-nowrap tabular-nums sm:px-4">
+        {format(entry.value)}
+      </td>
     </tr>
   );
 }

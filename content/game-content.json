@@ -4,8 +4,9 @@
       "initialSlots": 2,
       "maxSlots": 9,
       "maxTeamSize": 6,
-      "maxDurationMinutes": 2880,
+      "maxDurationMinutes": 1440,
       "encounterIntervalMinutes": 3,
+      "encounterIntervalGrowthMinutes": 0.5,
       "lootIntervalMinutes": 6,
       "berryDurationMinutes": 10
     },
@@ -6724,7 +6725,7 @@
       "name": "Super Bonbon",
       "description": "Donné à un Pokémon : il monte d’un niveau.",
       "icon": null,
-      "category": "misc",
+      "category": "training",
       "rarity": "rare",
       "sellPrice": 1000,
       "effects": [
@@ -6820,7 +6821,7 @@
       "name": "Rappel",
       "description": "Ranime aussitôt un Pokémon K.O., sans passer par le Centre Pokémon.",
       "icon": null,
-      "category": "misc",
+      "category": "heal",
       "rarity": "uncommon",
       "sellPrice": 1000,
       "effects": [
@@ -20274,7 +20275,7 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Insecte",
-        "image": null
+        "image": "/badges/70.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
@@ -20365,7 +20366,7 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Plante",
-        "image": null
+        "image": "/badges/51.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
@@ -20418,7 +20419,7 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Charbon",
-        "image": null
+        "image": "/badges/25.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
@@ -20466,7 +20467,7 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Coléoptère",
-        "image": null
+        "image": "/badges/43.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
@@ -20513,7 +20514,7 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Basique",
-        "image": null
+        "image": "/badges/34.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
@@ -20566,7 +20567,7 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Lutte",
-        "image": null
+        "image": "/badges/45.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
@@ -20954,7 +20955,7 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Zéphyr",
-        "image": null
+        "image": "/badges/9.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
@@ -21000,7 +21001,7 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Roche",
-        "image": null
+        "image": "/badges/1.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
@@ -21046,7 +21047,7 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Rocher",
-        "image": null
+        "image": "/badges/17.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
@@ -21536,7 +21537,7 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Poing",
-        "image": null
+        "image": "/badges/18.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
@@ -21588,7 +21589,7 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Essaim",
-        "image": null
+        "image": "/badges/10.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
@@ -21634,7 +21635,7 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Cascade",
-        "image": null
+        "image": "/badges/2.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
@@ -21796,49 +21797,46 @@
       "questId": null
     },
     {
-      "id": "major-bob",
+      "id": "pecheur-gerard",
       "regionId": "kanto",
-      "zoneId": null,
+      "zoneId": "cap-azuria",
       "order": 9,
-      "name": "Major Bob",
-      "trainerClass": "Champion d’arène",
-      "sprite": "/api/sprites/trainers/ltsurge.png",
+      "name": "Gérard",
+      "trainerClass": "Pêcheur",
+      "sprite": "/api/sprites/trainers/fisherman.png",
       "team": [
         {
-          "speciesId": 100,
-          "level": 24,
+          "speciesId": 118,
+          "level": 22,
           "iv": null,
           "nature": null
         },
         {
-          "speciesId": 25,
-          "level": 21,
+          "speciesId": 61,
+          "level": 22,
           "iv": null,
           "nature": null
         },
         {
-          "speciesId": 26,
-          "level": 27,
+          "speciesId": 98,
+          "level": 23,
           "iv": null,
           "nature": null
         }
       ],
       "timeLimitSeconds": 150,
       "rules": {
-        "teamSize": 3,
+        "teamSize": null,
         "maxLevel": null,
         "requiredTypes": [],
         "forbiddenTypes": [],
         "minPower": 0
       },
-      "money": 3600,
+      "money": 930,
       "lootTableId": null,
       "lootRolls": 0,
-      "badge": {
-        "name": "Badge Foudre",
-        "image": null
-      },
-      "repeatable": false,
+      "badge": null,
+      "repeatable": true,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
@@ -21946,10 +21944,163 @@
       "questId": null
     },
     {
+      "id": "gentleman-edouard",
+      "regionId": "kanto",
+      "zoneId": "routes-5-6",
+      "order": 10,
+      "name": "Édouard",
+      "trainerClass": "Gentleman",
+      "sprite": "/api/sprites/trainers/gentleman.png",
+      "team": [
+        {
+          "speciesId": 58,
+          "level": 22,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 52,
+          "level": 23,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 17,
+          "level": 24,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 150,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 990,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "pecheur-gerard"
+      },
+      "questId": null
+    },
+    {
+      "id": "guitariste-remi",
+      "regionId": "hoenn",
+      "zoneId": "route-110",
+      "order": 10,
+      "name": "Rémi",
+      "trainerClass": "Guitariste",
+      "sprite": "/api/sprites/trainers/guitarist-gen3.png",
+      "team": [
+        {
+          "speciesId": 309,
+          "level": 21,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 311,
+          "level": 21,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 312,
+          "level": 21,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 81,
+          "level": 22,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 900,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "pique-niqueuse-lina"
+      },
+      "questId": null
+    },
+    {
+      "id": "pokefan-bernard",
+      "regionId": "johto",
+      "zoneId": "routes-34-35",
+      "order": 10,
+      "name": "Bernard",
+      "trainerClass": "Pokéfan",
+      "sprite": "/api/sprites/trainers/pokefan.png",
+      "team": [
+        {
+          "speciesId": 209,
+          "level": 21,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 39,
+          "level": 21,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 162,
+          "level": 22,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 150,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 900,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "pique-niqueuse-gina"
+      },
+      "questId": null
+    },
+    {
       "id": "blanche",
       "regionId": "johto",
       "zoneId": null,
-      "order": 10,
+      "order": 11,
       "name": "Blanche",
       "trainerClass": "Championne d’arène",
       "sprite": "/api/sprites/trainers/whitney.png",
@@ -21986,70 +22137,66 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Plaine",
-        "image": null
+        "image": "/badges/11.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
-        "trainerId": "pique-niqueuse-gina"
+        "trainerId": "pokefan-bernard"
       },
       "questId": null
     },
     {
-      "id": "montagnard-ivan",
+      "id": "major-bob",
       "regionId": "kanto",
-      "zoneId": "tunnel-roche",
-      "order": 10,
-      "name": "Ivan",
-      "trainerClass": "Montagnard",
-      "sprite": "/api/sprites/trainers/hiker-gen3.png",
+      "zoneId": null,
+      "order": 11,
+      "name": "Major Bob",
+      "trainerClass": "Champion d’arène",
+      "sprite": "/api/sprites/trainers/ltsurge.png",
       "team": [
         {
-          "speciesId": 74,
+          "speciesId": 100,
           "level": 24,
           "iv": null,
           "nature": null
         },
         {
-          "speciesId": 66,
-          "level": 25,
+          "speciesId": 25,
+          "level": 21,
           "iv": null,
           "nature": null
         },
         {
-          "speciesId": 95,
-          "level": 26,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 75,
-          "level": 28,
+          "speciesId": 26,
+          "level": 27,
           "iv": null,
           "nature": null
         }
       ],
-      "timeLimitSeconds": 180,
+      "timeLimitSeconds": 150,
       "rules": {
-        "teamSize": null,
+        "teamSize": 3,
         "maxLevel": null,
         "requiredTypes": [],
         "forbiddenTypes": [],
         "minPower": 0
       },
-      "money": 1350,
+      "money": 3600,
       "lootTableId": null,
       "lootRolls": 0,
-      "badge": null,
-      "repeatable": true,
+      "badge": {
+        "name": "Badge Foudre",
+        "image": "/badges/3.png"
+      },
+      "repeatable": false,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
-        "type": "badgeCount",
-        "count": 3,
-        "regionId": "kanto"
+        "type": "trainerDefeated",
+        "trainerId": "gentleman-edouard"
       },
       "questId": null
     },
@@ -22057,7 +22204,7 @@
       "id": "voltere",
       "regionId": "hoenn",
       "zoneId": null,
-      "order": 10,
+      "order": 11,
       "name": "Voltère",
       "trainerClass": "Champion d’arène",
       "sprite": "/api/sprites/trainers/wattson.png",
@@ -22094,66 +22241,14 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Dynamo",
-        "image": null
+        "image": "/badges/19.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
-        "trainerId": "pique-niqueuse-lina"
-      },
-      "questId": null
-    },
-    {
-      "id": "erika",
-      "regionId": "kanto",
-      "zoneId": null,
-      "order": 11,
-      "name": "Erika",
-      "trainerClass": "Championne d’arène",
-      "sprite": "/api/sprites/trainers/erika.png",
-      "team": [
-        {
-          "speciesId": 71,
-          "level": 33,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 114,
-          "level": 28,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 45,
-          "level": 33,
-          "iv": null,
-          "nature": null
-        }
-      ],
-      "timeLimitSeconds": 150,
-      "rules": {
-        "teamSize": 3,
-        "maxLevel": null,
-        "requiredTypes": [],
-        "forbiddenTypes": [],
-        "minPower": 0
-      },
-      "money": 4350,
-      "lootTableId": null,
-      "lootRolls": 0,
-      "badge": {
-        "name": "Badge Prisme",
-        "image": null
-      },
-      "repeatable": false,
-      "cooldownMinutes": null,
-      "enabled": true,
-      "unlock": {
-        "type": "trainerDefeated",
-        "trainerId": "montagnard-ivan"
+        "trainerId": "guitariste-remi"
       },
       "questId": null
     },
@@ -22161,7 +22256,7 @@
       "id": "mediume-edith",
       "regionId": "johto",
       "zoneId": "tour-cendree",
-      "order": 11,
+      "order": 12,
       "name": "Édith",
       "trainerClass": "Médium",
       "sprite": "/api/sprites/trainers/medium.png",
@@ -22214,10 +22309,66 @@
       "questId": null
     },
     {
+      "id": "montagnard-ivan",
+      "regionId": "kanto",
+      "zoneId": "tunnel-roche",
+      "order": 12,
+      "name": "Ivan",
+      "trainerClass": "Montagnard",
+      "sprite": "/api/sprites/trainers/hiker-gen3.png",
+      "team": [
+        {
+          "speciesId": 74,
+          "level": 24,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 66,
+          "level": 25,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 95,
+          "level": 26,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 75,
+          "level": 28,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 1350,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 3,
+        "regionId": "kanto"
+      },
+      "questId": null
+    },
+    {
       "id": "sbire-magma-chimnee",
       "regionId": "hoenn",
       "zoneId": "mont-chimnee",
-      "order": 11,
+      "order": 12,
       "name": "Sbire",
       "trainerClass": "Team Magma",
       "sprite": "/api/sprites/trainers/magmagruntf.png",
@@ -22270,10 +22421,340 @@
       "questId": null
     },
     {
+      "id": "cracheur-dino",
+      "regionId": "johto",
+      "zoneId": "tour-cendree",
+      "order": 13,
+      "name": "Dino",
+      "trainerClass": "Cracheur de feu",
+      "sprite": "/api/sprites/trainers/firebreather.png",
+      "team": [
+        {
+          "speciesId": 218,
+          "level": 25,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 228,
+          "level": 25,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 109,
+          "level": 26,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 58,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 1440,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "mediume-edith"
+      },
+      "questId": null
+    },
+    {
+      "id": "jongleur-max",
+      "regionId": "kanto",
+      "zoneId": "routes-9-10",
+      "order": 13,
+      "name": "Max",
+      "trainerClass": "Jongleur",
+      "sprite": "/api/sprites/trainers/juggler.png",
+      "team": [
+        {
+          "speciesId": 96,
+          "level": 26,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 100,
+          "level": 26,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 23,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 64,
+          "level": 28,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 1440,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "montagnard-ivan"
+      },
+      "questId": null
+    },
+    {
+      "id": "pyromane-tanguy",
+      "regionId": "hoenn",
+      "zoneId": "mont-chimnee",
+      "order": 13,
+      "name": "Tanguy",
+      "trainerClass": "Pyromane",
+      "sprite": "/api/sprites/trainers/kindler-gen3.png",
+      "team": [
+        {
+          "speciesId": 322,
+          "level": 25,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 218,
+          "level": 25,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 324,
+          "level": 26,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 37,
+          "level": 26,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 1440,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "sbire-magma-chimnee"
+      },
+      "questId": null
+    },
+    {
+      "id": "beaute-clara",
+      "regionId": "kanto",
+      "zoneId": "routes-7-8",
+      "order": 14,
+      "name": "Clara",
+      "trainerClass": "Beauté",
+      "sprite": "/api/sprites/trainers/beauty.png",
+      "team": [
+        {
+          "speciesId": 37,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 39,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 44,
+          "level": 28,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 70,
+          "level": 29,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 1530,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "jongleur-max"
+      },
+      "questId": null
+    },
+    {
+      "id": "gentleman-alfred",
+      "regionId": "johto",
+      "zoneId": "routes-38-39",
+      "order": 14,
+      "name": "Alfred",
+      "trainerClass": "Gentleman",
+      "sprite": "/api/sprites/trainers/gentleman.png",
+      "team": [
+        {
+          "speciesId": 209,
+          "level": 26,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 241,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 164,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 210,
+          "level": 28,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 1530,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "cracheur-dino"
+      },
+      "questId": null
+    },
+    {
+      "id": "kinesiste-lucas",
+      "regionId": "hoenn",
+      "zoneId": "routes-111-113",
+      "order": 14,
+      "name": "Lucas",
+      "trainerClass": "Kinésiste",
+      "sprite": "/api/sprites/trainers/psychic-gen3.png",
+      "team": [
+        {
+          "speciesId": 325,
+          "level": 26,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 343,
+          "level": 26,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 307,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 333,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 1530,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "pyromane-tanguy"
+      },
+      "questId": null
+    },
+    {
       "id": "adriane",
       "regionId": "hoenn",
       "zoneId": null,
-      "order": 12,
+      "order": 15,
       "name": "Adriane",
       "trainerClass": "Championne d’arène",
       "sprite": "/api/sprites/trainers/flannery.png",
@@ -22316,14 +22797,124 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Chaleur",
-        "image": null
+        "image": "/badges/20.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
-        "trainerId": "sbire-magma-chimnee"
+        "trainerId": "kinesiste-lucas"
+      },
+      "questId": null
+    },
+    {
+      "id": "erika",
+      "regionId": "kanto",
+      "zoneId": null,
+      "order": 15,
+      "name": "Erika",
+      "trainerClass": "Championne d’arène",
+      "sprite": "/api/sprites/trainers/erika.png",
+      "team": [
+        {
+          "speciesId": 71,
+          "level": 33,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 114,
+          "level": 28,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 45,
+          "level": 33,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 150,
+      "rules": {
+        "teamSize": 3,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 4350,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": {
+        "name": "Badge Prisme",
+        "image": "/badges/4.png"
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "beaute-clara"
+      },
+      "questId": null
+    },
+    {
+      "id": "mortimer",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 15,
+      "name": "Mortimer",
+      "trainerClass": "Champion d’arène",
+      "sprite": "/api/sprites/trainers/morty.png",
+      "team": [
+        {
+          "speciesId": 92,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 93,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 93,
+          "level": 29,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 94,
+          "level": 31,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": 4,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 4050,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": {
+        "name": "Badge Brume",
+        "image": "/badges/12.png"
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "gentleman-alfred"
       },
       "questId": null
     },
@@ -22331,7 +22922,7 @@
       "id": "mediume-paula",
       "regionId": "kanto",
       "zoneId": "tour-pokemon",
-      "order": 12,
+      "order": 16,
       "name": "Paula",
       "trainerClass": "Médium",
       "sprite": "/api/sprites/trainers/channeler-gen3.png",
@@ -22384,123 +22975,10 @@
       "questId": null
     },
     {
-      "id": "mortimer",
-      "regionId": "johto",
-      "zoneId": null,
-      "order": 12,
-      "name": "Mortimer",
-      "trainerClass": "Champion d’arène",
-      "sprite": "/api/sprites/trainers/morty.png",
-      "team": [
-        {
-          "speciesId": 92,
-          "level": 27,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 93,
-          "level": 27,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 93,
-          "level": 29,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 94,
-          "level": 31,
-          "iv": null,
-          "nature": null
-        }
-      ],
-      "timeLimitSeconds": 180,
-      "rules": {
-        "teamSize": 4,
-        "maxLevel": null,
-        "requiredTypes": [],
-        "forbiddenTypes": [],
-        "minPower": 0
-      },
-      "money": 4050,
-      "lootTableId": null,
-      "lootRolls": 0,
-      "badge": {
-        "name": "Badge Brume",
-        "image": null
-      },
-      "repeatable": false,
-      "cooldownMinutes": null,
-      "enabled": true,
-      "unlock": {
-        "type": "trainerDefeated",
-        "trainerId": "mediume-edith"
-      },
-      "questId": null
-    },
-    {
-      "id": "motard-rex",
-      "regionId": "kanto",
-      "zoneId": "piste-cyclable",
-      "order": 13,
-      "name": "Rex",
-      "trainerClass": "Motard",
-      "sprite": "/api/sprites/trainers/biker.png",
-      "team": [
-        {
-          "speciesId": 109,
-          "level": 33,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 88,
-          "level": 33,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 110,
-          "level": 35,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 89,
-          "level": 35,
-          "iv": null,
-          "nature": null
-        }
-      ],
-      "timeLimitSeconds": 180,
-      "rules": {
-        "teamSize": null,
-        "maxLevel": null,
-        "requiredTypes": [],
-        "forbiddenTypes": [],
-        "minPower": 0
-      },
-      "money": 1950,
-      "lootTableId": null,
-      "lootRolls": 0,
-      "badge": null,
-      "repeatable": true,
-      "cooldownMinutes": null,
-      "enabled": true,
-      "unlock": {
-        "type": "trainerDefeated",
-        "trainerId": "mediume-paula"
-      },
-      "questId": null
-    },
-    {
       "id": "nageuse-maeva",
       "regionId": "hoenn",
       "zoneId": "routes-105-108",
-      "order": 13,
+      "order": 16,
       "name": "Maëva",
       "trainerClass": "Nageuse",
       "sprite": "/api/sprites/trainers/swimmerf-gen3.png",
@@ -22556,7 +23034,7 @@
       "id": "nageuse-marina",
       "regionId": "johto",
       "zoneId": "routes-40-41",
-      "order": 13,
+      "order": 16,
       "name": "Marina",
       "trainerClass": "Nageuse",
       "sprite": "/api/sprites/trainers/swimmerf-gen4.png",
@@ -22609,10 +23087,340 @@
       "questId": null
     },
     {
+      "id": "karateka-takeshi",
+      "regionId": "johto",
+      "zoneId": "mont-creuset",
+      "order": 17,
+      "name": "Takeshi",
+      "trainerClass": "Karatéka",
+      "sprite": "/api/sprites/trainers/blackbelt.png",
+      "team": [
+        {
+          "speciesId": 66,
+          "level": 32,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 56,
+          "level": 32,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 67,
+          "level": 33,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 57,
+          "level": 34,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2040,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "nageuse-marina"
+      },
+      "questId": null
+    },
+    {
+      "id": "motard-rex",
+      "regionId": "kanto",
+      "zoneId": "piste-cyclable",
+      "order": 17,
+      "name": "Rex",
+      "trainerClass": "Motard",
+      "sprite": "/api/sprites/trainers/biker.png",
+      "team": [
+        {
+          "speciesId": 109,
+          "level": 33,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 88,
+          "level": 33,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 110,
+          "level": 35,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 89,
+          "level": 35,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 1950,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "mediume-paula"
+      },
+      "questId": null
+    },
+    {
+      "id": "ruinemaniac-octave",
+      "regionId": "hoenn",
+      "zoneId": "desert-hoenn",
+      "order": 17,
+      "name": "Octave",
+      "trainerClass": "Ruinémaniac",
+      "sprite": "/api/sprites/trainers/ruinmaniac-gen3.png",
+      "team": [
+        {
+          "speciesId": 328,
+          "level": 32,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 331,
+          "level": 32,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 28,
+          "level": 33,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 329,
+          "level": 34,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2040,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "nageuse-maeva"
+      },
+      "questId": null
+    },
+    {
+      "id": "ornithologue-felix",
+      "regionId": "kanto",
+      "zoneId": "routes-12-15",
+      "order": 18,
+      "name": "Félix",
+      "trainerClass": "Ornithologue",
+      "sprite": "/api/sprites/trainers/birdkeeper.png",
+      "team": [
+        {
+          "speciesId": 83,
+          "level": 35,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 17,
+          "level": 35,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 22,
+          "level": 36,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 85,
+          "level": 37,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2160,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "motard-rex"
+      },
+      "questId": null
+    },
+    {
+      "id": "pecheur-marcel",
+      "regionId": "johto",
+      "zoneId": "routes-42-44",
+      "order": 18,
+      "name": "Marcel",
+      "trainerClass": "Pêcheur",
+      "sprite": "/api/sprites/trainers/fisherman-gen4.png",
+      "team": [
+        {
+          "speciesId": 223,
+          "level": 33,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 224,
+          "level": 34,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 195,
+          "level": 34,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 184,
+          "level": 35,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2160,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "karateka-takeshi"
+      },
+      "questId": null
+    },
+    {
+      "id": "pecheur-yvon",
+      "regionId": "hoenn",
+      "zoneId": "routes-105-108",
+      "order": 18,
+      "name": "Yvon",
+      "trainerClass": "Pêcheur",
+      "sprite": "/api/sprites/trainers/fisherman-gen3.png",
+      "team": [
+        {
+          "speciesId": 320,
+          "level": 33,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 318,
+          "level": 33,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 279,
+          "level": 34,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 73,
+          "level": 34,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2160,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "ruinemaniac-octave"
+      },
+      "questId": null
+    },
+    {
       "id": "chuck",
       "regionId": "johto",
       "zoneId": null,
-      "order": 14,
+      "order": 19,
       "name": "Chuck",
       "trainerClass": "Champion d’arène",
       "sprite": "/api/sprites/trainers/chuck.png",
@@ -22655,14 +23463,14 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Choc",
-        "image": null
+        "image": "/badges/13.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
-        "trainerId": "nageuse-marina"
+        "trainerId": "pecheur-marcel"
       },
       "questId": null
     },
@@ -22670,7 +23478,7 @@
       "id": "koga",
       "regionId": "kanto",
       "zoneId": null,
-      "order": 14,
+      "order": 19,
       "name": "Koga",
       "trainerClass": "Champion d’arène",
       "sprite": "/api/sprites/trainers/koga.png",
@@ -22713,14 +23521,14 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Âme",
-        "image": null
+        "image": "/badges/5.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
-        "trainerId": "motard-rex"
+        "trainerId": "ornithologue-felix"
       },
       "questId": null
     },
@@ -22728,7 +23536,7 @@
       "id": "norman",
       "regionId": "hoenn",
       "zoneId": null,
-      "order": 14,
+      "order": 19,
       "name": "Norman",
       "trainerClass": "Champion d’arène",
       "sprite": "/api/sprites/trainers/norman.png",
@@ -22771,14 +23579,14 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Balance",
-        "image": null
+        "image": "/badges/21.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
-        "trainerId": "nageuse-maeva"
+        "trainerId": "pecheur-yvon"
       },
       "questId": null
     },
@@ -22786,7 +23594,7 @@
       "id": "karateka-kiyo",
       "regionId": "kanto",
       "zoneId": null,
-      "order": 15,
+      "order": 20,
       "name": "Kiyo",
       "trainerClass": "Maître Karaté",
       "sprite": "/api/sprites/trainers/blackbelt.png",
@@ -22842,7 +23650,7 @@
       "id": "marin-gilles",
       "regionId": "johto",
       "zoneId": "phare-oliville",
-      "order": 15,
+      "order": 20,
       "name": "Gilles",
       "trainerClass": "Marin",
       "sprite": "/api/sprites/trainers/sailor.png",
@@ -22898,7 +23706,7 @@
       "id": "ornithologue-elie",
       "regionId": "hoenn",
       "zoneId": "routes-119-120",
-      "order": 15,
+      "order": 20,
       "name": "Élie",
       "trainerClass": "Ornithologue",
       "sprite": "/api/sprites/trainers/birdkeeper-gen3.png",
@@ -22951,55 +23759,52 @@
       "questId": null
     },
     {
-      "id": "alizee",
+      "id": "ninja-hiro",
       "regionId": "hoenn",
-      "zoneId": null,
-      "order": 16,
-      "name": "Alizée",
-      "trainerClass": "Championne d’arène",
-      "sprite": "/api/sprites/trainers/winona.png",
+      "zoneId": "routes-119-120",
+      "order": 21,
+      "name": "Hiro",
+      "trainerClass": "Ninja",
+      "sprite": "/api/sprites/trainers/ninjaboy-gen3.png",
       "team": [
         {
-          "speciesId": 277,
-          "level": 40,
-          "iv": 18,
+          "speciesId": 352,
+          "level": 37,
+          "iv": null,
           "nature": null
         },
         {
-          "speciesId": 279,
-          "level": 41,
-          "iv": 18,
+          "speciesId": 284,
+          "level": 37,
+          "iv": null,
           "nature": null
         },
         {
-          "speciesId": 357,
-          "level": 41,
-          "iv": 18,
+          "speciesId": 274,
+          "level": 38,
+          "iv": null,
           "nature": null
         },
         {
-          "speciesId": 334,
-          "level": 45,
-          "iv": 18,
+          "speciesId": 359,
+          "level": 39,
+          "iv": null,
           "nature": null
         }
       ],
       "timeLimitSeconds": 180,
       "rules": {
-        "teamSize": 4,
+        "teamSize": null,
         "maxLevel": null,
         "requiredTypes": [],
         "forbiddenTypes": [],
         "minPower": 0
       },
-      "money": 5850,
+      "money": 2520,
       "lootTableId": null,
       "lootRolls": 0,
-      "badge": {
-        "name": "Badge Plume",
-        "image": null
-      },
-      "repeatable": false,
+      "badge": null,
+      "repeatable": true,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
@@ -23009,68 +23814,10 @@
       "questId": null
     },
     {
-      "id": "jasmine",
-      "regionId": "johto",
-      "zoneId": null,
-      "order": 16,
-      "name": "Jasmine",
-      "trainerClass": "Championne d’arène",
-      "sprite": "/api/sprites/trainers/jasmine.png",
-      "team": [
-        {
-          "speciesId": 81,
-          "level": 40,
-          "iv": 18,
-          "nature": null
-        },
-        {
-          "speciesId": 82,
-          "level": 41,
-          "iv": 18,
-          "nature": null
-        },
-        {
-          "speciesId": 205,
-          "level": 41,
-          "iv": 18,
-          "nature": null
-        },
-        {
-          "speciesId": 208,
-          "level": 45,
-          "iv": 18,
-          "nature": null
-        }
-      ],
-      "timeLimitSeconds": 180,
-      "rules": {
-        "teamSize": 4,
-        "maxLevel": null,
-        "requiredTypes": [],
-        "forbiddenTypes": [],
-        "minPower": 0
-      },
-      "money": 5850,
-      "lootTableId": null,
-      "lootRolls": 0,
-      "badge": {
-        "name": "Badge Minéral",
-        "image": null
-      },
-      "repeatable": false,
-      "cooldownMinutes": null,
-      "enabled": true,
-      "unlock": {
-        "type": "trainerDefeated",
-        "trainerId": "marin-gilles"
-      },
-      "questId": null
-    },
-    {
       "id": "sbire-rocket",
       "regionId": "kanto",
       "zoneId": null,
-      "order": 16,
+      "order": 21,
       "name": "Sbire",
       "trainerClass": "Team Rocket",
       "sprite": "/api/sprites/trainers/rocketgrunt.png",
@@ -23123,10 +23870,401 @@
       "questId": null
     },
     {
+      "id": "scientifique-ludovic",
+      "regionId": "johto",
+      "zoneId": "phare-oliville",
+      "order": 21,
+      "name": "Ludovic",
+      "trainerClass": "Scientifique",
+      "sprite": "/api/sprites/trainers/scientist.png",
+      "team": [
+        {
+          "speciesId": 81,
+          "level": 37,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 82,
+          "level": 38,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 101,
+          "level": 38,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 181,
+          "level": 39,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2520,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "marin-gilles"
+      },
+      "questId": null
+    },
+    {
+      "id": "collectionneur-basile",
+      "regionId": "hoenn",
+      "zoneId": "parc-safari-hoenn",
+      "order": 22,
+      "name": "Basile",
+      "trainerClass": "Collectionneur",
+      "sprite": "/api/sprites/trainers/collector-gen3.png",
+      "team": [
+        {
+          "speciesId": 203,
+          "level": 38,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 357,
+          "level": 38,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 178,
+          "level": 39,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 319,
+          "level": 39,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2640,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "ninja-hiro"
+      },
+      "questId": null
+    },
+    {
+      "id": "kimono-sakura",
+      "regionId": "johto",
+      "zoneId": "parc-safari-johto",
+      "order": 22,
+      "name": "Sakura",
+      "trainerClass": "Kimono",
+      "sprite": "/api/sprites/trainers/kimonogirl.png",
+      "team": [
+        {
+          "speciesId": 203,
+          "level": 38,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 178,
+          "level": 38,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 227,
+          "level": 39,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 207,
+          "level": 39,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2640,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "scientifique-ludovic"
+      },
+      "questId": null
+    },
+    {
+      "id": "nageur-yann",
+      "regionId": "kanto",
+      "zoneId": "routes-maritimes",
+      "order": 22,
+      "name": "Yann",
+      "trainerClass": "Nageur",
+      "sprite": "/api/sprites/trainers/swimmer.png",
+      "team": [
+        {
+          "speciesId": 73,
+          "level": 42,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 117,
+          "level": 43,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 99,
+          "level": 43,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 119,
+          "level": 44,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2760,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "sbire-rocket"
+      },
+      "questId": null
+    },
+    {
+      "id": "alizee",
+      "regionId": "hoenn",
+      "zoneId": null,
+      "order": 23,
+      "name": "Alizée",
+      "trainerClass": "Championne d’arène",
+      "sprite": "/api/sprites/trainers/winona.png",
+      "team": [
+        {
+          "speciesId": 277,
+          "level": 40,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 279,
+          "level": 41,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 357,
+          "level": 41,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 334,
+          "level": 45,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": 4,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 5850,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": {
+        "name": "Badge Plume",
+        "image": "/badges/22.png"
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "collectionneur-basile"
+      },
+      "questId": null
+    },
+    {
+      "id": "jasmine",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 23,
+      "name": "Jasmine",
+      "trainerClass": "Championne d’arène",
+      "sprite": "/api/sprites/trainers/jasmine.png",
+      "team": [
+        {
+          "speciesId": 81,
+          "level": 40,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 82,
+          "level": 41,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 205,
+          "level": 41,
+          "iv": 18,
+          "nature": null
+        },
+        {
+          "speciesId": 208,
+          "level": 45,
+          "iv": 18,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": 4,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 5850,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": {
+        "name": "Badge Minéral",
+        "image": "/badges/14.png"
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "kimono-sakura"
+      },
+      "questId": null
+    },
+    {
+      "id": "kinesiste-nathan",
+      "regionId": "kanto",
+      "zoneId": "sylphe-sarl",
+      "order": 23,
+      "name": "Nathan",
+      "trainerClass": "Kinésiste",
+      "sprite": "/api/sprites/trainers/psychic.png",
+      "team": [
+        {
+          "speciesId": 64,
+          "level": 43,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 97,
+          "level": 44,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 80,
+          "level": 44,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 122,
+          "level": 45,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2880,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "nageur-yann"
+      },
+      "questId": null
+    },
+    {
       "id": "morgane",
       "regionId": "kanto",
       "zoneId": null,
-      "order": 17,
+      "order": 24,
       "name": "Morgane",
       "trainerClass": "Championne d’arène",
       "sprite": "/api/sprites/trainers/sabrina.png",
@@ -23169,14 +24307,14 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Marais",
-        "image": null
+        "image": "/badges/6.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
-        "trainerId": "sbire-rocket"
+        "trainerId": "kinesiste-nathan"
       },
       "questId": null
     },
@@ -23184,7 +24322,7 @@
       "id": "sbire-aqua-memoria",
       "regionId": "hoenn",
       "zoneId": "mont-memoria",
-      "order": 17,
+      "order": 24,
       "name": "Sbire",
       "trainerClass": "Team Aqua",
       "sprite": "/api/sprites/trainers/aquagruntf.png",
@@ -23240,7 +24378,7 @@
       "id": "sbire-qg-rocket",
       "regionId": "johto",
       "zoneId": null,
-      "order": 17,
+      "order": 24,
       "name": "Sbire",
       "trainerClass": "Team Rocket",
       "sprite": "/api/sprites/trainers/rocketgrunt.png",
@@ -23293,125 +24431,52 @@
       "questId": null
     },
     {
-      "id": "fredo",
-      "regionId": "johto",
-      "zoneId": null,
-      "order": 18,
-      "name": "Frédo",
-      "trainerClass": "Champion d’arène",
-      "sprite": "/api/sprites/trainers/pryce.png",
-      "team": [
-        {
-          "speciesId": 86,
-          "level": 43,
-          "iv": 20,
-          "nature": null
-        },
-        {
-          "speciesId": 124,
-          "level": 44,
-          "iv": 20,
-          "nature": null
-        },
-        {
-          "speciesId": 91,
-          "level": 44,
-          "iv": 20,
-          "nature": null
-        },
-        {
-          "speciesId": 87,
-          "level": 45,
-          "iv": 20,
-          "nature": null
-        },
-        {
-          "speciesId": 221,
-          "level": 47,
-          "iv": 20,
-          "nature": null
-        }
-      ],
-      "timeLimitSeconds": 210,
-      "rules": {
-        "teamSize": 5,
-        "maxLevel": null,
-        "requiredTypes": [],
-        "forbiddenTypes": [],
-        "minPower": 0
-      },
-      "money": 6000,
-      "lootTableId": null,
-      "lootRolls": 0,
-      "badge": {
-        "name": "Badge Glacier",
-        "image": null
-      },
-      "repeatable": false,
-      "cooldownMinutes": null,
-      "enabled": true,
-      "unlock": {
-        "type": "trainerDefeated",
-        "trainerId": "sbire-qg-rocket"
-      },
-      "questId": null
-    },
-    {
-      "id": "levy-tatia",
+      "id": "mystimaniac-ysolde",
       "regionId": "hoenn",
-      "zoneId": null,
-      "order": 18,
-      "name": "Lévy et Tatia",
-      "trainerClass": "Champions d’arène",
-      "sprite": "/api/sprites/trainers/tateandliza-gen3.png",
+      "zoneId": "mont-memoria",
+      "order": 25,
+      "name": "Ysolde",
+      "trainerClass": "Mystimaniac",
+      "sprite": "/api/sprites/trainers/hexmaniac-gen3.png",
       "team": [
         {
-          "speciesId": 337,
-          "level": 43,
-          "iv": 20,
+          "speciesId": 353,
+          "level": 41,
+          "iv": null,
           "nature": null
         },
         {
-          "speciesId": 338,
-          "level": 44,
-          "iv": 20,
+          "speciesId": 354,
+          "level": 42,
+          "iv": null,
           "nature": null
         },
         {
-          "speciesId": 344,
-          "level": 44,
-          "iv": 20,
+          "speciesId": 356,
+          "level": 42,
+          "iv": null,
           "nature": null
         },
         {
-          "speciesId": 178,
-          "level": 45,
-          "iv": 20,
-          "nature": null
-        },
-        {
-          "speciesId": 326,
-          "level": 47,
-          "iv": 20,
+          "speciesId": 93,
+          "level": 42,
+          "iv": null,
           "nature": null
         }
       ],
-      "timeLimitSeconds": 210,
+      "timeLimitSeconds": 180,
       "rules": {
-        "teamSize": 5,
+        "teamSize": null,
         "maxLevel": null,
         "requiredTypes": [],
         "forbiddenTypes": [],
         "minPower": 0
       },
-      "money": 6000,
+      "money": 2850,
       "lootTableId": null,
       "lootRolls": 0,
-      "badge": {
-        "name": "Badge Esprit",
-        "image": null
-      },
-      "repeatable": false,
+      "badge": null,
+      "repeatable": true,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
@@ -23421,10 +24486,65 @@
       "questId": null
     },
     {
+      "id": "nageur-loic",
+      "regionId": "johto",
+      "zoneId": "lac-colere",
+      "order": 25,
+      "name": "Loïc",
+      "trainerClass": "Nageur",
+      "sprite": "/api/sprites/trainers/swimmer.png",
+      "team": [
+        {
+          "speciesId": 61,
+          "level": 41,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 119,
+          "level": 41,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 195,
+          "level": 42,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 130,
+          "level": 43,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2850,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "sbire-qg-rocket"
+      },
+      "questId": null
+    },
+    {
       "id": "nageuse-lena",
       "regionId": "kanto",
       "zoneId": "routes-maritimes",
-      "order": 18,
+      "order": 25,
       "name": "Léna",
       "trainerClass": "Nageuse",
       "sprite": "/api/sprites/trainers/swimmerf.png",
@@ -23477,10 +24597,364 @@
       "questId": null
     },
     {
+      "id": "cambrioleur-gaspard",
+      "regionId": "kanto",
+      "zoneId": "manoir-pokemon",
+      "order": 26,
+      "name": "Gaspard",
+      "trainerClass": "Cambrioleur",
+      "sprite": "/api/sprites/trainers/burglar.png",
+      "team": [
+        {
+          "speciesId": 58,
+          "level": 45,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 77,
+          "level": 45,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 110,
+          "level": 46,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 126,
+          "level": 47,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2550,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "nageuse-lena"
+      },
+      "questId": null
+    },
+    {
+      "id": "kinesiste-elsa",
+      "regionId": "hoenn",
+      "zoneId": "mont-memoria",
+      "order": 26,
+      "name": "Elsa",
+      "trainerClass": "Kinésiste",
+      "sprite": "/api/sprites/trainers/psychicf-gen3.png",
+      "team": [
+        {
+          "speciesId": 281,
+          "level": 42,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 358,
+          "level": 42,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 326,
+          "level": 43,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 337,
+          "level": 43,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 338,
+          "level": 43,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2970,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "mystimaniac-ysolde"
+      },
+      "questId": null
+    },
+    {
+      "id": "pokemaniac-herve",
+      "regionId": "johto",
+      "zoneId": "lac-colere",
+      "order": 26,
+      "name": "Hervé",
+      "trainerClass": "Pokémaniac",
+      "sprite": "/api/sprites/trainers/pokemaniac.png",
+      "team": [
+        {
+          "speciesId": 80,
+          "level": 42,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 111,
+          "level": 42,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 34,
+          "level": 43,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 115,
+          "level": 43,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2970,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "nageur-loic"
+      },
+      "questId": null
+    },
+    {
+      "id": "fredo",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 27,
+      "name": "Frédo",
+      "trainerClass": "Champion d’arène",
+      "sprite": "/api/sprites/trainers/pryce.png",
+      "team": [
+        {
+          "speciesId": 86,
+          "level": 43,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 124,
+          "level": 44,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 91,
+          "level": 44,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 87,
+          "level": 45,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 221,
+          "level": 47,
+          "iv": 20,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": 5,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 6000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": {
+        "name": "Badge Glacier",
+        "image": "/badges/15.png"
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "pokemaniac-herve"
+      },
+      "questId": null
+    },
+    {
+      "id": "levy-tatia",
+      "regionId": "hoenn",
+      "zoneId": null,
+      "order": 27,
+      "name": "Lévy et Tatia",
+      "trainerClass": "Champions d’arène",
+      "sprite": "/api/sprites/trainers/tateandliza-gen3.png",
+      "team": [
+        {
+          "speciesId": 337,
+          "level": 43,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 338,
+          "level": 44,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 344,
+          "level": 44,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 178,
+          "level": 45,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 326,
+          "level": 47,
+          "iv": 20,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": 5,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 6000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": {
+        "name": "Badge Esprit",
+        "image": "/badges/23.png"
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "kinesiste-elsa"
+      },
+      "questId": null
+    },
+    {
+      "id": "pokemaniac-bertrand",
+      "regionId": "kanto",
+      "zoneId": "manoir-pokemon",
+      "order": 27,
+      "name": "Bertrand",
+      "trainerClass": "Pokémaniac",
+      "sprite": "/api/sprites/trainers/pokemaniac.png",
+      "team": [
+        {
+          "speciesId": 89,
+          "level": 46,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 132,
+          "level": 46,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 111,
+          "level": 47,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 108,
+          "level": 48,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 2700,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "cambrioleur-gaspard"
+      },
+      "questId": null
+    },
+    {
       "id": "auguste",
       "regionId": "kanto",
       "zoneId": null,
-      "order": 19,
+      "order": 28,
       "name": "Auguste",
       "trainerClass": "Champion d’arène",
       "sprite": "/api/sprites/trainers/blaine.png",
@@ -23523,14 +24997,14 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Volcan",
-        "image": null
+        "image": "/badges/7.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
-        "trainerId": "nageuse-lena"
+        "trainerId": "pokemaniac-bertrand"
       },
       "questId": null
     },
@@ -23538,7 +25012,7 @@
       "id": "pecheur-tomas",
       "regionId": "hoenn",
       "zoneId": "grotte-trefonds",
-      "order": 19,
+      "order": 28,
       "name": "Tomas",
       "trainerClass": "Pêcheur",
       "sprite": "/api/sprites/trainers/fisherman-gen3.png",
@@ -23600,7 +25074,7 @@
       "id": "skieuse-rosa",
       "regionId": "johto",
       "zoneId": "route-de-glace",
-      "order": 19,
+      "order": 28,
       "name": "Rosa",
       "trainerClass": "Skieuse",
       "sprite": "/api/sprites/trainers/skier.png",
@@ -23659,61 +25133,58 @@
       "questId": null
     },
     {
-      "id": "juan",
+      "id": "experte-odile",
       "regionId": "hoenn",
-      "zoneId": null,
-      "order": 20,
-      "name": "Juan",
-      "trainerClass": "Champion d’arène",
-      "sprite": "/api/sprites/trainers/juan.png",
+      "zoneId": "grotte-trefonds",
+      "order": 29,
+      "name": "Odile",
+      "trainerClass": "Experte",
+      "sprite": "/api/sprites/trainers/expertf-gen3.png",
       "team": [
         {
-          "speciesId": 370,
-          "level": 48,
-          "iv": 25,
-          "nature": null
-        },
-        {
-          "speciesId": 340,
-          "level": 48,
-          "iv": 25,
-          "nature": null
-        },
-        {
           "speciesId": 364,
-          "level": 48,
-          "iv": 25,
+          "level": 45,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 362,
+          "level": 45,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 308,
+          "level": 46,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 297,
+          "level": 46,
+          "iv": null,
           "nature": null
         },
         {
           "speciesId": 342,
-          "level": 49,
-          "iv": 25,
-          "nature": null
-        },
-        {
-          "speciesId": 230,
-          "level": 52,
-          "iv": 25,
+          "level": 46,
+          "iv": null,
           "nature": null
         }
       ],
       "timeLimitSeconds": 210,
       "rules": {
-        "teamSize": 5,
+        "teamSize": null,
         "maxLevel": null,
         "requiredTypes": [],
         "forbiddenTypes": [],
         "minPower": 0
       },
-      "money": 6600,
+      "money": 3420,
       "lootTableId": null,
       "lootRolls": 0,
-      "badge": {
-        "name": "Badge Pluie",
-        "image": null
-      },
-      "repeatable": false,
+      "badge": null,
+      "repeatable": true,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
@@ -23723,74 +25194,10 @@
       "questId": null
     },
     {
-      "id": "sandra",
-      "regionId": "johto",
-      "zoneId": null,
-      "order": 20,
-      "name": "Sandra",
-      "trainerClass": "Championne d’arène",
-      "sprite": "/api/sprites/trainers/clair.png",
-      "team": [
-        {
-          "speciesId": 148,
-          "level": 48,
-          "iv": 25,
-          "nature": null
-        },
-        {
-          "speciesId": 148,
-          "level": 48,
-          "iv": 25,
-          "nature": null
-        },
-        {
-          "speciesId": 148,
-          "level": 48,
-          "iv": 25,
-          "nature": null
-        },
-        {
-          "speciesId": 130,
-          "level": 49,
-          "iv": 25,
-          "nature": null
-        },
-        {
-          "speciesId": 230,
-          "level": 52,
-          "iv": 25,
-          "nature": null
-        }
-      ],
-      "timeLimitSeconds": 210,
-      "rules": {
-        "teamSize": 5,
-        "maxLevel": null,
-        "requiredTypes": [],
-        "forbiddenTypes": [],
-        "minPower": 0
-      },
-      "money": 6600,
-      "lootTableId": null,
-      "lootRolls": 0,
-      "badge": {
-        "name": "Badge Lever",
-        "image": null
-      },
-      "repeatable": false,
-      "cooldownMinutes": null,
-      "enabled": true,
-      "unlock": {
-        "type": "trainerDefeated",
-        "trainerId": "skieuse-rosa"
-      },
-      "questId": null
-    },
-    {
       "id": "scientifique-hector",
       "regionId": "kanto",
       "zoneId": "manoir-pokemon",
-      "order": 20,
+      "order": 29,
       "name": "Hector",
       "trainerClass": "Scientifique",
       "sprite": "/api/sprites/trainers/scientist.png",
@@ -23849,10 +25256,490 @@
       "questId": null
     },
     {
+      "id": "snowboarder-fred",
+      "regionId": "johto",
+      "zoneId": "route-de-glace",
+      "order": 29,
+      "name": "Fred",
+      "trainerClass": "Snowboarder",
+      "sprite": "/api/sprites/trainers/boarder.png",
+      "team": [
+        {
+          "speciesId": 221,
+          "level": 45,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 87,
+          "level": 45,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 225,
+          "level": 45,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 215,
+          "level": 46,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 124,
+          "level": 46,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 3420,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "skieuse-rosa"
+      },
+      "questId": null
+    },
+    {
+      "id": "touriste-maya",
+      "regionId": "alola",
+      "zoneId": null,
+      "order": 29,
+      "name": "Maya",
+      "trainerClass": "Touriste",
+      "sprite": "/api/sprites/trainers/lass-gen4.png",
+      "team": [
+        {
+          "speciesId": 37,
+          "formId": 10103,
+          "level": 25,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 27,
+          "formId": 10101,
+          "level": 25,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 52,
+          "formId": 10161,
+          "level": 27,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 150,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 1350,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "regionDexPercent",
+        "regionId": "kanto",
+        "percent": 50
+      },
+      "questId": null
+    },
+    {
+      "id": "dompteur-erwan",
+      "regionId": "johto",
+      "zoneId": "route-de-glace",
+      "order": 30,
+      "name": "Erwan",
+      "trainerClass": "Dompteur",
+      "sprite": "/api/sprites/trainers/dragontamer.png",
+      "team": [
+        {
+          "speciesId": 117,
+          "level": 46,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 181,
+          "level": 47,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 130,
+          "level": 47,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 148,
+          "level": 47,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 180,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 3540,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "snowboarder-fred"
+      },
+      "questId": null
+    },
+    {
+      "id": "karateka-kenji",
+      "regionId": "kanto",
+      "zoneId": "route-23",
+      "order": 30,
+      "name": "Kenji",
+      "trainerClass": "Karatéka",
+      "sprite": "/api/sprites/trainers/blackbelt.png",
+      "team": [
+        {
+          "speciesId": 57,
+          "level": 50,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 67,
+          "level": 51,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 106,
+          "level": 51,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 107,
+          "level": 52,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 62,
+          "level": 52,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 3420,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "scientifique-hector"
+      },
+      "questId": null
+    },
+    {
+      "id": "nageur-nolan",
+      "regionId": "hoenn",
+      "zoneId": "grotte-trefonds",
+      "order": 30,
+      "name": "Nolan",
+      "trainerClass": "Nageur",
+      "sprite": "/api/sprites/trainers/swimmerm-gen3.png",
+      "team": [
+        {
+          "speciesId": 320,
+          "level": 46,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 171,
+          "level": 46,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 340,
+          "level": 47,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 319,
+          "level": 47,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 130,
+          "level": 47,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 3540,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "experte-odile"
+      },
+      "questId": null
+    },
+    {
+      "id": "juan",
+      "regionId": "hoenn",
+      "zoneId": null,
+      "order": 31,
+      "name": "Juan",
+      "trainerClass": "Champion d’arène",
+      "sprite": "/api/sprites/trainers/juan.png",
+      "team": [
+        {
+          "speciesId": 370,
+          "level": 48,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 340,
+          "level": 48,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 364,
+          "level": 48,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 342,
+          "level": 49,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 230,
+          "level": 52,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": 5,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 6600,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": {
+        "name": "Badge Pluie",
+        "image": "/badges/24.png"
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "nageur-nolan"
+      },
+      "questId": null
+    },
+    {
+      "id": "montagnard-roger",
+      "regionId": "kanto",
+      "zoneId": "route-23",
+      "order": 31,
+      "name": "Roger",
+      "trainerClass": "Montagnard",
+      "sprite": "/api/sprites/trainers/hiker.png",
+      "team": [
+        {
+          "speciesId": 75,
+          "level": 51,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 95,
+          "level": 51,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 28,
+          "level": 52,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 105,
+          "level": 52,
+          "iv": null,
+          "nature": null
+        },
+        {
+          "speciesId": 112,
+          "level": 53,
+          "iv": null,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 3540,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "karateka-kenji"
+      },
+      "questId": null
+    },
+    {
+      "id": "sandra",
+      "regionId": "johto",
+      "zoneId": null,
+      "order": 31,
+      "name": "Sandra",
+      "trainerClass": "Championne d’arène",
+      "sprite": "/api/sprites/trainers/clair.png",
+      "team": [
+        {
+          "speciesId": 148,
+          "level": 48,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 148,
+          "level": 48,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 148,
+          "level": 48,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 130,
+          "level": 49,
+          "iv": 25,
+          "nature": null
+        },
+        {
+          "speciesId": 230,
+          "level": 52,
+          "iv": 25,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": 5,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 6600,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": {
+        "name": "Badge Lever",
+        "image": "/badges/16.png"
+      },
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "dompteur-erwan"
+      },
+      "questId": null
+    },
+    {
       "id": "giovanni",
       "regionId": "kanto",
       "zoneId": null,
-      "order": 21,
+      "order": 32,
       "name": "Giovanni",
       "trainerClass": "Champion d’arène",
       "sprite": "/api/sprites/trainers/giovanni.png",
@@ -23901,14 +25788,14 @@
       "lootRolls": 0,
       "badge": {
         "name": "Badge Terre",
-        "image": null
+        "image": "/badges/8.png"
       },
       "repeatable": false,
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
         "type": "trainerDefeated",
-        "trainerId": "scientifique-hector"
+        "trainerId": "montagnard-roger"
       },
       "questId": null
     },
@@ -23916,7 +25803,7 @@
       "id": "topdresseur-gaston",
       "regionId": "johto",
       "zoneId": "routes-26-27",
-      "order": 21,
+      "order": 32,
       "name": "Gaston",
       "trainerClass": "Topdresseur",
       "sprite": "/api/sprites/trainers/acetrainer-gen4.png",
@@ -23978,7 +25865,7 @@
       "id": "topdresseuse-vanessa",
       "regionId": "hoenn",
       "zoneId": "route-victoire-hoenn",
-      "order": 21,
+      "order": 32,
       "name": "Vanessa",
       "trainerClass": "Topdresseuse",
       "sprite": "/api/sprites/trainers/acetrainerf-gen3.png",
@@ -24037,10 +25924,377 @@
       "questId": null
     },
     {
+      "id": "topdresseur-gael",
+      "regionId": "hoenn",
+      "zoneId": "route-victoire-hoenn",
+      "order": 33,
+      "name": "Gaël",
+      "trainerClass": "Topdresseur",
+      "sprite": "/api/sprites/trainers/acetrainer-gen3.png",
+      "team": [
+        {
+          "speciesId": 295,
+          "level": 53,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 306,
+          "level": 53,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 308,
+          "level": 53,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 310,
+          "level": 53,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 334,
+          "level": 54,
+          "iv": 20,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 5400,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "topdresseuse-vanessa"
+      },
+      "questId": null
+    },
+    {
+      "id": "topdresseuse-alice",
+      "regionId": "kanto",
+      "zoneId": "route-victoire",
+      "order": 33,
+      "name": "Alice",
+      "trainerClass": "Topdresseuse",
+      "sprite": "/api/sprites/trainers/acetrainerf.png",
+      "team": [
+        {
+          "speciesId": 112,
+          "level": 56,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 26,
+          "level": 55,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 62,
+          "level": 56,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 121,
+          "level": 56,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 36,
+          "level": 55,
+          "iv": 20,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 5250,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "badgeCount",
+        "count": 8,
+        "regionId": "kanto"
+      },
+      "questId": null
+    },
+    {
+      "id": "topdresseuse-leonie",
+      "regionId": "johto",
+      "zoneId": "routes-26-27",
+      "order": 33,
+      "name": "Léonie",
+      "trainerClass": "Topdresseuse",
+      "sprite": "/api/sprites/trainers/acetrainerf.png",
+      "team": [
+        {
+          "speciesId": 38,
+          "level": 53,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 178,
+          "level": 53,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 171,
+          "level": 53,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 189,
+          "level": 53,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 229,
+          "level": 54,
+          "iv": 20,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 5400,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "topdresseur-gaston"
+      },
+      "questId": null
+    },
+    {
+      "id": "dompteur-ronan",
+      "regionId": "hoenn",
+      "zoneId": "route-victoire-hoenn",
+      "order": 34,
+      "name": "Ronan",
+      "trainerClass": "Dompteur",
+      "sprite": "/api/sprites/trainers/dragontamer-gen3.png",
+      "team": [
+        {
+          "speciesId": 344,
+          "level": 54,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 372,
+          "level": 54,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 334,
+          "level": 54,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 330,
+          "level": 54,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 130,
+          "level": 55,
+          "iv": 20,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 5550,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "topdresseur-gael"
+      },
+      "questId": null
+    },
+    {
+      "id": "montagnard-gustave",
+      "regionId": "johto",
+      "zoneId": "routes-45-46",
+      "order": 34,
+      "name": "Gustave",
+      "trainerClass": "Montagnard",
+      "sprite": "/api/sprites/trainers/hiker.png",
+      "team": [
+        {
+          "speciesId": 185,
+          "level": 54,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 232,
+          "level": 54,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 217,
+          "level": 54,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 76,
+          "level": 54,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 208,
+          "level": 55,
+          "iv": 20,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 5550,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "topdresseuse-leonie"
+      },
+      "questId": null
+    },
+    {
+      "id": "topdresseur-victor",
+      "regionId": "kanto",
+      "zoneId": "route-victoire",
+      "order": 34,
+      "name": "Victor",
+      "trainerClass": "Topdresseur",
+      "sprite": "/api/sprites/trainers/acetrainer.png",
+      "team": [
+        {
+          "speciesId": 59,
+          "level": 57,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 103,
+          "level": 57,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 121,
+          "level": 57,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 112,
+          "level": 58,
+          "iv": 20,
+          "nature": null
+        },
+        {
+          "speciesId": 34,
+          "level": 58,
+          "iv": 20,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 210,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 5400,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": true,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "trainerDefeated",
+        "trainerId": "topdresseuse-alice"
+      },
+      "questId": null
+    },
+    {
       "id": "clement",
       "regionId": "johto",
       "zoneId": null,
-      "order": 22,
+      "order": 35,
       "name": "Clément",
       "trainerClass": "Conseil 4",
       "sprite": "/api/sprites/trainers/will.png",
@@ -24101,7 +26355,7 @@
           },
           {
             "type": "trainerDefeated",
-            "trainerId": "topdresseur-gaston"
+            "trainerId": "montagnard-gustave"
           }
         ]
       },
@@ -24111,7 +26365,7 @@
       "id": "damien",
       "regionId": "hoenn",
       "zoneId": null,
-      "order": 22,
+      "order": 35,
       "name": "Damien",
       "trainerClass": "Conseil 4",
       "sprite": "/api/sprites/trainers/sidney.png",
@@ -24172,48 +26426,48 @@
           },
           {
             "type": "trainerDefeated",
-            "trainerId": "topdresseuse-vanessa"
+            "trainerId": "dompteur-ronan"
           }
         ]
       },
       "questId": null
     },
     {
-      "id": "topdresseuse-alice",
+      "id": "topdresseuse-lea",
       "regionId": "kanto",
       "zoneId": "route-victoire",
-      "order": 22,
-      "name": "Alice",
+      "order": 35,
+      "name": "Léa",
       "trainerClass": "Topdresseuse",
-      "sprite": "/api/sprites/trainers/acetrainerf.png",
+      "sprite": "/api/sprites/trainers/acetrainerf-gen3.png",
       "team": [
         {
-          "speciesId": 112,
-          "level": 56,
+          "speciesId": 45,
+          "level": 58,
           "iv": 20,
           "nature": null
         },
         {
-          "speciesId": 26,
-          "level": 55,
+          "speciesId": 131,
+          "level": 58,
           "iv": 20,
           "nature": null
         },
         {
-          "speciesId": 62,
-          "level": 56,
+          "speciesId": 130,
+          "level": 58,
           "iv": 20,
           "nature": null
         },
         {
-          "speciesId": 121,
-          "level": 56,
+          "speciesId": 148,
+          "level": 58,
           "iv": 20,
           "nature": null
         },
         {
-          "speciesId": 36,
-          "level": 55,
+          "speciesId": 142,
+          "level": 59,
           "iv": 20,
           "nature": null
         }
@@ -24226,7 +26480,7 @@
         "forbiddenTypes": [],
         "minPower": 0
       },
-      "money": 5250,
+      "money": 5550,
       "lootTableId": null,
       "lootRolls": 0,
       "badge": null,
@@ -24234,9 +26488,8 @@
       "cooldownMinutes": null,
       "enabled": true,
       "unlock": {
-        "type": "badgeCount",
-        "count": 8,
-        "regionId": "kanto"
+        "type": "trainerDefeated",
+        "trainerId": "topdresseur-victor"
       },
       "questId": null
     },
@@ -24244,7 +26497,7 @@
       "id": "koga-conseil",
       "regionId": "johto",
       "zoneId": null,
-      "order": 23,
+      "order": 36,
       "name": "Koga",
       "trainerClass": "Conseil 4",
       "sprite": "/api/sprites/trainers/koga.png",
@@ -24305,7 +26558,7 @@
       "id": "olga",
       "regionId": "kanto",
       "zoneId": null,
-      "order": 23,
+      "order": 36,
       "name": "Olga",
       "trainerClass": "Conseil 4",
       "sprite": "/api/sprites/trainers/lorelei-gen3.png",
@@ -24366,7 +26619,7 @@
           },
           {
             "type": "trainerDefeated",
-            "trainerId": "topdresseuse-alice"
+            "trainerId": "topdresseuse-lea"
           }
         ]
       },
@@ -24376,7 +26629,7 @@
       "id": "spectra",
       "regionId": "hoenn",
       "zoneId": null,
-      "order": 23,
+      "order": 36,
       "name": "Spectra",
       "trainerClass": "Conseil 4",
       "sprite": "/api/sprites/trainers/phoebe-gen3.png",
@@ -24437,7 +26690,7 @@
       "id": "aldo",
       "regionId": "kanto",
       "zoneId": null,
-      "order": 24,
+      "order": 37,
       "name": "Aldo",
       "trainerClass": "Conseil 4",
       "sprite": "/api/sprites/trainers/bruno.png",
@@ -24498,7 +26751,7 @@
       "id": "aldo-johto",
       "regionId": "johto",
       "zoneId": null,
-      "order": 24,
+      "order": 37,
       "name": "Aldo",
       "trainerClass": "Conseil 4",
       "sprite": "/api/sprites/trainers/bruno.png",
@@ -24559,7 +26812,7 @@
       "id": "glacia",
       "regionId": "hoenn",
       "zoneId": null,
-      "order": 24,
+      "order": 37,
       "name": "Glacia",
       "trainerClass": "Conseil 4",
       "sprite": "/api/sprites/trainers/glacia.png",
@@ -24620,7 +26873,7 @@
       "id": "agatha",
       "regionId": "kanto",
       "zoneId": null,
-      "order": 25,
+      "order": 38,
       "name": "Agatha",
       "trainerClass": "Conseil 4",
       "sprite": "/api/sprites/trainers/agatha-gen3.png",
@@ -24681,7 +26934,7 @@
       "id": "aragon",
       "regionId": "hoenn",
       "zoneId": null,
-      "order": 25,
+      "order": 38,
       "name": "Aragon",
       "trainerClass": "Conseil 4",
       "sprite": "/api/sprites/trainers/drake-gen3.png",
@@ -24742,7 +26995,7 @@
       "id": "marion",
       "regionId": "johto",
       "zoneId": null,
-      "order": 25,
+      "order": 38,
       "name": "Marion",
       "trainerClass": "Conseil 4",
       "sprite": "/api/sprites/trainers/karen.png",
@@ -24803,7 +27056,7 @@
       "id": "maitre-marc",
       "regionId": "hoenn",
       "zoneId": null,
-      "order": 26,
+      "order": 39,
       "name": "Marc",
       "trainerClass": "Maître de la Ligue",
       "sprite": "/api/sprites/trainers/wallace.png",
@@ -24870,7 +27123,7 @@
       "id": "maitre-peter",
       "regionId": "johto",
       "zoneId": null,
-      "order": 26,
+      "order": 39,
       "name": "Peter",
       "trainerClass": "Maître de la Ligue",
       "sprite": "/api/sprites/trainers/lance.png",
@@ -24937,7 +27190,7 @@
       "id": "peter",
       "regionId": "kanto",
       "zoneId": null,
-      "order": 26,
+      "order": 39,
       "name": "Peter",
       "trainerClass": "Conseil 4",
       "sprite": "/api/sprites/trainers/lance.png",
@@ -24998,7 +27251,7 @@
       "id": "maitre-blue",
       "regionId": "kanto",
       "zoneId": null,
-      "order": 27,
+      "order": 40,
       "name": "Blue",
       "trainerClass": "Maître de la Ligue",
       "sprite": "/api/sprites/trainers/blue.png",
@@ -25065,7 +27318,7 @@
       "id": "pierre-rochard",
       "regionId": "hoenn",
       "zoneId": "zone-de-combat",
-      "order": 27,
+      "order": 40,
       "name": "Pierre Rochard",
       "trainerClass": "Ancien Maître",
       "sprite": "/api/sprites/trainers/steven.png",
@@ -25132,7 +27385,7 @@
       "id": "red",
       "regionId": "johto",
       "zoneId": "mont-argente",
-      "order": 27,
+      "order": 40,
       "name": "Red",
       "trainerClass": "Dresseur légendaire",
       "sprite": "/api/sprites/trainers/red.png",
@@ -25201,59 +27454,6 @@
             "trainerId": "maitre-blue"
           }
         ]
-      },
-      "questId": null
-    },
-    {
-      "id": "touriste-maya",
-      "regionId": "alola",
-      "zoneId": null,
-      "order": 29,
-      "name": "Maya",
-      "trainerClass": "Touriste",
-      "sprite": "/api/sprites/trainers/lass-gen4.png",
-      "team": [
-        {
-          "speciesId": 37,
-          "formId": 10103,
-          "level": 25,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 27,
-          "formId": 10101,
-          "level": 25,
-          "iv": null,
-          "nature": null
-        },
-        {
-          "speciesId": 52,
-          "formId": 10161,
-          "level": 27,
-          "iv": null,
-          "nature": null
-        }
-      ],
-      "timeLimitSeconds": 150,
-      "rules": {
-        "teamSize": null,
-        "maxLevel": null,
-        "requiredTypes": [],
-        "forbiddenTypes": [],
-        "minPower": 0
-      },
-      "money": 1350,
-      "lootTableId": null,
-      "lootRolls": 0,
-      "badge": null,
-      "repeatable": true,
-      "cooldownMinutes": null,
-      "enabled": true,
-      "unlock": {
-        "type": "regionDexPercent",
-        "regionId": "kanto",
-        "percent": 50
       },
       "questId": null
     },

@@ -16,7 +16,7 @@ import type {
   GuildStateResponse,
   GuildSummaryDto,
 } from '@poke/shared';
-import { PokemonSprite, ProgressBar, useNow } from '../../components/ui';
+import { PokemonSprite, ProgressBar, useNow, ViewTabs } from '../../components/ui';
 import { api } from '../../lib/api';
 import { keys, useGuild, useGuildProfile } from '../../lib/game';
 import { errorText, formatMoney, guildObjectiveText, itemIcon } from '../../lib/labels';
@@ -278,8 +278,13 @@ function GuildProfile({ id }: { id: string }) {
         <ul className="grid grid-cols-1 gap-x-4 sm:grid-cols-2">
           {g.members.map((m) => (
             <li key={m.trainerName} className="flex min-w-0 items-center gap-2 py-1 text-sm">
-              {m.starterSpeciesId !== null && (
-                <PokemonSprite speciesId={m.starterSpeciesId} size={32} />
+              {m.favorite && (
+                <PokemonSprite
+                  speciesId={m.favorite.speciesId}
+                  formId={m.favorite.formId}
+                  shiny={m.favorite.shiny}
+                  size={32}
+                />
               )}
               <a href={trainerLink(m.trainerName)} className="truncate font-medium hover:underline">
                 {m.trainerName}
@@ -381,9 +386,16 @@ function JoinModeSelect({
         disabled={disabled}
         onChange={(e) => onChange(e.target.value as GuildJoinMode)}
       >
-        <option value="open">Ouverte : on rejoint directement</option>
-        <option value="request">Sur demande : le chef ou un officier accepte</option>
+        {/* Libellés courts : la liste déroulante du navigateur prend la largeur de l'option la
+            plus longue et sortait de l'écran sur mobile. Le détail est donné sous le sélecteur. */}
+        <option value="open">Ouverte</option>
+        <option value="request">Sur demande</option>
       </select>
+      <span className="basis-full text-xs text-slate-500">
+        {value === 'open'
+          ? 'Tout dresseur rejoint la guilde directement.'
+          : 'Le chef ou un officier accepte chaque demande.'}
+      </span>
     </label>
   );
 }
@@ -407,28 +419,19 @@ function GuildView({ ctx, guild }: { ctx: GameContext; guild: GuildDto }) {
           <p className="text-sm whitespace-pre-line text-slate-500">{guild.description}</p>
         )}
       </header>
-      <nav className="flex gap-1">
-        {VIEWS.map((v) => (
-          <button
-            key={v.id}
-            onClick={() => setView(v.id)}
-            className={`rounded-lg px-3 py-1.5 text-sm font-medium transition ${
-              view === v.id
-                ? 'bg-brand-500 text-white'
-                : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800'
-            }`}
-          >
-            {v.label}
-            {v.id === 'quests' && guild.quests.length > 0 && (
-              <span className="ml-1.5 text-xs opacity-80">
-                {done}/{guild.quests.length}
-              </span>
-            )}
-          </button>
-        ))}
-      </nav>
+      <ViewTabs
+        tabs={VIEWS.map((v) => ({
+          ...v,
+          badge:
+            v.id === 'quests' && guild.quests.length > 0
+              ? `${done}/${guild.quests.length}`
+              : undefined,
+        }))}
+        selected={view}
+        onSelect={setView}
+      />
       {view === 'guild' ? (
-        <div className="grid gap-4 lg:grid-cols-[1fr_360px]">
+        <div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_360px]">
           <GuildChat moderator={guild.myRole !== 'member'} />
           <div className="space-y-4">
             <MemberList guild={guild} />

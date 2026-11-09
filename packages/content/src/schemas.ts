@@ -216,6 +216,18 @@ export const menuSettingsSchema = z.object({
 export type MenuSettings = z.infer<typeof menuSettingsSchema>;
 
 /**
+ * Rangement du Sac : onglets (titre + rubriques dans l'ordre) et titres des rubriques. Une
+ * rubrique est une catégorie d'objets, ou « eggs » / « candies » ; identifiants libres comme le
+ * menu : une rubrique inconnue est ignorée, une rubrique absente va dans le dernier onglet (voir
+ * `normalizeBag`).
+ */
+export const bagSettingsSchema = z.object({
+  tabs: z.array(z.object({ title: menuTitleSchema, sections: z.array(z.string()) })),
+  sectionTitles: z.record(z.string(), menuTitleSchema).optional(),
+});
+export type BagSettings = z.infer<typeof bagSettingsSchema>;
+
+/**
  * Condition de déblocage de chaque onglet du menu (identifiants libres, comme les groupes) ; un
  * onglet absent est toujours ouvert.
  */
@@ -493,8 +505,10 @@ export const balanceSettingsSchema = z.object({
     maxTeamSize: z.int().min(1).max(6),
     /** Durée au-delà de laquelle une expédition s'arrête d'elle-même. */
     maxDurationMinutes: z.int().positive(),
-    /** Une rencontre toutes les N minutes, sans rendement décroissant. */
+    /** Une rencontre toutes les N minutes pendant la première heure. */
     encounterIntervalMinutes: z.number().positive(),
+    /** Minutes ajoutées à cet intervalle à chaque heure passée (par palier) ; 0 = rythme constant. */
+    encounterIntervalGrowthMinutes: z.number().min(0).default(0),
     /** Un tirage de butin toutes les N minutes. */
     lootIntervalMinutes: z.number().positive(),
     /** Temps d'effet d'une baie emportée (rencontres ou capture). */
@@ -628,6 +642,8 @@ export const balanceSettingsSchema = z.object({
   guilds: guildSettingsSchema.default(DEFAULT_GUILD_SETTINGS),
   /** Menu du jeu ; absent = `DEFAULT_MENU_GROUPS`. */
   menu: menuSettingsSchema.optional(),
+  /** Rangement du Sac en onglets et rubriques ; absent = `DEFAULT_BAG_TABS`. */
+  bag: bagSettingsSchema.optional(),
   /** Déblocage des onglets du menu ; absent = tous ouverts. */
   tabUnlocks: tabUnlocksSchema.optional(),
   /** Pensions, places du Musée, parcelles et Centres en plus selon la progression ; absent = aucun. */
@@ -930,8 +946,12 @@ export type GameAbility = z.infer<typeof abilitySchema>;
 
 export const ITEM_CATEGORIES = [
   'ball',
+  /** Soin : Rappels… */
+  'heal',
   'berry',
   'evolution',
+  /** Entraînement : Super Bonbons… */
+  'training',
   'breeding',
   'endgame',
   'fossil',
@@ -943,6 +963,76 @@ export const ITEM_CATEGORIES = [
 ] as const;
 export const itemCategorySchema = z.enum(ITEM_CATEGORIES);
 export type ItemCategory = z.infer<typeof itemCategorySchema>;
+
+/** Rubriques du Sac : les catégories d'objets, puis les œufs ramassés et les Bonbons de lignée. */
+export const BAG_SECTIONS = [...ITEM_CATEGORIES, 'eggs', 'candies'] as const;
+export type BagSectionId = (typeof BAG_SECTIONS)[number];
+
+/** Titre par défaut de chaque rubrique du Sac. */
+export const DEFAULT_BAG_SECTION_TITLES: Record<BagSectionId, string> = {
+  ball: 'Balls',
+  heal: 'Soin',
+  berry: 'Baies',
+  evolution: 'Objets d’évolution',
+  training: 'Entraînement',
+  breeding: 'Élevage',
+  endgame: 'Objets rares',
+  fossil: 'Fossiles',
+  megaStone: 'Méga-Gemmes',
+  chest: 'Coffres de guilde',
+  quest: 'Objets de quête',
+  misc: 'Divers',
+  eggs: 'Œufs',
+  candies: 'Bonbons de lignée',
+};
+
+/** Onglet du Sac : son titre et ses rubriques, affichées l'une sous l'autre. */
+export interface BagTab {
+  title: string;
+  sections: BagSectionId[];
+}
+
+/** Rangement du Sac par défaut (sans réglage dans l'admin). */
+export const DEFAULT_BAG_TABS: BagTab[] = [
+  { title: 'Combat', sections: ['ball', 'heal', 'berry'] },
+  { title: 'Évolution', sections: ['evolution', 'training', 'megaStone', 'candies'] },
+  { title: 'Élevage', sections: ['breeding', 'eggs'] },
+  { title: 'Trésors', sections: ['endgame', 'fossil', 'chest', 'quest', 'misc'] },
+];
+
+/**
+ * Rangement du Sac complet : rubriques inconnues ou en double retirées, onglets vides retirés,
+ * rubriques absentes ajoutées au dernier onglet ; titres par défaut pour les rubriques sans titre.
+ */
+export function normalizeBag(bag: BagSettings | undefined): {
+  tabs: BagTab[];
+  sectionTitles: Record<BagSectionId, string>;
+} {
+  const known = new Set<string>(BAG_SECTIONS);
+  const seen = new Set<string>();
+  const tabs: BagTab[] = [];
+  for (const tab of bag?.tabs ?? DEFAULT_BAG_TABS) {
+    const sections: BagSectionId[] = [];
+    for (const id of tab.sections) {
+      if (!known.has(id) || seen.has(id)) continue;
+      seen.add(id);
+      sections.push(id as BagSectionId);
+    }
+    if (sections.length > 0) tabs.push({ title: tab.title, sections });
+  }
+  const missing = BAG_SECTIONS.filter((id) => !seen.has(id));
+  if (missing.length > 0) {
+    const last = tabs.at(-1);
+    if (last) last.sections.push(...missing);
+    else tabs.push({ title: 'Sac', sections: missing });
+  }
+  const sectionTitles = { ...DEFAULT_BAG_SECTION_TITLES };
+  for (const id of BAG_SECTIONS) {
+    const title = bag?.sectionTitles?.[id]?.trim();
+    if (title) sectionTitles[id] = title;
+  }
+  return { tabs, sectionTitles };
+}
 
 /** Raretés des coffres de guilde, de la plus courante à la plus précieuse. */
 export const CHEST_RARITIES = ['bronze', 'silver', 'gold'] as const;

@@ -2,6 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PublicContentDto } from '@poke/shared';
 import { keys, meQuery } from './lib/game';
+import { usePokemonShadows } from './lib/pokemon-shadows';
 import { AuthPage, RESET_PASSWORD_PATH } from './pages/AuthPage';
 import { CHANGELOG_PATH, ChangelogPage } from './pages/ChangelogPage';
 import { CreateProfilePage } from './pages/CreateProfilePage';
@@ -54,6 +55,7 @@ export function App() {
   });
   useContentVersionWatch(me.data?.contentVersion);
   const pathname = usePathname();
+  usePokemonShadows(me.data?.profile?.starterSpeciesId != null);
 
   if (pathname === RESET_PASSWORD_PATH) return <ResetPasswordPage />;
   if (pathname === CHANGELOG_PATH) return <ChangelogPage />;

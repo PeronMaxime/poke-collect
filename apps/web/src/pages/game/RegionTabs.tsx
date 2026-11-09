@@ -2,6 +2,7 @@ import { useState } from 'react';
 import type { Region } from '@poke/content';
 import { isRegionUnlocked } from '@poke/game-core';
 import type { GameContext, PlayerProgress } from '@poke/game-core';
+import { ScrollRow } from '../../components/ui';
 import { unlockConditionText } from '../../lib/labels';
 
 /** Régions débloquées, puis la suivante (verrouillée) : les autres restent cachées. */
@@ -51,7 +52,7 @@ export function RegionTabs({
     ...extra,
   ];
   return (
-    <div className="flex flex-wrap gap-1" role="tablist">
+    <ScrollRow role="tablist" selectedKey={selected} className="gap-1">
       {tabs.map((t) => {
         const mark = marker?.(t.id);
         return (
@@ -60,19 +61,24 @@ export function RegionTabs({
             role="tab"
             aria-selected={t.id === selected}
             onClick={() => onSelect(t.id)}
-            className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${
+            className={`flex shrink-0 items-center gap-1.5 whitespace-nowrap pixel-label rounded-md border-2 border-ink px-3 py-2 shadow-[inset_0_-3px_0_rgb(0_0_0/0.18)] transition ${
               t.id === selected
                 ? 'bg-brand-500 text-white'
-                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+                : 'bg-white text-slate-700 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-100 dark:hover:bg-slate-600'
             }`}
           >
             {t.label}
-            {mark && <span className="h-2 w-2 rounded-full bg-amber-400" title={mark} />}
+            {mark && (
+              <span
+                className="h-2.5 w-2.5 rounded-full bg-[#f8d030] ring-2 ring-ink"
+                title={mark}
+              />
+            )}
           </button>
         );
       })}
       {next && <LockedRegionTab ctx={ctx} region={next} />}
-    </div>
+    </ScrollRow>
   );
 }
 
@@ -83,7 +89,7 @@ function LockedRegionTab({ ctx, region }: { ctx: GameContext; region: Region }) 
       role="tab"
       aria-disabled
       title={`Pour débloquer ${region.name} : ${condition}`}
-      className="flex cursor-help items-center gap-1.5 rounded-full border border-dashed border-slate-300 px-3 py-1.5 text-sm font-medium text-slate-400 dark:border-slate-700"
+      className="flex shrink-0 cursor-help items-center whitespace-nowrap gap-1.5 pixel-label rounded-md border-2 border-dashed border-slate-400 px-3 py-2 text-slate-500 dark:border-slate-600 dark:text-slate-400"
     >
       🔒 {region.name}
     </span>

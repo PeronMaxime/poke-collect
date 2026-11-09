@@ -25,6 +25,7 @@ import type {
   DaycareXpDto,
   DepositDaycareInput,
   EggDto,
+  SetDaycareParentInput,
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { assistantHolder, assistantHolders } from './assistants';
@@ -85,6 +86,10 @@ function slotEggMinutes(
   return eggCycleMinutes(ctx, breedingEnv(present, helper));
 }
 
+/** Dépôt d'un parent (avant le dépôt un par un : celui du couple). */
+const depositOf = (row: DaycareRow, side: 0 | 1) =>
+  (side === 0 ? row.parentADepositedAt : row.parentBDepositedAt) ?? row.depositedAt;
+
 export function toDaycareDto(
   ctx: GameContext,
   row: DaycareRow,
@@ -101,7 +106,8 @@ export function toDaycareDto(
     heldItemAId: row.heldItemAId,
     heldItemBId: row.heldItemBId,
     startedAt: row.startedAt.toISOString(),
-    depositedAt: row.depositedAt.toISOString(),
+    parentADepositedAt: row.parentAId ? depositOf(row, 0).toISOString() : null,
+    parentBDepositedAt: row.parentBId ? depositOf(row, 1).toISOString() : null,
     eggSpeciesId: check?.ok ? check.eggSpeciesId : null,
     eggFormId: check?.ok ? check.eggFormId : null,
     eggMinutes: slotEggMinutes(ctx, [a, b], helper),
@@ -242,9 +248,154 @@ export async function depositDaycare(
         heldItemBId: input.heldItemBId,
         startedAt: now,
         depositedAt: now,
+        parentADepositedAt: now,
+        parentBDepositedAt: now,
       })
       .returning();
     return row!;
+  });
+}
+
+/** Verse l'XP du séjour aux parents qui quittent la pension (plafonnée au niveau maximal). */
+async function payDaycareXp(
+  tx: Db,
+  ctx: GameContext,
+  userId: string,
+  leaving: readonly { id: string; depositedAt: Date }[],
+  now: Date,
+): Promise<DaycareXpDto[]> {
+  const rows = await ownedPokemon(
+    tx,
+    userId,
+    leaving.map((l) => l.id),
+  );
+  if (rows.length === 0) return [];
+  const bonuses = playerBonuses(ctx, await claimedRewards(tx, userId));
+  const result: DaycareXpDto[] = [];
+  for (const row of rows) {
+    const since = leaving.find((l) => l.id === row.id)!.depositedAt;
+    const gain = daycareXp(ctx, row, since, now, bonuses);
+    if (gain.xpGained > 0) {
+      await tx
+        .update(pokemon)
+        .set({ xp: gain.xpAfter, level: gain.levelAfter })
+        .where(eq(pokemon.id, row.id));
+    }
+    result.push({
+      pokemonId: row.id,
+      xpGained: gain.xpGained,
+      levelBefore: gain.levelBefore,
+      levelAfter: gain.levelAfter,
+    });
+  }
+  return result;
+}
+
+/**
+ * Change un seul parent d'une pension (`side` 0 ou 1) : `input` y dépose un Pokémon (à la place
+ * de celui qui y était), `null` l'en retire. Les œufs prêts du couple d'avant sont d'abord couvés
+ * (le surplus va dans le sac), le parent qui part reçoit son XP et son objet tenu revient au sac.
+ * Le partenaire reste, avec son XP en cours ; la ponte reprend de zéro avec le nouveau couple.
+ */
+export async function setDaycareParent(
+  db: Db,
+  content: ContentCache,
+  userId: string,
+  slotIndex: number,
+  side: 0 | 1,
+  input: SetDaycareParentInput | null,
+  now: Date,
+): Promise<{ incubated: EggRow[]; bagged: number; parents: DaycareXpDto[] }> {
+  const ctx = await content.get();
+  await requireStartedProfile(db, userId);
+  const heldItemId = input?.heldItemId ?? null;
+  if (
+    heldItemId &&
+    !ctx.itemEffect(heldItemId, 'breedingIvs') &&
+    !ctx.itemEffect(heldItemId, 'breedingNature')
+  ) {
+    throw new GameError(400, 'NOT_A_BREEDING_ITEM');
+  }
+
+  return playerTransaction(db, userId, async (tx) => {
+    const [slot] = await tx
+      .select()
+      .from(daycareSlots)
+      .where(and(eq(daycareSlots.ownerId, userId), eq(daycareSlots.slotIndex, slotIndex)));
+    const sideKey = side === 0 ? 'parentAId' : 'parentBId';
+    const current = slot?.[sideKey] ?? null;
+    const partner = slot?.[side === 0 ? 'parentBId' : 'parentAId'] ?? null;
+    if (!input && !current) throw new GameError(409, 'DAYCARE_EMPTY');
+
+    let fresh: PokemonRow | undefined;
+    if (input) {
+      // Un dépôt n'est possible que dans une pension ouverte (le retrait, partout).
+      const slots = await playerFacilityPlaces(tx, ctx, userId, 'daycare');
+      if (slotIndex >= slots) throw new GameError(400, 'NO_SUCH_SLOT');
+      if (input.pokemonId === partner || input.pokemonId === current) {
+        throw new GameError(400, 'SAME_POKEMON');
+      }
+      [fresh] = await ownedPokemon(tx, userId, [input.pokemonId]);
+      if (!fresh) throw new GameError(404, 'POKEMON_NOT_FOUND');
+      await assertAvailable(tx, userId, [fresh], now);
+      // Un Pokémon Méga-Évolué transmettrait sa forme Méga à l'œuf.
+      if (fresh.megaStone) throw new GameError(409, 'POKEMON_MEGA');
+      if (heldItemId && !(await takeItems(tx, userId, heldItemId, 1))) {
+        throw new GameError(409, 'ITEM_MISSING', { itemId: heldItemId });
+      }
+    }
+
+    // Œufs prêts du couple qui se sépare : couvés avant le changement.
+    const collected =
+      slot?.parentAId && slot.parentBId
+        ? await collectInTx(tx, ctx, userId, slot, 'incubator', now)
+        : { incubated: [], bagged: 0 };
+
+    // Parent qui part : son XP, et son objet tenu rendu (même si le Pokémon n'est plus là).
+    const parents = current
+      ? await payDaycareXp(
+          tx,
+          ctx,
+          userId,
+          [{ id: current, depositedAt: depositOf(slot!, side) }],
+          now,
+        )
+      : [];
+    const oldItem = slot ? (side === 0 ? slot.heldItemAId : slot.heldItemBId) : null;
+    if (oldItem) {
+      await addItems(tx, userId, [{ itemId: oldItem, quantity: 1 }]);
+    }
+
+    const values =
+      side === 0
+        ? {
+            parentAId: fresh?.id ?? null,
+            heldItemAId: fresh ? heldItemId : null,
+            parentADepositedAt: fresh ? now : null,
+          }
+        : {
+            parentBId: fresh?.id ?? null,
+            heldItemBId: fresh ? heldItemId : null,
+            parentBDepositedAt: fresh ? now : null,
+          };
+    if (!slot) {
+      await tx.insert(daycareSlots).values({
+        ownerId: userId,
+        slotIndex,
+        ...values,
+        startedAt: now,
+        depositedAt: now,
+      });
+    } else if (!fresh && !partner) {
+      // Plus personne : la pension se libère.
+      await tx.delete(daycareSlots).where(eq(daycareSlots.id, slot.id));
+    } else {
+      await tx
+        .update(daycareSlots)
+        .set({ ...values, startedAt: now })
+        .where(eq(daycareSlots.id, slot.id));
+    }
+    return { incubated: collected.incubated, bagged: collected.bagged, parents };
   });
 }
 
@@ -390,28 +541,11 @@ export async function withdrawDaycare(
     );
 
     // XP du séjour, versée maintenant (plafonnée au niveau maximal).
-    const parents: DaycareXpDto[] = [];
-    const rows = await ownedPokemon(
-      tx,
-      userId,
-      [slot.parentAId, slot.parentBId].filter((id) => id !== null),
-    );
-    const bonuses = rows.length ? playerBonuses(ctx, await claimedRewards(tx, userId)) : undefined;
-    for (const row of rows) {
-      const gain = daycareXp(ctx, row, slot.depositedAt, now, bonuses);
-      if (gain.xpGained > 0) {
-        await tx
-          .update(pokemon)
-          .set({ xp: gain.xpAfter, level: gain.levelAfter })
-          .where(eq(pokemon.id, row.id));
-      }
-      parents.push({
-        pokemonId: row.id,
-        xpGained: gain.xpGained,
-        levelBefore: gain.levelBefore,
-        levelAfter: gain.levelAfter,
-      });
-    }
+    const leaving = ([0, 1] as const)
+      .map((side) => ({ id: side === 0 ? slot.parentAId : slot.parentBId, side }))
+      .filter((l): l is { id: string; side: 0 | 1 } => l.id !== null)
+      .map((l) => ({ id: l.id, depositedAt: depositOf(slot, l.side) }));
+    const parents = await payDaycareXp(tx, ctx, userId, leaving, now);
     return { incubated: collected.incubated, bagged: collected.bagged, parents };
   });
 }
@@ -458,6 +592,28 @@ export async function incubateEggs(
       if (row) incubated.push(row);
     }
     return incubated;
+  });
+}
+
+/**
+ * Retire un œuf de la couveuse : il revient dans le sac, sa place se libère et l'incubation
+ * repart de zéro à la prochaine mise en couveuse. Un œuf déjà à terme se fait éclore, pas retirer.
+ */
+export async function withdrawEgg(db: Db, userId: string, eggId: string, now: Date) {
+  return playerTransaction(db, userId, async (tx) => {
+    const [egg] = await tx
+      .select()
+      .from(eggs)
+      .where(and(eq(eggs.ownerId, userId), eq(eggs.id, eggId), eq(eggs.hatched, false)));
+    if (!egg || isInBag(egg)) throw new GameError(404, 'EGG_NOT_INCUBATED');
+    if (egg.hatchAt! <= now) throw new GameError(409, 'EGG_READY');
+    const [row] = await tx
+      .update(eggs)
+      .set({ slotIndex: null, incubatedAt: null, hatchAt: null, notifiedAt: null })
+      .where(and(eq(eggs.id, egg.id), eq(eggs.hatched, false)))
+      .returning();
+    if (!row) throw new GameError(404, 'EGG_NOT_INCUBATED');
+    return row;
   });
 }
 

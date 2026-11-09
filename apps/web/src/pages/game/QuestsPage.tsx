@@ -49,6 +49,16 @@ import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
 /** Onglet des quêtes rattachées à aucune région. */
 const OTHER_TAB = { id: '__autres', label: 'Autres' };
 
+/**
+ * Grilles selon la largeur réellement disponible (elle dépend de la colonne des widgets, d'où une
+ * requête de conteneur) : deux quêtes en cours par ligne au plus, trois quêtes terminées.
+ */
+const QUEST_GRID = 'grid grid-cols-1 gap-3 @3xl:grid-cols-2';
+const DONE_GRID = 'grid grid-cols-1 gap-3 @xl:grid-cols-2 @4xl:grid-cols-3';
+
+/** Ancre de la carte d'une quête, pour y descendre depuis la vitrine des légendaires. */
+const questAnchor = (questId: string) => `quest-${questId}`;
+
 /** Légendaire d'une quête réclamée, pas encore capturé. */
 interface Hunt {
   target: QuestPokemon;
@@ -190,6 +200,11 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
   const extra = ctx.quests.some((q) => q.regionId === null) ? [OTHER_TAB] : [];
   const tab = currentRegionTab(ctx, progress, selectedRegion, extra);
   const shown = sorted.filter((q) => tabOf(q) === tab);
+  const regionName = ctx.regions.find((r) => r.id === tab)?.name;
+  // Terminées : récompense réclamée et tous ses Pokémon capturés ; rangées à part, en bas.
+  const isFinished = (q: Quest) => byId.get(q.id)?.status === 'claimed' && !targetOf(q);
+  const ongoing = shown.filter((q) => !isFinished(q));
+  const done = shown.filter(isFinished).sort((a, b) => a.order - b.order);
   const toClaim = (id: string) =>
     ctx.quests.some((q) => tabOf(q) === id && byId.get(q.id)?.status === 'completed')
       ? 'Récompense à réclamer'
@@ -237,47 +252,60 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
           }}
         />
       )}
-      <p className="text-sm text-slate-500">
-        Les légendaires ne se rencontrent pas en expédition : chaque quête les met à ta portée. Les
-        étapes se valident dans l’ordre ; captures, expéditions et objets de quête ne comptent qu’à
-        partir du début de l’étape. Les objets de quête se trouvent en expédition, une chance par
-        tirage de butin, quand l’équipe et la météo du départ remplissent les conditions. Un talent
-        de l’équipe qui impose une météo (Crachin, Sécheresse…) compte comme la météo du départ. Une
-        fois la récompense réclamée, affronte le légendaire avec une équipe de 6 : vaincu, il se
-        capture d’une seule Ball. Les fuyards, eux, se cachent dans les expéditions ordinaires et
-        changent de zone à chaque heure.
-      </p>
-      <RegionTabs
-        ctx={ctx}
-        progress={progress}
-        selected={tab}
-        onSelect={setSelectedRegion}
-        marker={toClaim}
-        extra={extra}
-      />
-      {claim.error && <p className="text-sm text-red-600">{errorText(claim.error)}</p>}
-      {shown.length === 0 && (
-        <p className="text-sm text-slate-500">Aucune quête dans cette région pour le moment.</p>
-      )}
-      <div className="grid gap-4 md:grid-cols-2">
-        {shown.map((quest) => (
-          <QuestCard
-            key={quest.id}
+      <section className="@container">
+        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+          <h2 className="text-lg font-semibold">Quêtes{regionName ? ` de ${regionName}` : ''}</h2>
+          <RegionTabs
             ctx={ctx}
-            quest={quest}
-            state={byId.get(quest.id)}
-            unlockText={
-              isUnlocked(ctx, quest.unlock, progress)
-                ? null
-                : (unlockConditionText(ctx, quest.unlock) ?? 'Verrouillée')
-            }
-            claiming={claim.isPending && claim.variables === quest.id}
-            onClaim={() => claim.mutate(quest.id)}
-            hunt={huntOf(quest)}
-            highlight={actionable(quest)}
+            progress={progress}
+            selected={tab}
+            onSelect={setSelectedRegion}
+            marker={toClaim}
+            extra={extra}
           />
-        ))}
-      </div>
+        </div>
+        {shown.length > 0 && (
+          <LegendaryCase
+            ctx={ctx}
+            quests={[...shown].sort((a, b) => a.order - b.order)}
+            stateOf={(q) => byId.get(q.id)}
+          />
+        )}
+        {claim.error && <p className="mb-3 text-sm text-red-600">{errorText(claim.error)}</p>}
+        {shown.length === 0 && (
+          <p className="text-sm text-slate-500">Aucune quête dans cette région pour le moment.</p>
+        )}
+        <div className={QUEST_GRID}>
+          {ongoing.map((quest) => (
+            <QuestCard
+              key={quest.id}
+              ctx={ctx}
+              quest={quest}
+              state={byId.get(quest.id)}
+              unlockText={
+                isUnlocked(ctx, quest.unlock, progress)
+                  ? null
+                  : (unlockConditionText(ctx, quest.unlock) ?? 'Verrouillée')
+              }
+              claiming={claim.isPending && claim.variables === quest.id}
+              onClaim={() => claim.mutate(quest.id)}
+              hunt={huntOf(quest)}
+              highlight={actionable(quest)}
+            />
+          ))}
+        </div>
+      </section>
+
+      {done.length > 0 && (
+        <section className="@container">
+          <h2 className="mb-3 text-lg font-semibold">Quêtes terminées</h2>
+          <div className={DONE_GRID}>
+            {done.map((quest) => (
+              <FinishedQuestCard key={quest.id} ctx={ctx} quest={quest} />
+            ))}
+          </div>
+        </section>
+      )}
       <QuestReveal ctx={ctx} data={reveal} onClose={() => setReveal(null)} />
 
       {active && (
@@ -358,6 +386,228 @@ function CaptureForQuest({
   );
 }
 
+/**
+ * Vitrine des légendaires de la région, comme la boîte à badges des Combats : capturés en couleur,
+ * les autres en silhouette. Un clic descend jusqu'à leur quête.
+ */
+function LegendaryCase({
+  ctx,
+  quests,
+  stateOf,
+}: {
+  ctx: GameContext;
+  quests: Quest[];
+  stateOf: (quest: Quest) => QuestProgressDto | undefined;
+}) {
+  const entries = quests.flatMap((quest) =>
+    quest.rewards.pokemon.map((pokemon, index) => {
+      const state = stateOf(quest);
+      const caught = state?.status === 'claimed' && index < state.pokemonCaught;
+      return { quest, pokemon, index, caught, locked: !state };
+    }),
+  );
+  if (entries.length === 0) return null;
+  const count = entries.filter((e) => e.caught).length;
+  return (
+    <div className="card mb-3 flex flex-wrap items-center gap-x-4 gap-y-2 px-3 py-2">
+      <p className="pixel-label shrink-0">
+        Légendaires {count} / {entries.length}
+      </p>
+      <ul className="flex flex-wrap gap-1.5">
+        {entries.map(({ quest, pokemon, index, caught, locked }) => {
+          const name = caught ? speciesName(ctx, pokemon.speciesId, pokemon.formId) : quest.name;
+          return (
+            <li key={`${quest.id}:${index}`}>
+              <button
+                type="button"
+                title={caught ? `${name} (capturé)` : name}
+                aria-label={name}
+                className="sprite-well size-10 transition hover:border-brand-500"
+                onClick={() =>
+                  document
+                    .getElementById(questAnchor(quest.id))
+                    ?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+                }
+              >
+                <PokemonSprite
+                  speciesId={pokemon.speciesId}
+                  formId={pokemon.formId}
+                  size={36}
+                  silhouette={!caught}
+                  className={locked ? 'opacity-40' : ''}
+                />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+/** Portrait d'une quête : image dédiée, sinon le légendaire (en silhouette tant qu'il n'est pas à soi). */
+function QuestPortrait({
+  quest,
+  silhouette,
+  size = 'size-18',
+  spriteSize = 64,
+}: {
+  quest: Quest;
+  silhouette: boolean;
+  /** Taille de la case (classe) et du sprite qu'elle contient (px). */
+  size?: string;
+  spriteSize?: number;
+}) {
+  const featured = quest.rewards.pokemon[0];
+  return (
+    <div className={`sprite-well shrink-0 overflow-hidden ${size}`}>
+      {quest.image ? (
+        <img src={quest.image} alt="" className="size-full object-cover" />
+      ) : (
+        featured && (
+          <PokemonSprite
+            speciesId={featured.speciesId}
+            formId={featured.formId}
+            size={spriteSize}
+            silhouette={silhouette}
+          />
+        )
+      )}
+    </div>
+  );
+}
+
+/** Avancement en cases : validées en vert, celle en cours en jaune, les suivantes vides. */
+function StepTrack({ total, done, active }: { total: number; done: number; active: boolean }) {
+  return (
+    <div className="flex items-center gap-2">
+      <span className="pixel-label shrink-0 text-slate-500">
+        {active ? `Étape ${done + 1} / ${total}` : `${total} / ${total} étapes`}
+      </span>
+      <ol className="flex flex-1 gap-1" aria-hidden>
+        {Array.from({ length: total }, (_, i) => (
+          <li
+            key={i}
+            className={`h-3 flex-1 rounded-sm border-2 border-ink ${
+              i < done ? 'bg-[#48c048]' : i === done && active ? 'bg-[#f8d030]' : 'bg-track'
+            }`}
+          />
+        ))}
+      </ol>
+    </div>
+  );
+}
+
+/** Étapes validées et leur dénouement (la suite de l'histoire), repliées par défaut. */
+function QuestJournal({ steps }: { steps: Quest['steps'] }) {
+  if (steps.length === 0) return null;
+  return (
+    <details className="group text-xs">
+      <summary className="pixel-label flex cursor-pointer list-none items-center gap-1.5 text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+        {/* Même chevron pixel art que les sections repliables : à droite fermé, en bas ouvert. */}
+        <svg
+          viewBox="0 0 7 4"
+          width="11"
+          height="7"
+          shapeRendering="crispEdges"
+          aria-hidden
+          className="-rotate-90 transition-transform group-open:rotate-0"
+        >
+          <path d="M0 0h7v1h-1v1h-1v1h-1v1h-1v-1h-1v-1h-1v-1h-1z" fill="currentColor" />
+        </svg>
+        Journal ({steps.length})
+      </summary>
+      <ol className="mt-2 space-y-2 border-l-2 border-amber-300 pl-2.5 dark:border-amber-700">
+        {steps.map((step, i) => (
+          <li key={i}>
+            <p className="font-medium text-slate-600 dark:text-slate-300">
+              <span className="text-emerald-600">✓</span> {step.name}
+            </p>
+            {step.outcome && <p className="mt-0.5 text-slate-500 italic">{step.outcome}</p>}
+          </li>
+        ))}
+      </ol>
+    </details>
+  );
+}
+
+/** Étape en cours : ce qu'il faut faire, mise en avant comme l'onglet choisi du menu. */
+function CurrentStep({
+  ctx,
+  quest,
+  step,
+  count,
+}: {
+  ctx: GameContext;
+  quest: Quest;
+  step: Quest['steps'][number];
+  count: number;
+}) {
+  const { condition } = step;
+  const target = isActionCondition(condition) ? condition.count : null;
+  return (
+    <div className="rounded-md bg-selected px-2.5 py-2 text-sm">
+      <p className="flex items-center gap-1.5 font-semibold">
+        <span className="text-[10px] text-brand-500">▶</span>
+        {step.name}
+      </p>
+      <p className="text-xs text-slate-600 dark:text-slate-300">
+        {step.description || questConditionText(ctx, condition)}
+      </p>
+      {step.description && condition.type !== 'allOf' && (
+        <p className="text-[11px] text-slate-500">{questConditionText(ctx, condition)}</p>
+      )}
+      {condition.type === 'questItem' && (
+        <p className="mt-0.5 flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
+          <img src={itemIcon(ctx, condition.itemId)} alt="" className="h-5 w-5" />
+          {itemName(ctx, condition.itemId)} : {condition.chance} % de chances par tirage de butin
+        </p>
+      )}
+      {condition.type === 'catchPokemon' && !condition.zoneId && quest.regionId && (
+        <p className="text-[11px] text-slate-500">
+          Captures comptées uniquement à {ctx.region(quest.regionId)?.name ?? quest.regionId}.
+        </p>
+      )}
+      {target !== null && target > 1 && (
+        <div className="mt-1.5 flex items-center gap-2 text-xs text-slate-500">
+          <ProgressBar className="flex-1" value={count / target} />
+          <span>
+            {count} / {target}
+          </span>
+        </div>
+      )}
+      <StepTrainerLinks ctx={ctx} condition={condition} />
+    </div>
+  );
+}
+
+/** Récompense : le légendaire (caché tant que la quête n'est pas accomplie), puis le reste. */
+function QuestRewards({
+  ctx,
+  quest,
+  revealed,
+}: {
+  ctx: GameContext;
+  quest: Quest;
+  revealed: boolean;
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-xs">
+      {quest.rewards.pokemon.map((p, i) => (
+        <span
+          key={i}
+          className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-300"
+        >
+          {revealed
+            ? `${speciesName(ctx, p.speciesId, p.formId)} N.${p.level}`
+            : `??? N.${p.level}`}
+        </span>
+      ))}
+      <RewardList ctx={ctx} rewards={quest.rewards} />
+    </div>
+  );
+}
+
 function QuestCard({
   ctx,
   quest,
@@ -378,137 +628,45 @@ function QuestCard({
   highlight: boolean;
 }) {
   const status = state?.status ?? 'locked';
-  const featured = quest.rewards.pokemon[0];
-  const done = state?.step ?? 0;
+  const total = quest.steps.length;
+  // Étapes validées : toutes une fois la quête accomplie.
+  const done = status === 'active' ? (state?.step ?? 0) : status === 'locked' ? 0 : total;
+  const current = status === 'active' ? quest.steps[done] : undefined;
 
   return (
     <div
-      className={`card flex flex-col gap-3 p-4 ${status === 'locked' ? 'opacity-60' : ''} ${
+      id={questAnchor(quest.id)}
+      className={`card flex scroll-mt-4 flex-col gap-3 p-3 ${status === 'locked' ? 'opacity-60' : ''} ${
         highlight ? 'ring-2 ring-amber-400' : ''
       }`}
     >
       <div className="flex items-start gap-3">
-        <div className="grid size-20 shrink-0 place-items-center rounded-xl bg-slate-100 dark:bg-slate-800">
-          {quest.image ? (
-            <img src={quest.image} alt="" className="size-20 rounded-xl object-cover" />
-          ) : (
-            featured && (
-              <PokemonSprite
-                speciesId={featured.speciesId}
-                formId={featured.formId}
-                kind="artwork"
-                size={72}
-                silhouette={status !== 'claimed' || !!hunt}
-              />
-            )
-          )}
-        </div>
+        <QuestPortrait quest={quest} silhouette={status !== 'claimed' || !!hunt} />
         <div className="min-w-0 flex-1">
-          <h3 className="font-semibold">{quest.name}</h3>
-          <p className="text-xs text-slate-500">{quest.description}</p>
-          {status === 'claimed' &&
-            (hunt ? (
-              <p className="mt-1 text-xs font-medium text-amber-600">
-                ✦ {hunt.roaming ? 'Fuyard à capturer' : 'Légendaire à affronter'}
-              </p>
-            ) : (
-              <p className="mt-1 text-xs text-emerald-600">✓ Terminée</p>
-            ))}
-          {status === 'locked' && <p className="mt-1 text-xs">🔒 {unlockText ?? 'Verrouillée'}</p>}
+          <h3 className="leading-tight font-semibold">{quest.name}</h3>
+          <p className="mt-0.5 text-xs text-slate-500">{quest.description}</p>
+          {hunt && (
+            <p className="mt-1 text-xs font-medium text-amber-600">
+              ✦ {hunt.roaming ? 'Fuyard à capturer' : 'Légendaire à affronter'}
+            </p>
+          )}
         </div>
       </div>
 
-      {status !== 'locked' && (
-        <ol className="space-y-1.5 text-sm">
-          {quest.steps.map((step, i) => {
-            const isDone = i < done || status !== 'active';
-            const current = status === 'active' && i === done;
-            const { condition } = step;
-            const target = isActionCondition(condition) ? condition.count : null;
-            return (
-              <li
-                key={i}
-                className={`rounded-lg px-2 py-1 ${
-                  current ? 'bg-brand-500/10' : isDone ? 'text-slate-500' : 'text-slate-400'
-                }`}
-              >
-                <div className="flex items-start gap-2">
-                  <span className="w-4 shrink-0">{isDone ? '✓' : current ? '▶' : '·'}</span>
-                  <div className="min-w-0 flex-1">
-                    {isDone && step.outcome ? (
-                      // Dénouement de l'étape : la suite de l'histoire, à déplier.
-                      <details className="group">
-                        <summary className="cursor-pointer list-none">
-                          {step.name}{' '}
-                          <span className="text-xs text-slate-400 group-open:hidden">· lire</span>
-                        </summary>
-                        <p className="mt-1 border-l-2 border-amber-300 pl-2 text-xs text-slate-600 italic dark:border-amber-700 dark:text-slate-300">
-                          {step.outcome}
-                        </p>
-                      </details>
-                    ) : (
-                      <p className={current ? 'font-medium' : ''}>
-                        {current || isDone ? step.name : `Étape ${i + 1}`}
-                      </p>
-                    )}
-                    {current && (
-                      <p className="text-xs text-slate-500">
-                        {step.description || questConditionText(ctx, condition)}
-                      </p>
-                    )}
-                    {current && step.description && condition.type !== 'allOf' && (
-                      <p className="text-[11px] text-slate-400">
-                        {questConditionText(ctx, condition)}
-                      </p>
-                    )}
-                    {current && condition.type === 'questItem' && (
-                      <p className="mt-0.5 flex items-center gap-1 text-xs text-amber-700 dark:text-amber-400">
-                        <img src={itemIcon(ctx, condition.itemId)} alt="" className="h-5 w-5" />
-                        {itemName(ctx, condition.itemId)} : {condition.chance} % de chances par
-                        tirage de butin
-                      </p>
-                    )}
-                    {current && <StepTrainerLinks ctx={ctx} condition={condition} />}
-                    {current &&
-                      condition.type === 'catchPokemon' &&
-                      !condition.zoneId &&
-                      quest.regionId && (
-                        <p className="text-xs text-slate-500">
-                          Captures comptées uniquement à{' '}
-                          {ctx.region(quest.regionId)?.name ?? quest.regionId}.
-                        </p>
-                      )}
-                    {current && target !== null && target > 1 && (
-                      <div className="mt-1 flex items-center gap-2 text-xs text-slate-500">
-                        <ProgressBar className="flex-1" value={(state?.count ?? 0) / target} />
-                        <span>
-                          {state?.count ?? 0} / {target}
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </li>
-            );
-          })}
-        </ol>
+      {status === 'locked' ? (
+        <p className="text-xs text-slate-500">🔒 {unlockText ?? 'Verrouillée'}</p>
+      ) : (
+        <StepTrack total={total} done={done} active={status === 'active'} />
       )}
+      {current && <CurrentStep ctx={ctx} quest={quest} step={current} count={state?.count ?? 0} />}
+      <QuestJournal steps={quest.steps.slice(0, done)} />
 
-      <div className="mt-auto space-y-2 border-t border-slate-100 pt-2 dark:border-slate-800">
-        <div className="flex flex-wrap items-center gap-1.5 text-xs">
-          <span className="text-slate-500">Récompense :</span>
-          {quest.rewards.pokemon.map((p, i) => (
-            <span
-              key={i}
-              className="rounded-full bg-amber-100 px-2 py-0.5 font-medium text-amber-900 dark:bg-amber-950 dark:text-amber-300"
-            >
-              {status === 'claimed' || status === 'completed'
-                ? `${speciesName(ctx, p.speciesId, p.formId)} N.${p.level}`
-                : `??? N.${p.level}`}
-            </span>
-          ))}
-        </div>
-        <RewardList ctx={ctx} rewards={quest.rewards} />
+      <div className="mt-auto space-y-2 border-t border-slate-200 pt-2 dark:border-slate-700">
+        <QuestRewards
+          ctx={ctx}
+          quest={quest}
+          revealed={status === 'claimed' || status === 'completed'}
+        />
         {status === 'completed' && (
           <button className="btn-primary w-full" disabled={claiming} onClick={onClaim}>
             {claiming ? '…' : 'Réclamer la récompense'}
@@ -517,6 +675,25 @@ function QuestCard({
         {hunt?.roaming && <RoamingStatus ctx={ctx} roaming={hunt.roaming} />}
         {hunt?.battle && <BattleStatus ctx={ctx} target={hunt.target} battle={hunt.battle} />}
       </div>
+    </div>
+  );
+}
+
+/** Quête terminée, légendaire capturé : carte réduite, le journal reste à relire. */
+function FinishedQuestCard({ ctx, quest }: { ctx: GameContext; quest: Quest }) {
+  const names = quest.rewards.pokemon.map((p) => speciesName(ctx, p.speciesId, p.formId));
+  return (
+    <div id={questAnchor(quest.id)} className="card flex scroll-mt-4 flex-col gap-2 p-3">
+      <div className="flex items-center gap-3">
+        <QuestPortrait quest={quest} silhouette={false} size="size-14" spriteSize={52} />
+        <div className="min-w-0 flex-1">
+          <h3 className="leading-tight font-semibold">{quest.name}</h3>
+          {names.length > 0 && (
+            <p className="mt-0.5 text-xs text-emerald-600">✓ {names.join(', ')}</p>
+          )}
+        </div>
+      </div>
+      <QuestJournal steps={quest.steps} />
     </div>
   );
 }

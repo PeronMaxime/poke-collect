@@ -1,18 +1,22 @@
 import { useEffect, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
+import { Reorder } from 'motion/react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { STAT_NAMES } from '@poke/data';
-import { MAX_IV, earnedBadges, pokemonPower } from '@poke/game-core';
+import { MAX_IV, earnedBadges, memberPower, pokemonPower } from '@poke/game-core';
 import type { GameContext, PlayerProgress } from '@poke/game-core';
 import { FEATURED_POKEMON_MAX } from '@poke/shared';
 import type {
+  FavoritePokemonDto,
   FeaturedPokemonDto,
   FeaturedPokemonInput,
   PlayerProfileDto,
+  PokemonDto,
   TrainerCardResponse,
   TrainerProfileResponse,
 } from '@poke/shared';
-import { Modal, PokemonSprite, ShinyStar } from '../../components/ui';
+import { PokemonSprite, ShinyStar, ViewTabs } from '../../components/ui';
+import { PokemonTagBadges, TagFilterSelect } from '../../components/tags';
 import { ApiError, api } from '../../lib/api';
 import {
   keys,
@@ -24,12 +28,24 @@ import {
   useTrainerProfile,
   useTrainerSearch,
 } from '../../lib/game';
-import { abilityLabel, errorText, formatMoney, natureLabel } from '../../lib/labels';
+import { abilityLabel, errorText, formatMoney, natureLabel, speciesName } from '../../lib/labels';
 import { BadgeIcon } from './BattlesPage';
 import { ProgressiveItems } from '../../components/ProgressiveGrid';
-import { GENDER_LABELS, PcFilterBar, PcPokemonCard, usePcBrowser } from './PcBrowser';
+import {
+  CrossIcon,
+  SECTION_TITLE,
+  SELECTED_CELL,
+  SLOT_BADGE,
+  SLOT_BUTTON,
+  SLOT_CLASS,
+  StatusPill,
+} from './dialogParts';
+import { AbilityFilterSelect, GENDER_LABELS, PcSortSelect, usePcBrowser } from './PcBrowser';
+import { TeamPickerDialog } from './TeamSection';
+import { NameSearch, TypeFilterSelect, filterPill } from './TeamPicker';
 import { DexView } from './PokedexPage';
 import { visibleRegions } from './RegionTabs';
+import { FavoritePicker } from './FavoritePicker';
 
 /** Fiche d'un dresseur (`#trainer/<nom>`), ou son Pokédex (`#trainer/<nom>/pokedex`). */
 export const trainerLink = (name: string, pokedex = false) =>
@@ -122,8 +138,13 @@ function TrainerSearch() {
                 className="flex w-full items-center gap-2 rounded-lg px-2 py-1 text-left text-sm hover:bg-slate-100 dark:hover:bg-slate-800"
                 onClick={() => open(r.trainerName)}
               >
-                {r.starterSpeciesId !== null && (
-                  <PokemonSprite speciesId={r.starterSpeciesId} size={32} />
+                {r.favorite && (
+                  <PokemonSprite
+                    speciesId={r.favorite.speciesId}
+                    formId={r.favorite.formId}
+                    shiny={r.favorite.shiny}
+                    size={32}
+                  />
                 )}
                 <span className="truncate">{r.trainerName}</span>
               </button>
@@ -141,11 +162,19 @@ function OwnTrainerCard({ ctx, profile }: { ctx: GameContext; profile: PlayerPro
   const dex = useDexCatches();
   const card = useTrainerCard();
   const [editing, setEditing] = useState(false);
+  const [choosingFavorite, setChoosingFavorite] = useState(false);
+  const favorite =
+    profile.favorite ??
+    (profile.starterSpeciesId === null
+      ? null
+      : { speciesId: profile.starterSpeciesId, formId: null, shiny: false });
   return (
     <>
       <TrainerCardView
         ctx={ctx}
         trainer={profile}
+        favorite={favorite}
+        onChangeFavorite={() => setChoosingFavorite(true)}
         progress={progress}
         shinySpecies={dex.caughtShinySpeciesIds.size}
         card={card.data}
@@ -169,6 +198,14 @@ function OwnTrainerCard({ ctx, profile }: { ctx: GameContext; profile: PlayerPro
           onClose={() => setEditing(false)}
         />
       )}
+      {choosingFavorite && (
+        <FavoritePicker
+          ctx={ctx}
+          starterSpeciesId={profile.starterSpeciesId}
+          current={profile.favorite}
+          onClose={() => setChoosingFavorite(false)}
+        />
+      )}
     </>
   );
 }
@@ -184,6 +221,7 @@ function OtherTrainerCard({ ctx, name }: { ctx: GameContext; name: string }) {
     <TrainerCardView
       ctx={ctx}
       trainer={data}
+      favorite={data.favorite}
       progress={progress}
       shinySpecies={data.progress.caughtShinySpeciesIds.length}
       card={data.card}
@@ -252,6 +290,8 @@ function useForeignProgress(data: TrainerProfileResponse | undefined): PlayerPro
 function TrainerCardView({
   ctx,
   trainer,
+  favorite,
+  onChangeFavorite,
   progress,
   shinySpecies,
   card: s,
@@ -259,7 +299,11 @@ function TrainerCardView({
   featured,
 }: {
   ctx: GameContext;
-  trainer: Pick<PlayerProfileDto, 'trainerName' | 'starterSpeciesId' | 'createdAt' | 'currency'>;
+  trainer: Pick<PlayerProfileDto, 'trainerName' | 'createdAt' | 'currency'>;
+  /** Pokémon favori (le starter s'il n'en a pas choisi). */
+  favorite: FavoritePokemonDto | null;
+  /** Sa propre fiche : ouvre le choix du favori. */
+  onChangeFavorite?: () => void;
   progress: PlayerProgress;
   /** Espèces capturées en chromatique. */
   shinySpecies: number;
@@ -269,7 +313,6 @@ function TrainerCardView({
 }) {
   const { unlocked } = visibleRegions(ctx, progress);
   const earned = new Set(earnedBadges(ctx, progress).map((t) => t.id));
-  const starter = trainer.starterSpeciesId;
 
   const stats: { label: string; value: string | number | undefined; hint?: string }[] = [
     { label: 'Espèces capturées', value: progress.caughtSpeciesIds.size, hint: 'Pokédex' },
@@ -295,13 +338,21 @@ function TrainerCardView({
 
   return (
     <div className="space-y-6">
-      <section className="card flex flex-wrap items-center gap-5 p-5">
-        {starter !== null && <PokemonSprite speciesId={starter} size={96} />}
-        <div className="min-w-0 flex-1">
+      {/*
+       * Mobile : sprite et identité sur une ligne, l'argent sur une bande pleine largeur dessous.
+       * À partir de `sm` : trois colonnes, l'argent à droite.
+       */}
+      <section className="card grid grid-cols-[auto_minmax(0,1fr)] items-center gap-x-4 gap-y-3 p-4 sm:grid-cols-[auto_minmax(0,1fr)_auto] sm:gap-x-5 sm:p-5">
+        {favorite ? (
+          <FavoriteWell ctx={ctx} favorite={favorite} onChange={onChangeFavorite} />
+        ) : (
+          <span />
+        )}
+        <div className="min-w-0">
           <p className="text-xs text-slate-500">Dresseur</p>
-          <h2 className="text-2xl font-bold">{trainer.trainerName}</h2>
+          <h2 className="truncate text-2xl font-bold">{trainer.trainerName}</h2>
           {s?.guild && (
-            <p className="text-sm">
+            <p className="truncate text-sm">
               Guilde :{' '}
               <a
                 href={guildLink(s.guild.id)}
@@ -316,13 +367,13 @@ function TrainerCardView({
             {new Date(trainer.createdAt).toLocaleDateString('fr-FR', { dateStyle: 'long' })}
           </p>
         </div>
-        <div className="text-right">
+        <div className="col-span-2 flex min-w-0 items-baseline justify-between gap-3 border-t-2 border-ink/20 pt-3 sm:col-span-1 sm:block sm:border-0 sm:pt-0 sm:text-right dark:border-slate-700">
           <p className="text-xs text-slate-500">Argent</p>
-          <p className="text-2xl font-bold text-amber-700 dark:text-amber-400">
+          <p className="min-w-0 text-right text-xl font-bold break-words text-amber-700 tabular-nums sm:text-2xl dark:text-amber-400">
             {formatMoney(trainer.currency)}
           </p>
         </div>
-        {actions && <div className="flex w-full flex-wrap gap-2">{actions}</div>}
+        {actions && <div className="col-span-full flex flex-wrap gap-2">{actions}</div>}
       </section>
 
       {featured}
@@ -385,6 +436,51 @@ function TrainerCardView({
   );
 }
 
+/** Pokémon favori de la fiche ; sur la sienne, un clic ouvre son choix. */
+function FavoriteWell({
+  ctx,
+  favorite: f,
+  onChange,
+}: {
+  ctx: GameContext;
+  favorite: FavoritePokemonDto;
+  onChange?: () => void;
+}) {
+  const name = `${speciesName(ctx, f.speciesId, f.formId)}${f.shiny ? ' chromatique' : ''}`;
+  const sprite = (
+    <PokemonSprite
+      speciesId={f.speciesId}
+      formId={f.formId}
+      shiny={f.shiny}
+      size={96}
+      alt={onChange ? '' : name}
+      className="size-16 sm:size-22"
+    />
+  );
+  const well = `sprite-well size-18 sm:size-24 ${f.shiny ? 'shiny-well' : ''}`;
+  if (!onChange) {
+    return (
+      <div className={well} title={name}>
+        {sprite}
+      </div>
+    );
+  }
+  return (
+    <button
+      type="button"
+      onClick={onChange}
+      title={`${name} : changer de Pokémon favori`}
+      aria-label={`Pokémon favori : ${name}. Changer`}
+      className={`${well} group relative transition hover:brightness-105`}
+    >
+      {sprite}
+      <span className="absolute -right-1.5 -bottom-1.5 rounded-md border-2 border-ink bg-tile px-1 font-pixel text-[8px] leading-4 uppercase group-hover:bg-selected">
+        Changer
+      </span>
+    </button>
+  );
+}
+
 /** Vitrine des Pokémon mis en avant. */
 function FeaturedSection({
   ctx,
@@ -431,7 +527,7 @@ function FeaturedPokemonCard({
   return (
     <div
       className={`card flex flex-col items-center p-3 text-center text-xs ${
-        p.isShiny ? 'ring-1 ring-amber-300 dark:ring-amber-700' : ''
+        p.isShiny ? 'shiny-card' : ''
       }`}
     >
       <PokemonSprite
@@ -484,6 +580,8 @@ function FeaturedEditor({
   const pokemon = usePokemon();
   const browser = usePcBrowser(ctx, pokemon.data ?? []);
   const [ids, setIds] = useState(initial);
+  const [view, setView] = useState<'box' | 'showcase'>('box');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const byId = new Map((pokemon.data ?? []).map((p) => [p.id, p]));
   const save = useMutation({
     mutationFn: (pokemonIds: string[]) =>
@@ -507,78 +605,403 @@ function FeaturedEditor({
     );
   }
 
+  const b = browser;
+  const chosen = ids.flatMap((id) => byId.get(id) ?? []);
+  // Ordre de la vitrine sans les Pokémon disparus du PC (transférés) : celui du glisser.
+  const chosenIds = chosen.map((p) => p.id);
+
+  /** Déplacement au clavier (flèches haut et bas sur une ligne de la vitrine). */
+  function move(index: number, delta: -1 | 1) {
+    const to = index + delta;
+    if (to < 0 || to >= chosenIds.length) return;
+    const next = [...chosenIds];
+    next.splice(to, 0, ...next.splice(index, 1));
+    setIds(next);
+  }
+  const full = ids.length >= FEATURED_POKEMON_MAX;
+  const filteredOut = b.filtered.length !== b.list.length;
+
   return (
-    <Modal open onClose={onClose} wide className="flex max-h-[90vh] flex-col p-4">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <h2 className="text-lg font-bold">Pokémon mis en avant</h2>
-        <span className="text-sm text-slate-500">
-          {ids.length} / {FEATURED_POKEMON_MAX}
-        </span>
-      </div>
-      <p className="mb-2 text-sm text-slate-500">
-        Touche les Pokémon de ton PC à montrer sur ta fiche. Un Pokémon transféré en disparaît.
-      </p>
-      <div className="mb-3 grid grid-cols-6 gap-1">
-        {Array.from({ length: FEATURED_POKEMON_MAX }, (_, i) => {
-          const p = byId.get(ids[i] ?? '');
-          return p ? (
-            <button
-              key={p.id}
-              type="button"
-              className="rounded-lg border border-brand-500 bg-brand-500/10"
-              onClick={() => toggle(p.id)}
-              title="Retirer"
-            >
-              <PokemonSprite
-                speciesId={p.speciesId}
-                formId={p.formId}
-                shiny={p.isShiny}
-                size={44}
-              />
-            </button>
-          ) : (
-            <span
-              key={i}
-              className="aspect-square rounded-lg border border-dashed border-slate-300 dark:border-slate-700"
-            />
-          );
-        })}
-      </div>
-      <div className="min-h-0 flex-1 overflow-y-auto">
-        <PcFilterBar ctx={ctx} browser={browser} />
-        <div className="grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
-          <ProgressiveItems items={browser.filtered} resetKey={browser.viewKey}>
-            {(entry) => {
-              const index = ids.indexOf(entry.p.id);
-              return (
-                <PcPokemonCard
-                  key={entry.p.id}
-                  entry={entry}
-                  tags={browser.tagFilter.tags}
-                  onSelect={() => toggle(entry.p.id)}
-                  topLeft={
-                    index >= 0 && (
-                      <span className="absolute top-1.5 left-2 rounded-full bg-brand-500 px-1.5 text-[10px] font-bold text-white">
-                        {index + 1}
+    <TeamPickerDialog open onClose={onClose} title="Pokémon mis en avant">
+      <div className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto p-3 sm:p-4 lg:grid lg:grid-cols-[minmax(0,1fr)_21rem] lg:grid-rows-[minmax(0,1fr)] lg:gap-3 lg:overflow-hidden">
+        <ViewTabs
+          className="mb-3 lg:hidden"
+          tabs={[
+            { id: 'box', label: 'Pokémon' },
+            { id: 'showcase', label: 'Vitrine', badge: `${ids.length}/${FEATURED_POKEMON_MAX}` },
+          ]}
+          selected={view}
+          onSelect={setView}
+        />
+
+        {/* La boîte : tous les Pokémon du PC. */}
+        <div
+          className={`flex min-w-0 flex-col gap-2.5 lg:min-h-0 ${view === 'showcase' ? 'max-lg:hidden' : ''}`}
+        >
+          {/* Téléphone : la vitrine en mini-cases, toucher l'une ouvre son onglet. */}
+          <div className="tile flex flex-col gap-2 p-2.5 lg:hidden">
+            <h3 className={SECTION_TITLE}>
+              Vitrine {ids.length}/{FEATURED_POKEMON_MAX}
+            </h3>
+            <ol className="grid grid-cols-6 gap-1.5">
+              {Array.from({ length: FEATURED_POKEMON_MAX }, (_, i) => {
+                const p = chosen[i];
+                return (
+                  <li key={p?.id ?? `free-${i}`} className="min-w-0">
+                    {p ? (
+                      <button
+                        type="button"
+                        onClick={() => setView('showcase')}
+                        aria-label={`${speciesName(ctx, p.speciesId, p.formId)} : voir la vitrine`}
+                        className={`sprite-well relative aspect-square w-full ${p.isShiny ? 'shiny-well' : ''}`}
+                      >
+                        <PokemonSprite
+                          speciesId={p.speciesId}
+                          formId={p.formId}
+                          shiny={p.isShiny}
+                          size={48}
+                          className="h-auto w-[85%]"
+                        />
+                        <span className={`${SLOT_BADGE} absolute -top-1.5 -right-1.5`}>
+                          {i + 1}
+                        </span>
+                      </button>
+                    ) : (
+                      <span className="grid aspect-square w-full place-items-center rounded-md border-2 border-dashed border-well-line font-pixel text-[9px] text-slate-500 dark:text-slate-400">
+                        {i + 1}
                       </span>
-                    )
-                  }
-                  className={index >= 0 ? 'ring-2 ring-brand-500' : ''}
-                />
-              );
-            }}
-          </ProgressiveItems>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
+
+          {/* Recherche, tri, puis filtres (repliés derrière un bouton sur téléphone). */}
+          <section className="tile flex flex-col gap-2 p-2.5">
+            <div className="flex items-center gap-2">
+              <NameSearch
+                value={b.search}
+                onChange={b.setSearch}
+                className="min-w-0 flex-1 py-1.5"
+              />
+              <button
+                type="button"
+                className="btn-ghost px-3 py-2 sm:hidden"
+                aria-expanded={filtersOpen}
+                onClick={() => setFiltersOpen(!filtersOpen)}
+              >
+                Filtres{b.activeFilterCount > 0 && ` (${b.activeFilterCount})`}
+              </button>
+              <label className="hidden items-center gap-1.5 text-sm text-slate-500 sm:flex dark:text-slate-400">
+                Trier
+                <PcSortSelect browser={b} className="input w-auto py-1 text-sm" />
+              </label>
+            </div>
+            <div
+              className={`${filtersOpen ? 'flex' : 'hidden'} flex-wrap items-center gap-1.5 sm:flex`}
+            >
+              <label className="flex w-full items-center gap-1.5 text-sm text-slate-500 sm:hidden dark:text-slate-400">
+                Trier
+                <PcSortSelect browser={b} className="input w-auto py-1 text-sm" />
+              </label>
+              <TypeFilterSelect value={b.type} onChange={b.setType} className="py-1 text-sm" />
+              <AbilityFilterSelect
+                list={b.list}
+                value={b.ability}
+                onChange={b.setAbility}
+                className="input w-auto py-1 text-sm"
+              />
+              <TagFilterSelect
+                tags={b.tagFilter.tags}
+                value={b.tagFilter.filter}
+                onChange={b.tagFilter.setFilter}
+                className="py-1 text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => b.setOnlyFavorites(!b.onlyFavorites)}
+                title="Seulement les Pokémon marqués en favoris"
+                aria-pressed={b.onlyFavorites}
+                className={filterPill(b.onlyFavorites)}
+              >
+                ♥ Favoris
+              </button>
+              <button
+                type="button"
+                onClick={() => b.setOnlyShiny(!b.onlyShiny)}
+                title="Seulement les Pokémon chromatiques"
+                aria-pressed={b.onlyShiny}
+                className={filterPill(b.onlyShiny)}
+              >
+                ★ Chromatiques
+              </button>
+              {b.activeFilterCount > 0 && (
+                <button
+                  type="button"
+                  onClick={b.resetFilters}
+                  className="text-sm text-brand-600 hover:underline dark:text-brand-400"
+                >
+                  Effacer les filtres ({b.activeFilterCount})
+                </button>
+              )}
+              <span className="ml-auto text-sm text-slate-500 dark:text-slate-400">
+                {filteredOut ? `${b.filtered.length} / ${b.list.length}` : b.list.length} Pokémon
+              </span>
+            </div>
+          </section>
+
+          <section
+            aria-label="Pokémon du PC"
+            className="tile p-1.5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto"
+          >
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(4.25rem,1fr))] gap-1 sm:grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))]">
+              <ProgressiveItems items={b.filtered} resetKey={b.viewKey}>
+                {({ p, species, power }) => {
+                  const index = ids.indexOf(p.id);
+                  const selected = index >= 0;
+                  const locked = !selected && full;
+                  const name = species?.nameFr ?? '';
+                  return (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => toggle(p.id)}
+                      disabled={locked}
+                      aria-pressed={selected}
+                      title={
+                        locked
+                          ? `Vitrine pleine (${FEATURED_POKEMON_MAX} Pokémon)`
+                          : `${selected ? 'Retirer' : 'Ajouter'} ${name}`
+                      }
+                      className={`relative flex w-full min-w-0 flex-col items-center gap-0.5 rounded-md border-2 p-1 text-center transition disabled:cursor-not-allowed ${
+                        selected
+                          ? SELECTED_CELL
+                          : 'border-transparent enabled:hover:border-well-line enabled:hover:bg-well/40'
+                      }`}
+                    >
+                      <span
+                        className={`sprite-well size-14 sm:size-16 ${p.isShiny ? 'shiny-well' : ''} ${
+                          locked ? 'opacity-60' : ''
+                        }`}
+                      >
+                        <PokemonSprite
+                          speciesId={p.speciesId}
+                          formId={p.formId}
+                          shiny={p.isShiny}
+                          size={56}
+                          className="h-auto w-[92%]"
+                        />
+                      </span>
+                      <span className="w-full truncate text-xs font-semibold">
+                        {name} {p.isShiny && <ShinyStar />}
+                      </span>
+                      <span className="max-w-full truncate text-[11px] text-slate-500 dark:text-slate-400">
+                        N.{p.level} ·<span className="max-sm:hidden"> PE</span> {power}
+                      </span>
+                      <PokemonTagBadges pokemon={p} tags={b.tagFilter.tags} />
+                      {selected && (
+                        <span className={`${SLOT_BADGE} absolute top-0.5 right-0.5`}>
+                          {index + 1}
+                        </span>
+                      )}
+                    </button>
+                  );
+                }}
+              </ProgressiveItems>
+              {b.filtered.length === 0 && (
+                <p className="col-span-full p-3 text-sm text-slate-500 dark:text-slate-400">
+                  {b.activeFilterCount === 0 ? (
+                    'Aucun Pokémon dans ton PC.'
+                  ) : (
+                    <>
+                      Aucun Pokémon avec ces filtres.{' '}
+                      <button
+                        type="button"
+                        onClick={b.resetFilters}
+                        className="text-brand-600 hover:underline dark:text-brand-400"
+                      >
+                        Effacer les filtres
+                      </button>
+                    </>
+                  )}
+                </p>
+              )}
+            </div>
+          </section>
         </div>
+
+        {/* La vitrine : l'ordre de la fiche, modifiable. */}
+        <aside
+          className={`tile flex min-w-0 flex-col gap-2.5 p-3 lg:min-h-0 ${view === 'box' ? 'max-lg:hidden' : ''}`}
+        >
+          <h3 className={SECTION_TITLE}>
+            Vitrine {ids.length} / {FEATURED_POKEMON_MAX}
+          </h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Les autres dresseurs les voient sur ta fiche, dans cet ordre. Un Pokémon transféré en
+            disparaît.
+          </p>
+          <div className="flex flex-col gap-1.5 lg:min-h-0 lg:flex-1 lg:overflow-y-auto">
+            <Reorder.Group
+              as="ol"
+              axis="y"
+              values={chosenIds}
+              onReorder={setIds}
+              className="flex flex-col gap-1.5"
+            >
+              {chosen.map((p, i) => (
+                <FeaturedSlotRow
+                  key={p.id}
+                  ctx={ctx}
+                  pokemon={p}
+                  n={i + 1}
+                  onMove={(delta) => move(i, delta)}
+                  onRemove={() => toggle(p.id)}
+                />
+              ))}
+            </Reorder.Group>
+            {chosen.length > 1 && (
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                Glisse une ligne pour changer l’ordre.
+              </p>
+            )}
+            <ol className="flex flex-col gap-1.5">
+              {Array.from({ length: Math.max(0, FEATURED_POKEMON_MAX - chosen.length) }, (_, i) => (
+                <li
+                  key={`free-${i}`}
+                  className="flex min-h-14 items-center gap-2 rounded-md border-2 border-dashed border-well-line px-1.5 text-sm text-slate-500 dark:text-slate-400"
+                >
+                  <span className="w-5 text-center font-pixel text-[10px]">
+                    {chosen.length + i + 1}
+                  </span>
+                  Case libre : touche un Pokémon
+                </li>
+              ))}
+            </ol>
+          </div>
+        </aside>
       </div>
-      {save.error && <p className="mt-2 text-sm text-red-600">{errorText(save.error)}</p>}
-      <div className="mt-3 flex justify-end gap-2">
-        <button className="btn-ghost" onClick={onClose}>
-          Annuler
-        </button>
-        <button className="btn-primary" disabled={save.isPending} onClick={() => save.mutate(ids)}>
-          Enregistrer
-        </button>
-      </div>
-    </Modal>
+
+      <footer className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-t-[3px] border-ink bg-tile px-3 py-2.5 sm:px-4">
+        {save.error ? (
+          <StatusPill tone="bad" text={errorText(save.error)} />
+        ) : (
+          <StatusPill
+            tone={ids.length > 0 ? 'ok' : 'idle'}
+            text={
+              ids.length > 0
+                ? `${ids.length} Pokémon en vitrine`
+                : 'Touche les Pokémon à mettre en avant'
+            }
+          />
+        )}
+        <span className="hidden min-w-0 flex-1 sm:block" />
+        <div className="grid w-full grid-cols-[auto_auto_minmax(0,1fr)] gap-2 sm:flex sm:w-auto">
+          <button
+            type="button"
+            className="btn-ghost"
+            onClick={() => setIds([])}
+            disabled={ids.length === 0}
+          >
+            Vider
+          </button>
+          <button type="button" className="btn-ghost" onClick={onClose}>
+            Annuler
+          </button>
+          <button
+            type="button"
+            className="btn-primary px-6"
+            disabled={save.isPending}
+            onClick={() => save.mutate(ids)}
+          >
+            Enregistrer
+          </button>
+        </div>
+      </footer>
+    </TeamPickerDialog>
+  );
+}
+
+/**
+ * Ligne de la vitrine : se glisse (souris ou doigt) pour changer l'ordre de la fiche, ou se
+ * déplace au clavier avec les flèches haut et bas.
+ */
+function FeaturedSlotRow({
+  ctx,
+  pokemon: p,
+  n,
+  onMove,
+  onRemove,
+}: {
+  ctx: GameContext;
+  pokemon: PokemonDto;
+  n: number;
+  onMove: (delta: -1 | 1) => void;
+  onRemove: () => void;
+}) {
+  const [dragging, setDragging] = useState(false);
+  const name = speciesName(ctx, p.speciesId, p.formId);
+  const onKeyDown = (e: KeyboardEvent<HTMLLIElement>) => {
+    if (e.target !== e.currentTarget || (e.key !== 'ArrowUp' && e.key !== 'ArrowDown')) return;
+    e.preventDefault();
+    const row = e.currentTarget;
+    onMove(e.key === 'ArrowUp' ? -1 : 1);
+    // La ligne change de place dans le DOM : elle garde le focus.
+    requestAnimationFrame(() => row.focus());
+  };
+  return (
+    <Reorder.Item
+      as="li"
+      value={p.id}
+      tabIndex={0}
+      onKeyDown={onKeyDown}
+      onDragStart={() => setDragging(true)}
+      onDragEnd={() => setDragging(false)}
+      aria-label={`${n}. ${name} (flèches haut et bas pour changer l’ordre)`}
+      title="Glisser pour changer l’ordre"
+      // Image du sprite inerte : sinon le navigateur lance son propre glisser d'image.
+      className={`${SLOT_CLASS} relative grid min-h-14 cursor-grab touch-none grid-cols-[1.25rem_3.25rem_minmax(0,1fr)_auto_auto] items-center gap-2 border-well-line p-1.5 select-none [&_img]:pointer-events-none ${
+        dragging ? 'z-10 cursor-grabbing border-amber-600 shadow-xl dark:border-[#f8d878]' : ''
+      }`}
+    >
+      <span className="text-center font-pixel text-[10px] text-slate-500 dark:text-slate-400">
+        {n}
+      </span>
+      <span className={`sprite-well size-13 ${p.isShiny ? 'shiny-well' : ''}`}>
+        <PokemonSprite speciesId={p.speciesId} formId={p.formId} shiny={p.isShiny} size={48} />
+      </span>
+      <span className="flex min-w-0 flex-col">
+        <span className="truncate text-sm font-semibold">
+          {name} {p.isShiny && <ShinyStar />}
+        </span>
+        <span className="truncate text-xs text-slate-500 dark:text-slate-400">
+          N.{p.level} · PE {memberPower(ctx, p)}
+        </span>
+      </span>
+      <svg
+        viewBox="0 0 6 10"
+        width="9"
+        height="15"
+        shapeRendering="crispEdges"
+        className="text-slate-400"
+        aria-hidden
+      >
+        <path
+          d="M0 0h2v2h-2zM4 0h2v2h-2zM0 4h2v2h-2zM4 4h2v2h-2zM0 8h2v2h-2zM4 8h2v2h-2z"
+          fill="currentColor"
+        />
+      </svg>
+      <button
+        type="button"
+        className={`${SLOT_BUTTON} hover:border-red-500 hover:text-red-600 dark:hover:text-red-400`}
+        // Un appui sur la croix ne lance pas le glisser de la ligne.
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={onRemove}
+        aria-label={`Retirer ${name}`}
+      >
+        <CrossIcon className="size-2.5" />
+      </button>
+    </Reorder.Item>
   );
 }

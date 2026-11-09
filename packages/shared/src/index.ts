@@ -77,9 +77,33 @@ export interface PlayerProfileDto {
   regionStarters: Record<string, number>;
   /** Régions ouvertes pour de bon, même si leur condition de déblocage s'est durcie depuis. */
   openedRegions: string[];
+  /** Pokémon favori choisi ; null : le starter. */
+  favorite: FavoritePokemonDto | null;
   currency: number;
   createdAt: string;
 }
+
+/**
+ * Pokémon favori d'un dresseur (son avatar sur sa fiche, dans les classements, la recherche et
+ * sa guilde) : une espèce ou une forme capturée, en chromatique si capturée ainsi.
+ */
+export interface FavoritePokemonDto {
+  speciesId: number;
+  formId: number | null;
+  shiny: boolean;
+}
+
+export const favoritePokemonInputSchema = z.object({
+  /** Null : revenir au starter. */
+  favorite: z
+    .object({
+      speciesId: z.int().positive(),
+      formId: z.int().positive().nullable(),
+      shiny: z.boolean(),
+    })
+    .nullable(),
+});
+export type FavoritePokemonInput = z.infer<typeof favoritePokemonInputSchema>;
 
 export const chooseStarterInputSchema = z.object({ speciesId: z.int().positive() });
 export type ChooseStarterInput = z.infer<typeof chooseStarterInputSchema>;
@@ -364,7 +388,8 @@ export interface FeaturedPokemonDto {
 /** Résultat de la recherche d'un dresseur par son nom. */
 export interface TrainerSearchResultDto {
   trainerName: string;
-  starterSpeciesId: number | null;
+  /** Pokémon favori (le starter s'il n'en a pas choisi). */
+  favorite: FavoritePokemonDto | null;
 }
 
 export const trainerSearchQuerySchema = z.object({ q: z.string().trim().min(1).max(16) });
@@ -372,7 +397,8 @@ export const trainerSearchQuerySchema = z.object({ q: z.string().trim().min(1).m
 /** Fiche Dresseur d'un joueur (la sienne ou celle d'un autre). */
 export interface TrainerProfileResponse {
   trainerName: string;
-  starterSpeciesId: number | null;
+  /** Pokémon favori (le starter s'il n'en a pas choisi). */
+  favorite: FavoritePokemonDto | null;
   createdAt: string;
   currency: number;
   isMe: boolean;
@@ -406,7 +432,8 @@ export interface LeaderboardEntryDto {
   /** Rang (ex æquo : même rang, le suivant saute d'autant). */
   rank: number;
   trainerName: string;
-  starterSpeciesId: number | null;
+  /** Pokémon favori (le starter s'il n'en a pas choisi). */
+  favorite: FavoritePokemonDto | null;
   value: number;
   isMe: boolean;
 }
@@ -508,6 +535,13 @@ export const depositDaycareInputSchema = z.object({
 });
 export type DepositDaycareInput = z.infer<typeof depositDaycareInputSchema>;
 
+/** Un parent déposé seul dans une pension (à la place de celui qui y était, s'il y en a un). */
+export const setDaycareParentInputSchema = z.object({
+  pokemonId: z.uuid(),
+  heldItemId: slugSchema.nullable().default(null),
+});
+export type SetDaycareParentInput = z.infer<typeof setDaycareParentInputSchema>;
+
 /** Ramasser (`bag`) range les œufs dans le sac ; couver (`incubator`) remplit la couveuse d'abord. */
 export const collectEggsInputSchema = z.object({
   to: z.enum(['bag', 'incubator']).default('incubator'),
@@ -528,8 +562,9 @@ export interface DaycareDto {
   heldItemBId: string | null;
   /** Début du cycle de ponte en cours. */
   startedAt: string;
-  /** Dépôt du couple : les parents gagnent de l'XP depuis ce moment (reçue au retrait). */
-  depositedAt: string;
+  /** Dépôt de chaque parent : il gagne de l'XP depuis ce moment (reçue au retrait). */
+  parentADepositedAt: string | null;
+  parentBDepositedAt: string | null;
   /** Espèce des œufs pondus (null si un parent a disparu). */
   eggSpeciesId: number | null;
   /** Forme des œufs pondus (régionale, héritée de la mère). */
@@ -586,7 +621,7 @@ export interface CollectEggsResponse {
   incubated: EggDto[];
   /** Œufs rangés dans le sac (ramassés, ou faute de place dans la couveuse). */
   bagged: number;
-  /** Retrait du couple : XP gagnée par chaque parent. */
+  /** Retrait de parents : XP gagnée par chacun. */
   parents?: DaycareXpDto[];
 }
 
@@ -1609,7 +1644,7 @@ export interface GuildProfileResponse extends GuildSummaryDto {
   /** Quêtes de guilde terminées depuis sa création. */
   questsCompleted: number;
   /** Chef, officiers puis membres, par ancienneté. */
-  members: { trainerName: string; role: GuildRole; starterSpeciesId: number | null }[];
+  members: { trainerName: string; role: GuildRole; favorite: FavoritePokemonDto | null }[];
   /** Le joueur en fait partie. */
   isMine: boolean;
 }

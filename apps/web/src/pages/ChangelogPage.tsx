@@ -17,6 +17,103 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '10 novembre 2026',
+    title: 'Un nouveau look rétro, des dresseurs en plus et ton Pokémon favori',
+    changes: [
+      {
+        section: 'Nouveau look',
+        items: [
+          'Tout le jeu change d’apparence, façon fenêtres de jeu portable rétro : cadres doubles, polices pixel, bandeau du dresseur sur toute la largeur avec ton argent, et menu dans une fenêtre fixe à gauche avec sa flèche devant l’onglet affiché. Les thèmes clair et sombre ont chacun leur palette.',
+          'Les chiffres ont été redessinés pour rester lisibles même en police pixel.',
+          'En fond de page, les silhouettes des Pokémon de la vitrine de ta Fiche Dresseur (complétées par des starters), avec un reflet doré pour les chromatiques.',
+          'Les Expéditions, les bâtiments (Centre, Pension, Musée, Ferme) et les Combats sont découpés en une fenêtre par section, que tu peux replier ; ton choix est retenu.',
+        ],
+      },
+      {
+        section: 'Colonne des bâtiments (grand écran)',
+        items: [
+          'Sur un grand écran, tes bâtiments débloqués s’affichent en petites fenêtres dans une colonne à droite : un clic ouvre leur page. Ils quittent alors le menu de gauche.',
+          'Glisse une fenêtre par sa poignée pour changer l’ordre, replie-la pour n’en garder que le titre, ou masque-la depuis le bouton « Widgets » du bandeau.',
+          'Depuis la fenêtre de la Pension, un clic sur un Pokémon permet de le retirer ou de le changer, et « + » dépose un Pokémon sur une place libre.',
+        ],
+      },
+      {
+        section: 'Expéditions',
+        items: [
+          'Une expédition dure désormais 24 h au plus, au lieu de 48 h. Les expéditions déjà parties gardent leur date de retour.',
+          'Les rencontres s’espacent au fil du temps : 30 secondes de plus entre deux rencontres à chaque heure passée. Les expéditions déjà parties gardent leur rythme.',
+          'Nouvelle fenêtre de départ : le bandeau de la zone, tes réglages à gauche et l’aperçu des rencontres et du butin à droite. Elle indique le rythme des rencontres, les captures attendues par heure, les Balls consommées par heure et combien de temps ton stock tiendra.',
+          'Les expéditions en cours montrent ton équipe qui marche dans un décor en pixel art selon la zone. Au survol, un résumé : durée, météo, taux chromatique, Balls et baies, règles de capture et talents.',
+          'Nouveau récap au retour : le bandeau de la zone, les rencontres, captures, Balls et chromatiques en cases, puis le butin et l’XP de l’équipe.',
+        ],
+      },
+      {
+        section: 'Équipes',
+        items: [
+          'Le choix de l’équipe s’ouvre dans une grande fenêtre : tes Pokémon à gauche (recherche, tri, filtres, équipes enregistrées), l’équipe en cases à droite avec le talent de chacun et son effet ici, puis les conditions de départ. En bas : Vider, Auto et Valider. Sur téléphone, les deux parties passent en onglets.',
+          'En combat, l’ordre d’entrée et l’attaque de chaque Pokémon se règlent directement dans les cases, avec les adversaires visibles en haut. Les Pokémon hors des règles du dresseur (niveau, types interdits) sont grisés.',
+          'Dans l’onglet « Équipe Pkmn », l’ordre des Pokémon d’une équipe se change en glissant leurs cartes (ou au clavier avec les flèches).',
+        ],
+      },
+      {
+        section: 'Combats',
+        items: [
+          'Nouveaux dresseurs : trois dresseurs répétables avant chaque Champion d’arène et avant le Conseil 4, à Kanto, Johto et Hoenn. Il faut les battre dans l’ordre pour atteindre le Champion, et ils rapportent de l’argent.',
+          'Une boîte à badges en haut de la page : chaque badge s’affiche avec sa vraie image une fois gagné ; un clic t’emmène jusqu’au Champion.',
+          'Les dresseurs ont un bandeau aux couleurs de leur zone, avec sa météo actuelle. Champions, Conseil 4 et Maître sont mis en avant sur toute la largeur.',
+          'La fenêtre de combat (dresseurs, donjons et légendaires) est refaite : PV encadrés, boîtes de message, équipe en cases. Sur ordinateur, elle est agrandie jusqu’à une fois et demie tant qu’elle tient dans l’écran.',
+        ],
+      },
+      {
+        section: 'Fiche Dresseur',
+        items: [
+          'Nouveau : ton Pokémon favori. Clique sur le Pokémon de ta Fiche Dresseur pour en choisir un parmi ceux capturés au Pokédex (en chromatique si tu l’as capturé ainsi). Il te représente sur ta fiche, dans les classements, la recherche de dresseurs et ta guilde, à la place de ton starter.',
+          'L’ordre de la vitrine se change en glissant ses Pokémon (ou au clavier avec les flèches).',
+        ],
+      },
+      {
+        section: 'PC et Pokédex',
+        items: [
+          'Les fiches du PC et du Pokédex sont refaites dans une grande fenêtre, avec ‹ › pour passer au Pokémon voisin de la grille.',
+          'Fiche du Pokédex : bascule normal / chromatique, taille et poids, formes, lignée, où le trouver avec un bouton « Envoyer une équipe », talents et lien vers le Wiki.',
+          'Fiche du PC : état du Pokémon (disponible, occupé, K.O., en soins), Bonbons dans le bloc du niveau, effets du talent en clair, et un bouton Pokédex qui ouvre sa fiche du Pokédex.',
+          'Le tri du PC est retenu d’une visite à l’autre, et un bouton efface d’un coup tous les filtres actifs.',
+        ],
+      },
+      {
+        section: 'Pension',
+        items: [
+          'Plus besoin de déposer un couple : chaque parent se dépose, se change ou se retire seul. Chacun gagne son XP depuis son propre dépôt, et la reçoit en partant.',
+          'Avant un changement, les œufs déjà prêts sont couvés (ou rangés dans le sac s’il n’y a plus de place).',
+        ],
+      },
+      {
+        section: 'Objets',
+        items: [
+          'Bonbons, Super Bonbons et objets de bonheur : le Pokémon choisi reste sélectionné, pour lui en donner plusieurs à la suite. Un filtre n’affiche que ceux qui évoluent par niveau ou par bonheur, et la fenêtre indique combien il en faut encore avant l’évolution.',
+          'Rappel : choisis plusieurs Pokémon K.O., puis ranime-les d’un coup (un Rappel par Pokémon). Un bouton choisit ceux de plus haut niveau, dans la limite de tes Rappels.',
+          'Deux nouvelles rubriques du Sac : « Soin » (Rappel) et « Entraînement » (Super Bonbon). Les rubriques du Sac se replient.',
+        ],
+      },
+      {
+        section: 'Pokédex, Quêtes et Assistants',
+        items: [
+          'Récompenses du Pokédex : un bouton « Tout réclamer » récupère d’un coup toutes celles qui sont prêtes, dans toutes les régions.',
+          'Quêtes : une vitrine des légendaires de la région en haut (capturés en couleur, les autres en silhouette), l’avancement en cases et les quêtes terminées rangées à part, en bas.',
+          'Un assistant doit désormais servir à quelque chose : un Pokémon dont le talent n’a aucun effet à ce poste est refusé (l’arrosage de la ferme accepte toujours tout Pokémon Eau). Les assistants déjà en poste restent.',
+        ],
+      },
+      {
+        section: 'Corrections',
+        items: [
+          'Une quête terminée avant sa réécriture s’affiche bien comme terminée, avec toutes ses étapes validées.',
+          'Un combat déjà réglé (par exemple depuis un autre onglet) ne reste plus bloqué à l’écran : son résultat s’affiche.',
+          'Sur téléphone, certaines listes déroulantes (guilde, transfert automatique) ne sortent plus de l’écran, et le classement laisse toute la place au nom du dresseur.',
+        ],
+      },
+    ],
+  },
+  {
     date: '6 novembre 2026',
     title: 'Combats légendaires, une pension plus généreuse et des Bonbons revus',
     changes: [

@@ -39,7 +39,7 @@ export function StarterPage({ profile }: { profile: PlayerProfileDto }) {
           panneau d’admin (Régions).
         </p>
       ) : (
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+        <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-3">
           {starters.map((id) => {
             const species = ctx.species(id);
             const active = selected === id;

@@ -2,7 +2,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content';
 import { planAfter } from '@poke/game-core';
-import { createDb, ensureSeedContent, inventory, users } from '@poke/db';
+import { createDb, ensureSeedContent, expeditions, inventory, users } from '@poke/db';
 import type {
   ClaimExpeditionResponse,
   ContentVersionDetailDto,
@@ -201,7 +201,7 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
       contentVersionId: 1,
     });
     expect(new Date(expedition.minEndsAt).getTime() - clock.getTime()).toBe(3 * 60_000);
-    expect(new Date(expedition.endsAt).getTime() - clock.getTime()).toBe(48 * 60 * 60_000);
+    expect(new Date(expedition.endsAt).getTime() - clock.getTime()).toBe(24 * 60 * 60_000);
 
     const inv = await call<InventoryEntryDto[]>('GET', '/api/inventory');
     expect(inv.body).toEqual([
@@ -242,6 +242,20 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
     // Rythme envoyé au client : le compteur affiché tombe juste.
     expect(active.pace).not.toBeNull();
     expect(planAfter(active.pace!, 6).encounters).toBe(2);
+    // Intervalle allongé de 30 s à chaque heure passée, figé au départ : 20 + 60 / 3,5.
+    expect(active.pace!.intervalGrowthMinutes).toBe(0.5);
+    expect(planAfter(active.pace!, 120).encounters).toBe(37);
+    // Expédition partie avant l'allongement (0) : rythme constant.
+    await handle.db
+      .update(expeditions)
+      .set({ encounterIntervalGrowthMinutes: 0 })
+      .where(eq(expeditions.id, expedition.id));
+    const old = (await call<ExpeditionsResponse>('GET', '/api/expeditions')).body.active[0]!;
+    expect(planAfter(old.pace!, 120).encounters).toBe(40);
+    await handle.db
+      .update(expeditions)
+      .set({ encounterIntervalGrowthMinutes: 0.5 })
+      .where(eq(expeditions.id, expedition.id));
   });
 
   it('réclame le résultat une seule fois et l’applique', async () => {
