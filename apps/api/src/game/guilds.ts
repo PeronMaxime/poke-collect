@@ -59,6 +59,7 @@ import { GameError } from './errors';
 import { requireStartedProfile } from './expeditions';
 import { addItems, playerProgress, takeItems } from './store';
 import { playerTransaction, transaction } from './tx';
+import { displayedFavorite, favoriteColumns } from './favorite';
 
 /**
  * Guildes : création, adhésion (libre ou sur demande), rôles, discussion, quêtes du jour et de la
@@ -601,7 +602,7 @@ export async function guildProfile(
       .select({
         trainerName: playerProfiles.trainerName,
         role: guildMembers.role,
-        starterSpeciesId: playerProfiles.starterSpeciesId,
+        ...favoriteColumns,
         joinedAt: guildMembers.joinedAt,
       })
       .from(guildMembers)
@@ -621,7 +622,11 @@ export async function guildProfile(
     ...summary,
     createdAt: guild.createdAt.toISOString(),
     questsCompleted: done?.n ?? 0,
-    members: members.map(({ joinedAt: _joinedAt, ...m }) => m),
+    members: members.map((m) => ({
+      trainerName: m.trainerName,
+      role: m.role,
+      favorite: displayedFavorite(m),
+    })),
     isMine: member?.guildId === guildId,
   };
 }

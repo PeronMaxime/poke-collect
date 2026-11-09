@@ -16,9 +16,12 @@ import type { DungeonStat, Status, Weather } from '@poke/content';
 import type { DungeonCommand, DungeonEvent, DungeonFighter, GameContext } from '@poke/game-core';
 import type { CombatItemInput, DungeonRunDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar, TypeBadge } from '../../components/ui';
-import { api } from '../../lib/api';
+import { ApiError, api } from '../../lib/api';
 import { keys, refreshAfterCombat, useInventory } from '../../lib/game';
 import { abilityLabel, errorText, formatCountdown, itemIcon, itemName } from '../../lib/labels';
+import { Notice, StateTag } from './BuildingParts';
+import { SECTION_TITLE, SELECTED_CELL, SLOT_CLASS } from './dialogParts';
+import { CHECKER } from './zoneBanner';
 
 /** Combat en cours (tentative de donjon ou combat de dresseur) : ce qu'il faut pour le rejouer. */
 export type CombatRun = Pick<DungeonRunDto, 'id' | 'setup' | 'commands' | 'fledAtMs' | 'startedAt'>;
@@ -104,11 +107,9 @@ export function HpBar({
   const ratio = max > 0 ? hp / max : 0;
   const color = ratio > 0.5 ? 'bg-emerald-500' : ratio > 0.2 ? 'bg-amber-400' : 'bg-red-500';
   return (
-    <div
-      className={`h-2 overflow-hidden rounded-full bg-slate-300/70 dark:bg-slate-700 ${className}`}
-    >
+    <div className={`h-3 overflow-hidden rounded-sm border-2 border-ink bg-track ${className}`}>
       <div
-        className={`h-full rounded-full transition-[width] duration-200 ${color}`}
+        className={`h-full transition-[width] duration-200 ${color}`}
         style={{ width: `${Math.max(0, Math.min(1, ratio)) * 100}%` }}
       />
     </div>
@@ -126,7 +127,7 @@ const STATUS_COLORS: Record<Status, string> = {
   paralysis: 'bg-yellow-400 text-slate-900',
   burn: 'bg-orange-500 text-white',
   poison: 'bg-purple-500 text-white',
-  sleep: 'bg-slate-400 text-white',
+  sleep: 'bg-slate-500 text-white',
   freeze: 'bg-cyan-400 text-slate-900',
 };
 const WEATHER_ICONS = { sun: '☀️', rain: '🌧️', sand: '🌪️', hail: '🌨️' } as const;
@@ -148,9 +149,21 @@ const WEATHER_CHANGE_TEXTS: Record<Weather | 'clear', string> = {
   clear: 'La météo redevient normale.',
 };
 
-/** Ombres des deux Pokémon au sol. */
-const ARENA_SHADOWS =
-  'radial-gradient(ellipse 30% 9% at 22% 84%, #0002 60%, transparent 62%), radial-gradient(ellipse 26% 8% at 76% 56%, #0002 60%, transparent 62%)';
+/** Socles des deux Pokémon : une ellipse d'herbe foulée, cerclée d'un liseré plus sombre. */
+const ARENA_PADS =
+  'radial-gradient(ellipse 25% 8% at 22% 81%, rgb(0 0 0 / 0.1) 0 74%, rgb(0 0 0 / 0.24) 77% 97%, transparent 100%), radial-gradient(ellipse 22% 7% at 76% 51%, rgb(0 0 0 / 0.1) 0 74%, rgb(0 0 0 / 0.24) 77% 97%, transparent 100%)';
+/** Damier discret sur le sol, comme les bandeaux de zone. */
+const ARENA_GROUND = { ...CHECKER, top: '52%' };
+/** Décor un peu assombri en thème sombre, comme les images des zones. */
+const ARENA_DIM = 'dark:brightness-[0.8]';
+/** Étiquette posée sur l'arène (adversaires restants, météo, baies) : petit cadre de fenêtre. */
+const ARENA_LABEL = 'rounded-md border-2 border-ink bg-win shadow-[2px_2px_0_rgb(0_0_0/0.25)]';
+/** Boîte de message (météo, déchaînement, issue) : liseré rouge, comme les annonces du jeu. */
+const MESSAGE_BOX =
+  'rounded-md border-4 border-ink bg-win shadow-[inset_0_0_0_3px_#d8605a,4px_4px_0_rgb(0_0_0/0.3)] dark:shadow-[inset_0_0_0_3px_#9c3f48,4px_4px_0_rgb(0_0_0/0.4)]';
+/** Bulle d'un événement au-dessus d'un Pokémon (talent, statut, baie). */
+const POPUP_BOX =
+  'rounded border-2 border-ink bg-win/95 px-1.5 py-0.5 shadow-[2px_2px_0_rgb(0_0_0/0.2)]';
 /** Ciel et sol de l'arène selon la météo (temps clair par défaut). */
 const ARENA_BACKGROUNDS: Record<Weather | 'clear', string> = {
   clear: 'linear-gradient(to bottom, #bfdbfe 0%, #e0f2fe 52%, #bbf7d0 52%, #86efac 100%)',
@@ -226,7 +239,7 @@ function AbilityTag({
         {abilityLabel(ability)}
       </span>
       <span
-        className={`pointer-events-none invisible absolute z-20 w-max max-w-[16rem] rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-normal text-slate-700 opacity-0 shadow-lg transition group-hover:visible group-hover:opacity-100 group-focus:visible group-focus:opacity-100 dark:border-slate-700 dark:bg-slate-900 dark:text-slate-200 ${
+        className={`pointer-events-none invisible absolute z-20 w-max max-w-[16rem] rounded-md border-2 border-ink bg-win px-2 py-1 text-[11px] font-normal text-slate-700 opacity-0 shadow-[3px_3px_0_rgb(0_0_0/0.25)] transition group-hover:visible group-hover:opacity-100 group-focus:visible group-focus:opacity-100 dark:text-slate-200 ${
           below ? 'top-full left-0 mt-1' : 'right-0 bottom-full mb-1'
         }`}
       >
@@ -275,20 +288,26 @@ function FighterCard({
   tooltipBelow?: boolean;
 }) {
   return (
-    <div className="relative w-48 rounded-lg bg-white/85 px-2 py-1 text-xs shadow dark:bg-slate-900/85">
-      <div className="flex items-baseline justify-between gap-1">
-        <span className="flex min-w-0 items-baseline gap-1">
-          <span className="shrink-0 font-semibold">
-            {name} {shiny && <ShinyStar />}
-          </span>
+    <div className="relative w-44 rounded-md border-[3px] border-ink bg-win px-2 py-1 text-xs shadow-[3px_3px_0_rgb(0_0_0/0.25)] sm:w-52">
+      <div className="flex items-center justify-between gap-1">
+        <span className="flex min-w-0 items-center gap-1">
+          <span className="truncate font-semibold">{name}</span>
+          {shiny && <ShinyStar />}
           {status && (
             <span
               title={STATUS_LABELS[status]}
-              className={`shrink-0 rounded px-1 text-[9px] font-bold ${STATUS_COLORS[status]}`}
+              className={`pixel-label shrink-0 rounded-sm border border-ink px-0.5 text-[8px] leading-tight ${STATUS_COLORS[status]}`}
             >
               {STATUS_BADGES[status]}
             </span>
           )}
+        </span>
+        <span className="pixel-label shrink-0 text-[9px] text-slate-600 dark:text-slate-300">
+          N.{level}
+        </span>
+      </div>
+      {(ability || Object.keys(statChanges).length > 0) && (
+        <div className="flex min-w-0 items-baseline gap-x-1.5">
           {ability && (
             <AbilityTag
               ctx={ctx}
@@ -297,12 +316,16 @@ function FighterCard({
               below={tooltipBelow}
             />
           )}
+          <StatChanges changes={statChanges} />
+        </div>
+      )}
+      <div className="mt-1 flex items-center gap-1">
+        <span className="pixel-label rounded-sm bg-hud px-1 text-[8px] leading-[1.4] text-[#f8d030]">
+          PV
         </span>
-        <span className="shrink-0 text-slate-500">N.{level}</span>
+        <HpBar hp={hp} max={maxHp} className="flex-1" />
       </div>
-      <StatChanges changes={statChanges} className="mt-0.5" />
-      <HpBar hp={hp} max={maxHp} className="mt-1" />
-      <p className="mt-0.5 text-right font-mono text-[10px] text-slate-500">
+      <p className="mt-0.5 text-right font-mono text-[10px] leading-tight text-slate-500 dark:text-slate-400">
         {hp} / {maxHp}
       </p>
     </div>
@@ -356,13 +379,15 @@ function DamagePopup({ event, age }: { event: DungeonEvent & { kind: 'attack' };
         textShadow: '0 0 3px #fff, 0 0 3px #fff, 0 0 2px #fff',
       }}
     >
-      <span className={`block text-lg ${event.damage > 0 ? 'text-red-600' : 'text-slate-500'}`}>
+      <span
+        className={`block font-pixel text-sm ${event.damage > 0 ? 'text-red-600' : 'text-slate-500'}`}
+      >
         {event.damage > 0 ? `−${event.damage}` : '0'}
       </span>
       {event.critical && <span className="block text-[11px] text-red-600">Coup critique !</span>}
       {text && (
         <span
-          className={`block text-[11px] ${event.effectiveness > 1 ? 'text-amber-600' : 'text-slate-600 dark:text-slate-300'}`}
+          className={`block text-[11px] ${event.effectiveness > 1 ? 'text-amber-600' : 'text-slate-600'}`}
         >
           {text}
         </span>
@@ -419,7 +444,7 @@ function StatusPopup({ event, age }: { event: DungeonStatusEvent; age: number })
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute -translate-x-1/2 rounded-lg bg-white/85 px-2 py-0.5 text-center text-[11px] font-semibold whitespace-nowrap text-amber-700 shadow dark:bg-slate-900/85 dark:text-amber-300"
+      className={`pointer-events-none absolute -translate-x-1/2 text-center text-[11px] font-semibold whitespace-nowrap text-amber-700 dark:text-amber-300 ${POPUP_BOX}`}
       style={{
         left: onEnemy ? '76%' : '22%',
         top: `calc(${onEnemy ? 28 : 52}% - ${t * 16}px)`,
@@ -438,7 +463,7 @@ function AbilityPopup({ event, age }: { event: DungeonAbilityEvent; age: number 
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute -translate-x-1/2 rounded-lg bg-white/85 px-2 py-0.5 text-center text-[11px] font-semibold whitespace-nowrap text-violet-700 shadow dark:bg-slate-900/85 dark:text-violet-300"
+      className={`pointer-events-none absolute -translate-x-1/2 text-center text-[11px] font-semibold whitespace-nowrap text-violet-700 dark:text-violet-300 ${POPUP_BOX}`}
       style={{
         left: onEnemy ? '76%' : '22%',
         top: `calc(${onEnemy ? 22 : 46}% - ${t * 16}px)`,
@@ -467,7 +492,7 @@ function ItemPopup({
   return (
     <span
       aria-hidden
-      className="pointer-events-none absolute flex -translate-x-1/2 items-center gap-1 rounded-lg bg-white/85 px-2 py-0.5 text-[11px] font-semibold whitespace-nowrap text-emerald-700 shadow dark:bg-slate-900/85 dark:text-emerald-300"
+      className={`pointer-events-none absolute flex -translate-x-1/2 items-center gap-1 text-[11px] font-semibold whitespace-nowrap text-emerald-700 dark:text-emerald-300 ${POPUP_BOX}`}
       style={{ left: '22%', top: `calc(40% - ${t * 16}px)`, opacity: 1 - t * t }}
     >
       <img src={itemIcon(ctx, event.itemId)} alt="" width={18} height={18} />
@@ -577,7 +602,11 @@ export function DungeonCombat<R extends CombatRun, C>({
       onFinished(data);
       return refresh();
     },
-    onError: () => {
+    onError: (err) => {
+      // Déjà réglé par le serveur (rattrapage lancé par une autre requête, comme la liste des
+      // Pokémon, ou par un autre onglet) : ce combat en cache est périmé. On recharge : la fenêtre
+      // disparaît et le résultat s'affiche depuis le dernier combat réglé.
+      if (err instanceof ApiError && err.code === 'ALREADY_CLAIMED') return refresh();
       if (!visible) onClaimError();
     },
   });
@@ -688,42 +717,56 @@ export function DungeonCombat<R extends CombatRun, C>({
   }
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-start justify-between gap-2">
-        <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
-          <h2 className="text-lg font-semibold">{title}</h2>
-          <span className="text-sm text-slate-500">
-            Adversaire {Math.min(shown.enemyIndex + 1, setup.enemies.length)} /{' '}
-            {setup.enemies.length}
-          </span>
-        </div>
+    <div className="flex flex-col">
+      {/* Bandeau du combat : adversaire en cours, titre, temps restant, fermeture. */}
+      <header className="flex shrink-0 items-center gap-2 border-b-[3px] border-ink bg-hud px-3 py-2.5 text-white sm:gap-3 sm:px-4">
+        <span
+          className="pixel-label shrink-0 rounded border-2 border-hud-line bg-hud-pill px-1.5 text-[9px]"
+          title="Adversaire en cours"
+        >
+          {Math.min(shown.enemyIndex + 1, setup.enemies.length)} / {setup.enemies.length}
+        </span>
+        <h2 className="min-w-0 flex-1 truncate font-pixel text-[10px] text-[#f8d030] uppercase sm:text-xs">
+          {title}
+        </h2>
+        <span
+          className={`pixel-label shrink-0 rounded border-2 px-2 py-0.5 text-[10px] tabular-nums ${
+            timeLeft < 30_000
+              ? 'border-[#0b0f1e] bg-brand-500 text-white'
+              : 'border-hud-line bg-hud-pill text-white'
+          }`}
+          title="Temps restant"
+        >
+          ⏱ {formatCountdown(timeLeft)}
+        </span>
         <button
           type="button"
           onClick={onHide}
-          className="-mt-1 -mr-1 grid h-8 w-8 shrink-0 place-items-center rounded-full text-xl leading-none text-slate-500 hover:bg-slate-100 hover:text-slate-800 dark:hover:bg-slate-800 dark:hover:text-slate-200"
+          className="btn size-9 shrink-0 border-[#0b0f1e] bg-brand-500 p-0 text-white"
           title="Fermer (le combat continue)"
           aria-label="Fermer la fenêtre du combat"
         >
-          ×
+          ✕
         </button>
-      </div>
+      </header>
 
-      <div className="relative h-72 overflow-hidden rounded-2xl border border-slate-200 select-none sm:h-80 dark:border-slate-800">
+      <div className="relative h-72 overflow-hidden border-b-[3px] border-ink select-none sm:h-80">
         {/* Décor du lieu, puis celui de la météo du talent, en fondu. */}
         <div
           aria-hidden
-          className="absolute inset-0"
+          className={`absolute inset-0 ${ARENA_DIM}`}
           style={{ background: ARENA_BACKGROUNDS[startWeather ?? 'clear'] }}
         />
         <div
           aria-hidden
-          className="absolute inset-0 transition-opacity duration-1000"
+          className={`absolute inset-0 transition-opacity duration-1000 ${ARENA_DIM}`}
           style={{
             background: ARENA_BACKGROUNDS[setup.weather ?? 'clear'],
             opacity: shownWeather === (setup.weather ?? null) ? 1 : 0,
           }}
         />
-        <div aria-hidden className="absolute inset-0" style={{ background: ARENA_SHADOWS }} />
+        <div aria-hidden className="absolute inset-0" style={ARENA_GROUND} />
+        <div aria-hidden className="absolute inset-0" style={{ background: ARENA_PADS }} />
         {/* Météo du combat : pluie, sable ou grêle qui tombent, reflets du soleil. */}
         {shownWeather && (
           <div
@@ -734,11 +777,12 @@ export function DungeonCombat<R extends CombatRun, C>({
             <div className={`absolute inset-0 weather-${shownWeather}`} />
           </div>
         )}
-        {/* Adversaires restants, en petit et grisés. */}
-        <div className="absolute inset-x-0 top-2 flex justify-center">
-          <div className="flex items-center gap-0.5 rounded-full bg-white/70 px-2 py-0.5 dark:bg-slate-900/70">
+
+        {/* Adversaires restants, en petit et grisés, au-dessus de l'encadré de l'adversaire. */}
+        <div className="absolute top-2 left-3 sm:left-6">
+          <div className={`flex h-8 items-center gap-0.5 px-1.5 ${ARENA_LABEL}`}>
             {remaining.length === 0 ? (
-              <span className="px-1 text-[11px] font-semibold text-slate-600 dark:text-slate-300">
+              <span className="pixel-label px-1 text-[8px] text-brand-600 uppercase dark:text-[#f8a8a0]">
                 Dernier adversaire !
               </span>
             ) : (
@@ -747,7 +791,7 @@ export function DungeonCombat<R extends CombatRun, C>({
                   <PokemonSprite
                     speciesId={f.speciesId}
                     formId={f.formId}
-                    size={30}
+                    size={28}
                     className="opacity-60 grayscale"
                   />
                   {bossLast && i === remaining.length - 1 && (
@@ -761,26 +805,18 @@ export function DungeonCombat<R extends CombatRun, C>({
           </div>
         </div>
 
-        <span
-          className={`absolute top-2 left-2 rounded-full px-2 py-0.5 font-mono text-sm font-semibold shadow ${
-            timeLeft < 30_000 ? 'bg-red-500 text-white' : 'bg-white/85 dark:bg-slate-900/85'
-          }`}
-          title="Temps restant"
-        >
-          ⏱ {formatCountdown(timeLeft)}
-        </span>
         {shownWeather && (
           <span
             key={`label-${shownWeather}`}
-            className="absolute top-2 right-2 animate-[dungeon-enter_400ms_ease-out] rounded-full bg-white/85 px-2 py-0.5 text-sm font-semibold shadow dark:bg-slate-900/85"
+            className={`absolute top-2 right-3 animate-[dungeon-enter_400ms_ease-out] px-2 py-0.5 text-sm font-semibold sm:right-6 ${ARENA_LABEL}`}
           >
             {WEATHER_ICONS[shownWeather]} {WEATHER_LABELS[shownWeather]}
           </span>
         )}
         {weatherSource && weatherBanner && (
-          <div className="pointer-events-none absolute inset-x-0 top-[40%] z-10 flex justify-center">
+          <div className="pointer-events-none absolute inset-x-0 top-[40%] z-10 flex justify-center px-3">
             <p
-              className="flex animate-[dungeon-enter_400ms_ease-out] items-center gap-2 rounded-2xl bg-white/90 py-1 pr-4 pl-1 text-sm shadow-lg transition-opacity duration-500 dark:bg-slate-900/90"
+              className={`flex animate-[dungeon-enter_400ms_ease-out] items-center gap-2 py-1 pr-4 pl-1 text-sm transition-opacity duration-500 ${MESSAGE_BOX}`}
               style={{ opacity: weatherBanner === 'fading' ? 0 : 1 }}
             >
               <PokemonSprite
@@ -804,20 +840,22 @@ export function DungeonCombat<R extends CombatRun, C>({
         )}
 
         {enrage && enrageAge < ENRAGE_BANNER_MS && (
-          <div className="pointer-events-none absolute inset-x-0 top-[40%] z-10 flex justify-center">
+          <div className="pointer-events-none absolute inset-x-0 top-[40%] z-10 flex justify-center px-3">
             <p
-              className="animate-[dungeon-enter_400ms_ease-out] rounded-2xl bg-red-600/90 px-4 py-1.5 text-center text-sm font-bold text-white shadow-lg transition-opacity duration-500"
+              className={`animate-[dungeon-enter_400ms_ease-out] px-4 py-1.5 text-center transition-opacity duration-500 ${MESSAGE_BOX}`}
               style={{ opacity: enrageAge > ENRAGE_BANNER_MS - 500 ? 0 : 1 }}
             >
-              {fighterName(ctx, enemy)} se déchaîne !
-              <span className="block text-xs font-medium">
+              <span className="pixel-label block text-[10px] text-red-600 uppercase dark:text-red-400">
+                {fighterName(ctx, enemy)} se déchaîne !
+              </span>
+              <span className="block text-sm">
                 Ses statistiques augmentent de {enrage.percent} %.
               </span>
             </p>
           </div>
         )}
 
-        {/* Adversaire, à droite. */}
+        {/* Adversaire, en haut à droite ; son encadré en haut à gauche. */}
         <div className="absolute top-12 left-3 sm:left-6">
           <FighterCard
             ctx={ctx}
@@ -859,7 +897,7 @@ export function DungeonCombat<R extends CombatRun, C>({
           </div>
         </div>
 
-        {/* Notre Pokémon, à gauche, retourné pour regarder l'adversaire. */}
+        {/* Notre Pokémon, en bas à gauche, retourné pour regarder l'adversaire ; son encadré à droite. */}
         <div className="absolute right-3 bottom-3 sm:right-6">
           <FighterCard
             ctx={ctx}
@@ -913,7 +951,7 @@ export function DungeonCombat<R extends CombatRun, C>({
 
         {/* Baies de soin du sac : données au Pokémon actif. */}
         {healItems.length > 0 && (
-          <div className="absolute bottom-2 left-2 z-10 flex gap-1.5">
+          <div className="absolute bottom-3 left-3 z-10 flex gap-2 sm:left-6">
             {healItems.map(({ itemId, quantity, effect, cooldownLeft }) => (
               <button
                 key={itemId}
@@ -926,7 +964,7 @@ export function DungeonCombat<R extends CombatRun, C>({
                     : `${itemName(ctx, itemId)} : rend ${Math.round(effect.fraction * 100)} % de ses PV au Pokémon actif`
                 }
                 aria-label={`Donner une ${itemName(ctx, itemId)} (${quantity} restantes)`}
-                className="relative grid h-10 w-10 place-items-center rounded-full bg-white/85 shadow transition enabled:hover:scale-110 enabled:hover:bg-white disabled:opacity-50 dark:bg-slate-900/85"
+                className={`relative grid size-11 place-items-center transition enabled:hover:-translate-y-0.5 disabled:opacity-60 ${ARENA_LABEL}`}
               >
                 <img
                   src={itemIcon(ctx, itemId)}
@@ -936,11 +974,11 @@ export function DungeonCombat<R extends CombatRun, C>({
                   className="[image-rendering:pixelated]"
                 />
                 {cooldownLeft > 0 && (
-                  <span className="absolute inset-0 grid place-items-center rounded-full bg-slate-900/70 text-xs font-bold text-white tabular-nums">
+                  <span className="absolute inset-0 grid place-items-center bg-slate-900/70 font-pixel text-[10px] text-white">
                     {cooldownLeft}
                   </span>
                 )}
-                <span className="absolute -top-1 -right-1 grid h-4 min-w-4 place-items-center rounded-full bg-brand-500 px-1 text-[10px] font-bold text-white tabular-nums">
+                <span className="absolute -top-2 -right-2 grid h-4 min-w-4 place-items-center rounded border-2 border-ink bg-brand-500 px-0.5 font-pixel text-[8px] leading-none text-white">
                   {quantity}
                 </span>
               </button>
@@ -949,119 +987,152 @@ export function DungeonCombat<R extends CombatRun, C>({
         )}
 
         {over && outcome && (
-          <div className="absolute inset-0 grid place-items-center bg-slate-950/40 backdrop-blur-[1px]">
-            <p className="animate-[dungeon-enter_400ms_ease-out] rounded-2xl bg-white px-6 py-3 text-xl font-bold shadow-lg dark:bg-slate-900">
+          <div className="absolute inset-0 z-20 grid place-items-center bg-slate-950/40 px-4">
+            <p
+              className={`flex animate-[dungeon-enter_400ms_ease-out] items-center gap-3 px-6 py-3 font-pixel text-xs uppercase sm:text-sm ${MESSAGE_BOX} ${
+                outcome === 'win'
+                  ? 'text-emerald-700 dark:text-emerald-300'
+                  : outcome === 'fled'
+                    ? ''
+                    : 'text-red-600 dark:text-red-400'
+              }`}
+            >
               {OUTCOME_LABELS[outcome]}
+              <span aria-hidden className="animate-blink text-[10px] text-brand-500">
+                ▼
+              </span>
             </p>
           </div>
         )}
       </div>
 
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {setup.team.map((f, i) => {
-          const hp = shown.hp[i] ?? 0;
-          const isActive = shown.active === i;
-          const ko = hp === 0;
-          // Rappelé récemment : secondes avant qu'il puisse revenir.
-          const recallLeft = Math.ceil(((shown.recallReadyAt[i] ?? 0) - displayMs) / 1000);
-          const recalled = !ko && !isActive && recallLeft > 0;
-          const attack = f.attackType ? dungeonAttack(setup.settings, f.attackType) : null;
-          const neutralizedBy = isActive ? suppressorAbility(enemy) : null;
-          return (
-            <button
-              key={i}
-              type="button"
-              disabled={ko || isActive || recalled || outcome !== null}
-              onClick={() => send(i)}
-              title={
-                ko
-                  ? 'K.O.'
-                  : isActive
-                    ? 'Au combat'
-                    : recalled
-                      ? `Rappelé : de retour possible dans ${recallLeft} s`
-                      : 'Envoyer au combat'
-              }
-              className={`relative flex items-start gap-2 rounded-xl border p-1.5 text-left text-xs transition ${
-                isActive
-                  ? 'border-brand-500 bg-brand-500/10'
-                  : ko
-                    ? 'border-slate-200 opacity-50 grayscale dark:border-slate-800'
-                    : recalled
-                      ? 'border-slate-200 opacity-70 dark:border-slate-800'
-                      : 'border-slate-200 hover:bg-slate-100 dark:border-slate-800 dark:hover:bg-slate-800'
-              }`}
-            >
-              {recalled && (
-                <span className="absolute top-1 left-1 grid h-6 min-w-6 place-items-center rounded-full bg-slate-900/80 px-1 text-[11px] font-bold tabular-nums text-white">
-                  {recallLeft}
-                </span>
-              )}
-              <PokemonSprite
-                speciesId={f.speciesId}
-                formId={f.formId}
-                shiny={f.isShiny}
-                size={44}
-                className="-scale-x-100"
-              />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-semibold">
-                  {fighterName(ctx, f)} {f.isShiny && <ShinyStar />}
-                </span>
-                <HpBar hp={hp} max={f.maxHp} className="my-0.5" />
-                <span className="flex items-center justify-between gap-1 text-[10px] text-slate-500">
-                  {ko ? 'K.O.' : `${hp} / ${f.maxHp}`}
-                  {f.attackType && (
-                    <span title={attack?.name}>
-                      <TypeBadge type={f.attackType} />
+      {/* Équipe du joueur : un appui envoie un Pokémon au combat. */}
+      <div className="space-y-2 p-3 sm:p-4">
+        <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
+          <h3 className={SECTION_TITLE}>Ton équipe</h3>
+          <p className="text-xs text-slate-500 dark:text-slate-400">
+            Appuie sur un Pokémon pour l’envoyer au combat.
+          </p>
+        </div>
+        <div className="grid grid-cols-1 gap-2 min-[25rem]:grid-cols-2 sm:grid-cols-3">
+          {setup.team.map((f, i) => {
+            const hp = shown.hp[i] ?? 0;
+            const isActive = shown.active === i;
+            const ko = hp === 0;
+            // Rappelé récemment : secondes avant qu'il puisse revenir.
+            const recallLeft = Math.ceil(((shown.recallReadyAt[i] ?? 0) - displayMs) / 1000);
+            const recalled = !ko && !isActive && recallLeft > 0;
+            const attack = f.attackType ? dungeonAttack(setup.settings, f.attackType) : null;
+            const neutralizedBy = isActive ? suppressorAbility(enemy) : null;
+            return (
+              <button
+                key={i}
+                type="button"
+                disabled={ko || isActive || recalled || outcome !== null}
+                onClick={() => send(i)}
+                title={
+                  ko
+                    ? 'K.O.'
+                    : isActive
+                      ? 'Au combat'
+                      : recalled
+                        ? `Rappelé : de retour possible dans ${recallLeft} s`
+                        : 'Envoyer au combat'
+                }
+                className={`${SLOT_CLASS} relative flex items-start gap-2 p-1.5 text-left text-xs transition ${
+                  isActive
+                    ? SELECTED_CELL
+                    : ko
+                      ? 'border-well-line opacity-50 grayscale'
+                      : recalled
+                        ? 'border-well-line opacity-70'
+                        : 'border-well-line enabled:hover:border-slate-500 enabled:hover:bg-white dark:enabled:hover:border-slate-400 dark:enabled:hover:bg-slate-900'
+                }`}
+              >
+                <span className="sprite-well relative size-12 shrink-0">
+                  <PokemonSprite
+                    speciesId={f.speciesId}
+                    formId={f.formId}
+                    shiny={f.isShiny}
+                    size={44}
+                    className="-scale-x-100"
+                  />
+                  {recalled && (
+                    <span className="absolute inset-0 grid place-items-center rounded-[3px] bg-slate-900/70 font-pixel text-[10px] text-white">
+                      {recallLeft}
                     </span>
                   )}
                 </span>
-                <StatChanges
-                  changes={dungeonStatChanges(setup, shown, 'player', i)}
-                  className="mt-0.5"
-                />
-                {f.ability && (
-                  <span className="mt-0.5 block text-[10px] leading-snug text-slate-600 dark:text-slate-300">
-                    <span
-                      className={`font-semibold text-violet-700 dark:text-violet-300 ${
-                        neutralizedBy ? 'line-through opacity-60' : ''
-                      }`}
-                    >
-                      {abilityLabel(f.ability)}
-                    </span>{' '}
-                    : {dungeonAbilityText(ctx, f.ability)}
-                    {neutralizedBy && (
-                      <span className="text-red-600 dark:text-red-400">
-                        {' '}
-                        (neutralisé par {abilityLabel(neutralizedBy)})
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-1">
+                    <span className="min-w-0 truncate font-semibold">
+                      {fighterName(ctx, f)} {f.isShiny && <ShinyStar />}
+                    </span>
+                    {isActive && (
+                      <span className="ml-auto">
+                        <StateTag tone="ready">Au combat</StateTag>
                       </span>
                     )}
                   </span>
-                )}
-              </span>
-            </button>
-          );
-        })}
+                  <HpBar hp={hp} max={f.maxHp} className="my-1" />
+                  <span className="flex items-center justify-between gap-1 text-[10px] text-slate-500 dark:text-slate-400">
+                    <span className="font-mono">{ko ? 'K.O.' : `${hp} / ${f.maxHp}`}</span>
+                    {f.attackType && (
+                      <span title={attack?.name}>
+                        <TypeBadge type={f.attackType} />
+                      </span>
+                    )}
+                  </span>
+                  <StatChanges
+                    changes={dungeonStatChanges(setup, shown, 'player', i)}
+                    className="mt-0.5"
+                  />
+                  {f.ability && (
+                    <span className="mt-0.5 block text-[10px] leading-snug text-slate-600 dark:text-slate-300">
+                      <span
+                        className={`font-semibold text-violet-700 dark:text-violet-300 ${
+                          neutralizedBy ? 'line-through opacity-60' : ''
+                        }`}
+                      >
+                        {abilityLabel(f.ability)}
+                      </span>{' '}
+                      : {dungeonAbilityText(ctx, f.ability)}
+                      {neutralizedBy && (
+                        <span className="text-red-600 dark:text-red-400">
+                          {' '}
+                          (neutralisé par {abilityLabel(neutralizedBy)})
+                        </span>
+                      )}
+                    </span>
+                  )}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+        {(switchMember.error || giveItem.error) && (
+          <Notice tone="bad">{errorText(switchMember.error ?? giveItem.error)}</Notice>
+        )}
+        {(claim.error || flee.error) && (
+          <Notice tone="bad">
+            <span className="flex flex-wrap items-center gap-2">
+              {errorText(claim.error ?? flee.error)}
+              {claim.error && (
+                <button className="btn-ghost px-2.5 py-1.5" onClick={() => claim.mutate()}>
+                  Réessayer
+                </button>
+              )}
+            </span>
+          </Notice>
+        )}
       </div>
-      {(switchMember.error || giveItem.error) && (
-        <p className="text-sm text-red-600">{errorText(switchMember.error ?? giveItem.error)}</p>
-      )}
-      {(claim.error || flee.error) && (
-        <p className="flex items-center gap-2 text-sm text-red-600">
-          {errorText(claim.error ?? flee.error)}
-          {claim.error && (
-            <button className="btn-ghost py-1" onClick={() => claim.mutate()}>
-              Réessayer
-            </button>
-          )}
-        </p>
-      )}
 
-      <div className="flex items-center justify-between gap-2">
-        <p className="text-xs text-slate-500">
-          Clique sur un Pokémon pour l’envoyer au combat. Le combat continue même si tu fermes cette
-          fenêtre ou quittes la page.
+      {/* Barre du bas : rappel que le combat continue, fuite (confirmée dans la barre). */}
+      <footer className="flex items-center justify-between gap-2 border-t-[3px] border-ink bg-slate-50 px-3 py-2.5 sm:px-4 dark:bg-hud-pill">
+        <p className="min-w-0 text-xs text-slate-500 dark:text-slate-400">
+          {confirmFlee
+            ? 'Fuir met fin au combat, sans récompense.'
+            : 'Le combat continue même si tu fermes cette fenêtre ou quittes la page.'}
         </p>
         {confirmFlee ? (
           <span className="flex shrink-0 items-center gap-2">
@@ -1070,10 +1141,10 @@ export function DungeonCombat<R extends CombatRun, C>({
               disabled={flee.isPending || outcome !== null}
               onClick={() => flee.mutate()}
             >
-              {flee.isPending ? 'Fuite…' : 'Fuir sans récompense'}
+              {flee.isPending ? 'Fuite…' : 'Fuir'}
             </button>
             <button className="btn-ghost" onClick={() => setConfirmFlee(false)}>
-              Non
+              Rester
             </button>
           </span>
         ) : (
@@ -1085,7 +1156,7 @@ export function DungeonCombat<R extends CombatRun, C>({
             Fuir
           </button>
         )}
-      </div>
+      </footer>
     </div>
   );
 }

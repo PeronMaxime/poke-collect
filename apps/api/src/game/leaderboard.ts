@@ -5,6 +5,7 @@ import type { Db } from '@poke/db';
 import { dexForms } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { LeaderboardEntryDto, LeaderboardKind, LeaderboardResponse } from '@poke/shared';
+import { displayedFavorite, favoriteColumns } from './favorite';
 
 /** Nombre de dresseurs affichés en tête de classement. */
 export const LEADERBOARD_SIZE = 50;
@@ -63,7 +64,7 @@ export async function leaderboard(
       .select({
         userId: playerProfiles.userId,
         trainerName: playerProfiles.trainerName,
-        starterSpeciesId: playerProfiles.starterSpeciesId,
+        ...favoriteColumns,
         value: sql<number>`${value}`.mapWith(Number).as('value'),
         rank: sql<number>`rank() over (order by ${value} desc)`.mapWith(Number).as('rank'),
       })
@@ -79,7 +80,7 @@ export async function leaderboard(
   const toEntry = (row: (typeof rows)[number]): LeaderboardEntryDto => ({
     rank: row.rank,
     trainerName: row.trainerName,
-    starterSpeciesId: row.starterSpeciesId,
+    favorite: displayedFavorite(row),
     value: row.value,
     isMe: row.userId === userId,
   });

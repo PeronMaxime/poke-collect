@@ -31,7 +31,7 @@ import {
   itemName,
   typeLabel,
 } from '../../lib/labels';
-import { CombatTeamOrder, EnemyInfo, combatMove } from './CombatTeamOrder';
+import { CombatFoes, EnemyInfo, combatMove } from './CombatTeamOrder';
 import { DungeonDifficultyBadge } from './DungeonDifficultyBadge';
 import { TeamPicker, useTeamPicker } from './TeamPicker';
 import { TEAM_WEATHER_NOTE, WeatherIcon } from './WeatherIcon';
@@ -186,30 +186,46 @@ export function LaunchDungeonDialog({
         xp={maxXp}
         maxTeamSize={maxTeamSize}
         power={power}
-        errors={errors.map(ruleText)}
+        header={
+          <CombatFoes
+            ctx={ctx}
+            foes={[
+              ...dungeon.opponents.map((m) => ({
+                speciesId: m.speciesId,
+                formId: m.formId,
+                level: m.level,
+                types: ctx.species(m.speciesId, m.formId)?.types ?? [],
+              })),
+              {
+                speciesId: dungeon.boss.speciesId,
+                formId: dungeon.boss.formId,
+                level: dungeon.boss.level,
+                types: bossTypes,
+                info: bossInfo,
+                boss: true,
+              },
+            ]}
+          />
+        }
         onAutoSelect={() => picker.autoSelect(maxTeamSize)}
       >
-        <TeamPicker
-          ctx={ctx}
-          zone={site}
-          picker={picker}
-          power={power}
-          maxTeamSize={maxTeamSize}
-          statSort
-          abilityEnv={env}
-        />
-        <p className="mt-1 text-xs text-slate-500">
-          Encadrés en vert : un de leurs types est efficace contre {boss?.nameFr ?? 'le boss'}.
-        </p>
-
-        {members.length > 0 && (
-          <CombatTeamOrder
+        {(close) => (
+          <TeamPicker
             ctx={ctx}
-            members={members}
-            moves={moves}
-            setMoves={setMoves}
-            setTeam={picker.setTeam}
-            targets={[{ name: boss?.nameFr ?? 'le boss', types: bossTypes }]}
+            zone={site}
+            picker={picker}
+            power={power}
+            maxTeamSize={maxTeamSize}
+            statSort
+            abilityEnv={env}
+            errors={errors.map(ruleText)}
+            onDone={close}
+            combat={{
+              moves,
+              setMoves,
+              targets: [{ name: boss?.nameFr ?? 'le boss', types: bossTypes }],
+            }}
+            affinityHint={`Efficace contre ${boss?.nameFr ?? 'le boss'}`}
           />
         )}
       </TeamSection>

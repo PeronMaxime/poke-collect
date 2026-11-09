@@ -21,6 +21,7 @@ import {
 } from '../game/store';
 import { playerTransaction } from '../game/tx';
 import type { sessionHooks } from '../plugins/session';
+import { chosenFavorite } from '../game/favorite';
 
 interface Deps {
   db: Db;
@@ -36,6 +37,7 @@ export function toDto(row: typeof playerProfiles.$inferSelect): PlayerProfileDto
     starterSpeciesId: row.starterSpeciesId,
     regionStarters: row.regionStarters,
     openedRegions: row.openedRegions,
+    favorite: chosenFavorite(row),
     currency: row.currency,
     createdAt: row.createdAt.toISOString(),
   };

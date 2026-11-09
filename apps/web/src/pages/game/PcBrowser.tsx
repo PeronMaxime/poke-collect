@@ -141,6 +141,26 @@ export function usePcBrowser(ctx: GameContext, pokemon: readonly PokemonDto[]) {
     tagFilter.filter,
   ].join('|');
 
+  // Filtres actifs (hors onglet de région et tri) : compteur et remise à zéro de la barre.
+  const activeFilterCount = [
+    needle !== '',
+    type !== 'all',
+    ability !== 'all',
+    tagFilter.filter !== 'all',
+    onlyFavorites,
+    onlyShiny,
+    onlyEvolvable,
+  ].filter(Boolean).length;
+  function resetFilters() {
+    setSearch('');
+    setType('all');
+    setAbility('all');
+    tagFilter.setFilter('all');
+    setOnlyFavorites(false);
+    setOnlyShiny(false);
+    setOnlyEvolvable(false);
+  }
+
   return {
     progress,
     viewKey,
@@ -162,6 +182,8 @@ export function usePcBrowser(ctx: GameContext, pokemon: readonly PokemonDto[]) {
     ability,
     setAbility,
     tagFilter,
+    activeFilterCount,
+    resetFilters,
     list,
     filtered,
   };
@@ -169,7 +191,11 @@ export function usePcBrowser(ctx: GameContext, pokemon: readonly PokemonDto[]) {
 
 export type PcBrowser = ReturnType<typeof usePcBrowser>;
 
-/** Onglets de région et barre de filtres ; `children` = boutons ajoutés à droite. */
+/**
+ * Onglets de région, puis une fenêtre « Rechercher / Trier par » et « Filtrer », puis le nombre de
+ * Pokémon affichés ; `children` = actions de la page (étiquettes, transfert…), posées à droite de
+ * ce nombre, juste au-dessus de la grille.
+ */
 export function PcFilterBar({
   ctx,
   browser: b,
@@ -179,6 +205,30 @@ export function PcFilterBar({
   browser: PcBrowser;
   children?: ReactNode;
 }) {
+  const toggles = [
+    {
+      label: 'Favoris',
+      icon: <span className="text-amber-500">♥</span>,
+      on: b.onlyFavorites,
+      set: b.setOnlyFavorites,
+      title: 'Seulement les Pokémon marqués en favoris',
+    },
+    {
+      label: 'Chromatiques',
+      icon: <ShinyStar />,
+      on: b.onlyShiny,
+      set: b.setOnlyShiny,
+      title: 'Seulement les Pokémon chromatiques',
+    },
+    {
+      label: 'Peut évoluer',
+      icon: <span className="text-emerald-600 dark:text-emerald-400">↑</span>,
+      on: b.onlyEvolvable,
+      set: b.setOnlyEvolvable,
+      title: 'Évolution possible vers une espèce ou forme absente du Pokédex',
+    },
+  ];
+  const filteredOut = b.filtered.length !== b.list.length;
   return (
     <>
       {ctx.regions.length > 1 && (
@@ -192,80 +242,112 @@ export function PcFilterBar({
           />
         </div>
       )}
-      <div className="mb-4 flex flex-wrap items-center gap-2">
-        <input
-          className="input max-w-56"
-          placeholder="Rechercher…"
-          value={b.search}
-          onChange={(e) => b.setSearch(e.target.value)}
-        />
-        <select
-          className="input w-auto"
-          value={b.sort}
-          onChange={(e) => {
-            const next = e.target.value as Sort;
-            b.setSort(next);
-            localStorage.setItem(SORT_KEY, next);
-          }}
-        >
-          {Object.entries(SORTS).map(([value, label]) => (
-            <option key={value} value={value}>
-              {label}
-            </option>
+      <div className="card mb-3 flex flex-col gap-3 p-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            type="search"
+            className="input min-w-40 flex-1 sm:max-w-80"
+            placeholder="Rechercher un Pokémon…"
+            aria-label="Rechercher un Pokémon par son nom"
+            value={b.search}
+            onChange={(e) => b.setSearch(e.target.value)}
+          />
+          <label className="flex items-center gap-2 sm:ml-auto">
+            <span className="pixel-label text-slate-500">Trier par</span>
+            <PcSortSelect browser={b} />
+          </label>
+        </div>
+        <div className="flex flex-wrap items-center gap-2 border-t-2 border-dashed border-slate-200 pt-3 dark:border-slate-700">
+          <span className="pixel-label w-full text-slate-500 sm:w-auto">Filtrer</span>
+          <TypeFilterSelect value={b.type} onChange={b.setType} className="" />
+          <AbilityFilterSelect list={b.list} value={b.ability} onChange={b.setAbility} />
+          <TagFilterSelect
+            tags={b.tagFilter.tags}
+            value={b.tagFilter.filter}
+            onChange={b.tagFilter.setFilter}
+          />
+          {toggles.map((t) => (
+            <button
+              key={t.label}
+              type="button"
+              className={`${t.on ? 'btn-primary' : 'btn-ghost'} px-3`}
+              aria-pressed={t.on}
+              title={t.title}
+              onClick={() => t.set(!t.on)}
+            >
+              {t.icon} {t.label}
+            </button>
           ))}
-        </select>
-        <TypeFilterSelect value={b.type} onChange={b.setType} className="" />
-        <AbilityFilterSelect list={b.list} value={b.ability} onChange={b.setAbility} />
-        <label className="flex items-center gap-1 text-sm">
-          <input
-            type="checkbox"
-            checked={b.onlyFavorites}
-            onChange={(e) => b.setOnlyFavorites(e.target.checked)}
-          />
-          Favoris
-        </label>
-        <label className="flex items-center gap-1 text-sm">
-          <input
-            type="checkbox"
-            checked={b.onlyShiny}
-            onChange={(e) => b.setOnlyShiny(e.target.checked)}
-          />
-          Chromatique
-        </label>
-        <label
-          className="flex items-center gap-1 text-sm"
-          title="Évolution possible vers une espèce ou forme absente du Pokédex"
-        >
-          <input
-            type="checkbox"
-            checked={b.onlyEvolvable}
-            onChange={(e) => b.setOnlyEvolvable(e.target.checked)}
-          />
-          Peut évoluer
-        </label>
-        <TagFilterSelect
-          tags={b.tagFilter.tags}
-          value={b.tagFilter.filter}
-          onChange={b.tagFilter.setFilter}
-        />
-        <span className="ml-auto text-sm text-slate-500">
-          {b.isAllTab ? b.list.length : `${b.filtered.length} / ${b.list.length}`} Pokémon
+        </div>
+      </div>
+      <div className="mb-3 flex flex-wrap items-center gap-2">
+        <span className="text-sm text-slate-500">
+          {filteredOut ? (
+            <>
+              <strong className="text-slate-900 dark:text-slate-100">{b.filtered.length}</strong> /{' '}
+              {b.list.length} Pokémon affichés
+            </>
+          ) : (
+            <>
+              <strong className="text-slate-900 dark:text-slate-100">{b.list.length}</strong>{' '}
+              Pokémon
+            </>
+          )}
         </span>
-        {children}
+        {b.activeFilterCount > 0 && (
+          <button
+            type="button"
+            className="text-sm text-brand-600 underline underline-offset-2 hover:text-brand-500"
+            onClick={b.resetFilters}
+          >
+            Effacer {b.activeFilterCount > 1 ? `les ${b.activeFilterCount} filtres` : 'le filtre'}
+          </button>
+        )}
+        {children && <div className="ml-auto flex flex-wrap items-center gap-2">{children}</div>}
       </div>
     </>
   );
 }
 
+/** Tri du PC, retenu d'une visite à l'autre. */
+export function PcSortSelect({
+  browser: b,
+  className = 'input w-auto',
+}: {
+  browser: PcBrowser;
+  className?: string;
+}) {
+  return (
+    <select
+      className={className}
+      value={b.sort}
+      aria-label="Trier les Pokémon"
+      onChange={(e) => {
+        const next = e.target.value as Sort;
+        b.setSort(next);
+        localStorage.setItem(SORT_KEY, next);
+      }}
+    >
+      {Object.entries(SORTS).map(([value, label]) => (
+        <option key={value} value={value}>
+          {label}
+        </option>
+      ))}
+    </select>
+  );
+}
+
 /** Filtre par talent : ceux des Pokémon du PC, par ordre alphabétique, avec leur nombre. */
-function AbilityFilterSelect({
+export function AbilityFilterSelect({
   list,
   value,
   onChange,
+  className = 'input w-auto',
 }: {
   list: readonly PcEntry[];
   value: string;
   onChange: (value: string) => void;
+  className?: string;
 }) {
   const counts = new Map<string, number>();
   for (const { ability } of list) counts.set(ability, (counts.get(ability) ?? 0) + 1);
@@ -275,7 +357,7 @@ function AbilityFilterSelect({
   );
   return (
     <select
-      className="input w-auto"
+      className={className}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       aria-label="Filtrer par talent"

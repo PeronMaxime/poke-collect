@@ -363,9 +363,10 @@ export const useQuests = () =>
   useQuery({ queryKey: keys.quests, queryFn: () => api<QuestsResponse>('/api/quests') });
 
 /** Statistiques cumulées de la Fiche Dresseur. */
-export const useTrainerCard = () =>
+export const useTrainerCard = (enabled = true) =>
   useQuery({
     queryKey: keys.trainerCard,
+    enabled,
     queryFn: () => api<TrainerCardResponse>('/api/trainer-card'),
   });
 

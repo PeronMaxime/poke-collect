@@ -252,7 +252,7 @@ export async function playerProgress(
   ownerId: string,
 ): Promise<PlayerProgress> {
   const [base, rows] = await Promise.all([baseProgress(db, ownerId), questRows(db, ownerId)]);
-  return { ...base, questSteps: questStepsDone(ctx, base, questRecords(rows)) };
+  return { ...base, questSteps: questStepsDone(ctx, base, questRecords(ctx, rows)) };
 }
 
 /**
@@ -338,8 +338,22 @@ export async function questRows(db: Db, ownerId: string): Promise<QuestProgressR
   return db.select().from(questProgress).where(eq(questProgress.ownerId, ownerId));
 }
 
-export function questRecords(rows: readonly QuestProgressRow[]): Map<string, QuestRecord> {
-  return new Map(rows.map((r) => [r.questId, { step: r.step, count: r.progress.count ?? 0 }]));
+/**
+ * Étape atteinte d'une quête : une quête terminée compte pour toutes ses étapes, même si son
+ * contenu en a gagné depuis (quêtes réécrites, 0123 : les lignes gardées s'arrêtaient à l'étape 3).
+ */
+export function questRowStep(ctx: GameContext, row: QuestProgressRow): number {
+  const total = ctx.quest(row.questId)?.steps.length ?? row.step;
+  return row.completedAt ? Math.max(row.step, total) : row.step;
+}
+
+export function questRecords(
+  ctx: GameContext,
+  rows: readonly QuestProgressRow[],
+): Map<string, QuestRecord> {
+  return new Map(
+    rows.map((r) => [r.questId, { step: questRowStep(ctx, r), count: r.progress.count ?? 0 }]),
+  );
 }
 
 /** Parcelles de la ferme achetées à la boutique. */

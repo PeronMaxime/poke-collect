@@ -19,8 +19,18 @@ import { HoverBubble, Modal, PokemonSprite, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
 import { keys, refresh, utcOffsetMinutes } from '../../lib/game';
 import { errorText, formatDuration, formatMoney, trainerName, typeLabel } from '../../lib/labels';
-import { BadgeIcon, TrainerRules, TrainerSprite, formatTimeLimit } from './BattlesPage';
-import { CombatTeamOrder, EnemyInfo, combatMove } from './CombatTeamOrder';
+import {
+  BadgeIcon,
+  TrainerBackdrop,
+  TrainerFacts,
+  TrainerRules,
+  TrainerSprite,
+  formatTimeLimit,
+} from './BattlesPage';
+import { CrossIcon, LAUNCH_DIALOG_CLASS, SheetSection, StatusPill } from './dialogParts';
+import type { StatusTone } from './dialogParts';
+import { BANNER_LABEL } from './zoneBanner';
+import { CombatFoes, EnemyInfo, combatMove } from './CombatTeamOrder';
 import { TeamPicker, useTeamPicker } from './TeamPicker';
 import { TEAM_WEATHER_NOTE, WeatherIcon, zoneWeatherForecast } from './WeatherIcon';
 import { TeamSection } from './TeamSection';
@@ -117,133 +127,185 @@ export function LaunchBattleDialog({
     types: e.types,
   }));
 
+  const status: { tone: StatusTone; text: string } =
+    members.length === 0
+      ? { tone: 'idle', text: 'Aucun Pokémon choisi' }
+      : errors.length > 0
+        ? { tone: 'bad', text: ruleText(errors[0]!) }
+        : { tone: 'ok', text: 'Équipe prête' };
+
   return (
-    <Modal open onClose={onClose} wide>
-      <div className="flex flex-wrap items-center gap-3">
-        <TrainerSprite trainer={trainer} size={88} />
-        <div className="min-w-0 flex-1">
-          <p className="text-sm text-slate-500">{trainer.trainerClass}</p>
-          <h2 className="flex items-center gap-2 text-xl font-bold">
-            {trainerName(trainer)}
+    <Modal open onClose={onClose} wide className={LAUNCH_DIALOG_CLASS}>
+      {/* Bandeau : le dresseur sur le décor de sa zone, son nom, la météo du combat. */}
+      <header className="relative flex min-h-28 shrink-0 items-end gap-3 border-b-[3px] border-ink px-3 pt-3 pb-2 sm:px-4">
+        <TrainerBackdrop ctx={ctx} trainer={trainer} />
+        <span className="relative -mb-2 shrink-0">
+          <TrainerSprite trainer={trainer} size={88} />
+        </span>
+        <div className="relative flex min-w-0 flex-1 flex-col items-start gap-1 pb-1">
+          <span className="pixel-label max-w-full truncate rounded border-2 border-ink bg-win px-1.5 text-[8px] text-slate-600 dark:text-slate-300">
+            {trainer.trainerClass}
+          </span>
+          <span className="flex max-w-full items-center gap-1.5">
+            <h2 className={`min-w-0 truncate ${BANNER_LABEL}`}>{trainerName(trainer)}</h2>
             {(weather || placeWeather || forecast) && (
               <WeatherIcon
                 weather={weather ?? 'clear'}
                 activity="battle"
                 note={weatherNote}
                 forecast={forecast}
+                className="rounded border-2 border-ink bg-win px-1 text-base leading-snug"
               />
             )}
-          </h2>
-          <p className="text-sm text-slate-500">
-            {zone ? `${zone.name} · ` : ''}
-            {enemies.length} Pokémon · {formatTimeLimit(trainer.timeLimitSeconds)} pour gagner
-          </p>
-          <TrainerRules rules={trainer.rules} className="mt-1" />
+          </span>
         </div>
-        <div className="flex gap-0.5">
-          {trainer.team.map((m, i) => (
-            <HoverBubble
-              key={i}
-              className="flex flex-col items-center text-[10px] text-slate-500"
-              width={232}
-              height={420}
-              content={enemies[i] && <EnemyInfo fighter={enemies[i]} />}
-            >
-              <PokemonSprite speciesId={m.speciesId} formId={m.formId} size={44} />
-              N.{m.level}
-            </HoverBubble>
-          ))}
-        </div>
-      </div>
-
-      <TeamSection
-        ctx={ctx}
-        title={`Équipe · ${trainerName(trainer)}`}
-        env={env}
-        members={members}
-        xp={maxXp}
-        maxTeamSize={maxTeamSize}
-        power={power}
-        minPower={trainer.rules.minPower}
-        errors={errors.map(ruleText)}
-        onAutoSelect={() => picker.autoSelect(maxTeamSize)}
-      >
-        <TeamPicker
-          ctx={ctx}
-          zone={site}
-          picker={picker}
-          power={power}
-          maxTeamSize={maxTeamSize}
-          statSort
-          abilityEnv={env}
-        />
-        <p className="mt-1 text-xs text-slate-500">
-          Encadrés en vert : un de leurs types est efficace contre un Pokémon du dresseur.
-        </p>
-
-        {members.length > 0 && (
-          <CombatTeamOrder
-            ctx={ctx}
-            members={members}
-            moves={moves}
-            setMoves={setMoves}
-            setTeam={picker.setTeam}
-            targets={targets}
-          />
-        )}
-      </TeamSection>
-
-      <div className="mt-5 grid gap-1 rounded-xl bg-slate-100 p-3 text-sm dark:bg-slate-800/60">
-        <p className="flex flex-wrap items-center gap-x-1">
-          <span className="font-semibold">Victoire :</span>{' '}
-          {trainer.money > 0 ? formatMoney(trainer.money) : 'aucun argent'}
-          {trainer.badge && (
-            <span className="ml-1 inline-flex items-center gap-1">
-              · <BadgeIcon badge={trainer.badge} size={18} /> {trainer.badge.name}
-            </span>
-          )}
-        </p>
-        <p>
-          <span className="font-semibold">XP gagnée :</span> jusqu’à {formatXp(maxXp)} par Pokémon
-          si toute son équipe est vaincue
-        </p>
-        <p className="mt-2 text-xs text-slate-500">
-          Chaque Pokémon adverse vaincu rapporte de l’XP à toute l’équipe, même en cas de défaite
-          (pas en cas de fuite). Les Pokémon mis K.O. le restent jusqu’à leurs soins au Centre
-          Pokémon.{' '}
-          {trainer.repeatable
-            ? `Après chaque combat, ${trainer.name} se repose pendant ${formatDuration(battleCooldownMinutes(ctx, trainer))}.`
-            : `${trainer.name} ne se bat qu’une fois : en cas de défaite, tu peux le défier de nouveau aussitôt.`}
-        </p>
-      </div>
-
-      {members.length > 0 && errors.length > 0 && (
-        <ul className="mt-4 space-y-1 text-sm text-red-600">
-          {errors.map((e) => (
-            <li key={e.code}>{ruleText(e)}</li>
-          ))}
-        </ul>
-      )}
-      {start.error && <p className="mt-4 text-sm text-red-600">{errorText(start.error)}</p>}
-
-      <div className="mt-6 flex justify-end gap-2">
-        <button className="btn-ghost" onClick={onClose}>
-          Annuler
-        </button>
         <button
-          className="btn-primary"
-          disabled={errors.length > 0 || start.isPending}
-          onClick={() =>
-            start.mutate({
-              trainerId: trainer.id,
-              team: members.map((p) => p.id),
-              moves: withMoves.map((m) => m.move),
-            })
+          type="button"
+          className="btn-ghost relative self-start px-2.5 py-2"
+          aria-label="Fermer"
+          onClick={onClose}
+        >
+          <CrossIcon />
+        </button>
+      </header>
+
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto overscroll-contain p-3 sm:p-4">
+        <SheetSection
+          title="Adversaires"
+          aside={
+            <span className="text-xs text-slate-500 dark:text-slate-400">
+              {enemies.length} Pokémon · {formatTimeLimit(trainer.timeLimitSeconds)} pour gagner
+            </span>
           }
         >
-          Combattre
-        </button>
+          <ul className="flex flex-wrap gap-x-1.5 gap-y-2.5 pb-1">
+            {trainer.team.map((m, i) => (
+              <li key={i}>
+                <HoverBubble
+                  className="sprite-well relative size-14"
+                  width={232}
+                  height={420}
+                  content={enemies[i] && <EnemyInfo fighter={enemies[i]} />}
+                >
+                  <PokemonSprite speciesId={m.speciesId} formId={m.formId} size={52} />
+                  <span className="absolute -bottom-2 left-1/2 -translate-x-1/2 rounded border-2 border-ink bg-win px-0.5 font-pixel text-[8px] leading-tight whitespace-nowrap">
+                    N.{m.level}
+                  </span>
+                </HoverBubble>
+              </li>
+            ))}
+          </ul>
+          <TrainerFacts ctx={ctx} trainer={trainer} record={undefined} className="mt-3" />
+          <TrainerRules rules={trainer.rules} className="mt-2" />
+        </SheetSection>
+
+        <section className="card p-3 [&>:first-child]:mt-0">
+          <TeamSection
+            ctx={ctx}
+            title={`Équipe · ${trainerName(trainer)}`}
+            env={env}
+            members={members}
+            xp={maxXp}
+            maxTeamSize={maxTeamSize}
+            power={power}
+            minPower={trainer.rules.minPower}
+            header={
+              <>
+                <TrainerRules rules={trainer.rules} />
+                <CombatFoes
+                  ctx={ctx}
+                  foes={enemies.map((e) => ({
+                    speciesId: e.speciesId,
+                    formId: e.formId,
+                    level: e.level,
+                    types: e.types,
+                    info: <EnemyInfo fighter={e} />,
+                  }))}
+                />
+              </>
+            }
+            onAutoSelect={() => picker.autoSelect(maxTeamSize)}
+          >
+            {(close) => (
+              <TeamPicker
+                ctx={ctx}
+                zone={site}
+                picker={picker}
+                power={power}
+                maxTeamSize={maxTeamSize}
+                statSort
+                abilityEnv={env}
+                errors={errors.map(ruleText)}
+                onDone={close}
+                combat={{ moves, setMoves, targets }}
+                affinityHint={`Efficace contre un Pokémon de ${trainerName(trainer)}`}
+              />
+            )}
+          </TeamSection>
+        </section>
+
+        <SheetSection title="Récompenses">
+          <div className="grid gap-1 text-sm">
+            <p className="flex flex-wrap items-center gap-x-1">
+              <span className="font-semibold">Victoire :</span>{' '}
+              {trainer.money > 0 ? formatMoney(trainer.money) : 'aucun argent'}
+              {trainer.badge && (
+                <span className="ml-1 inline-flex items-center gap-1">
+                  · <BadgeIcon badge={trainer.badge} size={18} /> {trainer.badge.name}
+                </span>
+              )}
+            </p>
+            <p>
+              <span className="font-semibold">XP gagnée :</span> jusqu’à {formatXp(maxXp)} par
+              Pokémon si toute son équipe est vaincue
+            </p>
+            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">
+              Chaque Pokémon adverse vaincu rapporte de l’XP à toute l’équipe, même en cas de
+              défaite (pas en cas de fuite). Les Pokémon mis K.O. le restent jusqu’à leurs soins au
+              Centre Pokémon.{' '}
+              {trainer.repeatable
+                ? `Après chaque combat, ${trainer.name} se repose pendant ${formatDuration(battleCooldownMinutes(ctx, trainer))}.`
+                : `${trainer.name} ne se bat qu’une fois : en cas de défaite, tu peux le défier de nouveau aussitôt.`}
+            </p>
+          </div>
+        </SheetSection>
       </div>
+
+      {/* Barre de départ : état de l'équipe, puis Annuler / Combattre. */}
+      <footer className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-t-[3px] border-ink bg-tile px-3 py-2.5 sm:px-4">
+        {start.error && (
+          <p className="order-first w-full text-sm font-medium text-red-600 dark:text-red-400">
+            {errorText(start.error)}
+          </p>
+        )}
+        <span className="min-w-0 flex-1" title={errors.map(ruleText).join('\n') || undefined}>
+          <StatusPill tone={status.tone} text={status.text} />
+          {members.length > 0 && errors.length > 1 && (
+            <span className="ml-2 text-xs text-slate-500 dark:text-slate-400">
+              + {errors.length - 1} autre{errors.length > 2 ? 's' : ''}
+            </span>
+          )}
+        </span>
+        <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] gap-2 sm:flex sm:w-auto">
+          <button type="button" className="btn-ghost" onClick={onClose}>
+            Annuler
+          </button>
+          <button
+            type="button"
+            className="btn-primary px-6 py-3"
+            disabled={errors.length > 0 || start.isPending}
+            onClick={() =>
+              start.mutate({
+                trainerId: trainer.id,
+                team: members.map((p) => p.id),
+                moves: withMoves.map((m) => m.move),
+              })
+            }
+          >
+            Combattre
+          </button>
+        </div>
+      </footer>
     </Modal>
   );
 }

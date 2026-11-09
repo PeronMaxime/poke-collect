@@ -8,9 +8,11 @@ import {
   depositDaycareInputSchema,
   feedCandiesInputSchema,
   incubateEggsInputSchema,
+  setDaycareParentInputSchema,
   transferPokemonInputSchema,
 } from '@poke/shared';
 import type {
+  BagEggDto,
   CandyDto,
   CollectEggsResponse,
   DaycareResponse,
@@ -29,11 +31,13 @@ import {
   isInBag,
   loadDaycare,
   pendingEggs,
+  setDaycareParent,
   toBagEggDto,
   toDaycareDto,
   toEggDto,
   transferPokemon,
   withdrawDaycare,
+  withdrawEgg,
 } from '../game/daycare';
 import { assistantHolders } from '../game/assistants';
 import {
@@ -54,6 +58,14 @@ interface Deps {
 
 const slotParams = z.object({ slot: z.coerce.number().int().min(0).max(999) });
 const uuidParams = z.object({ id: z.uuid() });
+const parentParams = slotParams.extend({
+  side: z.coerce
+    .number()
+    .int()
+    .min(0)
+    .max(1)
+    .transform((n) => n as 0 | 1),
+});
 
 /** Pension, œufs, transfert de Pokémon et Bonbons de lignée. */
 export async function breedingRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
@@ -113,10 +125,31 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
     };
   });
 
+  // Un parent à la fois : déposé (à la place de celui qui y était) ou retiré.
+  app.put('/api/daycare/:slot/parents/:side', async (request): Promise<CollectEggsResponse> => {
+    const { slot, side } = parentParams.parse(request.params);
+    const input = setDaycareParentInputSchema.parse(request.body);
+    const userId = request.user!.id;
+    await assertTabUnlocked(db, await content.get(), userId, 'daycare');
+    const result = await setDaycareParent(db, content, userId, slot, side, input, now());
+    return { ...result, incubated: result.incubated.map(toEggDto) };
+  });
+
+  app.delete('/api/daycare/:slot/parents/:side', async (request): Promise<CollectEggsResponse> => {
+    const { slot, side } = parentParams.parse(request.params);
+    const result = await setDaycareParent(db, content, request.user!.id, slot, side, null, now());
+    return { ...result, incubated: result.incubated.map(toEggDto) };
+  });
+
   app.post('/api/eggs/incubate', async (request): Promise<IncubateEggsResponse> => {
     const { ids } = incubateEggsInputSchema.parse(request.body);
     const incubated = await incubateEggs(db, content, request.user!.id, ids, now());
     return { incubated: incubated.map(toEggDto) };
+  });
+
+  app.delete('/api/eggs/:id', async (request): Promise<BagEggDto> => {
+    const { id } = uuidParams.parse(request.params);
+    return toBagEggDto(await withdrawEgg(db, request.user!.id, id, now()));
   });
 
   app.post('/api/eggs/hatch', async (request): Promise<HatchEggsResponse> => {

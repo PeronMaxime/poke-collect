@@ -139,8 +139,10 @@ export const ASSISTANT_POST_INFO: Record<
 };
 
 /**
- * Le Pokémon peut-il tenir ce poste ? Type exigé (forme comprise) ; talent exigé : un effet qui
- * augmente le paramètre chez l'assistant (conditions non vérifiées).
+ * Le Pokémon peut-il tenir ce poste ? Type exigé (forme comprise) : l'arroseur de la ferme sert
+ * par son type, son talent n'est qu'un plus. Talent exigé : un effet qui augmente le paramètre
+ * chez l'assistant. Ailleurs, pas d'assistant inutile : son talent doit avoir au moins un effet
+ * qui agit chez l'assistant de ce poste (conditions non vérifiées).
  */
 export function canAssist(
   ctx: GameContext,
@@ -151,16 +153,13 @@ export function canAssist(
   if (requiredType && !ctx.species(p.speciesId, p.formId)?.types.includes(requiredType)) {
     return false;
   }
-  return (
-    !requiredParam ||
-    (ctx.ability(effectiveAbility(ctx, p))?.effects ?? []).some(
-      (e) =>
-        e.type === 'modifier' &&
-        e.param === requiredParam &&
-        e.value > 0 &&
-        helpsAsAssistant(e, activity),
-    )
+  const effects = (ctx.ability(effectiveAbility(ctx, p))?.effects ?? []).filter((e) =>
+    helpsAsAssistant(e, activity),
   );
+  if (requiredParam) {
+    return effects.some((e) => e.type === 'modifier' && e.param === requiredParam && e.value > 0);
+  }
+  return Boolean(requiredType) || effects.length > 0;
 }
 
 export interface AbilityParamInfo {

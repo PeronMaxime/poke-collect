@@ -6,6 +6,7 @@ import type { PokemonDto } from '@poke/shared';
 import { Modal } from '../../components/ui';
 import { TagToggleList } from '../../components/tags';
 import { useTags } from '../../lib/game';
+import { MaxPerfectIvsOptions, maxPerfectIvsHint } from './AutoTransferSettings';
 
 /** Réglages de « Sélectionner les doublons », conservés d'une visite à l'autre. */
 export interface DuplicateSettings {
@@ -185,18 +186,10 @@ function SettingsForm({
           value={draft.maxPerfectIvs}
           onChange={(e) => setDraft({ ...draft, maxPerfectIvs: Number(e.target.value) })}
         >
-          {Array.from({ length: STAT_NAMES.length + 1 }, (_, n) => (
-            <option key={n} value={n}>
-              {n === 0
-                ? 'Aucun (garder tout Pokémon avec un IV parfait)'
-                : n === STAT_NAMES.length
-                  ? `Jusqu'à ${n} (aucune protection)`
-                  : `Jusqu'à ${n}`}
-            </option>
-          ))}
+          <MaxPerfectIvsOptions />
         </select>
         <p className="mt-1 text-xs text-slate-500">
-          Un doublon qui a plus d'IV parfaits que ce nombre est gardé.
+          {maxPerfectIvsHint(draft.maxPerfectIvs, 'Un doublon', 'm')}
         </p>
       </div>
 

@@ -24,8 +24,10 @@ import { FormSelect, ItemIcon, SpeciesSelect } from '../../components/forms/pick
 
 export const CATEGORY_LABELS: Record<ItemCategory, string> = {
   ball: 'Ball',
+  heal: 'Soin',
   berry: 'Baie',
   evolution: 'Évolution',
+  training: 'Entraînement',
   breeding: 'Élevage',
   endgame: 'Endgame',
   fossil: 'Fossile',

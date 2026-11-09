@@ -4,11 +4,9 @@ import { STAT_NAMES, TYPE_COLORS, directLineage, eggGroups, getForm, habitats } 
 import type { StatName } from '@poke/data';
 import {
   abilityEffectSummary,
-  baseSpeciesId,
   counterpartFormId,
   isEventForm,
   dungeonTypeEffectiveness,
-  encounterProbabilities,
   evolutionOptions,
   isBreedable,
   megaOptions,
@@ -23,6 +21,7 @@ import {
   itemName,
   typeLabel,
 } from '../../lib/labels';
+import { levelRange, pokemonSources } from './pokemonSources';
 import { WikiBreadcrumb } from './WikiBreadcrumb';
 import { searchKey, wikiAbilityLink, wikiEntries, wikiLink, wikiPokemonLink } from './wiki';
 import type { WikiEntry } from './wiki';
@@ -439,7 +438,7 @@ function PokemonSheet({
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2">
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
         <Section title="Statistiques de base">
           <BaseStats species={species} />
         </Section>
@@ -601,44 +600,12 @@ const GROWTH_LABELS: Record<string, string> = {
 
 /** Façons d'obtenir le Pokémon : zones d'expédition, quêtes, fossiles, œufs, évolution, Méga. */
 function Locations({ ctx, entry }: { ctx: GameContext; entry: WikiEntry }) {
-  const { speciesId, formId, species } = entry;
-  const same = (p: { speciesId: number; formId?: number | null }) =>
-    p.speciesId === speciesId && (p.formId ?? null) === formId;
-  const zones = ctx.zones.flatMap((zone) => {
-    const probability = encounterProbabilities(ctx, zone).find(same)?.probability;
-    const encounters = zone.encounters.filter(same);
-    if (!probability || encounters.length === 0) return [];
-    const min = Math.min(...encounters.map((e) => e.minLevel));
-    const max = Math.max(...encounters.map((e) => e.maxLevel));
-    return [{ zone, probability, levels: min === max ? `N.${min}` : `N.${min}–${max}` }];
-  });
-  const specials = ctx.zones.flatMap((zone) =>
-    zone.specialEncounters.filter(same).map((special) => ({ zone, special })),
+  const { speciesId, formId } = entry;
+  const { zones, specials, quests, fossils, megaOf, parent, fromEgg } = pokemonSources(
+    ctx,
+    speciesId,
+    formId,
   );
-  const quests = ctx.quests.flatMap((q) =>
-    q.rewards.pokemon
-      .filter(same)
-      .map((p) => ({ quest: q, level: p.level, roaming: p.roaming != null })),
-  );
-  const fossils = ctx.content.items.filter((i) => {
-    const effect = ctx.itemEffect(i.id, 'fossil');
-    return !!effect && same(effect);
-  });
-  const form = formId !== null ? getForm(formId) : undefined;
-  const megaOf =
-    form?.kind === 'mega'
-      ? megaOptions(ctx, speciesId).find((o) => o.form.id === formId)
-      : undefined;
-  // Les œufs contiennent la première espèce de la lignée (forme régionale comprise).
-  const fromEgg =
-    isBreedable(species) &&
-    baseSpeciesId(ctx, speciesId) === speciesId &&
-    (form === undefined || form.kind === 'regional');
-  // Une Méga-Évolution ou une forme de combat ne s'obtient pas par évolution.
-  const parent =
-    species.evolvesFromSpeciesId !== null && (form === undefined || form.kind === 'regional')
-      ? ctx.species(species.evolvesFromSpeciesId)
-      : undefined;
 
   const lines: ReactNode[] = [];
   if (zones.length > 0) {
@@ -646,7 +613,7 @@ function Locations({ ctx, entry }: { ctx: GameContext; entry: WikiEntry }) {
       <div key="zones">
         <p className="mb-1 font-medium">Expéditions</p>
         <ul className="space-y-0.5">
-          {zones.map(({ zone, probability, levels }) => (
+          {zones.map(({ zone, probability, minLevel, maxLevel }) => (
             <li key={zone.id} className="flex flex-wrap justify-between gap-x-2">
               <span>
                 {zone.name}{' '}
@@ -655,7 +622,7 @@ function Locations({ ctx, entry }: { ctx: GameContext; entry: WikiEntry }) {
                 </span>
               </span>
               <span className="text-slate-500">
-                {levels} · {formatPercent(probability)} des rencontres
+                {levelRange(minLevel, maxLevel)} · {formatPercent(probability)} des rencontres
               </span>
             </li>
           ))}
@@ -664,10 +631,7 @@ function Locations({ ctx, entry }: { ctx: GameContext; entry: WikiEntry }) {
     );
   }
   for (const { zone, special } of specials) {
-    const levels =
-      special.minLevel === special.maxLevel
-        ? `N.${special.minLevel}`
-        : `N.${special.minLevel}–${special.maxLevel}`;
+    const levels = levelRange(special.minLevel, special.maxLevel);
     lines.push(
       <p key={`s-${zone.id}`}>
         Rencontre spéciale en expédition à <strong>{zone.name}</strong>{' '}

@@ -52,6 +52,27 @@ export function autoTransferLabel(filter: AutoTransferFilter | null): string {
   return `Déjà capturés, jusqu'à ${filter.maxPerfectIvs} IV parfait${filter.maxPerfectIvs > 1 ? 's' : ''}`;
 }
 
+/**
+ * Options du nombre d'IV parfaits autorisés (transfert automatique, doublons). Libellés courts :
+ * la liste déroulante du navigateur prend la largeur de l'option la plus longue et sortait de
+ * l'écran sur mobile ; le détail est donné sous le sélecteur par `maxPerfectIvsHint`.
+ */
+export function MaxPerfectIvsOptions() {
+  return Array.from({ length: STAT_NAMES.length + 1 }, (_, n) => (
+    <option key={n} value={n}>
+      {n === 0 ? 'Aucun' : `Jusqu'à ${n}`}
+    </option>
+  ));
+}
+
+/** Précision sous le sélecteur selon le choix : `kept` = « Une capture », « Un doublon »… */
+export function maxPerfectIvsHint(n: number, kept: string, gender: 'm' | 'f' = 'f'): string {
+  const keptWord = gender === 'f' ? 'gardée' : 'gardé';
+  if (n === 0) return `${kept} qui a au moins un IV parfait est ${keptWord}.`;
+  if (n >= STAT_NAMES.length) return 'Aucune protection : les IV parfaits ne comptent pas.';
+  return `${kept} qui a plus de ${n} IV parfait${n > 1 ? 's' : ''} est ${keptWord}.`;
+}
+
 /** Bouton qui affiche le filtre et ouvre son réglage. */
 export function AutoTransferButton({
   label,
@@ -67,12 +88,14 @@ export function AutoTransferButton({
   return (
     <button
       type="button"
-      className={`btn-ghost gap-1 px-3 py-1.5 text-xs ${className}`}
+      // `flex-wrap` : sur un écran étroit, la valeur passe sous le libellé au lieu de déborder.
+      className={`btn-ghost flex-wrap gap-1 px-3 py-1.5 text-xs ${className}`}
       onClick={onClick}
       title="Captures transférées contre des Bonbons au retour de l'expédition"
     >
-      {/* Libellé d'un bloc : les deux points ne passent jamais seuls à la ligne. */}
-      <span className="whitespace-nowrap">♻ {label} :</span>
+      {/* Espace insécable : les deux points ne passent jamais seuls à la ligne, mais le libellé
+          peut se couper sur un écran étroit. */}
+      <span>♻ {label}&nbsp;:</span>
       <span className="font-medium">{autoTransferLabel(filter)}</span>
     </button>
   );
@@ -231,18 +254,10 @@ function AutoTransferForm({
             value={shown?.maxPerfectIvs ?? 0}
             onChange={(e) => setFilter({ maxPerfectIvs: Number(e.target.value) })}
           >
-            {Array.from({ length: STAT_NAMES.length + 1 }, (_, n) => (
-              <option key={n} value={n}>
-                {n === 0
-                  ? 'Aucun (garder tout Pokémon avec un IV parfait)'
-                  : n === STAT_NAMES.length
-                    ? `Jusqu'à ${n} (aucune protection)`
-                    : `Jusqu'à ${n}`}
-              </option>
-            ))}
+            <MaxPerfectIvsOptions />
           </select>
           <p className="mt-1 text-xs text-slate-500">
-            Une capture qui a plus d'IV parfaits que ce nombre est gardée.
+            {maxPerfectIvsHint(shown?.maxPerfectIvs ?? 0, 'Une capture')}
           </p>
         </div>
       </fieldset>

@@ -5,7 +5,7 @@ import type { ShopEntry } from '@poke/content';
 import { maxPurchasableLots, purchaseGift } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { PurchaseResponse, SellResponse, ShopEntryStatusDto } from '@poke/shared';
-import { Modal, useNow } from '../../components/ui';
+import { Modal, useNow, ViewTabs } from '../../components/ui';
 import { api } from '../../lib/api';
 import { keys, serverOffset, useInventory, useShop } from '../../lib/game';
 import {
@@ -97,43 +97,56 @@ export function ShopPage({ ctx }: { ctx: GameContext }) {
   const selling = category === SELL_TAB;
   const current = categories.find((c) => c.id === category) ?? categories[0];
   const shown = statuses.filter((s) => s.entry.categoryId === current?.id);
-  const tabClass = (active: boolean) =>
-    `flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm font-medium transition ${
-      active
-        ? 'bg-brand-500 text-white'
-        : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-    }`;
 
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div className="flex flex-wrap gap-1">
-          {categories.map((c) => {
-            const fresh = statuses.some(
-              (s) => s.entry.categoryId === c.id && highlight.has(s.entry.id),
-            );
-            const firstEntry = statuses.find((s) => s.entry.categoryId === c.id)?.entry;
-            return (
-              <button
-                key={c.id}
-                onClick={() => setCategory(c.id)}
-                className={tabClass(!selling && c.id === current?.id)}
-              >
-                <img
-                  src={c.icon ?? (firstEntry ? itemIcon(ctx, firstEntry.itemId) : '')}
-                  alt=""
-                  className="h-5 w-5 [image-rendering:pixelated]"
-                />
-                {c.name}
-                {fresh && <span className="h-2 w-2 rounded-full bg-amber-400" title="Nouveau" />}
-              </button>
-            );
-          })}
-          <button onClick={() => setCategory(SELL_TAB)} className={tabClass(selling)}>
-            <span aria-hidden>💰</span>
-            Vendre
-          </button>
-        </div>
+        <ViewTabs
+          className="min-w-0 flex-auto"
+          tabs={[
+            ...categories.map((c) => {
+              const fresh = statuses.some(
+                (s) => s.entry.categoryId === c.id && highlight.has(s.entry.id),
+              );
+              const firstEntry = statuses.find((s) => s.entry.categoryId === c.id)?.entry;
+              return {
+                id: c.id,
+                label: (
+                  <>
+                    <img
+                      src={c.icon ?? (firstEntry ? itemIcon(ctx, firstEntry.itemId) : '')}
+                      alt=""
+                      className="h-5 w-5 [image-rendering:pixelated]"
+                    />
+                    {c.name}
+                    {fresh && (
+                      <span
+                        className="h-2 w-2 rounded-full bg-amber-400 ring-2 ring-ink"
+                        title="Nouveau"
+                      />
+                    )}
+                  </>
+                ),
+              };
+            }),
+          ]}
+          selected={selling ? '' : (current?.id ?? '')}
+          onSelect={setCategory}
+        />
+        {/* Vendre : à part des catégories d'achat, pour bien le distinguer. */}
+        <button
+          type="button"
+          aria-pressed={selling}
+          onClick={() => setCategory(SELL_TAB)}
+          className={`pixel-label flex items-center gap-1.5 rounded-lg border-2 border-ink px-4 py-3.5 shadow-[3px_3px_0_rgb(40_48_72/0.3)] transition ${
+            selling
+              ? 'bg-[#f8d030] text-ink shadow-[inset_0_-3px_0_rgb(0_0_0/0.2)]'
+              : 'bg-[#48a858] text-white hover:bg-[#3c9048]'
+          }`}
+        >
+          <span aria-hidden>💰</span>
+          Vendre
+        </button>
         <p className="rounded-full bg-amber-100 px-3 py-1 text-sm font-semibold text-amber-800 dark:bg-amber-950 dark:text-amber-300">
           Solde : {formatMoney(shop.data.currency)}
         </p>
@@ -147,7 +160,7 @@ export function ShopPage({ ctx }: { ctx: GameContext }) {
         <>
           {buy.error && <p className="text-sm text-red-600">{errorText(buy.error)}</p>}
 
-          <ul className="grid gap-3 sm:grid-cols-2">
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {shown.map(({ entry, status }) => (
               <ShopEntryCard
                 key={entry.id}
@@ -224,7 +237,7 @@ function ShopEntryCard({
           className={`h-12 w-12 shrink-0 [image-rendering:pixelated] ${locked ? 'grayscale' : ''}`}
         />
         <div className="min-w-0 flex-1">
-          <p className="flex items-baseline justify-between gap-2">
+          <p className="flex flex-wrap items-baseline justify-between gap-x-2">
             <span className="font-semibold">
               {item?.name ?? entry.itemId}
               {entry.lotSize > 1 && (
@@ -286,12 +299,12 @@ function ShopEntryCard({
               ` — de nouveau dans ${formatWait(Date.parse(status.nextLotsAt) - serverNow)}`}
           </p>
         ) : (
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             {status.maxLotsPerPurchase > 1 && (
               <Stepper value={chosen} max={max} onChange={setLots} unit="lot" />
             )}
             <button
-              className="btn-primary flex-1"
+              className="btn-primary flex-1 basis-auto"
               disabled={max === 0 || buying}
               onClick={() => onBuy(chosen)}
             >
@@ -399,7 +412,7 @@ function SellPanel({ ctx }: { ctx: GameContext }) {
       {sellable.length === 0 ? (
         <p className="text-sm text-slate-500">Tu n’as aucun objet à revendre.</p>
       ) : (
-        <ul className="grid gap-3 sm:grid-cols-2">
+        <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {sellable.map(({ item, sellPrice, owned }) => (
             <SellCard
               key={item.id}
@@ -505,7 +518,7 @@ function SellCard({
           className="h-12 w-12 shrink-0 [image-rendering:pixelated]"
         />
         <div className="min-w-0 flex-1">
-          <p className="flex items-baseline justify-between gap-2">
+          <p className="flex flex-wrap items-baseline justify-between gap-x-2">
             <span className="font-semibold">{item?.name ?? itemId}</span>
             <span className="shrink-0 font-semibold">{formatMoney(sellPrice)}</span>
           </p>
@@ -515,7 +528,7 @@ function SellCard({
           <p className="text-xs text-slate-500">Dans ton sac : {owned}</p>
         </div>
       </div>
-      <div className="mt-auto flex items-center gap-2">
+      <div className="mt-auto flex flex-wrap items-center gap-2">
         <Stepper value={chosen} max={owned} onChange={setQuantity} unit="objet" />
         <button
           className="btn-ghost px-2.5"
@@ -524,7 +537,7 @@ function SellCard({
         >
           Tout
         </button>
-        <button className="btn-primary flex-1" onClick={() => onSell(chosen)}>
+        <button className="btn-primary flex-1 basis-auto" onClick={() => onSell(chosen)}>
           Vendre · {formatMoney(sellPrice * chosen)}
         </button>
       </div>

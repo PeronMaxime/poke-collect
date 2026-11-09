@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
+  doublePrecision,
   index,
   integer,
   jsonb,
@@ -62,6 +63,13 @@ export const playerProfiles = pgTable(
     starterSpeciesId: integer('starter_species_id'),
     /** Starter choisi dans chaque région suivante (`{ johto: 155 }`), un seul par région. */
     regionStarters: jsonb('region_starters').$type<Record<string, number>>().notNull().default({}),
+    /**
+     * Pokémon favori, affiché sur la Fiche Dresseur, dans les classements et la recherche : une
+     * espèce (ou une de ses formes) capturée, en chromatique si capturée ainsi. Null : le starter.
+     */
+    favoriteSpeciesId: integer('favorite_species_id'),
+    favoriteFormId: integer('favorite_form_id'),
+    favoriteShiny: boolean('favorite_shiny').notNull().default(false),
     currency: bigint('currency', { mode: 'number' }).notNull().default(0),
     settings: jsonb('settings').$type<Record<string, unknown>>().notNull().default({}),
     /** Zones d'expédition mises en favori (affichées en tête de la page Expéditions). */
@@ -322,6 +330,9 @@ export const daycareSlots = pgTable(
     startedAt: timestamp('started_at', { withTimezone: true }).notNull().defaultNow(),
     /** Dépôt du couple : l'XP gagnée en pension se compte depuis ce moment (rendue au retrait). */
     depositedAt: timestamp('deposited_at', { withTimezone: true }).notNull().defaultNow(),
+    /** Dépôt de chaque parent (déposés un par un) : son XP se compte depuis ce moment. */
+    parentADepositedAt: timestamp('parent_a_deposited_at', { withTimezone: true }),
+    parentBDepositedAt: timestamp('parent_b_deposited_at', { withTimezone: true }),
   },
   (t) => [uniqueIndex('daycare_slots_owner_slot').on(t.ownerId, t.slotIndex)],
 );
@@ -346,6 +357,13 @@ export const expeditions = pgTable(
     /** Baies de rencontres (Baie Nanana) réservées au départ. */
     encounterBerryItemId: text('encounter_berry_item_id'),
     encounterBerries: integer('encounter_berries').notNull().default(0),
+    /**
+     * Allongement de l'intervalle entre deux rencontres à chaque heure passée, figé au départ
+     * (minutes) ; 0 = anciennes expéditions, rythme constant.
+     */
+    encounterIntervalGrowthMinutes: doublePrecision('encounter_interval_growth_minutes')
+      .notNull()
+      .default(0),
     /** Anciennes expéditions : Pokémon à tenter de capturer ; null = tous. */
     captureFilter: jsonb('capture_filter').$type<CaptureFilter>(),
     /**

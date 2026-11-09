@@ -1,4 +1,5 @@
 import { Fragment, useEffect, useState } from 'react';
+import type { CSSProperties } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { SpecialEncounter, Zone } from '@poke/content';
 import {
@@ -27,7 +28,15 @@ import type {
   RoamerDto,
   ShinyChainDto,
 } from '@poke/shared';
-import { CancelButton, PokemonSprite, ProgressBar, TypeBadge, useNow } from '../../components/ui';
+import { CollapseBody, CollapseButton, useCollapsedSection } from '../../components/Collapsible';
+import {
+  CancelButton,
+  PokemonSprite,
+  ProgressBar,
+  ShinyStar,
+  TypeBadge,
+  useNow,
+} from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import {
   refreshAfterExpeditionClaim,
@@ -47,15 +56,17 @@ import {
   formatCountdown,
   formatDuration,
   formatMultiplier,
-  formatPercentBonus,
   formatShinyRate,
+  itemIcon,
   itemName,
   speciesName,
   unlockConditionText,
 } from '../../lib/labels';
 import { ActiveAbilities } from './ActiveAbilities';
+import { ExpeditionTrail } from './ExpeditionTrail';
 import { LaunchExpeditionDialog } from './LaunchExpeditionDialog';
 import { LootReveal } from './LootReveal';
+import { BANNER_LABEL, CHECKER, TINTED_BANNER, zoneSpecies, zoneTint } from './zoneBanner';
 import {
   AutoTransferButton,
   GlobalAutoTransferDialog,
@@ -65,7 +76,7 @@ import {
 import { RegionStarterCard } from './RegionStarterCard';
 import { roamerName } from './RoamerSightingNotice';
 import { RegionTabs, currentRegionTab, useSavedRegionTab } from './RegionTabs';
-import { ZoneWeatherIcon } from './WeatherIcon';
+import { WEATHER_ICONS, ZoneWeatherIcon } from './WeatherIcon';
 
 /** Lien vers une zone (`#expeditions/<zone>`), depuis le Pokédex. */
 export const zoneLink = (zoneId: string) => `#expeditions/${zoneId}`;
@@ -91,6 +102,10 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   // Filtre global du transfert automatique (chaque zone peut avoir le sien au lancement).
   const [autoTransfer, setAutoTransfer] = useState(loadGlobalAutoTransfer);
   const [autoTransferOpen, setAutoTransferOpen] = useState(false);
+  // Sections repliables en accordéon, comme les widgets (gardé dans le navigateur).
+  const [activeCollapsed, toggleActive] = useCollapsedSection('expeditions.active');
+  const [zonesCollapsed, toggleZones] = useCollapsedSection('expeditions.zones');
+  const [favoritesCollapsed, toggleFavorites] = useCollapsedSection('expeditions.favorites');
 
   const claim = useMutation({
     mutationFn: (id: string) =>
@@ -238,30 +253,42 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   );
 
   return (
-    <div className="space-y-8">
-      <section>
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-x-3">
-          <h2 className="text-lg font-semibold">Expéditions en cours</h2>
+    <div className="space-y-5">
+      <section className="card p-4 md:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-2">
+          <div className="flex items-center gap-2">
+            <CollapseButton
+              collapsed={activeCollapsed}
+              onToggle={toggleActive}
+              label="les expéditions en cours"
+            />
+            <h2>Expéditions en cours</h2>
+            {activeCollapsed && (
+              <span className="count-badge" title="Expéditions en cours / emplacements">
+                {active.length}/{slots}
+              </span>
+            )}
+          </div>
           <div className="flex flex-wrap items-baseline gap-x-3">
             <AutoTransferButton
               label="Transfert auto"
               filter={autoTransfer}
               onClick={() => setAutoTransferOpen(true)}
             />
-            <span className="text-sm text-slate-500">
-              {active.length} / {slots} emplacements
-            </span>
           </div>
         </div>
         {notice && (
-          <p className="mb-3 flex items-start justify-between gap-2 rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:bg-amber-950/40 dark:text-amber-300">
+          <p className="mt-3 flex items-start justify-between gap-2 rounded-md border-2 border-amber-600 bg-amber-50 px-3 py-2 text-sm text-amber-800 dark:border-[#a07a20] dark:bg-[#3d3416] dark:text-[#f8d878]">
             {notice}
             <button onClick={() => setNotice(null)} aria-label="Fermer">
               ✕
             </button>
           </p>
         )}
-        <div className="grid gap-3 sm:grid-cols-2">
+        <CollapseBody
+          open={!activeCollapsed}
+          className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,19rem),1fr))] gap-3.5 pt-4"
+        >
           {Array.from(
             {
               length: shownPlaces(
@@ -290,7 +317,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
               ) : (
                 <div
                   key={slot}
-                  className="grid min-h-32 place-items-center rounded-2xl border-2 border-dashed border-slate-300 p-4 text-center text-sm text-slate-500 dark:border-slate-700"
+                  className="grid min-h-32 place-items-center rounded-lg border-[3px] border-dashed border-slate-400 p-4 text-center text-sm text-slate-500 dark:border-slate-600 dark:text-slate-400"
                 >
                   {slot < slots
                     ? 'Emplacement libre — choisis une zone ci-dessous.'
@@ -299,7 +326,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
               );
             },
           )}
-        </div>
+        </CollapseBody>
         {[claim.error, cancel.error, favorite.error].map(
           (error, i) =>
             error && (
@@ -313,27 +340,50 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
       </section>
 
       {favoriteZones.length > 0 && (
-        <section className="space-y-3">
-          <h2 className="text-lg font-semibold">★ Favoris</h2>
-          <div className="grid gap-3 md:grid-cols-2">
-            {favoriteZones.map((zone) => zoneCard(zone, isZoneUnlocked(ctx, zone, progress)))}
+        <section className="card p-4 md:p-5">
+          <div className="flex items-center gap-2">
+            <CollapseButton
+              collapsed={favoritesCollapsed}
+              onToggle={toggleFavorites}
+              label="les zones favorites"
+            />
+            <h2>★ Favoris</h2>
+            {favoritesCollapsed && (
+              <span className="count-badge" title="Zones favorites">
+                {favoriteZones.length}
+              </span>
+            )}
           </div>
+          <CollapseBody open={!favoritesCollapsed} className={`${ZONE_GRID} pt-4`}>
+            {favoriteZones.map((zone) => zoneCard(zone, isZoneUnlocked(ctx, zone, progress)))}
+          </CollapseBody>
         </section>
       )}
 
-      <section className="space-y-3">
-        <RegionTabs
-          ctx={ctx}
-          progress={progress}
-          selected={regionId}
-          onSelect={setSelectedRegion}
-          marker={(id) => (needsStarter(id) ? 'Starter à choisir' : null)}
-        />
+      <section className="card p-4 md:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          {region && (
+            <div className="flex items-center gap-2">
+              <CollapseButton
+                collapsed={zonesCollapsed}
+                onToggle={toggleZones}
+                label={`les zones de ${region.name}`}
+              />
+              <h2>Zones de {region.name}</h2>
+            </div>
+          )}
+          <RegionTabs
+            ctx={ctx}
+            progress={progress}
+            selected={regionId}
+            onSelect={setSelectedRegion}
+            marker={(id) => (needsStarter(id) ? 'Starter à choisir' : null)}
+          />
+        </div>
         {region && (
-          <>
-            <h2 className="text-lg font-semibold">Zones de {region.name}</h2>
+          <CollapseBody open={!zonesCollapsed} className="space-y-4 pt-4">
             {needsStarter(region.id) && <RegionStarterCard ctx={ctx} region={region} />}
-            <div className="grid gap-3 md:grid-cols-2">
+            <div className={ZONE_GRID}>
               {visibleZones.map(({ zone, unlocked }) => zoneCard(zone, unlocked))}
             </div>
             {hiddenZones > 0 && (
@@ -342,7 +392,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
                 découvrir en progressant dans l’aventure.
               </p>
             )}
-          </>
+          </CollapseBody>
         )}
       </section>
 
@@ -364,6 +414,9 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
     </div>
   );
 }
+
+/** Grille des zones : autant de colonnes que la largeur le permet. */
+const ZONE_GRID = 'grid grid-cols-[repeat(auto-fill,minmax(min(100%,20rem),1fr))] gap-4';
 
 function ActiveExpedition({
   ctx,
@@ -405,10 +458,7 @@ function ActiveExpedition({
   // Fuyards pas encore croisés : ceux déjà rencontrés ont leur propre ligne.
   const tracked = expedition.roamerQuestIds.filter((id) => !expedition.roamersMet.includes(id));
   return (
-    <div
-      className={`card group/exp relative p-4 ${done ? 'ring-2 ring-brand-500/50' : ''}`}
-      tabIndex={0}
-    >
+    <div className={`tile group/exp relative p-3.5 ${done ? 'bg-done' : ''}`} tabIndex={0}>
       <ExpeditionSummary
         ctx={ctx}
         expedition={expedition}
@@ -416,58 +466,46 @@ function ActiveExpedition({
         abilityEnv={abilityEnv}
         charm={charm}
       />
-      {/* Équipe de 6 trop large sur mobile : elle passe sous le titre au lieu de déborder. */}
-      <div className="flex flex-wrap items-start justify-between gap-2">
-        <div className="min-w-0">
-          {expedition.questId && (
-            <p className="text-xs font-medium text-amber-600">✦ Ancienne expédition légendaire</p>
-          )}
-          {tracked.length > 0 && (
-            <p className="text-xs font-medium text-amber-600">
-              ✦ Sur la piste de {tracked.map((id) => roamerName(ctx, id)).join(' et ')}
-            </p>
-          )}
-          {expedition.roamersMet.map((id) => (
-            <p key={id} className="text-xs font-semibold text-amber-600">
-              ✦ {roamerName(ctx, id)} a été rencontré !
-            </p>
-          ))}
-          <p className="font-semibold">
-            {zone?.name ?? quest?.name ?? expedition.zoneId ?? expedition.questId}
+      <div className="min-w-0">
+        {expedition.questId && (
+          <p className="text-xs font-medium text-amber-600">✦ Ancienne expédition légendaire</p>
+        )}
+        {tracked.length > 0 && (
+          <p className="text-xs font-medium text-amber-600">
+            ✦ Sur la piste de {tracked.map((id) => roamerName(ctx, id)).join(' et ')}
           </p>
-          <p className="text-xs text-slate-500">
-            {formatDuration(Math.floor(elapsedMinutes))} écoulées
-            {expedition.shinyChain > 0 && (
-              <span className="ml-1 text-amber-600 dark:text-amber-400">
-                · ✦ chaîne {expedition.shinyChain}
-              </span>
-            )}
-            {expedition.captureFilter && ' · captures filtrées'}
+        )}
+        {expedition.roamersMet.map((id) => (
+          <p key={id} className="text-xs font-semibold text-amber-600">
+            ✦ {roamerName(ctx, id)} a été rencontré !
           </p>
-        </div>
-        <div className="ml-auto flex -space-x-3">
-          {teamSpecies.map((p, i) =>
-            p ? (
-              <PokemonSprite
-                key={i}
-                speciesId={p.speciesId}
-                formId={p.formId}
-                shiny={p.isShiny}
-                size={48}
-              />
-            ) : null,
+        ))}
+        <p className="text-lg leading-tight font-bold">
+          {zone?.name ?? quest?.name ?? expedition.zoneId ?? expedition.questId}
+        </p>
+        <p className="mt-0.5 text-xs text-slate-500 dark:text-slate-400">
+          {formatDuration(Math.floor(elapsedMinutes))} écoulées
+          {expedition.shinyChain > 0 && (
+            <span className="ml-1 text-amber-600 dark:text-amber-400">
+              · ✦ chaîne {expedition.shinyChain}
+            </span>
           )}
-        </div>
+          {expedition.captureFilter && ' · captures filtrées'}
+        </p>
       </div>
-      <ProgressBar className="mt-3" value={(serverNow - start) / (end - start)} />
+      <ExpeditionTrail
+        habitat={zone?.habitat}
+        team={teamSpecies.filter((p) => p !== undefined)}
+        done={done}
+      />
       {sofar && (
-        <p className="mt-2 text-xs text-slate-500">
+        <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
           {sofar.encounters} rencontre{sofar.encounters > 1 ? 's' : ''} · {sofar.lootRolls} tirage
           {sofar.lootRolls > 1 ? 's' : ''} de butin
         </p>
       )}
-      <div className="mt-3 flex items-center justify-between gap-2">
-        <span className="text-sm text-slate-500">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2">
+        <span className={`text-sm ${done ? 'font-bold' : 'text-slate-500 dark:text-slate-400'}`}>
           {done ? (
             'Terminée !'
           ) : stoppable ? (
@@ -483,7 +521,7 @@ function ActiveExpedition({
           )}
         </span>
         {stoppable ? (
-          <button className="btn-primary shrink-0" disabled={claiming} onClick={onClaim}>
+          <button className="btn-primary" disabled={claiming} onClick={onClaim}>
             {claiming ? 'Ouverture…' : done ? 'Récupérer' : 'Arrêter et récupérer'}
           </button>
         ) : (
@@ -500,9 +538,37 @@ const SHINY_FILTER_LABELS = {
   only: 'chromatiques uniquement',
 } as const;
 
+/** Image d'un objet (Ball, baie), avec sa quantité et son nom si demandés ; nom complet au survol. */
+function ItemChip({
+  ctx,
+  itemId,
+  quantity,
+  showName = false,
+}: {
+  ctx: GameContext;
+  itemId: string;
+  quantity?: number;
+  showName?: boolean;
+}) {
+  const name = itemName(ctx, itemId);
+  return (
+    <span className="inline-flex items-center gap-0.5 whitespace-nowrap" title={name}>
+      <img
+        src={itemIcon(ctx, itemId)}
+        alt={name}
+        className="size-6 shrink-0 [image-rendering:pixelated]"
+      />
+      {quantity !== undefined && <span className="font-semibold">×{quantity}</span>}
+      {showName && <span>{name}</span>}
+    </span>
+  );
+}
+
+const NONE = <span className="text-slate-400 dark:text-slate-500">aucune</span>;
+
 /**
- * Résumé d'une expédition en cours, au survol : équipe, Balls, baies, filtres de capture et
- * talents actifs.
+ * Résumé d'une expédition en cours, au survol, en trois blocs : durée, météo et taux
+ * chromatique ; Balls et baies (en images) ; règles de capture, transfert auto et talents.
  */
 function ExpeditionSummary({
   ctx,
@@ -521,45 +587,8 @@ function ExpeditionSummary({
   const filter = e.captureFilter;
   const time = (iso: string) =>
     new Date(iso).toLocaleString('fr-FR', { weekday: 'short', hour: '2-digit', minute: '2-digit' });
-  const rows: [string, string][] = [
-    e.minEndsAt === e.endsAt
-      ? ['Retour', time(e.endsAt)]
-      : ['Durée', `arrêt possible ${time(e.minEndsAt)} · au plus tard ${time(e.endsAt)}`],
-  ];
   // Météo figée au départ (talents compris) : celle de la zone a pu changer depuis.
-  if (e.zoneId && abilityEnv) {
-    const weather = resolveWeather(ctx, abilityEnv);
-    rows.push(['Météo', `${weather ? WEATHER_LABELS[weather] : 'Temps clair'} (au départ)`]);
-  }
-  if (e.ballPlan) {
-    const plan = e.ballPlan;
-    const ball = (itemId: string | null) => (itemId ? itemName(ctx, itemId) : 'aucune');
-    rows.push(['Nouveau', ball(plan.new)]);
-    rows.push(['Shiny', ball(plan.shiny)]);
-    rows.push(['Déjà capturé', ball(plan.caught)]);
-    IV_BALL_CATEGORIES.forEach((category, i) => {
-      if (plan[category] !== undefined) {
-        rows.push([`Déjà capturé · ${i + 1} IV parfait${i > 0 ? 's' : ''}`, ball(plan[category])]);
-      }
-    });
-    rows.push([
-      'Balls lancées',
-      e.ballsUsed.length > 0
-        ? e.ballsUsed.map((b) => `${b.quantity} × ${itemName(ctx, b.itemId)}`).join(' · ')
-        : 'aucune pour l’instant',
-    ]);
-  } else {
-    rows.push([
-      'Balls',
-      e.ballItemId ? `${e.balls} × ${itemName(ctx, e.ballItemId)}` : 'aucune (observation)',
-    ]);
-  }
-  const berries = [
-    e.berryItemId && `${e.berries} × ${itemName(ctx, e.berryItemId)}`,
-    e.encounterBerryItemId && `${e.encounterBerries} × ${itemName(ctx, e.encounterBerryItemId)}`,
-  ].filter(Boolean);
-  rows.push(['Baies', berries.length > 0 ? berries.join(' · ') : 'aucune']);
-  if (e.zoneId) rows.push(['Transfert auto', autoTransferLabel(e.autoTransfer)]);
+  const weather = e.zoneId && abilityEnv ? (resolveWeather(ctx, abilityEnv) ?? 'clear') : null;
   // Comme au serveur : chaîne du départ, Charme Chroma et bonus permanent au retour et, hors
   // expédition légendaire, talents de l'équipe.
   const shinyRate = Math.min(
@@ -567,16 +596,23 @@ function ExpeditionSummary({
     shinyProbability(ctx, { chain: e.shinyChain, charm, bonus: shinyBonus }) *
       (abilityEnv && !e.questId ? abilityMultiplier(ctx, abilityEnv, 'shinyChance') : 1),
   );
-  const shinyBonuses = [
-    e.shinyChain > 0 &&
-      `chaîne ${e.shinyChain}, ${formatMultiplier(chainMultiplier(ctx, e.shinyChain))}`,
-    charm > 1 && 'Charme Chroma',
-    shinyBonus > 1 && `bonus +${formatPercentBonus(shinyBonus)}`,
-  ].filter(Boolean);
-  rows.push([
-    'Taux chromatique',
-    `${formatShinyRate(shinyRate)}${shinyBonuses.length > 0 ? ` (${shinyBonuses.join(' · ')})` : ''}`,
-  ]);
+  const plan = e.ballPlan;
+  const planRows: [string, string | null][] = plan
+    ? [
+        ['Nouveau', plan.new],
+        ['Shiny', plan.shiny],
+        ['Déjà capturé', plan.caught],
+        ...IV_BALL_CATEGORIES.flatMap((category, i): [string, string | null][] =>
+          plan[category] !== undefined
+            ? [[`Déjà capturé, ${i + 1} IV parfait${i > 0 ? 's' : ''}`, plan[category] ?? null]]
+            : [],
+        ),
+      ]
+    : [];
+  const berries = [
+    e.berryItemId && { itemId: e.berryItemId, quantity: e.berries },
+    e.encounterBerryItemId && { itemId: e.encounterBerryItemId, quantity: e.encounterBerries },
+  ].filter((b): b is { itemId: string; quantity: number } => !!b);
   const filters = filter
     ? [
         filter.newOnly && 'absents du Pokédex',
@@ -585,18 +621,89 @@ function ExpeditionSummary({
         SHINY_FILTER_LABELS[filter.shiny],
       ].filter((f): f is string => !!f)
     : [];
+  const label = (text: string) => <dt className="text-slate-500">{text}</dt>;
+  const divider = (
+    <div className="col-span-2 my-1 border-t border-dashed border-slate-300 dark:border-slate-600" />
+  );
   return (
-    <div className="invisible absolute top-full left-0 z-30 mt-1 w-full min-w-64 rounded-xl border border-slate-200 bg-white p-3 text-xs opacity-0 shadow-xl transition-opacity group-focus-within/exp:visible group-focus-within/exp:opacity-100 group-hover/exp:visible group-hover/exp:opacity-100 dark:border-slate-700 dark:bg-slate-900">
-      <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
-        {rows.map(([label, value]) => (
-          <Fragment key={label}>
-            <dt className="text-slate-500">{label}</dt>
-            <dd>{value}</dd>
-          </Fragment>
-        ))}
-        {!e.ballPlan && (
+    <div className="invisible absolute top-full left-0 z-30 mt-1 w-full min-w-[min(16rem,calc(100vw-2rem))] rounded-md border-2 border-ink bg-win p-3 text-xs opacity-0 shadow-xl transition-opacity group-focus-within/exp:visible group-focus-within/exp:opacity-100 group-hover/exp:visible group-hover/exp:opacity-100">
+      <dl className="grid grid-cols-[auto_1fr] items-center gap-x-3 gap-y-1">
+        {/* Durée, météo, taux chromatique. */}
+        {label(e.minEndsAt === e.endsAt ? 'Retour' : 'Arrêt possible')}
+        <dd>{time(e.minEndsAt)}</dd>
+        {e.minEndsAt !== e.endsAt && (
           <>
-            <dt className="text-slate-500">Captures</dt>
+            {label('Au plus tard')}
+            <dd>{time(e.endsAt)}</dd>
+          </>
+        )}
+        {weather && (
+          <>
+            {label('Météo')}
+            <dd className="flex items-center gap-1" title="Météo au départ de l’expédition">
+              <span aria-hidden className="text-base leading-none">
+                {WEATHER_ICONS[weather]}
+              </span>
+              {WEATHER_LABELS[weather]}
+            </dd>
+          </>
+        )}
+        {label('Chromatique')}
+        <dd className="flex items-center gap-1">
+          <ShinyStar /> {formatShinyRate(shinyRate)}
+        </dd>
+
+        {divider}
+        {/* Balls et baies. */}
+        {plan ? (
+          <>
+            {planRows.map(([text, itemId]) => (
+              <Fragment key={text}>
+                {label(text)}
+                <dd>{itemId ? <ItemChip ctx={ctx} itemId={itemId} showName /> : NONE}</dd>
+              </Fragment>
+            ))}
+            {label('Balls lancées')}
+            <dd className="flex flex-wrap gap-x-2">
+              {e.ballsUsed.length > 0
+                ? e.ballsUsed.map((b) => (
+                    <ItemChip key={b.itemId} ctx={ctx} itemId={b.itemId} quantity={b.quantity} />
+                  ))
+                : NONE}
+            </dd>
+          </>
+        ) : (
+          <>
+            {label('Balls')}
+            <dd>
+              {e.ballItemId ? (
+                <ItemChip ctx={ctx} itemId={e.ballItemId} quantity={e.balls} showName />
+              ) : (
+                <span className="text-slate-400 dark:text-slate-500">aucune (observation)</span>
+              )}
+            </dd>
+          </>
+        )}
+        {label('Baies')}
+        <dd className="flex flex-col gap-0.5">
+          {berries.length > 0
+            ? berries.map((b) => (
+                <ItemChip
+                  key={b.itemId}
+                  ctx={ctx}
+                  itemId={b.itemId}
+                  quantity={b.quantity}
+                  showName
+                />
+              ))
+            : NONE}
+        </dd>
+
+        {(!plan || e.zoneId) && divider}
+        {/* Règles de capture et transfert. */}
+        {!plan && (
+          <>
+            {label('Captures')}
             <dd>
               {filter && filter.speciesIds.length > 0 && (
                 <span className="mb-0.5 flex flex-wrap gap-0.5">
@@ -611,10 +718,18 @@ function ExpeditionSummary({
             </dd>
           </>
         )}
+        {e.zoneId && (
+          <>
+            {label('Transfert auto')}
+            <dd>{autoTransferLabel(e.autoTransfer)}</dd>
+          </>
+        )}
+        {/* Talents : toute la largeur, titre centré au-dessus. */}
         {abilityEnv && (
           <>
-            <dt className="text-slate-500">Talents</dt>
-            <dd>
+            {divider}
+            <dt className="col-span-2 text-center text-slate-500">Talents</dt>
+            <dd className="col-span-2">
               <ActiveAbilities ctx={ctx} env={abilityEnv} members={team} empty="aucun actif" />
             </dd>
           </>
@@ -667,13 +782,7 @@ export function ZoneCard({
   const perfectIvs = chain ? chainPerfectIvs(ctx, chain.chain) : 0;
   // Espèces et formes rencontrées : en couleur une fois capturées, en gris si seulement vues,
   // une silhouette tant que l'espèce n'a pas été vue.
-  const species = [
-    ...new Map(
-      zone.encounters
-        .filter((e) => ctx.species(e.speciesId)?.enabled)
-        .map((e) => [`${e.speciesId}:${e.formId ?? ''}`, e] as const),
-    ).values(),
-  ];
+  const species = zoneSpecies(ctx, zone);
   const caughtCount = species.filter(({ speciesId: id, formId }) =>
     formId != null ? caughtForms.has(formId) : caught.has(id),
   ).length;
@@ -681,19 +790,68 @@ export function ZoneCard({
     formId != null ? caughtShinyForms.has(formId) : caughtShiny.has(id),
   ).length;
   const unlock = zone.unlock;
+  // Bandeau teinté selon le type le plus présent parmi les Pokémon de la zone.
+  const tint = zoneTint(species);
   return (
-    <div className={`card flex flex-col p-4 ${unlocked ? '' : 'opacity-60'}`}>
-      {zone.image && (
-        <img src={zone.image} alt="" className="-mx-4 -mt-4 mb-3 h-28 rounded-t-2xl object-cover" />
-      )}
-      <div className="flex items-start justify-between gap-2">
-        <h3 className="flex items-center gap-1 font-semibold">
+    <div className={`tile flex flex-col overflow-hidden ${unlocked ? '' : 'opacity-60'}`}>
+      <div
+        className={`relative flex flex-col justify-end gap-1.5 border-b-[3px] border-ink p-2.5 ${zone.image ? 'h-28' : 'min-h-[4.5rem]'}`}
+      >
+        {zone.image ? (
+          <img
+            src={zone.image}
+            alt=""
+            className="absolute inset-0 h-full w-full object-cover dark:brightness-75"
+          />
+        ) : (
+          <span
+            aria-hidden
+            className={`absolute inset-0 ${TINTED_BANNER}`}
+            style={{ '--tint': tint, ...CHECKER } as CSSProperties}
+          />
+        )}
+        {/* Ligne 1 : le nom de la zone, centré. Ligne 2 : PE requis à gauche, météo (et fuyards)
+            au milieu, favori à droite. */}
+        <h3 className={`relative max-w-full self-center text-center ${BANNER_LABEL}`}>
+          {zone.name}
+        </h3>
+        <div className="relative grid grid-cols-[1fr_auto_1fr] items-center gap-1.5">
+          {/* Même étiquette que le nom de la zone (bordure, police, hauteur). Le « ≥ » en police
+              normale ne doit pas agrandir la ligne : `leading-none` dans un `inline-flex`. */}
+          <span className="inline-flex items-center gap-1 justify-self-start rounded border-2 border-ink bg-win px-2 py-1 font-pixel text-[10px] leading-normal whitespace-nowrap">
+            PE <span className="font-sans text-sm leading-none">≥</span> {zone.minPower}
+          </span>
+          <div className="flex items-center justify-center gap-1.5">
+            <ZoneWeatherIcon
+              zone={zone}
+              at={serverNow}
+              activity="expedition"
+              className="rounded border-2 border-ink bg-win px-1 text-base leading-snug"
+            />
+            {roamers.map((r) => (
+              <span
+                key={r.questId}
+                className="relative -my-2 flex"
+                // Heure fixe plutôt qu'un compte à rebours : un titre qui change chaque seconde fait
+                // clignoter l'infobulle.
+                title={`${speciesName(ctx, r.speciesId, r.formId)} se cache ici jusqu’à ${new Date(r.movesAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} (fuyard : ${r.encounterChance} % de chances par rencontre)`}
+              >
+                <PokemonSprite
+                  speciesId={r.speciesId}
+                  formId={r.formId}
+                  size={40}
+                  className="animate-pulse"
+                  alt={speciesName(ctx, r.speciesId, r.formId)}
+                />
+              </span>
+            ))}
+          </div>
           <button
             type="button"
-            className={`-ml-1 rounded-full px-1 text-lg leading-none transition hover:scale-125 ${
+            className={`justify-self-end rounded border-2 border-ink bg-win px-1.5 text-lg leading-tight transition hover:scale-110 ${
               favorite
-                ? 'text-amber-400'
-                : 'text-slate-300 hover:text-amber-400 dark:text-slate-600'
+                ? 'text-amber-500'
+                : 'text-slate-400 hover:text-amber-500 dark:text-slate-500'
             }`}
             onClick={() => onFavorite(!favorite)}
             title={favorite ? 'Retirer des favoris' : 'Mettre en favori (affichée en tête de page)'}
@@ -702,154 +860,122 @@ export function ZoneCard({
           >
             {favorite ? '★' : '☆'}
           </button>
-          {zone.name}
-          <ZoneWeatherIcon
-            zone={zone}
-            at={serverNow}
-            activity="expedition"
-            className="ml-1 text-base"
-          />
-          {roamers.map((r) => (
-            <span
-              key={r.questId}
-              className="relative -my-2 flex"
-              // Heure fixe plutôt qu'un compte à rebours : un titre qui change chaque seconde fait
-              // clignoter l'infobulle.
-              title={`${speciesName(ctx, r.speciesId, r.formId)} se cache ici jusqu’à ${new Date(r.movesAt).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })} (fuyard : ${r.encounterChance} % de chances par rencontre)`}
-            >
-              <PokemonSprite
-                speciesId={r.speciesId}
-                formId={r.formId}
-                size={36}
-                className="animate-pulse"
-                alt={speciesName(ctx, r.speciesId, r.formId)}
-              />
-            </span>
-          ))}
-        </h3>
-        <span className="shrink-0 rounded-full bg-slate-100 px-2 py-0.5 text-xs text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-          PE ≥ {zone.minPower}
-        </span>
-      </div>
-      <p className="mt-1 text-sm text-slate-500">{zone.description}</p>
-      {/* Phrase énigmatique : seulement quand le joueur possède le Pokémon requis. */}
-      {specials
-        .filter((s) => s.hint)
-        .map((s, i) => (
-          <p key={i} className="mt-1 text-xs text-violet-700 italic dark:text-violet-300">
-            ✧ {s.hint}
-          </p>
-        ))}
-      {chain && (expiresIn === null || expiresIn > 0) && (
-        <p
-          className="mt-2 rounded-lg bg-amber-50 px-2 py-1 text-xs text-amber-800 dark:bg-amber-950/40 dark:text-amber-300"
-          title="Relance la zone avant la fin du délai pour allonger la chaîne."
-        >
-          ✦ Chaîne {chain.chain} : chromatique {formatMultiplier(chainMultiplier(ctx, chain.chain))}
-          {perfectIvs > 0 && ` · ${perfectIvs} IV parfait${perfectIvs > 1 ? 's' : ''}`}
-          {expiresIn !== null && ` · à relancer sous ${formatCountdown(expiresIn)}`}
-        </p>
-      )}
-      <div className="mt-3 flex flex-wrap items-center gap-1 text-xs text-slate-500">
-        {zone.requiredTypes.map((r) => (
-          <span key={r.type} className="flex items-center gap-1">
-            Requis : {r.count} × <TypeBadge type={r.type} />
-          </span>
-        ))}
-        {zone.affinityTypes.length > 0 && <span className="ml-1">Affinité :</span>}
-        {zone.affinityTypes.map((t) => (
-          <TypeBadge key={t} type={t} />
-        ))}
-      </div>
-      <div className="mt-3 flex flex-wrap gap-1">
-        {species.map(({ speciesId: id, formId }) => {
-          const shiny = formId != null ? caughtShinyForms.has(formId) : caughtShiny.has(id);
-          const sprite = (
-            <PokemonSprite
-              speciesId={id}
-              formId={formId}
-              size={40}
-              shiny={shiny}
-              silhouette={!seen.has(id)}
-              className={
-                !shiny &&
-                seen.has(id) &&
-                !(formId != null ? caughtForms.has(formId) : caught.has(id))
-                  ? 'opacity-50 grayscale'
-                  : ''
-              }
-              alt={seen.has(id) ? ctx.species(id, formId)?.nameFr : '?'}
-            />
-          );
-          const key = `${id}:${formId ?? ''}`;
-          const name = seen.has(id) ? speciesName(ctx, id, formId) : '?';
-          return (
-            <span
-              key={key}
-              className="relative flex"
-              title={shiny ? `${name} (chromatique capturé)` : name}
-            >
-              {sprite}
-              {shiny && <ShinySparkles />}
-            </span>
-          );
-        })}
-        {specials.map((s) => {
-          const own = s.formId != null ? caughtForms.has(s.formId) : caught.has(s.speciesId);
-          const name = speciesName(ctx, s.speciesId, s.formId);
-          return (
-            <span
-              key={`special:${s.speciesId}:${s.formId ?? ''}`}
-              className="relative flex rounded-full ring-2 ring-violet-400/70"
-              title={`Rencontre spéciale : ${name}, avec ${speciesName(ctx, s.requiredSpeciesId, s.requiredFormId)} dans l’équipe (${s.chance} % de chances par rencontre)`}
-            >
-              <PokemonSprite
-                speciesId={s.speciesId}
-                formId={s.formId}
-                size={40}
-                className={own ? '' : 'opacity-50 grayscale'}
-                alt={name}
-              />
-            </span>
-          );
-        })}
-      </div>
-      {species.length > 0 && (
-        <div className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-1 text-xs text-slate-500">
-          <span>Capturés</span>
-          <ProgressBar value={caughtCount / species.length} />
-          <span className="text-right tabular-nums">
-            {caughtCount} / {species.length}
-          </span>
-          <span className="text-amber-600 dark:text-amber-400">✦ Chromatique</span>
-          <ProgressBar value={shinyCount / species.length} barClassName="bg-amber-400" />
-          <span className="text-right tabular-nums">
-            {shinyCount} / {species.length}
-          </span>
         </div>
-      )}
-      <div className="mt-auto pt-3">
-        {unlocked ? (
-          <button className="btn-primary w-full" disabled={!canLaunch} onClick={onLaunch}>
-            {canLaunch ? 'Envoyer une équipe' : 'Aucun emplacement libre'}
-          </button>
-        ) : (
-          <p className="text-center text-sm text-slate-500">
-            🔒 {unlockConditionText(ctx, unlock) ?? 'Région verrouillée'}
+      </div>
+      <div className="flex flex-1 flex-col p-3">
+        <p className="text-sm leading-snug text-slate-600 dark:text-slate-300">
+          {zone.description}
+        </p>
+        {/* Phrase énigmatique : seulement quand le joueur possède le Pokémon requis. */}
+        {specials
+          .filter((s) => s.hint)
+          .map((s, i) => (
+            <p key={i} className="mt-1 text-xs text-violet-700 italic dark:text-violet-300">
+              ✧ {s.hint}
+            </p>
+          ))}
+        {chain && (expiresIn === null || expiresIn > 0) && (
+          <p
+            className="mt-2 rounded-md border-2 border-dashed border-amber-600 bg-amber-50 px-2 py-1 text-xs font-semibold text-amber-800 dark:border-[#a07a20] dark:bg-[#3d3416] dark:text-[#f8d878]"
+            title="Relance la zone avant la fin du délai pour allonger la chaîne."
+          >
+            ✦ Chaîne {chain.chain} : chromatique{' '}
+            {formatMultiplier(chainMultiplier(ctx, chain.chain))}
+            {perfectIvs > 0 && ` · ${perfectIvs} IV parfait${perfectIvs > 1 ? 's' : ''}`}
+            {expiresIn !== null && ` · à relancer sous ${formatCountdown(expiresIn)}`}
           </p>
         )}
+        <div className="mt-3 flex flex-wrap items-center gap-1 text-xs text-slate-500 dark:text-slate-400">
+          {zone.requiredTypes.map((r) => (
+            <span key={r.type} className="flex items-center gap-1">
+              Requis : {r.count} × <TypeBadge type={r.type} />
+            </span>
+          ))}
+          {zone.affinityTypes.length > 0 && <span className="ml-1">Affinité :</span>}
+          {zone.affinityTypes.map((t) => (
+            <TypeBadge key={t} type={t} />
+          ))}
+        </div>
+        {/* Grille justifiée : la place restante est répartie entre les colonnes, pour la même
+            marge à gauche et à droite. */}
+        <div className="mt-3 grid grid-cols-[repeat(auto-fill,3rem)] justify-between gap-1">
+          {species.map(({ speciesId: id, formId }) => {
+            const shiny = formId != null ? caughtShinyForms.has(formId) : caughtShiny.has(id);
+            const sprite = (
+              <PokemonSprite
+                speciesId={id}
+                formId={formId}
+                size={44}
+                shiny={shiny}
+                silhouette={!seen.has(id)}
+                className={
+                  !shiny &&
+                  seen.has(id) &&
+                  !(formId != null ? caughtForms.has(formId) : caught.has(id))
+                    ? 'opacity-50 grayscale'
+                    : ''
+                }
+                alt={seen.has(id) ? ctx.species(id, formId)?.nameFr : '?'}
+              />
+            );
+            const key = `${id}:${formId ?? ''}`;
+            const name = seen.has(id) ? speciesName(ctx, id, formId) : '?';
+            return (
+              <span
+                key={key}
+                className={`sprite-well relative size-12 ${shiny ? 'shiny-well' : ''}`}
+                title={shiny ? `${name} (chromatique capturé)` : name}
+              >
+                {sprite}
+              </span>
+            );
+          })}
+          {specials.map((s) => {
+            const own = s.formId != null ? caughtForms.has(s.formId) : caught.has(s.speciesId);
+            const name = speciesName(ctx, s.speciesId, s.formId);
+            return (
+              <span
+                key={`special:${s.speciesId}:${s.formId ?? ''}`}
+                className="sprite-well relative size-12 border-violet-400"
+                title={`Rencontre spéciale : ${name}, avec ${speciesName(ctx, s.requiredSpeciesId, s.requiredFormId)} dans l’équipe (${s.chance} % de chances par rencontre)`}
+              >
+                <PokemonSprite
+                  speciesId={s.speciesId}
+                  formId={s.formId}
+                  size={44}
+                  className={own ? '' : 'opacity-50 grayscale'}
+                  alt={name}
+                />
+              </span>
+            );
+          })}
+        </div>
+        {species.length > 0 && (
+          <div className="mt-3 grid grid-cols-[auto_1fr_auto] items-center gap-x-2 gap-y-1.5 text-xs text-slate-600 dark:text-slate-300">
+            <span>Capturés</span>
+            <ProgressBar value={caughtCount / species.length} />
+            <span className="text-right tabular-nums">
+              {caughtCount} / {species.length}
+            </span>
+            <span className="text-amber-600 dark:text-amber-400">✦ Chromatique</span>
+            <ProgressBar value={shinyCount / species.length} barClassName="bg-amber-400" />
+            <span className="text-right tabular-nums">
+              {shinyCount} / {species.length}
+            </span>
+          </div>
+        )}
+        <div className="mt-auto pt-3">
+          {unlocked ? (
+            <button className="btn-primary w-full" disabled={!canLaunch} onClick={onLaunch}>
+              {canLaunch ? 'Envoyer une équipe' : 'Aucun emplacement libre'}
+            </button>
+          ) : (
+            <p className="text-center text-sm font-semibold text-slate-500 dark:text-slate-400">
+              🔒 {unlockConditionText(ctx, unlock) ?? 'Région verrouillée'}
+            </p>
+          )}
+        </div>
       </div>
     </div>
-  );
-}
-
-/** Trois petites étoiles autour d'un sprite : version shiny capturée. */
-function ShinySparkles() {
-  return (
-    <span aria-hidden className="pointer-events-none absolute inset-0 text-amber-400">
-      <span className="absolute top-1 left-1.5 text-[8px] leading-none">✦</span>
-      <span className="absolute top-2.5 right-1.5 text-[6px] leading-none">✦</span>
-      <span className="absolute bottom-1.5 left-2 text-[6px] leading-none">✦</span>
-    </span>
   );
 }

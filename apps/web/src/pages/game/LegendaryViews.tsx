@@ -30,7 +30,7 @@ import {
   speciesName,
 } from '../../lib/labels';
 import { formatTimeLimit } from './BattlesPage';
-import { CombatTeamOrder, EnemyInfo, combatMove } from './CombatTeamOrder';
+import { CombatFoes, EnemyInfo, combatMove } from './CombatTeamOrder';
 import { ruleText } from './LaunchBattleDialog';
 import { TeamPicker, useTeamPicker } from './TeamPicker';
 import { TeamSection } from './TeamSection';
@@ -141,29 +141,37 @@ export function LaunchLegendaryDialog({
         maxTeamSize={maxTeamSize}
         power={power}
         minPower={battle.minPower}
-        errors={errors.map(ruleText)}
+        header={
+          boss && (
+            <CombatFoes
+              ctx={ctx}
+              foes={[
+                {
+                  speciesId: target.speciesId,
+                  formId: target.formId,
+                  level,
+                  types: boss.types,
+                  info: <EnemyInfo fighter={boss} />,
+                },
+              ]}
+            />
+          )
+        }
         onAutoSelect={() => picker.autoSelect(maxTeamSize)}
       >
-        <TeamPicker
-          ctx={ctx}
-          zone={site}
-          picker={picker}
-          power={power}
-          maxTeamSize={maxTeamSize}
-          statSort
-          abilityEnv={env}
-        />
-        <p className="mt-1 text-xs text-slate-500">
-          Encadrés en vert : un de leurs types est efficace contre {name}.
-        </p>
-        {members.length > 0 && (
-          <CombatTeamOrder
+        {(close) => (
+          <TeamPicker
             ctx={ctx}
-            members={members}
-            moves={moves}
-            setMoves={setMoves}
-            setTeam={picker.setTeam}
-            targets={boss ? [{ name, types: boss.types }] : []}
+            zone={site}
+            picker={picker}
+            power={power}
+            maxTeamSize={maxTeamSize}
+            statSort
+            abilityEnv={env}
+            errors={errors.map(ruleText)}
+            onDone={close}
+            combat={{ moves, setMoves, targets: boss ? [{ name, types: boss.types }] : [] }}
+            affinityHint={`Efficace contre ${name}`}
           />
         )}
       </TeamSection>
