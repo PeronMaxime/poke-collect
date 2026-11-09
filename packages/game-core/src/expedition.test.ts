@@ -69,6 +69,23 @@ describe('temps d’une expédition', () => {
     expect(expeditionPlan(custom, 120, undefined, null, 0).encounters).toBe(30);
   });
 
+  it('rencontre lointaine, infinie ou durée infinie : réponse immédiate, sans boucle sans fin', () => {
+    // Stock de Balls « pour combien de temps ? » : des milliers de rencontres, ou une Ball qu'aucune
+    // rencontre n'utilise (n / 0). Avec l'intervalle allongé, l'onglet gelait (10 nov.).
+    const started = performance.now();
+    expect(encounterMinutes(ctx, 1e6)).toBe(Infinity);
+    expect(encounterMinutes(ctx, Infinity)).toBe(Infinity);
+    expect(encounterMinutes(ctx, NaN)).toBe(Infinity);
+    expect(expeditionPlan(ctx, Infinity).encounters).toBe(
+      expeditionPlan(ctx, 366 * 24 * 60).encounters,
+    );
+    expect(expeditionPlan(ctx, NaN).encounters).toBe(0);
+    expect(performance.now() - started).toBeLessThan(1000);
+    // Rencontre atteignable dans l'année : toujours calculée.
+    expect(encounterMinutes(ctx, 500)).toBeGreaterThan(1440);
+    expect(encounterMinutes(ctx, 500)).toBeLessThan(Infinity);
+  });
+
   it('lit les réglages, pas de valeurs en dur', () => {
     const custom = testContext((c) => {
       c.balance.expeditions.encounterIntervalMinutes = 12;

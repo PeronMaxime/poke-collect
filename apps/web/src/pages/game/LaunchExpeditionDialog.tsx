@@ -409,16 +409,6 @@ export function LaunchExpeditionForm({
     lootIntervalMinutes,
     berryDurationMinutes,
   } = ctx.balance.expeditions;
-  // Rencontres de plus en plus espacées : l'intervalle s'allonge à chaque heure passée.
-  const growthText =
-    encounterIntervalGrowthMinutes > 0
-      ? `+${formatShortMinutes(encounterIntervalGrowthMinutes)} / h`
-      : null;
-  const encounterPace = `toutes les ${formatShortMinutes(encounterIntervalMinutes)}${
-    growthText
-      ? ` la première heure, puis ${formatShortMinutes(encounterIntervalGrowthMinutes)} de plus à chaque heure passée`
-      : ''
-  }`;
   // Période des estimations : « par heure » par défaut.
   const per = duration === 60 ? 'par heure' : `en ${formatDuration(duration)}`;
   // Du multiplicateur le plus faible au plus fort : la Ball par défaut reste la plus courante.
@@ -518,6 +508,30 @@ export function LaunchExpeditionForm({
   const env = expeditionEnv(site, members, new Date().getHours());
   const check = checkTeam(ctx, site, members, env.hour);
   const minMinutes = expeditionMinMinutes(ctx, zone.minDurationMinutes, env);
+  // Rythme des rencontres avec les talents de l'équipe (comme au serveur) : l'intervalle et son
+  // allongement à chaque heure passée se divisent par leur multiplicateur. Baies à part : leur
+  // effet ne dure qu'un temps.
+  const rawEncounterSpeed = abilityMultiplier(ctx, env, 'encounters');
+  const encounterSpeed = rawEncounterSpeed > 0 ? rawEncounterSpeed : 1;
+  const encounterInterval = encounterIntervalMinutes / encounterSpeed;
+  const encounterGrowth = (encounterIntervalGrowthMinutes ?? 0) / encounterSpeed;
+  const encounterSpeedText =
+    encounterSpeed !== 1 ? `talents ${formatMultiplier(encounterSpeed)}` : null;
+  // Rencontres de plus en plus espacées : l'intervalle s'allonge à chaque heure passée.
+  const growthText =
+    [encounterGrowth > 0 ? `+${formatShortMinutes(encounterGrowth)} / h` : null, encounterSpeedText]
+      .filter(Boolean)
+      .join(' · ') || null;
+  const encounterPace = `toutes les ${formatShortMinutes(encounterInterval)}${
+    encounterGrowth > 0
+      ? ` la première heure, puis ${formatShortMinutes(encounterGrowth)} de plus à chaque heure passée`
+      : ''
+  }`;
+  const encounterTitle = `Une rencontre ${encounterPace}${
+    encounterSpeedText
+      ? ` (talents de l’équipe ${formatMultiplier(encounterSpeed)} compris ; sans eux, toutes les ${formatShortMinutes(encounterIntervalMinutes)})`
+      : ''
+  }. Les baies de rencontres l’accélèrent aussi, le temps de leur effet.`;
   const berryLimit = maxExpeditionBerries(ctx);
   const maxBerries = (itemId: string | null) =>
     itemId ? (unlimitedItems ? berryLimit : Math.min(berryLimit, owned(itemId))) : 0;
@@ -749,9 +763,10 @@ export function LaunchExpeditionForm({
             <Stat label="Retour après" value={formatDuration(maxDurationMinutes)} />
             <Stat
               label="Rencontre"
-              value={`1 / ${formatShortMinutes(encounterIntervalMinutes)}`}
+              value={`1 / ${formatShortMinutes(encounterInterval)}`}
               sub={growthText}
-              title={`Une rencontre ${encounterPace}. Talents et baies accélèrent ce rythme.`}
+              title={encounterTitle}
+              tone={encounterSpeed > 1 ? 'better' : encounterSpeed < 1 ? 'worse' : undefined}
             />
             <Stat label="Butin" value={`1 / ${lootIntervalMinutes} min`} />
             <Stat
@@ -1351,6 +1366,7 @@ function Stat({
   sub,
   title,
   accent = false,
+  tone,
 }: {
   label: string;
   value: string;
@@ -1358,6 +1374,8 @@ function Stat({
   sub?: string | null;
   title?: string;
   accent?: boolean;
+  /** Valeur modifiée par l'équipe (talents) : en vert si meilleure, en rouge si moins bonne. */
+  tone?: 'better' | 'worse';
 }) {
   return (
     <div
@@ -1373,7 +1391,17 @@ function Stat({
       >
         {label}
       </dt>
-      <dd className="truncate text-sm font-semibold">{value}</dd>
+      <dd
+        className={`truncate text-sm font-semibold ${
+          tone === 'better'
+            ? 'text-emerald-700 dark:text-emerald-400'
+            : tone === 'worse'
+              ? 'text-red-700 dark:text-red-400'
+              : ''
+        }`}
+      >
+        {value}
+      </dd>
       {sub && (
         <dd className="truncate text-[11px] leading-tight text-slate-500 dark:text-slate-400">
           {sub}
