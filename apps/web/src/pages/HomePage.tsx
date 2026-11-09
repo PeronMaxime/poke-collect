@@ -51,8 +51,8 @@ import { TeamsPage } from './game/TeamsPage';
 import { TrainerCardPage } from './game/TrainerCardPage';
 import { WikiPage } from './game/WikiPage';
 import { WIKI_HASH, wikiLink } from './game/wiki';
-import { CHANGELOG_PATH, hasUnseenChangelog } from './ChangelogPage';
-import { FanDisclaimer, LegalLinks, navigate } from './LegalPages';
+import { openChangelog, useUnseenChangelog } from './ChangelogPage';
+import { FanDisclaimer, LegalLinks } from './LegalPages';
 import { SettingsDialog } from './SettingsDialog';
 
 const TAB_LABELS = Object.fromEntries(MENU_TABS.map((t) => [t.id, t.label])) as Record<
@@ -116,7 +116,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
   const [closedSections, setClosedSections] = useState(readClosedSections);
   // Onglet sur lequel le joueur a replié la section de l'onglet affiché (sinon elle reste ouverte).
   const [collapsedOn, setCollapsedOn] = useState<PageId | null>(null);
-  const [unseenChangelog] = useState(hasUnseenChangelog);
+  const unseenChangelog = useUnseenChangelog();
   const expeditions = useExpeditions();
   const daycare = useDaycare();
   const museum = useMuseum();
@@ -529,10 +529,12 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
             Admin
           </a>
         )}
-        <a
+        <button
           className={`${className} relative`}
-          href={CHANGELOG_PATH}
-          onClick={(e) => navigate(e, CHANGELOG_PATH)}
+          onClick={() => {
+            setMenuOpen(false);
+            openChangelog();
+          }}
         >
           Nouveautés
           {unseenChangelog && (
@@ -541,7 +543,7 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
               title="Nouvelle mise à jour"
             />
           )}
-        </a>
+        </button>
         <a
           className={`${className} ${tab === WIKI_HASH ? activeClassName : ''}`}
           href={wikiLink()}

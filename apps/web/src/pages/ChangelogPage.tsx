@@ -1,11 +1,14 @@
-import { useEffect } from 'react';
-import { navigate } from './LegalPages';
+import { useSyncExternalStore } from 'react';
+import { Modal } from '../components/ui';
+import { LAUNCH_DIALOG_CLASS, ResultFrame } from './game/dialogParts';
 
 /**
- * Page des nouveautés (changelog), lisible sans être connecté. Ajouter une entrée en tête de
- * `RELEASES` à chaque mise en production, en décrivant les changements du point de vue du joueur.
+ * Nouveautés (changelog), en popup ouverte depuis n'importe quel écran, même sans être connecté.
+ * Ajouter une entrée en tête de `RELEASES` à chaque mise en production, en décrivant les
+ * changements du point de vue du joueur.
  */
 
+/** Ancienne adresse de la page des nouveautés : ouvre la popup (liens déjà partagés). */
 export const CHANGELOG_PATH = '/nouveautes';
 
 interface Release {
@@ -1037,8 +1040,7 @@ const RELEASES: Release[] = [
 const SEEN_KEY = 'dexpedition.changelogSeen';
 const LATEST = RELEASES[0]?.date;
 
-/** Vrai tant que le joueur n'a pas ouvert la page depuis la dernière mise à jour. */
-export function hasUnseenChangelog(): boolean {
+function readUnseen(): boolean {
   try {
     return !!LATEST && localStorage.getItem(SEEN_KEY) !== LATEST;
   } catch {
@@ -1046,48 +1048,75 @@ export function hasUnseenChangelog(): boolean {
   }
 }
 
-export function ChangelogPage() {
-  useEffect(() => {
-    try {
-      if (LATEST) localStorage.setItem(SEEN_KEY, LATEST);
-    } catch {
-      // Stockage indisponible (navigation privée) : l'indicateur restera affiché.
-    }
-  }, []);
+/** État partagé de la popup : ouverte ou non, et dernière mise à jour pas encore vue. */
+let state = { open: false, unseen: readUnseen() };
+const listeners = new Set<() => void>();
 
+function setState(next: Partial<typeof state>) {
+  state = { ...state, ...next };
+  for (const l of listeners) l();
+}
+
+function subscribe(onChange: () => void) {
+  listeners.add(onChange);
+  return () => listeners.delete(onChange);
+}
+
+/** Ouvre la popup des nouveautés, et marque la dernière mise à jour comme vue. */
+export function openChangelog() {
+  try {
+    if (LATEST) localStorage.setItem(SEEN_KEY, LATEST);
+  } catch {
+    // Stockage indisponible (navigation privée) : l'indicateur reviendra au prochain chargement.
+  }
+  setState({ open: true, unseen: false });
+}
+
+/** Vrai tant que le joueur n'a pas ouvert les nouveautés depuis la dernière mise à jour. */
+export function useUnseenChangelog(): boolean {
+  return useSyncExternalStore(subscribe, () => state.unseen);
+}
+
+const close = () => setState({ open: false });
+
+/** Popup des nouveautés, posée une fois à la racine de l'application. */
+export function ChangelogDialog() {
+  const open = useSyncExternalStore(subscribe, () => state.open);
   return (
-    <main className="mx-auto max-w-2xl px-4 py-8">
-      <a
-        href="/"
-        onClick={(e) => navigate(e, '/')}
-        className="text-sm text-slate-500 hover:underline"
+    <Modal open={open} onClose={close} wide className={LAUNCH_DIALOG_CLASS}>
+      <ResultFrame
+        title="Nouveautés"
+        onClose={close}
+        footer={
+          <button className="btn-primary px-6 py-3" onClick={close}>
+            Fermer
+          </button>
+        }
       >
-        ← Retour au jeu
-      </a>
-      <article className="card mt-4 space-y-6 text-sm leading-relaxed">
-        <h1 className="text-2xl font-bold">Nouveautés</h1>
-        {RELEASES.map((release) => (
-          <section
-            key={release.date + release.title}
-            className="space-y-3 border-t border-slate-200 pt-6 first-of-type:border-t-0 first-of-type:pt-0 dark:border-slate-800"
-          >
-            <h2 className="text-xl font-bold">
-              {release.title}{' '}
-              <span className="text-base font-normal text-slate-500">— {release.date}</span>
-            </h2>
-            {release.changes.map(({ section, items }) => (
-              <div key={section}>
-                <h3 className="font-medium">{section}</h3>
-                <ul className="list-disc space-y-1 pl-5">
-                  {items.map((item) => (
-                    <li key={item}>{item}</li>
-                  ))}
-                </ul>
-              </div>
-            ))}
-          </section>
-        ))}
-      </article>
-    </main>
+        <div className="space-y-6 text-sm leading-relaxed">
+          {RELEASES.map((release) => (
+            <section
+              key={release.date + release.title}
+              className="space-y-3 border-t border-slate-200 pt-6 first-of-type:border-t-0 first-of-type:pt-0 dark:border-slate-800"
+            >
+              <h3 className="text-lg font-bold">
+                {release.title}{' '}
+                <span className="text-sm font-normal text-slate-500">— {release.date}</span>
+              </h3>
+              {release.changes.map(({ section, items }) => (
+                <div key={section}>
+                  <h4 className="font-medium">{section}</h4>
+                  <ul className="list-disc space-y-1 pl-5">
+                    {items.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </section>
+          ))}
+        </div>
+      </ResultFrame>
+    </Modal>
   );
 }
