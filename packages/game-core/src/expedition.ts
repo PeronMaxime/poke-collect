@@ -125,22 +125,33 @@ function* clockSegments(clock: EncounterClock) {
   }
 }
 
+/**
+ * Horizon des calculs de rythme : un an. Les tranches horaires sont sans fin et, l'intervalle
+ * s'allongeant, le nombre de rencontres ne croît plus qu'en logarithme du temps : sans borne, une
+ * n-ième rencontre lointaine (stock de Balls « pour combien de temps ? ») ou une durée infinie
+ * bouclerait des millions d'heures, voire sans fin (onglet gelé, 10 nov.). Au-delà : jamais.
+ */
+const MAX_CLOCK_MINUTES = 366 * 24 * HOUR_MINUTES;
+
 /** Rencontres survenues après `minutes` : le temps sous l'effet d'une baie compte davantage. */
 function encountersAfter(clock: EncounterClock, minutes: number): number {
+  const until = Math.min(minutes, MAX_CLOCK_MINUTES);
+  if (!(until > 0)) return 0;
   let total = 0;
   for (const s of clockSegments(clock)) {
-    if (s.start >= minutes) break;
-    total += s.rate * (Math.min(s.end, minutes) - s.start);
+    if (s.start >= until) break;
+    total += s.rate * (Math.min(s.end, until) - s.start);
   }
   return Math.floor(total + EPSILON);
 }
 
-/** Moment de la n-ième rencontre (à partir de 1). */
+/** Moment de la n-ième rencontre (à partir de 1) ; `Infinity` si elle n'arrive pas d'ici un an. */
 function encounterTime(clock: EncounterClock, n: number): number {
   if (n <= 0) return 0;
-  if (!(clock.perMinute > 0)) return Infinity;
+  if (!(clock.perMinute > 0) || !(n < Infinity)) return Infinity;
   let total = 0;
   for (const s of clockSegments(clock)) {
+    if (s.start >= MAX_CLOCK_MINUTES) return Infinity;
     const count = s.rate * (s.end - s.start);
     if (total + count >= n - EPSILON) return Math.max(s.start, s.start + (n - total) / s.rate);
     total += count;
