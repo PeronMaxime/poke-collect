@@ -71,7 +71,7 @@ Le code n'intervient que pour ajouter un champ, une entité, ou pousser un chang
 
 ### Ajouter un champ à une entité existante
 
-1. **Schéma** : `packages/content/src/schemas.ts`. Un champ ajouté doit rester lisible pour les
+1. **Schéma** : `packages/content/src/schemas/`. Un champ ajouté doit rester lisible pour les
    anciennes versions du contenu : `.optional()` ou `.default(…)`.
 2. **Table** : la colonne correspondante dans `packages/db/src/schema/content.ts` (même nom que le
    champ), puis `pnpm db:generate`.
@@ -109,7 +109,7 @@ Pour qu'un changement de contenu arrive en production (dont la base a ses propre
 
 ## Ajouter un onglet au jeu
 
-1. `MENU_TABS` dans `packages/content/src/schemas.ts` (identifiant et libellé). Un onglet absent
+1. `MENU_TABS` dans `packages/content/src/schemas/` (identifiant et libellé). Un onglet absent
    du menu réglé dans l'admin est ajouté à la fin automatiquement (`normalizeMenu`).
 2. La page dans `apps/web/src/pages/game/`, branchée dans `HomePage.tsx`.
 3. Sa condition de déblocage éventuelle : `balance.tabUnlocks`, réglable dans l'admin
@@ -119,7 +119,7 @@ Pour qu'un changement de contenu arrive en production (dont la base a ses propre
 
 ## Ajouter un effet d'objet ou de talent
 
-Les effets sont des unions discriminées par `type`, dans `packages/content/src/schemas.ts`
+Les effets sont des unions discriminées par `type`, dans `packages/content/src/schemas/`
 (`itemEffectSchema`, effets et conditions des talents).
 
 1. Ajouter la variante au schéma.

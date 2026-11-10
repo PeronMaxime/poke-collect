@@ -2,7 +2,7 @@
 -- les types super efficaces sur le type le plus présent parmi les Pokémon de la zone (Pokémon
 -- distincts, égalités départagées par le poids de rencontre cumulé ; à égalité parfaite, les
 -- faiblesses de tous les types à égalité).
--- Même calcul que zoneAffinityTypes (packages/content/src/schemas.ts). Seul affinity_types change.
+-- Même calcul que zoneAffinityTypes (packages/content/src/schemas/). Seul affinity_types change.
 WITH pokemon_types (species_id, form_id, types) AS (
   VALUES
     (1, NULL::int, '{grass,poison}'::text[]),

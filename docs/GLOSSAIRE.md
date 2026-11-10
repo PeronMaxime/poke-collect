@@ -32,7 +32,7 @@ veut dire, puis où la chercher. Les chemins partent de `packages/` ou de `apps/
 | --------------------- | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------- |
 | Expédition            | Une équipe part dans une zone ; rencontres, captures et butin se calculent au retour                        | `game-core/expedition.ts`, `api/game/expeditions.ts`, table `expeditions` |
 | Durée libre           | Le joueur arrête quand il veut ; l'intervalle entre deux rencontres s'allonge d'heure en heure              | `expeditionPlan`, `expeditionPace`, `intervalGrowthMinutes`               |
-| Zone                  | Lieu d'expédition : rencontres pondérées, butin, PE minimale, types exigés, condition de déblocage          | `Zone` (`content/schemas.ts`)                                             |
+| Zone                  | Lieu d'expédition : rencontres pondérées, butin, PE minimale, types exigés, condition de déblocage          | `Zone` (`content/schemas/`)                                               |
 | Affinité              | Un Pokémon dont le type est super efficace contre le type le plus présent de la zone aide à capturer        | `zoneAffinityTypes`, `countAffinity`                                      |
 | Plan de Balls         | Quelle Ball lancer selon la rencontre : nouveau, chromatique, déjà capturé, nombre d'IV parfaits            | `BallPlan`, `ballCategory`, `planThrows`                                  |
 | Balls au fil de l'eau | Les Balls quittent le sac à mesure des lancers, pas au départ : c'est le rattrapage qui les retire          | `settleExpeditionBalls`, `throws`                                         |
@@ -91,7 +91,7 @@ veut dire, puis où la chercher. Les chemins partent de `packages/` ou de `apps/
 
 | Terme                      | Ce que c'est                                                                        | Dans le code                                                |
 | -------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Contenu                    | Tout ce qui se règle dans l'admin, par opposition au code                           | `GameContent` (`content/schemas.ts`)                        |
+| Contenu                    | Tout ce qui se règle dans l'admin, par opposition au code                           | `GameContent` (`content/schemas/`)                          |
 | Équilibrage                | Les réglages globaux du contenu (taux, durées, plafonds)                            | `content.balance`, `BalanceSettings`                        |
 | Version, brouillon, publié | Le contenu est versionné : un brouillon se prépare, puis se publie d'un coup        | `db/content-repo.ts`, table `content_versions`              |
 | Instantané                 | Copie du contenu publié dans Git, point de départ d'une base neuve                  | `content/game-content.json`, `api/src/content-snapshot.ts`  |

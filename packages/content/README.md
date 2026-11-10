@@ -10,7 +10,7 @@ le contenu » dans [docs/RECETTES.md](../../docs/RECETTES.md).
 
 | Fichier                | Rôle                                                                             |
 | ---------------------- | -------------------------------------------------------------------------------- |
-| `schemas.ts`           | Les schémas Zod de chaque entité et de l'équilibrage ; les types en sont déduits |
+| `schemas/`             | Les schémas Zod de chaque entité et de l'équilibrage ; les types en sont déduits |
 | `integrity.ts`         | `contentIssues` : références croisées et alertes, exigées pour publier           |
 | `seed.ts`, `seed-*.ts` | Le contenu de test, écrit en TypeScript, assemblé en `seedContent`               |
 | `ability-proposals.ts` | Propositions d'effets pour les talents (aide de l'admin)                         |
@@ -18,7 +18,7 @@ le contenu » dans [docs/RECETTES.md](../../docs/RECETTES.md).
 
 ## Les entités
 
-`GameContentData` (dans `schemas.ts`) regroupe : l'équilibrage (`balance`), les régions, les
+`GameContentData` (dans `schemas/`) regroupe : l'équilibrage (`balance`), les régions, les
 surcharges d'espèces et d'évolutions, les talents, les objets, les tables de butin, les zones,
 les dresseurs, les donjons, les quêtes, la boutique, les quêtes et coffres de guilde.
 `GameContent` y ajoute le numéro de version.

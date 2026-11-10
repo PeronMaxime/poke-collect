@@ -125,7 +125,7 @@ graine), **attendre** (rien ne tourne), **réclamer** (calculer, appliquer).
 Tout ce qui se règle (équilibrage, régions, zones, dresseurs, quêtes, objets, butin, talents,
 donjons, boutique, guildes, menu) est du **contenu**, pas du code.
 
-- **Schémas** : `packages/content/src/schemas.ts` (Zod). C'est la définition de référence de
+- **Schémas** : `packages/content/src/schemas/` (Zod). C'est la définition de référence de
   chaque entité ; les types TypeScript en sont déduits.
 - **Stockage** : en base, rattaché à une `content_version` (`packages/db/src/schema/content.ts`,
   `content-repo.ts`). Une seule version **publiée**, au plus un **brouillon**. Créer un brouillon
