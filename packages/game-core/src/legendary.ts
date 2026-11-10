@@ -94,11 +94,7 @@ export function legendaryBoss(
 }
 
 /** Combat contre le légendaire (pas de lieu : sa météo vient de son talent). */
-export function legendaryArena(
-  ctx: GameContext,
-  target: QuestPokemon,
-  isShiny = false,
-): CombatArena {
+function legendaryArena(ctx: GameContext, target: QuestPokemon, isShiny = false): CombatArena {
   const boss = legendaryBoss(ctx, target, isShiny);
   return {
     activity: 'battle',

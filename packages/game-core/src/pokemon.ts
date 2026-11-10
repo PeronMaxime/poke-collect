@@ -112,7 +112,7 @@ export function levelForXp(growthRate: string, xp: number): number {
 // --- Génération ---------------------------------------------------------------------
 
 /** Six IV tirés au hasard, chacun de 0 à 31. */
-export function rollIvs(rng: Rng): Stats {
+function rollIvs(rng: Rng): Stats {
   const ivs = {} as Stats;
   for (const stat of STAT_NAMES) ivs[stat] = rng.int(0, MAX_IV);
   return ivs;
@@ -134,7 +134,7 @@ export function withPerfectIvs(rng: Rng, ivs: Stats, count: number): Stats {
  * Sexe tiré selon le `genderRate` de l'espèce : huitièmes de chances d'être femelle ; négatif =
  * asexué.
  */
-export function rollGender(rng: Rng, genderRate: number): Gender {
+function rollGender(rng: Rng, genderRate: number): Gender {
   if (genderRate < 0) return 'genderless';
   return rng.next() < genderRate / 8 ? 'female' : 'male';
 }
@@ -150,7 +150,7 @@ export const NO_ABILITY = '';
  * (toujours, si l'espèce n'a que des talents cachés), sinon un talent normal. Consomme toujours
  * deux tirages.
  */
-export function rollAbility(rng: Rng, species: Species, hiddenChance: number): string {
+function rollAbility(rng: Rng, species: Species, hiddenChance: number): string {
   const regular = species.abilities.filter((a) => !a.isHidden);
   const hidden = species.abilities.filter((a) => a.isHidden);
   const roll = rng.next();

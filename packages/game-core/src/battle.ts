@@ -43,7 +43,7 @@ export { typeEffectiveness };
 // --- Dresseurs ------------------------------------------------------------------------------
 
 /** Pokémon d'un dresseur : IV uniformes, nature neutre par défaut (aucun aléatoire). */
-export function trainerPokemonInstance(ctx: GameContext, member: TrainerPokemon) {
+function trainerPokemonInstance(ctx: GameContext, member: TrainerPokemon) {
   return dungeonOpponentInstance(member, ctx.balance.battles.defaultTrainerIv);
 }
 
@@ -74,7 +74,7 @@ function trainerPlaceWeather(
 }
 
 /** Combat contre un dresseur, lancé à `startedAt` (météo de sa zone à cet instant). */
-export function trainerArena(
+function trainerArena(
   ctx: GameContext,
   trainer: Trainer,
   startedAt?: Date | number | null,

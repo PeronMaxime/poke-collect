@@ -40,7 +40,7 @@ export function resolveWeather(ctx: GameContext, env: AbilityEnv): Weather | nul
 }
 
 /** Environnement dont la météo est résolue (talents compris). */
-export function withResolvedWeather(ctx: GameContext, env: AbilityEnv): AbilityEnv {
+function withResolvedWeather(ctx: GameContext, env: AbilityEnv): AbilityEnv {
   return env.weatherResolved
     ? env
     : { ...env, weather: resolveWeather(ctx, env), weatherResolved: true };

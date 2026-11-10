@@ -20,7 +20,7 @@ import { textSeed } from './roaming';
  */
 
 /** Fuseau horaire des quêtes de guilde : remise à zéro à minuit (et le lundi à minuit) à Paris. */
-export const GUILD_TIME_ZONE = 'Europe/Paris';
+const GUILD_TIME_ZONE = 'Europe/Paris';
 
 /** Longueur minimale du nom d'une guilde. */
 export const GUILD_NAME_MIN = 3;
@@ -117,15 +117,6 @@ export function guildPeriod(kind: GuildQuestPeriod, now: Date | number): GuildPe
 /** Objectif d'une quête (pour sa période) pour une guilde de `memberCount` membres. */
 export function guildQuestTarget(goal: GuildQuestGoal, memberCount: number): number {
   return Math.max(goal.minCount, goal.countPerMember * Math.max(1, memberCount));
-}
-
-/** Coffre gagné par une quête de cette période et de cette difficulté. */
-export function guildQuestChest(
-  ctx: GameContext,
-  period: GuildQuestPeriod,
-  difficulty: GuildQuestDifficulty,
-): ChestRarity {
-  return ctx.balance.guilds.quests[period][difficulty].chest;
 }
 
 /** Quête tirée pour la période (figée : les retouches de l'admin valent au tirage suivant). */

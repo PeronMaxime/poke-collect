@@ -32,9 +32,6 @@ export function roamingTarget(quest: Quest, pokemonCaught: number): QuestPokemon
   return target?.roaming != null ? target : undefined;
 }
 
-/** La quête offre au moins un Pokémon fuyard (pas d'expédition légendaire pour lui). */
-export const hasRoamer = (quest: Quest) => quest.rewards.pokemon.some((p) => p.roaming != null);
-
 /** Zones où peut se cacher un fuyard de la région : ordinaires et débloquées par le joueur. */
 export function roamingZones(
   ctx: GameContext,
@@ -77,7 +74,7 @@ export interface RoamerPosition {
 }
 
 /** Zone où a fui un fuyard croisé mais pas capturé, valable pendant l'heure `hour`. */
-export interface RoamerHideout {
+interface RoamerHideout {
   pokemonIndex: number;
   hour: number;
   zoneId: string;

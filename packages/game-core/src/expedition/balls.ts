@@ -20,7 +20,7 @@ export const IV_BALL_CATEGORIES = ['iv1', 'iv2', 'iv3', 'iv4', 'iv5', 'iv6'] as 
 export type IvBallCategory = (typeof IV_BALL_CATEGORIES)[number];
 
 /** Catégorie d'IV pour un nombre d'IV parfaits donné (1 à 6). */
-export const ivBallCategory = (count: number) => `iv${count}` as IvBallCategory;
+const ivBallCategory = (count: number) => `iv${count}` as IvBallCategory;
 
 /** Catégorie d'un Pokémon rencontré, qui décide de la Ball lancée. */
 export type BallCategory = 'new' | 'shiny' | 'caught' | IvBallCategory;
@@ -39,9 +39,6 @@ export const BALL_CATEGORIES: readonly BallCategory[] = [
  */
 export type BallPlan = Record<'new' | 'shiny' | 'caught', string | null> &
   Partial<Record<IvBallCategory, string | null>>;
-
-/** Plan vide : aucune Ball, donc aucune capture. */
-export const NO_BALL_PLAN: BallPlan = { new: null, shiny: null, caught: null };
 
 /**
  * Chromatique d'abord, puis absent du Pokédex (au départ, ou capturé depuis), sinon déjà capturé :
@@ -93,10 +90,10 @@ export const MISSED_THROW = 'x';
 const CODE_CATEGORIES = new Map(BALL_CATEGORIES.map((c) => [THROW_CODES[c], c]));
 
 /** Lancer décidé pour une rencontre : une Ball, ou rien (et pourquoi). */
-export type ThrowDecision = { ballItemId: string } | { outcome: 'noBall' | 'ignored' };
+type ThrowDecision = { ballItemId: string } | { outcome: 'noBall' | 'ignored' };
 
 /** Ce que la décision de lancer connaît d'une rencontre. */
-export interface ThrowContext {
+interface ThrowContext {
   /** Rang de la rencontre (à partir de 1). */
   n: number;
   wild: PokemonInstance;

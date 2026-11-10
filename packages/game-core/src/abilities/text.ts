@@ -44,7 +44,7 @@ export const DUNGEON_STAT_LABELS: Record<DungeonStat, string> = {
 };
 
 /** « l’Attaque et la Vitesse ». */
-export function dungeonStatsText(stats: readonly DungeonStat[]): string {
+function dungeonStatsText(stats: readonly DungeonStat[]): string {
   const names = stats.map(
     (st) =>
       `${st === 'attack' || st === 'special-attack' ? 'l’' : 'la '}${DUNGEON_STAT_LABELS[st]}`,
@@ -59,7 +59,7 @@ const typeNames = new Map(typeData.map((t) => [t.name, t.nameFr]));
 const natureCount = natures.length;
 
 /** Nom français d'un type (le nom PokéAPI s'il est inconnu). */
-export const typeNameFr = (type: string) => typeNames.get(type) ?? type;
+const typeNameFr = (type: string) => typeNames.get(type) ?? type;
 
 const typeList = (types: readonly string[]) => types.map(typeNameFr).join('/');
 
@@ -84,7 +84,7 @@ export const ABILITY_CONDITION_LABELS: Record<AbilityCondition['type'], string> 
 /**
  * Une condition en clair, telle qu'elle se lit dans une phrase (« en zone Eau », « contre Feu »).
  */
-export function abilityConditionText(condition: AbilityCondition): string {
+function abilityConditionText(condition: AbilityCondition): string {
   switch (condition.type) {
     case 'zoneType':
       return `en zone ${typeList(condition.types)}`;

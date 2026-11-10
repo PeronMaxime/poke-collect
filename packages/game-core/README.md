@@ -38,7 +38,11 @@ Vue d'ensemble : [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md). Les mots du
 | `auto-team.ts`, `auto-transfer.ts`                 | Sélection automatique d'une équipe ; règles de transfert automatique        |
 | `simulate.ts`                                      | Simulateur de zone de l'admin (moyennes sur N expéditions)                  |
 
-Tout est réexporté par `index.ts`.
+`index.ts` est la surface publique du paquet : une liste explicite de ce que l'API, le jeu,
+l'admin et `@poke/db` utilisent. Ce qui ne sert qu'à l'intérieur du paquet n'y figure pas (les
+modules s'importent entre eux directement). Pour rendre une fonction utilisable hors du paquet,
+l'ajouter à `index.ts`, dans la ligne de son module ; `pnpm deadcode` signale un export que plus
+personne n'utilise.
 
 ## Tests
 

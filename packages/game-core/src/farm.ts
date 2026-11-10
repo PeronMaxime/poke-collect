@@ -40,20 +40,3 @@ export const berryGrowthSpeed = (ctx: GameContext, waterer: AbilityHolder | null
   waterer
     ? Math.max(0.1, abilityMultiplier(ctx, { activity: 'farm', team: [waterer] }, 'berryGrowth'))
     : 1;
-
-/** Parcelle plantée : pousse en cours (`readyAt`), en pause (`readyAt` null) ou mûre. */
-export interface PlotGrowth {
-  /** Durée totale de pousse, en millisecondes. */
-  growMs: number;
-  /** Pousse restante au dernier arrêt de l'arrosage (vaut tant que `readyAt` est null). */
-  remainingMs: number;
-  /** Maturité prévue tant que le champ est arrosé ; null = pousse en pause. */
-  readyAt: Date | null;
-}
-
-/** Pousse restante (0 = mûre). */
-export const plotRemainingMs = (plot: PlotGrowth, now: Date) =>
-  plot.readyAt ? Math.max(0, plot.readyAt.getTime() - now.getTime()) : plot.remainingMs;
-
-/** La baie de la parcelle est-elle mûre, prête à être récoltée ? */
-export const isPlotRipe = (plot: PlotGrowth, now: Date) => plotRemainingMs(plot, now) === 0;

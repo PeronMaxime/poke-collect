@@ -16,8 +16,6 @@ import type { PlayerProgress } from './progress';
 import { memberPower } from './abilities';
 import { createRng } from './rng';
 import type { Rng } from './rng';
-import { shinyProbability } from './shiny';
-import type { ShinyFactors } from './shiny';
 
 /**
  * Quêtes : étapes ordonnées validées l'une après l'autre. Une étape « état » (Pokédex, dresseur
@@ -64,7 +62,7 @@ export interface QuestEvent {
 }
 
 /** Membres de l'équipe qui comptent pour une étape d'expédition (type et PE individuelle). */
-export function qualifyingMembers(
+function qualifyingMembers(
   ctx: GameContext,
   condition: Pick<QuestExpeditionCondition, 'memberType' | 'minMemberPower'>,
   team: readonly PokemonInstance[],
@@ -121,7 +119,7 @@ export function questExpeditionMisses(
 }
 
 /** Capture qui compte pour une étape « captures ». */
-export function matchesCatch(
+function matchesCatch(
   ctx: GameContext,
   condition: Extract<QuestCondition, { type: 'catchPokemon' }>,
   caught: Pick<PokemonInstance, 'speciesId' | 'formId'>,
@@ -283,27 +281,4 @@ export function generateQuestPokemon(
     formId: reward.formId,
   });
   return { ...pokemon, ivs: withPerfectIvs(rng, pokemon.ivs, reward.perfectIvs) };
-}
-
-/** Ce qui détermine le Pokémon rencontré au bout d'une quête. */
-export interface QuestEncounterInput {
-  /** Pokémon visé (récompense de la quête). */
-  target: QuestPokemon;
-  seed: number;
-  /** Chaîne de la quête et Charme Chroma. */
-  shiny?: ShinyFactors;
-}
-
-/**
- * Légendaire rencontré : ne dépend que du seed, de la chaîne et du Charme. La chaîne ne joue que
- * sur le taux shiny : les IV parfaits sont ceux de la récompense, toujours.
- */
-export function questEncounter(
-  ctx: GameContext,
-  input: QuestEncounterInput,
-): { pokemon: PokemonInstance; shinyChance: number; rng: Rng } {
-  const rng = createRng(input.seed);
-  const shinyChance = shinyProbability(ctx, input.shiny);
-  const pokemon = generateQuestPokemon(ctx, rng, input.target, shinyChance);
-  return { pokemon, shinyChance, rng };
 }

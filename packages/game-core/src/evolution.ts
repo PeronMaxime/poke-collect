@@ -270,7 +270,7 @@ export type EvolutionRequirement =
   | { type: 'timeOfDay'; required: TimeOfDay };
 
 /** Conditions d'une méthode encore manquantes (liste vide = méthode utilisable). */
-export function missingRequirements(
+function missingRequirements(
   ctx: GameContext,
   pokemon: Pick<PokemonInstance, 'level' | 'happiness'>,
   method: EvolutionMethod,

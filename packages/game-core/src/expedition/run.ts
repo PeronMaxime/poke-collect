@@ -118,7 +118,7 @@ export interface ExpeditionRoamer {
 
 /** `ignored` : écarté par le filtre de capture. */
 /** `fled` : le joueur a pris la fuite (expédition légendaire). */
-export type EncounterOutcome = 'captured' | 'escaped' | 'noBall' | 'ignored' | 'fled';
+type EncounterOutcome = 'captured' | 'escaped' | 'noBall' | 'ignored' | 'fled';
 
 /** Une rencontre et ce qu'elle a donné. */
 export interface EncounterResult {

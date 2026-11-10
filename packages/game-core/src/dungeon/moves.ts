@@ -25,7 +25,7 @@ export interface DungeonMove {
 }
 
 /** Puissance d'une attaque sans réglage pour son type. */
-export const DEFAULT_DUNGEON_ATTACK_POWER = 60;
+const DEFAULT_DUNGEON_ATTACK_POWER = 60;
 
 const typeNamesFr = new Map(typeData.map((t) => [t.name, t.nameFr]));
 

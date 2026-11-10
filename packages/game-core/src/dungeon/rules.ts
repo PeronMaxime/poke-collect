@@ -47,7 +47,7 @@ export function attackIntervalMs(
 }
 
 /** Multiplicateur d'une immunité en donjon : les dégâts sont divisés par 4 au lieu d'être annulés. */
-export const DUNGEON_IMMUNITY_MULTIPLIER = 0.25;
+const DUNGEON_IMMUNITY_MULTIPLIER = 0.25;
 
 /** Efficacité d'un type en donjon : comme la table des types, mais chaque immunité vaut ×¼. */
 export function dungeonTypeEffectiveness(
@@ -123,7 +123,7 @@ function damagePercent(
 }
 
 /** Effet de la météo sur une attaque de ce type. */
-export function weatherDamageMultiplier(weather: Weather | null | undefined, attackType: string) {
+function weatherDamageMultiplier(weather: Weather | null | undefined, attackType: string) {
   if (weather === 'sun') return attackType === 'fire' ? 1.5 : attackType === 'water' ? 0.5 : 1;
   if (weather === 'rain') return attackType === 'water' ? 1.5 : attackType === 'fire' ? 0.5 : 1;
   return 1;

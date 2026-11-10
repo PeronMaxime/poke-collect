@@ -12,7 +12,7 @@ import type { PokemonInstance } from './pokemon';
  * est consommé.
  */
 
-export type PokemonItemEffect = Extract<
+type PokemonItemEffect = Extract<
   ItemEffect,
   { type: 'ivCap' | 'mint' | 'abilityChange' | 'happiness' | 'levelUp' }
 >;
@@ -29,7 +29,7 @@ const POKEMON_EFFECTS = new Set<ItemEffect['type']>([
 export const MAX_HAPPINESS = 255;
 
 /** Effet utilisable sur un Pokémon porté par l'objet (le premier). */
-export function pokemonItemEffect(ctx: GameContext, itemId: string): PokemonItemEffect | undefined {
+function pokemonItemEffect(ctx: GameContext, itemId: string): PokemonItemEffect | undefined {
   return ctx.item(itemId)?.effects.find((e): e is PokemonItemEffect => POKEMON_EFFECTS.has(e.type));
 }
 

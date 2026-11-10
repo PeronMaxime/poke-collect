@@ -279,11 +279,11 @@ Sous la protection des tests « à graine égale » (0.2).
       pilotent. Une phrase sur chaque export.
 - [x] **3.5 Mesure de vitesse** (`vitest bench`) sur une expédition de 24 h et un donjon complet :
       on n'optimise que ce que la mesure désigne, et le chiffre est gardé comme référence.
-- [ ] **3.6 Surface publique** : `index.ts` n'exporte plus que ce qui sert hors du paquet
+- [x] **3.6 Surface publique** : `index.ts` n'exporte plus que ce qui sert hors du paquet
       (liste donnée par `knip`), le reste devient interne.
 - **But** : lire une règle du jeu sans devoir tenir 1 900 lignes en tête.
 
-- **Réalisé** le 10 novembre pour 3.1 à 3.5 (écarts avec le plan) ; **reste 3.6** :
+- **Réalisé** le 10 novembre (écarts avec le plan) :
   - 3.1 : `dungeon/` (11 fichiers). `simulateDungeon` (431 lignes) est une boucle de 40 lignes :
     l'état du combat et ses opérations sont dans la classe `Combat` (`combat.ts`), les étapes
     (commande, tic, attaque) dans `simulation.ts`. `withAbilities` est découpée en trois fonctions.
@@ -300,6 +300,12 @@ Sous la protection des tests « à graine égale » (0.2).
     rejoue en 0,43 ms, un combat complet en 0,04 ms : aucune optimisation n'est désignée. Chiffres
     dans le README du paquet. Vitest 5 a changé l'API : `bench` est fourni au test
     (`test('…', async ({ bench }) => …)`).
+  - 3.6 : `index.ts` est une liste explicite (`export { … } from './module'`) au lieu de
+    `export *` : 303 exports publics sur 451. 33 déclarations ne sont plus exportées par leur
+    module, et 8 définitions que plus rien n'appelait sont supprimées (`NO_BALL_PLAN`,
+    `isPlotRipe`, `plotRemainingMs`, `PlotGrowth`, `guildQuestChest`, `questEncounter`,
+    `QuestEncounterInput`, `hasRoamer`). Le reste des exports non publics sert entre modules du
+    paquet ou à ses tests.
   - Avertissements ESLint : 94 → 90 (plafond baissé).
   - Les outils de découpage (script qui déplace les instructions et recalcule les imports,
     comparaison des exports) ne sont pas dans le dépôt : ils étaient jetables.
