@@ -27,7 +27,7 @@ Vue d'ensemble : [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md). Les mots du
 | `weather.ts`, `roaming.ts`                         | Météo horaire des zones ; cachette des Pokémon fuyards                      |
 | `dungeon/`                                         | Le moteur de combat en temps réel (`simulateDungeon`) et les donjons        |
 | `battle.ts`, `legendary.ts`                        | Combats de dresseurs et légendaires, sur le même moteur                     |
-| `abilities.ts`                                     | Talents : modificateurs, conditions, effets de combat, postes d'assistant   |
+| `abilities/`                                       | Talents : modificateurs, conditions, effets de combat, postes d'assistant   |
 | `breeding.ts`                                      | Pension, œufs, héritage, transfert et Bonbons de lignée                     |
 | `evolution.ts`, `forms.ts`, `mega.ts`              | Évolutions (formes comprises), Méga-Évolution                               |
 | `endgame.ts`                                       | Objets utilisés sur un Pokémon : Capsules, Aromates, Pilule et Patch Talent |
