@@ -90,19 +90,3 @@ export async function flushSpeciesCounts(db: Db): Promise<void> {
     throw err;
   }
 }
-
-/** Écriture périodique des compteurs ; la fonction retournée l'arrête après une dernière écriture. */
-export function startSpeciesCountsFlush(
-  db: Db,
-  intervalMs: number,
-  onError: (err: unknown) => void,
-): () => Promise<void> {
-  const timer = setInterval(() => {
-    flushSpeciesCounts(db).catch(onError);
-  }, intervalMs);
-  timer.unref();
-  return async () => {
-    clearInterval(timer);
-    await flushSpeciesCounts(db).catch(onError);
-  };
-}

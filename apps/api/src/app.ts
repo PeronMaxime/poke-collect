@@ -9,7 +9,6 @@ import type { Env } from './env';
 import type { Mailer } from './mail';
 import type { ErrorCode } from '@poke/shared';
 import { GameError } from './game/errors';
-import { startSpeciesCountsFlush } from './game/capture-stats';
 import { PlayerSettler } from './game/settle';
 import { pgErrorCode } from './game/tx';
 import { webPushSender } from './game/push';
@@ -100,12 +99,6 @@ export async function buildApp({
   // requêtes du joueur (jeu fermé entre-temps compris), sans toucher la base s'il n'y a rien à faire.
   const hooks = sessionHooks(auth, db, now, new PlayerSettler(db, content, now));
   const push = env.vapid ? (pushSender ?? webPushSender(env.vapid)) : null;
-
-  // Compteurs globaux des espèces : écrits toutes les 30 s (et à l'arrêt), hors des transactions.
-  const stopSpeciesCounts = startSpeciesCountsFlush(db, 30_000, (err) =>
-    app.log.error(err, 'Compteurs des espèces'),
-  );
-  app.addHook('onClose', stopSpeciesCounts);
 
   app.decorateRequest('user', null);
   await app.register(cors, { origin: env.trustedOrigins, credentials: true });

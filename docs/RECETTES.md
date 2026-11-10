@@ -92,7 +92,7 @@ Le code n'intervient que pour ajouter un champ, une entité, ou pousser un chang
 En plus des étapes ci-dessus : la table dans `versionedContentTables`
 (`packages/db/src/schema/content.ts`, sinon elle n'est pas copiée dans les brouillons), l'entité
 dans `entityDefs` (`packages/db/src/content-repo.ts`), sa route dans `ENTITY_ROUTES`
-(`apps/api/src/routes/admin.ts`), son accès dans `GameContext`
+(`apps/api/src/routes/admin/content.ts`), son accès dans `GameContext`
 (`packages/game-core/src/context.ts`), et sa page dans l'admin (`routes.tsx`, `sections.ts`).
 
 ### Migration de contenu

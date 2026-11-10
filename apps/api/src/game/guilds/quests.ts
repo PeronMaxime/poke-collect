@@ -11,7 +11,6 @@ import {
 } from '@poke/game-core';
 import type { GameContext, GuildActivity } from '@poke/game-core';
 import type { AdminGuildQuestsResetResponse } from '@poke/shared';
-import type { ContentCache } from '../../content-cache';
 import { addItems } from '../store';
 import { transaction } from '../tx';
 import { memberCount, membership, systemMessage } from './common';
@@ -220,34 +219,6 @@ export async function settleGuildQuests(
     await transaction(db, (tx) => rewardQuest(tx, ctx, quest, now));
   }
   return pending.length;
-}
-
-/** Lance la distribution périodique des coffres de guilde ; retourne la fonction d'arrêt. */
-export function startGuildRewards({
-  db,
-  content,
-  intervalSeconds,
-  onError,
-}: {
-  db: Db;
-  content: ContentCache;
-  intervalSeconds: number;
-  onError: (err: unknown) => void;
-}): () => void {
-  let running = false;
-  const timer = setInterval(() => {
-    if (running) return;
-    running = true;
-    content
-      .get()
-      .then((ctx) => settleGuildQuests(db, ctx, new Date()))
-      .catch(onError)
-      .finally(() => {
-        running = false;
-      });
-  }, intervalSeconds * 1000);
-  timer.unref();
-  return () => clearInterval(timer);
 }
 
 /**

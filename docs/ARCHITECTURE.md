@@ -80,7 +80,7 @@ web   LaunchExpeditionDialog          écran : choix de la zone, de l'équipe, d
 api   routes/game.ts                  1. valide l'entrée (schéma Zod de @poke/shared)
         │                             2. appelle le module de jeu
         ▼
-      game/expeditions.ts             startExpedition()
+      game/expeditions/start.ts           startExpedition()
         │   content.get()             contenu publié, en mémoire (ContentCache)
         │   playerTransaction()       transaction + verrou du joueur (game/tx.ts)
         │   checkTeam(), …            règles : fonctions pures de @poke/game-core
@@ -224,8 +224,13 @@ avec ce qu'il faudrait changer pour en lancer plusieurs (voir aussi [SURCHARGE.m
 | Supervision (requêtes, erreurs, durées)      | `monitoring.ts`         | Chiffres par processus, à agréger                  |
 | Compteurs d'espèces, écrits toutes les 30 s  | `game/capture-stats.ts` | Rien : chaque processus écrit ses incréments       |
 | Présence (`last_seen_at`, une fois par min.) | `plugins/session.ts`    | Rien : au pire une écriture de plus                |
-| Tournée des notifications push               | `game/push.ts`          | **Un seul** processus doit la lancer               |
-| Distribution des coffres de guilde           | `game/guilds.ts`        | **Un seul** processus doit la lancer               |
+| Tournée des notifications push               | `jobs/push-notifier.ts` | **Un seul** processus doit la lancer               |
+| Distribution des coffres de guilde           | `jobs/guild-rewards.ts` | **Un seul** processus doit la lancer               |
+
+Les tâches de fond sont regroupées dans `apps/api/src/jobs/` et lancées par un seul `startJobs()`
+au démarrage du serveur. Avec plusieurs processus, un seul garderait `BACKGROUND_JOBS` actif ; les
+autres le mettraient à `0` et ne lanceraient que l'écriture de leurs compteurs d'espèces. C'est la
+seule préparation faite : le reste du tableau est à traiter le jour où l'on en a besoin.
 
 Le verrou par joueur, lui, est tenu par Postgres : il reste valable quel que soit le nombre de
 processus.

@@ -87,6 +87,7 @@ Lue par `env.ts` depuis `.env` à la racine (modèles : `.env.example`,
 | `SMTP_URL`, `MAIL_FROM`                                    | E-mails de réinitialisation ; absents : affichés en console en dev  |
 | `VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT`   | Notifications push ; en dev, une paire est générée                  |
 | `PUSH_INTERVAL_SECONDS`                                    | Tournée des notifications (60 s ; 0 pour la couper)                 |
+| `BACKGROUND_JOBS`                                          | `0` : ne pas lancer push ni coffres de guilde (processus en plus)   |
 | `RATE_LIMIT_PER_MINUTE`, `RATE_LIMIT_PER_IP_PER_MINUTE`    | Limites de requêtes (0 : aucune, valeur par défaut hors prod)       |
 | `CONTENT_SNAPSHOT_PATH`, `CONTENT_SNAPSHOT_WRITE`          | Instantané du contenu ; réécrit hors production                     |
 | `API_HOST`, `API_PORT`, `TRUST_PROXY`                      | Écoute ; derrière Caddy en production                               |
