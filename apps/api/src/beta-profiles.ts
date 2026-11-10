@@ -6,6 +6,7 @@ import type { Db } from '@poke/db';
 import { selectBetaProfileInputSchema } from '@poke/shared';
 import type { BetaProfilesResponse } from '@poke/shared';
 import type { ContentCache } from './content-cache';
+import { GameError } from './game/errors';
 import { leaveGuild } from './game/guilds';
 import { playerTransaction } from './game/tx';
 import type { sessionHooks } from './plugins/session';
@@ -118,14 +119,14 @@ export async function betaProfileRoutes(
       .select({ trainerName: playerProfiles.trainerName })
       .from(playerProfiles)
       .where(eq(playerProfiles.userId, accountUserId));
-    if (!main) return reply.code(409).send({ error: 'NO_PROFILE' });
+    if (!main) throw new GameError(409, 'NO_PROFILE');
 
     const existing = await db
       .select({ name: users.name })
       .from(users)
       .where(eq(users.parentUserId, accountUserId));
     if (existing.length >= MAX_SECONDARY_PROFILES) {
-      return reply.code(409).send({ error: 'TOO_MANY_PROFILES' });
+      throw new GameError(409, 'TOO_MANY_PROFILES');
     }
     const used = new Set(existing.map((u) => u.name.toLowerCase()));
     let n = 1;
@@ -133,7 +134,7 @@ export async function betaProfileRoutes(
     const trainerName = `${NAME_PREFIX}${n}_${main.trainerName}`;
 
     const startRegion = (await content.get()).regions[0];
-    if (!startRegion) return reply.code(503).send({ error: 'NO_REGION_CONFIGURED' });
+    if (!startRegion) throw new GameError(503, 'NO_REGION_CONFIGURED');
 
     const id = randomUUID();
     const at = now();
@@ -154,7 +155,7 @@ export async function betaProfileRoutes(
       });
     } catch {
       // Pseudo déjà pris par un autre joueur (index unique insensible à la casse).
-      return reply.code(409).send({ error: 'TRAINER_NAME_TAKEN' });
+      throw new GameError(409, 'TRAINER_NAME_TAKEN');
     }
     setCookie(reply, id);
     return reply.code(201).send(await list(accountUserId, id));
@@ -172,7 +173,7 @@ export async function betaProfileRoutes(
           .select({ id: users.id })
           .from(users)
           .where(and(eq(users.id, profileId), eq(users.parentUserId, accountUserId)));
-        if (!owned) return reply.code(404).send({ error: 'PROFILE_NOT_FOUND' });
+        if (!owned) throw new GameError(404, 'PROFILE_NOT_FOUND');
         setCookie(reply, profileId);
         return list(accountUserId, profileId);
       }
@@ -195,7 +196,7 @@ export async function betaProfileRoutes(
         .select({ id: users.id })
         .from(users)
         .where(and(eq(users.id, profileId), eq(users.parentUserId, accountUserId)));
-      if (!owned) return reply.code(404).send({ error: 'PROFILE_NOT_FOUND' });
+      if (!owned) throw new GameError(404, 'PROFILE_NOT_FOUND');
 
       const [member] = await db
         .select({ userId: guildMembers.userId })

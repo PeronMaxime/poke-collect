@@ -6,10 +6,13 @@ Ce que le serveur et les navigateurs s'échangent, défini une seule fois :
   route utilise pour valider et dont le type est déduit (`StartExpeditionInput`) ;
 - **les réponses** : des types (`PokemonDto`, `ExpeditionsResponse`…), que la route promet et que
   le jeu attend ;
-- **les limites communes** : `MAX_TEAMS`, `TEAM_MAX_SIZE`, `TAG_LABEL_MAX`, `TRANSFER_BATCH_MAX`…
+- **les limites communes** : `MAX_TEAMS`, `TEAM_MAX_SIZE`, `TAG_LABEL_MAX`, `TRANSFER_BATCH_MAX`… ;
+- **les codes d'erreur** : `errors.ts`, le catalogue des refus (`PLAYER_ERROR_CODES`, `ErrorCode`).
+  Le serveur ne peut lever que ces codes, et le jeu doit un message à chacun.
 
-Tout est dans `src/index.ts`, rangé par domaine (profil, Pokémon, expéditions, combats, pension,
-guildes, admin…).
+Un fichier par domaine dans `src/` (`profile.ts`, `pokemon.ts`, `expeditions.ts`, `battles.ts`,
+`daycare.ts`, `guilds.ts`, `admin.ts`…), tous réexportés par `src/index.ts` : on importe toujours
+depuis `@poke/shared`. `internal.ts` porte ce que plusieurs fichiers partagent sans l'exporter.
 
 ## Conventions
 

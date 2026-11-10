@@ -52,7 +52,7 @@ import {
   useShinyCharm,
 } from '../../lib/game';
 import {
-  GAME_ERRORS,
+  errorMessage,
   formatCountdown,
   formatDuration,
   formatMultiplier,
@@ -331,9 +331,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
           (error, i) =>
             error && (
               <p key={i} className="mt-2 text-sm text-red-600">
-                {error instanceof ApiError
-                  ? (GAME_ERRORS[error.code] ?? error.code)
-                  : 'Erreur inconnue'}
+                {error instanceof ApiError ? errorMessage(error.code) : 'Erreur inconnue'}
               </p>
             ),
         )}

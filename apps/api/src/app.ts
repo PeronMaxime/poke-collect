@@ -7,6 +7,7 @@ import { createAuth } from './auth';
 import { ContentCache } from './content-cache';
 import type { Env } from './env';
 import type { Mailer } from './mail';
+import type { ErrorCode } from '@poke/shared';
 import { GameError } from './game/errors';
 import { startSpeciesCountsFlush } from './game/capture-stats';
 import { PlayerSettler } from './game/settle';
@@ -59,7 +60,7 @@ export interface AppOptions {
  */
 function pgErrorResponse(
   code: string | undefined,
-): { status: number; error: string; retryAfter?: number } | null {
+): { status: number; error: ErrorCode; retryAfter?: number } | null {
   switch (code) {
     case '23505': // unique_violation
       return { status: 409, error: 'CONFLICT' };

@@ -21,7 +21,7 @@ import {
   usePokemon,
   utcOffsetMinutes,
 } from '../../lib/game';
-import { GAME_ERRORS, candyName, itemIcon, itemName, speciesName } from '../../lib/labels';
+import { errorMessage, candyName, itemIcon, itemName, speciesName } from '../../lib/labels';
 import { Notice, StateTag } from './BuildingParts';
 import {
   CornerTag,
@@ -151,7 +151,7 @@ function RevealContent({
               <p className="text-red-600 dark:text-red-400">
                 Relance impossible :{' '}
                 {relaunch.error instanceof ApiError
-                  ? (GAME_ERRORS[relaunch.error.code] ?? relaunch.error.code)
+                  ? errorMessage(relaunch.error.code)
                   : 'erreur inconnue'}
               </p>
             )}

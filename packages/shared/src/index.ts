@@ -10,6 +10,7 @@ export * from './assistants';
 export * from './center';
 export * from './tags';
 export * from './teams';
+export * from './errors';
 export * from './evolution';
 export * from './progression';
 export * from './trainer-card';

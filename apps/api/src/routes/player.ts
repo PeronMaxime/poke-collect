@@ -84,18 +84,18 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
       .select({ userId: playerProfiles.userId })
       .from(playerProfiles)
       .where(eq(playerProfiles.userId, user.id));
-    if (existing) return reply.code(409).send({ error: 'PROFILE_EXISTS' });
+    if (existing) throw new GameError(409, 'PROFILE_EXISTS');
 
     const [taken] = await db
       .select({ userId: playerProfiles.userId })
       .from(playerProfiles)
       .where(eq(sql`lower(${playerProfiles.trainerName})`, trainerName.toLowerCase()));
-    if (taken) return reply.code(409).send({ error: 'TRAINER_NAME_TAKEN' });
+    if (taken) throw new GameError(409, 'TRAINER_NAME_TAKEN');
 
     // La région de départ vient du contenu publié (première région dans l'ordre).
     const ctx = await content.get();
     const startRegion = ctx.regions[0];
-    if (!startRegion) return reply.code(503).send({ error: 'NO_REGION_CONFIGURED' });
+    if (!startRegion) throw new GameError(503, 'NO_REGION_CONFIGURED');
 
     const [created] = await db
       .insert(playerProfiles)

@@ -34,8 +34,8 @@ Avant de considérer un travail comme fini : lint, deadcode, format, typecheck, 
 - **Pas de `Math.random()` ni de `new Date()` dans les règles** : `createRng(seed)` et l'horloge
   injectée (`now`).
 - **Toute action d'un joueur qui écrit passe par `playerTransaction`**, vérifications comprises.
-- **Un refus = `GameError(statut, 'CODE')`**, et le message du code dans `GAME_ERRORS`
-  (`apps/web/src/lib/labels.ts`).
+- **Un refus = `GameError(statut, 'CODE')`** : le code dans le catalogue
+  (`packages/shared/src/errors.ts`), son message dans `GAME_ERRORS` (`apps/web/src/lib/labels.ts`).
 - **Après une action, le jeu ne recharge que ce qu'elle change** (`refresh(queryClient, …)`),
   jamais toutes les données.
 - **Frontières entre paquets** : vérifiées par ESLint. Le jeu et l'admin n'importent jamais

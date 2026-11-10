@@ -15,6 +15,7 @@ import type {
   DungeonRecordDto,
   DungeonRunDto,
   CombatItemInput,
+  ErrorCode,
   StartDungeonInput,
   StoredDungeonResult,
   SwitchDungeonInput,
@@ -76,7 +77,7 @@ export function combatHealCommand(
   combat: { setup: DungeonSetup; commands: DungeonCommand[]; fledAtMs: number | null },
   input: CombatItemInput,
   elapsed: number,
-  finished: string,
+  finished: ErrorCode,
 ): DungeonCommand {
   const effect = ctx.itemEffect(input.itemId, 'battleHeal');
   if (!effect) throw new GameError(400, 'NOT_A_BATTLE_ITEM');

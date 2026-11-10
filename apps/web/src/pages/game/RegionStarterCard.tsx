@@ -6,7 +6,7 @@ import type { PokemonDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
 import { PLAYER_STATE_KEYS, refresh } from '../../lib/game';
-import { GAME_ERRORS } from '../../lib/labels';
+import { errorMessage } from '../../lib/labels';
 
 /**
  * Choix du starter d'une région suivante, dès qu'elle est débloquée : seuls les Pokémon de son
@@ -61,9 +61,7 @@ export function RegionStarterCard({ ctx, region }: { ctx: GameContext; region: R
       </div>
       {choose.error && (
         <p className="mt-2 text-sm text-red-600">
-          {choose.error instanceof ApiError
-            ? (GAME_ERRORS[choose.error.code] ?? choose.error.code)
-            : 'Erreur inconnue'}
+          {choose.error instanceof ApiError ? errorMessage(choose.error.code) : 'Erreur inconnue'}
         </p>
       )}
       <button

@@ -60,7 +60,7 @@ import {
   utcOffsetMinutes,
 } from '../../lib/game';
 import {
-  GAME_ERRORS,
+  errorMessage,
   formatDuration,
   formatMultiplier,
   formatPercentBonus,
@@ -293,9 +293,7 @@ export function LaunchExpeditionDialog({
         pending={start.isPending}
         error={
           start.error &&
-          (start.error instanceof ApiError
-            ? (GAME_ERRORS[start.error.code] ?? start.error.code)
-            : 'Erreur inconnue')
+          (start.error instanceof ApiError ? errorMessage(start.error.code) : 'Erreur inconnue')
         }
         onCancel={onClose}
         rememberSettings

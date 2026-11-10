@@ -5,7 +5,7 @@ import type { PlayerProfileDto, PokemonDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge } from '../components/ui';
 import { ApiError, api } from '../lib/api';
 import { PLAYER_STATE_KEYS, refresh, useGameContext } from '../lib/game';
-import { GAME_ERRORS } from '../lib/labels';
+import { errorMessage } from '../lib/labels';
 
 /** Choix du premier Pokémon parmi les starters de la région de départ (contenu publié). */
 export function StarterPage({ profile }: { profile: PlayerProfileDto }) {
@@ -75,9 +75,7 @@ export function StarterPage({ profile }: { profile: PlayerProfileDto }) {
 
       {choose.error && (
         <p className="mt-4 text-center text-sm text-red-600">
-          {choose.error instanceof ApiError
-            ? (GAME_ERRORS[choose.error.code] ?? choose.error.code)
-            : 'Erreur inconnue'}
+          {choose.error instanceof ApiError ? errorMessage(choose.error.code) : 'Erreur inconnue'}
         </p>
       )}
       <button

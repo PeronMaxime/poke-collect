@@ -37,6 +37,7 @@ import {
   shinyChains,
   startExpedition,
 } from '../game/expeditions';
+import { GameError } from '../game/errors';
 import { pokemonActivities, toExpeditionDto, toPokemonDto } from '../game/store';
 import type { sessionHooks } from '../plugins/session';
 
@@ -75,7 +76,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     return reply.type('application/json; charset=utf-8').send(body);
   });
 
-  app.patch('/api/pokemon/:id', async (request, reply) => {
+  app.patch('/api/pokemon/:id', async (request) => {
     const { id } = uuidParams.parse(request.params);
     const { locked, tagIds: requested } = updatePokemonInputSchema.parse(request.body);
     const userId = request.user!.id;
@@ -86,7 +87,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
         .from(pokemonTags)
         .where(and(inArray(pokemonTags.id, tagIds), eq(pokemonTags.ownerId, userId)));
       if (owned.length !== tagIds.length) {
-        return reply.code(404).send({ error: 'TAG_NOT_FOUND' });
+        throw new GameError(404, 'TAG_NOT_FOUND');
       }
     }
     const [row] = await db
@@ -94,7 +95,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
       .set({ locked, tagIds })
       .where(and(eq(pokemon.id, id), eq(pokemon.ownerId, userId)))
       .returning();
-    if (!row) return reply.code(404).send({ error: 'POKEMON_NOT_FOUND' });
+    if (!row) throw new GameError(404, 'POKEMON_NOT_FOUND');
     const busy = await pokemonActivities(db, userId);
     return toPokemonDto(row, busy.get(row.id));
   });
@@ -175,11 +176,11 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
   });
 
   /** Met une zone en favori (ou l'en retire) : elle s'affiche en tête de la page Expéditions. */
-  app.put('/api/expeditions/favorites/:zoneId', async (request, reply) => {
+  app.put('/api/expeditions/favorites/:zoneId', async (request) => {
     const { zoneId } = z.object({ zoneId: z.string().min(1).max(100) }).parse(request.params);
     const { favorite } = favoriteZoneInputSchema.parse(request.body);
     const ctx = await content.get();
-    if (favorite && !ctx.zone(zoneId)) return reply.code(404).send({ error: 'ZONE_NOT_FOUND' });
+    if (favorite && !ctx.zone(zoneId)) throw new GameError(404, 'ZONE_NOT_FOUND');
     const [updated] = await db
       .update(playerProfiles)
       .set({
@@ -189,7 +190,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
       })
       .where(eq(playerProfiles.userId, request.user!.id))
       .returning({ favoriteZoneIds: playerProfiles.favoriteZoneIds });
-    if (!updated) return reply.code(409).send({ error: 'NO_PROFILE' });
+    if (!updated) throw new GameError(409, 'NO_PROFILE');
     return updated;
   });
 

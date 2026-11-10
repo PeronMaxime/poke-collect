@@ -36,8 +36,10 @@ La CI lance les mêmes commandes. Trois règles à ne jamais oublier :
    l'intérieur, avec `tx`. Un refus : `throw new GameError(409, 'MON_CODE')`.
 3. **Route** dans `apps/api/src/routes/` : valider (`schema.parse(request.body)`), appeler le
    module, renvoyer le DTO. Pas de requête SQL ni de règle de jeu dans la route.
-4. **Message d'erreur** : ajouter chaque nouveau code à `GAME_ERRORS`
-   (`apps/web/src/lib/labels.ts`), sinon le joueur voit le code brut.
+4. **Code d'erreur** : ajouter chaque nouveau code à `PLAYER_ERROR_CODES`
+   (`packages/shared/src/errors.ts`), puis son message à `GAME_ERRORS`
+   (`apps/web/src/lib/labels.ts`). `GameError` refuse un code hors catalogue, et le jeu ne
+   compile pas tant que le message manque.
 5. **Test** dans `apps/api/src/` : la vraie application sur une base en mémoire (modèle :
    `game.test.ts`), avec l'horloge injectée pour faire passer le temps.
 6. **Côté jeu** : la lecture (`useQuery`) et l'action (`useMutation`) dans `apps/web/src/lib/`,

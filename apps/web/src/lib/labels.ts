@@ -23,6 +23,7 @@ import type {
   UnlockCondition,
 } from '@poke/content';
 import type { EvolutionRequirement, GameContext } from '@poke/game-core';
+import type { PlayerErrorCode } from '@poke/shared';
 import { ApiError } from './api';
 
 export { TYPE_COLORS } from '@poke/data';
@@ -353,7 +354,14 @@ export function formatCountdown(ms: number): string {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
-export const GAME_ERRORS: Record<string, string> = {
+/** Codes fabriqués par le jeu lui-même, sans réponse de l'API (voir `lib/api.ts`). */
+type ClientErrorCode = 'NETWORK' | 'TIMEOUT' | 'HTTP_429' | 'HTTP_502' | 'HTTP_503' | 'HTTP_504';
+
+/**
+ * Message de chaque refus. Le type oblige à en écrire un pour tout code du catalogue
+ * (`PLAYER_ERROR_CODES`, `@poke/shared`) : un code ajouté côté serveur ne compile pas sans lui.
+ */
+const GAME_ERRORS: Record<PlayerErrorCode | ClientErrorCode, string> = {
   NO_FREE_SLOT: 'Tous tes emplacements sont occupés.',
   POKEMON_BUSY:
     'Un de ces Pokémon est déjà occupé (expédition, combat, donjon, pension ou assistant).',
@@ -370,7 +378,6 @@ export const GAME_ERRORS: Record<string, string> = {
   REGION_LOCKED: 'Cette région n’est pas encore débloquée.',
   REGION_NOT_FOUND: 'Région introuvable.',
   SAME_POKEMON: 'Choisis deux Pokémon différents.',
-  INCOMPATIBLE_PARENTS: 'Ces deux Pokémon ne peuvent pas avoir d’œuf ensemble.',
   NOT_A_BREEDING_ITEM: 'Cet objet n’a pas d’effet en pension.',
   ITEM_MISSING: 'Tu n’as plus cet objet.',
   NO_EGG_READY: 'Aucun œuf n’est prêt.',
@@ -430,7 +437,6 @@ export const GAME_ERRORS: Record<string, string> = {
   LEGENDARY_COOLDOWN: 'Le légendaire s’est retiré : retente le combat un peu plus tard.',
   NOTHING_TO_CAPTURE: 'Aucun légendaire vaincu n’attend de Ball.',
   NOT_A_BALL: 'Cet objet n’est pas une Ball.',
-  QUEST_HAS_NO_LAIR: 'Cette quête n’a pas de repaire à explorer.',
   NO_EFFECT: 'Cet objet n’aurait aucun effet sur ce Pokémon.',
   CHOICE_REQUIRED: 'Choisis d’abord la statistique ou le talent.',
   NOT_USABLE_ON_POKEMON: 'Cet objet ne s’utilise pas sur un Pokémon.',
@@ -477,6 +483,27 @@ export const GAME_ERRORS: Record<string, string> = {
   MESSAGE_NOT_FOUND: 'Ce message n’existe plus.',
   NOT_A_CHEST: 'Cet objet n’est pas un coffre.',
   CHEST_EMPTY: 'Ce coffre ne contient encore rien pour toi : progresse dans le jeu.',
+  EXPEDITION_NOT_FOUND: 'Cette expédition n’existe plus.',
+  ZONE_NOT_FOUND: 'Cette zone n’existe plus.',
+  NOT_A_BERRY: 'Cet objet n’est pas une baie utilisable en expédition.',
+  NO_LINEAGE: 'Ce Pokémon ne reçoit pas de Bonbons.',
+  CANNOT_TARGET_SELF: 'Tu ne peux pas faire cela à toi-même.',
+  NO_PROFILE: 'Crée d’abord ton dresseur.',
+  NO_STARTER: 'Choisis d’abord ton premier Pokémon.',
+  STARTER_ALREADY_CHOSEN: 'Tu as déjà choisi ton premier Pokémon.',
+  PROFILE_EXISTS: 'Ton profil existe déjà.',
+  PROFILE_NOT_FOUND: 'Ce profil n’existe plus.',
+  TOO_MANY_PROFILES: 'Tu as atteint le nombre maximal de parties.',
+  TRAINER_NAME_TAKEN: 'Ce nom de dresseur est déjà pris.',
+  NO_REGION_CONFIGURED: 'Le jeu n’a pas encore de région jouable.',
+  PUSH_DISABLED: 'Les notifications ne sont pas disponibles pour le moment.',
+  ZONE_MISSING_IN_VERSION: 'Cette zone a été retirée du jeu.',
+  TRAINER_MISSING_IN_VERSION: 'Ce dresseur a été retiré du jeu.',
+  DUNGEON_MISSING_IN_VERSION: 'Ce donjon a été retiré du jeu.',
+  QUEST_MISSING_IN_VERSION: 'Cette quête a été retirée du jeu.',
+  UNAUTHENTICATED: 'Ta session a expiré : reconnecte-toi.',
+  VALIDATION: 'Demande invalide, réessaie.',
+  REQUEST: 'Demande refusée, réessaie.',
   NETWORK: 'Connexion au serveur perdue. Vérifie ta connexion et réessaie.',
   RATE_LIMITED: 'Trop d’actions d’un coup, réessaie dans quelques secondes.',
   TIMEOUT: 'Le serveur ne répond pas à temps. Vérifie si l’action est passée, puis réessaie.',
@@ -493,8 +520,13 @@ export function formatMoney(amount: number): string {
   return `${amount.toLocaleString('fr-FR')} ₽`;
 }
 
+/** Message d'un code d'erreur ; un code inconnu du jeu (serveur plus récent) s'affiche tel quel. */
+export const errorMessage = (code: string): string =>
+  (GAME_ERRORS as Record<string, string>)[code] ?? code;
+
+/** Message d'une erreur attrapée, quelle qu'elle soit. */
 export const errorText = (err: unknown) =>
-  err instanceof ApiError ? (GAME_ERRORS[err.code] ?? err.code) : 'Erreur inconnue';
+  err instanceof ApiError ? errorMessage(err.code) : 'Erreur inconnue';
 
 /** Objectif d'une quête de guilde, en clair (« Pokémon Eau capturés »). */
 export function guildObjectiveText(objective: GuildObjective): string {

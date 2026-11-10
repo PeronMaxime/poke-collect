@@ -112,8 +112,9 @@ graine), **attendre** (rien ne tourne), **réclamer** (calculer, appliquer).
 ### Erreurs
 
 - Un module de jeu refuse une action par `throw new GameError(statut, 'CODE')`
-  (`game/errors.ts`). Le code est stable : c'est lui que le jeu traduit en message
-  (`GAME_ERRORS` dans `apps/web/src/lib/labels.ts`).
+  (`game/errors.ts`). Le code est stable et vient du catalogue `packages/shared/src/errors.ts` :
+  c'est lui que le jeu traduit en message (`GAME_ERRORS` dans `apps/web/src/lib/labels.ts`), et
+  le jeu ne compile pas si un code du catalogue n'a pas de message.
 - Une entrée invalide (Zod) répond 400 `VALIDATION`.
 - Les erreurs Postgres attendues sous charge sont traduites dans `app.ts` : doublon → 409
   `CONFLICT`, interblocage ou délai dépassé → 503 `BUSY` (le jeu réessaie seul ses lectures).
