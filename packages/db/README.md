@@ -7,17 +7,17 @@ dans [docs/RECETTES.md](../../docs/RECETTES.md).
 
 ## Les fichiers
 
-| Fichier                 | Rôle                                                                             |
-| ----------------------- | -------------------------------------------------------------------------------- |
-| `src/client.ts`         | `createDb` : Postgres si `databaseUrl` est donné, sinon PGlite ; délais maximaux |
-| `src/schema/auth.ts`    | Comptes et sessions (tables de Better Auth, plus le rôle)                        |
-| `src/schema/content.ts` | Le contenu versionné : `content_versions` et une table par entité                |
-| `src/schema/game.ts`    | L'état des joueurs : profils, Pokémon, Pokédex, sac, activités, guildes…         |
-| `src/schema/admin.ts`   | Journal des actions d'administration                                             |
-| `src/content-repo.ts`   | Charger une version, créer un brouillon, enregistrer une entité, publier         |
-| `src/audit.ts`          | `logAdminAction`                                                                 |
-| `src/migrate.ts`        | `pnpm db:migrate` (l'API applique aussi les migrations à son démarrage)          |
-| `drizzle/`              | Les migrations, numérotées, et leur journal (`meta/`)                            |
+| Fichier                 | Rôle                                                                                                                                                               |
+| ----------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `src/client.ts`         | `createDb` : Postgres si `databaseUrl` est donné, sinon PGlite ; délais maximaux                                                                                   |
+| `src/schema/auth.ts`    | Comptes et sessions (tables de Better Auth, plus le rôle)                                                                                                          |
+| `src/schema/content.ts` | Le contenu versionné : `content_versions` et une table par entité                                                                                                  |
+| `src/schema/game.ts`    | L'état des joueurs, réexporté depuis un fichier par domaine : `players`, `pokemon`, `buildings`, `expeditions`, `combats`, `shop`, `progression`, `push`, `guilds` |
+| `src/schema/admin.ts`   | Journal des actions d'administration                                                                                                                               |
+| `src/content-repo.ts`   | Charger une version, créer un brouillon, enregistrer une entité, publier                                                                                           |
+| `src/audit.ts`          | `logAdminAction`                                                                                                                                                   |
+| `src/migrate.ts`        | `pnpm db:migrate` (l'API applique aussi les migrations à son démarrage)                                                                                            |
+| `drizzle/`              | Les migrations, numérotées, et leur journal (`meta/`)                                                                                                              |
 
 ## Le contenu versionné
 
