@@ -146,6 +146,173 @@ export function statModifierPercent(
   return percent;
 }
 
+/** Un effet de talent actif pour le combat, avec ses conditions à évaluer en continu. */
+type ActiveEffect = ReturnType<typeof deferredAbilityEffects>[number];
+type ModifierEffect = Extract<ActiveEffect['effect'], { type: 'modifier' }>;
+
+/**
+ * Range un modificateur chiffré (statistique, dégâts, STAB, critique) : en bonus fixe de
+ * statistique (`statPercent`), ou en modificateur évalué à chaque attaque quand il dépend de
+ * l'état du Pokémon ou vient d'un coéquipier. `mine` : le combattant porte lui-même le talent.
+ * Renvoie vrai si le combattant en est changé.
+ */
+function addModifier(
+  env: AbilityEnv,
+  traits: DungeonTraits,
+  statPercent: Map<StatName, number>,
+  { holder, deferred }: ActiveEffect,
+  effect: ModifierEffect,
+  mine: boolean,
+): boolean {
+  const info = ABILITY_PARAMS[effect.param];
+  if (!info.activities.includes(env.activity)) return false;
+  if (!mine && info.selfScope && effect.scope === 'self') return false;
+  const stat = STAT_PARAMS[effect.param];
+  if (effect.param === 'damageDealt' || effect.param === 'damageTaken') {
+    const dir = effect.param === 'damageDealt' ? 'dealt' : 'taken';
+    const mod = damageModifier(dir, effect.value, deferred);
+    traits.damage.push(mine ? mod : { ...mod, from: holder });
+    return true;
+  }
+  // Statistiques et STAB : le type du camp d'en face conditionne au départ ; l'état du
+  // Pokémon (PV, statut) conditionne ses statistiques en continu.
+  const state = deferred.filter((c) => STATE_CONDITION_TYPES.has(c.type));
+  const staticOk = deferred.every(
+    (c) =>
+      STATE_CONDITION_TYPES.has(c.type) ||
+      (c.type === 'opponentType' && !!env.opponentTypes?.some((t) => c.types.includes(t))),
+  );
+  if (!staticOk) return false;
+  // Bonus d'un coéquipier (sauf PV max, figés) : évalué en continu, tant qu'il est debout.
+  const sourced = stat !== 'hp' && !mine;
+  if (state.length > 0 || sourced) {
+    const target =
+      stat && stat !== 'hp'
+        ? stat
+        : effect.param === 'stab'
+          ? 'stab'
+          : effect.param === 'critChance'
+            ? 'critChance'
+            : null;
+    if (!target) return false;
+    const mod = statModifier(target, effect.value, state);
+    traits.stats!.push(mine ? mod : { ...mod, from: holder });
+    return true;
+  }
+  if (stat) statPercent.set(stat, (statPercent.get(stat) ?? 0) + effect.value);
+  else if (effect.param === 'stab') traits.stabPercent += effect.value;
+  else if (effect.param === 'critChance') traits.critPercent! += effect.value;
+  return true;
+}
+
+/**
+ * Range une mécanique spéciale (immunité, Fermeté, Intimidation…) : sans condition de l'instant,
+ * et seulement pour le Pokémon qui a le talent (sauf immunité aux statuts pour toute l'équipe).
+ * Renvoie vrai si le combattant en est changé.
+ */
+function addMechanic(
+  traits: DungeonTraits,
+  { holder, deferred }: ActiveEffect,
+  effect: Exclude<ActiveEffect['effect'], ModifierEffect>,
+  mine: boolean,
+): boolean {
+  if (deferred.length > 0) return false;
+  if (!mine && !(effect.type === 'statusImmunity' && effect.scope === 'team')) return false;
+  switch (effect.type) {
+    case 'immunity':
+      traits.immunities.push({ type: effect.attackType, heal: effect.heal });
+      break;
+    case 'sturdy':
+      traits.sturdy = true;
+      break;
+    case 'regenerator':
+      traits.regenerator += effect.fraction;
+      break;
+    case 'speedBoost':
+      traits.speedBoost += effect.percent;
+      break;
+    case 'moxie':
+      traits.moxie += effect.percent;
+      break;
+    case 'intimidate':
+      for (const stat of effect.stats) {
+        traits.intimidateStats![stat] = (traits.intimidateStats![stat] ?? 0) + effect.percent;
+      }
+      break;
+    case 'contactDamage':
+      traits.contactDamage += effect.fraction;
+      break;
+    case 'aftermath':
+      traits.aftermath += effect.fraction;
+      break;
+    case 'inflictStatus':
+      traits.inflict!.push({
+        status: effect.status,
+        chance: effect.chance,
+        trigger: effect.trigger,
+      });
+      break;
+    case 'statusImmunity':
+      if (mine) traits.statusImmunities!.push(...effect.statuses);
+      else {
+        for (const status of effect.statuses) {
+          (traits.teamStatusImmunities ??= []).push({ status, from: holder });
+        }
+      }
+      break;
+    case 'naturalCure':
+      traits.naturalCure = true;
+      break;
+    case 'weatherImmunity':
+      traits.weatherImmunity = true;
+      break;
+    case 'critImmunity':
+      traits.critImmunity = true;
+      break;
+    case 'suppressAbility':
+      traits.suppressAbility = true;
+      break;
+    default:
+      return false;
+  }
+  return true;
+}
+
+/** Combattant avec ses talents : statistiques recalculées une fois, traits attachés. */
+function withTraits(
+  f: DungeonFighter,
+  ability: string | null,
+  traits: DungeonTraits,
+  statPercent: Map<StatName, number>,
+): DungeonFighter {
+  const stats = { ...f.stats };
+  let { maxHp, percentHp } = f;
+  let statsChanged = false;
+  const abilityStatPercents: Partial<Record<DungeonStat, number>> = {};
+  for (const [stat, percent] of statPercent) {
+    const mult = Math.max(0, 1 + percent / 100);
+    if (stat === 'hp') {
+      maxHp = Math.max(1, Math.round(maxHp * mult));
+      if (percentHp !== undefined) percentHp = Math.max(1, Math.round(percentHp * mult));
+    } else {
+      stats[stat] = Math.max(1, Math.round(stats[stat] * mult));
+      abilityStatPercents[stat] = (mult - 1) * 100;
+      statsChanged = true;
+    }
+  }
+  // Statistiques d'origine gardées pour le Gaz Inhibiteur (PV max inchangés), bonus exacts des
+  // talents pour l'affichage.
+  return {
+    ...f,
+    stats,
+    maxHp,
+    ...(percentHp !== undefined && { percentHp }),
+    ability,
+    traits,
+    ...(statsChanged && { baseStats: f.stats, abilityStatPercents }),
+  };
+}
+
 /**
  * Applique les talents d'un camp à ses combattants : statistiques modifiées et traits figés.
  * `env.opponentTypes` : types de tout le camp d'en face (conditions de statistiques).
@@ -160,142 +327,15 @@ export function withAbilities(
     const traits = emptyTraits();
     const statPercent = new Map<StatName, number>();
     let changed = false;
-    for (const { holder, effect, deferred } of effects) {
-      const mine = holder === index;
-      if (effect.type === 'modifier') {
-        const info = ABILITY_PARAMS[effect.param];
-        if (!info.activities.includes(env.activity)) continue;
-        if (!mine && info.selfScope && effect.scope === 'self') continue;
-        const stat = STAT_PARAMS[effect.param];
-        if (effect.param === 'damageDealt' || effect.param === 'damageTaken') {
-          const dir = effect.param === 'damageDealt' ? 'dealt' : 'taken';
-          const mod = damageModifier(dir, effect.value, deferred);
-          traits.damage.push(mine ? mod : { ...mod, from: holder });
-          changed = true;
-          continue;
-        }
-        // Statistiques et STAB : le type du camp d'en face conditionne au départ ; l'état du
-        // Pokémon (PV, statut) conditionne ses statistiques en continu.
-        const state = deferred.filter((c) => STATE_CONDITION_TYPES.has(c.type));
-        const staticOk = deferred.every(
-          (c) =>
-            STATE_CONDITION_TYPES.has(c.type) ||
-            (c.type === 'opponentType' && !!env.opponentTypes?.some((t) => c.types.includes(t))),
-        );
-        if (!staticOk) continue;
-        // Bonus d'un coéquipier (sauf PV max, figés) : évalué en continu, tant qu'il est debout.
-        const sourced = stat !== 'hp' && !mine;
-        if (state.length > 0 || sourced) {
-          const target =
-            stat && stat !== 'hp'
-              ? stat
-              : effect.param === 'stab'
-                ? 'stab'
-                : effect.param === 'critChance'
-                  ? 'critChance'
-                  : null;
-          if (!target) continue;
-          const mod = statModifier(target, effect.value, state);
-          traits.stats!.push(mine ? mod : { ...mod, from: holder });
-          changed = true;
-          continue;
-        }
-        if (stat) statPercent.set(stat, (statPercent.get(stat) ?? 0) + effect.value);
-        else if (effect.param === 'stab') traits.stabPercent += effect.value;
-        else if (effect.param === 'critChance') traits.critPercent! += effect.value;
-        changed = true;
-        continue;
-      }
-      // Mécaniques spéciales : sans condition de l'instant, seulement pour le Pokémon qui a le
-      // talent (sauf immunité aux statuts pour toute l'équipe).
-      if (deferred.length > 0) continue;
-      if (!mine && !(effect.type === 'statusImmunity' && effect.scope === 'team')) continue;
-      switch (effect.type) {
-        case 'immunity':
-          traits.immunities.push({ type: effect.attackType, heal: effect.heal });
-          break;
-        case 'sturdy':
-          traits.sturdy = true;
-          break;
-        case 'regenerator':
-          traits.regenerator += effect.fraction;
-          break;
-        case 'speedBoost':
-          traits.speedBoost += effect.percent;
-          break;
-        case 'moxie':
-          traits.moxie += effect.percent;
-          break;
-        case 'intimidate':
-          for (const stat of effect.stats) {
-            traits.intimidateStats![stat] = (traits.intimidateStats![stat] ?? 0) + effect.percent;
-          }
-          break;
-        case 'contactDamage':
-          traits.contactDamage += effect.fraction;
-          break;
-        case 'aftermath':
-          traits.aftermath += effect.fraction;
-          break;
-        case 'inflictStatus':
-          traits.inflict!.push({
-            status: effect.status,
-            chance: effect.chance,
-            trigger: effect.trigger,
-          });
-          break;
-        case 'statusImmunity':
-          if (mine) traits.statusImmunities!.push(...effect.statuses);
-          else {
-            for (const status of effect.statuses) {
-              (traits.teamStatusImmunities ??= []).push({ status, from: holder });
-            }
-          }
-          break;
-        case 'naturalCure':
-          traits.naturalCure = true;
-          break;
-        case 'weatherImmunity':
-          traits.weatherImmunity = true;
-          break;
-        case 'critImmunity':
-          traits.critImmunity = true;
-          break;
-        case 'suppressAbility':
-          traits.suppressAbility = true;
-          break;
-        default:
-          continue;
-      }
-      changed = true;
+    for (const active of effects) {
+      const mine = active.holder === index;
+      const added =
+        active.effect.type === 'modifier'
+          ? addModifier(env, traits, statPercent, active, active.effect, mine)
+          : addMechanic(traits, active, active.effect, mine);
+      changed ||= added;
     }
     const ability = effectiveAbility(ctx, env.team[index]!) || null;
-    if (!changed) return { ...f, ability };
-    const stats = { ...f.stats };
-    let { maxHp, percentHp } = f;
-    let statsChanged = false;
-    const abilityStatPercents: Partial<Record<DungeonStat, number>> = {};
-    for (const [stat, percent] of statPercent) {
-      const mult = Math.max(0, 1 + percent / 100);
-      if (stat === 'hp') {
-        maxHp = Math.max(1, Math.round(maxHp * mult));
-        if (percentHp !== undefined) percentHp = Math.max(1, Math.round(percentHp * mult));
-      } else {
-        stats[stat] = Math.max(1, Math.round(stats[stat] * mult));
-        abilityStatPercents[stat] = (mult - 1) * 100;
-        statsChanged = true;
-      }
-    }
-    // Statistiques d'origine gardées pour le Gaz Inhibiteur (PV max inchangés), bonus exacts des
-    // talents pour l'affichage.
-    return {
-      ...f,
-      stats,
-      maxHp,
-      ...(percentHp !== undefined && { percentHp }),
-      ability,
-      traits,
-      ...(statsChanged && { baseStats: f.stats, abilityStatPercents }),
-    };
+    return changed ? withTraits(f, ability, traits, statPercent) : { ...f, ability };
   });
 }

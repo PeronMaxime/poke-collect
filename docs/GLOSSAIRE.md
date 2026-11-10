@@ -46,16 +46,16 @@ veut dire, puis où la chercher. Les chemins partent de `packages/` ou de `apps/
 
 ## Combats
 
-| En jeu               | Ce que c'est                                                                                            | Dans le code                                                       |
-| -------------------- | ------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
-| Combat en temps réel | Moteur commun à tous les combats : une simulation rejouable à partir de la graine et des ordres donnés  | `simulateDungeon`, `DungeonSetup`, `DungeonCommand` (`dungeon.ts`) |
-| Combat de dresseur   | Contre l'équipe d'un dresseur ; argent, XP, badge à la première victoire d'un Champion                  | `game-core/battle.ts`, `api/game/battles.ts`, table `battles`      |
-| Palier               | Dresseurs répétables placés avant chaque Champion et le Conseil 4, à battre dans l'ordre                | pas de champ dédié : une chaîne de conditions `trainerDefeated`    |
-| Dresseur de quête    | Dresseur visible seulement à l'étape de sa quête, battu une seule fois                                  | `trainer.questId`, `isTrainerRevealed`                             |
-| Donjon               | Combat contre une suite d'adversaires puis un boss ; récompense les Méga-Gemmes                         | `game-core/dungeon.ts`, `api/game/dungeons.ts`                     |
-| Méga-Évolution       | Au PC, avec une gemme : le Pokémon prend sa forme Méga (une seule Méga par équipe)                      | `game-core/mega.ts`, `megaStone`                                   |
-| Combat légendaire    | Lancé depuis une quête ; vaincu, le légendaire peut être capturé avec une Ball, sinon retenté plus tard | `game-core/legendary.ts`, `api/game/legendary.ts`                  |
-| Commande             | Ordre du joueur pendant un combat : relais ou objet de soin, horodaté                                   | `DungeonCommand`, `healCommand`                                    |
+| En jeu               | Ce que c'est                                                                                            | Dans le code                                                     |
+| -------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
+| Combat en temps réel | Moteur commun à tous les combats : une simulation rejouable à partir de la graine et des ordres donnés  | `simulateDungeon`, `DungeonSetup`, `DungeonCommand` (`dungeon/`) |
+| Combat de dresseur   | Contre l'équipe d'un dresseur ; argent, XP, badge à la première victoire d'un Champion                  | `game-core/battle.ts`, `api/game/battles.ts`, table `battles`    |
+| Palier               | Dresseurs répétables placés avant chaque Champion et le Conseil 4, à battre dans l'ordre                | pas de champ dédié : une chaîne de conditions `trainerDefeated`  |
+| Dresseur de quête    | Dresseur visible seulement à l'étape de sa quête, battu une seule fois                                  | `trainer.questId`, `isTrainerRevealed`                           |
+| Donjon               | Combat contre une suite d'adversaires puis un boss ; récompense les Méga-Gemmes                         | `game-core/dungeon/`, `api/game/dungeons.ts`                     |
+| Méga-Évolution       | Au PC, avec une gemme : le Pokémon prend sa forme Méga (une seule Méga par équipe)                      | `game-core/mega.ts`, `megaStone`                                 |
+| Combat légendaire    | Lancé depuis une quête ; vaincu, le légendaire peut être capturé avec une Ball, sinon retenté plus tard | `game-core/legendary.ts`, `api/game/legendary.ts`                |
+| Commande             | Ordre du joueur pendant un combat : relais ou objet de soin, horodaté                                   | `DungeonCommand`, `healCommand`                                  |
 
 ## Bâtiments
 

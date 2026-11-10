@@ -126,7 +126,7 @@ Les effets sont des unions discriminées par `type`, dans `packages/content/src/
 
 1. Ajouter la variante au schéma.
 2. La traiter dans `packages/game-core` : objets dans le module de l'activité concernée, talents
-   dans `abilities.ts` (et `dungeon.ts` pour les effets de combat). ESLint
+   dans `abilities.ts` (et `dungeon/traits.ts` pour les effets de combat). ESLint
    (`switch-exhaustiveness-check`) signale chaque `switch` qui ne traite pas le nouveau cas.
 3. Son éditeur dans l'admin (`ItemsPage.tsx`, `AbilityEffectEditor.tsx`) et son libellé dans le
    jeu (`apps/web/src/lib/labels.ts`).

@@ -1,4 +1,7 @@
 import type { DungeonStat, Status } from '@poke/content';
+import { DUNGEON_STATS } from '@poke/content';
+import { stateStatMultiplier } from './rules';
+import type { DungeonSetup, HolderUp } from './types';
 
 /**
  * Ce que la simulation produit : l'issue, les événements (pour l'animation et le journal du
@@ -106,4 +109,43 @@ export interface DungeonState {
 export interface DungeonSimulation {
   state: DungeonState;
   events: DungeonEvent[];
+}
+
+/**
+ * Variation (en %, arrondie) de chaque statistique d'un combattant à l'instant de `state` :
+ * talents (fixes et selon son état), changements du combat et paralysie. Sans les variations
+ * nulles. Un adversaire pas encore entré n'a que ses talents ; le talent du Pokémon actif ne
+ * joue plus face à un Gaz Inhibiteur.
+ */
+export function dungeonStatChanges(
+  setup: DungeonSetup,
+  state: DungeonState,
+  side: 'player' | 'enemy',
+  index: number,
+): Partial<Record<DungeonStat, number>> {
+  const player = side === 'player';
+  const f = player ? setup.team[index] : setup.enemies[index];
+  if (!f) return {};
+  const onField = index === (player ? state.active : state.enemyIndex);
+  const facing = player ? setup.enemies[state.enemyIndex] : setup.team[state.active];
+  const neutralized = onField && !!facing?.traits?.suppressAbility;
+  const changes = player ? state.statMods[index] : onField ? state.enemyStatMods : undefined;
+  const hp = player ? (state.hp[index] ?? 0) : onField ? state.enemyHp : f.maxHp;
+  const status = player ? state.statuses[index] : onField ? state.enemyStatus : null;
+  const up: HolderUp = player ? (i) => (state.hp[i] ?? 0) > 0 : (i) => i >= state.enemyIndex;
+  const out: Partial<Record<DungeonStat, number>> = {};
+  for (const stat of DUNGEON_STATS) {
+    let mult = changes?.[stat] ?? 1;
+    if (!neutralized) {
+      // Bonus du talent tel qu'annoncé (Coloforce : +50 %), pas le rapport des statistiques
+      // arrondies ; les dégâts, eux, restent calculés sur les statistiques arrondies.
+      if (f.abilityStatPercents) mult *= 1 + (f.abilityStatPercents[stat] ?? 0) / 100;
+      else if (f.baseStats) mult *= f.stats[stat] / f.baseStats[stat];
+      mult *= stateStatMultiplier(f.traits, stat, hp / f.maxHp, !!status, up);
+    }
+    if (stat === 'speed' && status === 'paralysis') mult *= 0.5;
+    const percent = Math.round((mult - 1) * 100);
+    if (percent !== 0) out[stat] = percent;
+  }
+  return out;
 }

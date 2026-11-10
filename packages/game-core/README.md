@@ -25,7 +25,7 @@ Vue d'ensemble : [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md). Les mots du
 | `expedition.ts`                                    | Rencontres, capture, pitié, plan de Balls, butin, cadence, XP d'équipe      |
 | `shiny.ts`                                         | Chromatiques : taux, chaîne, Charme, Masuda                                 |
 | `weather.ts`, `roaming.ts`                         | Météo horaire des zones ; cachette des Pokémon fuyards                      |
-| `dungeon.ts`                                       | Le moteur de combat en temps réel (`simulateDungeon`) et les donjons        |
+| `dungeon/`                                         | Le moteur de combat en temps réel (`simulateDungeon`) et les donjons        |
 | `battle.ts`, `legendary.ts`                        | Combats de dresseurs et légendaires, sur le même moteur                     |
 | `abilities.ts`                                     | Talents : modificateurs, conditions, effets de combat, postes d'assistant   |
 | `breeding.ts`                                      | Pension, œufs, héritage, transfert et Bonbons de lignée                     |
