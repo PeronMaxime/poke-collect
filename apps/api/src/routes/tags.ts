@@ -6,6 +6,11 @@ import { createTag, deleteTag, listTags, updateTag } from '../game/tags';
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes des étiquettes de Pokémon (/api/tags). Chaque route valide sa requête, appelle le module
+ * de jeu et répond.
+ */
+
 const uuidParams = z.object({ id: z.uuid() });
 
 /** Étiquettes du joueur : créées, renommées et supprimées depuis le PC. */

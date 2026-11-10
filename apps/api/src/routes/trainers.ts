@@ -22,6 +22,12 @@ import {
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes des autres dresseurs : recherche, fiche, Pokédex (/api/trainers), et choix de son favori
+ * et de sa vitrine (/api/trainer-card). Chaque route valide sa requête, appelle le module de jeu et
+ * répond.
+ */
+
 const nameParams = z.object({ name: z.string().trim().min(1).max(16) });
 
 /** Fiches Dresseur des autres joueurs : recherche, fiche, Pokédex ; vitrine de sa propre fiche. */

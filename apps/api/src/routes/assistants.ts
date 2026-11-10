@@ -9,6 +9,11 @@ import { playerFacilityPlaces } from '../game/store';
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes des assistants (/api/assistants) : lister, placer, retirer. Chaque route valide sa
+ * requête, appelle le module de jeu et répond.
+ */
+
 const slotParams = z.object({
   post: z.enum(ASSISTANT_POSTS),
   slot: z.coerce.number().int().min(0).max(999),

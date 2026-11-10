@@ -51,7 +51,9 @@ import type { PokemonRow } from './store';
 
 /** Pension, œufs, transfert et Bonbons de lignée. Le serveur décide de tout. */
 
+/** Une pension telle qu'elle est enregistrée. */
 export type DaycareRow = typeof daycareSlots.$inferSelect;
+/** Un œuf tel qu'il est enregistré (en couveuse ou dans le sac). */
 export type EggRow = typeof eggs.$inferSelect;
 
 /** Œuf en couveuse (place et éclosion connues). */
@@ -66,6 +68,7 @@ export function toEggDto(row: EggRow): EggDto {
   };
 }
 
+/** Un œuf du sac tel que le jeu le reçoit. */
 export function toBagEggDto(row: EggRow): BagEggDto {
   return {
     id: row.id,
@@ -92,6 +95,11 @@ function slotEggMinutes(
 const depositOf = (row: DaycareRow, side: 0 | 1) =>
   (side === 0 ? row.parentADepositedAt : row.parentBDepositedAt) ?? row.depositedAt;
 
+/**
+ * Une pension telle que le jeu la reçoit : parents, objets tenus, espèce et durée de l'œuf du
+ * couple (`breeds` faux : le couple ne pond pas) ; `helper` est son assistant, dont le talent
+ * compte dans cette durée.
+ */
 export function toDaycareDto(
   ctx: GameContext,
   row: DaycareRow,
@@ -497,6 +505,10 @@ async function requireSlot(db: Db, userId: string, slotIndex: number): Promise<D
   return slot;
 }
 
+/**
+ * Ramasse les œufs pondus d'une pension, vers les couveuses (`incubator`) ou vers le sac (`bag`).
+ * Refus : `DAYCARE_EMPTY`, `NO_EGG_READY`.
+ */
 export async function collectEggs(
   db: Db,
   content: ContentCache,

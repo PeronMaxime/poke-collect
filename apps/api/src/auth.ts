@@ -8,6 +8,11 @@ import { resetPasswordMail } from './mail';
 import type { Mailer } from './mail';
 
 /**
+ * Comptes et sessions (Better Auth) : e-mail et mot de passe, Google et Discord s'ils sont
+ * configurés, session en cookie, réinitialisation du mot de passe par e-mail.
+ */
+
+/**
  * Comptes supprimés depuis le démarrage : leur cookie de session en cache (5 min) ne doit plus
  * ouvrir de session. Les redémarrages vident la liste, le cache expire de toute façon.
  */
@@ -68,4 +73,5 @@ export function createAuth(db: Db, env: Env, mailer: Mailer | null = null) {
   });
 }
 
+/** L'instance Better Auth de l'application. */
 export type Auth = ReturnType<typeof createAuth>;

@@ -31,6 +31,7 @@ import { addItems } from './inventory';
 
 export type PokemonRow = typeof pokemon.$inferSelect;
 
+/** Le Pokémon enregistré, sous la forme que les règles du jeu attendent (`@poke/game-core`). */
 export function toInstance(row: PokemonRow): TeamMember {
   return {
     id: row.id,
@@ -54,6 +55,7 @@ export function toInstance(row: PokemonRow): TeamMember {
   };
 }
 
+/** Le Pokémon tel que le jeu le reçoit ; `activity` dit ce qui l'occupe (null : disponible). */
 export function toPokemonDto(row: PokemonRow, activity: PokemonActivity | null = null): PokemonDto {
   const { id: _, ...instance } = toInstance(row);
   return {
@@ -76,6 +78,10 @@ export function toPokemonDto(row: PokemonRow, activity: PokemonActivity | null =
   };
 }
 
+/**
+ * Ajoute des Pokémon au PC du joueur (capture, éclosion, starter…) et les compte dans les
+ * statistiques d'espèces.
+ */
 export async function insertPokemon(
   db: Db,
   ownerId: string,

@@ -13,6 +13,11 @@ import { assertTabUnlocked, playerFacilityPlaces, toPokemonDto } from '../game/s
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes du Musée (/api/museum) : déposer un fossile, le reprendre, récupérer les Pokémon
+ * restaurés. Chaque route valide sa requête, appelle le module de jeu et répond.
+ */
+
 const uuidParams = z.object({ id: z.uuid() });
 
 /** Musée : restauration des fossiles en Pokémon. */

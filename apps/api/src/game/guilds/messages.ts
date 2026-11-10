@@ -12,6 +12,10 @@ import { requireMembership } from './common';
 /** Messages renvoyés à la discussion (les plus récents). */
 const MESSAGES_LIMIT = 100;
 
+/**
+ * Les derniers messages de la guilde du joueur, du plus ancien au plus récent ; refus
+ * `NOT_IN_GUILD`.
+ */
 export async function guildMessagesOf(db: Db, userId: string): Promise<GuildMessagesResponse> {
   const member = await requireMembership(db, userId);
   const rows = await db
@@ -38,6 +42,7 @@ export async function guildMessagesOf(db: Db, userId: string): Promise<GuildMess
   };
 }
 
+/** Écrit un message dans la discussion de sa guilde ; refus `NOT_IN_GUILD`. */
 export async function postGuildMessage(db: Db, userId: string, body: string, now: Date) {
   const member = await requireMembership(db, userId);
   await db.insert(guildMessages).values({ guildId: member.guildId, userId, body, createdAt: now });

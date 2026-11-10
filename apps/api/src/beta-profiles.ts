@@ -65,6 +65,7 @@ interface BetaProfileDeps extends RouteDeps {
   secureCookie: boolean;
 }
 
+/** Routes /api/beta/profiles : lister, créer, activer et supprimer ses profils secondaires. */
 export async function betaProfileRoutes(
   app: FastifyInstance,
   { db, content, hooks, now, secureCookie }: BetaProfileDeps,

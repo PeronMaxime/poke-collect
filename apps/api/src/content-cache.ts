@@ -5,6 +5,11 @@ import { createGameContext, playableContent } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import { currentTransaction } from './game/tx';
 
+/**
+ * Le contenu du jeu en mémoire : la version publiée et les versions encore utilisées par des
+ * expéditions en cours.
+ */
+
 /** Contenu publié déjà sérialisé et son ETag (le JSON fait plusieurs centaines de Ko). */
 export interface PublicContentBody {
   body: string;

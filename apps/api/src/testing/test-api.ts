@@ -13,6 +13,7 @@ import { loadEnv } from '../env';
  * tenir à jour. Rien n'est partagé avec la base de développement.
  */
 
+/** Une API de test lancée. */
 export interface TestApi {
   /** Adresse de l'API (`http://127.0.0.1:<port>`). */
   url: string;
@@ -26,6 +27,7 @@ const TEST_ORIGIN = 'http://localhost:5173';
 
 const ADMIN = { email: 'admin@example.com', password: 'motdepasse-solide' };
 
+/** Lance l'API de test sur un port libre et crée son compte administrateur ; `close()` l'arrête. */
 export async function startTestApi(
   /** Ajustements du contenu de test avant son import (ex. ouvrir tous les onglets). */
   patchContent: (content: GameContentData) => void = () => {},

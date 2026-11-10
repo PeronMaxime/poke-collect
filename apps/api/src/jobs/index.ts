@@ -25,6 +25,7 @@ const SPECIES_COUNTS_INTERVAL_MS = 30_000;
 /** Intervalle de distribution des coffres de guilde. */
 const GUILD_REWARDS_INTERVAL_SECONDS = 60;
 
+/** Ce dont les tâches de fond ont besoin. */
 export interface JobsOptions {
   db: Db;
   content: ContentCache;

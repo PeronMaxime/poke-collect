@@ -11,6 +11,7 @@ import { afterCommit, isTransaction } from './tx';
  * espèce. Un arrêt brutal perd au plus ces quelques secondes de statistiques.
  */
 
+/** Ce qui est compté pour une espèce : obtenus, dont chromatiques, et transférés. */
 export interface SpeciesCounts {
   captured: number;
   shiny: number;

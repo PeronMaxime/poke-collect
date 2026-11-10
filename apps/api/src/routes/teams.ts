@@ -6,6 +6,11 @@ import { createTeam, deleteTeam, listTeams, updateTeam } from '../game/teams';
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes des équipes enregistrées (/api/teams). Chaque route valide sa requête, appelle le module
+ * de jeu et répond.
+ */
+
 const uuidParams = z.object({ id: z.uuid() });
 
 /** Équipes enregistrées du joueur : construites depuis la page « Équipe Pkmn ». */

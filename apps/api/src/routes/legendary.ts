@@ -33,6 +33,11 @@ import { toPokemonDto } from '../game/store';
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes des combats légendaires (/api/legendary-battles), lancés depuis une quête, et relâcher un
+ * Pokémon. Chaque route valide sa requête, appelle le module de jeu et répond.
+ */
+
 const uuidParams = z.object({ id: z.uuid() });
 const questParams = z.object({ id: slugSchema });
 

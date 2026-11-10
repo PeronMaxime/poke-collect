@@ -5,6 +5,11 @@ import { markShopSeen, purchase, sell, shopState } from '../game/shop';
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes de la boutique (/api/shop) : acheter, vendre. Chaque route valide sa requête, appelle le
+ * module de jeu et répond.
+ */
+
 /** Boutique : articles visibles, achat, vente, badge « Nouveau ! ». */
 export async function shopRoutes(app: FastifyInstance, { db, content, hooks, now }: RouteDeps) {
   app.addHook('preHandler', hooks.requireUser);

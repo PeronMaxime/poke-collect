@@ -12,6 +12,10 @@ import { playerFacilityPlaces } from '../store';
  * heure locale du joueur, profil prêt à jouer, nombre de places.
  */
 
+/**
+ * Graine aléatoire d'une action (expédition, combat, œuf…) : enregistrée avec elle, elle permet de
+ * rejouer le résultat à l'identique.
+ */
 export function newSeed(): number {
   return randomInt(0, MAX_SEED + 1);
 }
@@ -29,6 +33,9 @@ export function expeditionSlots(db: Db, ctx: GameContext, userId: string): Promi
   return playerFacilityPlaces(db, ctx, userId, 'expedition');
 }
 
+/**
+ * Profil du joueur, exigé pour jouer ; refus `NO_PROFILE` (pas de nom de dresseur) ou `NO_STARTER`.
+ */
 export async function requireStartedProfile(db: Db, userId: string) {
   const [profile] = await db.select().from(playerProfiles).where(eq(playerProfiles.userId, userId));
   if (!profile) throw new GameError(409, 'NO_PROFILE');

@@ -41,6 +41,7 @@ import {
  * pour en connaître l'issue ; le résultat s'applique à la réclamation.
  */
 
+/** Une tentative de donjon telle qu'elle est enregistrée. */
 export type DungeonRunRow = typeof dungeonRuns.$inferSelect;
 type DungeonProgressRow = typeof dungeonProgress.$inferSelect;
 
@@ -98,6 +99,7 @@ export function combatHealCommand(
   return result.command;
 }
 
+/** La tentative telle que le jeu la reçoit. */
 export function toDungeonRunDto(row: DungeonRunRow): DungeonRunDto {
   return {
     id: row.id,
@@ -116,6 +118,7 @@ export function toDungeonRunDto(row: DungeonRunRow): DungeonRunDto {
   };
 }
 
+/** Le bilan du joueur dans un donjon (victoires, défaites, gemmes) tel que le jeu le reçoit. */
 export function toDungeonRecordDto(row: DungeonProgressRow): DungeonRecordDto {
   return {
     dungeonId: row.dungeonId,
@@ -127,6 +130,7 @@ export function toDungeonRecordDto(row: DungeonProgressRow): DungeonRecordDto {
   };
 }
 
+/** Bilan du joueur dans chaque donjon qu'il a tenté. */
 export async function dungeonRecords(db: Db, userId: string): Promise<DungeonProgressRow[]> {
   return db.select().from(dungeonProgress).where(eq(dungeonProgress.ownerId, userId));
 }

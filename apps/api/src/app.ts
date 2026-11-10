@@ -40,6 +40,15 @@ import { shopRoutes } from './routes/shop';
 import { guildRoutes } from './routes/guilds';
 import { spriteRoutes } from './routes/sprites';
 
+/**
+ * L'application Fastify, sans écoute ni tâches de fond : c'est ce que les tests lancent sur une
+ * base en mémoire, et ce que `server.ts` met en ligne.
+ */
+
+/**
+ * Ce dont `buildApp` a besoin ; tout sauf la base et la configuration est facultatif (les tests y
+ * injectent leur horloge et leurs faux expéditeurs).
+ */
 export interface AppOptions {
   db: Db;
   env: Env;
@@ -75,6 +84,11 @@ function pgErrorResponse(
   }
 }
 
+/**
+ * Assemble l'application Fastify : supervision, authentification, limites de requêtes, traduction
+ * des erreurs, puis tous les groupes de routes. Ne lance ni l'écoute ni les tâches de fond (voir
+ * `server.ts`).
+ */
 export async function buildApp({
   db,
   env,

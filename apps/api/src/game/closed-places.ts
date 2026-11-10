@@ -9,6 +9,11 @@ import { playerTransaction } from './tx';
 import { addItems, playerFacilityPlaces } from './store';
 
 /**
+ * Places de bâtiment fermées après coup (réglage baissé dans l'admin) : ce qui s'y trouvait est
+ * rendu au joueur.
+ */
+
+/**
  * Places de pension et du Musée au-delà de celles ouvertes (réglage baissé) : tout y est rendu au
  * joueur. Le couple et son assistant reviennent au PC, les objets tenus et les fossiles (même
  * restaurés) au sac. Fait à la lecture : le nombre de places dépend de l'avancement de chacun.

@@ -5,6 +5,11 @@ import { chooseRegionStarter, chooseStarter, createProfile, findProfile } from '
 import { currentUserId, sessionUser } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes du joueur : contenu publié, compte et profil, présence, starter (/api/content, /api/me,
+ * /api/profile, /api/starter). Chaque route valide sa requête, appelle le module de jeu et répond.
+ */
+
 /** Le joueur lui-même : contenu publié, session, création du profil, choix des starters. */
 export async function playerRoutes(app: FastifyInstance, { db, content, hooks, now }: RouteDeps) {
   /** Contenu publié utile à l'affichage côté joueur. */

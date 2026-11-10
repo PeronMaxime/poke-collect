@@ -47,6 +47,12 @@ import {
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes de l'élevage : pensions (/api/daycare), œufs (/api/eggs), transfert et Bonbons
+ * (/api/pokemon/transfer, /api/candies). Chaque route valide sa requête, appelle le module de jeu
+ * et répond.
+ */
+
 const slotParams = z.object({ slot: z.coerce.number().int().min(0).max(999) });
 const uuidParams = z.object({ id: z.uuid() });
 const parentParams = slotParams.extend({

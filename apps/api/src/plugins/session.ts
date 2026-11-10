@@ -8,6 +8,15 @@ import { deletedUserIds } from '../auth';
 import type { Auth } from '../auth';
 import { activeProfileId } from '../beta-profiles';
 
+/**
+ * Contrôles de session des routes (`preHandler`) : qui appelle, a-t-il le droit, et rattrapage du
+ * temps écoulé avant de lui répondre.
+ */
+
+/**
+ * Le joueur (ou l'administrateur) d'une requête, posé sur `request.user` par les contrôles de
+ * session.
+ */
 export interface SessionUser {
   id: string;
   email: string;

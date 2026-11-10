@@ -32,6 +32,12 @@ import { claimedRewards, playerProgress, pokemonActivities, toPokemonDto } from 
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes de la progression : évolution, Méga-Évolution, objets utilisés sur un Pokémon,
+ * récompenses, Fiche Dresseur, quêtes. Chaque route valide sa requête, appelle le module de jeu et
+ * répond.
+ */
+
 const uuidParams = z.object({ id: z.uuid() });
 const questParams = z.object({ id: slugSchema });
 

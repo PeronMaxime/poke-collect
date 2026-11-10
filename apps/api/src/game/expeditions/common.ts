@@ -22,6 +22,7 @@ export const EMPTY_RESULT: ExpeditionResult = {
   shinyChance: 0,
 };
 
+/** `date` avancée de `minutes` minutes. */
 export const minutesAfter = (date: Date, minutes: number) =>
   new Date(date.getTime() + minutes * 60_000);
 

@@ -1,6 +1,8 @@
 import type { FastifyInstance } from 'fastify';
 import type { Auth } from '../auth';
 
+/** Branchement de Better Auth sur Fastify. */
+
 /**
  * Monte le handler Better Auth sur /api/auth/*.
  * Les corps sont gardés bruts (chaînes) pour être retransmis tels quels.

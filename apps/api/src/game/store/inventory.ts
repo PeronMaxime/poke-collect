@@ -14,6 +14,7 @@ import { claimedRewards } from './progress';
  * peuvent pas faire passer une quantité sous zéro.
  */
 
+/** Ajoute des objets au Sac (les quantités nulles ou négatives sont ignorées). */
 export async function addItems(db: Db, ownerId: string, stacks: readonly ItemStack[]) {
   const merged = new Map<string, number>();
   for (const s of stacks) {
@@ -70,6 +71,7 @@ export async function shinyBoost(db: Db, ctx: GameContext, ownerId: string): Pro
   return charm * playerBonuses(ctx, claimed).shiny;
 }
 
+/** Quantité d'un objet dans le Sac du joueur (0 s'il n'en a pas). */
 export async function itemQuantity(db: Db, ownerId: string, itemId: string): Promise<number> {
   const [row] = await db
     .select({ quantity: inventory.quantity })

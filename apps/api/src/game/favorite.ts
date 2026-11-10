@@ -5,6 +5,11 @@ import { getForm, getSpecies } from '@poke/data';
 import type { FavoritePokemonDto, FavoritePokemonInput } from '@poke/shared';
 import { GameError } from './errors';
 
+/**
+ * Pokémon favori : l'avatar d'un dresseur partout où il apparaît (fiche, classements, recherche,
+ * guilde).
+ */
+
 /** Colonnes du profil utiles au Pokémon favori (à ajouter aux `select`). */
 export const favoriteColumns = {
   starterSpeciesId: playerProfiles.starterSpeciesId,

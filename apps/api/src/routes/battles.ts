@@ -23,6 +23,11 @@ import { requireStartedProfile } from '../game/expeditions';
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes des combats de dresseurs (/api/battles) : lancer, changer de Pokémon, utiliser un objet,
+ * fuir, réclamer. Chaque route valide sa requête, appelle le module de jeu et répond.
+ */
+
 const uuidParams = z.object({ id: z.uuid() });
 
 /** Combats de dresseurs : lancement, changements de Pokémon, fuite, réclamation, bilan. */

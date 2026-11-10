@@ -20,13 +20,19 @@ import { GameError } from '../errors';
 
 export type GuildMemberRow = typeof guildMembers.$inferSelect;
 
+/** Rang de chaque rôle (0 = chef) : on n'agit que sur un membre de rang inférieur au sien. */
 export const ROLE_RANK: Record<GuildRole, number> = { leader: 0, officer: 1, member: 2 };
 
+/** Appartenance du joueur à une guilde ; absente s'il n'en a pas. */
 export async function membership(db: Db, userId: string): Promise<GuildMemberRow | undefined> {
   const [row] = await db.select().from(guildMembers).where(eq(guildMembers.userId, userId));
   return row;
 }
 
+/**
+ * Appartenance du joueur, exigée ; refus `NOT_IN_GUILD`, ou `GUILD_FORBIDDEN` si son rôle n'est pas
+ * l'un de `roles`.
+ */
 export async function requireMembership(db: Db, userId: string, roles?: GuildRole[]) {
   const member = await membership(db, userId);
   if (!member) throw new GameError(404, 'NOT_IN_GUILD');
@@ -41,11 +47,13 @@ export function cooldownUntil(ctx: GameContext, leftAt: Date | null, now: Date):
   return until > now ? until : null;
 }
 
+/** Refuse (`GUILD_COOLDOWN`) tant que le délai après un départ volontaire n'est pas écoulé. */
 export function assertNoCooldown(ctx: GameContext, leftAt: Date | null, now: Date) {
   const until = cooldownUntil(ctx, leftAt, now);
   if (until) throw new GameError(409, 'GUILD_COOLDOWN', { until: until.toISOString() });
 }
 
+/** Nombre de membres d'une guilde. */
 export async function memberCount(db: Db, guildId: string): Promise<number> {
   const [row] = await db
     .select({ n: sql<number>`count(*)::int` })
@@ -59,6 +67,7 @@ export async function systemMessage(db: Db, guildId: string, body: string, now: 
   await db.insert(guildMessages).values({ guildId, userId: null, body, createdAt: now });
 }
 
+/** Nom de dresseur d'un joueur, pour les messages du jeu (« ? » s'il n'a pas de profil). */
 export async function trainerName(db: Db, userId: string): Promise<string> {
   const [row] = await db
     .select({ name: playerProfiles.trainerName })

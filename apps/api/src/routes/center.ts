@@ -6,6 +6,11 @@ import { toPokemonDto } from '../game/store';
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes du Centre Pokémon (/api/center) : soigner des Pokémon K.O., ou les ranimer avec un objet.
+ * Chaque route valide sa requête, appelle le module de jeu et répond.
+ */
+
 /** Centre Pokémon et Rappels : soins des Pokémon mis K.O. */
 export async function centerRoutes(app: FastifyInstance, { db, content, hooks, now }: RouteDeps) {
   app.addHook('preHandler', hooks.requireUser);

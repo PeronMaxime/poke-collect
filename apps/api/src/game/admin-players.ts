@@ -34,6 +34,11 @@ import { trainerCard } from './stats';
 import { addItems, playerProgress, pokemonActivities, recordPokedex } from './store';
 
 /**
+ * Lectures et actions de l'administration sur les joueurs : liste, fiche, statistiques par espèce,
+ * et aides de test réservées aux comptes administrateurs (objets, dresseurs, quêtes, Pokémon).
+ */
+
+/**
  * Dernière activité connue : présence enregistrée à chaque requête, complétée par la dernière
  * connexion ou prolongation de session (joueurs pas revenus depuis l'ajout du suivi de présence).
  */

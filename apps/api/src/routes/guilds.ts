@@ -36,6 +36,11 @@ import {
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes des guildes (/api/guild pour la sienne, /api/guilds pour les autres) et ouverture des
+ * coffres. Chaque route valide sa requête, appelle le module de jeu et répond.
+ */
+
 const guildParams = z.object({ id: z.uuid() });
 const nameParams = z.object({ name: z.string().min(1).max(32) });
 const messageParams = z.object({ id: z.uuid() });

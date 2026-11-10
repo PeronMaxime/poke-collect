@@ -16,6 +16,7 @@ import { assertAvailable, toInstance } from './store';
  * ferme (type Eau exigé) l'arrose : sans lui, ses baies ne poussent pas.
  */
 
+/** Assistants du joueur : quel Pokémon occupe quelle place de quel bâtiment. */
 export async function listAssistants(db: Db, userId: string): Promise<AssistantDto[]> {
   const rows = await db
     .select({ post: assistants.post, slot: assistants.slotIndex, pokemonId: assistants.pokemonId })
@@ -87,6 +88,10 @@ export async function assignAssistant(
   });
 }
 
+/**
+ * Retire l'assistant d'une place ; refus `NO_ASSISTANT` si elle est vide. À la ferme, la pousse du
+ * champ est d'abord mise en pause (plus personne ne l'arrose).
+ */
 export async function removeAssistant(
   db: Db,
   ctx: GameContext,

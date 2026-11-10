@@ -18,6 +18,7 @@ import { GameError } from './errors';
 /** Au-delà, un élément terminé pendant une coupure du serveur n'est plus notifié. */
 const MAX_DELAY_MS = 6 * 60 * 60_000;
 
+/** Un appareil abonné : son adresse chez le service push et ses clés de chiffrement. */
 export interface PushTarget {
   endpoint: string;
   p256dh: string;
@@ -27,6 +28,10 @@ export interface PushTarget {
 /** Envoie une notification ; `gone` = abonnement expiré (à supprimer). */
 export type PushSender = (target: PushTarget, payload: PushPayload) => Promise<'ok' | 'gone'>;
 
+/**
+ * L'expéditeur réel : envoie par Web Push, signé avec les clés VAPID. Un abonnement refusé pour de
+ * bon (404, 410) est signalé `gone`.
+ */
 export function webPushSender(vapid: VapidKeys): PushSender {
   const vapidDetails = {
     subject: vapid.subject,

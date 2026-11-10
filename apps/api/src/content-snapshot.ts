@@ -5,6 +5,8 @@ import type { GameContentData } from '@poke/content';
 import { loadPublishedContent } from '@poke/db';
 import type { Db } from '@poke/db';
 
+/** Lecture et écriture de l'instantané du contenu publié (`content/game-content.json`). */
+
 /**
  * Instantané du contenu publié, versionné dans Git (`content/game-content.json`).
  * Il garde les ajustements faits dans l'admin et sert de contenu initial à une base neuve

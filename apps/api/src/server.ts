@@ -6,6 +6,12 @@ import { readContentSnapshot, writeContentSnapshot } from './content-snapshot';
 import { startJobs } from './jobs';
 import { consoleMailer, smtpMailer } from './mail';
 
+/**
+ * Point d'entrée du processus : migrations, contenu initial d'une base neuve, application, tâches
+ * de fond, puis écoute. À l'arrêt (SIGINT, SIGTERM) : fin des requêtes en cours, dernière écriture
+ * des tâches de fond, fermeture de la base.
+ */
+
 const env = loadEnv();
 const handle = createDb({ databaseUrl: env.databaseUrl, pgliteDataDir: env.pgliteDataDir });
 

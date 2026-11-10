@@ -45,6 +45,10 @@ async function addMember(
   await raiseQuestTargets(db, ctx, guildId, now);
 }
 
+/**
+ * Crée une guilde dont le joueur devient le chef, contre `guilds.creationCost`. Refus :
+ * `ALREADY_IN_GUILD`, `GUILD_COOLDOWN`, `NOT_ENOUGH_MONEY`, `GUILD_NAME_TAKEN`.
+ */
 export async function createGuild(
   db: Db,
   content: ContentCache,
@@ -108,6 +112,7 @@ export async function joinGuild(
   });
 }
 
+/** Retire la candidature du joueur à une guilde (sans effet s'il n'en avait pas). */
 export async function cancelJoinRequest(db: Db, userId: string, guildId: string) {
   await db
     .delete(guildJoinRequests)

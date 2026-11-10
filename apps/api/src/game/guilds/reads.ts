@@ -100,6 +100,10 @@ export async function searchGuilds(
   };
 }
 
+/**
+ * L'onglet Guilde du joueur : sa guilde (membres, quêtes, candidatures à traiter) s'il en a une,
+ * sinon ses candidatures en cours et le délai avant de pouvoir en rejoindre une.
+ */
 export async function guildState(
   db: Db,
   content: ContentCache,

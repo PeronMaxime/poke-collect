@@ -3,6 +3,11 @@ import rateLimit from '@fastify/rate-limit';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { GameError } from './game/errors';
 
+/**
+ * Limites de requêtes par minute : une par joueur (par adresse IP sans session) et une par adresse
+ * IP, toutes sessions confondues.
+ */
+
 const WINDOW_MS = 60_000;
 
 /** Cookie de session (Better Auth : `better-auth.session_token`, préfixé `__Secure-` en HTTPS). */

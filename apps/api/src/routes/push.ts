@@ -17,6 +17,11 @@ import type { PushSender } from '../game/push';
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes des notifications push (/api/push) : abonnement de l'appareil, réglages, notification
+ * d'essai. Chaque route valide sa requête, appelle le module de jeu et répond.
+ */
+
 interface PushDeps extends RouteDeps {
   /** Clé publique VAPID ; absente = notifications push désactivées. */
   publicKey: string | null;

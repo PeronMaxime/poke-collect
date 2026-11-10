@@ -29,6 +29,7 @@ import { caughtSpeciesIds } from './pokedex';
  * récompenses réclamées.
  */
 
+/** L'avancement d'un joueur dans une quête, tel qu'il est enregistré. */
 export type QuestProgressRow = typeof questProgress.$inferSelect;
 
 /**
@@ -123,6 +124,7 @@ export async function baseProgress(db: Db, ownerId: string): Promise<PlayerProgr
   };
 }
 
+/** Avancement du joueur dans chaque quête qu'il a commencée. */
 export async function questRows(db: Db, ownerId: string): Promise<QuestProgressRow[]> {
   return db.select().from(questProgress).where(eq(questProgress.ownerId, ownerId));
 }
@@ -136,6 +138,7 @@ export function questRowStep(ctx: GameContext, row: QuestProgressRow): number {
   return row.completedAt ? Math.max(row.step, total) : row.step;
 }
 
+/** Étape atteinte et compteur de chaque quête, sous la forme que les règles attendent. */
 export function questRecords(
   ctx: GameContext,
   rows: readonly QuestProgressRow[],
@@ -179,6 +182,7 @@ export async function claimedRewards(db: Db, ownerId: string): Promise<ClaimedRe
   };
 }
 
+/** Nombre d'œufs que le joueur a fait éclore. */
 export async function eggsHatchedCount(db: Db, ownerId: string): Promise<number> {
   const [row] = await db
     .select({ n: count() })

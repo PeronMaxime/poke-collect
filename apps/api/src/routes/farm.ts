@@ -16,6 +16,11 @@ import { assertTabUnlocked, playerFacilityPlaces } from '../game/store';
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes de la ferme à baies (/api/farm) : planter, arracher, récolter. Chaque route valide sa
+ * requête, appelle le module de jeu et répond.
+ */
+
 const plotParams = z.object({ plot: z.coerce.number().int().min(0).max(999) });
 
 /** Ferme à baies : plantation, arrachage et récolte. */

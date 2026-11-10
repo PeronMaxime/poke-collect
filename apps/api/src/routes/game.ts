@@ -36,6 +36,12 @@ import {
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes du cœur du jeu : Pokémon du PC, Pokédex, Sac et expéditions (/api/pokemon, /api/pokedex,
+ * /api/inventory, /api/expeditions). Chaque route valide sa requête, appelle le module de jeu et
+ * répond.
+ */
+
 const uuidParams = z.object({ id: z.uuid() });
 
 /** Routes de jeu : toutes exigent une session ; le serveur décide de tous les résultats. */

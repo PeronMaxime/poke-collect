@@ -23,8 +23,10 @@ import type { PokemonRow } from './store';
  * restauration écoulée. Comme pour les œufs, le serveur décide de tout.
  */
 
+/** Un fossile en restauration tel qu'il est enregistré. */
 export type FossilRevivalRow = typeof fossilRevivals.$inferSelect;
 
+/** Le fossile en restauration tel que le jeu le reçoit. */
 export function toFossilRevivalDto(row: FossilRevivalRow): FossilRevivalDto {
   return {
     id: row.id,

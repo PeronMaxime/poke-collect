@@ -6,6 +6,11 @@ import { leaderboard } from '../game/leaderboard';
 import { currentUserId } from './deps';
 import type { RouteDeps } from './deps';
 
+/**
+ * Routes des classements (/api/leaderboard/:kind). Chaque route valide sa requête, appelle le
+ * module de jeu et répond.
+ */
+
 const kindParams = z.object({ kind: leaderboardKindSchema });
 
 /** Classements entre joueurs. */

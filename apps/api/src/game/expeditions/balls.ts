@@ -119,6 +119,10 @@ export async function preloadExpeditionContent(db: Db, content: ContentCache, us
   await Promise.all(rows.map((r) => content.version(r.versionId)));
 }
 
+/**
+ * Règle, dans la transaction du joueur déjà ouverte, les rencontres échues à `now` de ses
+ * expéditions en cours (Balls lancées au fil de l'eau).
+ */
 export async function settleBallsIn(db: Db, content: ContentCache, userId: string, now: Date) {
   const rows = await db
     .select()
