@@ -68,37 +68,11 @@ function durationStats(hours: readonly number[]): DurationStats {
   };
 }
 
-export async function telemetry(
-  db: Db,
-  ctx: GameContext,
-  days: number,
-  now: Date,
-): Promise<TelemetryResponse> {
-  const since = new Date(now.getTime() - days * DAY);
-  const gemIds = ctx.content.items.filter((i) => i.category === 'megaStone').map((i) => i.id);
-  const [
-    profiles,
-    expeditionActivity,
-    battleActivity,
-    shopActivity,
-    firstClaims,
-    zoneFirsts,
-    trainerWins,
-    claims,
-    quests,
-    battleStats,
-    stuck,
-    zoneStats,
-    dexCounts,
-    spent,
-    dungeonActivity,
-    dungeonStats,
-    dungeonStuck,
-    dungeonFirstWins,
-    gemDrops,
-    bagGems,
-    heldGems,
-  ] = await Promise.all([
+// --- Lectures : une fonction par groupe de tables, toutes lancées en parallèle par `telemetry`.
+
+/** Profils, Pokédex et achats : qui joue, où en est chacun, ce qui a été dépensé. */
+async function loadPlayers(db: Db, since: Date) {
+  const [profiles, shopActivity, dexCounts, spent, claims, quests] = await Promise.all([
     db
       .select({
         userId: playerProfiles.userId,
@@ -108,6 +82,28 @@ export async function telemetry(
       })
       .from(playerProfiles),
     db
+      .select({ ownerId: shopPurchases.ownerId, at: max(shopPurchases.purchasedAt) })
+      .from(shopPurchases)
+      .groupBy(shopPurchases.ownerId),
+    db
+      .select({ ownerId: pokedex.ownerId, caught: count() })
+      .from(pokedex)
+      .where(eq(pokedex.caught, true))
+      .groupBy(pokedex.ownerId),
+    db
+      .select({ total: sum(shopPurchases.totalPrice).mapWith(Number) })
+      .from(shopPurchases)
+      .where(gt(shopPurchases.purchasedAt, since)),
+    db.select().from(rewardClaims),
+    db.select().from(questProgress),
+  ]);
+  return { profiles, shopActivity, dexCounts, spent, claims, quests };
+}
+
+/** Expéditions : dernière activité, premières fois, statistiques par zone depuis `since`. */
+async function loadExpeditions(db: Db, since: Date) {
+  const [expeditionActivity, firstClaims, zoneFirsts, zoneStats] = await Promise.all([
+    db
       .select({
         ownerId: expeditions.ownerId,
         at: sql<Date>`max(coalesce(${expeditions.claimedAt}, ${expeditions.startedAt}))`.mapWith(
@@ -116,14 +112,6 @@ export async function telemetry(
       })
       .from(expeditions)
       .groupBy(expeditions.ownerId),
-    db
-      .select({ ownerId: trainerRuns.ownerId, at: max(trainerRuns.startedAt) })
-      .from(trainerRuns)
-      .groupBy(trainerRuns.ownerId),
-    db
-      .select({ ownerId: shopPurchases.ownerId, at: max(shopPurchases.purchasedAt) })
-      .from(shopPurchases)
-      .groupBy(shopPurchases.ownerId),
     db
       .select({ ownerId: expeditions.ownerId, at: min(expeditions.claimedAt) })
       .from(expeditions)
@@ -137,38 +125,6 @@ export async function telemetry(
       })
       .from(expeditions)
       .groupBy(expeditions.ownerId, expeditions.zoneId),
-    db
-      .select({
-        ownerId: trainerProgress.ownerId,
-        trainerId: trainerProgress.trainerId,
-        at: trainerProgress.firstWinAt,
-      })
-      .from(trainerProgress)
-      .where(isNotNull(trainerProgress.firstWinAt)),
-    db.select().from(rewardClaims),
-    db.select().from(questProgress),
-    db
-      .select({
-        trainerId: trainerRuns.trainerId,
-        battles: count(),
-        wins: sql<number>`count(*) filter (where ${trainerRuns.outcome} = 'win')`.mapWith(Number),
-        losses:
-          sql<number>`count(*) filter (where ${trainerRuns.outcome} in ('loss', 'timeout'))`.mapWith(
-            Number,
-          ),
-        fled: sql<number>`count(*) filter (where ${trainerRuns.outcome} = 'fled')`.mapWith(Number),
-        earned: sql<number>`coalesce(sum((${trainerRuns.result} ->> 'money')::bigint), 0)`.mapWith(
-          Number,
-        ),
-      })
-      .from(trainerRuns)
-      .where(and(isNotNull(trainerRuns.claimedAt), gt(trainerRuns.claimedAt, since)))
-      .groupBy(trainerRuns.trainerId),
-    db
-      .select({ trainerId: trainerProgress.trainerId, players: count() })
-      .from(trainerProgress)
-      .where(and(gt(trainerProgress.losses, 0), eq(trainerProgress.wins, 0)))
-      .groupBy(trainerProgress.trainerId),
     db
       .select({
         zoneId: expeditions.zoneId,
@@ -193,57 +149,108 @@ export async function telemetry(
         ),
       )
       .groupBy(expeditions.zoneId),
+  ]);
+  return { expeditionActivity, firstClaims, zoneFirsts, zoneStats };
+}
+
+/** Combats de dresseurs : dernière activité, premières victoires, bilan par dresseur depuis `since`. */
+async function loadBattles(db: Db, since: Date) {
+  const [battleActivity, trainerWins, battleStats, stuck] = await Promise.all([
     db
-      .select({ ownerId: pokedex.ownerId, caught: count() })
-      .from(pokedex)
-      .where(eq(pokedex.caught, true))
-      .groupBy(pokedex.ownerId),
-    db
-      .select({ total: sum(shopPurchases.totalPrice).mapWith(Number) })
-      .from(shopPurchases)
-      .where(gt(shopPurchases.purchasedAt, since)),
-    db
-      .select({ ownerId: dungeonRuns.ownerId, at: max(dungeonRuns.startedAt) })
-      .from(dungeonRuns)
-      .groupBy(dungeonRuns.ownerId),
+      .select({ ownerId: trainerRuns.ownerId, at: max(trainerRuns.startedAt) })
+      .from(trainerRuns)
+      .groupBy(trainerRuns.ownerId),
     db
       .select({
-        dungeonId: dungeonRuns.dungeonId,
-        runs: count(),
-        players: countDistinct(dungeonRuns.ownerId),
-        wins: sql<number>`count(*) filter (where ${dungeonRuns.outcome} = 'win')`.mapWith(Number),
+        ownerId: trainerProgress.ownerId,
+        trainerId: trainerProgress.trainerId,
+        at: trainerProgress.firstWinAt,
+      })
+      .from(trainerProgress)
+      .where(isNotNull(trainerProgress.firstWinAt)),
+    db
+      .select({
+        trainerId: trainerRuns.trainerId,
+        battles: count(),
+        wins: sql<number>`count(*) filter (where ${trainerRuns.outcome} = 'win')`.mapWith(Number),
         losses:
-          sql<number>`count(*) filter (where ${dungeonRuns.outcome} in ('loss', 'timeout'))`.mapWith(
+          sql<number>`count(*) filter (where ${trainerRuns.outcome} in ('loss', 'timeout'))`.mapWith(
             Number,
           ),
-        fled: sql<number>`count(*) filter (where ${dungeonRuns.outcome} = 'fled')`.mapWith(Number),
-        gems: sql<number>`count(*) filter (where ${dungeonRuns.result} ->> 'gemItemId' is not null)`.mapWith(
-          Number,
-        ),
-        earned: sql<number>`coalesce(sum((${dungeonRuns.result} ->> 'money')::bigint), 0)`.mapWith(
+        fled: sql<number>`count(*) filter (where ${trainerRuns.outcome} = 'fled')`.mapWith(Number),
+        earned: sql<number>`coalesce(sum((${trainerRuns.result} ->> 'money')::bigint), 0)`.mapWith(
           Number,
         ),
       })
-      .from(dungeonRuns)
-      .where(and(isNotNull(dungeonRuns.claimedAt), gt(dungeonRuns.claimedAt, since)))
-      .groupBy(dungeonRuns.dungeonId),
+      .from(trainerRuns)
+      .where(and(isNotNull(trainerRuns.claimedAt), gt(trainerRuns.claimedAt, since)))
+      .groupBy(trainerRuns.trainerId),
     db
-      .select({ dungeonId: dungeonProgress.dungeonId, players: count() })
-      .from(dungeonProgress)
-      .where(and(gt(dungeonProgress.losses, 0), eq(dungeonProgress.wins, 0)))
-      .groupBy(dungeonProgress.dungeonId),
-    db
-      .select({ ownerId: dungeonProgress.ownerId, at: min(dungeonProgress.firstWinAt) })
-      .from(dungeonProgress)
-      .where(isNotNull(dungeonProgress.firstWinAt))
-      .groupBy(dungeonProgress.ownerId),
-    db
-      .select({
-        dungeonId: dungeonProgress.dungeonId,
-        gems: sum(dungeonProgress.gems).mapWith(Number),
-      })
-      .from(dungeonProgress)
-      .groupBy(dungeonProgress.dungeonId),
+      .select({ trainerId: trainerProgress.trainerId, players: count() })
+      .from(trainerProgress)
+      .where(and(gt(trainerProgress.losses, 0), eq(trainerProgress.wins, 0)))
+      .groupBy(trainerProgress.trainerId),
+  ]);
+  return { battleActivity, trainerWins, battleStats, stuck };
+}
+
+/** Donjons : dernière activité, premières victoires, bilan par donjon depuis `since`, gemmes obtenues. */
+async function loadDungeons(db: Db, since: Date) {
+  const [dungeonActivity, dungeonStats, dungeonStuck, dungeonFirstWins, gemDrops] =
+    await Promise.all([
+      db
+        .select({ ownerId: dungeonRuns.ownerId, at: max(dungeonRuns.startedAt) })
+        .from(dungeonRuns)
+        .groupBy(dungeonRuns.ownerId),
+      db
+        .select({
+          dungeonId: dungeonRuns.dungeonId,
+          runs: count(),
+          players: countDistinct(dungeonRuns.ownerId),
+          wins: sql<number>`count(*) filter (where ${dungeonRuns.outcome} = 'win')`.mapWith(Number),
+          losses:
+            sql<number>`count(*) filter (where ${dungeonRuns.outcome} in ('loss', 'timeout'))`.mapWith(
+              Number,
+            ),
+          fled: sql<number>`count(*) filter (where ${dungeonRuns.outcome} = 'fled')`.mapWith(
+            Number,
+          ),
+          gems: sql<number>`count(*) filter (where ${dungeonRuns.result} ->> 'gemItemId' is not null)`.mapWith(
+            Number,
+          ),
+          earned:
+            sql<number>`coalesce(sum((${dungeonRuns.result} ->> 'money')::bigint), 0)`.mapWith(
+              Number,
+            ),
+        })
+        .from(dungeonRuns)
+        .where(and(isNotNull(dungeonRuns.claimedAt), gt(dungeonRuns.claimedAt, since)))
+        .groupBy(dungeonRuns.dungeonId),
+      db
+        .select({ dungeonId: dungeonProgress.dungeonId, players: count() })
+        .from(dungeonProgress)
+        .where(and(gt(dungeonProgress.losses, 0), eq(dungeonProgress.wins, 0)))
+        .groupBy(dungeonProgress.dungeonId),
+      db
+        .select({ ownerId: dungeonProgress.ownerId, at: min(dungeonProgress.firstWinAt) })
+        .from(dungeonProgress)
+        .where(isNotNull(dungeonProgress.firstWinAt))
+        .groupBy(dungeonProgress.ownerId),
+      db
+        .select({
+          dungeonId: dungeonProgress.dungeonId,
+          gems: sum(dungeonProgress.gems).mapWith(Number),
+        })
+        .from(dungeonProgress)
+        .groupBy(dungeonProgress.dungeonId),
+    ]);
+  return { dungeonActivity, dungeonStats, dungeonStuck, dungeonFirstWins, gemDrops };
+}
+
+/** Méga-Gemmes possédées : dans les Sacs, et tenues par des Pokémon Méga-Évolués. */
+async function loadMegaStones(db: Db, ctx: GameContext) {
+  const gemIds = ctx.content.items.filter((i) => i.category === 'megaStone').map((i) => i.id);
+  const [bagGems, heldGems] = await Promise.all([
     gemIds.length
       ? db
           .select({
@@ -259,24 +266,50 @@ export async function telemetry(
       .from(pokemon)
       .where(isNotNull(pokemon.megaStone)),
   ]);
+  return { bagGems, heldGems };
+}
 
-  // --- Joueurs et activité
-  const created = new Map(profiles.map((p) => [p.userId, p.createdAt.getTime()]));
+type PlayerRows = Awaited<ReturnType<typeof loadPlayers>>;
+type ExpeditionRows = Awaited<ReturnType<typeof loadExpeditions>>;
+type BattleRows = Awaited<ReturnType<typeof loadBattles>>;
+type DungeonRows = Awaited<ReturnType<typeof loadDungeons>>;
+type MegaStoneRows = Awaited<ReturnType<typeof loadMegaStones>>;
+/** Tout ce que la télémétrie lit en base. */
+type Rows = PlayerRows & ExpeditionRows & BattleRows & DungeonRows & MegaStoneRows;
+
+// --- Calculs : une fonction pure par bloc de l'écran de télémétrie.
+
+/** Joueurs inscrits, lancés (starter choisi), nouveaux et actifs. */
+function playerStats(rows: Rows, now: Date): TelemetryResponse['players'] {
+  const { profiles } = rows;
   const lastAction = new Map<string, number>();
   for (const row of [
-    ...expeditionActivity,
-    ...battleActivity,
-    ...dungeonActivity,
-    ...shopActivity,
+    ...rows.expeditionActivity,
+    ...rows.battleActivity,
+    ...rows.dungeonActivity,
+    ...rows.shopActivity,
   ]) {
     if (!row.at) continue;
     lastAction.set(row.ownerId, Math.max(lastAction.get(row.ownerId) ?? 0, row.at.getTime()));
   }
   const activeSince = (ms: number) =>
     [...lastAction.values()].filter((t) => t > now.getTime() - ms).length;
-  const withStarter = profiles.filter((p) => p.starter !== null).length;
+  return {
+    total: profiles.length,
+    withStarter: profiles.filter((p) => p.starter !== null).length,
+    new7d: profiles.filter((p) => p.createdAt.getTime() > now.getTime() - 7 * DAY).length,
+    active1d: activeSince(DAY),
+    active7d: activeSince(7 * DAY),
+  };
+}
 
-  // --- Parcours : heures entre l'inscription et chaque étape
+/**
+ * Parcours : pour chaque étape (première expédition, régions, dresseurs à badge ou uniques, premier
+ * donjon, collections, quêtes), les heures écoulées entre l'inscription et l'étape, et la part des
+ * joueurs lancés (`withStarter`) qui l'ont atteinte.
+ */
+function journeySteps(ctx: GameContext, rows: Rows, withStarter: number): TelemetryStep[] {
+  const created = new Map(rows.profiles.map((p) => [p.userId, p.createdAt.getTime()]));
   const hoursSinceSignup = (ownerId: string, at: Date | null) => {
     const start = created.get(ownerId);
     return start === undefined || !at ? null : Math.max(0, (at.getTime() - start) / HOUR);
@@ -285,9 +318,9 @@ export async function telemetry(
     kind: TelemetryStep['kind'],
     id: string,
     label: string,
-    rows: readonly { ownerId: string; at: Date | null }[],
+    reached: readonly { ownerId: string; at: Date | null }[],
   ): TelemetryStep => {
-    const hours = rows.flatMap((r) => {
+    const hours = reached.flatMap((r) => {
       const h = hoursSinceSignup(r.ownerId, r.at);
       return h === null ? [] : [h];
     });
@@ -303,7 +336,7 @@ export async function telemetry(
 
   const regionOfZone = new Map(ctx.zones.map((z) => [z.id, z.regionId]));
   const regionFirsts = new Map<string, Map<string, Date>>();
-  for (const row of zoneFirsts) {
+  for (const row of rows.zoneFirsts) {
     const regionId = row.zoneId ? regionOfZone.get(row.zoneId) : undefined;
     if (!regionId || !row.at) continue;
     const byOwner = regionFirsts.get(regionId) ?? new Map<string, Date>();
@@ -314,8 +347,8 @@ export async function telemetry(
   const rowsOf = (map: ReadonlyMap<string, Date> | undefined) =>
     [...(map ?? new Map<string, Date>())].map(([ownerId, at]) => ({ ownerId, at }));
 
-  const steps: TelemetryStep[] = [
-    step('expedition', 'first-expedition', 'Première expédition récupérée', firstClaims),
+  return [
+    step('expedition', 'first-expedition', 'Première expédition récupérée', rows.firstClaims),
     ...ctx.regions.map((r) =>
       step('region', r.id, `Première expédition : ${r.name}`, rowsOf(regionFirsts.get(r.id))),
     ),
@@ -326,10 +359,10 @@ export async function telemetry(
           'trainer',
           t.id,
           t.badge ? `${t.badge.name} (${t.name})` : `${t.trainerClass} ${t.name}`,
-          trainerWins.filter((w) => w.trainerId === t.id),
+          rows.trainerWins.filter((w) => w.trainerId === t.id),
         ),
       ),
-    step('dungeon', 'first-dungeon', 'Premier donjon réussi', dungeonFirstWins),
+    step('dungeon', 'first-dungeon', 'Premier donjon réussi', rows.dungeonFirstWins),
     ...[...ctx.content.collections]
       .sort((a, b) => a.order - b.order)
       .map((c) =>
@@ -337,7 +370,7 @@ export async function telemetry(
           'reward',
           `collection:${c.id}`,
           `Collection : ${c.name}`,
-          claims
+          rows.claims
             .filter((r) => r.kind === 'collection' && r.rewardId === c.id)
             .map((r) => ({ ownerId: r.ownerId, at: r.claimedAt })),
         ),
@@ -347,17 +380,19 @@ export async function telemetry(
         'quest',
         q.id,
         `Quête : ${q.name}`,
-        quests
+        rows.quests
           .filter((p) => p.questId === q.id && p.completedAt)
           .map((p) => ({ ownerId: p.ownerId, at: p.completedAt })),
       ),
     ),
   ];
+}
 
-  // --- Goulets : dresseurs, zones, étapes de quête
-  const battleById = new Map(battleStats.map((b) => [b.trainerId, b]));
-  const stuckById = new Map(stuck.map((s) => [s.trainerId, s.players]));
-  const trainers: TelemetryTrainer[] = ctx.trainers.map((t) => {
+/** Bilan de chaque dresseur sur la période, et joueurs qui n'ont fait qu'y perdre. */
+function trainerStats(ctx: GameContext, rows: Rows): TelemetryTrainer[] {
+  const battleById = new Map(rows.battleStats.map((b) => [b.trainerId, b]));
+  const stuckById = new Map(rows.stuck.map((s) => [s.trainerId, s.players]));
+  return ctx.trainers.map((t) => {
     const b = battleById.get(t.id);
     return {
       trainerId: t.id,
@@ -369,9 +404,12 @@ export async function telemetry(
       stuckPlayers: stuckById.get(t.id) ?? 0,
     };
   });
+}
 
-  const zoneById = new Map(zoneStats.map((z) => [z.zoneId, z]));
-  const zones: TelemetryZone[] = ctx.zones.map((z) => {
+/** Fréquentation de chaque zone sur la période (expéditions légendaires exclues). */
+function zoneStats(ctx: GameContext, rows: Rows): TelemetryZone[] {
+  const zoneById = new Map(rows.zoneStats.map((z) => [z.zoneId, z]));
+  return ctx.zones.map((z) => {
     const s = zoneById.get(z.id);
     return {
       zoneId: z.id,
@@ -383,10 +421,13 @@ export async function telemetry(
       captures: s?.captures ?? 0,
     };
   });
+}
 
-  const dungeonById = new Map(dungeonStats.map((d) => [d.dungeonId, d]));
-  const dungeonStuckById = new Map(dungeonStuck.map((s) => [s.dungeonId, s.players]));
-  const dungeons: TelemetryDungeon[] = ctx.dungeons.map((d) => {
+/** Bilan de chaque donjon sur la période, et joueurs qui n'ont fait qu'y perdre. */
+function dungeonStats(ctx: GameContext, rows: Rows): TelemetryDungeon[] {
+  const dungeonById = new Map(rows.dungeonStats.map((d) => [d.dungeonId, d]));
+  const stuckById = new Map(rows.dungeonStuck.map((s) => [s.dungeonId, s.players]));
+  return ctx.dungeons.map((d) => {
     const s = dungeonById.get(d.id);
     return {
       dungeonId: d.id,
@@ -398,22 +439,24 @@ export async function telemetry(
       losses: s?.losses ?? 0,
       fled: s?.fled ?? 0,
       gems: s?.gems ?? 0,
-      stuckPlayers: dungeonStuckById.get(d.id) ?? 0,
+      stuckPlayers: stuckById.get(d.id) ?? 0,
     };
   });
+}
 
-  // --- Méga-Gemmes : dans les sacs, tenues (Pokémon Méga-Évolués), obtenues en donjon
+/** Méga-Gemmes : dans les Sacs, tenues (Pokémon Méga-Évolués), obtenues en donjon. */
+function megaStoneStats(ctx: GameContext, rows: Rows): TelemetryMegaStone[] {
   const gemOfDungeon = new Map(ctx.content.dungeons.map((d) => [d.id, d.gemItemId]));
   const dropped = new Map<string, number>();
-  for (const row of gemDrops) {
+  for (const row of rows.gemDrops) {
     const gemId = gemOfDungeon.get(row.dungeonId);
     if (gemId) dropped.set(gemId, (dropped.get(gemId) ?? 0) + row.gems);
   }
-  const megaStones: TelemetryMegaStone[] = ctx.content.items
+  return ctx.content.items
     .filter((i) => i.category === 'megaStone')
     .map((i) => {
-      const bags = bagGems.filter((b) => b.itemId === i.id);
-      const held = heldGems.filter((h) => h.itemId === i.id);
+      const bags = rows.bagGems.filter((b) => b.itemId === i.id);
+      const held = rows.heldGems.filter((h) => h.itemId === i.id);
       return {
         itemId: i.id,
         label: i.name,
@@ -423,30 +466,38 @@ export async function telemetry(
         dropped: dropped.get(i.id) ?? 0,
       };
     });
+}
 
+/**
+ * Avancement de chaque quête, et pour chaque étape les joueurs qui y sont en ce moment, avec le
+ * temps qu'ils y ont déjà passé (une étape où l'on reste longtemps est un goulet).
+ */
+function questStats(ctx: GameContext, rows: Rows, now: Date): TelemetryQuest[] {
   const nowMs = now.getTime();
-  const questStats: TelemetryQuest[] = ctx.quests.map((q) => {
-    const rows = quests.filter((p) => p.questId === q.id);
+  return ctx.quests.map((q) => {
+    const progress = rows.quests.filter((p) => p.questId === q.id);
     return {
       questId: q.id,
       label: q.name,
-      started: rows.length,
-      completed: rows.filter((p) => p.completedAt).length,
+      started: progress.length,
+      completed: progress.filter((p) => p.completedAt).length,
       steps: q.steps.map((s, index) => ({
         index,
         name: s.name,
         ...durationStats(
-          rows
+          progress
             .filter((p) => !p.completedAt && p.step === index)
             .map((p) => (nowMs - p.stepStartedAt.getTime()) / HOUR),
         ),
       })),
     };
   });
+}
 
-  // --- Pokédex et économie
+/** Répartition des joueurs lancés selon la part du Pokédex national qu'ils ont capturée. */
+function dexDistribution(ctx: GameContext, rows: Rows): TelemetryResponse['dexDistribution'] {
   const nationalTotal = dexSpeciesIds(ctx, null).length;
-  const caughtByOwner = new Map(dexCounts.map((d) => [d.ownerId, d.caught]));
+  const caughtByOwner = new Map(rows.dexCounts.map((d) => [d.ownerId, d.caught]));
   const buckets = [
     { label: '< 10 %', max: 10 },
     { label: '10 à 25 %', max: 25 },
@@ -455,36 +506,64 @@ export async function telemetry(
     { label: '75 à 99 %', max: 100 },
     { label: '100 %', max: Infinity },
   ].map((b) => ({ ...b, players: 0 }));
-  for (const p of profiles) {
+  for (const p of rows.profiles) {
     if (p.starter === null) continue;
     const percent = nationalTotal ? ((caughtByOwner.get(p.userId) ?? 0) / nationalTotal) * 100 : 0;
     buckets.find((b) => percent < b.max || b.max === Infinity)!.players++;
   }
-  const balances = profiles.map((p) => p.currency).sort((a, b) => a - b);
+  return buckets.map(({ label, players }) => ({ label, players }));
+}
 
+/** Argent gagné (combats, donjons) et dépensé (boutique) sur la période, solde médian des joueurs. */
+function economyStats(rows: Rows): TelemetryResponse['economy'] {
+  const balances = rows.profiles.map((p) => p.currency).sort((a, b) => a - b);
+  return {
+    earned:
+      rows.battleStats.reduce((s, b) => s + b.earned, 0) +
+      rows.dungeonStats.reduce((s, d) => s + d.earned, 0),
+    spent: rows.spent[0]?.total ?? 0,
+    medianBalance: quantile(balances, 0.5),
+  };
+}
+
+/**
+ * Le tableau de télémétrie de l'admin. Les statistiques d'activité (dresseurs, zones, donjons,
+ * économie) portent sur les `days` derniers jours ; le parcours, les quêtes et le Pokédex sur
+ * tous les joueurs depuis toujours.
+ */
+export async function telemetry(
+  db: Db,
+  ctx: GameContext,
+  days: number,
+  now: Date,
+): Promise<TelemetryResponse> {
+  const since = new Date(now.getTime() - days * DAY);
+  const [playerRows, expeditionRows, battleRows, dungeonRows, megaStoneRows] = await Promise.all([
+    loadPlayers(db, since),
+    loadExpeditions(db, since),
+    loadBattles(db, since),
+    loadDungeons(db, since),
+    loadMegaStones(db, ctx),
+  ]);
+  const rows: Rows = {
+    ...playerRows,
+    ...expeditionRows,
+    ...battleRows,
+    ...dungeonRows,
+    ...megaStoneRows,
+  };
+  const players = playerStats(rows, now);
   return {
     generatedAt: now.toISOString(),
     days,
-    players: {
-      total: profiles.length,
-      withStarter,
-      new7d: profiles.filter((p) => p.createdAt.getTime() > nowMs - 7 * DAY).length,
-      active1d: activeSince(DAY),
-      active7d: activeSince(7 * DAY),
-    },
-    steps,
-    trainers,
-    zones,
-    dungeons,
-    megaStones,
-    quests: questStats,
-    dexDistribution: buckets.map(({ label, players }) => ({ label, players })),
-    economy: {
-      earned:
-        battleStats.reduce((s, b) => s + b.earned, 0) +
-        dungeonStats.reduce((s, d) => s + d.earned, 0),
-      spent: spent[0]?.total ?? 0,
-      medianBalance: quantile(balances, 0.5),
-    },
+    players,
+    steps: journeySteps(ctx, rows, players.withStarter),
+    trainers: trainerStats(ctx, rows),
+    zones: zoneStats(ctx, rows),
+    dungeons: dungeonStats(ctx, rows),
+    megaStones: megaStoneStats(ctx, rows),
+    quests: questStats(ctx, rows, now),
+    dexDistribution: dexDistribution(ctx, rows),
+    economy: economyStats(rows),
   };
 }
