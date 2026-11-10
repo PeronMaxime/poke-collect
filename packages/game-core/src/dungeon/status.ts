@@ -16,6 +16,7 @@ export interface FighterMods {
   statusTurns: number;
 }
 
+/** Variations d'un combattant qui entre en combat : rien n'a encore changé. */
 export const freshMods = (): FighterMods => ({
   stats: { attack: 1, defense: 1, 'special-attack': 1, 'special-defense': 1, speed: 1 },
   sturdyUsed: false,
@@ -68,6 +69,10 @@ export function intimidation(traits: DungeonTraits | undefined): [DungeonStat, n
     : [];
 }
 
+/**
+ * Le combattant peut-il recevoir ce statut ? Non s'il en a déjà un, s'il y est insensible (type,
+ * talent, coéquipier debout), ou pour le gel en plein soleil.
+ */
 export function canGetStatus(
   f: DungeonFighter,
   mods: FighterMods,

@@ -22,12 +22,18 @@ import { textSeed } from './roaming';
 /** Fuseau horaire des quêtes de guilde : remise à zéro à minuit (et le lundi à minuit) à Paris. */
 export const GUILD_TIME_ZONE = 'Europe/Paris';
 
+/** Longueur minimale du nom d'une guilde. */
 export const GUILD_NAME_MIN = 3;
+/** Longueur maximale du nom d'une guilde. */
 export const GUILD_NAME_MAX = 24;
+/** Longueur maximale de la description d'une guilde. */
 export const GUILD_DESCRIPTION_MAX = 200;
+/** Longueur maximale d'un message du fil de la guilde. */
 export const GUILD_MESSAGE_MAX = 500;
 
+/** Rôle d'un membre : chef, officier ou simple membre. */
 export type GuildRole = 'leader' | 'officer' | 'member';
+/** Entrée dans la guilde : libre, ou sur candidature. */
 export type GuildJoinMode = 'open' | 'request';
 
 const DAY_MS = 24 * 3_600_000;
@@ -65,6 +71,7 @@ function zoneMidnight(localDay: number): Date {
   return new Date(localDay - zoneOffset(guess));
 }
 
+/** Un jour ou une semaine de guilde : la période pendant laquelle valent ses quêtes. */
 export interface GuildPeriod {
   /** Jour, ou lundi de la semaine (AAAA-MM-JJ, heure de Paris) : identifiant de la période. */
   id: string;

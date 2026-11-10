@@ -25,6 +25,7 @@ export const WEATHER_LABELS: Record<ImposedWeather, string> = {
   hail: 'Grêle',
 };
 
+/** Nom de chaque statut. */
 export const STATUS_LABELS: Record<Status, string> = {
   paralysis: 'Paralysie',
   burn: 'Brûlure',
@@ -57,10 +58,12 @@ const typeNames = new Map(typeData.map((t) => [t.name, t.nameFr]));
 
 const natureCount = natures.length;
 
+/** Nom français d'un type (le nom PokéAPI s'il est inconnu). */
 export const typeNameFr = (type: string) => typeNames.get(type) ?? type;
 
 const typeList = (types: readonly string[]) => types.map(typeNameFr).join('/');
 
+/** Nom de chaque type de condition, pour les formulaires de l'admin. */
 export const ABILITY_CONDITION_LABELS: Record<AbilityCondition['type'], string> = {
   zoneType: 'Zone de type',
   opponentType: 'Adversaire de type',
@@ -78,6 +81,9 @@ export const ABILITY_CONDITION_LABELS: Record<AbilityCondition['type'], string> 
   notVeryEffective: 'Attaque peu efficace (combat)',
 };
 
+/**
+ * Une condition en clair, telle qu'elle se lit dans une phrase (« en zone Eau », « contre Feu »).
+ */
 export function abilityConditionText(condition: AbilityCondition): string {
   switch (condition.type) {
     case 'zoneType':
@@ -111,6 +117,7 @@ export function abilityConditionText(condition: AbilityCondition): string {
   }
 }
 
+/** Nom de chaque type d'effet, pour les formulaires de l'admin. */
 export const ABILITY_EFFECT_LABELS: Record<AbilityEffectType, string> = {
   modifier: 'Modificateur',
   attractType: 'Attire un type',

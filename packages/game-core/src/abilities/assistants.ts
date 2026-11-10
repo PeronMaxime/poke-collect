@@ -24,6 +24,10 @@ export const ASSISTANT_POSTS = [
   'harvest',
 ] as const;
 
+/**
+ * Un poste d'assistant : un bâtiment, ou un rôle dans un bâtiment (arrosage et récolte de la
+ * ferme).
+ */
 export type AssistantPost = (typeof ASSISTANT_POSTS)[number];
 
 /**
@@ -49,6 +53,10 @@ export const assistantSlotOf = (post: AssistantPost, place: number) =>
 export const assistantSlotCount = (post: AssistantPost, places: number) =>
   Math.ceil(places / ASSISTANT_POST_PLACES[post]);
 
+/**
+ * Ce qu'il faut savoir de chaque poste : son nom, l'activité dont les talents y jouent, le type
+ * exigé s'il y en a un.
+ */
 export const ASSISTANT_POST_INFO: Record<
   AssistantPost,
   {

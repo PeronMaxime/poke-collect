@@ -81,6 +81,7 @@ function conditionMet(
   }
 }
 
+/** Un effet de talent actif, et le membre de l'équipe qui le porte. */
 export interface ActiveAbilityEffect {
   /** Index du Pokémon qui a le talent dans l'équipe. */
   holder: number;

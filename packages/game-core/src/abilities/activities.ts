@@ -20,6 +20,7 @@ export type AbilityActivity =
   | 'farm'
   | 'transfer';
 
+/** Nom de chaque activité, tel que l'admin et le wiki l'affichent. */
 export const ABILITY_ACTIVITY_LABELS: Record<AbilityActivity, string> = {
   expedition: 'expéditions',
   quest: 'légendaires',

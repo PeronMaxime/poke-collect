@@ -3,9 +3,24 @@ import type { Nature, Species, StatName, Stats } from '@poke/data';
 import type { GameContext } from './context';
 import type { Rng } from './rng';
 
-/** Pokémon possédé (ou généré), indépendamment de son stockage en base. */
+/**
+ * Un Pokémon et ses chiffres : statistiques, PE, courbes d'XP, et génération d'un Pokémon neuf
+ * (chromatique, IV, nature, talent, sexe).
+ *
+ * Statistiques : la formule des jeux d'origine, sans EV.
+ *   stat = floor((2 × base + IV) × niveau / 100) + 5, puis × 1,1 ou × 0,9 selon la nature
+ *   PV   = floor((2 × base + IV) × niveau / 100) + niveau + 10
+ *
+ * PE (puissance d'expédition) : la somme des six statistiques. C'est la mesure de force utilisée
+ * partout (zones, dresseurs, classements).
+ *
+ * Réglage : `balance.capture.hiddenAbilityChance` (chance qu'un talent tiré soit le talent caché).
+ */
+
+/** Sexe d'un Pokémon ; `genderless` pour les espèces asexuées. */
 export type Gender = 'male' | 'female' | 'genderless';
 
+/** Pokémon possédé (ou généré), indépendamment de son stockage en base. */
 export interface PokemonInstance {
   speciesId: number;
   /** Forme alternative ou régionale (identifiant PokéAPI `pokemon`) ; absente = forme par défaut. */
@@ -20,13 +35,16 @@ export interface PokemonInstance {
   happiness: number;
 }
 
+/** Niveau maximal d'un Pokémon. */
 export const MAX_LEVEL = 100;
+/** Valeur d'un IV parfait. */
 export const MAX_IV = 31;
 
 // --- Natures et statistiques ---------------------------------------------------
 
 const naturesByName = new Map(natures.map((n) => [n.name, n]));
 
+/** Nature par son nom (celui de PokéAPI), ou `undefined`. */
 export function getNature(name: string): Nature | undefined {
   return naturesByName.get(name);
 }
@@ -59,6 +77,7 @@ export function expeditionPower(stats: Stats): number {
   return STAT_NAMES.reduce((sum, stat) => sum + stats[stat], 0);
 }
 
+/** PE d'un Pokémon : somme de ses statistiques réelles (espèce, niveau, IV, nature). */
 export function pokemonPower(
   species: Pick<Species, 'baseStats'>,
   pokemon: Pick<PokemonInstance, 'level' | 'ivs' | 'nature'>,
@@ -92,6 +111,7 @@ export function levelForXp(growthRate: string, xp: number): number {
 
 // --- Génération ---------------------------------------------------------------------
 
+/** Six IV tirés au hasard, chacun de 0 à 31. */
 export function rollIvs(rng: Rng): Stats {
   const ivs = {} as Stats;
   for (const stat of STAT_NAMES) ivs[stat] = rng.int(0, MAX_IV);
@@ -110,6 +130,10 @@ export function withPerfectIvs(rng: Rng, ivs: Stats, count: number): Stats {
   return result;
 }
 
+/**
+ * Sexe tiré selon le `genderRate` de l'espèce : huitièmes de chances d'être femelle ; négatif =
+ * asexué.
+ */
 export function rollGender(rng: Rng, genderRate: number): Gender {
   if (genderRate < 0) return 'genderless';
   return rng.next() < genderRate / 8 ? 'female' : 'male';
@@ -121,6 +145,11 @@ export function rollGender(rng: Rng, genderRate: number): Gender {
  */
 export const NO_ABILITY = '';
 
+/**
+ * Talent tiré parmi ceux de l'espèce : un talent caché avec la probabilité `hiddenChance`
+ * (toujours, si l'espèce n'a que des talents cachés), sinon un talent normal. Consomme toujours
+ * deux tirages.
+ */
 export function rollAbility(rng: Rng, species: Species, hiddenChance: number): string {
   const regular = species.abilities.filter((a) => !a.isHidden);
   const hidden = species.abilities.filter((a) => a.isHidden);

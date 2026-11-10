@@ -217,6 +217,7 @@ export function legendaryMaxXp(
   return Math.floor(xp * ctx.balance.legendary.xpMultiplier * xpBonus);
 }
 
+/** Ce qu'un combat légendaire terminé rapporte à l'équipe. */
 export interface LegendaryBattleResult {
   outcome: DungeonOutcome;
   /** Fin du combat, en millisecondes depuis le départ. */
@@ -227,6 +228,7 @@ export interface LegendaryBattleResult {
   knockedOut: string[];
 }
 
+/** Ce qu'il faut pour résoudre un combat légendaire terminé. */
 export interface LegendaryBattleInput {
   target: QuestPokemon;
   setup: DungeonSetup;

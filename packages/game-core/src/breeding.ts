@@ -11,6 +11,22 @@ import { createRng } from './rng';
 import { counterpartFormId, isEventForm } from './forms';
 import { isMasudaPair, shinyProbability } from './shiny';
 
+/**
+ * Pension et œufs : compatibilité de deux parents, ponte, héritage, éclosion ; puis transfert des
+ * Pokémon contre des Bonbons de lignée.
+ *
+ * - Ponte : un œuf toutes les `breeding.eggMinutes` minutes, divisées par la vitesse de ponte que
+ *   donnent les talents. Rien n'est planifié : le nombre d'œufs se déduit du temps écoulé
+ *   (`eggsLaid`).
+ * - Héritage : `breeding.inheritedIvCount` IV viennent des parents (davantage avec un objet tenu ou
+ *   un talent) ; la nature se transmet selon l'objet tenu par chaque parent.
+ * - Éclosion : `hatchCounter` de l'espèce × `breeding.hatchMinutesPerCounter` minutes.
+ * - XP des parents : `breeding.parentXpPerHour`, versée au retrait.
+ * - Bonbons : `transfer.candiesPerPokemon` par Pokémon transféré (le double s'il est évolué, plus
+ *   `transfer.shinyBonusCandies` s'il est chromatique). Un Bonbon donne 1/N du niveau en cours, N
+ *   allant de `transfer.candiesPerLevelStart` à `transfer.candiesPerLevelEnd`.
+ */
+
 // --- Compatibilité ------------------------------------------------------------------
 
 const DITTO_GROUP = 'ditto';
@@ -36,6 +52,7 @@ export function baseSpeciesId(ctx: GameContext, speciesId: number): number {
   return current?.id ?? speciesId;
 }
 
+/** Raison pour laquelle deux Pokémon ne peuvent pas avoir d'œuf. */
 export type BreedingError =
   | { code: 'SAME_POKEMON' }
   | { code: 'NOT_BREEDABLE'; speciesId: number }
@@ -43,10 +60,12 @@ export type BreedingError =
   | { code: 'NO_COMMON_EGG_GROUP' }
   | { code: 'INCOMPATIBLE_GENDERS' };
 
+/** Ce qu'il faut savoir d'un parent pour juger la compatibilité d'un couple. */
 export type BreedingParent = Pick<PokemonInstance, 'speciesId' | 'formId' | 'gender'> & {
   id?: string;
 };
 
+/** Résultat du contrôle d'un couple : l'œuf qu'il donnerait, ou les raisons du refus. */
 export type BreedingCheck =
   | {
       ok: true;
@@ -107,6 +126,7 @@ function eggOf(ctx: GameContext, mother: BreedingParent) {
 
 // --- Objets tenus et règles d'héritage ------------------------------------------------
 
+/** Parent tel qu'il est en pension : le Pokémon, l'objet qu'il tient, sa région d'origine. */
 export interface DaycareParent extends PokemonInstance {
   /** Objet tenu pendant le séjour en pension (Nœud Destin, Pierre Stase…). */
   heldItemId: string | null;
@@ -122,6 +142,7 @@ export function breedingEnv(
   return { activity: 'breeding', team: helper ? [...parents, helper] : [...parents] };
 }
 
+/** Ce que les parents transmettent à l'œuf. */
 export interface InheritanceRules {
   /** Nombre d'IV transmis par les parents. */
   ivCount: number;
@@ -129,6 +150,10 @@ export interface InheritanceRules {
   natureChance: [number, number];
 }
 
+/**
+ * Règles d'héritage d'un couple : nombre d'IV transmis (réglage, objets tenus, talents) et chance
+ * de transmettre la nature de chaque parent.
+ */
 export function inheritanceRules(
   ctx: GameContext,
   heldItemIds: readonly [string | null, string | null],
@@ -196,6 +221,7 @@ export function eggsLaid(
 
 // --- XP des parents ----------------------------------------------------------------------------
 
+/** XP gagnée par un parent en pension, et son niveau avant et après. */
 export interface DaycareXp {
   xpGained: number;
   levelBefore: number;
@@ -237,6 +263,7 @@ export function daycareXp(
 
 // --- Éclosion --------------------------------------------------------------------------------
 
+/** Tout ce qui détermine le Pokémon d'un œuf, figé à la ponte. */
 export interface EggInput {
   seed: number;
   speciesId: number;
@@ -350,6 +377,10 @@ export function isTransferableSpecies(ctx: GameContext, speciesId: number): bool
   return !species?.isLegendary && !species?.isMythical;
 }
 
+/**
+ * Bonbons de lignée rendus par le transfert d'un Pokémon, talent compris (arrondis à l'entier le
+ * plus proche).
+ */
 export function transferCandies(
   ctx: GameContext,
   pokemon: Pick<PokemonInstance, 'speciesId' | 'isShiny'> &

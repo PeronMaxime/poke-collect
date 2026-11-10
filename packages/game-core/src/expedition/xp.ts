@@ -10,7 +10,13 @@ import { expeditionPlan } from './team';
 import type { TeamMember } from './team';
 
 /**
- * XP d'une expédition : ce que rapporte chaque Pokémon battu, et son partage dans l'équipe.
+ * XP d'une expédition, d'un combat ou d'un donjon.
+ *
+ *   XP d'un Pokémon rencontré ou vaincu = XP de base de l'espèce × niveau / 7
+ *
+ * multipliée par `balance.xp.multiplier` et par les bonus d'XP du joueur. Elle n'est pas partagée :
+ * chaque membre de l'équipe reçoit le total, augmenté des bonus de sa région, jusqu'au niveau
+ * maximal.
  */
 
 /** XP de base que rapporte un Pokémon vaincu (ou rencontré), avant multiplicateur. */
@@ -62,6 +68,7 @@ export function expectedExpeditionXp(
   return Math.round(perEncounter * expeditionPlan(ctx, minutes, env).encounters);
 }
 
+/** Ce qu'une activité change à un membre de l'équipe : XP, niveau, bonheur. */
 export interface TeamMemberResult {
   id: string;
   xpGained: number;

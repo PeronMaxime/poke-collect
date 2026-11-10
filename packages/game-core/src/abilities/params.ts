@@ -30,6 +30,11 @@ const ALL: readonly AbilityActivity[] = ['expedition', 'quest', 'battle', 'dunge
 /** Combats en temps réel : donjons et dresseurs. */
 const COMBAT: readonly AbilityActivity[] = ['battle', 'dungeon'];
 
+/**
+ * Le catalogue : tout paramètre qu'un modificateur de talent peut viser. Ajouter un paramètre,
+ * c'est l'ajouter ici (et au schéma du contenu), puis le lire là où la règle se calcule
+ * (`abilityModifier`, `abilityMultiplier`).
+ */
 export const ABILITY_PARAMS: Record<AbilityParam, AbilityParamInfo> = {
   xp: {
     group: 'Général',

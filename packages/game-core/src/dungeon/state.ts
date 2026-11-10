@@ -8,6 +8,7 @@ import type { DungeonSetup, HolderUp } from './types';
  * combat) et l'état à un instant donné.
  */
 
+/** Issue d'un combat : victoire, défaite, temps écoulé ou fuite. */
 export type DungeonOutcome = 'win' | 'loss' | 'timeout' | 'fled';
 
 /** Effet de talent visible pendant le combat. */
@@ -22,6 +23,7 @@ export type DungeonAbilityEffect =
   | 'naturalCure'
   | 'suppressAbility';
 
+/** Un fait du combat, daté en millisecondes depuis le départ. Le jeu les anime dans l'ordre. */
 export type DungeonEvent =
   | {
       kind: 'attack';
@@ -76,6 +78,7 @@ export type DungeonEvent =
       amount: number;
     };
 
+/** État du combat à un instant. */
 export interface DungeonState {
   elapsedMs: number;
   /** null tant que le combat continue. */
@@ -106,6 +109,7 @@ export interface DungeonState {
   enemyStatMods: Record<DungeonStat, number>;
 }
 
+/** Résultat d'une simulation : l'état à l'instant demandé, et tous les événements jusque-là. */
 export interface DungeonSimulation {
   state: DungeonState;
   events: DungeonEvent[];

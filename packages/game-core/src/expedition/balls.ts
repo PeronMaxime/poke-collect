@@ -16,13 +16,16 @@ import type { ExpeditionRoamer } from './run';
  */
 export const IV_BALL_CATEGORIES = ['iv1', 'iv2', 'iv3', 'iv4', 'iv5', 'iv6'] as const;
 
+/** Catégorie « déjà capturé avec au moins N IV parfaits ». */
 export type IvBallCategory = (typeof IV_BALL_CATEGORIES)[number];
 
+/** Catégorie d'IV pour un nombre d'IV parfaits donné (1 à 6). */
 export const ivBallCategory = (count: number) => `iv${count}` as IvBallCategory;
 
 /** Catégorie d'un Pokémon rencontré, qui décide de la Ball lancée. */
 export type BallCategory = 'new' | 'shiny' | 'caught' | IvBallCategory;
 
+/** Toutes les catégories, dans l'ordre d'affichage du plan de Balls. */
 export const BALL_CATEGORIES: readonly BallCategory[] = [
   'new',
   'shiny',
@@ -37,6 +40,7 @@ export const BALL_CATEGORIES: readonly BallCategory[] = [
 export type BallPlan = Record<'new' | 'shiny' | 'caught', string | null> &
   Partial<Record<IvBallCategory, string | null>>;
 
+/** Plan vide : aucune Ball, donc aucune capture. */
 export const NO_BALL_PLAN: BallPlan = { new: null, shiny: null, caught: null };
 
 /**
@@ -59,6 +63,7 @@ export function ballCategory(
 /** Ball d'une catégorie du plan (null : pas de capture ou catégorie non réglée). */
 export const planBall = (plan: BallPlan, category: BallCategory) => plan[category] ?? null;
 
+/** Le plan prévoit-il au moins une Ball ? */
 export const planHasBall = (plan: BallPlan) =>
   BALL_CATEGORIES.some((c) => planBall(plan, c) !== null);
 
@@ -79,8 +84,10 @@ export const THROW_CODES: Record<BallCategory, string> = {
   iv6: '6',
 };
 
+/** Code du journal : la catégorie de la rencontre n'avait pas de Ball dans le plan. */
 export const NO_THROW = '-';
 
+/** Code du journal : la Ball prévue manquait dans le sac au moment de la rencontre. */
 export const MISSED_THROW = 'x';
 
 const CODE_CATEGORIES = new Map(BALL_CATEGORIES.map((c) => [THROW_CODES[c], c]));
@@ -88,6 +95,7 @@ const CODE_CATEGORIES = new Map(BALL_CATEGORIES.map((c) => [THROW_CODES[c], c]))
 /** Lancer décidé pour une rencontre : une Ball, ou rien (et pourquoi). */
 export type ThrowDecision = { ballItemId: string } | { outcome: 'noBall' | 'ignored' };
 
+/** Ce que la décision de lancer connaît d'une rencontre. */
 export interface ThrowContext {
   /** Rang de la rencontre (à partir de 1). */
   n: number;
@@ -99,6 +107,7 @@ export interface ThrowContext {
   caught: CaughtDex;
 }
 
+/** Décision de lancer, appelée à chaque rencontre. */
 export type ChooseThrow = (t: ThrowContext) => ThrowDecision;
 
 /**

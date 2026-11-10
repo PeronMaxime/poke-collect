@@ -23,6 +23,7 @@ export interface TeamMember extends PokemonInstance {
   id: string;
 }
 
+/** Raison pour laquelle une équipe ne peut pas partir dans une zone. */
 export type ExpeditionError =
   | { code: 'TEAM_EMPTY' }
   | { code: 'TEAM_TOO_LARGE'; max: number }
@@ -34,6 +35,9 @@ export type ExpeditionError =
   | { code: 'POWER_TOO_LOW'; power: number; minPower: number }
   | { code: 'MISSING_TYPES'; missing: { type: string; count: number }[] };
 
+/**
+ * Bilan d'une équipe pour une zone : sa PE, ses membres en affinité, ce qui l'empêche de partir.
+ */
 export interface TeamCheck {
   power: number;
   affinityCount: number;
@@ -58,6 +62,10 @@ export function teamPower(
   return powers.reduce((sum, p) => sum + p, 0);
 }
 
+/**
+ * Nombre de membres de l'équipe en affinité avec la zone (un de leurs types est un type
+ * d'affinité), talents compris.
+ */
 export function countAffinity(
   ctx: GameContext,
   zone: Pick<ExpeditionSite, 'affinityTypes'> & { weather?: Weather | null },
@@ -122,6 +130,7 @@ export function expeditionEnv(
   return { activity, team, zoneTypes: site.affinityTypes, hour, weather: site.weather ?? null };
 }
 
+/** Ce qu'une durée d'expédition donne : nombre de rencontres et de tirages de butin. */
 export interface ExpeditionPlan {
   encounters: number;
   lootRolls: number;
@@ -150,6 +159,10 @@ export interface ExpeditionPace extends EncounterClock {
   lootPerMinute: number;
 }
 
+/**
+ * Rythme d'une expédition pour une équipe : rencontres par minute (voir `encounterClock`) et butin
+ * par minute (`expeditions.lootIntervalMinutes`, talents compris).
+ */
 export function expeditionPace(
   ctx: GameContext,
   env?: AbilityEnv,
@@ -172,6 +185,9 @@ export function planAfter(pace: ExpeditionPace, minutes: number): ExpeditionPlan
   };
 }
 
+/**
+ * Contrôle une équipe pour une zone : taille, doublons, Méga, région, PE minimale, types exigés.
+ */
 export function checkTeam(
   ctx: GameContext,
   zone: ExpeditionSite,

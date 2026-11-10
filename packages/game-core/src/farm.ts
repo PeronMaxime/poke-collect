@@ -16,6 +16,7 @@ import type { Rng } from './rng';
  */
 export const FARM_PLOTS = 9;
 
+/** Effet « plantation » d'un objet : ce qu'une baie plantée met de temps à pousser et rapporte. */
 export type BerryPlantEffect = Extract<ItemEffect, { type: 'berryPlant' }>;
 
 /** Effet « plantation » de l'objet ; absent si l'objet ne se plante pas à la ferme. */
@@ -54,4 +55,5 @@ export interface PlotGrowth {
 export const plotRemainingMs = (plot: PlotGrowth, now: Date) =>
   plot.readyAt ? Math.max(0, plot.readyAt.getTime() - now.getTime()) : plot.remainingMs;
 
+/** La baie de la parcelle est-elle mûre, prête à être récoltée ? */
 export const isPlotRipe = (plot: PlotGrowth, now: Date) => plotRemainingMs(plot, now) === 0;

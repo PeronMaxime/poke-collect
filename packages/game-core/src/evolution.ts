@@ -87,6 +87,7 @@ function dedupe(methods: readonly EvolutionMethod[]): EvolutionMethod[] {
   return [...lowest.values()];
 }
 
+/** Une évolution possible d'un Pokémon, avec les méthodes qui y mènent. */
 export interface EvolutionOption {
   toSpeciesId: number;
   /** Forme obtenue ; null = forme par défaut. */
@@ -253,6 +254,7 @@ export function localHour(now: Date | number, utcOffsetMinutes: number): number 
   return local.getUTCHours();
 }
 
+/** Ce dont dépendent les conditions d'évolution, hors du Pokémon lui-même. */
 export interface EvolutionEnvironment {
   /** Quantité d'un objet dans le sac. */
   itemQuantity: (itemId: string) => number;
@@ -260,6 +262,7 @@ export interface EvolutionEnvironment {
   hour: number;
 }
 
+/** Condition encore manquante pour une méthode d'évolution. */
 export type EvolutionRequirement =
   | { type: 'level'; required: number; current: number }
   | { type: 'item'; itemId: string }
@@ -289,6 +292,7 @@ export function missingRequirements(
   return missing;
 }
 
+/** Bilan d'une évolution pour un Pokémon donné. */
 export interface EvolutionCheck {
   option: EvolutionOption;
   /** Méthode retenue si l'évolution est possible (de préférence sans consommer d'objet). */
@@ -297,6 +301,7 @@ export interface EvolutionCheck {
   methods: { method: EvolutionMethod; missing: EvolutionRequirement[] }[];
 }
 
+/** Évalue une évolution : la méthode utilisable s'il y en a une, et ce qui manque aux autres. */
 export function checkEvolution(
   ctx: GameContext,
   pokemon: Pick<PokemonInstance, 'speciesId' | 'level' | 'happiness'>,

@@ -2,6 +2,13 @@ import type { GameContext } from './context';
 import { expeditionPlan, maxExpeditionBerries, resolveExpedition } from './expedition';
 import { createRng, MAX_SEED } from './rng';
 
+/**
+ * Simulateur de zone de l'admin : rejoue N expéditions dans une zone, avec des graines tirées d'une
+ * graine de départ, et en donne les moyennes (rencontres, captures, XP, butin). Sert à régler une
+ * zone sans y jouer ; n'écrit rien.
+ */
+
+/** Réglages d'une simulation de zone. */
 export interface ZoneSimulationInput {
   zoneId: string;
   /** Temps passé en expédition avant de l'arrêter. */
@@ -15,6 +22,7 @@ export interface ZoneSimulationInput {
   seed: number;
 }
 
+/** Moyennes d'une simulation de zone, par expédition. */
 export interface ZoneSimulation {
   runs: number;
   encountersPerRun: number;

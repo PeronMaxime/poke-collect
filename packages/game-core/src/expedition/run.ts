@@ -54,6 +54,9 @@ function reservedThrows(
 /** Suite de tirages du butin, distincte de celle des rencontres. */
 const LOOT_SEED_MASK = 0x5bd1e995;
 
+/**
+ * Tout ce qui détermine une expédition, figé au départ (sauf `elapsedMinutes`, connu à l'arrêt).
+ */
 export interface ExpeditionInput {
   zone: Zone;
   /** Temps écoulé entre le départ et l'arrêt de l'expédition. */
@@ -117,6 +120,7 @@ export interface ExpeditionRoamer {
 /** `fled` : le joueur a pris la fuite (expédition légendaire). */
 export type EncounterOutcome = 'captured' | 'escaped' | 'noBall' | 'ignored' | 'fled';
 
+/** Une rencontre et ce qu'elle a donné. */
 export interface EncounterResult {
   speciesId: number;
   /** Forme rencontrée ; null = forme par défaut. */
@@ -135,6 +139,7 @@ export interface EncounterResult {
   special?: true;
 }
 
+/** Ce qu'une expédition arrêtée rapporte : rencontres, butin, XP, compteurs à mettre à jour. */
 export interface ExpeditionResult {
   encounters: EncounterResult[];
   loot: ItemStack[];

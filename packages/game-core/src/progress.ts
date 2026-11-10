@@ -18,12 +18,14 @@ export interface PlayerProgress {
   openedRegionIds?: ReadonlySet<string>;
 }
 
+/** Avancement d'un Pokédex : espèces capturées, total, pourcentage (0 à 100). */
 export interface DexProgress {
   caught: number;
   total: number;
   percent: number;
 }
 
+/** Avancement du Pokédex d'une région. */
 export function regionDexProgress(
   ctx: GameContext,
   regionId: string,
@@ -86,6 +88,10 @@ export function isRegionUnlocked(
 /** Régions imbriquées au plus (« région débloquée » d'une région elle-même conditionnée…). */
 const MAX_REGION_DEPTH = 10;
 
+/**
+ * Une condition de déblocage est-elle remplie par l'avancement du joueur ? `depth` borne les
+ * conditions « région débloquée » imbriquées.
+ */
 export function isUnlocked(
   ctx: GameContext,
   condition: UnlockCondition,

@@ -16,6 +16,7 @@ import type { DungeonCommand, DungeonSetup } from './types';
  * Ce qu'une tentative terminée rapporte : XP, butin, bonheur.
  */
 
+/** Ce qu'une tentative de donjon terminée rapporte. */
 export interface DungeonResult {
   outcome: DungeonOutcome;
   /** Fin du combat, en millisecondes depuis le départ. */
@@ -33,6 +34,7 @@ export interface DungeonResult {
   gemRoll: number | null;
 }
 
+/** Ce qu'il faut pour résoudre une tentative de donjon terminée. */
 export interface DungeonRunInput {
   dungeon: Dungeon;
   setup: DungeonSetup;

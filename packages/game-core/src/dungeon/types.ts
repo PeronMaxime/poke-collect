@@ -152,6 +152,10 @@ export type DungeonCombatSettings = Pick<
     chipTickMs?: number;
   };
 
+/**
+ * Mise en place d'un combat, figée au départ et enregistrée : avec la graine et les commandes, elle
+ * suffit à le rejouer.
+ */
 export interface DungeonSetup {
   /** Équipe du joueur, dans l'ordre choisi (le premier entre en combat). */
   team: DungeonFighter[];
@@ -188,6 +192,7 @@ export type DungeonCommand =
       heal: number;
     };
 
+/** La commande est-elle un soin (baie), et non un changement de Pokémon ? */
 export const isHealCommand = (c: DungeonCommand): c is Extract<DungeonCommand, { heal: number }> =>
   'heal' in c;
 

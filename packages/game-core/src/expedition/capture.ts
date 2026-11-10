@@ -3,7 +3,15 @@ import type { GameContext } from '../context';
 import type { PokemonInstance } from '../pokemon';
 
 /**
- * Qui est rencontré dans une zone, et avec quelle probabilité de capture (pitié comprise).
+ * Qui est rencontré dans une zone, et avec quelle chance de capture.
+ *
+ * Rencontre : tirage pondéré parmi les rencontres actives de la zone. La **pitié** rattrape la
+ * malchance : chaque capture ratée d'une espèce augmente son poids de `pity.weightBonusPerMiss`,
+ * jusqu'à `pity.maxMultiplier` ; une capture réussie remet le compteur à zéro.
+ *
+ * Capture : taux de capture de l'espèce × Ball × baie × affinité × bonus du joueur, ramené à une
+ * probabilité (voir `captureProbability`). Réglages : `capture.globalMultiplier`,
+ * `capture.assumedHpFraction`, `capture.affinityBonusPerPokemon`.
  */
 
 export function pityMultiplier(ctx: GameContext, misses: number): number {
@@ -11,6 +19,7 @@ export function pityMultiplier(ctx: GameContext, misses: number): number {
   return Math.min(maxMultiplier, 1 + weightBonusPerMiss * misses);
 }
 
+/** Tout ce qui pèse sur une chance de capture. */
 export interface CaptureFactors {
   captureRate: number;
   ballMultiplier: number;

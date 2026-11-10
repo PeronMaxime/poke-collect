@@ -83,6 +83,7 @@ export interface RoamerHideout {
   zoneId: string;
 }
 
+/** Ce qu'il faut savoir d'un joueur pour situer ses fuyards. */
 export interface RoamersInput {
   userId: string;
   /** Quêtes réclamées du joueur, Pokémon de leur récompense déjà capturés et cachette du fuyard. */

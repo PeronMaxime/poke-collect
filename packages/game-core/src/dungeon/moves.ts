@@ -9,8 +9,13 @@ import type { PokemonInstance } from '../pokemon';
  * L'attaque d'un combattant : chacun n'en a qu'une, d'un de ses types, physique ou spéciale.
  */
 
+/**
+ * Catégories d'attaque : physique (Attaque contre Défense) ou spéciale (Attaque Spéciale contre
+ * Défense Spéciale).
+ */
 export const MOVE_CATEGORIES = ['physical', 'special'] as const;
 
+/** Catégorie d'une attaque. */
 export type MoveCategory = (typeof MOVE_CATEGORIES)[number];
 
 /** Attaque choisie par le joueur pour un Pokémon : un de ses types, physique ou spéciale. */

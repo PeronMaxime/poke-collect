@@ -14,6 +14,10 @@ export const EPSILON = 1e-9;
 
 const HOUR_MINUTES = 60;
 
+/**
+ * Rythme des rencontres d'une expédition : talents de l'équipe, baies de rencontres, et allongement
+ * de l'intervalle (`growthMinutes`, figé au départ, sinon celui de l'équilibrage).
+ */
 export function encounterClock(
   ctx: GameContext,
   env?: AbilityEnv,

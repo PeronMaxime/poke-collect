@@ -24,8 +24,13 @@ import type {
  * (`DungeonTraits`). Interne au dossier.
  */
 
+/** Par défaut, tous les porteurs de bonus d'équipe sont considérés comme debout. */
 export const allUp: HolderUp = () => true;
 
+/**
+ * Combattant tiré d'un Pokémon : statistiques réelles, PV (multipliés par `hpMultiplier` pour un
+ * boss) et attaque choisie.
+ */
 export function fighter(
   species: GameSpecies,
   pokemon: Pick<PokemonInstance, 'speciesId' | 'formId' | 'level' | 'ivs' | 'nature'> & {

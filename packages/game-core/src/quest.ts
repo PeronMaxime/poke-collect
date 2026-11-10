@@ -32,8 +32,13 @@ export interface QuestRecord {
   count: number;
 }
 
+/** Avancement d'une quête pas encore commencée. */
 export const NEW_QUEST: QuestRecord = { step: 0, count: 0 };
 
+/**
+ * L'étape compte-t-elle des actions (captures, expéditions, objets de quête), au lieu de constater
+ * un état ?
+ */
 export function isActionCondition(c: QuestCondition): c is QuestActionCondition {
   return c.type === 'catchPokemon' || c.type === 'expedition' || c.type === 'questItem';
 }
@@ -249,6 +254,7 @@ export function questStepsDone(
   return steps;
 }
 
+/** Statut d'une quête pour un joueur. */
 export type QuestStatus = 'locked' | 'active' | 'completed' | 'claimed';
 
 /** Statut d'une quête : verrouillée, en cours, terminée (récompense à réclamer), réclamée. */
@@ -279,6 +285,7 @@ export function generateQuestPokemon(
   return { ...pokemon, ivs: withPerfectIvs(rng, pokemon.ivs, reward.perfectIvs) };
 }
 
+/** Ce qui détermine le Pokémon rencontré au bout d'une quête. */
 export interface QuestEncounterInput {
   /** Pokémon visé (récompense de la quête). */
   target: QuestPokemon;

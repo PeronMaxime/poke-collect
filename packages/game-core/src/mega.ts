@@ -29,6 +29,7 @@ export function megaStoneForm(ctx: GameContext, itemId: string): PokemonForm | u
   return form?.kind === 'mega' ? form : undefined;
 }
 
+/** Une Méga-Évolution possible d'une espèce, et les gemmes qui y mènent. */
 export interface MegaOption {
   form: PokemonForm;
   /** Méga-Gemmes qui donnent cette forme (en général une seule). */
@@ -48,6 +49,7 @@ export function megaOptions(ctx: GameContext, speciesId: number): MegaOption[] {
     .filter((o) => o.itemIds.length > 0);
 }
 
+/** Refus d'une Méga-Évolution, ou du retrait d'une gemme. */
 export type MegaError = 'NOT_A_MEGA_STONE' | 'WRONG_MEGA_STONE' | 'ALREADY_MEGA' | 'NOT_MEGA';
 
 /**

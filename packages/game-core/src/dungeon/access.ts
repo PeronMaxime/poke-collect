@@ -12,14 +12,17 @@ import type { DungeonMove } from './moves';
  * l'équipe engagée.
  */
 
+/** Délai entre deux tentatives d'un donjon : le sien, sinon `balance.dungeons.cooldownMinutes`. */
 export function dungeonCooldownMinutes(ctx: GameContext, dungeon: Dungeon): number {
   return dungeon.cooldownMinutes ?? ctx.balance.dungeons.cooldownMinutes;
 }
 
+/** Dernière tentative du joueur dans un donjon. */
 export interface DungeonRecord {
   lastEndedAt: Date | string | null;
 }
 
+/** Disponibilité d'un donjon pour un joueur. */
 export type DungeonStatus =
   /** Aucune espèce de la lignée capturée (ou région verrouillée) : le donjon n'apparaît pas. */
   | { state: 'hidden' }
@@ -28,6 +31,10 @@ export type DungeonStatus =
   | { state: 'cooldown'; until: Date }
   | { state: 'available' };
 
+/**
+ * Disponibilité d'un donjon pour un joueur à l'instant `now` : caché, verrouillé, en recharge ou
+ * ouvert.
+ */
 export function dungeonStatus(
   ctx: GameContext,
   dungeon: Dungeon,
@@ -54,6 +61,7 @@ export function dungeonStatus(
   return { state: 'available' };
 }
 
+/** Raison pour laquelle une équipe ne peut pas entrer dans un donjon. */
 export type DungeonTeamError =
   | { code: 'TEAM_EMPTY' }
   | { code: 'TEAM_TOO_LARGE'; max: number }
@@ -62,6 +70,7 @@ export type DungeonTeamError =
   | { code: 'WRONG_REGION'; speciesIds: number[] }
   | { code: 'INVALID_MOVE' };
 
+/** Contrôle une équipe avant un donjon ; liste vide = équipe acceptée. */
 export function checkDungeonTeam(
   ctx: GameContext,
   dungeon: Dungeon,

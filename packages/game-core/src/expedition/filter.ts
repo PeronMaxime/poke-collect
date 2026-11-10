@@ -30,6 +30,9 @@ export interface CaughtDex {
   formIds: ReadonlySet<number>;
 }
 
+/**
+ * Le Pokémon rencontré manque-t-il au Pokédex ? Une forme se juge sur la forme, sinon sur l'espèce.
+ */
 export function isNewToDex(
   caught: CaughtDex,
   wild: Pick<PokemonInstance, 'speciesId' | 'formId'>,
@@ -39,10 +42,12 @@ export function isNewToDex(
     : !caught.speciesIds.has(wild.speciesId);
 }
 
+/** Nombre d'IV parfaits (à 31) d'un Pokémon. */
 export function perfectIvCount(pokemon: Pick<PokemonInstance, 'ivs'>): number {
   return STAT_NAMES.filter((stat) => pokemon.ivs[stat] === MAX_IV).length;
 }
 
+/** Le filtre de capture garde-t-il cette rencontre ? Sans filtre, tout est gardé. */
 export function matchesCaptureFilter(
   filter: CaptureFilter | null | undefined,
   wild: Pick<PokemonInstance, 'speciesId' | 'formId' | 'isShiny' | 'ivs'>,

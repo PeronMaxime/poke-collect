@@ -52,6 +52,10 @@ export interface ItemUseOptions {
   usable: boolean;
 }
 
+/**
+ * Ce qu'un objet peut faire sur ce Pokémon ; `undefined` si l'objet ne s'utilise pas sur un
+ * Pokémon.
+ */
 export function itemUseOptions(
   ctx: GameContext,
   target: ItemTarget,
@@ -86,6 +90,7 @@ export function itemUseOptions(
   }
 }
 
+/** Choix du joueur quand l'objet en demande un (la statistique d'une Capsule). */
 export interface ItemUseChoice {
   stat?: StatName;
 }
@@ -101,8 +106,13 @@ export interface PokemonPatch {
   xp?: number;
 }
 
+/** Refus d'utiliser un objet sur un Pokémon. */
 export type ItemUseError = 'NOT_USABLE_ON_POKEMON' | 'NO_EFFECT' | 'CHOICE_REQUIRED';
 
+/**
+ * Calcule ce qu'un objet change à un Pokémon, sans rien écrire. `rng` ne sert qu'au tirage du
+ * talent (Pilule, Patch).
+ */
 export function applyItemToPokemon(
   ctx: GameContext,
   target: ItemTarget,

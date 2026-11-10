@@ -20,6 +20,10 @@ export interface ShinyFactors {
 /** Au-delà, la chaîne n'augmente plus (le multiplicateur est plafonné bien avant). */
 export const MAX_SHINY_CHAIN = 999;
 
+/**
+ * Multiplicateur de la chaîne de zone : +`chainBonusPerExpedition` par maillon, plafonné à
+ * `chainMaxMultiplier`.
+ */
 export function chainMultiplier(ctx: GameContext, chain: number): number {
   const { chainBonusPerExpedition, chainMaxMultiplier } = ctx.balance.shiny;
   return Math.min(chainMaxMultiplier, 1 + chainBonusPerExpedition * Math.max(0, chain));
@@ -35,6 +39,10 @@ export function nextChainPerfectIvThreshold(ctx: GameContext, chain: number): nu
   return ctx.balance.shiny.chainPerfectIvThresholds.find((t) => chain < t) ?? null;
 }
 
+/**
+ * Produit de tous les multiplicateurs de chance chromatique : chaîne, Charme, méthode Masuda, bonus
+ * permanents.
+ */
 export function shinyMultiplier(ctx: GameContext, factors: ShinyFactors = {}): number {
   return (
     chainMultiplier(ctx, factors.chain ?? 0) *
@@ -75,6 +83,7 @@ export interface ZoneRun {
   claimedAt: Date | null;
 }
 
+/** Chaîne d'un joueur dans une zone, à un instant donné. */
 export interface ZoneChainStatus {
   /** Maillon qu'aurait une expédition lancée maintenant dans la zone. */
   chain: number;
