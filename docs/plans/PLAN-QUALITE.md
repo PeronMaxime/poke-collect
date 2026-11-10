@@ -267,21 +267,42 @@ Découpages sans risque : les `index.ts` continuent de tout réexporter, aucun i
 
 Sous la protection des tests « à graine égale » (0.2).
 
-- [ ] **3.1 `dungeon.ts`** (1 899 lignes) → dossier `dungeon/` : types et état, préparation,
+- [x] **3.1 `dungeon.ts`** (1 899 lignes) → dossier `dungeon/` : types et état, préparation,
       tour de combat, statuts, météo, talents, décisions de l'adversaire. `simulateDungeon`
       (470 lignes) devient une boucle courte qui appelle des étapes nommées.
-- [ ] **3.2 `expedition.ts`** (1 135 lignes) → dossier `expedition/` : rencontres, capture et
+- [x] **3.2 `expedition.ts`** (1 135 lignes) → dossier `expedition/` : rencontres, capture et
       pitié, butin, durée et cadence, fuyards. `createExpeditionRun` (184 lignes) découpée.
-- [ ] **3.3 `abilities.ts`** (1 079 lignes) → un fichier par famille d'effets (modificateurs,
+- [x] **3.3 `abilities.ts`** (1 079 lignes) → un fichier par famille d'effets (modificateurs,
       combat, assistants, météo).
-- [ ] **3.4 Documentation des règles** : en tête de chaque module, la règle de jeu en clair et sa
+- [x] **3.4 Documentation des règles** : en tête de chaque module, la règle de jeu en clair et sa
       formule (PE, capture, pitié, chromatique, XP, ponte), avec les clés d'équilibrage qui la
       pilotent. Une phrase sur chaque export.
-- [ ] **3.5 Mesure de vitesse** (`vitest bench`) sur une expédition de 24 h et un donjon complet :
+- [x] **3.5 Mesure de vitesse** (`vitest bench`) sur une expédition de 24 h et un donjon complet :
       on n'optimise que ce que la mesure désigne, et le chiffre est gardé comme référence.
 - [ ] **3.6 Surface publique** : `index.ts` n'exporte plus que ce qui sert hors du paquet
       (liste donnée par `knip`), le reste devient interne.
 - **But** : lire une règle du jeu sans devoir tenir 1 900 lignes en tête.
+
+- **Réalisé** le 10 novembre pour 3.1 à 3.5 (écarts avec le plan) ; **reste 3.6** :
+  - 3.1 : `dungeon/` (11 fichiers). `simulateDungeon` (431 lignes) est une boucle de 40 lignes :
+    l'état du combat et ses opérations sont dans la classe `Combat` (`combat.ts`), les étapes
+    (commande, tic, attaque) dans `simulation.ts`. `withAbilities` est découpée en trois fonctions.
+    Les tests à graine égale passent sans réenregistrement.
+  - 3.2 : `expedition/` (9 fichiers). Le tirage des rencontres sort de `createExpeditionRun`
+    (`encounterSource`).
+  - 3.3 : `abilities/` (9 fichiers), par rôle (activités, paramètres, environnement, effets,
+    modificateurs, PE, rencontres, textes, assistants) plutôt que par famille d'effets : les effets
+    de combat étaient déjà dans `dungeon/traits.ts`.
+  - Exports comparés avant et après chaque découpage : 56, 68 et 49, aucun écart.
+  - 3.4 : chaque export de `game-core` a sa phrase ; les formules sont en tête de `pokemon.ts`,
+    `breeding.ts`, `expedition/capture.ts`, `expedition/xp.ts`, `dungeon/rules.ts`.
+  - 3.5 : `pnpm --filter @poke/game-core bench` (`src/perf.bench.ts`). Une expédition de 24 h se
+    rejoue en 0,43 ms, un combat complet en 0,04 ms : aucune optimisation n'est désignée. Chiffres
+    dans le README du paquet. Vitest 5 a changé l'API : `bench` est fourni au test
+    (`test('…', async ({ bench }) => …)`).
+  - Avertissements ESLint : 94 → 90 (plafond baissé).
+  - Les outils de découpage (script qui déplace les instructions et recalcule les imports,
+    comparaison des exports) ne sont pas dans le dépôt : ils étaient jetables.
 
 ### Phase 4 : API (L)
 
