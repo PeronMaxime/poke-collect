@@ -16,18 +16,12 @@ import type {
   TrainerProfileResponse,
   TrainerSearchResultDto,
 } from '@poke/shared';
-import type { ContentCache } from '../content-cache';
 import { GameError } from '../game/errors';
 import { displayedFavorite, favoriteColumns, setFavorite } from '../game/favorite';
 import { featuredPokemon, trainerCard } from '../game/stats';
 import { playerProgress } from '../game/store';
-import type { sessionHooks } from '../plugins/session';
-
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-}
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
 /** Résultats de recherche affichés au plus. */
 const SEARCH_LIMIT = 10;
@@ -54,7 +48,7 @@ async function findTrainer(db: Db, name: string) {
 }
 
 /** Fiches Dresseur des autres joueurs : recherche, fiche, Pokédex ; vitrine de sa propre fiche. */
-export async function trainerRoutes(app: FastifyInstance, { db, content, hooks }: Deps) {
+export async function trainerRoutes(app: FastifyInstance, { db, content, hooks }: RouteDeps) {
   app.addHook('preHandler', hooks.requireUser);
 
   app.get('/api/trainers', async (request): Promise<TrainerSearchResultDto[]> => {
@@ -90,7 +84,7 @@ export async function trainerRoutes(app: FastifyInstance, { db, content, hooks }
       favorite: displayedFavorite(profile),
       createdAt: profile.createdAt.toISOString(),
       currency: profile.currency,
-      isMe: profile.userId === request.user!.id,
+      isMe: profile.userId === currentUserId(request),
       progress: {
         caughtSpeciesIds: [...progress.caughtSpeciesIds],
         caughtShinySpeciesIds: shiny.map((s) => s.speciesId),
@@ -129,13 +123,13 @@ export async function trainerRoutes(app: FastifyInstance, { db, content, hooks }
   /** Pokémon favori de sa Fiche Dresseur (null : revenir au starter). */
   app.put('/api/trainer-card/favorite', async (request): Promise<FavoritePokemonDto | null> => {
     const { favorite } = favoritePokemonInputSchema.parse(request.body);
-    return setFavorite(db, request.user!.id, favorite);
+    return setFavorite(db, currentUserId(request), favorite);
   });
 
   /** Pokémon du PC mis en avant sur sa Fiche Dresseur (remplace la sélection). */
   app.put('/api/trainer-card/featured', async (request): Promise<FeaturedPokemonDto[]> => {
     const { pokemonIds } = featuredPokemonInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     if (pokemonIds.length > 0) {
       const owned = await db
         .select({ id: pokemon.id })

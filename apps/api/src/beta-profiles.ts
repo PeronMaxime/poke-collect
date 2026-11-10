@@ -5,11 +5,11 @@ import { guildMembers, playerProfiles, users } from '@poke/db';
 import type { Db } from '@poke/db';
 import { selectBetaProfileInputSchema } from '@poke/shared';
 import type { BetaProfilesResponse } from '@poke/shared';
-import type { ContentCache } from './content-cache';
 import { GameError } from './game/errors';
 import { leaveGuild } from './game/guilds';
 import { playerTransaction } from './game/tx';
-import type { sessionHooks } from './plugins/session';
+import { sessionUser } from './routes/deps';
+import type { RouteDeps } from './routes/deps';
 
 /**
  * Bêta : profils secondaires. Un profil secondaire est un utilisateur sans identifiant de
@@ -61,17 +61,13 @@ function readCookie(request: FastifyRequest, name: string): string | null {
   return null;
 }
 
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
+interface BetaProfileDeps extends RouteDeps {
   secureCookie: boolean;
 }
 
 export async function betaProfileRoutes(
   app: FastifyInstance,
-  { db, content, hooks, now, secureCookie }: Deps,
+  { db, content, hooks, now, secureCookie }: BetaProfileDeps,
 ) {
   const setCookie = (reply: FastifyReply, profileId: string | null) => {
     const attributes = `Path=/; HttpOnly; SameSite=Lax${secureCookie ? '; Secure' : ''}`;
@@ -108,13 +104,13 @@ export async function betaProfileRoutes(
   };
 
   app.get('/api/beta/profiles', { preHandler: hooks.requireUser }, async (request) => {
-    const user = request.user!;
+    const user = sessionUser(request);
     return list(user.accountUserId, user.id);
   });
 
   /** Crée un profil secondaire (partie neuve, starter à choisir) et le rend actif. */
   app.post('/api/beta/profiles', { preHandler: hooks.requireUser }, async (request, reply) => {
-    const { accountUserId } = request.user!;
+    const { accountUserId } = sessionUser(request);
     const [main] = await db
       .select({ trainerName: playerProfiles.trainerName })
       .from(playerProfiles)
@@ -167,7 +163,7 @@ export async function betaProfileRoutes(
     { preHandler: hooks.requireUser },
     async (request, reply) => {
       const { profileId } = selectBetaProfileInputSchema.parse(request.body);
-      const { accountUserId } = request.user!;
+      const { accountUserId } = sessionUser(request);
       if (profileId && profileId !== accountUserId) {
         const [owned] = await db
           .select({ id: users.id })
@@ -191,7 +187,7 @@ export async function betaProfileRoutes(
     { preHandler: hooks.requireUser },
     async (request, reply) => {
       const { profileId } = request.params;
-      const { accountUserId, id: activeId } = request.user!;
+      const { accountUserId, id: activeId } = sessionUser(request);
       const [owned] = await db
         .select({ id: users.id })
         .from(users)

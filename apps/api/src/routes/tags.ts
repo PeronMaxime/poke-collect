@@ -2,17 +2,12 @@ import type { FastifyInstance } from 'fastify';
 import { and, arrayContains, asc, count, eq, sql } from 'drizzle-orm';
 import { z } from 'zod';
 import { pokemon, pokemonTags } from '@poke/db';
-import type { Db } from '@poke/db';
 import { MAX_TAGS, tagInputSchema } from '@poke/shared';
 import type { PokemonTagDto } from '@poke/shared';
 import { GameError } from '../game/errors';
 import { playerTransaction } from '../game/tx';
-import type { sessionHooks } from '../plugins/session';
-
-interface Deps {
-  db: Db;
-  hooks: ReturnType<typeof sessionHooks>;
-}
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
 const uuidParams = z.object({ id: z.uuid() });
 
@@ -23,21 +18,21 @@ const toTagDto = ({ id, label, color }: typeof pokemonTags.$inferSelect): Pokemo
 });
 
 /** Étiquettes du joueur : créées, renommées et supprimées depuis le PC. */
-export async function tagRoutes(app: FastifyInstance, { db, hooks }: Deps) {
+export async function tagRoutes(app: FastifyInstance, { db, hooks }: RouteDeps) {
   app.addHook('preHandler', hooks.requireUser);
 
   app.get('/api/tags', async (request): Promise<PokemonTagDto[]> => {
     const rows = await db
       .select()
       .from(pokemonTags)
-      .where(eq(pokemonTags.ownerId, request.user!.id))
+      .where(eq(pokemonTags.ownerId, currentUserId(request)))
       .orderBy(asc(pokemonTags.createdAt), asc(pokemonTags.id));
     return rows.map(toTagDto);
   });
 
   app.post('/api/tags', async (request, reply) => {
     const input = tagInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const [{ total } = { total: 0 }] = await db
       .select({ total: count() })
       .from(pokemonTags)
@@ -56,7 +51,7 @@ export async function tagRoutes(app: FastifyInstance, { db, hooks }: Deps) {
     const [row] = await db
       .update(pokemonTags)
       .set({ label: input.label, color: input.color.toLowerCase() })
-      .where(and(eq(pokemonTags.id, id), eq(pokemonTags.ownerId, request.user!.id)))
+      .where(and(eq(pokemonTags.id, id), eq(pokemonTags.ownerId, currentUserId(request))))
       .returning();
     if (!row) throw new GameError(404, 'TAG_NOT_FOUND');
     return toTagDto(row);
@@ -65,7 +60,7 @@ export async function tagRoutes(app: FastifyInstance, { db, hooks }: Deps) {
   /** Les Pokémon qui la portaient la perdent. */
   app.delete('/api/tags/:id', async (request, reply) => {
     const { id } = uuidParams.parse(request.params);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     await playerTransaction(db, userId, async (tx) => {
       const [row] = await tx
         .delete(pokemonTags)

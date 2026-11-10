@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { and, count, eq, sql } from 'drizzle-orm';
 import { playerProfiles, pushSubscriptions } from '@poke/db';
-import type { Db } from '@poke/db';
 import {
   notificationSettingsSchema,
   pushSubscriptionInputSchema,
@@ -11,19 +10,20 @@ import type { NotificationSettings, PushConfigResponse } from '@poke/shared';
 import { GameError } from '../game/errors';
 import { notificationSettings, sendToOwner } from '../game/push';
 import type { PushSender } from '../game/push';
-import type { sessionHooks } from '../plugins/session';
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
-interface Deps {
-  db: Db;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
+interface PushDeps extends RouteDeps {
   /** Clé publique VAPID ; absente = notifications push désactivées. */
   publicKey: string | null;
   send: PushSender | null;
 }
 
 /** Notifications push : abonnement de l'appareil, réglages par type, notification de test. */
-export async function pushRoutes(app: FastifyInstance, { db, hooks, now, publicKey, send }: Deps) {
+export async function pushRoutes(
+  app: FastifyInstance,
+  { db, hooks, now, publicKey, send }: PushDeps,
+) {
   app.addHook('preHandler', hooks.requireUser);
 
   const loadSettings = async (userId: string) => {
@@ -36,7 +36,7 @@ export async function pushRoutes(app: FastifyInstance, { db, hooks, now, publicK
   };
 
   app.get('/api/push', async (request): Promise<PushConfigResponse> => {
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const [settings, [subs]] = await Promise.all([
       loadSettings(userId),
       db
@@ -55,7 +55,7 @@ export async function pushRoutes(app: FastifyInstance, { db, hooks, now, publicK
     await db
       .insert(pushSubscriptions)
       .values({
-        ownerId: request.user!.id,
+        ownerId: currentUserId(request),
         endpoint,
         p256dh: keys.p256dh,
         auth: keys.auth,
@@ -63,7 +63,7 @@ export async function pushRoutes(app: FastifyInstance, { db, hooks, now, publicK
       })
       .onConflictDoUpdate({
         target: pushSubscriptions.endpoint,
-        set: { ownerId: request.user!.id, p256dh: keys.p256dh, auth: keys.auth, userAgent },
+        set: { ownerId: currentUserId(request), p256dh: keys.p256dh, auth: keys.auth, userAgent },
       });
     return reply.code(204).send();
   });
@@ -74,7 +74,7 @@ export async function pushRoutes(app: FastifyInstance, { db, hooks, now, publicK
       .delete(pushSubscriptions)
       .where(
         and(
-          eq(pushSubscriptions.ownerId, request.user!.id),
+          eq(pushSubscriptions.ownerId, currentUserId(request)),
           eq(pushSubscriptions.endpoint, endpoint),
         ),
       );
@@ -88,7 +88,7 @@ export async function pushRoutes(app: FastifyInstance, { db, hooks, now, publicK
       .set({
         settings: sql`${playerProfiles.settings} || ${JSON.stringify({ notifications: settings })}::jsonb`,
       })
-      .where(eq(playerProfiles.userId, request.user!.id))
+      .where(eq(playerProfiles.userId, currentUserId(request)))
       .returning({ userId: playerProfiles.userId });
     if (updated.length === 0) throw new GameError(404, 'PROFILE_NOT_FOUND');
     return settings;
@@ -100,7 +100,7 @@ export async function pushRoutes(app: FastifyInstance, { db, hooks, now, publicK
     const sent = await sendToOwner(
       db,
       send,
-      request.user!.id,
+      currentUserId(request),
       {
         title: 'Dexpedition',
         body: 'Les notifications fonctionnent : tu seras prévenu à la fin de tes expéditions.',

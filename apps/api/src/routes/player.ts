@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { eq, sql } from 'drizzle-orm';
 import { playerProfiles } from '@poke/db';
-import type { Db } from '@poke/db';
 import {
   baseShinyProbability,
   createRng,
@@ -10,7 +9,6 @@ import {
 } from '@poke/game-core';
 import { chooseStarterInputSchema, createProfileInputSchema } from '@poke/shared';
 import type { MeResponse, PlayerProfileDto, PokemonDto } from '@poke/shared';
-import type { ContentCache } from '../content-cache';
 import { GameError, newSeed } from '../game/expeditions';
 import {
   addItems,
@@ -20,15 +18,9 @@ import {
   toPokemonDto,
 } from '../game/store';
 import { playerTransaction } from '../game/tx';
-import type { sessionHooks } from '../plugins/session';
 import { chosenFavorite } from '../game/favorite';
-
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
-}
+import { sessionUser } from './deps';
+import type { RouteDeps } from './deps';
 
 export function toDto(row: typeof playerProfiles.$inferSelect): PlayerProfileDto {
   return {
@@ -43,7 +35,7 @@ export function toDto(row: typeof playerProfiles.$inferSelect): PlayerProfileDto
   };
 }
 
-export async function playerRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
+export async function playerRoutes(app: FastifyInstance, { db, content, hooks, now }: RouteDeps) {
   /** Contenu publié utile à l'affichage côté joueur. */
   app.get('/api/content', async (request, reply) => {
     const { body, etag } = await content.publicJson();
@@ -54,7 +46,7 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
   });
 
   app.get('/api/me', { preHandler: hooks.requireUser }, async (request): Promise<MeResponse> => {
-    const user = request.user!;
+    const user = sessionUser(request);
     const [profile] = await db
       .select()
       .from(playerProfiles)
@@ -77,7 +69,7 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
     if (!parsed.success) {
       return reply.code(400).send({ error: 'VALIDATION', issues: parsed.error.issues });
     }
-    const user = request.user!;
+    const user = sessionUser(request);
     const { trainerName } = parsed.data;
 
     const [existing] = await db
@@ -107,7 +99,7 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
   /** Choix du starter : premier Pokémon, Pokédex, inventaire et argent de départ. */
   app.post('/api/starter', { preHandler: hooks.requireUser }, async (request, reply) => {
     const { speciesId } = chooseStarterInputSchema.parse(request.body);
-    const user = request.user!;
+    const user = sessionUser(request);
     const ctx = await content.get();
     const [profile] = await db
       .select()
@@ -162,7 +154,7 @@ export async function playerRoutes(app: FastifyInstance, { db, content, hooks, n
     { preHandler: hooks.requireUser },
     async (request, reply) => {
       const { speciesId } = chooseStarterInputSchema.parse(request.body);
-      const user = request.user!;
+      const user = sessionUser(request);
       const ctx = await content.get();
       const [profile] = await db
         .select()

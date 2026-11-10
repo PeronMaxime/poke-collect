@@ -8,12 +8,8 @@ import { MAX_TEAMS, teamInputSchema } from '@poke/shared';
 import type { PokemonTeamDto, TeamInput } from '@poke/shared';
 import { GameError } from '../game/errors';
 import { playerTransaction } from '../game/tx';
-import type { sessionHooks } from '../plugins/session';
-
-interface Deps {
-  db: Db;
-  hooks: ReturnType<typeof sessionHooks>;
-}
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
 const uuidParams = z.object({ id: z.uuid() });
 
@@ -54,11 +50,11 @@ async function checkMembers(tx: Db, userId: string, input: TeamInput, teamId?: s
 }
 
 /** Équipes enregistrées du joueur : construites depuis la page « Équipe Pkmn ». */
-export async function teamRoutes(app: FastifyInstance, { db, hooks }: Deps) {
+export async function teamRoutes(app: FastifyInstance, { db, hooks }: RouteDeps) {
   app.addHook('preHandler', hooks.requireUser);
 
   app.get('/api/teams', async (request): Promise<PokemonTeamDto[]> => {
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const rows = await db
       .select()
       .from(pokemonTeams)
@@ -70,7 +66,7 @@ export async function teamRoutes(app: FastifyInstance, { db, hooks }: Deps) {
 
   app.post('/api/teams', async (request, reply) => {
     const input = teamInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const dto = await playerTransaction(db, userId, async (tx) => {
       const [{ total } = { total: 0 }] = await tx
         .select({ total: count() })
@@ -90,7 +86,7 @@ export async function teamRoutes(app: FastifyInstance, { db, hooks }: Deps) {
   app.put('/api/teams/:id', async (request): Promise<PokemonTeamDto> => {
     const { id } = uuidParams.parse(request.params);
     const input = teamInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     return playerTransaction(db, userId, async (tx) => {
       await checkMembers(tx, userId, input, id);
       const [row] = await tx
@@ -108,7 +104,7 @@ export async function teamRoutes(app: FastifyInstance, { db, hooks }: Deps) {
     const { id } = uuidParams.parse(request.params);
     const [row] = await db
       .delete(pokemonTeams)
-      .where(and(eq(pokemonTeams.id, id), eq(pokemonTeams.ownerId, request.user!.id)))
+      .where(and(eq(pokemonTeams.id, id), eq(pokemonTeams.ownerId, currentUserId(request))))
       .returning({ id: pokemonTeams.id });
     if (!row) throw new GameError(404, 'TEAM_NOT_FOUND');
     return reply.code(204).send();

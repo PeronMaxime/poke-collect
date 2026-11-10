@@ -1,9 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { Db } from '@poke/db';
 import { plantBerryInputSchema } from '@poke/shared';
 import type { BerryPlotDto, FarmResponse, HarvestBerriesResponse } from '@poke/shared';
-import type { ContentCache } from '../content-cache';
 import {
   farmFieldOf,
   farmPlots,
@@ -15,23 +13,17 @@ import {
   uprootBerry,
 } from '../game/farm';
 import { assertTabUnlocked, playerFacilityPlaces } from '../game/store';
-import type { sessionHooks } from '../plugins/session';
-
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
-}
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
 const plotParams = z.object({ plot: z.coerce.number().int().min(0).max(999) });
 
 /** Ferme à baies : plantation, arrachage et récolte. */
-export async function farmRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
+export async function farmRoutes(app: FastifyInstance, { db, content, hooks, now }: RouteDeps) {
   app.addHook('preHandler', hooks.requireUser);
 
   app.get('/api/farm', async (request): Promise<FarmResponse> => {
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const ctx = await content.get();
     const [rows, speed, plots] = await Promise.all([
       farmPlots(db, userId),
@@ -47,7 +39,7 @@ export async function farmRoutes(app: FastifyInstance, { db, content, hooks, now
 
   app.post('/api/farm', async (request, reply) => {
     const { plotIndex, itemId } = plantBerryInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     await assertTabUnlocked(db, await content.get(), userId, 'farm');
     const row = await plantBerry(db, content, userId, plotIndex, itemId, now());
     const speed = await farmSpeed(db, await content.get(), userId, farmFieldOf(plotIndex));
@@ -56,15 +48,15 @@ export async function farmRoutes(app: FastifyInstance, { db, content, hooks, now
 
   app.delete('/api/farm/:plot', async (request): Promise<BerryPlotDto> => {
     const { plot } = plotParams.parse(request.params);
-    return toBerryPlotDto(await uprootBerry(db, request.user!.id, plot, now()));
+    return toBerryPlotDto(await uprootBerry(db, currentUserId(request), plot, now()));
   });
 
   app.post('/api/farm/harvest', async (request): Promise<HarvestBerriesResponse> => ({
-    harvested: await harvestBerries(db, content, request.user!.id, now()),
+    harvested: await harvestBerries(db, content, currentUserId(request), now()),
   }));
 
   app.post('/api/farm/:plot/harvest', async (request): Promise<HarvestBerriesResponse> => {
     const { plot } = plotParams.parse(request.params);
-    return { harvested: await harvestBerries(db, content, request.user!.id, now(), plot) };
+    return { harvested: await harvestBerries(db, content, currentUserId(request), now(), plot) };
   });
 }

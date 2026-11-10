@@ -11,7 +11,6 @@ import {
   pokemon,
   pokemonTags,
 } from '@poke/db';
-import type { Db } from '@poke/db';
 import {
   favoriteZoneInputSchema,
   startExpeditionInputSchema,
@@ -26,7 +25,6 @@ import type {
   PokedexFormEntryDto,
   PokemonDto,
 } from '@poke/shared';
-import type { ContentCache } from '../content-cache';
 import {
   cancelExpedition,
   claimExpedition,
@@ -39,23 +37,17 @@ import {
 } from '../game/expeditions';
 import { GameError } from '../game/errors';
 import { pokemonActivities, toExpeditionDto, toPokemonDto } from '../game/store';
-import type { sessionHooks } from '../plugins/session';
-
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
-}
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
 const uuidParams = z.object({ id: z.uuid() });
 
 /** Routes de jeu : toutes exigent une session ; le serveur décide de tous les résultats. */
-export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
+export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now }: RouteDeps) {
   app.addHook('preHandler', hooks.requireUser);
 
   app.get('/api/pokemon', async (request, reply) => {
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     // Combat terminé pendant l'absence du joueur : son équipe redevient disponible.
     await hooks.settleAll(userId);
     const [rows, busy] = await Promise.all([
@@ -79,7 +71,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
   app.patch('/api/pokemon/:id', async (request) => {
     const { id } = uuidParams.parse(request.params);
     const { locked, tagIds: requested } = updatePokemonInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const tagIds = requested && [...new Set(requested)];
     if (tagIds?.length) {
       const owned = await db
@@ -104,7 +96,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     const rows = await db
       .select()
       .from(pokedex)
-      .where(eq(pokedex.ownerId, request.user!.id))
+      .where(eq(pokedex.ownerId, currentUserId(request)))
       .orderBy(asc(pokedex.speciesId));
     return rows.map(({ ownerId: _, firstCaughtAt, ...r }) => ({
       ...r,
@@ -116,7 +108,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     const rows = await db
       .select()
       .from(pokedexForms)
-      .where(eq(pokedexForms.ownerId, request.user!.id))
+      .where(eq(pokedexForms.ownerId, currentUserId(request)))
       .orderBy(asc(pokedexForms.formId));
     return rows.map(({ ownerId: _, firstCaughtAt, ...r }) => ({
       ...r,
@@ -128,13 +120,13 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     db
       .select({ itemId: inventory.itemId, quantity: inventory.quantity })
       .from(inventory)
-      .where(and(eq(inventory.ownerId, request.user!.id), gt(inventory.quantity, 0)))
+      .where(and(eq(inventory.ownerId, currentUserId(request)), gt(inventory.quantity, 0)))
       .orderBy(asc(inventory.itemId)),
   );
 
   app.get('/api/expeditions', async (request): Promise<ExpeditionsResponse> => {
     const ctx = await content.get();
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const at = now();
     const [rows, slots, chains, [profile], roamers] = await Promise.all([
       db
@@ -188,7 +180,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
           ? sql`array_append(array_remove(${playerProfiles.favoriteZoneIds}, ${zoneId}), ${zoneId})`
           : sql`array_remove(${playerProfiles.favoriteZoneIds}, ${zoneId})`,
       })
-      .where(eq(playerProfiles.userId, request.user!.id))
+      .where(eq(playerProfiles.userId, currentUserId(request)))
       .returning({ favoriteZoneIds: playerProfiles.favoriteZoneIds });
     if (!updated) throw new GameError(409, 'NO_PROFILE');
     return updated;
@@ -199,7 +191,7 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
     const rows = await db
       .select()
       .from(expeditions)
-      .where(and(eq(expeditions.ownerId, request.user!.id), isNotNull(expeditions.claimedAt)))
+      .where(and(eq(expeditions.ownerId, currentUserId(request)), isNotNull(expeditions.claimedAt)))
       .orderBy(desc(expeditions.claimedAt))
       .limit(20);
     return rows.map((r) => toExpeditionDto(r));
@@ -207,20 +199,20 @@ export async function gameRoutes(app: FastifyInstance, { db, content, hooks, now
 
   app.post('/api/expeditions', async (request, reply) => {
     const input = startExpeditionInputSchema.parse(request.body);
-    const row = await startExpedition(db, content, request.user!.id, input, now());
-    hooks.invalidateSettle(request.user!.id);
+    const row = await startExpedition(db, content, currentUserId(request), input, now());
+    hooks.invalidateSettle(currentUserId(request));
     return reply.code(201).send(toExpeditionDto(row));
   });
 
   app.post('/api/expeditions/:id/cancel', async (request, reply) => {
     const { id } = uuidParams.parse(request.params);
-    await cancelExpedition(db, request.user!.id, id, now());
+    await cancelExpedition(db, currentUserId(request), id, now());
     return reply.code(204).send();
   });
 
   app.post('/api/expeditions/:id/claim', async (request): Promise<ClaimExpeditionResponse> => {
     const { id } = uuidParams.parse(request.params);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     await requireStartedProfile(db, userId);
     const { expedition, captured } = await claimExpedition(db, content, userId, id, now());
     return {

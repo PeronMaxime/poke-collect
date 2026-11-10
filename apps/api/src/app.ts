@@ -19,6 +19,7 @@ import { sessionHooks } from './plugins/session';
 import { betaProfileRoutes } from './beta-profiles';
 import { Monitoring, registerMonitoring, routeLabel } from './monitoring';
 import { registerRateLimits } from './rate-limit';
+import type { RouteDeps } from './routes/deps';
 import { adminRoutes } from './routes/admin';
 import { battleRoutes } from './routes/battles';
 import { legendaryRoutes } from './routes/legendary';
@@ -156,38 +157,33 @@ export async function buildApp({
   }));
   await app.register(spriteRoutes);
   await app.register(authRoutes, { auth });
-  await app.register(playerRoutes, { db, content, hooks, now });
+  const deps: RouteDeps = { db, content, hooks, now };
+  await app.register(playerRoutes, deps);
   await app.register(betaProfileRoutes, {
-    db,
-    content,
-    hooks,
-    now,
+    ...deps,
     secureCookie: env.authUrl.startsWith('https:'),
   });
-  await app.register(gameRoutes, { db, content, hooks, now });
-  await app.register(tagRoutes, { db, hooks });
-  await app.register(teamRoutes, { db, hooks });
-  await app.register(breedingRoutes, { db, content, hooks, now });
-  await app.register(museumRoutes, { db, content, hooks, now });
-  await app.register(centerRoutes, { db, content, hooks, now });
-  await app.register(farmRoutes, { db, content, hooks, now });
-  await app.register(assistantRoutes, { db, content, hooks, now });
-  await app.register(battleRoutes, { db, content, hooks, now });
-  await app.register(legendaryRoutes, { db, content, hooks, now });
-  await app.register(dungeonRoutes, { db, content, hooks, now });
-  await app.register(shopRoutes, { db, content, hooks, now });
-  await app.register(guildRoutes, { db, content, hooks, now });
-  await app.register(progressionRoutes, { db, content, hooks, now });
-  await app.register(leaderboardRoutes, { db, content, hooks });
-  await app.register(trainerRoutes, { db, content, hooks });
+  await app.register(gameRoutes, deps);
+  await app.register(tagRoutes, deps);
+  await app.register(teamRoutes, deps);
+  await app.register(breedingRoutes, deps);
+  await app.register(museumRoutes, deps);
+  await app.register(centerRoutes, deps);
+  await app.register(farmRoutes, deps);
+  await app.register(assistantRoutes, deps);
+  await app.register(battleRoutes, deps);
+  await app.register(legendaryRoutes, deps);
+  await app.register(dungeonRoutes, deps);
+  await app.register(shopRoutes, deps);
+  await app.register(guildRoutes, deps);
+  await app.register(progressionRoutes, deps);
+  await app.register(leaderboardRoutes, deps);
+  await app.register(trainerRoutes, deps);
   await app.register(pushRoutes, {
-    db,
-    hooks,
-    now,
+    ...deps,
     publicKey: env.vapid?.publicKey ?? null,
     send: push,
   });
-  await app.register(adminRoutes, { db, content, hooks, now, onContentPublished, monitoring });
-
+  await app.register(adminRoutes, { ...deps, onContentPublished, monitoring });
   return { app, auth, content, push, monitoring };
 }

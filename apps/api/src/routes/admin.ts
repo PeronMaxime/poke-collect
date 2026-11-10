@@ -17,7 +17,7 @@ import {
   saveDraftEntity,
   updateDraftBalance,
 } from '@poke/db';
-import type { ContentEntityType, ContentErrorCode, Db } from '@poke/db';
+import type { ContentEntityType, ContentErrorCode } from '@poke/db';
 import {
   adminTestItemsInputSchema,
   adminTestPokemonInputSchema,
@@ -42,7 +42,6 @@ import type {
   Paginated,
   TelemetryResponse,
 } from '@poke/shared';
-import type { ContentCache } from '../content-cache';
 import {
   completeTestQuests,
   deleteTestPokemon,
@@ -56,13 +55,10 @@ import {
 import { resetGuildQuests } from '../game/guilds';
 import { telemetry } from '../game/telemetry';
 import type { Monitoring } from '../monitoring';
-import type { sessionHooks } from '../plugins/session';
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
+interface AdminDeps extends RouteDeps {
   onContentPublished?: (() => Promise<void>) | undefined;
   monitoring: Monitoring;
 }
@@ -132,7 +128,7 @@ function versionDto(v: Awaited<ReturnType<typeof listContentVersions>>[number]):
 /** Routes /api/admin/* : toutes réservées au rôle admin, toutes les écritures sont journalisées. */
 export async function adminRoutes(
   app: FastifyInstance,
-  { db, content, hooks, now, onContentPublished, monitoring }: Deps,
+  { db, content, hooks, now, onContentPublished, monitoring }: AdminDeps,
 ) {
   app.addHook('preHandler', hooks.requireAdmin);
 
@@ -163,9 +159,12 @@ export async function adminRoutes(
   app.post('/api/admin/content/import', async (request, reply) => {
     const { label, content: data } = importContentInputSchema.parse(request.body);
     try {
-      const draft = await importContentAsDraft(db, data, { label, createdBy: request.user!.id });
+      const draft = await importContentAsDraft(db, data, {
+        label,
+        createdBy: currentUserId(request),
+      });
       await logAdminAction(db, {
-        adminId: request.user!.id,
+        adminId: currentUserId(request),
         action: 'content.import',
         entity: 'content_version',
         entityId: draft.id,
@@ -205,7 +204,7 @@ export async function adminRoutes(
       try {
         const { before } = await saveDraftEntity(db, id, route.type, parsed.data, mode);
         await logAdminAction(db, {
-          adminId: request.user!.id,
+          adminId: currentUserId(request),
           action: `content.${route.audit}.${mode}`,
           entity: route.audit,
           entityId: `v${id}/${entityKey}`,
@@ -227,7 +226,7 @@ export async function adminRoutes(
     try {
       const { before } = await deleteDraftEntity(db, id, route.type, typedKey);
       await logAdminAction(db, {
-        adminId: request.user!.id,
+        adminId: currentUserId(request),
         action: `content.${route.audit}.delete`,
         entity: route.audit,
         entityId: `v${id}/${key}`,
@@ -245,9 +244,9 @@ export async function adminRoutes(
       return reply.code(400).send({ error: 'VALIDATION', issues: parsed.error.issues });
     }
     try {
-      const draft = await createDraft(db, { ...parsed.data, createdBy: request.user!.id });
+      const draft = await createDraft(db, { ...parsed.data, createdBy: currentUserId(request) });
       await logAdminAction(db, {
-        adminId: request.user!.id,
+        adminId: currentUserId(request),
         action: 'content.draft.create',
         entity: 'content_version',
         entityId: draft.id,
@@ -268,7 +267,7 @@ export async function adminRoutes(
     try {
       const { before } = await updateDraftBalance(db, id, parsed.data);
       await logAdminAction(db, {
-        adminId: request.user!.id,
+        adminId: currentUserId(request),
         action: 'content.balance.update',
         entity: 'balance_settings',
         entityId: id,
@@ -287,7 +286,7 @@ export async function adminRoutes(
       const { published, archivedId } = await publishDraft(db, id);
       content.invalidate();
       await logAdminAction(db, {
-        adminId: request.user!.id,
+        adminId: currentUserId(request),
         action: 'content.publish',
         entity: 'content_version',
         entityId: id,
@@ -309,7 +308,7 @@ export async function adminRoutes(
       const version = await getContentVersion(db, id);
       await discardDraft(db, id);
       await logAdminAction(db, {
-        adminId: request.user!.id,
+        adminId: currentUserId(request),
         action: 'content.draft.discard',
         entity: 'content_version',
         entityId: id,
@@ -359,7 +358,7 @@ export async function adminRoutes(
       now(),
     );
     await logAdminAction(db, {
-      adminId: request.user!.id,
+      adminId: currentUserId(request),
       action: 'player.test_pokemon',
       entity: 'user',
       entityId: userId,
@@ -379,7 +378,7 @@ export async function adminRoutes(
       input,
     );
     await logAdminAction(db, {
-      adminId: request.user!.id,
+      adminId: currentUserId(request),
       action: 'player.test_items',
       entity: 'user',
       entityId: userId,
@@ -398,7 +397,7 @@ export async function adminRoutes(
       now(),
     );
     await logAdminAction(db, {
-      adminId: request.user!.id,
+      adminId: currentUserId(request),
       action: 'player.test_trainers',
       entity: 'user',
       entityId: userId,
@@ -417,7 +416,7 @@ export async function adminRoutes(
       now(),
     );
     await logAdminAction(db, {
-      adminId: request.user!.id,
+      adminId: currentUserId(request),
       action: 'player.test_quests',
       entity: 'user',
       entityId: userId,
@@ -431,7 +430,7 @@ export async function adminRoutes(
     const { userId } = z.object({ userId: z.string().min(1).max(64) }).parse(request.params);
     const result: AdminTestPokemonDeleteResponse = await deleteTestPokemon(db, userId);
     await logAdminAction(db, {
-      adminId: request.user!.id,
+      adminId: currentUserId(request),
       action: 'player.test_pokemon_delete',
       entity: 'user',
       entityId: userId,
@@ -448,7 +447,7 @@ export async function adminRoutes(
       now(),
     );
     await logAdminAction(db, {
-      adminId: request.user!.id,
+      adminId: currentUserId(request),
       action: 'guild_quests.reset',
       entity: 'guild_quest',
       entityId: 'current',
