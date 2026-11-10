@@ -80,7 +80,7 @@ web   LaunchExpeditionDialog          écran : choix de la zone, de l'équipe, d
 api   routes/game.ts                  1. valide l'entrée (schéma Zod de @poke/shared)
         │                             2. appelle le module de jeu
         ▼
-      game/expeditions/start.ts           startExpedition()
+      game/expeditions/start.ts       startExpedition()
         │   content.get()             contenu publié, en mémoire (ContentCache)
         │   playerTransaction()       transaction + verrou du joueur (game/tx.ts)
         │   checkTeam(), …            règles : fonctions pures de @poke/game-core
@@ -242,7 +242,7 @@ processus.
 | Règles du jeu                     | `packages/game-core/src/*.test.ts` | Fonctions pures, contenu de test                      |
 | Non-régression « à graine égale » | `game-core/src/golden.test.ts`     | Empreintes de 800 résultats                           |
 | Contenu et cohérence              | `packages/content/src/*.test.ts`   | Le contenu de test doit être valide et publiable      |
-| API                               | `apps/api/src/*.test.ts`           | Vraie application, PGlite en mémoire, horloge avancée |
+| API                               | `apps/api/test/**/*.test.ts`       | Vraie application, PGlite en mémoire, horloge avancée |
 | Actions simultanées               | `apps/api/src/concurrency.test.ts` | Vrai Postgres (`TEST_DATABASE_URL`, en CI)            |
 | Écrans du jeu                     | `apps/web/test/*.test.tsx`         | jsdom contre la vraie API en mémoire                  |
 | Pages de l'admin                  | `apps/admin/test/*.test.tsx`       | Idem, avec un compte administrateur                   |
