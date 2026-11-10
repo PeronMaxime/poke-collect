@@ -43,7 +43,7 @@ import { chestEntries, guildChestItems, guildQuests } from './seed-guilds';
 
 /**
  * Contenu de test, importé en base au premier lancement (version 1, publiée).
- * Tout reste modifiable ensuite dans le panneau d'admin. Valeurs : PLAN.md, section 7.
+ * Tout reste modifiable ensuite dans le panneau d'admin. Valeurs : docs/plans/PLAN.md, section 7.
  */
 
 const loot = (itemId: string, chance: number, min = 1, max = min): LootEntry => ({
@@ -116,7 +116,7 @@ const article = (
 /** Une Honor Ball offerte toutes les 10 Poké Balls achetées d'un coup (comme dans les jeux). */
 const pokeBallGift = { itemId: 'premier-ball', every: 10, quantity: 1 };
 
-/** Prix : PLAN.md, section 7. Super / Hyper Balls débloquées par les badges Roche et Cascade. */
+/** Prix : docs/plans/PLAN.md, section 7. Super / Hyper Balls débloquées par les badges Roche et Cascade. */
 const shopEntries: ShopEntry[] = [
   article('poke-ball', 'poke-ball', 'balls', 0, 200, { gift: pokeBallGift }),
   article('poke-ball-x10', 'poke-ball', 'balls', 1, 1800, { lotSize: 10, gift: pokeBallGift }),
@@ -866,7 +866,7 @@ function fossilItems(): SeedItem[] {
   ];
 }
 
-/** Objets endgame (PLAN.md, section 2.7) : Capsules, Aromates, Pilule et Patch Talent. */
+/** Objets endgame (docs/plans/PLAN.md, section 2.7) : Capsules, Aromates, Pilule et Patch Talent. */
 function endgameItems(): SeedItem[] {
   const item = (
     id: string,

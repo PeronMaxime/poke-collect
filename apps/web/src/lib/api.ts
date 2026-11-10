@@ -40,7 +40,7 @@ let lastBurstWarning = 0;
 
 /**
  * Développement seulement : avertit au-delà de 20 requêtes en 5 s, pour repérer tout retour à
- * une action qui recharge tout (voir PLAN-STABILITE.md, phase B).
+ * une action qui recharge tout (voir docs/plans/PLAN-STABILITE.md, phase B).
  */
 function countRequest(path: string) {
   if (!import.meta.env.DEV) return;

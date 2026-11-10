@@ -1,6 +1,6 @@
 # Dexpedition
 
-Jeu web idle de collection Pokémon. Voir [PLAN.md](PLAN.md) pour la vision, l'architecture et la roadmap.
+Jeu web idle de collection Pokémon, en ligne sur [dexpedition.fr](https://dexpedition.fr).
 
 > Projet de fan non commercial. Pokémon © Nintendo / Creatures / Game Freak. Données : [PokéAPI](https://pokeapi.co).
 
@@ -12,7 +12,7 @@ Jeu web idle de collection Pokémon. Voir [PLAN.md](PLAN.md) pour la vision, l'a
 
 ## Démarrage
 
-> Guide détaillé, avec les explications et les problèmes fréquents : [DEMARRAGE.md](DEMARRAGE.md).
+> Guide détaillé, avec les explications et les problèmes fréquents : [docs/DEMARRAGE.md](docs/DEMARRAGE.md).
 
 ```sh
 pnpm install
@@ -47,6 +47,8 @@ pnpm dev
 | `pnpm dev`                                     | API + jeu + admin en mode watch                                                                         |
 | `pnpm test`                                    | Tests Vitest de tous les paquets (la base de test est un PGlite en mémoire)                             |
 | `pnpm lint` / `pnpm format` / `pnpm typecheck` | Qualité du code                                                                                         |
+| `pnpm deadcode`                                | Code mort : exports, fichiers et dépendances inutilisés (knip)                                          |
+| `pnpm test:coverage`                           | Les tests, avec la part de code couverte                                                                |
 | `pnpm build`                                   | Build des fronts                                                                                        |
 | `pnpm import:pokeapi [--gens 1,2,3,4]`         | Régénère `packages/data/generated` depuis PokéAPI (cache disque dans `scripts/import-pokeapi/.cache`)   |
 | `pnpm sprites:download [--force]`              | Télécharge les images (Pokémon, objets, dresseurs) dans `apps/api/sprites`, servies sous `/api/sprites` |
@@ -58,55 +60,39 @@ pnpm dev
 
 ```
 apps/
-  api/         Fastify + Better Auth ; routes joueur (/api/*) et admin (/api/admin/*, rôle vérifié côté serveur)
-  web/         Jeu (React + Vite + Tailwind + TanStack Query)
-  admin/       Panneau d'administration (même stack + React Router)
+  api/         Le serveur : Fastify, Better Auth, Drizzle ; routes du jeu (/api/*) et de l'admin (/api/admin/*)
+  web/         Le jeu : React, Vite, Tailwind, TanStack Query
+  admin/       Le panneau d'administration : même pile, avec React Router
 packages/
-  game-core/   Logique pure : RNG seedé, stats et PE, capture, pitié, expéditions, simulateur de zone
-  data/        Données PokéAPI importées (JSON) + types + URLs des sprites
-  content/     Schémas Zod du contenu configurable + contenu de test (seed)
-  db/          Schéma Drizzle, migrations, contenu versionné (brouillon / publié), journal d'admin
-  shared/      Schémas et types de l'API
-scripts/
-  import-pokeapi/
+  game-core/   Les règles du jeu, en fonctions pures (hasard à graine, sans base ni réseau)
+  content/     Schémas du contenu réglable dans l'admin, cohérence, contenu de test
+  data/        Données PokéAPI importées (JSON), types, adresses des sprites
+  db/          Schéma Drizzle, migrations, contenu versionné, journal d'admin
+  shared/      Contrat de l'API : schémas des entrées, types des réponses
+scripts/       Import PokéAPI et sprites, scénario de charge
+content/       Instantané du contenu publié (game-content.json)
+deploy/        Scripts et configuration du serveur de production
+docs/          Documentation
 ```
 
-## Contenu versionné
+Chaque dossier de `apps/` et de `packages/` a son `README.md` : rôle, points d'entrée, où
+ajouter quoi.
 
-- Le contenu (équilibrage, régions, surcharges d'espèces, objets, tables de butin, zones… puis quêtes) est stocké en base, rattaché à une `content_version`.
-- Une seule version **publiée** (celle que voient les joueurs) et au plus un **brouillon**.
-- Créer un brouillon copie la version publiée ; le publier archive l'ancienne version. Restaurer une version archivée = créer un brouillon à partir d'elle, puis le publier.
-- Chaque nouvelle table de contenu doit être ajoutée à `versionedContentTables` (`packages/db/src/schema/content.ts`) pour être copiée avec les brouillons.
-- L'API garde le contenu publié en cache mémoire et l'invalide à chaque publication.
-- La publication exige un contenu cohérent (références entre zones, régions, objets, tables de butin…). Les erreurs et avertissements s'affichent dans le tableau de bord de l'admin.
-- Une expédition enregistre la version active à son départ : elle est résolue avec ce contenu-là, même si une nouvelle version est publiée entre-temps.
-- **Instantané versionné** : `content/game-content.json` contient le contenu publié. Hors production, l'API le réécrit au démarrage (migrations de contenu comprises) et à chaque publication (`CONTENT_SNAPSHOT_WRITE=0` pour désactiver, `CONTENT_SNAPSHOT_PATH` pour le déplacer). Une base neuve, dont celle de production, part de ce fichier ; le seed (`packages/content`) ne sert que s'il est absent. Les migrations de contenu sont ciblées (champs modifiés, ajouts sans écrasement) pour préserver les réglages faits dans l'admin.
-- Le tableau de bord permet d'exporter / importer le contenu en JSON, et de recharger le contenu de test dans un brouillon (utile pour une base créée avant la phase 1, qui n'a ni zones ni objets).
+## Documentation
 
-## Boucle de jeu (phase 1)
+**Par où commencer** : [ARCHITECTURE](docs/ARCHITECTURE.md), puis le
+[GLOSSAIRE](docs/GLOSSAIRE.md) au fil de la lecture du code.
 
-1. Le joueur choisit un starter parmi ceux de la première région, et reçoit l'inventaire de départ.
-2. `POST /api/expeditions` : le serveur vérifie la zone (déblocage, PE minimale, types requis), réserve une Ball (et une baie) par rencontre, puis enregistre un seed.
-3. `POST /api/expeditions/:id/claim` : une fois la durée écoulée, `game-core` calcule le résultat (rencontres, captures, pitié, butin, XP) à partir du seed, et le serveur l'applique en une transaction.
-
-## Élevage (phase 2)
-
-1. `POST /api/daycare` : le joueur dépose deux Pokémon compatibles (même groupe d'œufs et sexes opposés, ou un Métamorph ; jamais le groupe `no-eggs`, sauf surcharge « élevable » dans l'admin). Les objets tenus (Nœud Destin, Pierre Stase…) sont réservés dans l'inventaire et rendus au retrait. Les parents sont occupés, comme en expédition.
-2. Le couple pond un œuf toutes les `breeding.eggMinutes` minutes, calculé paresseusement depuis `started_at`. `POST /api/daycare/:slot/collect` place les œufs dans la couveuse (capacité `breeding.maxEggs`) ; ceux qui n'y tiennent pas restent en attente dans la pension (jusqu'à `breeding.maxEggs`), qui arrête de pondre une fois pleine et reprend au ramassage.
-3. Chaque œuf fige ses parents, la version de contenu et un seed. Il éclot après `hatch_counter × breeding.hatchMinutesPerCounter` minutes : `POST /api/eggs/hatch` calcule le bébé avec `game-core` (forme de base de la mère, IV hérités, nature, talent caché).
-4. `POST /api/pokemon/transfer` échange des Pokémon (ni favoris, ni occupés) contre des Bonbons de lignée (une lignée = une chaîne d'évolution PokéAPI) ; `POST /api/pokemon/:id/candies` les convertit en XP.
-
-## Combats de dresseurs (phase 3)
-
-1. `POST /api/battles` : le serveur vérifie que le dresseur est débloqué (région + condition : % du Pokédex, dresseur battu, nombre de badges, ou plusieurs de ces conditions à la fois) et disponible (pas déjà battu s'il est unique, pas en recharge s'il est répétable), que l'équipe respecte ses conditions (nombre, niveau max, types imposés / interdits, PE minimale) et que chaque Pokémon est **disponible** : ni occupé (expédition, combat, pension), ni K.O. Cette vérification est commune aux trois activités.
-2. `POST /api/battles/:id/claim` : `game-core` calcule la probabilité de victoire (PE du joueur corrigée par l'avantage de types, rapportée à la PE du dresseur, sur une sigmoïde bornée) puis tire le résultat avec le seed. Victoire : Poké Dollars, butin, XP, bonheur, badge à la première victoire. Défaite : une fraction de l'XP, et l'équipe est K.O. (`pokemon.ko_until`) pendant la durée réglée.
-3. La table des types vient de PokéAPI (`type.damage_relations`, dans `packages/data/generated/types.json`).
-
-## Expansion (phase 8)
-
-- **Régions** : l'import PokéAPI couvre toutes les générations par défaut (1025 espèces ; `--gens` pour en limiter le nombre). Le contenu de test enchaîne Kanto, Johto, Hoenn, Sinnoh, Unys, Kalos, Alola, Galar, Hisui (espèces propres et espèces à forme de Hisui) et Paldea, chacune débloquée par 50 % du Pokédex de la précédente. Les espèces sans habitat PokéAPI (Gén. IV+) reçoivent un habitat maison déduit des espèces proches (types, forme, couleur), marqué « déduit » et surchargeable dans l'admin (Espèces).
-- **Formes** (`packages/data/generated/forms.json`, champ `kind`) : toutes les variétés PokéAPI (régionales, alternatives, Méga-Évolutions, Primo-Résurgences, Gigamax, formes de combat, Pokémon Dominants) et les formes d'apparence (Zarbi, Prismillon, Charmilly… ; identifiant = 100 000 + identifiant `pokemon-form`). Une forme remplace les types, statistiques et talents de l'espèce et a ses propres sprites (`pokemonSprite`) ; elle s'indique sur les rencontres, les dresseurs et les Pokémon offerts par les quêtes. Les Méga et Gigamax sont des formes à collectionner (Tour Maîtrise à Kalos, Antre Dynamax à Galar), sans transformation en jeu. Le Pokédex reste par espèce.
-- **Évolutions et formes** : les conditions PokéAPI propres à une forme sont respectées (Miaouss d'Alola évolue par le bonheur, Miaouss de Galar en Berserkatt) et une évolution peut mener à une forme précise, au choix du joueur (Pikachu → Raichu ou Raichu d'Alola). Sinon, la forme suit son suffixe (Sancoki Orient → Tritosor Orient) ; une forme régionale sans équivalent, une Méga, un Gigamax ou une forme de combat n'évolue pas. Les surcharges de l'admin remplacent l'évolution générale vers une espèce, pas les évolutions propres à une forme. L'œuf prend la forme de la mère.
-- **PWA** : `apps/web/public/manifest.webmanifest` et `sw.js` (jeu installable, cache des sprites, page hors ligne). L'onglet « Réglages » du jeu propose l'installation et les notifications.
-- **Notifications Web Push** : une tournée périodique de l'API (`PUSH_INTERVAL_SECONDS`, 60 s par défaut) prévient les joueurs abonnés quand une expédition ou un combat est terminé, ou qu'un œuf est prêt à éclore (une notification groupée, chaque élément une seule fois). Clés VAPID : `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` (sinon, en dev, une paire générée dans `.data/vapid.json`).
-- **Télémétrie** (admin → Télémétrie) : temps de complétion des étapes du parcours (première expédition, régions, badges, paliers, quêtes) et goulets (dresseurs où les joueurs restent bloqués, étapes de quête, zones délaissées), activité et économie. Tout est déduit des tables de jeu.
+| Document                                                     | Pour                                                                  |
+| ------------------------------------------------------------ | --------------------------------------------------------------------- |
+| [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md)                 | Comprendre le projet : paquets, trajet d'une action, contenu, tests   |
+| [docs/GLOSSAIRE.md](docs/GLOSSAIRE.md)                       | Retrouver dans le code une notion du jeu (PE, pitié, fuyard…)         |
+| [docs/RECETTES.md](docs/RECETTES.md)                         | Ajouter une route, un champ de contenu, une migration, un onglet…     |
+| [docs/DECISIONS.md](docs/DECISIONS.md)                       | Savoir pourquoi c'est fait ainsi avant d'y toucher                    |
+| [docs/DEMARRAGE.md](docs/DEMARRAGE.md)                       | Lancer le projet en local, et les problèmes fréquents                 |
+| [docs/MISE-A-JOUR.md](docs/MISE-A-JOUR.md)                   | Mettre une nouvelle version en production                             |
+| [docs/INSTALLATION-SERVEUR.md](docs/INSTALLATION-SERVEUR.md) | Installer le serveur de production (une seule fois)                   |
+| [docs/MISE-EN-PRODUCTION.md](docs/MISE-EN-PRODUCTION.md)     | La liste de ce qui a été fait pour ouvrir le jeu                      |
+| [docs/SURCHARGE.md](docs/SURCHARGE.md)                       | Que faire si le serveur sature                                        |
+| [docs/plans/](docs/plans)                                    | Les plans du projet : vision d'origine, stabilité, qualité du code    |
+| [CLAUDE.md](CLAUDE.md)                                       | Les conventions et les pièges, en une page (aussi lu par Claude Code) |

@@ -1,7 +1,7 @@
 # Scénario de charge
 
 Rejoue une session type de plusieurs joueurs en parallèle contre une API lancée, et mesure les
-durées, les refus 429 et les erreurs 5xx (phase F de `PLAN-STABILITE.md`). Sans dépendance : Node 22
+durées, les refus 429 et les erreurs 5xx (phase F de `docs/plans/PLAN-STABILITE.md`). Sans dépendance : Node 22
 suffit.
 
 **Ne jamais le lancer contre la production** : il crée des comptes, des Pokémon de test et supprime

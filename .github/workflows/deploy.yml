@@ -1,8 +1,8 @@
-# Déploiement automatique sur le VPS après une CI réussie sur main (voir MISE-A-JOUR.md).
+# Déploiement automatique sur le VPS après une CI réussie sur main (voir docs/MISE-A-JOUR.md).
 # Inactif tant que la variable du dépôt DEPLOY_ENABLED ne vaut pas « true »
 # (GitHub → Settings → Secrets and variables → Actions → Variables).
 # Secrets nécessaires : DEPLOY_HOST, DEPLOY_USER, DEPLOY_SSH_KEY, DEPLOY_KNOWN_HOSTS
-# (voir INSTALLATION-SERVEUR.md, étape « Déploiement automatique »).
+# (voir docs/INSTALLATION-SERVEUR.md, étape « Déploiement automatique »).
 name: Déploiement
 
 on:

@@ -53,7 +53,7 @@ export default tseslint.config(
         { considerDefaultExhaustiveForUnions: true },
       ],
       // Dette visible : avertissements plafonnés par `pnpm lint` (--max-warnings), le plafond ne
-      // peut que baisser (voir PLAN-QUALITE.md).
+      // peut que baisser (voir docs/plans/PLAN-QUALITE.md).
       'max-lines-per-function': ['warn', { max: 150, skipBlankLines: true, skipComments: true }],
       complexity: ['warn', 40],
     },

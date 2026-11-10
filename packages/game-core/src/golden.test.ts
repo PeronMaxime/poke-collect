@@ -13,7 +13,7 @@ import type { Rng } from './rng';
 import { member, testContext } from './test-helpers';
 
 /**
- * Tests « à graine égale » (PLAN-QUALITE.md, étape 0.2).
+ * Tests « à graine égale » (docs/plans/PLAN-QUALITE.md, étape 0.2).
  *
  * Toute la logique de jeu est pilotée par une graine : à entrées égales, le résultat est le même
  * au bit près. Ces tests rejouent quelques centaines de situations tirées au hasard (zones,
@@ -29,7 +29,7 @@ import { member, testContext } from './test-helpers';
 
 const ctx = testContext();
 const STARTED_AT = new Date('2026-10-07T12:00:00Z');
-/** Dernière espèce du contenu de test (générations I à IV). */
+/** Les équipes sont tirées parmi les espèces des générations I à IV. */
 const MAX_SPECIES = 493;
 const NATURES = ['hardy', 'adamant', 'modest', 'jolly', 'timid', 'bold', 'calm'];
 const ABILITIES = ['none', ...ctx.content.abilities.map((a) => a.id)];

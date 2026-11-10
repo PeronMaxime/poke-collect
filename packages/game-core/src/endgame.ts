@@ -7,7 +7,7 @@ import type { Rng } from './rng';
 import type { PokemonInstance } from './pokemon';
 
 /**
- * Objets utilisés sur un Pokémon (PLAN.md, section 2.7) : Capsules (IV à 31), Aromates (nature
+ * Objets utilisés sur un Pokémon (docs/plans/PLAN.md, section 2.7) : Capsules (IV à 31), Aromates (nature
  * effective), Pilule et Patch Talent (talent), Baie Grena (bonheur), Super Bonbon (niveau). L'objet
  * est consommé.
  */

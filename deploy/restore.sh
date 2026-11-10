@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Restaure la base de production depuis une sauvegarde de backup.sh (voir MISE-A-JOUR.md).
+# Restaure la base de production depuis une sauvegarde de backup.sh (voir docs/MISE-A-JOUR.md).
 # Tout ce qui a été joué ou modifié depuis cette sauvegarde est PERDU.
 #
 # Usage : deploy/restore.sh <fichier.sql.gz>

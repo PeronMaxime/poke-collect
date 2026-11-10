@@ -41,7 +41,7 @@ import type {
 } from '@poke/shared';
 
 /**
- * Télémétrie d'équilibrage (PLAN.md, phase 8) : temps de complétion des étapes du parcours et
+ * Télémétrie d'équilibrage (docs/plans/PLAN.md, phase 8) : temps de complétion des étapes du parcours et
  * goulets (dresseurs trop durs, étapes de quête où les joueurs restent bloqués, zones délaissées).
  * Tout est déduit des tables de jeu existantes : aucun événement supplémentaire n'est enregistré.
  */

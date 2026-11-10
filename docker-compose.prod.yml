@@ -1,4 +1,4 @@
-# Production sur le VPS (voir MISE-EN-PRODUCTION.md) :
+# Production sur le VPS (voir docs/MISE-EN-PRODUCTION.md) :
 #   docker compose -f docker-compose.prod.yml up -d --build
 # Les réglages viennent du fichier .env à côté de ce fichier (modèle : .env.production.example).
 
@@ -17,7 +17,7 @@ services:
     restart: unless-stopped
     logging: *logging
     # Surveillance : requêtes de plus de 500 ms dans les journaux, et statistiques par requête
-    # (pg_stat_statements, voir SURCHARGE.md 1.4). Les réglages de mémoire (1.5) s'ajoutent ici.
+    # (pg_stat_statements, voir docs/SURCHARGE.md 1.4). Les réglages de mémoire (1.5) s'ajoutent ici.
     command:
       - postgres
       - -c

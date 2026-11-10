@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Met la production à jour (voir MISE-A-JOUR.md) : récupère le code sur GitHub, sauvegarde la
+# Met la production à jour (voir docs/MISE-A-JOUR.md) : récupère le code sur GitHub, sauvegarde la
 # base, reconstruit les images, redémarre, puis vérifie que l'API répond.
 #
 # Usage : deploy/deploy.sh [version]

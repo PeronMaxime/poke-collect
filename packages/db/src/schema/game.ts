@@ -39,7 +39,7 @@ import type {
 } from '@poke/game-core';
 import { contentVersions } from './content';
 
-/** État des joueurs (première ébauche, PLAN.md section 4.4). */
+/** État des joueurs (première ébauche, docs/plans/PLAN.md section 4.4). */
 
 const ownerId = () =>
   text('owner_id')

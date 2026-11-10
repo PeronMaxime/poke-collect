@@ -1,4 +1,4 @@
-# Images de production (voir MISE-EN-PRODUCTION.md), construites par docker-compose.prod.yml :
+# Images de production (voir docs/MISE-EN-PRODUCTION.md), construites par docker-compose.prod.yml :
 #  - api   : l'API Node (Fastify, lancée avec tsx comme en développement) ;
 #  - caddy : le serveur web (HTTPS automatique) avec les pages du jeu et de l'admin, et les sprites.
 

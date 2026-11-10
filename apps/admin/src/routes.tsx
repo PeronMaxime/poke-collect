@@ -29,7 +29,7 @@ import { CURRENT_PHASE, SECTIONS } from './sections';
 
 /**
  * Pages de l'admin : tout passe par `AdminGate` (rôle vérifié par le serveur) puis `Layout` (menu).
- * Les sections des phases à venir de PLAN.md affichent un emplacement réservé.
+ * Les sections des phases à venir de docs/plans/PLAN.md affichent un emplacement réservé.
  */
 export const routes: RouteObject[] = [
   {

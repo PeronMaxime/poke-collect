@@ -183,29 +183,42 @@ Rien n'est découpé avant que cette phase soit en place.
 
 Faite tôt : elle fixe le vocabulaire et les règles que les phases suivantes appliquent.
 
-- [ ] **1.1 `docs/ARCHITECTURE.md`** : schéma des paquets et de qui dépend de qui ; trajet d'une
+- [x] **1.1 `docs/ARCHITECTURE.md`** : schéma des paquets et de qui dépend de qui ; trajet d'une
       action du joueur (écran → `api()` → route → `playerTransaction` → `game-core` → base → DTO) ;
       contenu versionné (brouillon, publication, instantané, cache) ; rattrapage à la connexion
       (`PlayerSettler`) ; horloge et hasard injectables ; ce qui tourne en tâche de fond.
-- [ ] **1.2 `docs/GLOSSAIRE.md`** : chaque terme du jeu et son nom dans le code (PE, pitié, chaîne
+- [x] **1.2 `docs/GLOSSAIRE.md`** : chaque terme du jeu et son nom dans le code (PE, pitié, chaîne
       chromatique, fuyard, assistant, poste, palier, complétion, instantané…).
-- [ ] **1.3 `docs/RECETTES.md`**, pas à pas avec les pièges déjà rencontrés : ajouter un champ de
+- [x] **1.3 `docs/RECETTES.md`**, pas à pas avec les pièges déjà rencontrés : ajouter un champ de
       contenu (et l'instantané), écrire une migration de schéma puis de données, ajouter une route,
       un onglet, un effet d'objet, un talent, une région ; mettre en production et tenir le journal
       des nouveautés.
-- [ ] **1.4 `docs/DECISIONS.md`** : les choix structurants et leur raison (PGlite en local, `tsx`
+- [x] **1.4 `docs/DECISIONS.md`** : les choix structurants et leur raison (PGlite en local, `tsx`
       en production, un seul processus, contenu en base comme source de vérité, verrou par joueur,
       PWA écrite à la main, TypeScript 6.0).
-- [ ] **1.5 Rangement des guides** : `DEMARRAGE`, `INSTALLATION-SERVEUR`, `MISE-A-JOUR`,
+- [x] **1.5 Rangement des guides** : `DEMARRAGE`, `INSTALLATION-SERVEUR`, `MISE-A-JOUR`,
       `MISE-EN-PRODUCTION`, `SURCHARGE` et les plans passent dans `docs/` (liens mis à jour) ;
       le `README.md` devient la porte d'entrée : démarrage en 5 lignes, puis sommaire. Sa section
       « Boucle de jeu (phase 1) », dépassée, est remplacée par un renvoi à l'architecture.
-- [ ] **1.6 `CLAUDE.md`** à la racine : conventions, commandes, pièges (un seul processus sur
+- [x] **1.6 `CLAUDE.md`** à la racine : conventions, commandes, pièges (un seul processus sur
       PGlite, instantané de contenu, migrations ciblées), pour que les prochaines séances
       assistées suivent les mêmes règles sans avoir à les redire.
-- [ ] **1.7 Un `README.md` court par paquet et par application** : rôle, points d'entrée, ce qu'il
+- [x] **1.7 Un `README.md` court par paquet et par application** : rôle, points d'entrée, ce qu'il
       a le droit d'importer, où ajouter quoi.
 - **But** : quelqu'un qui ouvre le dépôt sait en une heure où est chaque chose et pourquoi.
+
+- **Réalisé** le 10 novembre (écarts avec le plan) :
+  - 1.1 : `docs/ARCHITECTURE.md`. La section 10 liste ce qui vit dans la mémoire du serveur et ce
+    qu'il faudrait changer pour lancer plusieurs processus (préparation de l'étape 4.4).
+  - 1.5 : guides dans `docs/`, plans dans `docs/plans/` (ce fichier compris), renvois mis à jour
+    dans le code, les scripts de déploiement et la CI. Les sections du `README` qui décrivaient
+    les phases 1 à 8 du plan d'origine, en partie dépassées, sont remplacées par le sommaire de la
+    documentation ; ce qui restait vrai est repris dans l'architecture et les `README` des
+    paquets.
+  - 1.7 : huit `README.md` (trois applications, cinq paquets). Ils décrivent l'organisation
+    **actuelle** : à tenir à jour à chaque découpage des phases 2 à 6, puis relus en 7.2.
+  - Les documents citent des fichiers et des fonctions par leur nom : chaque nom a été vérifié
+    dans le code au moment de l'écriture.
 
 ### Phase 2 : Paquets partagés (`shared`, `content`, `db`) (M)
 
@@ -350,7 +363,7 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
 | Fichiers de tests : jeu / admin                      |                       1 / 0 | un par onglet et par page |       |
 | Appels `api()` dans les écrans                       |                          91 | 0                         |       |
 | Exports et fichiers inutilisés                       |    45 (0 depuis la phase 0) | 0                         |       |
-| Documents d'architecture                             |                           0 | 4 + un README par paquet  |       |
+| Documents d'architecture (fait en phase 1)           |                           0 | 4 + un README par paquet  |       |
 | Avertissements de longueur ou de complexité (ESLint) |                          97 | moins de 15               |       |
 | JavaScript de l'admin (compressé)                    |                      510 Ko | moins de 250 Ko           |       |
 | Durée de `pnpm test`                                 | 31 s (49 s avec les écrans) | sans dérive               |       |
@@ -386,7 +399,7 @@ gain visible tout de suite.
 - Toute nouvelle fonctionnalité, tout changement d'équilibrage ou de contenu.
 - Refonte graphique, accessibilité, traduction du jeu.
 - Lancer réellement plusieurs processus d'API ou sortir la base du serveur
-  ([SURCHARGE.md](SURCHARGE.md), 2.1 et 3.x) : le plan se limite à isoler et documenter ce qui
+  ([SURCHARGE.md](../SURCHARGE.md), 2.1 et 3.x) : le plan se limite à isoler et documenter ce qui
   l'empêche aujourd'hui.
 - Compiler l'API avant le démarrage au lieu de la lancer avec `tsx` (SURCHARGE.md, 2.2).
 - Fusionner les 139 migrations en une base de départ : possible plus tard, mais risqué pour un
