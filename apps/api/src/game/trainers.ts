@@ -1,10 +1,3 @@
-/**
- * Fiches Dresseur des autres joueurs : recherche par nom, fiche, Pokédex ; vitrine de sa propre
- * fiche.
- *
- * Seuls les dresseurs qui ont choisi leur starter sont visibles. Ces lectures ne prennent aucun
- * verrou : elles montrent l'état du moment d'un autre joueur.
- */
 import { and, asc, eq, inArray, isNotNull, like, sql } from 'drizzle-orm';
 import { playerProfiles, pokedex, pokemon } from '@poke/db';
 import type { Db } from '@poke/db';
@@ -18,9 +11,16 @@ import type {
 } from '@poke/shared';
 import { GameError } from './errors';
 import { displayedFavorite, favoriteColumns } from './favorite';
-import { listPokedex, listPokedexForms } from './pokedex';
+import { listPokedex, listPokedexForms, playerProgress } from './store';
 import { featuredPokemon, trainerCard } from './stats';
-import { playerProgress } from './store';
+
+/**
+ * Fiches Dresseur des autres joueurs : recherche par nom, fiche, Pokédex ; vitrine de sa propre
+ * fiche.
+ *
+ * Seuls les dresseurs qui ont choisi leur starter sont visibles. Ces lectures ne prennent aucun
+ * verrou : elles montrent l'état du moment d'un autre joueur.
+ */
 
 /** Résultats de recherche affichés au plus. */
 const SEARCH_LIMIT = 10;

@@ -1,13 +1,3 @@
-/**
- * Profil du joueur : création (nom de dresseur) et choix des starters.
- *
- * Un compte n'a qu'un profil, et un nom de dresseur n'est pris qu'une fois (sans tenir compte de
- * la casse ; un index unique en base tranche deux créations simultanées). La région de départ est
- * la première du contenu publié. Le starter de cette région donne aussi l'inventaire et l'argent
- * de départ (`balance.newPlayer`) ; chaque région suivante offre le sien une fois débloquée. Le
- * choix se fait dans `playerTransaction`, et la mise à jour du profil ne passe que si aucun starter
- * n'y figure encore : deux choix simultanés n'en donnent qu'un.
- */
 import { eq, sql } from 'drizzle-orm';
 import { playerProfiles } from '@poke/db';
 import type { Db } from '@poke/db';
@@ -24,6 +14,17 @@ import { newSeed } from './expeditions';
 import { chosenFavorite } from './favorite';
 import { addItems, insertPokemon, playerProgress, recordPokedex, toPokemonDto } from './store';
 import { playerTransaction } from './tx';
+
+/**
+ * Profil du joueur : création (nom de dresseur) et choix des starters.
+ *
+ * Un compte n'a qu'un profil, et un nom de dresseur n'est pris qu'une fois (sans tenir compte de
+ * la casse ; un index unique en base tranche deux créations simultanées). La région de départ est
+ * la première du contenu publié. Le starter de cette région donne aussi l'inventaire et l'argent
+ * de départ (`balance.newPlayer`) ; chaque région suivante offre le sien une fois débloquée. Le
+ * choix se fait dans `playerTransaction`, et la mise à jour du profil ne passe que si aucun starter
+ * n'y figure encore : deux choix simultanés n'en donnent qu'un.
+ */
 
 /** Le profil tel que le jeu le reçoit. */
 export function toProfileDto(row: typeof playerProfiles.$inferSelect): PlayerProfileDto {

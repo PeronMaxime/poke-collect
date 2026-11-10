@@ -1,13 +1,14 @@
+import type { FastifyRequest } from 'fastify';
+import type { Db } from '@poke/db';
+import type { ContentCache } from '../content-cache';
+import type { SessionUser, sessionHooks } from '../plugins/session';
+
 /**
  * Ce que reçoit chaque groupe de routes, et l'accès au joueur de la requête.
  *
  * `app.ts` construit un seul `RouteDeps` et le passe à tous les groupes ; un groupe qui a besoin
  * d'autre chose (clé push, supervision…) étend ce type.
  */
-import type { FastifyRequest } from 'fastify';
-import type { Db } from '@poke/db';
-import type { ContentCache } from '../content-cache';
-import type { SessionUser, sessionHooks } from '../plugins/session';
 
 /** Les contrôles d'accès (`requireUser`, `requireAdmin`) et le rattrapage du temps écoulé. */
 type SessionHooks = ReturnType<typeof sessionHooks>;

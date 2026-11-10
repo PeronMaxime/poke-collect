@@ -1,3 +1,11 @@
+import { and, arrayContains, asc, count, eq, sql } from 'drizzle-orm';
+import { pokemon, pokemonTags } from '@poke/db';
+import type { Db } from '@poke/db';
+import { MAX_TAGS } from '@poke/shared';
+import type { PokemonTagDto, TagInput } from '@poke/shared';
+import { GameError } from './errors';
+import { playerTransaction } from './tx';
+
 /**
  * Étiquettes du joueur : créées, renommées et supprimées depuis le PC.
  *
@@ -6,13 +14,6 @@
  * tables : elle passe par `playerTransaction`, pour ne pas croiser un transfert ou une pose
  * d'étiquette sur les mêmes Pokémon.
  */
-import { and, arrayContains, asc, count, eq, sql } from 'drizzle-orm';
-import { pokemon, pokemonTags } from '@poke/db';
-import type { Db } from '@poke/db';
-import { MAX_TAGS } from '@poke/shared';
-import type { PokemonTagDto, TagInput } from '@poke/shared';
-import { GameError } from './errors';
-import { playerTransaction } from './tx';
 
 const toTagDto = ({ id, label, color }: typeof pokemonTags.$inferSelect): PokemonTagDto => ({
   id,

@@ -1,3 +1,12 @@
+import { and, asc, count, eq, inArray, ne } from 'drizzle-orm';
+import { pokemon, pokemonTeams } from '@poke/db';
+import type { Db } from '@poke/db';
+import { MAX_MEGAS_PER_TEAM, megaCount } from '@poke/game-core';
+import { MAX_TEAMS } from '@poke/shared';
+import type { PokemonTeamDto, TeamInput } from '@poke/shared';
+import { GameError } from './errors';
+import { playerTransaction } from './tx';
+
 /**
  * Équipes enregistrées du joueur, construites depuis la page « Équipe Pkmn ».
  *
@@ -7,14 +16,6 @@
  * le même Pokémon dans deux équipes. Une équipe garde l'identifiant d'un Pokémon transféré depuis ;
  * il est retiré à la lecture.
  */
-import { and, asc, count, eq, inArray, ne } from 'drizzle-orm';
-import { pokemon, pokemonTeams } from '@poke/db';
-import type { Db } from '@poke/db';
-import { MAX_MEGAS_PER_TEAM, megaCount } from '@poke/game-core';
-import { MAX_TEAMS } from '@poke/shared';
-import type { PokemonTeamDto, TeamInput } from '@poke/shared';
-import { GameError } from './errors';
-import { playerTransaction } from './tx';
 
 /** Équipe sans les Pokémon qui ne sont plus au PC (transférés depuis l'enregistrement). */
 const toTeamDto = (

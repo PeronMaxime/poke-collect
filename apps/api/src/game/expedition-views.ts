@@ -1,8 +1,3 @@
-/**
- * Ce que la page Expéditions affiche : les expéditions en cours, l'historique et les zones
- * favorites. Des lectures seulement, plus le réglage des favoris ; les départs, annulations et
- * réclamations sont dans `expeditions.ts`.
- */
 import { and, asc, desc, eq, isNotNull, isNull, sql } from 'drizzle-orm';
 import { expeditions, playerProfiles } from '@poke/db';
 import type { Db } from '@poke/db';
@@ -10,7 +5,51 @@ import type { ExpeditionDto, ExpeditionsResponse } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
 import { expeditionPaces, expeditionSlots, playerRoamers, shinyChains } from './expeditions';
-import { toExpeditionDto } from './store';
+
+/**
+ * Ce que la page Expéditions affiche : les expéditions en cours, l'historique et les zones
+ * favorites. Des lectures seulement, plus le réglage des favoris ; les départs, annulations et
+ * réclamations sont dans `expeditions.ts`.
+ */
+
+/** Une expédition telle qu'elle est enregistrée. */
+export type ExpeditionRow = typeof expeditions.$inferSelect;
+
+/** L'expédition telle que le jeu la reçoit ; `pace` (son rythme) n'est calculé que pour celles en cours. */
+export function toExpeditionDto(
+  row: ExpeditionRow,
+  pace: ExpeditionDto['pace'] = null,
+): ExpeditionDto {
+  return {
+    id: row.id,
+    zoneId: row.zoneId,
+    questId: row.questId,
+    slotIndex: row.slotIndex,
+    team: row.team,
+    durationMinutes: row.durationMinutes,
+    ballItemId: row.ballItemId,
+    balls: row.balls,
+    berryItemId: row.berryItemId,
+    berries: row.berries,
+    encounterBerryItemId: row.encounterBerryItemId,
+    encounterBerries: row.encounterBerries,
+    captureFilter: row.captureFilter,
+    ballPlan: row.ballPlan,
+    ballsUsed: Object.entries(row.ballsUsed).map(([itemId, quantity]) => ({ itemId, quantity })),
+    contentVersionId: row.contentVersionId,
+    startedAt: row.startedAt.toISOString(),
+    minEndsAt: row.minEndsAt.toISOString(),
+    endsAt: row.endsAt.toISOString(),
+    claimedAt: row.claimedAt?.toISOString() ?? null,
+    shinyChain: row.shinyChain,
+    localHour: row.localHour,
+    roamerQuestIds: row.roamers.map((r) => r.questId),
+    roamersMet: row.roamersMet,
+    autoTransfer: row.autoTransfer ?? null,
+    pace,
+    result: (row.result as ExpeditionDto['result']) ?? null,
+  };
+}
 
 /** Nombre d'expéditions réclamées gardées dans l'historique affiché. */
 const HISTORY_LIMIT = 20;

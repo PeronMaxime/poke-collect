@@ -69,7 +69,8 @@ import {
   takeItems,
   toInstance,
 } from './store';
-import type { ExpeditionRow, PokemonRow } from './store';
+import type { PokemonRow } from './store';
+import type { ExpeditionRow } from './expedition-views';
 
 export { GameError };
 
