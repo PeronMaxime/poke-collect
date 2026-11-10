@@ -22,7 +22,7 @@ Vue d'ensemble : [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md). Les mots du
 | Fichier                                            | Règles                                                                      |
 | -------------------------------------------------- | --------------------------------------------------------------------------- |
 | `pokemon.ts`                                       | Statistiques, PE, courbes d'XP, génération d'un Pokémon                     |
-| `expedition.ts`                                    | Rencontres, capture, pitié, plan de Balls, butin, cadence, XP d'équipe      |
+| `expedition/`                                      | Rencontres, capture, pitié, plan de Balls, butin, cadence, XP d'équipe      |
 | `shiny.ts`                                         | Chromatiques : taux, chaîne, Charme, Masuda                                 |
 | `weather.ts`, `roaming.ts`                         | Météo horaire des zones ; cachette des Pokémon fuyards                      |
 | `dungeon/`                                         | Le moteur de combat en temps réel (`simulateDungeon`) et les donjons        |
