@@ -1,4 +1,4 @@
-import { and, asc, count, eq, inArray, isNull, lte, sql } from 'drizzle-orm';
+import { and, asc, count, eq, gt, inArray, isNull, lte, sql } from 'drizzle-orm';
 import { candies, daycareSlots, eggs, pokemon } from '@poke/db';
 import type { Db } from '@poke/db';
 import {
@@ -20,6 +20,7 @@ import {
 import type { AbilityHolder, DaycareParent, GameContext } from '@poke/game-core';
 import type {
   BagEggDto,
+  CandyDto,
   CollectEggsInput,
   DaycareDto,
   DaycareXpDto,
@@ -750,4 +751,13 @@ export async function feedCandies(
       .returning();
     return updated!;
   });
+}
+
+/** Bonbons du joueur (quantité non nulle), par lignée. */
+export function listCandies(db: Db, userId: string): Promise<CandyDto[]> {
+  return db
+    .select({ lineageId: candies.lineageId, quantity: candies.quantity })
+    .from(candies)
+    .where(and(eq(candies.ownerId, userId), gt(candies.quantity, 0)))
+    .orderBy(asc(candies.lineageId));
 }

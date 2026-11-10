@@ -1,8 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { FACILITIES, slugSchema } from '@poke/content';
-import { rewardClaims } from '@poke/db';
 import { facilityPlaces, playerBonuses } from '@poke/game-core';
 import {
   claimRewardInputSchema,
@@ -20,7 +18,14 @@ import type {
   TrainerCardResponse,
   UseItemResponse,
 } from '@poke/shared';
-import { claimReward, evolve, megaEvolve, megaRevert, useItemOnPokemon } from '../game/progression';
+import {
+  claimReward,
+  evolve,
+  listRewardClaims,
+  megaEvolve,
+  megaRevert,
+  useItemOnPokemon,
+} from '../game/progression';
 import { claimQuest, questsState } from '../game/quests';
 import { trainerCard } from '../game/stats';
 import { claimedRewards, playerProgress, pokemonActivities, toPokemonDto } from '../game/store';
@@ -79,15 +84,8 @@ export async function progressionRoutes(
   app.get('/api/progression', async (request): Promise<ProgressionResponse> => {
     const userId = currentUserId(request);
     const ctx = await content.get();
-    const [rows, claimed, progress] = await Promise.all([
-      db
-        .select({
-          kind: rewardClaims.kind,
-          rewardId: rewardClaims.rewardId,
-          claimedAt: rewardClaims.claimedAt,
-        })
-        .from(rewardClaims)
-        .where(eq(rewardClaims.ownerId, userId)),
+    const [claims, claimed, progress] = await Promise.all([
+      listRewardClaims(db, userId),
       claimedRewards(db, userId),
       playerProgress(db, ctx, userId),
     ]);
@@ -95,7 +93,7 @@ export async function progressionRoutes(
       FACILITIES.map(({ id }) => [id, facilityPlaces(ctx, id, progress, claimed)]),
     ) as ProgressionResponse['facilities'];
     return {
-      claims: rows.map((r) => ({ ...r, claimedAt: r.claimedAt.toISOString() })),
+      claims,
       slots: { expeditions: facilities.expedition, daycare: facilities.daycare },
       facilities,
       bonuses: playerBonuses(ctx, claimed),

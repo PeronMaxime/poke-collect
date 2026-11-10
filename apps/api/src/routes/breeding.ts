@@ -1,7 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { and, asc, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
-import { candies } from '@poke/db';
 import {
   collectEggsInputSchema,
   depositDaycareInputSchema,
@@ -27,6 +25,7 @@ import {
   hatchEggs,
   incubateEggs,
   isInBag,
+  listCandies,
   loadDaycare,
   pendingEggs,
   setDaycareParent,
@@ -163,11 +162,7 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
   });
 
   app.get('/api/candies', async (request): Promise<CandyDto[]> =>
-    db
-      .select({ lineageId: candies.lineageId, quantity: candies.quantity })
-      .from(candies)
-      .where(and(eq(candies.ownerId, currentUserId(request)), gt(candies.quantity, 0)))
-      .orderBy(asc(candies.lineageId)),
+    listCandies(db, currentUserId(request)),
   );
 
   app.post('/api/pokemon/:id/candies', async (request): Promise<PokemonDto> => {

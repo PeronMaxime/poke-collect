@@ -17,7 +17,13 @@ import {
 } from '@poke/game-core';
 import type { GameContext, PlayerSlots } from '@poke/game-core';
 import type { ProgressReward } from '@poke/content';
-import type { ClaimRewardInput, EvolveInput, MegaEvolveInput, UseItemInput } from '@poke/shared';
+import type {
+  ClaimRewardInput,
+  EvolveInput,
+  MegaEvolveInput,
+  RewardClaimDto,
+  UseItemInput,
+} from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { GameError } from './errors';
 import { playerTransaction } from './tx';
@@ -36,6 +42,19 @@ import {
 import type { PokemonRow } from './store';
 
 /** Évolutions et récompenses de progression (collections, complétions d'expédition). */
+
+/** Récompenses de progression déjà réclamées par le joueur. */
+export async function listRewardClaims(db: Db, userId: string): Promise<RewardClaimDto[]> {
+  const rows = await db
+    .select({
+      kind: rewardClaims.kind,
+      rewardId: rewardClaims.rewardId,
+      claimedAt: rewardClaims.claimedAt,
+    })
+    .from(rewardClaims)
+    .where(eq(rewardClaims.ownerId, userId));
+  return rows.map((r) => ({ ...r, claimedAt: r.claimedAt.toISOString() }));
+}
 
 /**
  * Fait évoluer un Pokémon disponible : vérifie l'évolution choisie (niveau, objet, bonheur,

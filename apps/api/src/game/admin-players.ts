@@ -25,7 +25,7 @@ import type {
   AdminTestQuestsResponse,
   AdminTestTrainersResponse,
 } from '@poke/shared';
-import { toDto } from '../routes/player';
+import { toProfileDto } from './profile';
 import { flushSpeciesCounts } from './capture-stats';
 import { GameError } from './errors';
 import { playerTransaction } from './tx';
@@ -130,7 +130,7 @@ export async function playerDetail(
 
   return {
     player: playerDto(row),
-    profile: toDto(profile),
+    profile: toProfileDto(profile),
     card,
     speciesCaught: dex?.caught ?? 0,
     shinySpeciesCaught: dex?.shiny ?? 0,
