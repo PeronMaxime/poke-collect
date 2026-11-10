@@ -1,5 +1,5 @@
-import { DEFAULT_SPECIAL_ENCOUNTER_CHANCE } from './schemas';
-import type { SpecialEncounter, Zone } from './schemas';
+import { DEFAULT_SPECIAL_ENCOUNTER_CHANCE } from '../schemas';
+import type { SpecialEncounter, Zone } from '../schemas';
 
 /**
  * Rencontres spéciales des formes événementielles (Pikachu Partenaire et à casquette, Pikachu

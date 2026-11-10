@@ -5,10 +5,10 @@ import type {
   TrainerPokemon,
   UnlockCondition,
   Zone,
-} from './schemas';
-import { badgeSprite } from './badge-sprites';
-import { defaultTrainerTimeLimitSeconds, zoneAffinityTypes } from './schemas';
-import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
+} from '../schemas';
+import { badgeSprite } from '../badge-sprites';
+import { defaultTrainerTimeLimitSeconds, zoneAffinityTypes } from '../schemas';
+import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './weather';
 
 /**
  * Kanto : le parcours des 8 arènes, la Ligue, les zones spéciales et les quêtes légendaires.

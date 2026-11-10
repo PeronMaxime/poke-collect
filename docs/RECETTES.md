@@ -80,7 +80,7 @@ Le code n'intervient que pour ajouter un champ, une entité, ou pousser un chang
 4. **Instantané** : ajouter le champ à `content/game-content.json`, avec les mêmes valeurs.
    L'API lit et valide ce fichier à chaque démarrage : un champ obligatoire absent la fait planter
    avant qu'elle ait pu le réécrire.
-5. **Contenu de test** : `packages/content/src/seed*.ts`, pour les tests et les bases neuves.
+5. **Contenu de test** : `packages/content/src/seed/`, pour les tests et les bases neuves.
 6. **Cohérence** : si le champ cite une autre entité, la règle dans
    `packages/content/src/integrity.ts`.
 7. **Admin** : le champ dans le formulaire de la page (`apps/admin/src/pages/content/`).
@@ -143,9 +143,9 @@ Les effets sont des unions discriminées par `type`, dans `packages/content/src/
 
 ## Ajouter une région
 
-Le plus simple est de partir de la dernière ajoutée : `packages/content/src/seed-hoenn.ts` et sa
+Le plus simple est de partir de la dernière ajoutée : `packages/content/src/seed/hoenn.ts` et sa
 migration `0084_hoenn`. Une région, c'est : la région elle-même (ordre, starters, condition
-d'ouverture), ses zones et leurs tables de butin (`seed-loot.ts`), ses dresseurs (Champions,
+d'ouverture), ses zones et leurs tables de butin (`seed/loot.ts`), ses dresseurs (Champions,
 paliers, Conseil 4), ses quêtes et légendaires, ses badges (`badge-sprites.ts`), ses talents.
 Elle arrive désactivée (`enabled: false`) et s'active dans l'admin.
 

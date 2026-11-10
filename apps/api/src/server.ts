@@ -1,4 +1,4 @@
-import { seedContent } from '@poke/content';
+import { seedContent } from '@poke/content/seed';
 import { createDb, ensureSeedContent } from '@poke/db';
 import { buildApp } from './app';
 import { loadEnv } from './env';

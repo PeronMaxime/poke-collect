@@ -1,10 +1,10 @@
 import { species } from '@poke/data';
 import { describe, expect, it } from 'vitest';
-import { contentIssues, findUsages, gameContentSchema } from './integrity';
-import { legendaryBattle } from './schemas';
-import { QUEST_ZONE_STEPS } from './seed-quests';
-import { seedContent } from './seed';
-import { formIdOf } from './seed-expansion';
+import { contentIssues, findUsages, gameContentSchema } from '../integrity';
+import { legendaryBattle } from '../schemas';
+import { QUEST_ZONE_STEPS } from './quests';
+import { seedContent } from './index';
+import { formIdOf } from './expansion';
 
 /** Espèces obtenables : rencontres de toutes les régions (sans formes), fossiles et quêtes, puis
  * leurs évolutions et leurs œufs (les bébés : Pichu, Azurill…), jusqu'à stabilité. */

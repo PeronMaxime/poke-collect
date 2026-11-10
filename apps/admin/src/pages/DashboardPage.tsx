@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { seedContent } from '@poke/content';
+import { seedContent } from '@poke/content/seed';
 import type { ContentEntityKind } from '@poke/content';
 import type { ContentVersionDto, ContentVersionStatus } from '@poke/shared';
 import { IssueList } from '../components/EntityPage';

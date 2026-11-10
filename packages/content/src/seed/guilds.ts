@@ -6,7 +6,7 @@ import type {
   GuildQuestDifficulty,
   Item,
   UnlockCondition,
-} from './schemas';
+} from '../schemas';
 
 /**
  * Guildes : coffres (objets), lots des coffres et catalogue des quêtes (du jour et de la semaine).

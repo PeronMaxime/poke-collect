@@ -145,11 +145,11 @@ donjons, boutique, guildes, menu) est du **contenu**, pas du code.
 
 Le contenu vit en base et se modifie dans l'admin. Trois copies existent, à ne pas confondre :
 
-| Où                              | Rôle                                                                 |
-| ------------------------------- | -------------------------------------------------------------------- |
-| Base de production              | **La vérité.** Modifiée par l'admin et par les migrations de contenu |
-| `content/game-content.json`     | Instantané versionné dans Git : point de départ d'une base neuve     |
-| `packages/content/src/seed*.ts` | Contenu de test : tests automatiques, et base neuve sans instantané  |
+| Où                           | Rôle                                                                 |
+| ---------------------------- | -------------------------------------------------------------------- |
+| Base de production           | **La vérité.** Modifiée par l'admin et par les migrations de contenu |
+| `content/game-content.json`  | Instantané versionné dans Git : point de départ d'une base neuve     |
+| `packages/content/src/seed/` | Contenu de test : tests automatiques, et base neuve sans instantané  |
 
 En développement, l'API réécrit l'instantané au démarrage et à chaque publication. Une
 migration de contenu ne remplace jamais tout : elle cible les champs à changer, pour ne pas

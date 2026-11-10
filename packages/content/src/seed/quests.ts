@@ -1,4 +1,8 @@
-import { DEFAULT_ROAMING_CHANCE, defaultTrainerTimeLimitSeconds, legendaryBattle } from './schemas';
+import {
+  DEFAULT_ROAMING_CHANCE,
+  defaultTrainerTimeLimitSeconds,
+  legendaryBattle,
+} from '../schemas';
 import type {
   ImposedWeather,
   Item,
@@ -11,7 +15,7 @@ import type {
   Trainer,
   TrainerPokemon,
   UnlockCondition,
-} from './schemas';
+} from '../schemas';
 
 /**
  * Quêtes des légendaires de Kanto, Johto et Hoenn : une petite histoire par légendaire. Les

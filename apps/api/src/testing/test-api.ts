@@ -1,5 +1,5 @@
 import { eq } from 'drizzle-orm';
-import { seedContent } from '@poke/content';
+import { seedContent } from '@poke/content/seed';
 import type { GameContentData } from '@poke/content';
 import { createDb, ensureSeedContent, users } from '@poke/db';
 import { buildApp } from '../app';

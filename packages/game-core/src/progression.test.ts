@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { seedContent } from '@poke/content';
+import { seedContent } from '@poke/content/seed';
 import { createGameContext, playableContent } from './context';
 import { captureProbability, resolveExpedition } from './expedition';
 import { buildBattleSetup, resolveBattle } from './battle';

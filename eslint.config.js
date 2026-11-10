@@ -60,7 +60,7 @@ export default tseslint.config(
   },
   {
     // Les tests et le contenu de test sont de longues listes de cas : pas de limite de longueur.
-    files: ['**/*.test.{ts,tsx}', 'packages/content/src/seed*.ts'],
+    files: ['**/*.test.{ts,tsx}', 'packages/content/src/seed/**'],
     rules: { 'max-lines-per-function': 'off', complexity: 'off' },
   },
   // Frontières entre paquets : la logique pure ne connaît ni la base ni le serveur, et les pages
@@ -80,8 +80,13 @@ export default tseslint.config(
     rules: { 'no-restricted-imports': ['error', { patterns: forbidden('db') }] },
   },
   {
-    files: ['apps/web/**/*.{ts,tsx}', 'apps/admin/**/*.{ts,tsx}'],
+    files: ['apps/admin/**/*.{ts,tsx}'],
     rules: { 'no-restricted-imports': ['error', { patterns: forbidden('db') }] },
+  },
+  {
+    // Le contenu de test (9 000 lignes) ne doit pas partir dans le navigateur des joueurs.
+    files: ['apps/web/**/*.{ts,tsx}'],
+    rules: { 'no-restricted-imports': ['error', { patterns: forbidden('db', 'content/seed') }] },
   },
   {
     // Fichiers hors des tsconfig (configuration, scripts sans types) : règles non typées seulement.

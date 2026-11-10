@@ -8,13 +8,13 @@ le contenu » dans [docs/RECETTES.md](../../docs/RECETTES.md).
 
 ## Les fichiers
 
-| Fichier                | Rôle                                                                             |
-| ---------------------- | -------------------------------------------------------------------------------- |
-| `schemas/`             | Les schémas Zod de chaque entité et de l'équilibrage ; les types en sont déduits |
-| `integrity.ts`         | `contentIssues` : références croisées et alertes, exigées pour publier           |
-| `seed.ts`, `seed-*.ts` | Le contenu de test, écrit en TypeScript, assemblé en `seedContent`               |
-| `ability-proposals.ts` | Propositions d'effets pour les talents (aide de l'admin)                         |
-| `badge-sprites.ts`     | Image de chaque badge                                                            |
+| Fichier                | Rôle                                                                                                        |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------- |
+| `schemas/`             | Les schémas Zod de chaque entité et de l'équilibrage ; les types en sont déduits                            |
+| `integrity.ts`         | `contentIssues` : références croisées et alertes, exigées pour publier                                      |
+| `seed/`                | Le contenu de test, écrit en TypeScript, assemblé en `seedContent` et exporté à part : `@poke/content/seed` |
+| `ability-proposals.ts` | Propositions d'effets pour les talents (aide de l'admin)                                                    |
+| `badge-sprites.ts`     | Image de chaque badge                                                                                       |
 
 ## Les entités
 
@@ -30,7 +30,7 @@ champ ajouté est `.optional()` ou a un `.default()`.
 
 `seedContent` sert aux tests automatiques, et à remplir une base neuve quand l'instantané
 `content/game-content.json` est absent. Le contenu réel vit en base et se règle dans l'admin : il
-diverge du contenu de test, et c'est voulu. Modifier un fichier `seed-*.ts` ne change rien pour
+diverge du contenu de test, et c'est voulu. Modifier un fichier `seed/*.ts` ne change rien pour
 les joueurs.
 
 ## Tests
@@ -39,5 +39,5 @@ les joueurs.
 pnpm --filter @poke/content test
 ```
 
-`seed.test.ts` vérifie que le contenu de test est valide et publiable (aucune erreur de
+`seed/seed.test.ts` vérifie que le contenu de test est valide et publiable (aucune erreur de
 cohérence) ; `menu.test.ts` le rangement du menu.

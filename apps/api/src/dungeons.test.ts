@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { eq, sql } from 'drizzle-orm';
-import { seedContent } from '@poke/content';
+import { seedContent } from '@poke/content/seed';
 import { createDb, dungeonRuns, ensureSeedContent, pokedex, users } from '@poke/db';
 import { createRng, simulateDungeon } from '@poke/game-core';
 import type { PokemonInstance } from '@poke/game-core';

@@ -7,8 +7,8 @@ import type {
   Item,
   Region,
   TrainerPokemon,
-} from './schemas';
-import { seedDungeonWeather } from './seed-weather';
+} from '../schemas';
+import { seedDungeonWeather } from './weather';
 
 /**
  * Donjons du contenu de test : un par Méga-Évolution d'une espèce des régions, avec sa

@@ -95,7 +95,7 @@ veut dire, puis où la chercher. Les chemins partent de `packages/` ou de `apps/
 | Équilibrage                | Les réglages globaux du contenu (taux, durées, plafonds)                            | `content.balance`, `BalanceSettings`                        |
 | Version, brouillon, publié | Le contenu est versionné : un brouillon se prépare, puis se publie d'un coup        | `db/content-repo.ts`, table `content_versions`              |
 | Instantané                 | Copie du contenu publié dans Git, point de départ d'une base neuve                  | `content/game-content.json`, `api/src/content-snapshot.ts`  |
-| Contenu de test (seed)     | Contenu écrit en TypeScript pour les tests ; **pas** la source de vérité            | `content/src/seed*.ts`                                      |
+| Contenu de test (seed)     | Contenu écrit en TypeScript pour les tests ; **pas** la source de vérité            | `content/src/seed/`                                         |
 | Contenu jouable            | Le contenu publié sans ce qui est désactivé (`enabled: false`)                      | `playableContent`, `ContentCache.get()`                     |
 | Contexte de jeu            | Le contenu indexé, passé à toutes les règles                                        | `GameContext`, `createGameContext` (`game-core/context.ts`) |
 | Graine (seed)              | Nombre tiré au lancement d'une activité, dont tout le hasard découle                | `createRng`, `newSeed`                                      |

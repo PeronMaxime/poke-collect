@@ -1,4 +1,4 @@
-import { seedContent } from '@poke/content';
+import { seedContent } from '@poke/content/seed';
 import type { GameContentData } from '@poke/content';
 import { createGameContext } from './context';
 import type { TeamMember } from './expedition';

@@ -8,10 +8,10 @@ import type {
   Trainer,
   TrainerPokemon,
   Zone,
-} from './schemas';
-import { badgeSprite } from './badge-sprites';
-import { defaultTrainerTimeLimitSeconds, zoneAffinityTypes } from './schemas';
-import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './seed-weather';
+} from '../schemas';
+import { badgeSprite } from '../badge-sprites';
+import { defaultTrainerTimeLimitSeconds, zoneAffinityTypes } from '../schemas';
+import { ZONE_WEATHER_CHANGE_CHANCE, seedZoneWeathers } from './weather';
 
 /**
  * Contenu de test de l'expansion : les régions de Sinnoh à Paldea (et Hisui), débloquées l'une

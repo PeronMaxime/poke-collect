@@ -10,25 +10,25 @@ import type {
   ShopCategory,
   ShopEntry,
   Zone,
-} from './schemas';
+} from '../schemas';
 import { forms, getSpecies } from '@poke/data';
 import type { PokemonForm } from '@poke/data';
 import {
   DEFAULT_GUILD_QUEST_TIERS,
   DEFAULT_LEGENDARY_SETTINGS,
   suggestedSellPrice,
-} from './schemas';
+} from '../schemas';
 import {
   expansionItems,
   expansionRegions,
   expansionShopEntries,
   expansionTrainers,
   expansionZones,
-} from './seed-expansion';
-import { combatSettings, dungeonSettings, megaStoneItems, seedDungeons } from './seed-dungeons';
-import { hoennRegion, hoennTrainers, hoennZones } from './seed-hoenn';
-import { johtoRegion, johtoTrainers, johtoZones } from './seed-johto';
-import { kantoTrainers, kantoZones } from './seed-kanto';
+} from './expansion';
+import { combatSettings, dungeonSettings, megaStoneItems, seedDungeons } from './dungeons';
+import { hoennRegion, hoennTrainers, hoennZones } from './hoenn';
+import { johtoRegion, johtoTrainers, johtoZones } from './johto';
+import { kantoTrainers, kantoZones } from './kanto';
 import {
   QUEST_ZONE_STEPS,
   hoennQuests,
@@ -36,14 +36,25 @@ import {
   kantoQuests,
   questItems,
   questTrainers,
-} from './seed-quests';
-import { withOwnLootTables } from './seed-loot';
-import { withSpecialEncounters } from './seed-special-encounters';
-import { chestEntries, guildChestItems, guildQuests } from './seed-guilds';
+} from './quests';
+import { withOwnLootTables } from './loot';
+import { withSpecialEncounters } from './special-encounters';
+import { chestEntries, guildChestItems, guildQuests } from './guilds';
 
 /**
- * Contenu de test, importé en base au premier lancement (version 1, publiée).
- * Tout reste modifiable ensuite dans le panneau d'admin. Valeurs : docs/plans/PLAN.md, section 7.
+ * Contenu de test (`@poke/content/seed`), écrit en TypeScript.
+ *
+ * Il sert aux tests automatiques, et à remplir une base neuve quand l'instantané
+ * `content/game-content.json` est absent. Ce n'est **pas** la source de vérité : le contenu réel
+ * vit en base, se règle dans l'admin et s'en écarte librement. Modifier ces fichiers ne change
+ * donc rien pour les joueurs ; pour cela, voir « Migration de contenu » dans docs/RECETTES.md.
+ *
+ * Un fichier par région (`kanto`, `johto`, `hoenn`, puis `expansion` pour les suivantes) et par
+ * domaine (`quests`, `dungeons`, `guilds`, `loot`, `weather`, `special-encounters`) ; celui-ci
+ * règle l'équilibrage et les objets, et assemble le tout en `seedContent`. Il n'est pas exporté
+ * par `@poke/content`, pour ne pas partir dans le navigateur des joueurs.
+ *
+ * Valeurs de départ : docs/plans/PLAN.md, section 7.
  */
 
 const loot = (itemId: string, chance: number, min = 1, max = min): LootEntry => ({

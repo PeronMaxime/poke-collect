@@ -1,5 +1,5 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { seedContent } from '@poke/content';
+import { seedContent } from '@poke/content/seed';
 import { createDb, ensureSeedContent } from '@poke/db';
 import type { PokemonDto } from '@poke/shared';
 import { buildApp } from './app';

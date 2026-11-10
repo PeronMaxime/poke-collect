@@ -12,7 +12,7 @@ import { fileURLToPath } from 'node:url';
 import { join } from 'node:path';
 import sharp from 'sharp';
 import { forms, items, species } from '@poke/data';
-import { seedContent } from '@poke/content';
+import { seedContent } from '@poke/content/seed';
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
 const OUT_DIR = join(ROOT, 'apps/api/sprites');

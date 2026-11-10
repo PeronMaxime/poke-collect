@@ -1,4 +1,4 @@
-import type { Weather, ZoneWeather } from './schemas';
+import type { Weather, ZoneWeather } from '../schemas';
 
 /**
  * Météos du contenu de test. Zones : temps clair dominant, plus des météos selon l'habitat

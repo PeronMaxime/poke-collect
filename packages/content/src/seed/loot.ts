@@ -1,4 +1,4 @@
-import type { LootEntry, LootTable, Trainer, Zone } from './schemas';
+import type { LootEntry, LootTable, Trainer, Zone } from '../schemas';
 
 /**
  * Une table de butin par zone d'expédition, en remplacement des tables partagées (route, forêt,
