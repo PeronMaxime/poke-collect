@@ -30,7 +30,8 @@ import type {
 } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import { assistantHolder, assistantHolders } from './assistants';
-import { GameError, newSeed, requireStartedProfile } from './expeditions';
+import { GameError } from './errors';
+import { newSeed, requireStartedProfile } from './expeditions';
 import { recordGuildActivity } from './guilds';
 import { playerTransaction } from './tx';
 import {

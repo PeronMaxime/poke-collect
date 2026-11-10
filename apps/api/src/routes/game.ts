@@ -16,16 +16,14 @@ import type {
   PokemonDto,
 } from '@poke/shared';
 import {
-  expeditionHistory,
-  expeditionsOverview,
-  setFavoriteZone,
-  toExpeditionDto,
-} from '../game/expedition-views';
-import {
   cancelExpedition,
   claimExpedition,
+  expeditionHistory,
+  expeditionsOverview,
   requireStartedProfile,
+  setFavoriteZone,
   startExpedition,
+  toExpeditionDto,
 } from '../game/expeditions';
 import {
   listInventory,
