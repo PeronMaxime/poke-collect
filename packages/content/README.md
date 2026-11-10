@@ -11,7 +11,7 @@ le contenu » dans [docs/RECETTES.md](../../docs/RECETTES.md).
 | Fichier                | Rôle                                                                                                        |
 | ---------------------- | ----------------------------------------------------------------------------------------------------------- |
 | `schemas/`             | Les schémas Zod de chaque entité et de l'équilibrage ; les types en sont déduits                            |
-| `integrity.ts`         | `contentIssues` : références croisées et alertes, exigées pour publier                                      |
+| `integrity/`           | `contentIssues` : références croisées et alertes, exigées pour publier                                      |
 | `seed/`                | Le contenu de test, écrit en TypeScript, assemblé en `seedContent` et exporté à part : `@poke/content/seed` |
 | `ability-proposals.ts` | Propositions d'effets pour les talents (aide de l'admin)                                                    |
 | `badge-sprites.ts`     | Image de chaque badge                                                                                       |

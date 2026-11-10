@@ -82,7 +82,7 @@ Le code n'intervient que pour ajouter un champ, une entité, ou pousser un chang
    avant qu'elle ait pu le réécrire.
 5. **Contenu de test** : `packages/content/src/seed/`, pour les tests et les bases neuves.
 6. **Cohérence** : si le champ cite une autre entité, la règle dans
-   `packages/content/src/integrity.ts`.
+   `packages/content/src/integrity/`.
 7. **Admin** : le champ dans le formulaire de la page (`apps/admin/src/pages/content/`).
 
 ### Ajouter une entité de contenu

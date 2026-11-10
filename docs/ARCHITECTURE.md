@@ -130,7 +130,7 @@ donjons, boutique, guildes, menu) est du **contenu**, pas du code.
 - **Stockage** : en base, rattaché à une `content_version` (`packages/db/src/schema/content.ts`,
   `content-repo.ts`). Une seule version **publiée**, au plus un **brouillon**. Créer un brouillon
   copie la version publiée ; le publier archive l'ancienne.
-- **Cohérence** : `packages/content/src/integrity.ts` vérifie les références croisées (une zone
+- **Cohérence** : `packages/content/src/integrity/` vérifie les références croisées (une zone
   cite une région qui existe, un butin des objets qui existent…). Publier l'exige.
 - **Lecture** : `ContentCache` (`apps/api/src/content-cache.ts`) garde en mémoire la version
   publiée, transformée en `GameContext` (`createGameContext`, index par identifiant). Le jeu
