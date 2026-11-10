@@ -312,28 +312,58 @@ Sous la protection des tests « à graine égale » (0.2).
 
 ### Phase 4 : API (L)
 
-- [ ] **4.1 Routes fines** : une route valide l'entrée, appelle un module `game/*`, renvoie un
+- [x] **4.1 Routes fines** : une route valide l'entrée, appelle un module `game/*`, renvoie un
       DTO. Les requêtes SQL de `routes/game.ts`, `player.ts`, `teams.ts`, `tags.ts`, `trainers.ts`
       et `push.ts` rejoignent des modules `game/*`.
-- [ ] **4.2 Utilitaires communs** : un seul type `RouteDeps` (au lieu de 20 copies de `Deps`) ;
+- [x] **4.2 Utilitaires communs** : un seul type `RouteDeps` (au lieu de 20 copies de `Deps`) ;
       `userId(request)` typé à la place des 132 `request.user!`.
-- [ ] **4.3 Découpage des gros modules** :
+- [x] **4.3 Découpage des gros modules** :
   - `game/guilds.ts` (1 044) → `guilds/` : adhésion, quêtes, coffres, messages, lectures ;
   - `game/expeditions.ts` (956) : `claimExpedition` (250 lignes) en étapes nommées ;
   - `game/store.ts` (707, fourre-tout) → Pokémon, sac, Pokédex, progression ;
   - `game/telemetry.ts` : une fonction par bloc de statistiques ;
   - `routes/admin.ts` (336 lignes d'un tenant) → contenu, joueurs, supervision.
-- [ ] **4.4 Tâches de fond regroupées** dans `jobs/` (push, coffres de guilde, compteurs
+- [x] **4.4 Tâches de fond regroupées** dans `jobs/` (push, coffres de guilde, compteurs
       d'espèces), démarrées par un seul `startJobs()` et coupables par une variable
       d'environnement. C'est la seule préparation « plusieurs processus » faite ici ; le reste est
       décrit dans `docs/ARCHITECTURE.md` (ce qui vit en mémoire et ce qu'il faudrait partager).
-- [ ] **4.5 Tests rangés** : les 30 fichiers à la racine de `src/` rejoignent un dossier `test/`
+- [x] **4.5 Tests rangés** : les 30 fichiers à la racine de `src/` rejoignent un dossier `test/`
       par domaine ; les aides communes (création de joueur, horloge, contenu) dans un seul module.
-- [ ] **4.6 Documentation** : en-tête par module `game/*` (règles côté serveur, verrous pris,
+- [x] **4.6 Documentation** : en-tête par module `game/*` (règles côté serveur, verrous pris,
       ce qui est rattrapé à la connexion), et tableau des routes dans le `README` de l'API.
-- [ ] **4.7 Contrôle de charge** : `scripts/load-test` avant et après la phase, pour confirmer
+- [x] **4.7 Contrôle de charge** : `scripts/load-test` avant et après la phase, pour confirmer
       qu'aucune requête n'a été ajoutée ou alourdie.
 - **But** : pour une action donnée, un seul endroit à lire, et le même plan dans chaque domaine.
+
+- **Réalisé** le 10 novembre (écarts avec le plan) :
+  - 4.1 : nouveaux modules `game/profile.ts`, `tags.ts`, `teams.ts`, `trainers.ts` ; les lectures
+    de `routes/game.ts` rejoignent `game/store/` et `game/expeditions/views.ts`, celles de
+    `routes/push.ts` rejoignent `game/push.ts`. Le SQL qui restait dans `routes/breeding.ts` et
+    `routes/progression.ts` est sorti aussi. Les six fichiers de routes visés font 429 lignes au
+    total.
+  - 4.2 : `routes/deps.ts` (`RouteDeps`). La fonction s'appelle `currentUserId(request)` et non
+    `userId(request)` : `userId` est déjà une variable locale dans une trentaine de routes.
+  - 4.3 : `game/store/` (4 fichiers), `game/guilds/` (6), `routes/admin/` (4). `game/expeditions/`
+    est découpé en dossier (8 fichiers) en plus des étapes nommées de `claimExpedition` (mêmes
+    requêtes, dans le même ordre). La télémétrie a une lecture par groupe de tables et une
+    fonction pure par bloc ; son résultat a été comparé à celui de l'ancienne version, identique.
+    `game/daycare.ts` (764 lignes) et `game/legendary.ts` (622) n'étaient pas au plan : laissés
+    entiers.
+  - 4.4 : `jobs/` et `BACKGROUND_JOBS=0`. Les compteurs d'espèces tournent même quand les tâches
+    sont coupées : chaque processus doit écrire ceux qu'il a en mémoire.
+  - 4.5 : les tests sont dans `apps/api/test/` (à côté de `src/`, pas dedans), six dossiers.
+    `test/support/api.ts` (`testApi`) remplace la mise en place de 25 fichiers ; cinq gardent la
+    leur, trop particulière (`settle`, `concurrency`, `content-snapshot`, `monitoring`,
+    `beta-profiles`). `src/testing/test-api.ts`, utilisé par les tests du jeu et de l'admin, ne
+    bouge pas.
+  - 4.6 : plus aucun export de `apps/api/src` sans sa phrase (59 ajoutées), plus aucun fichier
+    sans en-tête (36 ajoutés). Le README de l'API décrit les dossiers, les tâches de fond, les
+    routes de l'admin et `testApi`.
+  - 4.7 : même scénario (5 joueurs, base PGlite jetable) avant et après. 1 119 requêtes puis
+    1 083, aucune erreur ; p50 42 → 30 ms, p95 369 → 221 ms, p99 599 → 385 ms. Rien n'est alourdi.
+    L'écart favorable n'est pas un gain de la phase (aucune requête SQL n'a changé) : les deux
+    mesures ont été prises à plusieurs heures d'intervalle sur un poste de développement.
+  - Avertissements ESLint : 90 → 84 (plafond baissé).
 
 ### Phase 5 : Le jeu (`apps/web`) (XL, en sous-phases livrées une à une)
 
