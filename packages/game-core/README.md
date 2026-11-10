@@ -53,6 +53,26 @@ pnpm --filter @poke/game-core test
   change aucun résultat. Il échoue donc, à dessein, dès qu'une règle ou le contenu de test
   change : relire les lignes modifiées, puis réenregistrer avec `-- -u`.
 
+## Mesures de vitesse
+
+```sh
+pnpm --filter @poke/game-core bench
+```
+
+`src/perf.bench.ts` mesure les calculs les plus lourds. Chiffres de référence (10 novembre 2026,
+poste de développement, contenu de test) :
+
+| Calcul                                                 | Durée moyenne |
+| ------------------------------------------------------ | ------------: |
+| Expédition de 24 h rejouée en entier (201 rencontres)  |       0,43 ms |
+| Expédition de 1 h                                      |       0,05 ms |
+| Mise en place d'un donjon                              |       0,01 ms |
+| Combat de donjon complet (46 événements)               |       0,04 ms |
+| Construction du contexte de jeu (une fois par version) |        2,8 ms |
+
+Rien ici ne demande d'optimisation : ces calculs se comptent en fractions de milliseconde. Les
+chiffres servent à repérer un ralentissement après un changement.
+
 ## Ce que ce paquet n'a pas le droit de faire
 
 Importer `@poke/db`, `@poke/shared`, Fastify ou React ; lire l'heure courante ; utiliser
