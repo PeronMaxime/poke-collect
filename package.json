@@ -15,7 +15,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "pnpm -r test",
-    "test:coverage": "pnpm -r test --coverage",
+    "test:coverage": "pnpm -r test --coverage --coverage.reporter=text-summary",
     "import:pokeapi": "pnpm --filter @poke/import-pokeapi start",
     "sprites:download": "pnpm --filter @poke/import-pokeapi sprites",
     "db:generate": "pnpm --filter @poke/db generate",

@@ -34,6 +34,6 @@ jobs:
       - run: pnpm deadcode
       - run: pnpm format:check
       - run: pnpm typecheck
-      - run: pnpm test
+      - run: pnpm test:coverage
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres

@@ -37,7 +37,7 @@ Mesures du 10 novembre (hors tests et hors contenu de test) :
 | Dossier `apps/web/src/pages/game`                         | 63 fichiers à plat, tous domaines mélangés                          |
 | Appels `api(...)` écrits directement dans les écrans      | 91, dans 32 fichiers (83 `useQuery` / `useMutation` hors de `lib/`) |
 | Tests du jeu (`web`) et de l'admin                        | 1 fichier et 0 fichier                                              |
-| JavaScript du jeu                                         | **un seul fichier de 2,34 Mo** (508 Ko compressé), chargé d'un bloc |
+| JavaScript du jeu                                         | **un seul fichier de 2,53 Mo** (560 Ko compressé), chargé d'un bloc |
 | Documentation d'architecture                              | aucune (7 guides d'installation et d'exploitation à la racine)      |
 | Codes d'erreur de l'API                                   | ≈ 130 chaînes dispersées, libellés tenus à la main côté jeu         |
 | `request.user!` (session supposée présente)               | 132 fois                                                            |
@@ -127,30 +127,57 @@ Tailles : S (une séance), M (deux à trois), L (une semaine de séances), XL (d
 
 Rien n'est découpé avant que cette phase soit en place.
 
-- [ ] **0.1 Mesures de départ** gardées dans ce fichier (tableau de la section 5) : tailles du
+- [x] **0.1 Mesures de départ** gardées dans ce fichier (tableau de la section 5) : tailles du
       bundle, nombre de fonctions longues, durée des tests, chiffres de `scripts/load-test`.
-- [ ] **0.2 Tests « à graine égale »** dans `game-core` : pour quelques centaines de graines,
+- [x] **0.2 Tests « à graine égale »** dans `game-core` : pour quelques centaines de graines,
       le résultat complet d'une expédition, d'un combat, d'un donjon, d'une ponte et d'un combat
       légendaire est enregistré, puis comparé après chaque découpage. Tout est déjà piloté par un
       générateur à graine : le moindre écart de comportement fait échouer le test.
-- [ ] **0.3 Banc de tests du jeu et de l'admin** : Vitest + Testing Library + jsdom, avec une
+- [x] **0.3 Banc de tests du jeu et de l'admin** : Vitest + Testing Library + jsdom, avec une
       fausse API alimentée par le contenu de test. Un test « l'écran s'affiche et son action
       principale part » par onglet du jeu et par page de l'admin, écrits **avant** de toucher aux
       composants.
-- [ ] **0.4 Détection du code mort** (`knip`) : exports, fichiers et dépendances inutilisés.
+- [x] **0.4 Détection du code mort** (`knip`) : exports, fichiers et dépendances inutilisés.
       Premier passage : suppression de ce qui est mort, dans un commit dédié.
-- [ ] **0.5 ESLint renforcé** :
+- [x] **0.5 ESLint renforcé** :
   - règles typées `no-floating-promises`, `no-misused-promises`,
     `switch-exhaustiveness-check` (une promesse oubliée dans l'API est une action perdue) ;
   - `max-lines-per-function` et `complexity` en **avertissement**, avec la liste des dépassements
     actuels comme plafond qui ne peut que baisser ;
   - frontières entre paquets : le jeu n'importe ni `@poke/db` ni le seed, `game-core` n'importe
     rien du serveur, pas de dépendance circulaire.
-- [ ] **0.6 Couverture de tests** (`@vitest/coverage-v8`) publiée par la CI, à titre d'indicateur
+- [x] **0.6 Couverture de tests** (`@vitest/coverage-v8`) publiée par la CI, à titre d'indicateur
       (sans seuil bloquant au départ).
 - **But** : pouvoir découper sans crainte, et mesurer le chemin parcouru.
 - **Nouvelles dépendances de développement** (aucune en production) : `knip`,
   `@testing-library/react`, `jsdom`, `@vitest/coverage-v8`.
+
+- **Réalisé** le 10 novembre (écarts avec le plan) :
+  - 0.1 : mesures dans le tableau de la section 5. Les chiffres de `scripts/load-test` ne sont pas
+    pris ici (il faut un serveur lancé et des comptes préparés) : ils le seront avant et après la
+    phase 4 (étape 4.7), seule à pouvoir les faire bouger.
+  - 0.2 : `packages/game-core/src/golden.test.ts`, 800 situations tirées au hasard (200
+    expéditions, 150 combats de dresseurs, 150 donjons, 100 combats légendaires, 200 œufs), une
+    empreinte par résultat complet dans `__snapshots__/`. Vérifié : un multiplicateur changé de
+    0,01 % fait échouer les trois familles de combats.
+  - 0.3 : le banc ne simule pas l'API, il lance **la vraie** en mémoire
+    (`apps/api/src/testing/test-api.ts` : PGlite, migrations, contenu de test, compte admin) ;
+    rien à tenir à jour quand une route change. `apps/web/test/tabs.test.tsx` affiche les 16
+    onglets pour un joueur tout neuf, `apps/admin/test/pages.test.tsx` les 24 pages de l'admin.
+    Les tests d'**action** (lancer une expédition, enregistrer un formulaire…) ne sont pas écrits
+    d'avance : ils le seront domaine par domaine, juste avant chaque découpage (5.5 et 6.1), quand
+    l'écran est lu de près. Pour l'admin, la table des routes est sortie de `main.tsx`
+    (`src/routes.tsx`) afin de pouvoir l'afficher dans un test.
+  - 0.4 : `pnpm deadcode` (knip), dans la CI. 44 exports rendus internes, un composant jamais
+    affiché supprimé (`XpPreview`). Les exports des `index.ts` des paquets ne sont pas encore
+    contrôlés (étape 3.6).
+  - 0.5 : les règles typées n'ont trouvé **aucune** promesse oubliée ni `switch` incomplet, et
+    les frontières entre paquets étaient déjà respectées : elles sont maintenant garanties. 97
+    avertissements de longueur ou de complexité, plafond inscrit dans `pnpm lint`
+    (`--max-warnings 97`) : à baisser à chaque découpage. Pas de détection des dépendances
+    circulaires entre fichiers (aucun outil retenu) : à revoir en phase 7 si le besoin apparaît.
+  - 0.6 : `pnpm test:coverage`, lancé par la CI à la place de `pnpm test`. Lignes couvertes :
+    `game-core` 91 %, `content` 92 %, `api` 93 %.
 
 ### Phase 1 : La carte du projet (M)
 
@@ -314,17 +341,21 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
 
 ## 5. Indicateurs (avant / après)
 
-| Indicateur                                         |    10 nov. 2026 | Cible                     | Après |
-| -------------------------------------------------- | --------------: | ------------------------- | ----: |
-| Fichiers de code de plus de 800 lignes             |              25 | 0                         |       |
-| Fonctions de 300 lignes et plus                    |              21 | 0                         |       |
-| Fonctions de 150 lignes et plus                    |              84 | moins de 15               |       |
-| JavaScript chargé à l'ouverture du jeu (compressé) |          508 Ko | moins de 250 Ko           |       |
-| Fichiers de tests : jeu / admin                    |           1 / 0 | un par onglet et par page |       |
-| Appels `api()` dans les écrans                     |              91 | 0                         |       |
-| Exports et fichiers inutilisés                     | à mesurer (0.4) | 0                         |       |
-| Documents d'architecture                           |               0 | 4 + un README par paquet  |       |
-| Erreurs de lint / de types                         |           0 / 0 | 0 / 0                     |       |
+| Indicateur                                           |                10 nov. 2026 | Cible                     | Après |
+| ---------------------------------------------------- | --------------------------: | ------------------------- | ----: |
+| Fichiers de code de plus de 800 lignes               |                          25 | 0                         |       |
+| Fonctions de 300 lignes et plus                      |                          21 | 0                         |       |
+| Fonctions de 150 lignes et plus                      |                          84 | moins de 15               |       |
+| JavaScript chargé à l'ouverture du jeu (compressé)   |                      560 Ko | moins de 250 Ko           |       |
+| Fichiers de tests : jeu / admin                      |                       1 / 0 | un par onglet et par page |       |
+| Appels `api()` dans les écrans                       |                          91 | 0                         |       |
+| Exports et fichiers inutilisés                       |    45 (0 depuis la phase 0) | 0                         |       |
+| Documents d'architecture                             |                           0 | 4 + un README par paquet  |       |
+| Avertissements de longueur ou de complexité (ESLint) |                          97 | moins de 15               |       |
+| JavaScript de l'admin (compressé)                    |                      510 Ko | moins de 250 Ko           |       |
+| Durée de `pnpm test`                                 | 31 s (49 s avec les écrans) | sans dérive               |       |
+| Lignes couvertes : `game-core` / `content` / `api`   |          91 % / 92 % / 93 % | au moins autant           |       |
+| Erreurs de lint / de types                           |                       0 / 0 | 0 / 0                     |       |
 
 ---
 

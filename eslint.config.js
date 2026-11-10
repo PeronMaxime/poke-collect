@@ -29,7 +29,7 @@ export default tseslint.config(
       globals: { ...globals.node },
       // Règles typées (promesses oubliées, `switch` incomplets) : ESLint lit les tsconfig.
       parserOptions: {
-        projectService: { allowDefaultProject: ['apps/*/vitest.config.ts'] },
+        projectService: { allowDefaultProject: ['apps/api/vitest.config.ts'] },
         tsconfigRootDir: import.meta.dirname,
       },
     },
