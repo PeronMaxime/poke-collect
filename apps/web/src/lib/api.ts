@@ -13,10 +13,10 @@ export class ApiError extends Error {
 }
 
 /** Code d'une coupure réseau (serveur injoignable, connexion perdue) : aucune réponse reçue. */
-export const NETWORK_ERROR = 'NETWORK';
+const NETWORK_ERROR = 'NETWORK';
 
 /** Code d'une requête abandonnée faute de réponse à temps (voir `REQUEST_TIMEOUT_MS`). */
-export const TIMEOUT_ERROR = 'TIMEOUT';
+const TIMEOUT_ERROR = 'TIMEOUT';
 
 /** Une requête sans réponse est abandonnée après 20 s : le bouton ne reste jamais figé. */
 const REQUEST_TIMEOUT_MS = 20_000;
@@ -99,7 +99,7 @@ export async function api<T>(
  * Erreurs passagères : coupure réseau, délai dépassé, limite atteinte, serveur en cours de
  * redémarrage ou occupé (`BUSY`, 503).
  */
-export function isTransientError(err: unknown): err is ApiError {
+function isTransientError(err: unknown): err is ApiError {
   return (
     err instanceof ApiError &&
     (err.code === NETWORK_ERROR ||

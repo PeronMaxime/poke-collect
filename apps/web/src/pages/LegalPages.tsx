@@ -6,7 +6,7 @@ import { openChangelog } from './ChangelogPage';
  * ce que fait réellement le serveur : le mettre à jour si les données ou les prestataires changent.
  */
 
-export const LEGAL_NOTICE_PATH = '/mentions-legales';
+const LEGAL_NOTICE_PATH = '/mentions-legales';
 export const PRIVACY_PATH = '/confidentialite';
 export const LEGAL_PATHS: readonly string[] = [LEGAL_NOTICE_PATH, PRIVACY_PATH];
 
@@ -14,7 +14,7 @@ const CONTACT_EMAIL = 'contact@dexpedition.fr';
 const UPDATED_AT = '9 octobre 2026';
 
 /** Navigation interne sans rechargement : App suit l'adresse via l'événement popstate. */
-export function navigate(e: MouseEvent<HTMLAnchorElement>, path: string) {
+function navigate(e: MouseEvent<HTMLAnchorElement>, path: string) {
   if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
   e.preventDefault();
   window.history.pushState(null, '', path);

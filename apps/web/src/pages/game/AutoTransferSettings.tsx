@@ -21,7 +21,7 @@ export function loadGlobalAutoTransfer(): AutoTransferFilter | null {
   }
 }
 
-export function saveGlobalAutoTransfer(filter: AutoTransferFilter | null) {
+function saveGlobalAutoTransfer(filter: AutoTransferFilter | null) {
   try {
     localStorage.setItem(GLOBAL_KEY, JSON.stringify(filter));
   } catch {

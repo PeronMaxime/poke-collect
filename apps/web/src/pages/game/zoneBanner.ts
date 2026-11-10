@@ -21,7 +21,7 @@ export const BANNER_LABEL =
   'rounded border-2 border-ink bg-win px-2 py-1 font-pixel text-[10px] leading-normal';
 
 /** Type principal le plus fréquent parmi les Pokémon d'une zone (« normal » sans Pokémon). */
-export function dominantType(species: { speciesId: number; formId?: number | null }[]): string {
+function dominantType(species: { speciesId: number; formId?: number | null }[]): string {
   const counts = new Map<string, number>();
   for (const { speciesId, formId } of species) {
     const type = pokemonTypes(speciesId, formId)[0];

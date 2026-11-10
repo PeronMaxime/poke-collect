@@ -46,7 +46,7 @@ const subscribe = (listener: () => void) => {
   return () => listeners.delete(listener);
 };
 
-export const isStandalone = () =>
+const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
   (navigator as Navigator & { standalone?: boolean }).standalone === true;
 

@@ -23,7 +23,7 @@ const special = (
   hint,
 });
 
-export const SPECIAL_ENCOUNTERS: Record<string, SpecialEncounter[]> = {
+const SPECIAL_ENCOUNTERS: Record<string, SpecialEncounter[]> = {
   // --- Kanto : Let's Go et les casquettes de Sacha -------------------------------------------
   'route-1': [
     special(

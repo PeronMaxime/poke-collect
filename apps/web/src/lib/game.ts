@@ -202,7 +202,7 @@ export function patchPokemon(queryClient: QueryClient, updated: PokemonDto) {
 }
 
 /** Retire des Pokémon de la liste en cache (transférés). */
-export function removePokemon(queryClient: QueryClient, ids: Iterable<string>) {
+function removePokemon(queryClient: QueryClient, ids: Iterable<string>) {
   const gone = new Set(ids);
   queryClient.setQueryData<PokemonDto[]>(keys.pokemon, (list) =>
     list?.filter((p) => !gone.has(p.id)),
@@ -549,7 +549,7 @@ export function useRevive() {
   });
 }
 
-export const useProgression = () =>
+const useProgression = () =>
   useQuery({
     queryKey: keys.progression,
     queryFn: () => api<ProgressionResponse>('/api/progression'),

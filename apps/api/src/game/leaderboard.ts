@@ -8,7 +8,7 @@ import type { LeaderboardEntryDto, LeaderboardKind, LeaderboardResponse } from '
 import { displayedFavorite, favoriteColumns } from './favorite';
 
 /** Nombre de dresseurs affichés en tête de classement. */
-export const LEADERBOARD_SIZE = 50;
+const LEADERBOARD_SIZE = 50;
 
 /** Formes qui ont leur case au Pokédex (régionales, Méga…) : comptées avec les espèces. */
 const DEX_FORM_IDS = sql.join(

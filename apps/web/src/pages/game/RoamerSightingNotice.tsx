@@ -25,7 +25,7 @@ function writeSeen(seen: Iterable<string>) {
 }
 
 /** Pokémon fuyard d'une quête (le premier de sa récompense qui erre). */
-export function roamerOf(ctx: GameContext, questId: string) {
+function roamerOf(ctx: GameContext, questId: string) {
   return ctx.quest(questId)?.rewards.pokemon.find((p) => p.roaming != null);
 }
 

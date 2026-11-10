@@ -13,7 +13,7 @@ const loot = (itemId: string, chance: number, min = 1, max = min): LootEntry => 
   max,
 });
 
-export const zoneLootTableId = (zoneId: string) => `butin-zone-${zoneId}`;
+const zoneLootTableId = (zoneId: string) => `butin-zone-${zoneId}`;
 
 type Tier = 1 | 2 | 3 | 4;
 
@@ -99,7 +99,7 @@ function zoneFossils(zone: Zone): LootEntry[] {
 
 const tableName = (label: string) => `Butin — ${label}`.slice(0, 64);
 
-export function zoneLootTable(zone: Zone): LootTable {
+function zoneLootTable(zone: Zone): LootTable {
   return {
     id: zoneLootTableId(zone.id),
     name: tableName(zone.name),

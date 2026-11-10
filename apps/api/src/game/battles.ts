@@ -121,7 +121,7 @@ function elapsedMs(battle: BattleRow, now: Date): number {
 }
 
 /** État du combat à l'instant `now`. */
-export function battleState(battle: BattleRow, now: Date) {
+function battleState(battle: BattleRow, now: Date) {
   return simulateDungeon(battle.setup, battle.commands, battle.fledAtMs, elapsedMs(battle, now))
     .state;
 }

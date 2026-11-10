@@ -95,15 +95,7 @@ function effectivenessText(e: number): string | null {
 const fighterName = (ctx: GameContext, f: DungeonFighter) =>
   ctx.species(f.speciesId, f.formId)?.nameFr ?? `#${f.speciesId}`;
 
-export function HpBar({
-  hp,
-  max,
-  className = '',
-}: {
-  hp: number;
-  max: number;
-  className?: string;
-}) {
+function HpBar({ hp, max, className = '' }: { hp: number; max: number; className?: string }) {
   const ratio = max > 0 ? hp / max : 0;
   const color = ratio > 0.5 ? 'bg-emerald-500' : ratio > 0.2 ? 'bg-amber-400' : 'bg-red-500';
   return (

@@ -25,7 +25,7 @@ import type { sessionHooks } from './plugins/session';
  * `apps/web/src/lib/tab-profile.ts` et son usage dans `api.ts` côté web, et les profils secondaires en base (`delete from users where parent_user_id is not null`).
  */
 
-export const BETA_PROFILE_COOKIE = 'dex_profile';
+const BETA_PROFILE_COOKIE = 'dex_profile';
 const BETA_PROFILE_HEADER = 'x-dex-profile';
 /** Valeur de l'en-tête désignant le profil principal. */
 const MAIN_PROFILE = 'main';

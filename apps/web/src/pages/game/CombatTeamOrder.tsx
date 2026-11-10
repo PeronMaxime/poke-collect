@@ -24,14 +24,14 @@ export function effectivenessLabel(e: number): string {
   return `×${e}`;
 }
 
-export const effectivenessClass = (e: number) =>
+const effectivenessClass = (e: number) =>
   e > 1 ? 'text-emerald-600' : e < 1 ? 'text-red-600' : 'text-slate-500';
 
 /** Types techniques des données, qui ne sont pas des types d'attaque. */
 const NON_POKEMON_TYPES = new Set(['stellar', 'unknown', 'shadow']);
 
 /** Types d'attaque regroupés par efficacité contre `defenderTypes` (une immunité comptant ×¼). */
-export function matchups(defenderTypes: readonly string[]) {
+function matchups(defenderTypes: readonly string[]) {
   const byFactor = new Map<number, string[]>();
   for (const { name } of types) {
     const e = dungeonTypeEffectiveness(name, defenderTypes);

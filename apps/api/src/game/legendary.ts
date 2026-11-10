@@ -177,7 +177,7 @@ function elapsedMs(battle: LegendaryBattleRow, now: Date): number {
   );
 }
 
-export function legendaryBattleState(battle: LegendaryBattleRow, now: Date) {
+function legendaryBattleState(battle: LegendaryBattleRow, now: Date) {
   return simulateDungeon(battle.setup, battle.commands, battle.fledAtMs, elapsedMs(battle, now))
     .state;
 }

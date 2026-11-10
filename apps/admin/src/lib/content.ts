@@ -24,7 +24,7 @@ export type EntityCollection =
   | 'guild-quests'
   | 'chest-entries';
 
-export const versionsQuery = {
+const versionsQuery = {
   queryKey: ['content-versions'],
   queryFn: () => api<ContentVersionDto[]>('/api/admin/content/versions'),
 };

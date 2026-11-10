@@ -54,8 +54,7 @@ function saveDuplicateSettings(settings: DuplicateSettings) {
   }
 }
 
-export const perfectIvCount = (p: PokemonDto) =>
-  STAT_NAMES.filter((s) => p.ivs[s] === MAX_IV).length;
+const perfectIvCount = (p: PokemonDto) => STAT_NAMES.filter((s) => p.ivs[s] === MAX_IV).length;
 
 /**
  * Doublons à transférer : pour chaque espèce (et forme) ou chaque lignée selon les réglages, les

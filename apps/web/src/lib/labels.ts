@@ -249,7 +249,7 @@ const START_WEATHER_TEXTS: Record<ImposedWeather, string> = {
  * Conditions de départ d'une étape d'expédition : « avec 2 Pokémon Eau de PE 600 ou plus et
  * Lokhlass, lancée sous la pluie, de nuit ». Vide sans condition.
  */
-export function questRequirementsText(
+function questRequirementsText(
   ctx: GameContext,
   c: Extract<QuestCondition, { type: 'expedition' | 'questItem' }>,
 ): string {
@@ -305,7 +305,7 @@ const BONUS_LABELS: Record<PermanentBonus['type'], string> = {
   shiny: 'chance de chromatique',
 };
 
-export const bonusText = (b: PermanentBonus) => `+${b.percent} % ${BONUS_LABELS[b.type]}`;
+const bonusText = (b: PermanentBonus) => `+${b.percent} % ${BONUS_LABELS[b.type]}`;
 
 const REGION_BONUS_LABELS: Record<RegionBonus['type'], string> = { xp: 'd’XP' };
 

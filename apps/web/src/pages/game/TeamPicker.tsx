@@ -171,7 +171,7 @@ export const MEGA_LOCKED_TITLE = 'Un seul Pokémon Méga-Évolué par équipe';
  * membres d'une équipe qui peuvent partir (`usable`), dans l'ordre de l'équipe et dans la limite
  * de taille. Au survol, l'aperçu de ses membres.
  */
-export function SavedTeamsBar({
+function SavedTeamsBar({
   ctx,
   teams,
   pokemon,
@@ -298,7 +298,7 @@ export function useTeamPicker(
 }
 
 /** Rang d'un Pokémon dans la sélection ; les non-sélectionnés viennent après. */
-export function selectionRank(team: readonly string[], id: string) {
+function selectionRank(team: readonly string[], id: string) {
   const i = team.indexOf(id);
   return i === -1 ? team.length : i;
 }

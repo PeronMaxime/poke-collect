@@ -62,7 +62,7 @@ const RETRYABLE = new Set(['40P01', '40001']);
 const ATTEMPTS = 3;
 
 /** Verrouille les joueurs pour la transaction (dans l'ordre, pour ne jamais s'interbloquer). */
-export async function lockPlayers(tx: Db, userIds: readonly string[]): Promise<void> {
+async function lockPlayers(tx: Db, userIds: readonly string[]): Promise<void> {
   for (const id of [...new Set(userIds)].sort()) {
     await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${`player:${id}`}, 0))`);
   }

@@ -189,11 +189,7 @@ const baseStatTotal = (s: { baseStats: Record<string, number> }) =>
   Object.values(s.baseStats).reduce((a, b) => a + b, 0);
 
 /** Espèces du lot de test : lignées des donjons de la région, puis les plus fortes par type. */
-export function testPokemonSpecies(
-  ctx: GameContext,
-  regionId: string,
-  legendaries: boolean,
-): number[] {
+function testPokemonSpecies(ctx: GameContext, regionId: string, legendaries: boolean): number[] {
   const region = ctx.region(regionId);
   if (!region) return [];
   const ids = new Set<number>();

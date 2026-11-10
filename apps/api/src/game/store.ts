@@ -357,7 +357,7 @@ export function questRecords(
 }
 
 /** Parcelles de la ferme achetées à la boutique. */
-export async function boughtFarmPlots(db: Db, ownerId: string): Promise<number> {
+async function boughtFarmPlots(db: Db, ownerId: string): Promise<number> {
   const [row] = await db
     .select({ farmPlots: playerProfiles.farmPlots })
     .from(playerProfiles)
@@ -698,7 +698,7 @@ export async function caughtDex(db: Db, ownerId: string): Promise<CaughtDex> {
   };
 }
 
-export async function caughtSpeciesIds(db: Db, ownerId: string): Promise<Set<number>> {
+async function caughtSpeciesIds(db: Db, ownerId: string): Promise<Set<number>> {
   const rows = await db
     .select({ speciesId: pokedex.speciesId })
     .from(pokedex)

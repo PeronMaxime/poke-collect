@@ -146,7 +146,7 @@ export function SiteChips({ site }: { site: ExpeditionSite }) {
  * Récapitulatif de l'équipe choisie : chaque membre avec son talent (et ses effets s'il agit
  * ici) et l'XP qu'il gagnera, avec le niveau atteint.
  */
-export function TeamRecap({
+function TeamRecap({
   ctx,
   env,
   members,

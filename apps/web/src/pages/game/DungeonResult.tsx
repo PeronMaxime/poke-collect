@@ -11,7 +11,7 @@ import { StateTag } from './BuildingParts';
 import { LAUNCH_DIALOG_CLASS, ResultFrame, SheetSection } from './dialogParts';
 
 /** Issue d'un combat en temps réel (donjon ou dresseur). */
-export const OUTCOME_TITLES = {
+const OUTCOME_TITLES = {
   win: { text: 'Victoire !', className: 'text-emerald-600 dark:text-emerald-400' },
   loss: { text: 'Défaite…', className: 'text-red-600 dark:text-red-400' },
   timeout: { text: 'Temps écoulé…', className: 'text-red-600 dark:text-red-400' },

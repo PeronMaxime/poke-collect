@@ -47,7 +47,7 @@ type DungeonProgressRow = typeof dungeonProgress.$inferSelect;
  * Retard toléré sur l'heure d'un changement de Pokémon envoyé par le navigateur (latence) : le
  * changement prend effet à l'instant où le joueur a cliqué, s'il date de moins que ça.
  */
-export const SWITCH_TOLERANCE_MS = 1500;
+const SWITCH_TOLERANCE_MS = 1500;
 
 /** Instant d'une action du joueur, recalé comme un changement de Pokémon. */
 export function commandAtMs(
@@ -171,7 +171,7 @@ function elapsedMs(run: DungeonRunRow, now: Date): number {
 }
 
 /** État du combat à l'instant `now`. */
-export function runState(run: DungeonRunRow, now: Date) {
+function runState(run: DungeonRunRow, now: Date) {
   return simulateDungeon(run.setup, run.commands, run.fledAtMs, elapsedMs(run, now)).state;
 }
 

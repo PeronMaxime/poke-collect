@@ -22,7 +22,7 @@ import {
 } from '../../components/forms/fields';
 import { FormSelect, ItemIcon, SpeciesSelect } from '../../components/forms/pickers';
 
-export const CATEGORY_LABELS: Record<ItemCategory, string> = {
+const CATEGORY_LABELS: Record<ItemCategory, string> = {
   ball: 'Ball',
   heal: 'Soin',
   berry: 'Baie',

@@ -7,7 +7,7 @@ import type {
 } from '@poke/shared';
 
 /** Requête plus longue que ce seuil : journalisée (route et durée). */
-export const SLOW_REQUEST_MS = 500;
+const SLOW_REQUEST_MS = 500;
 
 /** Erreurs 5xx gardées en mémoire (les plus récentes). */
 const KEPT_ERRORS = 50;

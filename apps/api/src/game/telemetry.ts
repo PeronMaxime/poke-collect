@@ -58,7 +58,7 @@ function quantile(sorted: readonly number[], q: number): number | null {
   return sorted[lo]! + (sorted[hi]! - sorted[lo]!) * (pos - lo);
 }
 
-export function durationStats(hours: readonly number[]): DurationStats {
+function durationStats(hours: readonly number[]): DurationStats {
   const sorted = [...hours].sort((a, b) => a - b);
   const round = (v: number | null) => (v === null ? null : Math.round(v * 10) / 10);
   return {

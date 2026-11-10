@@ -21,7 +21,7 @@ function sessionCookie(request: FastifyRequest): string | null {
  * l'adresse IP. Un foyer, un réseau mobile ou plusieurs profils d'un même réseau ne se partagent
  * donc plus la même limite.
  */
-export function rateLimitKey(request: FastifyRequest): string {
+function rateLimitKey(request: FastifyRequest): string {
   const cookie = sessionCookie(request);
   if (!cookie) return `ip:${request.ip}`;
   return `s:${createHash('sha256').update(cookie).digest('base64url').slice(0, 22)}`;

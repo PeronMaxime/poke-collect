@@ -377,7 +377,7 @@ export function AbilityFilterSelect({
 }
 
 /** Pastille « K.O. », ou « Soins » avec le temps restant au Centre Pokémon. */
-export function KoBadge({ p }: { p: PokemonDto }) {
+function KoBadge({ p }: { p: PokemonDto }) {
   if (p.knockedOut) {
     return (
       <span

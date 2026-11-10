@@ -184,7 +184,7 @@ function megasByRegion(regions: readonly Region[]) {
  * Difficulté d'un donjon : extrême pour un légendaire ou un mythique, très difficile pour un
  * starter, difficile pour une espèce évoluée, facile pour une espèce seule dans sa lignée.
  */
-export function dungeonDifficultyOf(
+function dungeonDifficultyOf(
   speciesId: number,
   starterSpeciesIds: readonly number[] = [],
 ): DungeonDifficulty {

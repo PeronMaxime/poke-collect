@@ -1,0 +1,5 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "ignore": ["apps/web/public/sw.js", "scripts/load-test/load-test.mjs"],
+  "ignoreDependencies": ["@testing-library/user-event", "@fontsource/press-start-2p"]
+}

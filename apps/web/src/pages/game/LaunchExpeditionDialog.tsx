@@ -78,7 +78,7 @@ import {
   parseFilter,
 } from './AutoTransferSettings';
 import type { ZoneAutoTransfer } from './AutoTransferSettings';
-import { AutoSelectButton, TeamPicker, pillClass, useTeamPicker } from './TeamPicker';
+import { AutoSelectButton, TeamPicker, useTeamPicker } from './TeamPicker';
 import { SiteChips, TeamPickerDialog, TeamSlots } from './TeamSection';
 import { TEAM_WEATHER_NOTE, WeatherIcon, zoneWeatherForecast } from './WeatherIcon';
 import { formatXp, usePlayerBonuses } from './XpPreview';
@@ -90,8 +90,6 @@ import {
   SELECTED_CELL,
   StatusPill,
 } from './dialogParts';
-
-export { pillClass };
 
 /** Ce que reçoit le choix de l'équipe du formulaire de lancement. */
 export interface TeamChoice {
@@ -200,7 +198,7 @@ function storeZoneSettings(zoneId: string, patch: ZoneSettings) {
   }
 }
 
-export function teamErrorText(e: ExpeditionError): string {
+function teamErrorText(e: ExpeditionError): string {
   switch (e.code) {
     case 'TEAM_EMPTY':
       return 'Choisis au moins un Pokémon.';

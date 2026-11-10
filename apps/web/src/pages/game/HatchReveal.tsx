@@ -85,7 +85,7 @@ export function HatchReveal({
 }
 
 /** Pierre fossile (animation de restauration). */
-export function FossilStone({ size = 64 }: { size?: number }) {
+function FossilStone({ size = 64 }: { size?: number }) {
   return (
     <div
       aria-hidden

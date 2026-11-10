@@ -54,7 +54,7 @@ export function notificationSettings(settings: Record<string, unknown>): Notific
 }
 
 /** Ce qui attend un joueur depuis la tournée précédente. */
-export interface ActivitySummary {
+interface ActivitySummary {
   zoneIds: string[];
   /** Expéditions légendaires terminées (quêtes). */
   questIds: string[];
@@ -63,7 +63,7 @@ export interface ActivitySummary {
 }
 
 /** Texte de la notification groupée ; null si rien à signaler (types désactivés). */
-export function pushMessage(
+function pushMessage(
   ctx: GameContext,
   summary: ActivitySummary,
   settings: NotificationSettings,
