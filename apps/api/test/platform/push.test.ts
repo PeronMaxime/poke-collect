@@ -1,15 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content/seed';
-import {
-  createDb,
-  dungeonProgress,
-  ensureSeedContent,
-  inventory,
-  pokemon,
-  pushSubscriptions,
-  users,
-} from '@poke/db';
+import { dungeonProgress, inventory, pokemon, pushSubscriptions, users } from '@poke/db';
 import type {
   AdminPlayerDetailResponse,
   AdminPlayerDto,
@@ -22,22 +14,13 @@ import type {
   QuestsResponse,
   InventoryEntryDto,
   ExpeditionDto,
-  PokemonDto,
   PushConfigResponse,
   PushPayload,
   TelemetryResponse,
 } from '@poke/shared';
-import { buildApp } from '../../src/app';
-import type { ContentCache } from '../../src/content-cache';
-import { loadEnv } from '../../src/env';
 import { runPushRound } from '../../src/game/push';
 import type { PushSender, PushTarget } from '../../src/game/push';
-
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-let clock = new Date('2026-10-08T10:00:00Z');
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
-let content: ContentCache;
+import { testApi } from '../support/api';
 
 /** Faux service push : garde les envois ; les endpoints « gone » sont expirés. */
 const sent: { target: PushTarget; payload: PushPayload }[] = [];
@@ -47,56 +30,9 @@ const sender: PushSender = async (target, payload) => {
   return 'ok';
 };
 
-beforeAll(async () => {
-  await handle.migrate();
-  await ensureSeedContent(handle.db, seedContent);
-  ({ app, content } = await buildApp({
-    db: handle.db,
-    env,
-    now: () => clock,
-    pushSender: sender,
-  }));
-});
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
-
-const advance = (minutes: number) => {
-  clock = new Date(clock.getTime() + minutes * 60_000);
-};
-const round = () => runPushRound(handle.db, content, sender, clock);
-
-async function newPlayer(email: string, trainerName: string) {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/sign-up/email',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
-    payload: { email, password: 'motdepasse-solide', name: trainerName },
-  });
-  expect(res.statusCode, res.body).toBe(200);
-  const cookies = res.headers['set-cookie'];
-  const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
-  const cookie = list.map((c) => c.split(';')[0]).join('; ');
-  const [user] = await handle.db.select().from(users).where(eq(users.email, email));
-  const call = async <T>(
-    method: 'GET' | 'POST' | 'PUT' | 'DELETE',
-    url: string,
-    payload?: unknown,
-  ) => {
-    const r = await app.inject({
-      method,
-      url,
-      headers: { cookie },
-      ...(payload !== undefined && { payload: payload as object }),
-    });
-    return { status: r.statusCode, body: (r.body ? r.json() : null) as T };
-  };
-  expect((await call('POST', '/api/profile', { trainerName })).status).toBe(201);
-  const starter = await call<PokemonDto>('POST', '/api/starter', { speciesId: 1 });
-  expect(starter.status).toBe(201);
-  return { call, userId: user!.id, starter: starter.body };
-}
+const api = testApi({ start: '2026-10-08T10:00:00Z', app: { pushSender: sender } });
+const { handle, env, advance, newPlayer } = api;
+const round = () => runPushRound(handle.db, api.content, sender, api.clock);
 
 const subscription = (endpoint: string) => ({
   endpoint,
@@ -251,7 +187,7 @@ describe('joueurs (admin)', () => {
       role: 'player',
       starterSpeciesId: 1,
     });
-    expect(new Date(sacha.lastSeenAt!).getTime()).toBeGreaterThanOrEqual(clock.getTime());
+    expect(new Date(sacha.lastSeenAt!).getTime()).toBeGreaterThanOrEqual(api.clock.getTime());
     expect(list.body.find((p) => p.id === admin.userId)?.role).toBe('admin');
 
     const detail = await admin.call<AdminPlayerDetailResponse>(

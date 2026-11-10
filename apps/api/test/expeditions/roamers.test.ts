@@ -1,6 +1,5 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { seedContent } from '@poke/content/seed';
-import { createDb, ensureSeedContent } from '@poke/db';
 import type {
   ClaimExpeditionResponse,
   ExpeditionDto,
@@ -8,13 +7,7 @@ import type {
   PokemonDto,
   QuestsResponse,
 } from '@poke/shared';
-import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
-
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-let clock = new Date('2026-10-07T10:00:00Z');
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
+import { testApi } from '../support/api';
 
 // Quête de test : une capture, puis Raikou en fuyard. Au départ, seules la Route 1 et la Forêt de
 // Jade sont débloquées (sans puissance minimale) : il se cache dans l'une des deux, et chaque rencontre est lui (100 %) ; la
@@ -60,19 +53,8 @@ content.quests.push({
   },
 });
 
-beforeAll(async () => {
-  await handle.migrate();
-  await ensureSeedContent(handle.db, content);
-  ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
-});
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
-
-const advance = (minutes: number) => {
-  clock = new Date(clock.getTime() + minutes * 60_000);
-};
+const api = testApi({ start: '2026-10-07T10:00:00Z', content: content });
+const { advance } = api;
 
 describe('Pokémon fuyards', () => {
   let call: <T>(
@@ -84,7 +66,7 @@ describe('Pokémon fuyards', () => {
 
   beforeAll(async () => {
     const email = 'fuyard@example.com';
-    const res = await app.inject({
+    const res = await api.app.inject({
       method: 'POST',
       url: '/api/auth/sign-up/email',
       headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
@@ -96,7 +78,7 @@ describe('Pokémon fuyards', () => {
       .map((c) => c.split(';')[0])
       .join('; ');
     call = async <T>(method: 'GET' | 'POST', url: string, payload?: unknown) => {
-      const r = await app.inject({
+      const r = await api.app.inject({
         method,
         url,
         headers: { cookie },

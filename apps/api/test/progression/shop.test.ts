@@ -1,16 +1,12 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
-import { seedContent } from '@poke/content/seed';
 import {
-  createDb,
   eggs,
-  ensureSeedContent,
   inventory,
   playerProfiles,
   shopPurchases,
   shopSales,
   trainerProgress,
-  users,
 } from '@poke/db';
 import type {
   InventoryEntryDto,
@@ -19,53 +15,10 @@ import type {
   SellResponse,
   ShopResponse,
 } from '@poke/shared';
-import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
+import { testApi } from '../support/api';
 
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-let clock = new Date('2026-10-07T10:00:00Z');
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
-
-beforeAll(async () => {
-  await handle.migrate();
-  await ensureSeedContent(handle.db, seedContent);
-  ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
-});
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
-
-const advance = (minutes: number) => {
-  clock = new Date(clock.getTime() + minutes * 60_000);
-};
-
-async function signUp(email: string): Promise<{ cookie: string; userId: string }> {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/sign-up/email',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
-    payload: { email, password: 'motdepasse-solide', name: email.split('@')[0] },
-  });
-  expect(res.statusCode, res.body).toBe(200);
-  const cookies = res.headers['set-cookie'];
-  const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
-  const [user] = await handle.db.select().from(users).where(eq(users.email, email));
-  return { cookie: list.map((c) => c.split(';')[0]).join('; '), userId: user!.id };
-}
-
-function client(cookie: string) {
-  return async <T>(method: 'GET' | 'POST', url: string, payload?: unknown) => {
-    const res = await app.inject({
-      method,
-      url,
-      headers: { cookie },
-      ...(payload !== undefined && { payload: payload as object }),
-    });
-    return { status: res.statusCode, body: (res.body ? res.json() : null) as T };
-  };
-}
+const api = testApi({ start: '2026-10-07T10:00:00Z' });
+const { handle, advance, signUp, client } = api;
 
 const setCurrency = (userId: string, currency: number) =>
   handle.db.update(playerProfiles).set({ currency }).where(eq(playerProfiles.userId, userId));
@@ -191,8 +144,8 @@ describe('boutique', () => {
       ownerId: userId,
       trainerId: 'pierre',
       wins: 1,
-      firstWinAt: clock,
-      lastWinAt: clock,
+      firstWinAt: api.clock,
+      lastWinAt: api.clock,
     });
     const s = await shop();
     expect(entry(s, 'great-ball')).toMatchObject({ state: 'available', isNew: true });
@@ -217,7 +170,7 @@ describe('boutique', () => {
         speciesId: 4,
         parents: [] as never,
         contentVersionId: 1,
-        hatchAt: clock,
+        hatchAt: api.clock,
         seed: 1,
         hatched: true,
       })),
@@ -237,7 +190,7 @@ describe('boutique', () => {
     expect(limited.body).toMatchObject({
       error: 'LIMIT_REACHED',
       remainingLots: 0,
-      nextLotsAt: new Date(clock.getTime() + 7 * 24 * 3_600_000).toISOString(),
+      nextLotsAt: new Date(api.clock.getTime() + 7 * 24 * 3_600_000).toISOString(),
     });
     expect(entry(await shop(), 'destiny-knot')).toMatchObject({
       state: 'soldOut',

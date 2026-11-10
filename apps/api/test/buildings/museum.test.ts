@@ -1,7 +1,6 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { seedContent } from '@poke/content/seed';
-import { createDb, ensureSeedContent, trainerProgress, users } from '@poke/db';
+import { trainerProgress } from '@poke/db';
 import type {
   FossilRevivalDto,
   InventoryEntryDto,
@@ -10,55 +9,11 @@ import type {
   PokemonDto,
   ReviveFossilsResponse,
 } from '@poke/shared';
-import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
 import { addItems } from '../../src/game/store';
+import { testApi } from '../support/api';
 
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-let clock = new Date('2026-10-08T10:00:00Z');
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
-
-beforeAll(async () => {
-  await handle.migrate();
-  await ensureSeedContent(handle.db, seedContent);
-  ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
-});
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
-
-const advance = (minutes: number) => {
-  clock = new Date(clock.getTime() + minutes * 60_000);
-};
-
-async function newPlayer(email: string, trainerName: string) {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/sign-up/email',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
-    payload: { email, password: 'motdepasse-solide', name: trainerName },
-  });
-  expect(res.statusCode, res.body).toBe(200);
-  const cookies = res.headers['set-cookie'];
-  const cookie = (Array.isArray(cookies) ? cookies : [cookies ?? ''])
-    .map((c) => c.split(';')[0])
-    .join('; ');
-  const [user] = await handle.db.select().from(users).where(eq(users.email, email));
-  const call = async <T>(method: 'GET' | 'POST' | 'DELETE', url: string, payload?: unknown) => {
-    const r = await app.inject({
-      method,
-      url,
-      headers: { cookie },
-      ...(payload !== undefined && { payload: payload as object }),
-    });
-    return { status: r.statusCode, body: (r.body ? r.json() : null) as T };
-  };
-  expect((await call('POST', '/api/profile', { trainerName })).status).toBe(201);
-  expect((await call('POST', '/api/starter', { speciesId: 1 })).status).toBe(201);
-  return { call, userId: user!.id };
-}
+const api = testApi({ start: '2026-10-08T10:00:00Z' });
+const { handle, advance, newPlayer } = api;
 
 describe('Musée', () => {
   let call: Awaited<ReturnType<typeof newPlayer>>['call'];
@@ -104,7 +59,7 @@ describe('Musée', () => {
     const a = await call<FossilRevivalDto>('POST', '/api/museum', { itemId: 'helix-fossil' });
     expect(a.status).toBe(201);
     expect(a.body).toMatchObject({ itemId: 'helix-fossil', speciesId: 138 });
-    expect(Date.parse(a.body.readyAt) - clock.getTime()).toBe(120 * 60_000);
+    expect(Date.parse(a.body.readyAt) - api.clock.getTime()).toBe(120 * 60_000);
     expect(await quantity('helix-fossil')).toBe(1);
 
     advance(60);

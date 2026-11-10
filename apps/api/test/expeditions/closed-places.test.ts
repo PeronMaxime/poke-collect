@@ -1,14 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content/seed';
-import {
-  assistants,
-  createDb,
-  daycareSlots,
-  ensureSeedContent,
-  fossilRevivals,
-  users,
-} from '@poke/db';
+import { assistants, daycareSlots, fossilRevivals } from '@poke/db';
 import type {
   AssistantDto,
   DaycareResponse,
@@ -17,55 +10,17 @@ import type {
   MuseumResponse,
   PokemonDto,
 } from '@poke/shared';
-import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
 import { addItems, insertPokemon } from '../../src/game/store';
+import { testApi } from '../support/api';
 
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-const clock = new Date('2026-10-07T10:00:00Z');
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
-
-beforeAll(async () => {
-  await handle.migrate();
-  await ensureSeedContent(handle.db, {
+const api = testApi({
+  start: '2026-10-07T10:00:00Z',
+  content: {
     ...seedContent,
     balance: { ...seedContent.balance, tabUnlocks: {} },
-  });
-  ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
+  },
 });
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
-
-async function newPlayer(email: string) {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/sign-up/email',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
-    payload: { email, password: 'motdepasse-solide', name: email.split('@')[0] },
-  });
-  expect(res.statusCode, res.body).toBe(200);
-  const cookies = res.headers['set-cookie'];
-  const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
-  const cookie = list.map((c) => c.split(';')[0]).join('; ');
-  const [user] = await handle.db.select().from(users).where(eq(users.email, email));
-  const call = async <T>(method: 'GET' | 'POST', url: string, payload?: object) => {
-    const r = await app.inject({
-      method,
-      url,
-      headers: { cookie },
-      ...(payload !== undefined && { payload }),
-    });
-    return { status: r.statusCode, body: (r.body ? r.json() : null) as T };
-  };
-  expect((await call('POST', '/api/profile', { trainerName: email.split('@')[0] })).status).toBe(
-    201,
-  );
-  expect((await call('POST', '/api/starter', { speciesId: 1 })).status).toBe(201);
-  return { call, userId: user!.id };
-}
+const { handle, newPlayer } = api;
 
 async function give(userId: string, speciesId: number) {
   const [row] = await insertPokemon(
@@ -91,7 +46,7 @@ async function give(userId: string, speciesId: number) {
         happiness: 70,
       },
     ],
-    { origin: 'admin', originRegion: null, at: clock },
+    { origin: 'admin', originRegion: null, at: api.clock },
   );
   return row!;
 }
@@ -118,7 +73,7 @@ describe('places fermées (réglage baissé)', () => {
       parentAId: a!.id,
       parentBId: b!.id,
       heldItemAId: 'helix-fossil',
-      startedAt: clock,
+      startedAt: api.clock,
     });
     await handle.db.insert(assistants).values([
       { ownerId: userId, post: 'museum', slotIndex: 0, pokemonId: keeper!.id },

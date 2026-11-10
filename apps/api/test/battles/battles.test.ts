@@ -1,24 +1,18 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { eq, inArray } from 'drizzle-orm';
 import { seedContent } from '@poke/content/seed';
 import { getSpecies } from '@poke/data';
-import { createDb, ensureSeedContent, pokemon, trainerProgress, users } from '@poke/db';
+import { pokemon, trainerProgress } from '@poke/db';
 import { simulateDungeon } from '@poke/game-core';
 import type { PokemonInstance } from '@poke/game-core';
 import type { BattleDto, BattlesResponse, ClaimBattleResponse, PokemonDto } from '@poke/shared';
-import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
 import { addItems, insertPokemon } from '../../src/game/store';
+import { testApi } from '../support/api';
 
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-let clock = new Date('2026-10-07T10:00:00Z');
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
-
-beforeAll(async () => {
-  await handle.migrate();
-  // Un talent utile à la Pension, pour y affecter un assistant (un assistant inutile est refusé).
-  await ensureSeedContent(handle.db, {
+// Un talent utile à la Pension, pour y affecter un assistant (un assistant inutile est refusé).
+const api = testApi({
+  start: '2026-10-07T10:00:00Z',
+  content: {
     ...seedContent,
     abilities: [
       {
@@ -29,43 +23,9 @@ beforeAll(async () => {
         ],
       },
     ],
-  });
-  ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
+  },
 });
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
-
-const advance = (minutes: number) => {
-  clock = new Date(clock.getTime() + minutes * 60_000);
-};
-
-async function signUp(email: string): Promise<{ cookie: string; userId: string }> {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/sign-up/email',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
-    payload: { email, password: 'motdepasse-solide', name: email.split('@')[0] },
-  });
-  expect(res.statusCode, res.body).toBe(200);
-  const cookies = res.headers['set-cookie'];
-  const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
-  const [user] = await handle.db.select().from(users).where(eq(users.email, email));
-  return { cookie: list.map((c) => c.split(';')[0]).join('; '), userId: user!.id };
-}
-
-function client(cookie: string) {
-  return async <T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, payload?: unknown) => {
-    const res = await app.inject({
-      method,
-      url,
-      headers: { cookie },
-      ...(payload !== undefined && { payload: payload as object }),
-    });
-    return { status: res.statusCode, body: (res.body ? res.json() : null) as T };
-  };
-}
+const { handle, advance, signUp, client } = api;
 
 async function newPlayer(email: string, trainerName: string) {
   const { cookie, userId } = await signUp(email);
@@ -102,7 +62,7 @@ async function give(userId: string, speciesId: number, extra: Partial<PokemonIns
         ...extra,
       },
     ],
-    { origin: 'capture', originRegion: 'kanto', at: clock },
+    { origin: 'capture', originRegion: 'kanto', at: api.clock },
   );
   return row!;
 }
@@ -131,17 +91,22 @@ function finish(battle: BattleDto) {
     battle.fledAtMs,
     battle.setup.timeLimitMs,
   );
-  clock = new Date(Date.parse(battle.startedAt) + (state.endedAtMs ?? battle.setup.timeLimitMs));
+  api.clock = new Date(
+    Date.parse(battle.startedAt) + (state.endedAtMs ?? battle.setup.timeLimitMs),
+  );
   return state;
 }
 
 /** Le joueur a battu ces dresseurs (déblocages). */
 async function defeated(userId: string, trainerIds: string[]) {
-  await handle.db
-    .insert(trainerProgress)
-    .values(
-      trainerIds.map((trainerId) => ({ ownerId: userId, trainerId, wins: 1, lastWinAt: clock })),
-    );
+  await handle.db.insert(trainerProgress).values(
+    trainerIds.map((trainerId) => ({
+      ownerId: userId,
+      trainerId,
+      wins: 1,
+      lastWinAt: api.clock,
+    })),
+  );
 }
 
 type Player = Awaited<ReturnType<typeof newPlayer>>;
@@ -218,7 +183,7 @@ describe('combats de dresseurs', () => {
         trainerId: 'gamin-tom',
         wins: 1,
         losses: 0,
-        lastEndedAt: clock.toISOString(),
+        lastEndedAt: api.clock.toISOString(),
       }),
     ]);
   });
@@ -263,7 +228,7 @@ describe('combats de dresseurs', () => {
     expect(healed.body).toMatchObject([
       {
         knockedOut: false,
-        healUntil: new Date(clock.getTime() + 30 * 60_000).toISOString(),
+        healUntil: new Date(api.clock.getTime() + 30 * 60_000).toISOString(),
         healSlot: 0,
       },
     ]);
@@ -370,7 +335,7 @@ describe('combats de dresseurs', () => {
       (e) => e.kind === 'attack' && e.side === 'enemy' && e.damage > 0 && !e.ko,
     )!;
     const atMs = hit.atMs + 1;
-    clock = new Date(Date.parse(battle.startedAt) + atMs);
+    api.clock = new Date(Date.parse(battle.startedAt) + atMs);
     const item = (itemId: string) =>
       call<BattleDto>('POST', `/api/battles/${battle.id}/item`, { itemId, atMs });
 

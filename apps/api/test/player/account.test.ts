@@ -1,35 +1,24 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content/seed';
-import { createDb, ensureSeedContent, playerProfiles, pokemon, users } from '@poke/db';
+import { playerProfiles, pokemon, users } from '@poke/db';
 import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
 import type { MailMessage } from '../../src/mail';
-
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
+import { testApi } from '../support/api';
 const ORIGIN = 'http://localhost:5173';
 const sent: MailMessage[] = [];
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
 
-beforeAll(async () => {
-  await handle.migrate();
-  await ensureSeedContent(handle.db, seedContent);
-  ({ app } = await buildApp({
-    db: handle.db,
-    env,
+const api = testApi({
+  app: {
     mailer: async (message) => {
       sent.push(message);
     },
-  }));
+  },
 });
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
+const { handle, env } = api;
 
 async function post(url: string, payload: unknown, cookie?: string) {
-  return app.inject({
+  return api.app.inject({
     method: 'POST',
     url,
     headers: { 'content-type': 'application/json', origin: ORIGIN, ...(cookie && { cookie }) },
@@ -57,7 +46,7 @@ const signIn = (email: string, password: string) =>
 
 describe('réinitialisation du mot de passe', () => {
   it('annoncée dans la configuration quand les e-mails sont disponibles', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/config' });
+    const res = await api.app.inject({ method: 'GET', url: '/api/config' });
     expect(res.json()).toMatchObject({ passwordReset: true });
   });
 
@@ -74,7 +63,7 @@ describe('réinitialisation du mot de passe', () => {
 
     // Le lien de l'e-mail redirige vers la page du jeu avec le jeton.
     const link = new URL(sent[0]!.text.match(/https?:\/\/\S+/)![0]);
-    const callback = await app.inject({ method: 'GET', url: link.pathname + link.search });
+    const callback = await api.app.inject({ method: 'GET', url: link.pathname + link.search });
     expect(callback.statusCode).toBe(302);
     const target = new URL(callback.headers.location as string);
     expect(target.origin + target.pathname).toBe(`${ORIGIN}/reinitialiser-mot-de-passe`);
@@ -148,7 +137,7 @@ describe('suppression du compte', () => {
       await handle.db.select().from(pokemon).where(eq(pokemon.ownerId, user!.id)),
     ).toHaveLength(0);
     // Session supprimée, et l'adresse est de nouveau libre.
-    const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
+    const me = await api.app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
     expect(me.statusCode).toBe(401);
     expect((await signIn('flora@example.com', 'mot-de-passe-flora')).statusCode).toBe(401);
   });

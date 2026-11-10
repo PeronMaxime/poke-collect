@@ -1,4 +1,4 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content/seed';
 import {
@@ -7,15 +7,7 @@ import {
   playableContent,
   zoneCompletionPokemon,
 } from '@poke/game-core';
-import {
-  createDb,
-  ensureSeedContent,
-  inventory,
-  pokedex,
-  pokedexForms,
-  pokemon,
-  users,
-} from '@poke/db';
+import { inventory, pokedex, pokedexForms, pokemon } from '@poke/db';
 import type {
   BattleDto,
   ClaimBattleResponse,
@@ -26,54 +18,10 @@ import type {
   PokemonDto,
   ProgressionResponse,
 } from '@poke/shared';
-import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
+import { testApi } from '../support/api';
 
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-let clock = new Date('2026-10-07T10:00:00Z');
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
-
-beforeAll(async () => {
-  await handle.migrate();
-  await ensureSeedContent(handle.db, seedContent);
-  ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
-});
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
-
-const advance = (minutes: number) => {
-  clock = new Date(clock.getTime() + minutes * 60_000);
-};
-
-async function newPlayer(email: string, trainerName: string, starterId: number) {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/sign-up/email',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
-    payload: { email, password: 'motdepasse-solide', name: trainerName },
-  });
-  expect(res.statusCode, res.body).toBe(200);
-  const cookies = res.headers['set-cookie'];
-  const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
-  const cookie = list.map((c) => c.split(';')[0]).join('; ');
-  const [user] = await handle.db.select().from(users).where(eq(users.email, email));
-  const call = async <T>(method: 'GET' | 'POST', url: string, payload?: unknown) => {
-    const r = await app.inject({
-      method,
-      url,
-      headers: { cookie },
-      ...(payload !== undefined && { payload: payload as object }),
-    });
-    return { status: r.statusCode, body: (r.body ? r.json() : null) as T };
-  };
-  expect((await call('POST', '/api/profile', { trainerName })).status).toBe(201);
-  const starter = await call<PokemonDto>('POST', '/api/starter', { speciesId: starterId });
-  expect(starter.status).toBe(201);
-  return { call, userId: user!.id, starter: starter.body };
-}
+const api = testApi({ start: '2026-10-07T10:00:00Z' });
+const { handle, advance, newPlayer } = api;
 
 const setLevel = (id: string, level: number) =>
   handle.db.update(pokemon).set({ level }).where(eq(pokemon.id, id));

@@ -1,22 +1,16 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { eq } from 'drizzle-orm';
+import { describe, expect, it } from 'vitest';
 import { seedContent } from '@poke/content/seed';
-import { createDb, ensureSeedContent, trainerProgress, users } from '@poke/db';
+import { trainerProgress } from '@poke/db';
 import type { FarmResponse, MuseumResponse, ProgressionResponse } from '@poke/shared';
-import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
 import { addItems } from '../../src/game/store';
-
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
+import { testApi } from '../support/api';
 
 const beatPierre = { amount: 2, unlock: { type: 'trainerDefeated' as const, trainerId: 'pierre' } };
 
-beforeAll(async () => {
-  await handle.migrate();
-  // Onglets tous ouverts ; 3 parcelles au départ, puis des places en plus après Pierre.
-  await ensureSeedContent(handle.db, {
+// Onglets tous ouverts ; 3 parcelles au départ, puis des places en plus après Pierre.
+const api = testApi({
+  start: '2026-10-08T10:00:00Z',
+  content: {
     ...seedContent,
     balance: {
       ...seedContent.balance,
@@ -31,40 +25,9 @@ beforeAll(async () => {
         center: [{ ...beatPierre, amount: 1 }],
       },
     },
-  });
-  ({ app } = await buildApp({ db: handle.db, env, now: () => new Date('2026-10-08T10:00:00Z') }));
+  },
 });
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
-
-async function newPlayer(email: string, trainerName: string) {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/sign-up/email',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
-    payload: { email, password: 'motdepasse-solide', name: trainerName },
-  });
-  expect(res.statusCode, res.body).toBe(200);
-  const cookies = res.headers['set-cookie'];
-  const cookie = (Array.isArray(cookies) ? cookies : [cookies ?? ''])
-    .map((c) => c.split(';')[0])
-    .join('; ');
-  const [user] = await handle.db.select().from(users).where(eq(users.email, email));
-  const call = async <T>(method: 'GET' | 'POST', url: string, payload?: unknown) => {
-    const r = await app.inject({
-      method,
-      url,
-      headers: { cookie },
-      ...(payload !== undefined && { payload: payload as object }),
-    });
-    return { status: r.statusCode, body: (r.body ? r.json() : null) as T };
-  };
-  expect((await call('POST', '/api/profile', { trainerName })).status).toBe(201);
-  expect((await call('POST', '/api/starter', { speciesId: 1 })).status).toBe(201);
-  return { call, userId: user!.id };
-}
+const { handle, newPlayer } = api;
 
 describe('Bâtiments à débloquer', () => {
   it('ouvre les places d’un palier dès que sa condition est remplie', async () => {

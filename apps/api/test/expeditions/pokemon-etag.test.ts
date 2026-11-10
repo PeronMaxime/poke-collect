@@ -1,28 +1,12 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { seedContent } from '@poke/content/seed';
-import { createDb, ensureSeedContent } from '@poke/db';
+import { describe, expect, it } from 'vitest';
 import type { PokemonDto } from '@poke/shared';
-import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
+import { testApi } from '../support/api';
 
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-const clock = new Date('2026-11-04T10:00:00Z');
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
-
-beforeAll(async () => {
-  await handle.migrate();
-  await ensureSeedContent(handle.db, seedContent);
-  ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
-});
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
+const api = testApi({ start: '2026-11-04T10:00:00Z' });
 
 describe('liste des Pokémon', () => {
   it('répond 304 tant que la collection ne change pas', async () => {
-    const signUp = await app.inject({
+    const signUp = await api.app.inject({
       method: 'POST',
       url: '/api/auth/sign-up/email',
       headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
@@ -31,7 +15,7 @@ describe('liste des Pokémon', () => {
     const raw = signUp.headers['set-cookie'];
     const cookie = (Array.isArray(raw) ? raw : [raw ?? '']).map((c) => c.split(';')[0]).join('; ');
     const call = (method: 'GET' | 'POST', url: string, payload?: object, extra = {}) =>
-      app.inject({ method, url, headers: { cookie, ...extra }, ...(payload && { payload }) });
+      api.app.inject({ method, url, headers: { cookie, ...extra }, ...(payload && { payload }) });
     expect((await call('POST', '/api/profile', { trainerName: 'Etag' })).statusCode).toBe(201);
     expect((await call('POST', '/api/starter', { speciesId: 1 })).statusCode).toBe(201);
 
@@ -47,7 +31,7 @@ describe('liste des Pokémon', () => {
 
     // Un changement (favori) donne une nouvelle empreinte et la liste complète.
     const id = first.json<PokemonDto[]>()[0]!.id;
-    const patched = await app.inject({
+    const patched = await api.app.inject({
       method: 'PATCH',
       url: `/api/pokemon/${id}`,
       headers: { cookie },

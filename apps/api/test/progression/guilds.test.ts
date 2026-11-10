@@ -1,14 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content/seed';
-import {
-  createDb,
-  ensureSeedContent,
-  guildWeeklyQuests,
-  inventory,
-  playerProfiles,
-  users,
-} from '@poke/db';
+import { guildWeeklyQuests, inventory, playerProfiles, users } from '@poke/db';
 import { createGameContext, guildQuestTarget } from '@poke/game-core';
 import type { GuildActivity } from '@poke/game-core';
 import type {
@@ -18,29 +11,15 @@ import type {
   OpenChestResponse,
   PokemonDto,
 } from '@poke/shared';
-import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
 import { recordGuildActivity, resetGuildQuests, settleGuildQuests } from '../../src/game/guilds';
-
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-// Mercredi 28 octobre 2026, midi à Paris.
-let clock = new Date('2026-10-28T11:00:00Z');
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
+import { testApi } from '../support/api';
 const ctx = createGameContext({ versionId: 1, ...seedContent });
 
-beforeAll(async () => {
-  await handle.migrate();
-  await ensureSeedContent(handle.db, seedContent);
-  ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
-});
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
+const api = testApi({ start: '2026-10-28T11:00:00Z' });
+const { handle } = api;
 
 const advanceHours = (hours: number) => {
-  clock = new Date(clock.getTime() + hours * 3_600_000);
+  api.clock = new Date(api.clock.getTime() + hours * 3_600_000);
 };
 /** Une minute de plus : les messages de la discussion se suivent dans l'ordre. */
 const tick = () => advanceHours(1 / 60);
@@ -49,7 +28,7 @@ type Method = 'GET' | 'POST' | 'PATCH' | 'DELETE';
 
 async function player(name: string) {
   const email = `${name.toLowerCase()}@example.com`;
-  const res = await app.inject({
+  const res = await api.app.inject({
     method: 'POST',
     url: '/api/auth/sign-up/email',
     headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
@@ -62,7 +41,7 @@ async function player(name: string) {
     .join('; ');
   const [user] = await handle.db.select().from(users).where(eq(users.email, email));
   const call = async <T>(method: Method, url: string, payload?: unknown) => {
-    const r = await app.inject({
+    const r = await api.app.inject({
       method,
       url,
       headers: { cookie },
@@ -213,12 +192,12 @@ describe('guildes', () => {
       .update(guildWeeklyQuests)
       .set({ target: 3 })
       .where(eq(guildWeeklyQuests.guildId, guildId));
-    await recordGuildActivity(handle.db, ctx, misty.userId, everything(), clock);
+    await recordGuildActivity(handle.db, ctx, misty.userId, everything(), api.clock);
     let s = await state(ash);
     expect(s.guild!.quests.every((q) => q.completedAt && q.progress > q.target)).toBe(true);
     const reached = s.guild!.quests.map((q) => q.progress);
     // Objectif atteint : Sacha peut encore participer.
-    await recordGuildActivity(handle.db, ctx, ash.userId, everything(), clock);
+    await recordGuildActivity(handle.db, ctx, ash.userId, everything(), api.clock);
     s = await state(ash);
     expect(s.guild!.quests.map((q) => q.progress)).toEqual(reached.map((p) => p * 2));
     expect(s.guild!.quests.every((q) => q.myContribution > 0 && q.contributors === 2)).toBe(true);
@@ -227,14 +206,14 @@ describe('guildes', () => {
         expect(await quantity(p.userId, `guild-chest-${chest}`)).toBe(0);
       }
     }
-    expect(await settleGuildQuests(handle.db, ctx, clock)).toBe(0);
+    expect(await settleGuildQuests(handle.db, ctx, api.clock)).toBe(0);
   });
 
   it('à minuit (heure de Paris) : coffres des quêtes du jour, nouvelles quêtes du jour', async () => {
-    clock = new Date('2026-10-28T22:59:00Z'); // mercredi, 23 h 59
+    api.clock = new Date('2026-10-28T22:59:00Z'); // mercredi, 23 h 59
     expect((await state(ash)).guild!.quests.every((q) => q.completedAt)).toBe(true);
     expect(await quantity(ash.userId, 'guild-chest-bronze')).toBe(0);
-    clock = new Date('2026-10-28T23:00:00Z'); // jeudi, minuit
+    api.clock = new Date('2026-10-28T23:00:00Z'); // jeudi, minuit
     const s = await state(ash);
     expect(s.guild!.day.id).toBe('2026-10-29');
     expect(s.guild!.week.id).toBe('2026-10-26');
@@ -246,7 +225,7 @@ describe('guildes', () => {
     }
     expect(await quantity(brock.userId, 'guild-chest-bronze')).toBe(0);
     // Distribués une seule fois.
-    expect(await settleGuildQuests(handle.db, ctx, clock)).toBe(0);
+    expect(await settleGuildQuests(handle.db, ctx, api.clock)).toBe(0);
     await state(misty);
     expect(await quantity(misty.userId, 'guild-chest-bronze')).toBe(2);
 
@@ -276,12 +255,12 @@ describe('guildes', () => {
   });
 
   it('le lundi à minuit (heure de Paris) : coffres et nouvelles quêtes de la semaine', async () => {
-    clock = new Date('2026-11-01T22:59:00Z'); // dimanche, 23 h 59
+    api.clock = new Date('2026-11-01T22:59:00Z'); // dimanche, 23 h 59
     expect((await state(ash)).guild!.week.id).toBe('2026-10-26');
     expect(await quantity(ash.userId, 'guild-chest-gold')).toBe(0);
-    clock = new Date('2026-11-01T23:00:00Z'); // lundi, minuit
+    api.clock = new Date('2026-11-01T23:00:00Z'); // lundi, minuit
     // Distribution par le serveur, sans attendre qu'un membre ouvre la guilde.
-    expect(await settleGuildQuests(handle.db, ctx, clock)).toBe(3);
+    expect(await settleGuildQuests(handle.db, ctx, api.clock)).toBe(3);
     // Quêtes de la semaine : 2 faciles (Argent) et 1 difficile (Or).
     expect(await quantity(ash.userId, 'guild-chest-silver')).toBe(3);
     expect(await quantity(ash.userId, 'guild-chest-gold')).toBe(1);
@@ -299,11 +278,11 @@ describe('guildes', () => {
       .update(guildWeeklyQuests)
       .set({ target: 3 })
       .where(eq(guildWeeklyQuests.guildId, guildId));
-    await recordGuildActivity(handle.db, ctx, brock.userId, everything(), clock);
+    await recordGuildActivity(handle.db, ctx, brock.userId, everything(), api.clock);
     expect((await state(ash)).guild!.quests.every((q) => q.completedAt)).toBe(true);
     expect(await quantity(brock.userId, 'guild-chest-gold')).toBe(0);
 
-    expect(await resetGuildQuests(handle.db, ctx, clock)).toEqual({ quests: 6 });
+    expect(await resetGuildQuests(handle.db, ctx, api.clock)).toEqual({ quests: 6 });
     const s = await state(ash);
     expect(s.guild!.quests).toHaveLength(6);
     expect(s.guild!.quests.every((q) => q.progress === 0 && !q.completedAt)).toBe(true);

@@ -1,52 +1,11 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { seedContent } from '@poke/content/seed';
-import { createDb, ensureSeedContent } from '@poke/db';
+import { beforeAll, describe, expect, it } from 'vitest';
 import type { PokemonDto, PokemonTagDto } from '@poke/shared';
-import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
+import { testApi } from '../support/api';
 
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
+const api = testApi({ start: '2026-10-09T10:00:00Z' });
+const { client } = api;
 
-beforeAll(async () => {
-  await handle.migrate();
-  await ensureSeedContent(handle.db, seedContent);
-  ({ app } = await buildApp({ db: handle.db, env, now: () => new Date('2026-10-09T10:00:00Z') }));
-});
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
-
-async function signUp(email: string): Promise<string> {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/sign-up/email',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
-    payload: { email, password: 'motdepasse-solide', name: email.split('@')[0] },
-  });
-  expect(res.statusCode, res.body).toBe(200);
-  const cookies = res.headers['set-cookie'];
-  const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
-  return list.map((c) => c.split(';')[0]).join('; ');
-}
-
-function client(cookie: string) {
-  return async <T>(
-    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
-    url: string,
-    payload?: unknown,
-  ) => {
-    const res = await app.inject({
-      method,
-      url,
-      headers: { cookie },
-      ...(payload !== undefined && { payload: payload as object }),
-    });
-    return { status: res.statusCode, body: (res.body ? res.json() : null) as T };
-  };
-}
+const signUp = async (email: string) => (await api.signUp(email)).cookie;
 
 describe('étiquettes des Pokémon', () => {
   let call: ReturnType<typeof client>;

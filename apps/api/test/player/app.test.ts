@@ -1,42 +1,20 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content/seed';
 import { forms, itemSpriteUrl, pokemonSpriteUrl, species } from '@poke/data';
-import { createDb, ensureSeedContent, playerProfiles, pokedex, users } from '@poke/db';
+import { playerProfiles, pokedex, users } from '@poke/db';
 import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
+import { testApi } from '../support/api';
 
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
-
-beforeAll(async () => {
-  await handle.migrate();
-  await ensureSeedContent(handle.db, seedContent);
-  ({ app } = await buildApp({ db: handle.db, env }));
-});
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
+const api = testApi();
+const { handle, env } = api;
 
 /** Crée un compte et retourne le cookie de session. */
-async function signUp(email: string): Promise<string> {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/sign-up/email',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
-    payload: { email, password: 'motdepasse-solide', name: email.split('@')[0] },
-  });
-  expect(res.statusCode, res.body).toBe(200);
-  const cookies = res.headers['set-cookie'];
-  const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
-  return list.map((c) => c.split(';')[0]).join('; ');
-}
+const signUp = async (email: string) => (await api.signUp(email)).cookie;
 
 describe('production', () => {
   it('santé : répond quand la base est joignable', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/health' });
+    const res = await api.app.inject({ method: 'GET', url: '/api/health' });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toEqual({ ok: true });
   });
@@ -114,7 +92,7 @@ describe('sprites', () => {
     ];
     for (const url of urls) {
       expect(url, 'image manquante').toMatch(/^\/api\/sprites\//);
-      const res = await app.inject({ method: 'GET', url: url! });
+      const res = await api.app.inject({ method: 'GET', url: url! });
       expect(res.statusCode, url!).toBe(200);
       expect(res.headers['content-type']).toBe('image/png');
     }
@@ -125,7 +103,7 @@ describe('sprites', () => {
     for (const sprite of sprites) {
       for (const shiny of [false, true]) {
         const url = pokemonSpriteUrl(sprite, { shiny });
-        const res = await app.inject({ method: 'GET', url });
+        const res = await api.app.inject({ method: 'GET', url });
         expect(res.statusCode, url).toBe(200);
       }
     }
@@ -139,7 +117,7 @@ describe('sprites', () => {
       '/api/sprites/pokemon/../../package.json',
       '/api/sprites/artwork/25.png',
     ]) {
-      const res = await app.inject({ method: 'GET', url });
+      const res = await api.app.inject({ method: 'GET', url });
       expect(res.statusCode, url).toBe(404);
     }
   });
@@ -149,13 +127,13 @@ describe('authentification et profil dresseur', () => {
   let cookie: string;
 
   it('refuse /api/me sans session', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/me' });
+    const res = await api.app.inject({ method: 'GET', url: '/api/me' });
     expect(res.statusCode).toBe(401);
   });
 
   it('inscrit un joueur (rôle player par défaut)', async () => {
     cookie = await signUp('sacha@example.com');
-    const res = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
+    const res = await api.app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
     expect(res.statusCode).toBe(200);
     expect(res.json()).toMatchObject({
       user: { email: 'sacha@example.com', role: 'player' },
@@ -164,7 +142,7 @@ describe('authentification et profil dresseur', () => {
   });
 
   it('ignore un rôle fourni par le client à l’inscription', async () => {
-    const res = await app.inject({
+    const res = await api.app.inject({
       method: 'POST',
       url: '/api/auth/sign-up/email',
       headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
@@ -181,7 +159,7 @@ describe('authentification et profil dresseur', () => {
   });
 
   it('valide le nom de dresseur', async () => {
-    const res = await app.inject({
+    const res = await api.app.inject({
       method: 'POST',
       url: '/api/profile',
       headers: { cookie },
@@ -191,7 +169,7 @@ describe('authentification et profil dresseur', () => {
   });
 
   it('crée le profil dans la première région du contenu publié', async () => {
-    const res = await app.inject({
+    const res = await api.app.inject({
       method: 'POST',
       url: '/api/profile',
       headers: { cookie },
@@ -204,7 +182,7 @@ describe('authentification et profil dresseur', () => {
       currency: 0,
     });
 
-    const again = await app.inject({
+    const again = await api.app.inject({
       method: 'POST',
       url: '/api/profile',
       headers: { cookie },
@@ -214,20 +192,20 @@ describe('authentification et profil dresseur', () => {
   });
 
   it('annonce la version du contenu dans /api/me', async () => {
-    const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
-    const content = await app.inject({ method: 'GET', url: '/api/content' });
+    const me = await api.app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
+    const content = await api.app.inject({ method: 'GET', url: '/api/content' });
     expect(me.json<{ contentVersion: number }>().contentVersion).toBe(
       content.json<{ versionId: number }>().versionId,
     );
   });
 
   it('sert le contenu avec un ETag : 304 sans corps tant que la version est la même', async () => {
-    const first = await app.inject({ method: 'GET', url: '/api/content' });
+    const first = await api.app.inject({ method: 'GET', url: '/api/content' });
     expect(first.statusCode).toBe(200);
     const etag = first.headers.etag as string;
     expect(etag).toMatch(/^W\/"content-\d+-[\w-]+"$/);
 
-    const again = await app.inject({
+    const again = await api.app.inject({
       method: 'GET',
       url: '/api/content',
       headers: { 'if-none-match': etag },
@@ -235,7 +213,7 @@ describe('authentification et profil dresseur', () => {
     expect(again.statusCode).toBe(304);
     expect(again.body).toBe('');
 
-    const other = await app.inject({
+    const other = await api.app.inject({
       method: 'GET',
       url: '/api/content',
       headers: { 'if-none-match': 'W/"content-0"' },
@@ -246,7 +224,7 @@ describe('authentification et profil dresseur', () => {
 
   it('refuse un nom de dresseur déjà pris (insensible à la casse)', async () => {
     const other = await signUp('ondine@example.com');
-    const res = await app.inject({
+    const res = await api.app.inject({
       method: 'POST',
       url: '/api/profile',
       headers: { cookie: other },
@@ -257,7 +235,7 @@ describe('authentification et profil dresseur', () => {
   });
   it('donne un starter de Johto, une fois la région débloquée', async () => {
     const post = (url: string, speciesId: number) =>
-      app.inject({ method: 'POST', url, headers: { cookie }, payload: { speciesId } });
+      api.app.inject({ method: 'POST', url, headers: { cookie }, payload: { speciesId } });
     expect((await post('/api/starter', 4)).statusCode).toBe(201);
 
     // Johto s'ouvre à 75 % du Pokédex de Kanto (114 espèces sur 151).
@@ -286,7 +264,7 @@ describe('authentification et profil dresseur', () => {
     expect((await post('/api/regions/johto/starter', 158)).json()).toMatchObject({
       error: 'STARTER_ALREADY_CHOSEN',
     });
-    const me = await app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
+    const me = await api.app.inject({ method: 'GET', url: '/api/me', headers: { cookie } });
     expect(me.json().profile.regionStarters).toEqual({ johto: 155 });
   });
 });
@@ -302,8 +280,8 @@ describe('administration', () => {
   });
 
   it('refuse les routes admin aux joueurs et aux anonymes', async () => {
-    expect((await app.inject({ method: 'GET', url: '/api/admin/me' })).statusCode).toBe(401);
-    const res = await app.inject({
+    expect((await api.app.inject({ method: 'GET', url: '/api/admin/me' })).statusCode).toBe(401);
+    const res = await api.app.inject({
       method: 'GET',
       url: '/api/admin/me',
       headers: { cookie: playerCookie },
@@ -314,7 +292,7 @@ describe('administration', () => {
   it('gère le cycle brouillon → modification → publication, journalisé', async () => {
     const headers = { cookie: adminCookie };
 
-    const draftRes = await app.inject({
+    const draftRes = await api.app.inject({
       method: 'POST',
       url: '/api/admin/content/drafts',
       headers,
@@ -325,7 +303,7 @@ describe('administration', () => {
 
     const balance = structuredClone(seedContent.balance);
     balance.expeditions.encounterIntervalMinutes = 6;
-    const bad = await app.inject({
+    const bad = await api.app.inject({
       method: 'PUT',
       url: `/api/admin/content/versions/${draftId}/balance`,
       headers,
@@ -333,7 +311,7 @@ describe('administration', () => {
     });
     expect(bad.statusCode).toBe(400);
 
-    const put = await app.inject({
+    const put = await api.app.inject({
       method: 'PUT',
       url: `/api/admin/content/versions/${draftId}/balance`,
       headers,
@@ -342,17 +320,17 @@ describe('administration', () => {
     expect(put.statusCode).toBe(200);
 
     // Le jeu voit toujours la version publiée tant que le brouillon n'est pas publié.
-    const before = await app.inject({ method: 'GET', url: '/api/content' });
+    const before = await api.app.inject({ method: 'GET', url: '/api/content' });
     expect(before.json().balance.expeditions.encounterIntervalMinutes).toBe(3);
 
-    const pub = await app.inject({
+    const pub = await api.app.inject({
       method: 'POST',
       url: `/api/admin/content/versions/${draftId}/publish`,
       headers,
     });
     expect(pub.statusCode).toBe(200);
 
-    const after = await app.inject({ method: 'GET', url: '/api/content' });
+    const after = await api.app.inject({ method: 'GET', url: '/api/content' });
     // Nouvelle version publiée : l'ETag change, le jeu recharge son contenu.
     expect(after.headers.etag).not.toBe(before.headers.etag);
     expect(after.json()).toMatchObject({
@@ -360,7 +338,7 @@ describe('administration', () => {
       balance: { expeditions: { encounterIntervalMinutes: 6 } },
     });
 
-    const log = await app.inject({ method: 'GET', url: '/api/admin/audit-log', headers });
+    const log = await api.app.inject({ method: 'GET', url: '/api/admin/audit-log', headers });
     const actions = log.json<{ items: { action: string; adminEmail: string }[] }>().items;
     expect(actions.map((a) => a.action)).toEqual([
       'content.publish',
@@ -371,7 +349,7 @@ describe('administration', () => {
   });
 
   it('refuse de modifier une version publiée', async () => {
-    const res = await app.inject({
+    const res = await api.app.inject({
       method: 'PUT',
       url: '/api/admin/content/versions/1/balance',
       headers: { cookie: adminCookie },

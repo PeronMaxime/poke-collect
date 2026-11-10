@@ -1,73 +1,39 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content/seed';
-import { createDb, ensureSeedContent, pokemon, users } from '@poke/db';
+import { pokemon } from '@poke/db';
 import type { PokemonInstance } from '@poke/game-core';
 import type { AssistantDto, PokemonDto } from '@poke/shared';
-import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
 import { insertPokemon } from '../../src/game/store';
+import { testApi } from '../support/api';
 
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-const clock = new Date('2026-10-15T10:00:00Z');
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
-
-beforeAll(async () => {
-  await handle.migrate();
-  // Un talent utile à chaque poste (un assistant inutile est refusé), et un talent sans effet.
-  const team = { scope: 'team' as const, conditions: [] };
-  await ensureSeedContent(handle.db, {
-    ...seedContent,
-    abilities: [
-      {
-        id: 'overgrow',
-        description: '',
-        effects: [
-          { type: 'modifier', param: 'shinyChance', value: 10, ...team },
-          { type: 'modifier', param: 'hatchTime', value: -10, ...team },
-          { type: 'modifier', param: 'koDuration', value: -10, ...team },
-        ],
-      },
-      {
-        id: 'blaze',
-        description: '',
-        effects: [{ type: 'modifier', param: 'damageDealt', value: 10, ...team }],
-      },
-    ],
-  });
-  ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
+const api = testApi({
+  start: '2026-10-15T10:00:00Z',
+  content: () => {
+    // Un talent utile à chaque poste (un assistant inutile est refusé), et un talent sans effet.
+    const team = { scope: 'team' as const, conditions: [] };
+    return {
+      ...seedContent,
+      abilities: [
+        {
+          id: 'overgrow',
+          description: '',
+          effects: [
+            { type: 'modifier', param: 'shinyChance', value: 10, ...team },
+            { type: 'modifier', param: 'hatchTime', value: -10, ...team },
+            { type: 'modifier', param: 'koDuration', value: -10, ...team },
+          ],
+        },
+        {
+          id: 'blaze',
+          description: '',
+          effects: [{ type: 'modifier', param: 'damageDealt', value: 10, ...team }],
+        },
+      ],
+    };
+  },
 });
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
-
-async function signUp(email: string): Promise<{ cookie: string; userId: string }> {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/sign-up/email',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
-    payload: { email, password: 'motdepasse-solide', name: email.split('@')[0] },
-  });
-  expect(res.statusCode, res.body).toBe(200);
-  const cookies = res.headers['set-cookie'];
-  const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
-  const [user] = await handle.db.select().from(users).where(eq(users.email, email));
-  return { cookie: list.map((c) => c.split(';')[0]).join('; '), userId: user!.id };
-}
-
-function client(cookie: string) {
-  return async <T>(method: 'GET' | 'POST' | 'PUT' | 'DELETE', url: string, payload?: unknown) => {
-    const res = await app.inject({
-      method,
-      url,
-      headers: { cookie },
-      ...(payload !== undefined && { payload: payload as object }),
-    });
-    return { status: res.statusCode, body: (res.body ? res.json() : null) as T };
-  };
-}
+const { handle, signUp, client } = api;
 
 async function give(userId: string, speciesId: number, formId?: number, ability = 'overgrow') {
   const instance: PokemonInstance = {
@@ -92,7 +58,7 @@ async function give(userId: string, speciesId: number, formId?: number, ability 
   const [row] = await insertPokemon(handle.db, userId, [instance], {
     origin: 'capture',
     originRegion: 'kanto',
-    at: clock,
+    at: api.clock,
   });
   // Les Pokémon obtenus arrivent sans talent : on le débloque.
   await handle.db.update(pokemon).set({ ability }).where(eq(pokemon.id, row!.id));

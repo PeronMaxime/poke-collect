@@ -1,7 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content/seed';
-import { createDb, eggs, ensureSeedContent, pokemon, users } from '@poke/db';
+import { eggs, pokemon } from '@poke/db';
 import { candiesForLevel, getNature } from '@poke/game-core';
 import type { PokemonInstance } from '@poke/game-core';
 import type {
@@ -18,62 +18,19 @@ import type {
   TransferPokemonResponse,
 } from '@poke/shared';
 import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
 import { ContentCache } from '../../src/content-cache';
 import { addItems, insertPokemon, transferRows } from '../../src/game/store';
+import { testApi } from '../support/api';
 
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-let clock = new Date('2026-10-07T10:00:00Z');
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
-
-beforeAll(async () => {
-  await handle.migrate();
-  // Onglets tous ouverts : leurs conditions de déblocage sont testées à part (museum.test.ts).
-  await ensureSeedContent(handle.db, {
+// Onglets tous ouverts : leurs conditions de déblocage sont testées à part (museum.test.ts).
+const api = testApi({
+  start: '2026-10-07T10:00:00Z',
+  content: {
     ...seedContent,
     balance: { ...seedContent.balance, tabUnlocks: {} },
-  });
-  ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
+  },
 });
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
-
-const advance = (minutes: number) => {
-  clock = new Date(clock.getTime() + minutes * 60_000);
-};
-
-async function signUp(email: string): Promise<{ cookie: string; userId: string }> {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/sign-up/email',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
-    payload: { email, password: 'motdepasse-solide', name: email.split('@')[0] },
-  });
-  expect(res.statusCode, res.body).toBe(200);
-  const cookies = res.headers['set-cookie'];
-  const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
-  const [user] = await handle.db.select().from(users).where(eq(users.email, email));
-  return { cookie: list.map((c) => c.split(';')[0]).join('; '), userId: user!.id };
-}
-
-function client(cookie: string) {
-  return async <T>(
-    method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
-    url: string,
-    payload?: unknown,
-  ) => {
-    const res = await app.inject({
-      method,
-      url,
-      headers: { cookie },
-      ...(payload !== undefined && { payload: payload as object }),
-    });
-    return { status: res.statusCode, body: (res.body ? res.json() : null) as T };
-  };
-}
+const { handle, env, advance, signUp, client } = api;
 
 /** Joueur prêt à jouer (profil + starter Bulbizarre). */
 async function newPlayer(email: string, trainerName: string) {
@@ -112,7 +69,7 @@ async function give(userId: string, speciesId: number, extra: Partial<PokemonIns
         ...extra,
       },
     ],
-    { origin: 'capture', originRegion: 'kanto', at: clock },
+    { origin: 'capture', originRegion: 'kanto', at: api.clock },
   );
   return row!;
 }
@@ -210,12 +167,12 @@ describe('pension et œufs', () => {
     expect(res.body.incubated.map((e) => e.slotIndex)).toEqual([0, 1]);
     expect(res.body.bagged).toBe(0);
     // Bulbizarre : 20 cycles × 2 min.
-    expect(Date.parse(res.body.incubated[0]!.hatchAt) - clock.getTime()).toBe(40 * 60_000);
+    expect(Date.parse(res.body.incubated[0]!.hatchAt) - api.clock.getTime()).toBe(40 * 60_000);
 
     const daycare = await call<DaycareResponse>('GET', '/api/daycare');
     expect(daycare.body.eggs).toHaveLength(2);
     const startedAt = Date.parse(daycare.body.pensions[0]!.startedAt);
-    expect(clock.getTime() - startedAt).toBe(5 * 60_000);
+    expect(api.clock.getTime() - startedAt).toBe(5 * 60_000);
   });
 
   it('fait éclore les œufs à terme, avec l’héritage des parents', async () => {
@@ -224,8 +181,8 @@ describe('pension et œufs', () => {
 
     advance(40);
     // Serveur redémarré : cache de contenu vide, l'éclosion ne doit pas bloquer PGlite.
-    await app.close();
-    ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
+    await api.app.close();
+    ({ app: api.app } = await buildApp({ db: handle.db, env, now: () => api.clock }));
     const res = await call<HatchEggsResponse>('POST', '/api/eggs/hatch');
     expect(res.status, JSON.stringify(res.body)).toBe(200);
     expect(res.body.hatched).toHaveLength(2);
@@ -253,7 +210,7 @@ describe('pension et œufs', () => {
     expect(res.body.bagged).toBe(4);
     // La ponte reprend au ramassage, sans temps entamé.
     const daycare = await call<DaycareResponse>('GET', '/api/daycare');
-    expect(Date.parse(daycare.body.pensions[0]!.startedAt)).toBe(clock.getTime());
+    expect(Date.parse(daycare.body.pensions[0]!.startedAt)).toBe(api.clock.getTime());
     expect(daycare.body.eggs).toHaveLength(6);
     expect(daycare.body.bagEggs).toHaveLength(4);
     expect(daycare.body.bagEggs[0]).toMatchObject({ speciesId: 1, formId: null });
@@ -292,8 +249,8 @@ describe('pension et œufs', () => {
       [ids[0], 0],
       [ids[1], 1],
     ]);
-    expect(Date.parse(res.body.incubated[0]!.incubatedAt)).toBe(clock.getTime());
-    expect(Date.parse(res.body.incubated[0]!.hatchAt) - clock.getTime()).toBe(40 * 60_000);
+    expect(Date.parse(res.body.incubated[0]!.incubatedAt)).toBe(api.clock.getTime());
+    expect(Date.parse(res.body.incubated[0]!.hatchAt) - api.clock.getTime()).toBe(40 * 60_000);
     // Déjà couvés : plus dans le sac.
     const again = await call('POST', '/api/eggs/incubate', { ids: ids.slice(0, 1) });
     expect(again).toMatchObject({ status: 404, body: { error: 'EGG_NOT_FOUND' } });
@@ -316,7 +273,7 @@ describe('pension et œufs', () => {
     expect(back.body.incubated.map((e) => [e.id, e.slotIndex])).toEqual([[ids[1], 1]]);
     // À terme, il se fait éclore au lieu d'être retiré.
     const [first] = await handle.db.select().from(eggs).where(eq(eggs.id, ids[0]!));
-    await handle.db.update(eggs).set({ hatchAt: clock }).where(eq(eggs.id, ids[0]!));
+    await handle.db.update(eggs).set({ hatchAt: api.clock }).where(eq(eggs.id, ids[0]!));
     expect(await call('DELETE', `/api/eggs/${ids[0]}`)).toMatchObject({
       status: 409,
       body: { error: 'EGG_READY' },
@@ -418,7 +375,7 @@ describe('pension et œufs', () => {
       parentAId: magikarp,
       parentBId: ditto,
       parentBDepositedAt: dittoSince,
-      startedAt: clock.toISOString(),
+      startedAt: api.clock.toISOString(),
       eggSpeciesId: 129,
     });
     const pc = await call<PokemonDto[]>('GET', '/api/pokemon');

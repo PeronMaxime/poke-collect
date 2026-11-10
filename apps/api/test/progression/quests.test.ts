@@ -1,7 +1,7 @@
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { and, eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content/seed';
-import { createDb, ensureSeedContent, inventory, pokemon, questProgress, users } from '@poke/db';
+import { inventory, pokemon, questProgress } from '@poke/db';
 import type {
   ClaimExpeditionResponse,
   ClaimQuestResponse,
@@ -15,13 +15,7 @@ import type {
   UseItemResponse,
 } from '@poke/shared';
 import { legendaryBattle } from '@poke/content';
-import { buildApp } from '../../src/app';
-import { loadEnv } from '../../src/env';
-
-const handle = createDb({ pgliteDataDir: 'memory://' });
-const env = loadEnv({ NODE_ENV: 'test' });
-let clock = new Date('2026-10-07T10:00:00Z');
-let app: Awaited<ReturnType<typeof buildApp>>['app'];
+import { testApi } from '../support/api';
 
 // Quête de test : 1 capture, 1 expédition sur la Route 1, puis 2 objets de quête sur la Route 1 ;
 // la Forêt de Jade ouvre à l'étape 2. Deux légendaires faibles à combattre : Mew (capture presque
@@ -149,46 +143,8 @@ const foret = content.zones.find((z) => z.id === 'foret-de-jade')!;
 foret.minPower = 0;
 foret.unlock = { type: 'questStepsDone', questId: 'quete-test', count: 1 };
 
-beforeAll(async () => {
-  await handle.migrate();
-  await ensureSeedContent(handle.db, content);
-  ({ app } = await buildApp({ db: handle.db, env, now: () => clock }));
-});
-afterAll(async () => {
-  await app.close();
-  await handle.close();
-});
-
-const advance = (minutes: number) => {
-  clock = new Date(clock.getTime() + minutes * 60_000);
-};
-
-async function newPlayer(email: string, trainerName: string, starterId: number) {
-  const res = await app.inject({
-    method: 'POST',
-    url: '/api/auth/sign-up/email',
-    headers: { 'content-type': 'application/json', origin: 'http://localhost:5173' },
-    payload: { email, password: 'motdepasse-solide', name: trainerName },
-  });
-  expect(res.statusCode, res.body).toBe(200);
-  const cookies = res.headers['set-cookie'];
-  const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
-  const cookie = list.map((c) => c.split(';')[0]).join('; ');
-  const [user] = await handle.db.select().from(users).where(eq(users.email, email));
-  const call = async <T>(method: 'GET' | 'POST', url: string, payload?: unknown) => {
-    const r = await app.inject({
-      method,
-      url,
-      headers: { cookie },
-      ...(payload !== undefined && { payload: payload as object }),
-    });
-    return { status: r.statusCode, body: (r.body ? r.json() : null) as T };
-  };
-  expect((await call('POST', '/api/profile', { trainerName })).status).toBe(201);
-  const starter = await call<PokemonDto>('POST', '/api/starter', { speciesId: starterId });
-  expect(starter.status).toBe(201);
-  return { call, userId: user!.id, starter: starter.body };
-}
+const api = testApi({ start: '2026-10-07T10:00:00Z', content: content });
+const { handle, advance, newPlayer } = api;
 
 describe('quêtes', () => {
   let call: Awaited<ReturnType<typeof newPlayer>>['call'];
@@ -473,7 +429,7 @@ describe('quêtes', () => {
       .select({ contentVersionId: questProgress.contentVersionId })
       .from(questProgress)
       .where(eq(questProgress.ownerId, userId));
-    const at = new Date(clock);
+    const at = new Date(api.clock);
     await handle.db.insert(questProgress).values({
       ownerId: userId,
       questId: 'electhor',
@@ -523,7 +479,7 @@ describe('quêtes', () => {
       .select({ contentVersionId: questProgress.contentVersionId })
       .from(questProgress)
       .where(eq(questProgress.ownerId, userId));
-    const at = new Date(clock);
+    const at = new Date(api.clock);
     await handle.db.insert(questProgress).values({
       ownerId: other.userId,
       questId: 'quete-test',
@@ -545,7 +501,7 @@ describe('quêtes', () => {
   });
 
   it('cache les régions, zones et quêtes désactivées', async () => {
-    const res = await app.inject({ method: 'GET', url: '/api/content' });
+    const res = await api.app.inject({ method: 'GET', url: '/api/content' });
     const playable = res.json<typeof content>();
     expect(playable.regions.map((r) => r.id)).toEqual(['kanto', 'johto', 'hoenn']);
     expect(playable.zones.map((z) => z.id)).not.toContain('route-201');
