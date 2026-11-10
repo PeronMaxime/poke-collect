@@ -64,8 +64,34 @@ import {
   zones,
 } from './schema';
 
+/**
+ * Le contenu du jeu en base : versions, brouillon, publication.
+ *
+ * Le contenu vit dans des tables « versionnées » : chaque ligne porte un `contentVersionId`.
+ * Une version passe par trois états :
+ *
+ *   brouillon (`draft`)  →  publiée (`published`)  →  archivée (`archived`)
+ *
+ * - Il n'y a jamais plus d'un brouillon ni plus d'une version publiée.
+ * - Un brouillon naît d'une copie complète d'une version (`createDraft`) ou d'un contenu importé
+ *   (`importContentAsDraft`). Lui seul se modifie (`updateDraftBalance`, `saveDraftEntity`,
+ *   `deleteDraftEntity`) : une version publiée ou archivée ne change plus.
+ * - Publier (`publishDraft`) exige un contenu sans erreur de cohérence, puis archive la version
+ *   publiée d'avant, dans la même transaction. Revenir en arrière : copier une version archivée
+ *   en brouillon et la publier.
+ * - Les joueurs ne voient que la version publiée (`loadPublishedContent`, mise en cache par l'API).
+ *
+ * Toute fonction qui écrit ouvre sa transaction et vérifie d'abord que la version est bien un
+ * brouillon. Un refus est une `ContentError`, que les routes de l'admin traduisent en statut HTTP.
+ *
+ * Les migrations de contenu (`drizzle/*.sql`) écrivent dans ces mêmes tables sans passer par ici :
+ * voir « Migration de contenu » dans docs/RECETTES.md.
+ */
+
+/** Une version du contenu : son état, son libellé, la version dont elle est partie. */
 export type ContentVersion = typeof contentVersions.$inferSelect;
 
+/** Raisons d'un refus ; le statut HTTP de chacune est dans `apps/api/src/routes/admin.ts`. */
 export type ContentErrorCode =
   | 'NOT_FOUND'
   | 'NO_PUBLISHED_VERSION'
@@ -75,6 +101,7 @@ export type ContentErrorCode =
   | 'ALREADY_EXISTS'
   | 'IN_USE';
 
+/** Refus d'une opération sur le contenu ; `details` porte les erreurs Zod ou les usages trouvés. */
 export class ContentError extends Error {
   constructor(
     readonly code: ContentErrorCode,
@@ -86,10 +113,12 @@ export class ContentError extends Error {
   }
 }
 
+/** Toutes les versions, de la plus récente à la plus ancienne. */
 export async function listContentVersions(db: Db): Promise<ContentVersion[]> {
   return db.select().from(contentVersions).orderBy(desc(contentVersions.id));
 }
 
+/** Une version par son numéro, ou `undefined`. */
 export async function getContentVersion(db: Db, id: number): Promise<ContentVersion | undefined> {
   const [row] = await db.select().from(contentVersions).where(eq(contentVersions.id, id));
   return row;
@@ -100,14 +129,18 @@ async function findByStatus(db: Db, status: 'draft' | 'published') {
   return row;
 }
 
+/** La version que les joueurs voient ; `undefined` sur une base neuve. */
 export const getPublishedVersion = (db: Db) => findByStatus(db, 'published');
+/** Le brouillon en cours, s'il y en a un. */
 export const getDraftVersion = (db: Db) => findByStatus(db, 'draft');
 
 // --- Entités de contenu (hors équilibrage) -------------------------------------------
 
 /**
  * Tables d'entités : les colonnes portent les noms des champs Zod, une ligne = l'entité
- * + `contentVersionId`. Ajouter ici toute nouvelle entité éditable dans l'admin.
+ * + `contentVersionId`. `key` : le champ qui identifie l'entité dans sa version ; `order` : la
+ * colonne de tri à la lecture. Ajouter ici toute nouvelle entité éditable dans l'admin, ainsi que
+ * dans `ContentEntityMap`, `collectionOf` et `contentEntitySchemas` ci-dessous.
  */
 const entityDefs = {
   region: { table: regions, key: 'id', schema: regionSchema, order: regions.order },
@@ -142,8 +175,10 @@ const entityDefs = {
   chestEntry: { table: chestEntries, key: 'id', schema: chestEntrySchema, order: chestEntries.id },
 } as const;
 
+/** Nom d'un type d'entité, tel qu'il apparaît dans les routes de l'admin. */
 export type ContentEntityType = keyof typeof entityDefs;
 
+/** Type TypeScript de chaque entité. */
 export interface ContentEntityMap {
   region: Region;
   speciesOverride: SpeciesOverride;
@@ -181,6 +216,7 @@ const collectionOf = {
   chestEntry: 'chestEntries',
 } as const satisfies Record<ContentEntityType, keyof GameContentData>;
 
+/** Schéma de validation de chaque entité, pour les routes de l'admin. */
 export const contentEntitySchemas: { [K in ContentEntityType]: z.ZodType<ContentEntityMap[K]> } = {
   region: regionSchema,
   speciesOverride: speciesOverrideSchema,
@@ -201,6 +237,7 @@ export const contentEntitySchemas: { [K in ContentEntityType]: z.ZodType<Content
 
 type AnyRow = Record<string, unknown>;
 
+/** Les entités d'un type dans une version, triées, sans leur `contentVersionId`. */
 async function selectEntities(db: Db, type: ContentEntityType, versionId: number) {
   const def = entityDefs[type];
   // Départage par la clé : plusieurs régions ont des entités de même rang (zone n° 0…).
@@ -213,6 +250,7 @@ async function selectEntities(db: Db, type: ContentEntityType, versionId: number
   return rows.map(({ contentVersionId: _, ...entity }) => entity);
 }
 
+/** Condition SQL « cette entité, dans cette version ». */
 function keyCondition(type: ContentEntityType, versionId: number, key: string | number) {
   const def = entityDefs[type];
   const keyColumn = (def.table as unknown as Record<string, Parameters<typeof eq>[0]>)[def.key]!;
@@ -221,6 +259,7 @@ function keyCondition(type: ContentEntityType, versionId: number, key: string | 
 
 // --- Chargement ------------------------------------------------------------------------
 
+/** Contenu brut d'une version, tel qu'il est en base : pas encore validé. */
 async function readContent(db: Db, versionId: number): Promise<unknown> {
   const [balanceRow] = await db
     .select()
@@ -235,7 +274,7 @@ async function readContent(db: Db, versionId: number): Promise<unknown> {
 
 /**
  * Charge et valide (Zod) le contenu complet d'une version.
- * `strict` vérifie aussi les références croisées (exigé pour publier).
+ * `strict` vérifie aussi les références croisées (exigé pour publier). Lève `INVALID_CONTENT`.
  */
 export async function loadContent(
   db: Db,
@@ -263,12 +302,14 @@ export async function loadContentWithIssues(
   return { content, issues: contentIssues(content) };
 }
 
+/** Contenu de la version publiée, celui du jeu. Lève `NO_PUBLISHED_VERSION` sur une base vide. */
 export async function loadPublishedContent(db: Db): Promise<GameContent> {
   const published = await getPublishedVersion(db);
   if (!published) throw new ContentError('NO_PUBLISHED_VERSION', 'Aucune version publiée');
   return loadContent(db, published.id);
 }
 
+/** Écrit un contenu complet dans une version encore vide. */
 async function insertContent(db: Db, versionId: number, content: GameContentData) {
   await db.insert(balanceSettings).values({ contentVersionId: versionId, data: content.balance });
   for (const type of Object.keys(entityDefs) as ContentEntityType[]) {
@@ -299,6 +340,7 @@ export async function ensureSeedContent(db: Db, seed: GameContentData): Promise<
   });
 }
 
+/** Un seul brouillon à la fois : lève `DRAFT_EXISTS` s'il y en a déjà un. */
 async function assertNoDraft(db: Db) {
   if (await getDraftVersion(db)) {
     throw new ContentError('DRAFT_EXISTS', 'Un brouillon existe déjà : publiez-le ou supprimez-le');
@@ -361,6 +403,7 @@ export async function importContentAsDraft(
   });
 }
 
+/** Garde de toute écriture : la version existe et c'est un brouillon (`NOT_FOUND`, `NOT_A_DRAFT`). */
 async function requireDraft(db: Db, versionId: number): Promise<ContentVersion> {
   const version = await getContentVersion(db, versionId);
   if (!version) throw new ContentError('NOT_FOUND', `Version ${versionId} introuvable`);
@@ -390,6 +433,7 @@ export async function updateDraftBalance(
   });
 }
 
+/** Valeur de la clé d'une entité (son `id`, ou `speciesId` pour une surcharge d'espèce). */
 function entityKey<K extends ContentEntityType>(type: K, entity: ContentEntityMap[K]) {
   return (entity as unknown as Record<string, string | number>)[entityDefs[type].key]!;
 }
@@ -397,6 +441,7 @@ function entityKey<K extends ContentEntityType>(type: K, entity: ContentEntityMa
 /**
  * Crée (`mode: 'create'`) ou remplace (`mode: 'update'`) une entité d'un brouillon.
  * L'identifiant n'est jamais modifié : pour renommer, dupliquer puis supprimer.
+ * Retourne l'ancienne valeur (journal d'audit). Lève `ALREADY_EXISTS` ou `NOT_FOUND`.
  */
 export async function saveDraftEntity<K extends ContentEntityType>(
   db: Db,
@@ -427,7 +472,10 @@ export async function saveDraftEntity<K extends ContentEntityType>(
   });
 }
 
-/** Supprime une entité d'un brouillon, sauf si elle est encore utilisée ailleurs. */
+/**
+ * Supprime une entité d'un brouillon, sauf si elle est encore utilisée ailleurs (`IN_USE`, avec la
+ * liste des usages dans `details`). Retourne l'entité supprimée.
+ */
 export async function deleteDraftEntity(
   db: Db,
   versionId: number,
@@ -452,7 +500,11 @@ export async function deleteDraftEntity(
   });
 }
 
-/** Publie le brouillon (après validation complète) et archive la version publiée précédente. */
+/**
+ * Publie le brouillon (après validation complète) et archive la version publiée précédente, dans
+ * une seule transaction : il y a toujours exactement une version publiée. L'API doit ensuite
+ * vider son cache (`ContentCache.invalidate()`).
+ */
 export async function publishDraft(
   db: Db,
   versionId: number,

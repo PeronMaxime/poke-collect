@@ -224,22 +224,44 @@ Faite tôt : elle fixe le vocabulaire et les règles que les phases suivantes ap
 
 Découpages sans risque : les `index.ts` continuent de tout réexporter, aucun import ne change.
 
-- [ ] **2.1 `shared`** : `index.ts` (1 753 lignes) → un fichier par domaine (profil, Pokémon,
+- [x] **2.1 `shared`** : `index.ts` (1 753 lignes) → un fichier par domaine (profil, Pokémon,
       expéditions, combats, donjons, pension, ferme, guildes, boutique, admin…).
-- [ ] **2.2 Catalogue des codes d'erreur** dans `shared` : un type `ErrorCode` et sa liste.
+- [x] **2.2 Catalogue des codes d'erreur** dans `shared` : un type `ErrorCode` et sa liste.
       `GameError` n'accepte plus qu'un code connu, et la table des libellés du jeu devient
       `Record<ErrorCode, string>` : un code sans message ne compile plus.
-- [ ] **2.3 `content/schemas.ts`** (1 831 lignes) → `schemas/` par domaine (équilibrage, régions et
+- [x] **2.3 `content/schemas.ts`** (1 831 lignes) → `schemas/` par domaine (équilibrage, régions et
       zones, dresseurs, quêtes, objets et butin, talents, donjons, guildes, menu).
-- [ ] **2.4 `content/integrity.ts`** : `contentIssues` (776 lignes) → un vérificateur par entité,
+- [x] **2.4 `content/integrity.ts`** : `contentIssues` (776 lignes) → un vérificateur par entité,
       assemblés par une liste ; un test par règle là où il en manque.
-- [ ] **2.5 Seed** : rangé dans `content/src/seed/`, sorti de l'`index.ts` (export dédié
+- [x] **2.5 Seed** : rangé dans `content/src/seed/`, sorti de l'`index.ts` (export dédié
       `@poke/content/seed`), et son rôle écrit en tête : jeu de données des tests et base neuve
       sans instantané, **pas** la source de vérité. Le jeu n'embarque plus le seed.
-- [ ] **2.6 `db/schema/game.ts`** (945 lignes) → un fichier par domaine. Contrôle :
+- [x] **2.6 `db/schema/game.ts`** (945 lignes) → un fichier par domaine. Contrôle :
       `pnpm db:generate` ne produit aucune migration.
-- [ ] **2.7 `db/content-repo.ts`** : en-têtes et documentation du cycle brouillon → publication.
+- [x] **2.7 `db/content-repo.ts`** : en-têtes et documentation du cycle brouillon → publication.
 - **But** : on trouve un type, un schéma ou une table par son domaine, pas par une recherche.
+
+- **Réalisé** le 10 novembre (écarts avec le plan) :
+  - Chaque découpage est mécanique (un script déplace les instructions et recalcule les imports)
+    et contrôlé par la comparaison des exports avant et après : 231 pour `shared`, 193 pour les
+    schémas de `content`, 37 pour le schéma de la base. Aucun import n'a changé ailleurs.
+  - **Écart avec la règle 2** : le déplacement et la correction des imports sont dans le même
+    commit, pour que chaque commit compile. Git suit quand même les renommages.
+  - 2.2 : le catalogue est `packages/shared/src/errors.ts` (`PLAYER_ERROR_CODES`, 143 codes, et
+    `ADMIN_ERROR_CODES`, 3 codes que l'admin affiche tels quels). 21 codes s'affichaient bruts
+    dans le jeu : chacun a maintenant son message. Deux messages jamais envoyés par le serveur
+    sont retirés. Les refus que six routes du jeu envoyaient à la main passent par `GameError`
+    (même réponse) ; restent hors catalogue ceux du contenu de l'admin (`ContentError`, qui a ses
+    propres codes et messages) et les 401/403 de la session, à reprendre en 4.1.
+  - 2.4 : pas de test par règle. À la place, un filet global écrit **avant** le découpage
+    (`integrity.golden.test.ts` : 300 contenus abîmés au hasard, liste des erreurs et alertes
+    comparée dans l'ordre), qui couvrait 88 % des lignes de l'ancien fichier. `contentIssues` est
+    maintenant une liste de 16 contrôles, un fichier par entité dans `integrity/`.
+  - 2.5 : le contenu de test n'est plus dans le JavaScript du jeu : 560 → 509 Ko compressés.
+    ESLint interdit au jeu d'importer `@poke/content/seed`.
+  - 2.6 : `drizzle-kit generate` sur une copie ne voit aucun changement de schéma.
+  - Indicateurs à ce stade : 21 fichiers de plus de 800 lignes (25 au départ), 94 avertissements
+    de longueur ou de complexité (97), plafond `--max-warnings` baissé d'autant.
 
 ### Phase 3 : Logique de jeu (`game-core`) (L)
 
