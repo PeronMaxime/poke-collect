@@ -18,7 +18,8 @@ export function BagPage() {
 const copyTabs = (tabs: BagTab[]): BagTab[] =>
   tabs.map((t) => ({ title: t.title, sections: [...t.sections] }));
 
-function BagEditor({ working }: { working: WorkingVersion }) {
+/** État de l'éditeur du Sac : onglets et rubriques réordonnés, titres, enregistrement. */
+function useBagEditor({ working }: { working: WorkingVersion }) {
   const balance = working.content.balance;
   const initialTabs = normalizeBag(balance.bag).tabs;
   const initialTitles = balance.bag?.sectionTitles ?? {};
@@ -75,6 +76,33 @@ function BagEditor({ working }: { working: WorkingVersion }) {
     save.mutate({ ...balance, bag });
   }
 
+  return {
+    working,
+    initialTabs,
+    initialTitles,
+    tabs,
+    setTabs,
+    titles,
+    setTitles,
+    save,
+    editable,
+    dirty,
+    isDefault,
+    tabTitlesValid,
+    sectionTitlesValid,
+    moveTab,
+    moveSection,
+    setSectionTitle,
+    submit,
+  };
+}
+
+/** Ce qu'affichent les pièces de `BagEditor`. */
+type BagEditorModel = ReturnType<typeof useBagEditor>;
+
+function BagEditor({ working }: { working: WorkingVersion }) {
+  const m = useBagEditor({ working });
+  const { save, tabTitlesValid, sectionTitlesValid } = m;
   return (
     <div className="max-w-4xl space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -87,37 +115,7 @@ function BagEditor({ working }: { working: WorkingVersion }) {
             toujours en premier ; un onglet sans objet chez le joueur est masqué.
           </p>
         </div>
-        {editable && (
-          <div className="flex gap-2">
-            <button
-              className="btn-ghost"
-              disabled={isDefault}
-              onClick={() => {
-                setTabs(copyTabs(DEFAULT_BAG_TABS));
-                setTitles({});
-              }}
-            >
-              Sac par défaut
-            </button>
-            <button
-              className="btn-ghost"
-              disabled={!dirty}
-              onClick={() => {
-                setTabs(copyTabs(initialTabs));
-                setTitles(initialTitles);
-              }}
-            >
-              Annuler
-            </button>
-            <button
-              className="btn-primary"
-              disabled={!dirty || !tabTitlesValid || !sectionTitlesValid || save.isPending}
-              onClick={submit}
-            >
-              Enregistrer
-            </button>
-          </div>
-        )}
+        <BagActions m={m} />
       </div>
       <VersionBanner working={working} />
       {save.error && <p className="text-sm text-red-600">{errorMessage(save.error)}</p>}
@@ -127,122 +125,182 @@ function BagEditor({ working }: { working: WorkingVersion }) {
         </p>
       )}
 
-      <div className="space-y-3">
-        {tabs.map((tab, t) => (
-          <div
-            key={t}
-            className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
+      <BagTabsEditor m={m} />
+    </div>
+  );
+}
+
+/** Boutons de retour au rangement par défaut, d'annulation et d'enregistrement. */
+function BagActions({ m }: { m: BagEditorModel }) {
+  const {
+    initialTabs,
+    initialTitles,
+    setTabs,
+    setTitles,
+    save,
+    editable,
+    dirty,
+    isDefault,
+    tabTitlesValid,
+    sectionTitlesValid,
+    submit,
+  } = m;
+  return (
+    <>
+      {editable && (
+        <div className="flex gap-2">
+          <button
+            className="btn-ghost"
+            disabled={isDefault}
+            onClick={() => {
+              setTabs(copyTabs(DEFAULT_BAG_TABS));
+              setTitles({});
+            }}
           >
-            <div className="mb-2 flex items-center gap-2">
-              <input
-                className="input h-8 flex-1 py-0 font-semibold"
-                value={tab.title}
-                maxLength={MAX_TITLE}
-                placeholder={`Onglet ${t + 1}`}
-                disabled={!editable}
-                aria-label={`Titre de l’onglet ${t + 1}`}
-                onChange={(e) =>
-                  setTabs(tabs.map((x, i) => (i === t ? { ...x, title: e.target.value } : x)))
-                }
-              />
-              {editable && (
-                <>
-                  <button
-                    className="btn-ghost px-2"
-                    disabled={t === 0}
-                    title="Monter l’onglet"
-                    onClick={() => moveTab(t, -1)}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    className="btn-ghost px-2"
-                    disabled={t === tabs.length - 1}
-                    title="Descendre l’onglet"
-                    onClick={() => moveTab(t, 1)}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    className="btn-ghost px-2"
-                    disabled={tab.sections.length > 0}
-                    title={
-                      tab.sections.length > 0
-                        ? 'Déplacer d’abord ses rubriques dans un autre onglet'
-                        : 'Supprimer l’onglet'
-                    }
-                    onClick={() => setTabs(tabs.filter((_, i) => i !== t))}
-                  >
-                    ✕
-                  </button>
-                </>
-              )}
-            </div>
-            {tab.sections.length === 0 ? (
-              <p className="px-2 py-1 text-sm text-slate-400">
-                Onglet vide : il ne sera pas enregistré.
-              </p>
-            ) : (
-              <ul className="divide-y divide-slate-100 dark:divide-slate-800">
-                {tab.sections.map((id, i) => (
-                  <li key={id} className="flex flex-wrap items-center gap-2 px-2 py-1.5 text-sm">
-                    <input
-                      className="input h-8 min-w-40 flex-1 py-0"
-                      value={titles[id] ?? ''}
-                      maxLength={MAX_TITLE}
-                      placeholder={DEFAULT_BAG_SECTION_TITLES[id]}
-                      disabled={!editable}
-                      aria-label={`Titre de la rubrique ${DEFAULT_BAG_SECTION_TITLES[id]}`}
-                      onChange={(e) => setSectionTitle(id, e.target.value)}
-                    />
-                    <span className="w-24 font-mono text-xs text-slate-400">#{id}</span>
-                    {editable && (
-                      <>
-                        <button
-                          className="btn-ghost px-2"
-                          disabled={i === 0}
-                          title="Monter la rubrique"
-                          onClick={() => moveSection(id, t, t, -1)}
-                        >
-                          ↑
-                        </button>
-                        <button
-                          className="btn-ghost px-2"
-                          disabled={i === tab.sections.length - 1}
-                          title="Descendre la rubrique"
-                          onClick={() => moveSection(id, t, t, 1)}
-                        >
-                          ↓
-                        </button>
-                        <select
-                          className="input h-8 w-36 py-0"
-                          value={t}
-                          aria-label="Onglet de la rubrique"
-                          onChange={(e) => moveSection(id, t, Number(e.target.value))}
-                        >
-                          {tabs.map((x, j) => (
-                            <option key={j} value={j}>
-                              {x.title.trim() || `Onglet ${j + 1}`}
-                            </option>
-                          ))}
-                        </select>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
+            Sac par défaut
+          </button>
+          <button
+            className="btn-ghost"
+            disabled={!dirty}
+            onClick={() => {
+              setTabs(copyTabs(initialTabs));
+              setTitles(initialTitles);
+            }}
+          >
+            Annuler
+          </button>
+          <button
+            className="btn-primary"
+            disabled={!dirty || !tabTitlesValid || !sectionTitlesValid || save.isPending}
+            onClick={submit}
+          >
+            Enregistrer
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Onglets du Sac et leurs rubriques : titres, ordre, déplacement d'un onglet à l'autre ; ajout d'un onglet. */
+function BagTabsEditor({ m }: { m: BagEditorModel }) {
+  const { tabs, setTabs, titles, editable, moveTab, moveSection, setSectionTitle } = m;
+  return (
+    <div className="space-y-3">
+      {tabs.map((tab, t) => (
+        <div
+          key={t}
+          className="rounded-lg border border-slate-200 bg-white p-3 dark:border-slate-800 dark:bg-slate-900"
+        >
+          <div className="mb-2 flex items-center gap-2">
+            <input
+              className="input h-8 flex-1 py-0 font-semibold"
+              value={tab.title}
+              maxLength={MAX_TITLE}
+              placeholder={`Onglet ${t + 1}`}
+              disabled={!editable}
+              aria-label={`Titre de l’onglet ${t + 1}`}
+              onChange={(e) =>
+                setTabs(tabs.map((x, i) => (i === t ? { ...x, title: e.target.value } : x)))
+              }
+            />
+            {editable && (
+              <>
+                <button
+                  className="btn-ghost px-2"
+                  disabled={t === 0}
+                  title="Monter l’onglet"
+                  onClick={() => moveTab(t, -1)}
+                >
+                  ↑
+                </button>
+                <button
+                  className="btn-ghost px-2"
+                  disabled={t === tabs.length - 1}
+                  title="Descendre l’onglet"
+                  onClick={() => moveTab(t, 1)}
+                >
+                  ↓
+                </button>
+                <button
+                  className="btn-ghost px-2"
+                  disabled={tab.sections.length > 0}
+                  title={
+                    tab.sections.length > 0
+                      ? 'Déplacer d’abord ses rubriques dans un autre onglet'
+                      : 'Supprimer l’onglet'
+                  }
+                  onClick={() => setTabs(tabs.filter((_, i) => i !== t))}
+                >
+                  ✕
+                </button>
+              </>
             )}
           </div>
-        ))}
-        {editable && (
-          <button
-            className="btn-ghost w-full border-2 border-dashed"
-            onClick={() => setTabs([...copyTabs(tabs), { title: 'Nouvel onglet', sections: [] }])}
-          >
-            + Ajouter un onglet
-          </button>
-        )}
-      </div>
+          {tab.sections.length === 0 ? (
+            <p className="px-2 py-1 text-sm text-slate-400">
+              Onglet vide : il ne sera pas enregistré.
+            </p>
+          ) : (
+            <ul className="divide-y divide-slate-100 dark:divide-slate-800">
+              {tab.sections.map((id, i) => (
+                <li key={id} className="flex flex-wrap items-center gap-2 px-2 py-1.5 text-sm">
+                  <input
+                    className="input h-8 min-w-40 flex-1 py-0"
+                    value={titles[id] ?? ''}
+                    maxLength={MAX_TITLE}
+                    placeholder={DEFAULT_BAG_SECTION_TITLES[id]}
+                    disabled={!editable}
+                    aria-label={`Titre de la rubrique ${DEFAULT_BAG_SECTION_TITLES[id]}`}
+                    onChange={(e) => setSectionTitle(id, e.target.value)}
+                  />
+                  <span className="w-24 font-mono text-xs text-slate-400">#{id}</span>
+                  {editable && (
+                    <>
+                      <button
+                        className="btn-ghost px-2"
+                        disabled={i === 0}
+                        title="Monter la rubrique"
+                        onClick={() => moveSection(id, t, t, -1)}
+                      >
+                        ↑
+                      </button>
+                      <button
+                        className="btn-ghost px-2"
+                        disabled={i === tab.sections.length - 1}
+                        title="Descendre la rubrique"
+                        onClick={() => moveSection(id, t, t, 1)}
+                      >
+                        ↓
+                      </button>
+                      <select
+                        className="input h-8 w-36 py-0"
+                        value={t}
+                        aria-label="Onglet de la rubrique"
+                        onChange={(e) => moveSection(id, t, Number(e.target.value))}
+                      >
+                        {tabs.map((x, j) => (
+                          <option key={j} value={j}>
+                            {x.title.trim() || `Onglet ${j + 1}`}
+                          </option>
+                        ))}
+                      </select>
+                    </>
+                  )}
+                </li>
+              ))}
+            </ul>
+          )}
+        </div>
+      ))}
+      {editable && (
+        <button
+          className="btn-ghost w-full border-2 border-dashed"
+          onClick={() => setTabs([...copyTabs(tabs), { title: 'Nouvel onglet', sections: [] }])}
+        >
+          + Ajouter un onglet
+        </button>
+      )}
     </div>
   );
 }

@@ -68,7 +68,8 @@ function draftOf(balance: BalanceSettings): Draft {
   };
 }
 
-function FacilitiesEditor({ working }: { working: WorkingVersion }) {
+/** État de l'éditeur des bâtiments : brouillon des paliers de chaque bâtiment, enregistrement. */
+function useFacilitiesEditor({ working }: { working: WorkingVersion }) {
   const balance = working.content.balance;
   const initial = draftOf(balance);
   const [draft, setDraft] = useState<Draft>(initial);
@@ -180,6 +181,28 @@ function FacilitiesEditor({ working }: { working: WorkingVersion }) {
     ),
   };
 
+  return {
+    working,
+    initial,
+    draft,
+    setDraft,
+    save,
+    editable,
+    disabled,
+    dirty,
+    ctx,
+    setSteps,
+    submit,
+    base,
+  };
+}
+
+/** Ce qu'affichent les pièces de `FacilitiesEditor`. */
+type FacilitiesEditorModel = ReturnType<typeof useFacilitiesEditor>;
+
+function FacilitiesEditor({ working }: { working: WorkingVersion }) {
+  const m = useFacilitiesEditor({ working });
+  const { save } = m;
   return (
     <div className="max-w-4xl space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -192,20 +215,40 @@ function FacilitiesEditor({ working }: { working: WorkingVersion }) {
             condition dans le bâtiment.
           </p>
         </div>
-        {editable && (
-          <div className="flex gap-2">
-            <button className="btn-ghost" disabled={!dirty} onClick={() => setDraft(initial)}>
-              Annuler
-            </button>
-            <button className="btn-primary" disabled={!dirty || save.isPending} onClick={submit}>
-              Enregistrer
-            </button>
-          </div>
-        )}
+        <FacilitiesActions m={m} />
       </div>
       <VersionBanner working={working} />
       {save.error && <p className="text-sm text-red-600">{errorMessage(save.error)}</p>}
 
+      <FacilitiesList m={m} />
+    </div>
+  );
+}
+
+/** Boutons d'annulation et d'enregistrement. */
+function FacilitiesActions({ m }: { m: FacilitiesEditorModel }) {
+  const { initial, setDraft, save, editable, dirty, submit } = m;
+  return (
+    <>
+      {editable && (
+        <div className="flex gap-2">
+          <button className="btn-ghost" disabled={!dirty} onClick={() => setDraft(initial)}>
+            Annuler
+          </button>
+          <button className="btn-primary" disabled={!dirty || save.isPending} onClick={submit}>
+            Enregistrer
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Chaque bâtiment : ce qui est ouvert d'office, et ses paliers de déblocage. */
+function FacilitiesList({ m }: { m: FacilitiesEditorModel }) {
+  const { working, draft, editable, disabled, ctx, setSteps, base } = m;
+  return (
+    <>
       {FACILITIES.map(({ id, label, units }) => {
         const steps = draft.unlocks[id];
         return (
@@ -281,6 +324,6 @@ function FacilitiesEditor({ working }: { working: WorkingVersion }) {
           </fieldset>
         );
       })}
-    </div>
+    </>
   );
 }

@@ -47,7 +47,8 @@ export function ExpeditionCompletionsView() {
   return <CompletionsEditor key={working.data.version.id} working={working.data} />;
 }
 
-function CompletionsEditor({ working }: { working: WorkingVersion }) {
+/** État de l'éditeur des complétions d'expédition : brouillon, validation, ajout, enregistrement. */
+function useCompletionsEditor({ working }: { working: WorkingVersion }) {
   const balance = working.content.balance;
   const initial = balance.expeditionCompletions ?? [];
   const [draft, setDraft] = useState<ExpeditionCompletion[]>(initial);
@@ -83,6 +84,32 @@ function CompletionsEditor({ working }: { working: WorkingVersion }) {
     ]);
   }
 
+  return {
+    working,
+    balance,
+    initial,
+    draft,
+    setDraft,
+    save,
+    editable,
+    disabled,
+    dirty,
+    ctx,
+    savedIds,
+    checks,
+    duplicate,
+    valid,
+    update,
+    add,
+  };
+}
+
+/** Ce qu'affichent les pièces de `CompletionsEditor`. */
+type CompletionsEditorModel = ReturnType<typeof useCompletionsEditor>;
+
+function CompletionsEditor({ working }: { working: WorkingVersion }) {
+  const m = useCompletionsEditor({ working });
+  const { draft, save, editable, duplicate, add } = m;
   return (
     <div className="max-w-4xl space-y-4">
       <div className="flex flex-wrap items-end justify-between gap-2">
@@ -95,25 +122,7 @@ function CompletionsEditor({ working }: { working: WorkingVersion }) {
             complétée, dans le Pokédex du joueur (onglet « Expéditions »).
           </p>
         </div>
-        {editable && (
-          <div className="flex gap-2">
-            <button className="btn-ghost" disabled={!dirty} onClick={() => setDraft(initial)}>
-              Annuler
-            </button>
-            <button
-              className="btn-primary"
-              disabled={!dirty || !valid || save.isPending}
-              onClick={() =>
-                save.mutate({
-                  ...balance,
-                  expeditionCompletions: draft.length > 0 || initial.length > 0 ? draft : undefined,
-                })
-              }
-            >
-              Enregistrer
-            </button>
-          </div>
-        )}
+        <CompletionsActions m={m} />
       </div>
       <VersionBanner working={working} />
       {save.error && <p className="text-sm text-red-600">{errorMessage(save.error)}</p>}
@@ -124,6 +133,49 @@ function CompletionsEditor({ working }: { working: WorkingVersion }) {
         <p className="text-slate-500">Aucune récompense de complétion pour le moment.</p>
       )}
 
+      <CompletionsList m={m} />
+      {editable && (
+        <button className="btn-ghost" onClick={add}>
+          + Ajouter une récompense de complétion
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Boutons d'annulation et d'enregistrement. */
+function CompletionsActions({ m }: { m: CompletionsEditorModel }) {
+  const { balance, initial, draft, setDraft, save, editable, dirty, valid } = m;
+  return (
+    <>
+      {editable && (
+        <div className="flex gap-2">
+          <button className="btn-ghost" disabled={!dirty} onClick={() => setDraft(initial)}>
+            Annuler
+          </button>
+          <button
+            className="btn-primary"
+            disabled={!dirty || !valid || save.isPending}
+            onClick={() =>
+              save.mutate({
+                ...balance,
+                expeditionCompletions: draft.length > 0 || initial.length > 0 ? draft : undefined,
+              })
+            }
+          >
+            Enregistrer
+          </button>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Chaque complétion : identifiant, nom, condition (région, expédition, chromatique), récompenses et bonus de région, retrait. */
+function CompletionsList({ m }: { m: CompletionsEditorModel }) {
+  const { draft, setDraft, editable, disabled, ctx, savedIds, checks, update } = m;
+  return (
+    <>
       {draft.map((c, i) => {
         const { errors } = checks[i]!;
         const targets = completionTargets(ctx, c).length;
@@ -256,12 +308,7 @@ function CompletionsEditor({ working }: { working: WorkingVersion }) {
           </fieldset>
         );
       })}
-      {editable && (
-        <button className="btn-ghost" onClick={add}>
-          + Ajouter une récompense de complétion
-        </button>
-      )}
-    </div>
+    </>
   );
 }
 

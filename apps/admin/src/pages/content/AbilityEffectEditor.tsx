@@ -108,6 +108,16 @@ function ChipsSelect<T extends string>({
   );
 }
 
+/** Props de la ligne d'un effet de talent, que reçoivent aussi ses pièces. */
+interface EffectRowProps {
+  effect: AbilityEffect;
+  errors: FieldErrors;
+  path: string;
+  editable: boolean;
+  onChange: (e: AbilityEffect) => void;
+  onRemove: () => void;
+}
+
 /** Conditions « de l'instant » : évaluées à chaque attaque, seulement pour les dégâts en donjon. */
 const DUNGEON_ONLY_CONDITIONS = new Set<AbilityConditionType>([
   'hpBelow',
@@ -233,22 +243,7 @@ export function AbilityEffectEditor({
   );
 }
 
-function EffectRow({
-  effect,
-  errors,
-  path,
-  editable,
-  onChange,
-  onRemove,
-}: {
-  effect: AbilityEffect;
-  errors: FieldErrors;
-  path: string;
-  editable: boolean;
-  onChange: (e: AbilityEffect) => void;
-  onRemove: () => void;
-}) {
-  const disabled = !editable;
+function EffectRow({ effect, errors, path, editable, onChange, onRemove }: EffectRowProps) {
   const param = effect.type === 'modifier' ? ABILITY_PARAMS[effect.param] : null;
   return (
     <div className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800">
@@ -274,225 +269,30 @@ function EffectRow({
       </div>
 
       <div className="flex flex-wrap items-end gap-3">
-        {effect.type === 'modifier' && (
-          <>
-            <Field label="Paramètre">
-              <select
-                className="input"
-                value={effect.param}
-                disabled={disabled}
-                onChange={(e) => {
-                  const p = e.target.value as AbilityParam;
-                  onChange({
-                    ...effect,
-                    param: p,
-                    scope: ABILITY_PARAMS[p].selfScope ? effect.scope : 'team',
-                  });
-                }}
-              >
-                {PARAM_GROUPS.map(({ group, params }) => (
-                  <optgroup key={group} label={group}>
-                    {params.map((p) => (
-                      <option key={p} value={p}>
-                        {ABILITY_PARAMS[p].label}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
-            </Field>
-            <Field label="Valeur" error={errors.get(`${path}.value`)}>
-              <NumberInput
-                className="w-32"
-                value={effect.value}
-                unit={param!.unit}
-                disabled={disabled}
-                onChange={(value) => onChange({ ...effect, value })}
-              />
-            </Field>
-            {param!.selfScope && (
-              <Field label="Pour">
-                <SelectInput
-                  value={effect.scope}
-                  disabled={disabled}
-                  options={[
-                    { value: 'self', label: 'Le Pokémon seul' },
-                    { value: 'team', label: 'Toute l’équipe' },
-                  ]}
-                  onChange={(scope) => onChange({ ...effect, scope })}
-                />
-              </Field>
-            )}
-          </>
-        )}
-        {effect.type === 'attractType' && (
-          <>
-            <Field label="Type">
-              <TypeSelect
-                value={effect.pokemonType}
-                disabled={disabled}
-                onChange={(pokemonType) => onChange({ ...effect, pokemonType })}
-              />
-            </Field>
-            <Field label="Poids des rencontres" error={errors.get(`${path}.percent`)}>
-              <NumberInput
-                className="w-32"
-                value={effect.percent}
-                unit="%"
-                disabled={disabled}
-                onChange={(percent) => onChange({ ...effect, percent })}
-              />
-            </Field>
-          </>
-        )}
-        {effect.type === 'immunity' && (
-          <>
-            <Field label="Type d’attaque">
-              <TypeSelect
-                value={effect.attackType}
-                disabled={disabled}
-                onChange={(attackType) => onChange({ ...effect, attackType })}
-              />
-            </Field>
-            <Field label="Soin par attaque absorbée" error={errors.get(`${path}.heal`)}>
-              <NumberInput
-                className="w-32"
-                value={effect.heal}
-                scale={100}
-                min={0}
-                max={100}
-                unit="% PV"
-                disabled={disabled}
-                onChange={(heal) => onChange({ ...effect, heal })}
-              />
-            </Field>
-          </>
-        )}
-        {(effect.type === 'regenerator' ||
-          effect.type === 'contactDamage' ||
-          effect.type === 'aftermath') && (
-          <Field label="Part des PV max" error={errors.get(`${path}.fraction`)}>
-            <NumberInput
-              className="w-32"
-              value={effect.fraction}
-              scale={100}
-              min={0}
-              max={100}
-              unit="%"
-              disabled={disabled}
-              onChange={(fraction) => onChange({ ...effect, fraction })}
-            />
-          </Field>
-        )}
-        {(effect.type === 'speedBoost' ||
-          effect.type === 'moxie' ||
-          effect.type === 'intimidate') && (
-          <Field label="Variation" error={errors.get(`${path}.percent`)}>
-            <NumberInput
-              className="w-32"
-              value={effect.percent}
-              min={1}
-              max={100}
-              unit="%"
-              disabled={disabled}
-              onChange={(percent) => onChange({ ...effect, percent })}
-            />
-          </Field>
-        )}
-        {effect.type === 'intimidate' && (
-          <Field label="Statistiques baissées" error={errors.get(`${path}.stats`)}>
-            <ChipsSelect
-              options={DUNGEON_STATS}
-              labels={DUNGEON_STAT_LABELS}
-              value={effect.stats}
-              disabled={disabled}
-              onChange={(stats) => onChange({ ...effect, stats })}
-            />
-          </Field>
-        )}
-        {effect.type === 'setWeather' && (
-          <Field label="Météo">
-            <SelectInput<ImposedWeather>
-              value={effect.weather}
-              disabled={disabled}
-              options={IMPOSED_WEATHERS.map((w) => ({ value: w, label: WEATHER_LABELS[w] }))}
-              onChange={(weather) => onChange({ ...effect, weather })}
-            />
-          </Field>
-        )}
-        {effect.type === 'inflictStatus' && (
-          <>
-            <Field label="Statut">
-              <SelectInput<Status>
-                value={effect.status}
-                disabled={disabled}
-                options={STATUSES.map((st) => ({ value: st, label: STATUS_LABELS[st] }))}
-                onChange={(status) => onChange({ ...effect, status })}
-              />
-            </Field>
-            <Field label="Déclencheur">
-              <SelectInput
-                value={effect.trigger}
-                disabled={disabled}
-                options={[
-                  { value: 'contact', label: 'Quand il est frappé (physique)' },
-                  { value: 'attack', label: 'Quand il frappe' },
-                ]}
-                onChange={(trigger) => onChange({ ...effect, trigger })}
-              />
-            </Field>
-            <Field label="Chance" error={errors.get(`${path}.chance`)}>
-              <NumberInput
-                className="w-28"
-                value={effect.chance}
-                scale={100}
-                min={0}
-                max={100}
-                unit="%"
-                disabled={disabled}
-                onChange={(chance) => onChange({ ...effect, chance })}
-              />
-            </Field>
-          </>
-        )}
-        {effect.type === 'statusImmunity' && (
-          <>
-            <Field label="Statuts" error={errors.get(`${path}.statuses`)}>
-              <ChipsSelect
-                options={STATUSES}
-                labels={STATUS_LABELS}
-                value={effect.statuses}
-                disabled={disabled}
-                onChange={(statuses) => onChange({ ...effect, statuses })}
-              />
-            </Field>
-            <Field label="Pour">
-              <SelectInput
-                value={effect.scope ?? 'self'}
-                disabled={disabled}
-                options={[
-                  { value: 'self', label: 'Le Pokémon seul' },
-                  { value: 'team', label: 'Toute l’équipe' },
-                ]}
-                onChange={(scope) => onChange({ ...effect, scope })}
-              />
-            </Field>
-          </>
-        )}
-        {(effect.type === 'syncNature' || effect.type === 'attractGender') && (
-          <Field label="Chance" error={errors.get(`${path}.chance`)}>
-            <NumberInput
-              className="w-32"
-              value={effect.chance}
-              scale={100}
-              min={0}
-              max={100}
-              unit="%"
-              disabled={disabled}
-              onChange={(chance) => onChange({ ...effect, chance })}
-            />
-          </Field>
-        )}
+        <ModifierEffectFields
+          effect={effect}
+          errors={errors}
+          path={path}
+          editable={editable}
+          onChange={onChange}
+          onRemove={onRemove}
+        />
+        <CombatEffectFields
+          effect={effect}
+          errors={errors}
+          path={path}
+          editable={editable}
+          onChange={onChange}
+          onRemove={onRemove}
+        />
+        <StatusEffectFields
+          effect={effect}
+          errors={errors}
+          path={path}
+          editable={editable}
+          onChange={onChange}
+          onRemove={onRemove}
+        />
       </div>
 
       <ConditionsEditor
@@ -512,6 +312,253 @@ function EffectRow({
         onChange={(conditions) => onChange({ ...effect, conditions })}
       />
     </div>
+  );
+}
+
+/** Paramètres d'un modificateur, d'une attraction de type et d'une immunité de type. */
+function ModifierEffectFields({ effect, errors, path, editable, onChange }: EffectRowProps) {
+  const disabled = !editable;
+  const param = effect.type === 'modifier' ? ABILITY_PARAMS[effect.param] : null;
+  return (
+    <>
+      {effect.type === 'modifier' && (
+        <>
+          <Field label="Paramètre">
+            <select
+              className="input"
+              value={effect.param}
+              disabled={disabled}
+              onChange={(e) => {
+                const p = e.target.value as AbilityParam;
+                onChange({
+                  ...effect,
+                  param: p,
+                  scope: ABILITY_PARAMS[p].selfScope ? effect.scope : 'team',
+                });
+              }}
+            >
+              {PARAM_GROUPS.map(({ group, params }) => (
+                <optgroup key={group} label={group}>
+                  {params.map((p) => (
+                    <option key={p} value={p}>
+                      {ABILITY_PARAMS[p].label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+          </Field>
+          <Field label="Valeur" error={errors.get(`${path}.value`)}>
+            <NumberInput
+              className="w-32"
+              value={effect.value}
+              unit={param!.unit}
+              disabled={disabled}
+              onChange={(value) => onChange({ ...effect, value })}
+            />
+          </Field>
+          {param!.selfScope && (
+            <Field label="Pour">
+              <SelectInput
+                value={effect.scope}
+                disabled={disabled}
+                options={[
+                  { value: 'self', label: 'Le Pokémon seul' },
+                  { value: 'team', label: 'Toute l’équipe' },
+                ]}
+                onChange={(scope) => onChange({ ...effect, scope })}
+              />
+            </Field>
+          )}
+        </>
+      )}
+      {effect.type === 'attractType' && (
+        <>
+          <Field label="Type">
+            <TypeSelect
+              value={effect.pokemonType}
+              disabled={disabled}
+              onChange={(pokemonType) => onChange({ ...effect, pokemonType })}
+            />
+          </Field>
+          <Field label="Poids des rencontres" error={errors.get(`${path}.percent`)}>
+            <NumberInput
+              className="w-32"
+              value={effect.percent}
+              unit="%"
+              disabled={disabled}
+              onChange={(percent) => onChange({ ...effect, percent })}
+            />
+          </Field>
+        </>
+      )}
+      {effect.type === 'immunity' && (
+        <>
+          <Field label="Type d’attaque">
+            <TypeSelect
+              value={effect.attackType}
+              disabled={disabled}
+              onChange={(attackType) => onChange({ ...effect, attackType })}
+            />
+          </Field>
+          <Field label="Soin par attaque absorbée" error={errors.get(`${path}.heal`)}>
+            <NumberInput
+              className="w-32"
+              value={effect.heal}
+              scale={100}
+              min={0}
+              max={100}
+              unit="% PV"
+              disabled={disabled}
+              onChange={(heal) => onChange({ ...effect, heal })}
+            />
+          </Field>
+        </>
+      )}
+    </>
+  );
+}
+
+/** Paramètres des effets de combat : part des PV (soin au rappel, dégâts au contact, explosion au K.O.), variation (vitesse croissante, attaque après un K.O., intimidation), météo imposée. */
+function CombatEffectFields({ effect, errors, path, editable, onChange }: EffectRowProps) {
+  const disabled = !editable;
+  return (
+    <>
+      {(effect.type === 'regenerator' ||
+        effect.type === 'contactDamage' ||
+        effect.type === 'aftermath') && (
+        <Field label="Part des PV max" error={errors.get(`${path}.fraction`)}>
+          <NumberInput
+            className="w-32"
+            value={effect.fraction}
+            scale={100}
+            min={0}
+            max={100}
+            unit="%"
+            disabled={disabled}
+            onChange={(fraction) => onChange({ ...effect, fraction })}
+          />
+        </Field>
+      )}
+      {(effect.type === 'speedBoost' ||
+        effect.type === 'moxie' ||
+        effect.type === 'intimidate') && (
+        <Field label="Variation" error={errors.get(`${path}.percent`)}>
+          <NumberInput
+            className="w-32"
+            value={effect.percent}
+            min={1}
+            max={100}
+            unit="%"
+            disabled={disabled}
+            onChange={(percent) => onChange({ ...effect, percent })}
+          />
+        </Field>
+      )}
+      {effect.type === 'intimidate' && (
+        <Field label="Statistiques baissées" error={errors.get(`${path}.stats`)}>
+          <ChipsSelect
+            options={DUNGEON_STATS}
+            labels={DUNGEON_STAT_LABELS}
+            value={effect.stats}
+            disabled={disabled}
+            onChange={(stats) => onChange({ ...effect, stats })}
+          />
+        </Field>
+      )}
+      {effect.type === 'setWeather' && (
+        <Field label="Météo">
+          <SelectInput<ImposedWeather>
+            value={effect.weather}
+            disabled={disabled}
+            options={IMPOSED_WEATHERS.map((w) => ({ value: w, label: WEATHER_LABELS[w] }))}
+            onChange={(weather) => onChange({ ...effect, weather })}
+          />
+        </Field>
+      )}
+    </>
+  );
+}
+
+/** Paramètres des effets de statut (infligé, immunité), de nature synchronisée et d'attraction de genre. */
+function StatusEffectFields({ effect, errors, path, editable, onChange }: EffectRowProps) {
+  const disabled = !editable;
+  return (
+    <>
+      {effect.type === 'inflictStatus' && (
+        <>
+          <Field label="Statut">
+            <SelectInput<Status>
+              value={effect.status}
+              disabled={disabled}
+              options={STATUSES.map((st) => ({ value: st, label: STATUS_LABELS[st] }))}
+              onChange={(status) => onChange({ ...effect, status })}
+            />
+          </Field>
+          <Field label="Déclencheur">
+            <SelectInput
+              value={effect.trigger}
+              disabled={disabled}
+              options={[
+                { value: 'contact', label: 'Quand il est frappé (physique)' },
+                { value: 'attack', label: 'Quand il frappe' },
+              ]}
+              onChange={(trigger) => onChange({ ...effect, trigger })}
+            />
+          </Field>
+          <Field label="Chance" error={errors.get(`${path}.chance`)}>
+            <NumberInput
+              className="w-28"
+              value={effect.chance}
+              scale={100}
+              min={0}
+              max={100}
+              unit="%"
+              disabled={disabled}
+              onChange={(chance) => onChange({ ...effect, chance })}
+            />
+          </Field>
+        </>
+      )}
+      {effect.type === 'statusImmunity' && (
+        <>
+          <Field label="Statuts" error={errors.get(`${path}.statuses`)}>
+            <ChipsSelect
+              options={STATUSES}
+              labels={STATUS_LABELS}
+              value={effect.statuses}
+              disabled={disabled}
+              onChange={(statuses) => onChange({ ...effect, statuses })}
+            />
+          </Field>
+          <Field label="Pour">
+            <SelectInput
+              value={effect.scope ?? 'self'}
+              disabled={disabled}
+              options={[
+                { value: 'self', label: 'Le Pokémon seul' },
+                { value: 'team', label: 'Toute l’équipe' },
+              ]}
+              onChange={(scope) => onChange({ ...effect, scope })}
+            />
+          </Field>
+        </>
+      )}
+      {(effect.type === 'syncNature' || effect.type === 'attractGender') && (
+        <Field label="Chance" error={errors.get(`${path}.chance`)}>
+          <NumberInput
+            className="w-32"
+            value={effect.chance}
+            scale={100}
+            min={0}
+            max={100}
+            unit="%"
+            disabled={disabled}
+            onChange={(chance) => onChange({ ...effect, chance })}
+          />
+        </Field>
+      )}
+    </>
   );
 }
 

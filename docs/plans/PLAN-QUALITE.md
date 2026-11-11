@@ -475,6 +475,10 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
     `CombatSectionProps`). `BalanceForm` passe par un hook (`useBalanceForm`) et 16 sections ;
     `PowerCalculatorPage` garde le chargement et confie le reste à `PowerCalculator`. Plafond
     d'avertissements : 35 → 23.
+  - Au-delà de la liste, les onze fonctions de l'admin de 190 lignes et plus (menu, Sac,
+    tableau de bord, boutique, effet de talent, lot de test, complétions, bâtiments, simulateur,
+    combat légendaire, récompenses) : plafond 23 → 12. Restent dix fonctions de 152 à 186 lignes,
+    `findUsages` (complexité) et le `main` de l'import PokéAPI.
 - [ ] **6.2 Un modèle unique de page de contenu** autour de `EntityPage` : liste, formulaire,
       validation, enregistrement, écrits une fois et documentés.
 - [ ] **6.3 Pages chargées à la demande** (une par route).

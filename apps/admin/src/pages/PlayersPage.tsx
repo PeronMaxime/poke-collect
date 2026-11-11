@@ -471,11 +471,8 @@ const TEST_ERRORS: Record<string, string> = {
   LAST_POKEMON: 'Il ne resterait aucun Pokémon au joueur.',
 };
 
-/**
- * Lot de Pokémon de test (comptes admin seulement) : lignées des donjons de la région et les deux
- * plus forts Pokémon de chaque type de son Pokédex régional, inscrits au Pokédex.
- */
-function TestPokemonSection({ userId }: { userId: string }) {
+/** Outils de test d'un compte admin : formulaire du lot, et les actions (ajouter, retirer, objets, dresseurs, quêtes) avec le résultat de la dernière. */
+function useTestPokemon({ userId }: { userId: string }) {
   const working = useWorkingVersion();
   const regions = working.data?.ctx.regions ?? [];
   const queryClient = useQueryClient();
@@ -537,6 +534,35 @@ function TestPokemonSection({ userId }: { userId: string }) {
       ? (TEST_ERRORS[failure.code] ?? failure.code)
       : failure && 'Erreur inattendue.';
 
+  return {
+    regions,
+    form,
+    setForm,
+    regionId,
+    confirmDelete,
+    setConfirmDelete,
+    itemQuantity,
+    setItemQuantity,
+    last,
+    give,
+    remove,
+    items,
+    trainers,
+    quests,
+    error,
+  };
+}
+
+/** Ce qu'affichent les pièces de `TestPokemonSection`. */
+type TestPokemonSectionModel = ReturnType<typeof useTestPokemon>;
+
+/**
+ * Lot de Pokémon de test (comptes admin seulement) : lignées des donjons de la région et les deux
+ * plus forts Pokémon de chaque type de son Pokédex régional, inscrits au Pokédex.
+ */
+function TestPokemonSection({ userId }: { userId: string }) {
+  const m = useTestPokemon({ userId });
+  const { error } = m;
   return (
     <section className="rounded-xl border border-dashed border-brand-500/40 p-4">
       <h3 className="font-semibold">Lot de Pokémon de test</h3>
@@ -545,116 +571,148 @@ function TestPokemonSection({ userId }: { userId: string }) {
         forts Pokémon de chaque type de son Pokédex régional (origine « Lot de test »), un sur deux
         en chromatique, et les inscrit au Pokédex pour rendre les donjons visibles.
       </p>
-      <div className="flex flex-wrap items-end gap-3 text-sm">
+      <TestPokemonActions m={m} />
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      <TestPokemonResults m={m} />
+    </section>
+  );
+}
+
+/** Réglages du lot (région, niveau, IV parfaits, légendaires) et boutons des actions de test. */
+function TestPokemonActions({ m }: { m: TestPokemonSectionModel }) {
+  const {
+    regions,
+    form,
+    setForm,
+    regionId,
+    confirmDelete,
+    setConfirmDelete,
+    itemQuantity,
+    setItemQuantity,
+    give,
+    remove,
+    items,
+    trainers,
+    quests,
+  } = m;
+  return (
+    <div className="flex flex-wrap items-end gap-3 text-sm">
+      <label className="space-y-1">
+        <span className="block text-xs text-slate-500">Région</span>
+        <select
+          className="input"
+          value={regionId}
+          onChange={(e) => setForm({ ...form, regionId: e.target.value })}
+        >
+          {regions.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+      </label>
+      <label className="space-y-1">
+        <span className="block text-xs text-slate-500">Niveau</span>
+        <input
+          className="input w-20"
+          type="number"
+          min={1}
+          max={100}
+          value={form.level}
+          onChange={(e) =>
+            setForm({ ...form, level: Math.min(100, Math.max(1, Number(e.target.value) || 1)) })
+          }
+        />
+      </label>
+      <label className="flex items-center gap-2 py-2">
+        <input
+          type="checkbox"
+          checked={form.perfectIvs}
+          onChange={(e) => setForm({ ...form, perfectIvs: e.target.checked })}
+        />
+        IV parfaits
+      </label>
+      <label className="flex items-center gap-2 py-2">
+        <input
+          type="checkbox"
+          checked={form.legendaries}
+          onChange={(e) => setForm({ ...form, legendaries: e.target.checked })}
+        />
+        Légendaires et fabuleux
+      </label>
+      <button
+        className="btn-primary"
+        disabled={!regionId || give.isPending}
+        onClick={() => give.mutate()}
+      >
+        {give.isPending ? 'Ajout…' : 'Ajouter le lot'}
+      </button>
+      <span className="flex items-end gap-2">
         <label className="space-y-1">
-          <span className="block text-xs text-slate-500">Région</span>
-          <select
-            className="input"
-            value={regionId}
-            onChange={(e) => setForm({ ...form, regionId: e.target.value })}
-          >
-            {regions.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="space-y-1">
-          <span className="block text-xs text-slate-500">Niveau</span>
+          <span className="block text-xs text-slate-500">Objets ×</span>
           <input
             className="input w-20"
             type="number"
             min={1}
-            max={100}
-            value={form.level}
+            max={999}
+            value={itemQuantity}
             onChange={(e) =>
-              setForm({ ...form, level: Math.min(100, Math.max(1, Number(e.target.value) || 1)) })
+              setItemQuantity(Math.min(999, Math.max(1, Number(e.target.value) || 1)))
             }
           />
         </label>
-        <label className="flex items-center gap-2 py-2">
-          <input
-            type="checkbox"
-            checked={form.perfectIvs}
-            onChange={(e) => setForm({ ...form, perfectIvs: e.target.checked })}
-          />
-          IV parfaits
-        </label>
-        <label className="flex items-center gap-2 py-2">
-          <input
-            type="checkbox"
-            checked={form.legendaries}
-            onChange={(e) => setForm({ ...form, legendaries: e.target.checked })}
-          />
-          Légendaires et fabuleux
-        </label>
         <button
           className="btn-primary"
-          disabled={!regionId || give.isPending}
-          onClick={() => give.mutate()}
+          disabled={items.isPending}
+          onClick={() => items.mutate()}
+          title="Ajoute ce nombre d’exemplaires de chaque objet du contenu publié au sac."
         >
-          {give.isPending ? 'Ajout…' : 'Ajouter le lot'}
+          {items.isPending ? 'Ajout…' : 'Ajouter tous les objets'}
         </button>
-        <span className="flex items-end gap-2">
-          <label className="space-y-1">
-            <span className="block text-xs text-slate-500">Objets ×</span>
-            <input
-              className="input w-20"
-              type="number"
-              min={1}
-              max={999}
-              value={itemQuantity}
-              onChange={(e) =>
-                setItemQuantity(Math.min(999, Math.max(1, Number(e.target.value) || 1)))
-              }
-            />
-          </label>
+      </span>
+      <button
+        className="btn-primary"
+        disabled={trainers.isPending}
+        onClick={() => trainers.mutate()}
+        title="Chaque dresseur du contenu publié compte comme battu une fois : badges, zones et dresseurs suivants débloqués, sans les récompenses de première victoire."
+      >
+        {trainers.isPending ? 'Déblocage…' : 'Débloquer tous les dresseurs'}
+      </button>
+      <button
+        className="btn-primary"
+        disabled={quests.isPending}
+        onClick={() => quests.mutate()}
+        title="Toutes les quêtes du contenu publié passent terminées : leurs récompenses sont à réclamer depuis la page Quêtes."
+      >
+        {quests.isPending ? 'Déblocage…' : 'Débloquer toutes les quêtes'}
+      </button>
+      {confirmDelete ? (
+        <span className="flex items-center gap-2">
           <button
-            className="btn-primary"
-            disabled={items.isPending}
-            onClick={() => items.mutate()}
-            title="Ajoute ce nombre d’exemplaires de chaque objet du contenu publié au sac."
+            className="btn-danger"
+            disabled={remove.isPending}
+            onClick={() => remove.mutate()}
           >
-            {items.isPending ? 'Ajout…' : 'Ajouter tous les objets'}
+            {remove.isPending ? 'Suppression…' : 'Confirmer la suppression'}
+          </button>
+          <button className="btn-ghost" onClick={() => setConfirmDelete(false)}>
+            Annuler
           </button>
         </span>
-        <button
-          className="btn-primary"
-          disabled={trainers.isPending}
-          onClick={() => trainers.mutate()}
-          title="Chaque dresseur du contenu publié compte comme battu une fois : badges, zones et dresseurs suivants débloqués, sans les récompenses de première victoire."
-        >
-          {trainers.isPending ? 'Déblocage…' : 'Débloquer tous les dresseurs'}
+      ) : (
+        <button className="btn-ghost text-red-600" onClick={() => setConfirmDelete(true)}>
+          Supprimer tout le lot de test
         </button>
-        <button
-          className="btn-primary"
-          disabled={quests.isPending}
-          onClick={() => quests.mutate()}
-          title="Toutes les quêtes du contenu publié passent terminées : leurs récompenses sont à réclamer depuis la page Quêtes."
-        >
-          {quests.isPending ? 'Déblocage…' : 'Débloquer toutes les quêtes'}
-        </button>
-        {confirmDelete ? (
-          <span className="flex items-center gap-2">
-            <button
-              className="btn-danger"
-              disabled={remove.isPending}
-              onClick={() => remove.mutate()}
-            >
-              {remove.isPending ? 'Suppression…' : 'Confirmer la suppression'}
-            </button>
-            <button className="btn-ghost" onClick={() => setConfirmDelete(false)}>
-              Annuler
-            </button>
-          </span>
-        ) : (
-          <button className="btn-ghost text-red-600" onClick={() => setConfirmDelete(true)}>
-            Supprimer tout le lot de test
-          </button>
-        )}
-      </div>
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+      )}
+    </div>
+  );
+}
+
+/** Résultat de la dernière action de test. */
+function TestPokemonResults({ m }: { m: TestPokemonSectionModel }) {
+  const { last, give, remove, items, trainers, quests } = m;
+  return (
+    <>
       {last === 'items' && items.data && (
         <p className="mt-2 text-sm text-green-700 dark:text-green-400">
           {fmt(items.data.items)} objets ajoutés au sac, {fmt(items.data.quantity)} de chaque.
@@ -693,6 +751,6 @@ function TestPokemonSection({ userId }: { userId: string }) {
           </div>
         </div>
       )}
-    </section>
+    </>
   );
 }
