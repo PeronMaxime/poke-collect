@@ -416,7 +416,7 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
     la fiche Dresseur (`trainer`), les combats légendaires avec les quêtes qui les lancent.
     `DungeonCombat`, écran commun aux trois familles de combats, est dans `common`. Les pages hors
     du jeu (connexion, starter, réglages, nouveautés) restent dans `pages/`.
-- [ ] **5.5 Découpage des composants géants**, un domaine par livraison, dans cet ordre :
+- [x] **5.5 Découpage des composants géants**, un domaine par livraison, dans cet ordre :
   1. Expéditions : `LaunchExpeditionForm` (1 016), `ExpeditionsPage`, `ZoneCard`, `LootReveal` ;
   2. PC : `PokemonDetail` (745), `PcPage`, `ItemUseDialog`, `DepositDialog` (626) ;
   3. Équipes et combats : `TeamPicker` (720), `DungeonCombat` (652), `BattlesPage`, dialogues de
@@ -428,25 +428,31 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
   Méthode à chaque fois : l'état et les règles sortent dans un hook nommé (`useLaunchExpedition`)
   et des fonctions pures testées ; l'affichage est découpé en sous-composants ; cible ≈ 250 lignes
   par composant, sans dogme.
-  - **En cours** (point du 11 novembre) : domaines 1 et 2 faits, quatre commits locaux sur `dev`.
-    Expéditions : `features/expeditions/launch/` (`useLaunchExpedition`, `preview.ts` et ses tests,
-    `zoneSettings.ts`), `ZoneCard.tsx`, `ActiveExpedition.tsx`, `useExpeditionActions.ts`,
-    `zoneLink.ts`, `ExpeditionRevealView.tsx`, `returnSummary.ts` et ses tests. PC :
-    `features/pc/sheet/` (fiche, blocs, actions, évolutions, popin « Objet ») et
-    `transferMode.tsx`. Pension : `features/daycare/deposit/` (`useDepositDialog`, `boxFilters.ts`).
-    Plus aucune fonction de plus de 150 lignes dans `features/expeditions` ni `features/pc` ;
-    `--max-warnings` est passé de 84 à 72. Reste à faire : domaine 3 à partir de `TeamPicker`
-    (rien n'y est encore modifié), puis 4, 5 et 6 ; environ 35 fonctions dépassent encore
-    150 lignes dans `apps/web`.
+  - **Réalisé** le 11 novembre, un commit par domaine sur `dev` : plus aucune fonction de plus de
+    150 lignes dans `apps/web` ; `--max-warnings` est passé de 84 à 35 (ce qui reste est dans
+    l'admin, l'API et les scripts). Chaque domaine a reçu un test d'écran dans `apps/web/test/`
+    (choix d'équipe, coquille, bâtiments, fiche Dresseur et Pokédex). Écarts avec le plan : la
+    guilde et la boutique n'avaient pas de fonction trop longue et n'ont pas bougé ; le Sac et le
+    Pokédex, absents de la liste, ont été découpés avec le domaine 6. Dans la coquille, le menu est
+    une fonction pure testée (`pages/home/menu.ts`). Les fenêtres de la colonne des bâtiments ont
+    d'abord été réparties un fichier par fenêtre (déplacement seul), puis découpées. Les hooks de
+    page restent dans le fichier de leur écran quand ils ne servent qu'à lui. En chemin, les
+    tests d'écran ont reçu un joueur unique par fichier et une attente de 5 s (fichiers lancés en
+    parallèle contre la même API).
   - Méthode suivie, à reprendre telle quelle : le fichier d'origine est relu en entier, puis
     découpé par un script qui recopie ses lignes depuis `git show HEAD:<fichier>` (le JSX n'est
     jamais retapé) ; un hook rend un « modèle » que chaque pièce reçoit en un seul paramètre ; les
     imports inutiles sont retirés d'après le rapport d'ESLint ; puis lint, deadcode, format,
     typecheck, tests du jeu et de l'admin, build, plafond de 380 Ko, et un commit par domaine.
 
-- [ ] **5.6 Journal des nouveautés** : les données de `ChangelogPage.tsx` (1 122 lignes) passent
+- [x] **5.6 Journal des nouveautés** : les données de `ChangelogPage.tsx` (1 122 lignes) passent
       dans un fichier de données à part, **à l'identique** (les entrées en production ne sont pas
       retouchées).
+  - **Réalisé** le 11 novembre : `pages/releases.ts` (les 1 028 lignes des entrées, comparées
+    octet par octet à l'original) ; `ChangelogPage.tsx` ne garde que la popup (≈ 110 lignes).
+    Écart avec la 5.3 : sa lecture du stockage reste à part, car un stockage illisible doit y
+    valoir « déjà vu » (pas de pastille), alors que `readStoredText` ne distingue pas un échec
+    d'une absence. `CLAUDE.md` et `docs/RECETTES.md` pointent vers le nouveau fichier.
 - [ ] **5.7 Documentation** : en-tête par dossier de domaine (ce que fait l'écran, d'où viennent
       ses données, ses actions), une phrase par composant et par hook exportés.
 - **But** : ouvrir un écran et comprendre en cinq minutes ce qu'il affiche, d'où ça vient et ce

@@ -63,7 +63,7 @@ Avant de considérer un travail comme fini : lint, deadcode, format, typecheck, 
 - **Nouveau champ de contenu : aussi dans `content/game-content.json`.** L'API valide ce fichier
   à chaque démarrage et plante s'il manque un champ obligatoire.
 - **On ne modifie jamais une migration déjà appliquée**, ni une entrée du journal des nouveautés
-  déjà en production (`RELEASES` dans `apps/web/src/pages/ChangelogPage.tsx`).
+  déjà en production (`RELEASES` dans `apps/web/src/pages/releases.ts`).
 - **`docs/plans/PLAN.md` n'est pas formaté par Prettier** : ne pas le reformater.
 - **Changer une règle fait échouer `golden.test.ts`** : c'est voulu. Relire l'écart, puis
   réenregistrer avec `pnpm --filter @poke/game-core test -- -u`.

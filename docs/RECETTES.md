@@ -167,7 +167,7 @@ Le détail est dans [MISE-A-JOUR.md](MISE-A-JOUR.md). En bref :
 ### Le journal des nouveautés
 
 À chaque changement visible par les joueurs, une ligne dans `RELEASES`
-(`apps/web/src/pages/ChangelogPage.tsx`) :
+(`apps/web/src/pages/releases.ts`) :
 
 - une entrée par mise en production ; tant que l'entrée du haut n'est pas sur `main`, on la
   complète, sinon on en crée une nouvelle en tête ;
