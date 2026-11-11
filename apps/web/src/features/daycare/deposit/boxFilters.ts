@@ -6,7 +6,8 @@ import { checkBreedingPair } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { PokemonDto } from '@poke/shared';
 import { useTagFilter } from '../../../components/tags';
-import { nameMatcher, usePinnedSelection } from '../../common/TeamPicker';
+import { nameMatcher } from '../../common/teamPicker/filters';
+import { usePinnedSelection } from '../../common/teamPicker/useTeamPicker';
 
 /** Filtre par sexe et son libellé. */
 export const GENDER_FILTERS = {

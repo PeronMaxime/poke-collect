@@ -34,7 +34,7 @@ import {
   trainerName,
   unlockConditionText,
 } from '../../lib/labels';
-import { trainerBattleLink } from '../battles/BattlesPage';
+import { trainerBattleLink } from '../battles/trainerLink';
 import { CombatWindow, OngoingCombatBanner, useCombatWindow } from '../common/CombatWindow';
 import { DungeonCombat } from '../common/DungeonCombat';
 import { zoneLink } from '../expeditions/zoneLink';

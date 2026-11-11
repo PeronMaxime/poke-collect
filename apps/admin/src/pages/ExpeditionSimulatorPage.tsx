@@ -25,12 +25,9 @@ import { NewbornActionsView } from '@web/features/daycare/HatchReveal';
 import { LAUNCH_DIALOG_CLASS } from '@web/features/common/dialogParts';
 import { LaunchExpeditionForm } from '@web/features/expeditions/launch/LaunchExpeditionForm';
 import { ExpeditionRevealView } from '@web/features/expeditions/ExpeditionRevealView';
-import {
-  TeamPicker,
-  nameMatcher,
-  pillClass,
-  useTeamPickerOver,
-} from '@web/features/common/TeamPicker';
+import { TeamPicker } from '@web/features/common/TeamPicker';
+import { nameMatcher, pillClass } from '@web/features/common/teamPicker/filters';
+import { useTeamPickerOver } from '@web/features/common/teamPicker/useTeamPicker';
 import { VersionBanner } from '../components/EntityPage';
 import { WeatherSelect } from '../components/forms/pickers';
 import { errorMessage, useWorkingVersion } from '../lib/content';

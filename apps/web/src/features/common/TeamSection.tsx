@@ -11,7 +11,7 @@ import type { PokemonDto } from '@poke/shared';
 import { Modal, PokemonSprite, ShinyStar, TypeBadge } from '../../components/ui';
 import { abilityLabel, speciesName } from '../../lib/labels';
 import { CrossIcon, FULL_DIALOG_CLASS } from './dialogParts';
-import { AutoSelectButton } from './TeamPicker';
+import { AutoSelectButton } from './teamPicker/filters';
 import { formatXp, usePlayerBonuses } from './XpPreview';
 import { BANNER_LABEL } from './zoneBanner';
 

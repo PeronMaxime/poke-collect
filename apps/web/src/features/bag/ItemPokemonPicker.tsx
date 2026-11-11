@@ -15,8 +15,8 @@ import {
   TypeFilterSelect,
   filterPill,
   nameMatcher,
-  usePinnedSelection,
-} from '../common/TeamPicker';
+} from '../common/teamPicker/filters';
+import { usePinnedSelection } from '../common/teamPicker/useTeamPicker';
 import { TeamPickerDialog } from '../common/TeamSection';
 import { BANNER_LABEL } from '../common/zoneBanner';
 

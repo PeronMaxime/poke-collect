@@ -1,127 +1,62 @@
 import { useRef, useState } from 'react';
 import type { KeyboardEvent, PointerEvent } from 'react';
 import { motion } from 'motion/react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { memberPower } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import { MAX_TEAMS, TEAM_MAX_SIZE, TEAM_NAME_MAX } from '@poke/shared';
-import type { PokemonDto, PokemonTeamDto, TeamInput } from '@poke/shared';
+import type { PokemonDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar } from '../../components/ui';
-import { deleteTeam, keys, saveTeam, usePokemon, useTeams } from '../../lib/queries';
 import { errorText } from '../../lib/labels';
 import { ProgressiveItems } from '../../components/ProgressiveGrid';
-import { PcFilterBar, PcPokemonCard, usePcBrowser } from '../pc/PcBrowser';
-import { MEGA_LOCKED_TITLE, megaLocked } from '../common/TeamPicker';
-
-/** Équipe en cours de construction : `id` null = nouvelle équipe. */
-interface Draft {
-  id: string | null;
-  name: string;
-  pokemonIds: string[];
-}
+import { PcFilterBar, PcPokemonCard } from '../pc/PcBrowser';
+import { MEGA_LOCKED_TITLE, megaLocked } from '../common/teamPicker/filters';
+import { useTeamsPage } from './useTeamsPage';
+import type { TeamsModel } from './useTeamsPage';
 
 /**
  * Équipes enregistrées : construites ici depuis le PC (mêmes filtres), puis choisies d'un clic au
  * départ d'une expédition, d'un combat ou d'un donjon. Un Pokémon n'est que dans une équipe.
  */
 export function TeamsPage({ ctx }: { ctx: GameContext }) {
-  const queryClient = useQueryClient();
-  const pokemon = usePokemon();
-  const teams = useTeams();
-  const browser = usePcBrowser(ctx, pokemon.data ?? []);
-  const [draft, setDraft] = useState<Draft | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
-  const saved = teams.data ?? [];
-  const byId = new Map((pokemon.data ?? []).map((p) => [p.id, p]));
-  // Équipe de chaque Pokémon déjà rangé ailleurs que dans l'équipe en cours de modification.
-  const teamOf = new Map<string, PokemonTeamDto>();
-  for (const t of saved) {
-    if (t.id === draft?.id) continue;
-    for (const id of t.pokemonIds) teamOf.set(id, t);
-  }
-  const members = draft?.pokemonIds.flatMap((id) => byId.get(id) ?? []) ?? [];
-  const powerOf = (list: readonly PokemonDto[]) =>
-    list.reduce((sum, p) => sum + memberPower(ctx, p), 0);
-
-  const save = useMutation({
-    mutationFn: ({ id, ...input }: Draft) => saveTeam(id, input satisfies TeamInput),
-    onSuccess: () => {
-      setDraft(null);
-      return queryClient.invalidateQueries({ queryKey: keys.teams });
-    },
-  });
-  const remove = useMutation({
-    mutationFn: (id: string) => deleteTeam(id),
-    onSuccess: () => {
-      setDraft(null);
-      return queryClient.invalidateQueries({ queryKey: keys.teams });
-    },
-  });
-
-  function open(next: Draft | null) {
-    setDraft(next);
-    setConfirmDelete(false);
-    save.reset();
-    remove.reset();
-  }
-
-  function newDraft(pokemonIds: string[] = []): Draft {
-    const names = new Set(saved.map((t) => t.name));
-    let n = saved.length + 1;
-    while (names.has(`Équipe ${n}`)) n++;
-    return { id: null, name: `Équipe ${n}`, pokemonIds };
-  }
-
-  /** Clic sur un Pokémon du PC : l'ajoute à l'équipe en cours (ou en commence une), ou l'en retire. */
-  function toggle(p: PokemonDto) {
-    if (teamOf.has(p.id) || megaLocked(p, members)) return;
-    if (!draft) {
-      if (saved.length < MAX_TEAMS) open(newDraft([p.id]));
-      return;
-    }
-    const ids = draft.pokemonIds;
-    setDraft({
-      ...draft,
-      pokemonIds: ids.includes(p.id)
-        ? ids.filter((id) => id !== p.id)
-        : ids.length < TEAM_MAX_SIZE
-          ? [...ids, p.id]
-          : ids,
-    });
-  }
-
-  function move(index: number, delta: number) {
-    if (!draft) return;
-    const ids = [...draft.pokemonIds];
-    const target = index + delta;
-    if (target < 0 || target >= ids.length) return;
-    [ids[index], ids[target]] = [ids[target]!, ids[index]!];
-    setDraft({ ...draft, pokemonIds: ids });
-  }
-
-  const error = save.error ?? remove.error;
-
+  const m = useTeamsPage(ctx);
   return (
     <div>
-      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <div>
-          <h2 className="text-lg font-bold">Équipes enregistrées</h2>
-          <p className="text-sm text-slate-500">
-            Choisis une équipe d'un clic au départ d'une expédition, d'un combat ou d'un donjon. Un
-            Pokémon ne fait partie que d'une équipe à la fois.
-          </p>
-        </div>
-        <button
-          className="btn-primary"
-          disabled={saved.length >= MAX_TEAMS}
-          title={saved.length >= MAX_TEAMS ? `Au plus ${MAX_TEAMS} équipes` : undefined}
-          onClick={() => open(newDraft())}
-        >
-          Nouvelle équipe
-        </button>
-      </div>
+      <TeamsHeader m={m} />
+      <SavedTeams m={m} />
+      <DraftEditor m={m} />
+      <PcGrid m={m} />
+    </div>
+  );
+}
 
+/** Titre de l'onglet et bouton « Nouvelle équipe ». */
+function TeamsHeader({ m }: { m: TeamsModel }) {
+  const { saved, open, newDraft } = m;
+  return (
+    <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+      <div>
+        <h2 className="text-lg font-bold">Équipes enregistrées</h2>
+        <p className="text-sm text-slate-500">
+          Choisis une équipe d'un clic au départ d'une expédition, d'un combat ou d'un donjon. Un
+          Pokémon ne fait partie que d'une équipe à la fois.
+        </p>
+      </div>
+      <button
+        className="btn-primary"
+        disabled={saved.length >= MAX_TEAMS}
+        title={saved.length >= MAX_TEAMS ? `Au plus ${MAX_TEAMS} équipes` : undefined}
+        onClick={() => open(newDraft())}
+      >
+        Nouvelle équipe
+      </button>
+    </div>
+  );
+}
+
+/** Équipes enregistrées : un clic en ouvre une pour la modifier. */
+function SavedTeams({ m }: { m: TeamsModel }) {
+  const { teams, draft, saved, byId, powerOf, open } = m;
+  return (
+    <>
       {saved.length > 0 && (
         <div className="mb-4 grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {saved.map((t) => {
@@ -171,7 +106,29 @@ export function TeamsPage({ ctx }: { ctx: GameContext }) {
           Aucune équipe enregistrée : crée-en une, ou touche un Pokémon du PC pour commencer.
         </p>
       )}
+    </>
+  );
+}
 
+/** Équipe en cours : nom, emplacements, puis Supprimer · Annuler · Enregistrer. */
+function DraftEditor({ m }: { m: TeamsModel }) {
+  const {
+    ctx,
+    draft,
+    setDraft,
+    confirmDelete,
+    setConfirmDelete,
+    members,
+    powerOf,
+    save,
+    remove,
+    open,
+    toggle,
+    move,
+    error,
+  } = m;
+  return (
+    <>
       {draft && (
         <div className="card sticky top-[calc(var(--hud-h,0px)+0.5rem)] z-10 mb-4 p-3 shadow-lg">
           <div className="flex flex-wrap items-center gap-2">
@@ -228,7 +185,15 @@ export function TeamsPage({ ctx }: { ctx: GameContext }) {
           {error && <p className="mt-2 text-sm text-red-600">{errorText(error)}</p>}
         </div>
       )}
+    </>
+  );
+}
 
+/** Le PC, avec ses filtres : un clic ajoute un Pokémon à l'équipe en cours ou l'en retire. */
+function PcGrid({ m }: { m: TeamsModel }) {
+  const { ctx, pokemon, browser, draft, teamOf, members, toggle } = m;
+  return (
+    <>
       <h3 className="mb-2 font-semibold">PC</h3>
       <PcFilterBar ctx={ctx} browser={browser} />
       {/* Mêmes cases bornées que le PC : le nombre de colonnes suit la largeur de l'écran. */}
@@ -277,7 +242,7 @@ export function TeamsPage({ ctx }: { ctx: GameContext }) {
       {browser.filtered.length === 0 && !pokemon.isPending && (
         <p className="text-sm text-slate-500">Aucun Pokémon ne correspond.</p>
       )}
-    </div>
+    </>
   );
 }
 

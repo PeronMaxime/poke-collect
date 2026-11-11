@@ -58,21 +58,8 @@ export function combatMove(
   return effectiveDungeonMove(species, p, moves[p.id] ?? p.dungeonMove);
 }
 
-/**
- * Cases de l'équipe d'un combat, dans son ordre d'entrée : chaque Pokémon avec son talent (et son
- * effet ici), ses flèches pour changer l'ordre, le retrait, puis son attaque (un de ses types, avec
- * son efficacité contre chaque adversaire de `targets`, en physique ou en spécial).
- * Rend des `<li>`, à poser dans la liste de l'équipe.
- */
-export function CombatTeamOrder({
-  ctx,
-  members,
-  effectsOf,
-  moves,
-  setMoves,
-  setTeam,
-  targets,
-}: {
+/** Ce que reçoivent les cases de l'équipe d'un combat. */
+interface OrderProps {
   ctx: GameContext;
   members: readonly PokemonDto[];
   /** Effets des talents qui agissent ici, par rang dans l'équipe. */
@@ -81,7 +68,16 @@ export function CombatTeamOrder({
   setMoves: Dispatch<SetStateAction<Record<string, DungeonMove>>>;
   setTeam: Dispatch<SetStateAction<string[]>>;
   targets: readonly CombatTarget[];
-}) {
+}
+
+/**
+ * Cases de l'équipe d'un combat, dans son ordre d'entrée : chaque Pokémon avec son talent (et son
+ * effet ici), ses flèches pour changer l'ordre, le retrait, puis son attaque (un de ses types, avec
+ * son efficacité contre chaque adversaire de `targets`, en physique ou en spécial).
+ * Rend des `<li>`, à poser dans la liste de l'équipe.
+ */
+export function CombatTeamOrder(props: OrderProps) {
+  const { members, setTeam } = props;
   function move(index: number, delta: number) {
     setTeam((t) => {
       const next = [...t];
@@ -94,145 +90,188 @@ export function CombatTeamOrder({
 
   return (
     <>
-      {members.map((p, i) => {
-        const species = ctx.species(p.speciesId, p.formId)!;
-        const stats = computeStats(species, p);
-        const current = combatMove(ctx, p, moves);
-        const setMove = (patch: Partial<DungeonMove>) =>
-          setMoves((m) => ({ ...m, [p.id]: { ...current, ...patch } }));
-        const effects = effectsOf(i);
-        const ability = abilityLabel(effectiveAbility(ctx, p));
-        const effectText = effects.map(abilityEffectText).join(' · ');
+      {members.map((p, i) => (
+        <CombatMemberRow key={p.id} {...props} pokemon={p} index={i} move={move} />
+      ))}
+    </>
+  );
+}
+
+/** Case d'un membre : son talent, les flèches d'ordre, le retrait, puis le choix de son attaque. */
+function CombatMemberRow({
+  ctx,
+  members,
+  effectsOf,
+  moves,
+  setMoves,
+  setTeam,
+  targets,
+  pokemon: p,
+  index: i,
+  move,
+}: OrderProps & {
+  pokemon: PokemonDto;
+  /** Rang dans l'équipe (0 = entre en premier). */
+  index: number;
+  move: (index: number, delta: number) => void;
+}) {
+  const species = ctx.species(p.speciesId, p.formId)!;
+  const stats = computeStats(species, p);
+  const current = combatMove(ctx, p, moves);
+  const setMove = (patch: Partial<DungeonMove>) =>
+    setMoves((m) => ({ ...m, [p.id]: { ...current, ...patch } }));
+  const effects = effectsOf(i);
+  const ability = abilityLabel(effectiveAbility(ctx, p));
+  const effectText = effects.map(abilityEffectText).join(' · ');
+  return (
+    <li
+      key={p.id}
+      className={`${SLOT_CLASS} flex flex-col gap-2 p-2 ${
+        effects.length > 0 ? 'border-emerald-500 dark:border-emerald-400' : 'border-well-line'
+      }`}
+    >
+      <div className="flex items-center gap-2">
+        <span className="w-5 shrink-0 text-center font-pixel text-[10px] text-slate-500 dark:text-slate-400">
+          {i + 1}
+        </span>
+        <span className={`sprite-well size-12 shrink-0 ${p.isShiny ? 'shiny-well' : ''}`}>
+          <PokemonSprite speciesId={p.speciesId} formId={p.formId} shiny={p.isShiny} size={44} />
+        </span>
+        <span className="flex min-w-0 flex-1 flex-col">
+          <span className="truncate text-sm font-semibold">
+            {species.nameFr} {p.isShiny && <ShinyStar />}{' '}
+            <span className="font-normal text-slate-500 dark:text-slate-400">N.{p.level}</span>
+          </span>
+          {effects.length > 0 ? (
+            <ExpandableLine
+              className="text-xs text-emerald-700 dark:text-emerald-400"
+              title={`${species.nameFr} · ${ability} : ${effectText}`}
+            >
+              ✦ {ability} : {effectText}
+            </ExpandableLine>
+          ) : (
+            <span className="truncate text-xs text-slate-500 dark:text-slate-400">{ability}</span>
+          )}
+        </span>
+        <button
+          type="button"
+          className={SLOT_BUTTON}
+          disabled={i === 0}
+          onClick={() => move(i, -1)}
+          aria-label={`Monter ${species.nameFr}`}
+        >
+          <svg viewBox="0 0 10 10" className="size-2.5" aria-hidden>
+            <path d="M5 2L9 7H1z" fill="currentColor" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className={SLOT_BUTTON}
+          disabled={i === members.length - 1}
+          onClick={() => move(i, 1)}
+          aria-label={`Descendre ${species.nameFr}`}
+        >
+          <svg viewBox="0 0 10 10" className="size-2.5" aria-hidden>
+            <path d="M5 8L1 3h8z" fill="currentColor" />
+          </svg>
+        </button>
+        <button
+          type="button"
+          className={`${SLOT_BUTTON} hover:border-red-500 hover:text-red-600 dark:hover:text-red-400`}
+          onClick={() => setTeam((t) => t.filter((id) => id !== p.id))}
+          aria-label={`Retirer ${species.nameFr}`}
+        >
+          <CrossIcon className="size-2.5" />
+        </button>
+      </div>
+      <MoveChoice
+        ctx={ctx}
+        species={species}
+        stats={stats}
+        current={current}
+        setMove={setMove}
+        targets={targets}
+      />
+    </li>
+  );
+}
+
+/**
+ * Attaque d'un Pokémon : un de ses types (avec son efficacité contre chaque adversaire), en
+ * physique ou en spécial (avec la statistique qui sert).
+ */
+function MoveChoice({
+  ctx,
+  species,
+  stats,
+  current,
+  setMove,
+  targets,
+}: {
+  ctx: GameContext;
+  species: { types: readonly string[] };
+  stats: ReturnType<typeof computeStats>;
+  current: DungeonMove;
+  setMove: (patch: Partial<DungeonMove>) => void;
+  targets: readonly CombatTarget[];
+}) {
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 pl-7">
+      {species.types.map((t) => {
+        const factors = targets.map((target) => ({
+          name: target.name,
+          e: dungeonTypeEffectiveness(t, target.types),
+        }));
+        const on = current.type === t;
         return (
-          <li
-            key={p.id}
-            className={`${SLOT_CLASS} flex flex-col gap-2 p-2 ${
-              effects.length > 0 ? 'border-emerald-500 dark:border-emerald-400' : 'border-well-line'
+          <button
+            key={t}
+            type="button"
+            onClick={() => setMove({ type: t })}
+            aria-pressed={on}
+            title={`${dungeonAttack(ctx.balance.combat, t).name} : ${factors
+              .map((f) => `${effectivenessLabel(f.e)} contre ${f.name}`)
+              .join(', ')}`}
+            className={`flex items-center gap-1 rounded-md border-2 p-0.5 pr-1.5 text-[11px] transition ${
+              on ? SELECTED_CELL : 'border-transparent opacity-60 hover:opacity-100'
             }`}
           >
-            <div className="flex items-center gap-2">
-              <span className="w-5 shrink-0 text-center font-pixel text-[10px] text-slate-500 dark:text-slate-400">
-                {i + 1}
+            <TypeBadge type={t} />
+            {factors.map((f, j) => (
+              <span key={j} className={`font-bold ${effectivenessClass(f.e)}`}>
+                {effectivenessLabel(f.e)}
               </span>
-              <span className={`sprite-well size-12 shrink-0 ${p.isShiny ? 'shiny-well' : ''}`}>
-                <PokemonSprite
-                  speciesId={p.speciesId}
-                  formId={p.formId}
-                  shiny={p.isShiny}
-                  size={44}
-                />
-              </span>
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="truncate text-sm font-semibold">
-                  {species.nameFr} {p.isShiny && <ShinyStar />}{' '}
-                  <span className="font-normal text-slate-500 dark:text-slate-400">
-                    N.{p.level}
-                  </span>
-                </span>
-                {effects.length > 0 ? (
-                  <ExpandableLine
-                    className="text-xs text-emerald-700 dark:text-emerald-400"
-                    title={`${species.nameFr} · ${ability} : ${effectText}`}
-                  >
-                    ✦ {ability} : {effectText}
-                  </ExpandableLine>
-                ) : (
-                  <span className="truncate text-xs text-slate-500 dark:text-slate-400">
-                    {ability}
-                  </span>
-                )}
-              </span>
-              <button
-                type="button"
-                className={SLOT_BUTTON}
-                disabled={i === 0}
-                onClick={() => move(i, -1)}
-                aria-label={`Monter ${species.nameFr}`}
-              >
-                <svg viewBox="0 0 10 10" className="size-2.5" aria-hidden>
-                  <path d="M5 2L9 7H1z" fill="currentColor" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                className={SLOT_BUTTON}
-                disabled={i === members.length - 1}
-                onClick={() => move(i, 1)}
-                aria-label={`Descendre ${species.nameFr}`}
-              >
-                <svg viewBox="0 0 10 10" className="size-2.5" aria-hidden>
-                  <path d="M5 8L1 3h8z" fill="currentColor" />
-                </svg>
-              </button>
-              <button
-                type="button"
-                className={`${SLOT_BUTTON} hover:border-red-500 hover:text-red-600 dark:hover:text-red-400`}
-                onClick={() => setTeam((t) => t.filter((id) => id !== p.id))}
-                aria-label={`Retirer ${species.nameFr}`}
-              >
-                <CrossIcon className="size-2.5" />
-              </button>
-            </div>
-            <div className="flex flex-wrap items-center gap-1.5 pl-7">
-              {species.types.map((t) => {
-                const factors = targets.map((target) => ({
-                  name: target.name,
-                  e: dungeonTypeEffectiveness(t, target.types),
-                }));
-                const on = current.type === t;
-                return (
-                  <button
-                    key={t}
-                    type="button"
-                    onClick={() => setMove({ type: t })}
-                    aria-pressed={on}
-                    title={`${dungeonAttack(ctx.balance.combat, t).name} : ${factors
-                      .map((f) => `${effectivenessLabel(f.e)} contre ${f.name}`)
-                      .join(', ')}`}
-                    className={`flex items-center gap-1 rounded-md border-2 p-0.5 pr-1.5 text-[11px] transition ${
-                      on ? SELECTED_CELL : 'border-transparent opacity-60 hover:opacity-100'
-                    }`}
-                  >
-                    <TypeBadge type={t} />
-                    {factors.map((f, j) => (
-                      <span key={j} className={`font-bold ${effectivenessClass(f.e)}`}>
-                        {effectivenessLabel(f.e)}
-                      </span>
-                    ))}
-                  </button>
-                );
-              })}
-              <span
-                role="group"
-                aria-label="Catégorie de l’attaque"
-                className="ml-auto inline-flex overflow-hidden rounded-md border-2 border-ink text-xs"
-              >
-                {(['physical', 'special'] as const).map((category) => {
-                  const on = current.category === category;
-                  const statName = category === 'physical' ? 'attack' : 'special-attack';
-                  return (
-                    <button
-                      key={category}
-                      type="button"
-                      onClick={() => setMove({ category })}
-                      aria-pressed={on}
-                      title={`${STAT_LABELS[statName]} ${stats[statName]}`}
-                      className={`px-2 py-1 whitespace-nowrap not-first:border-l-2 not-first:border-ink ${
-                        on
-                          ? 'bg-[#48a8e8] font-bold text-[#10203a]'
-                          : 'bg-white text-slate-600 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
-                      }`}
-                    >
-                      {category === 'physical' ? 'Phys.' : 'Spé.'} {stats[statName]}
-                    </button>
-                  );
-                })}
-              </span>
-            </div>
-          </li>
+            ))}
+          </button>
         );
       })}
-    </>
+      <span
+        role="group"
+        aria-label="Catégorie de l’attaque"
+        className="ml-auto inline-flex overflow-hidden rounded-md border-2 border-ink text-xs"
+      >
+        {(['physical', 'special'] as const).map((category) => {
+          const on = current.category === category;
+          const statName = category === 'physical' ? 'attack' : 'special-attack';
+          return (
+            <button
+              key={category}
+              type="button"
+              onClick={() => setMove({ category })}
+              aria-pressed={on}
+              title={`${STAT_LABELS[statName]} ${stats[statName]}`}
+              className={`px-2 py-1 whitespace-nowrap not-first:border-l-2 not-first:border-ink ${
+                on
+                  ? 'bg-[#48a8e8] font-bold text-[#10203a]'
+                  : 'bg-white text-slate-600 hover:bg-slate-100 dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600'
+              }`}
+            >
+              {category === 'physical' ? 'Phys.' : 'Spé.'} {stats[statName]}
+            </button>
+          );
+        })}
+      </span>
+    </div>
   );
 }
 

@@ -29,7 +29,7 @@ import {
   useTrainerSearch,
 } from '../../lib/queries';
 import { abilityLabel, errorText, formatMoney, natureLabel, speciesName } from '../../lib/labels';
-import { BadgeIcon } from '../battles/BattlesPage';
+import { BadgeIcon } from '../battles/trainerParts';
 import { ProgressiveItems } from '../../components/ProgressiveGrid';
 import {
   CrossIcon,
@@ -42,7 +42,7 @@ import {
 } from '../common/dialogParts';
 import { AbilityFilterSelect, GENDER_LABELS, PcSortSelect, usePcBrowser } from '../pc/PcBrowser';
 import { TeamPickerDialog } from '../common/TeamSection';
-import { NameSearch, TypeFilterSelect, filterPill } from '../common/TeamPicker';
+import { NameSearch, TypeFilterSelect, filterPill } from '../common/teamPicker/filters';
 import { DexView } from '../pokedex/PokedexPage';
 import { visibleRegions } from '../common/RegionTabs';
 import { FavoritePicker } from './FavoritePicker';

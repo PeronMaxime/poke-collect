@@ -3,7 +3,7 @@ import type { GameContext } from '@poke/game-core';
 import type { BattleDto } from '@poke/shared';
 import { Modal } from '../../components/ui';
 import { trainerName } from '../../lib/labels';
-import { BadgeIcon, TrainerSprite } from './BattlesPage';
+import { BadgeIcon, TrainerSprite } from './trainerParts';
 import { LAUNCH_DIALOG_CLASS, ResultFrame } from '../common/dialogParts';
 import { CombatOutcome, CombatResultDetails } from '../dungeons/DungeonResult';
 

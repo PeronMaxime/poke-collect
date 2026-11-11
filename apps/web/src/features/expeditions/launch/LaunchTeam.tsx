@@ -4,7 +4,7 @@
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { TypeBadge } from '../../../components/ui';
-import { AutoSelectButton } from '../../common/TeamPicker';
+import { AutoSelectButton } from '../../common/teamPicker/filters';
 import { SiteChips, TeamPickerDialog, TeamSlots } from '../../common/TeamSection';
 import { formatXp } from '../../common/XpPreview';
 import { PowerGauge, SECTION_TITLE } from '../../common/dialogParts';

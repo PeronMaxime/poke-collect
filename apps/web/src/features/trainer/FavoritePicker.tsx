@@ -10,7 +10,7 @@ import { errorText, speciesName } from '../../lib/labels';
 import { ProgressiveItems } from '../../components/ProgressiveGrid';
 import { SELECTED_CELL, StatusPill } from '../common/dialogParts';
 import { TeamPickerDialog } from '../common/TeamSection';
-import { NameSearch, filterPill } from '../common/TeamPicker';
+import { NameSearch, filterPill } from '../common/teamPicker/filters';
 
 /** Une case du choix : espèce ou forme capturée, normale ou chromatique. */
 interface Choice extends FavoritePokemonDto {

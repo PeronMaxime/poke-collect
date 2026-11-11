@@ -30,10 +30,11 @@ import {
   itemName,
   speciesName,
 } from '../../lib/labels';
-import { formatTimeLimit } from '../battles/BattlesPage';
+import { formatTimeLimit } from '../battles/trainerParts';
 import { CombatFoes, EnemyInfo, combatMove } from '../common/CombatTeamOrder';
-import { ruleText } from '../battles/LaunchBattleDialog';
-import { TeamPicker, useTeamPicker } from '../common/TeamPicker';
+import { ruleText } from '../battles/launch/useLaunchBattle';
+import { TeamPicker } from '../common/TeamPicker';
+import { useTeamPicker } from '../common/teamPicker/useTeamPicker';
 import { TeamSection } from '../common/TeamSection';
 import { formatXp, usePlayerBonuses } from '../common/XpPreview';
 

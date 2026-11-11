@@ -19,7 +19,8 @@ import {
   useShinyCharm,
 } from '../../lib/queries';
 import { errorMessage } from '../../lib/labels';
-import { TeamPicker, useTeamPicker } from '../common/TeamPicker';
+import { TeamPicker } from '../common/TeamPicker';
+import { useTeamPicker } from '../common/teamPicker/useTeamPicker';
 import { usePlayerBonuses } from '../common/XpPreview';
 import { LAUNCH_DIALOG_CLASS } from '../common/dialogParts';
 import { LaunchExpeditionForm } from './launch/LaunchExpeditionForm';

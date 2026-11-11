@@ -6,7 +6,7 @@ import { IvHover, PokemonSprite, ShinyStar } from '../../../components/ui';
 import { PokemonTagBadges, TagFilterSelect } from '../../../components/tags';
 import { ProgressiveItems } from '../../../components/ProgressiveGrid';
 import { SELECTED_CELL } from '../../common/dialogParts';
-import { NameSearch, filterPill } from '../../common/TeamPicker';
+import { NameSearch, filterPill } from '../../common/teamPicker/filters';
 import { CompatMark, GENDER_LABELS, eggGroupName } from './parts';
 import { GENDER_FILTERS, SORTS } from './boxFilters';
 import type { GenderFilter, Sort } from './boxFilters';

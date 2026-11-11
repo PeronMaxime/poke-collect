@@ -9,7 +9,7 @@ import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../component
 import { useNewEvolutionChecker, usePlayerProgress } from '../../lib/queries';
 import { abilityLabel, formatCountdown } from '../../lib/labels';
 import { RegionTabs, currentRegionTab } from '../common/RegionTabs';
-import { TypeFilterSelect } from '../common/TeamPicker';
+import { TypeFilterSelect } from '../common/teamPicker/filters';
 import { readStoredText, writeStoredText } from '../../lib/storage';
 
 /**
