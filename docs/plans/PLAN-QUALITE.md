@@ -529,7 +529,10 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
     « pages à la demande, client partagé »), et le parcours « Par où commencer » du `README` :
     lancer, lire l'architecture, suivre une expédition du bouton à `game-core`, les
     conventions, les recettes.
-- [ ] **7.3 Tableau avant / après** de la section 5 rempli.
+- [x] **7.3 Tableau avant / après** de la section 5 rempli.
+  - **Réalisé** le 11 novembre, mesures refaites de la même façon qu'au départ. Cibles
+    atteintes, sauf deux : 11 fichiers de plus de 800 lignes (25 au départ) et 366 Ko à
+    l'ouverture du jeu (cible 250 Ko, voir la 5.1).
 - [ ] **7.4 Liste de ce qui reste** : ce qui a été volontairement laissé, et pourquoi.
 - **But** : que la qualité obtenue tienne toute seule.
 
@@ -537,21 +540,36 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
 
 ## 5. Indicateurs (avant / après)
 
-| Indicateur                                           |                10 nov. 2026 | Cible                     | Après |
-| ---------------------------------------------------- | --------------------------: | ------------------------- | ----: |
-| Fichiers de code de plus de 800 lignes               |                          25 | 0                         |       |
-| Fonctions de 300 lignes et plus                      |                          21 | 0                         |       |
-| Fonctions de 150 lignes et plus                      |                          84 | moins de 15               |       |
-| JavaScript chargé à l'ouverture du jeu (compressé)   |                      560 Ko | moins de 250 Ko           |       |
-| Fichiers de tests : jeu / admin                      |                       1 / 0 | un par onglet et par page |       |
-| Appels `api()` dans les écrans                       |                          91 | 0                         |       |
-| Exports et fichiers inutilisés                       |    45 (0 depuis la phase 0) | 0                         |       |
-| Documents d'architecture (fait en phase 1)           |                           0 | 4 + un README par paquet  |       |
-| Avertissements de longueur ou de complexité (ESLint) |                          97 | moins de 15               |       |
-| JavaScript de l'admin (compressé)                    |                      510 Ko | moins de 250 Ko           |       |
-| Durée de `pnpm test`                                 | 31 s (49 s avec les écrans) | sans dérive               |       |
-| Lignes couvertes : `game-core` / `content` / `api`   |          91 % / 92 % / 93 % | au moins autant           |       |
-| Erreurs de lint / de types                           |                       0 / 0 | 0 / 0                     |       |
+| Indicateur                                           |                10 nov. 2026 | Cible                     |       11 nov. 2026 |
+| ---------------------------------------------------- | --------------------------: | ------------------------- | -----------------: |
+| Fichiers de code de plus de 800 lignes               |                          25 | 0                         |               11 ¹ |
+| Fonctions de 300 lignes et plus                      |                          21 | 0                         |                  0 |
+| Fonctions de 150 lignes et plus                      |                          84 | moins de 15               |                 12 |
+| JavaScript chargé à l'ouverture du jeu (compressé)   |                      560 Ko | moins de 250 Ko           |           366 Ko ² |
+| Fichiers de tests : jeu / admin                      |                       1 / 0 | un par onglet et par page |           12 / 3 ³ |
+| Appels `api()` dans les écrans                       |                          91 | 0                         |                  0 |
+| Exports et fichiers inutilisés                       |    45 (0 depuis la phase 0) | 0                         |                  0 |
+| Documents d'architecture (fait en phase 1)           |                           0 | 4 + un README par paquet  |            4 + 9 ⁴ |
+| Avertissements de longueur ou de complexité (ESLint) |                          97 | moins de 15               |                 12 |
+| JavaScript de l'admin (compressé)                    |                      510 Ko | moins de 250 Ko           |             120 Ko |
+| Durée de `pnpm test`                                 | 31 s (49 s avec les écrans) | sans dérive               |             54 s ⁵ |
+| Lignes couvertes : `game-core` / `content` / `api`   |          91 % / 92 % / 93 % | au moins autant           | 91 % / 96 % / 94 % |
+| Erreurs de lint / de types                           |                       0 / 0 | 0 / 0                     |              0 / 0 |
+
+Mesures du 11 novembre, faites comme celles du 10 (hors tests et contenu de test) :
+
+1. Dont `pages/releases.ts`, les données du journal des nouveautés. Les dix autres sont des écrans
+   et des fiches découpés en hook et pièces (aucune fonction de plus de 186 lignes), restés dans
+   un seul fichier : les répartir en plusieurs fichiers est dans la liste de ce qui reste (7.4).
+2. Mesure de `scripts/bundle-size.mjs` (entrée et préchargements). La même mesure donnait 495 Ko
+   avant la 5.1 ; les 560 Ko comptaient aussi le CSS et les polices. Cible de 250 Ko non atteinte
+   (voir la 5.1) ; la CI plafonne à 380 Ko. Admin : 500 Ko de la même façon avant la 6.3.
+3. Fichiers de tests ; chaque onglet du jeu (`tabs.test.tsx`) et chaque page de l'admin
+   (`pages.test.tsx`, `forms.test.tsx`) passe par un test paramétré, plutôt qu'un fichier chacun.
+4. `ARCHITECTURE`, `GLOSSAIRE`, `RECETTES`, `DECISIONS`, un `README` par paquet (9), et un par
+   dossier d'écran du jeu (18).
+5. Tous les paquets, écrans du jeu et pages de l'admin compris : 14 fichiers de tests de plus
+   qu'au départ (11 dans le jeu, 3 dans l'admin).
 
 ---
 
