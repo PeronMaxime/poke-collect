@@ -34,9 +34,12 @@ jobs:
       - run: pnpm deadcode
       - run: pnpm format:check
       - run: pnpm typecheck
+      # Les seuils de couverture (vitest.config.ts de game-core, content et api) font échouer.
       - run: pnpm test:coverage
         env:
           TEST_DATABASE_URL: postgres://postgres:postgres@localhost:5432/postgres
       - run: pnpm build
-      # JavaScript chargé à l'ouverture du jeu (gzip, en Ko) : le plafond ne peut que baisser.
+      # JavaScript chargé à l'ouverture du jeu et de l'admin (gzip, en Ko) : les plafonds ne
+      # peuvent que baisser.
       - run: node scripts/bundle-size.mjs apps/web/dist 380
+      - run: node scripts/bundle-size.mjs apps/admin/dist 130

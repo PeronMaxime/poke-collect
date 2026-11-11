@@ -512,8 +512,14 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
 
 ### Phase 7 : Verrouillage et passage de relais (S)
 
-- [ ] **7.1 CI durcie** : code mort, plafond de taille du bundle, avertissements de longueur
+- [x] **7.1 CI durcie** : code mort, plafond de taille du bundle, avertissements de longueur
       passés en erreurs au niveau atteint, couverture minimale sur `game-core` et `api`.
+  - **Réalisé** le 11 novembre. Le code mort (`knip`) et le plafond du jeu (380 Ko) y étaient
+    depuis les phases 0 et 5.1 ; s'ajoute celui de l'admin (130 Ko). Longueur et complexité sont
+    des erreurs partout, sauf dans les 9 fichiers de la liste « dette restante »
+    d'`eslint.config.js`, où elles restent des avertissements plafonnés (12). Couverture
+    minimale, juste sous le niveau atteint : `game-core` lignes 90 % et branches 80 %, `content`
+    95 % et 86 %, `api` 93 % et 77 % (sans Postgres ; la CI est au-dessus).
 - [ ] **7.2 Relecture complète de la documentation** contre le code final (`docs/`, `README` des
       paquets, `CLAUDE.md`), et parcours « par où commencer » dans le `README`.
 - [ ] **7.3 Tableau avant / après** de la section 5 rempli.

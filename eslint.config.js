@@ -3,6 +3,9 @@ import tseslint from 'typescript-eslint';
 import reactHooks from 'eslint-plugin-react-hooks';
 import globals from 'globals';
 
+/** Longueur maximale d'une fonction, sans les lignes vides ni les commentaires. */
+const LENGTH = { max: 150, skipBlankLines: true, skipComments: true };
+
 /** Motifs d'import interdits : paquets internes cités, et ce qui n'a de sens que côté serveur. */
 const forbidden = (...packages) => [
   ...packages.map((name) => `@poke/${name}`),
@@ -29,7 +32,13 @@ export default tseslint.config(
       globals: { ...globals.node },
       // Règles typées (promesses oubliées, `switch` incomplets) : ESLint lit les tsconfig.
       parserOptions: {
-        projectService: { allowDefaultProject: ['apps/api/vitest.config.ts'] },
+        projectService: {
+          allowDefaultProject: [
+            'apps/api/vitest.config.ts',
+            'packages/content/vitest.config.ts',
+            'packages/game-core/vitest.config.ts',
+          ],
+        },
         tsconfigRootDir: import.meta.dirname,
       },
     },
@@ -52,11 +61,27 @@ export default tseslint.config(
         'error',
         { considerDefaultExhaustiveForUnions: true },
       ],
-      // Dette visible : avertissements plafonnés par `pnpm lint` (--max-warnings), le plafond ne
-      // peut que baisser (voir docs/plans/PLAN-QUALITE.md).
-      'max-lines-per-function': ['warn', { max: 150, skipBlankLines: true, skipComments: true }],
-      complexity: ['warn', 40],
+      // Une fonction trop longue ou trop compliquée se découpe (voir CLAUDE.md).
+      'max-lines-per-function': ['error', LENGTH],
+      complexity: ['error', 40],
     },
+  },
+  {
+    // Dette restante (docs/plans/PLAN-QUALITE.md, 7.4) : dans ces fichiers seulement, une fonction
+    // trop longue reste un avertissement, plafonné par `pnpm lint` (--max-warnings). Un fichier
+    // remis d'aplomb sort de la liste ; aucun n'y entre.
+    files: [
+      'apps/admin/src/pages/ApiHealthPage.tsx',
+      'apps/admin/src/pages/ExpeditionSimulatorPage.tsx',
+      'apps/admin/src/pages/PlayersPage.tsx',
+      'apps/admin/src/pages/content/AbilitiesPage.tsx',
+      'apps/admin/src/pages/content/EvolutionsPage.tsx',
+      'apps/admin/src/pages/content/SpeciesPage.tsx',
+      'apps/admin/src/pages/content/ZonesPage.tsx',
+      'packages/content/src/integrity/usages.ts',
+      'scripts/import-pokeapi/src/index.ts',
+    ],
+    rules: { 'max-lines-per-function': ['warn', LENGTH], complexity: ['warn', 40] },
   },
   {
     // Les tests et le contenu de test sont de longues listes de cas : pas de limite de longueur.

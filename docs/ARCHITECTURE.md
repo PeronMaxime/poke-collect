@@ -258,5 +258,7 @@ processus.
 | Écrans du jeu                     | `apps/web/test/*.test.tsx`         | jsdom contre la vraie API en mémoire                  |
 | Pages de l'admin                  | `apps/admin/test/*.test.tsx`       | Idem, avec un compte administrateur                   |
 
-La CI (`.github/workflows/ci.yml`) lance lint, code mort (`knip`), format, types et tests avec
-couverture. Un `push` sur `main` réussi déclenche le déploiement.
+La CI (`.github/workflows/ci.yml`) lance lint, code mort (`knip`), format, types, tests avec
+couverture (seuils minimaux dans les `vitest.config.ts` de `game-core`, `content` et `api`),
+build, et vérifie le poids du JavaScript chargé à l'ouverture du jeu et de l'admin
+(`scripts/bundle-size.mjs`). Un `push` sur `main` réussi déclenche le déploiement.

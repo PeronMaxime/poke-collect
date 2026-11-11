@@ -12,7 +12,7 @@ qu'il faut savoir avant de modifier le code ; le détail est dans `docs/`.
 
 ```sh
 pnpm dev            # API :3000, jeu :5173, admin :5174
-pnpm lint           # ESLint, avertissements plafonnés (le plafond ne peut que baisser)
+pnpm lint           # ESLint, avertissements restants plafonnés (le plafond ne peut que baisser)
 pnpm deadcode       # knip
 pnpm format         # Prettier (format:check dans la CI)
 pnpm typecheck
@@ -44,9 +44,10 @@ Avant de considérer un travail comme fini : lint, deadcode, format, typecheck, 
   français.
 - **Commentaires** : un en-tête par fichier qui dit son rôle ; une phrase sur chaque export
   (unités, cas limites, pourquoi) ; rien qui répète le code. Modèle : `apps/api/src/game/tx.ts`.
-- **Longueur** : une fonction de plus de 150 lignes se découpe (hooks nommés et fonctions pures
-  côté écrans). Ne pas ajouter d'avertissement ESLint ; quand on en retire, baisser
-  `--max-warnings` dans `package.json`.
+- **Longueur** : une fonction de plus de 150 lignes (ou de complexité au-delà de 40) se découpe
+  (hooks nommés et fonctions pures côté écrans) : ESLint la refuse. Seuls les fichiers de la liste
+  « dette restante » d'`eslint.config.js` gardent un avertissement ; quand on en retire un,
+  baisser `--max-warnings` dans `package.json` et sortir le fichier remis d'aplomb de la liste.
 - TypeScript reste en `~6.0` (typescript-eslint ne prend pas encore en charge la version 7).
 
 ## Pièges
