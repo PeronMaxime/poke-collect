@@ -211,11 +211,8 @@ function NotificationSection() {
   );
 }
 
-/**
- * Bêta : profils secondaires, pour recommencer une partie sans recréer de compte. À retirer
- * après la bêta (voir `apps/api/src/beta-profiles.ts`).
- */
-function BetaProfilesSection() {
+/** Profils de la bêta : liste, création, changement et suppression (confirmée par le nom). */
+function useBetaProfiles() {
   const queryClient = useQueryClient();
   const profiles = useQuery({
     queryKey: ['beta-profiles'],
@@ -273,11 +270,37 @@ function BetaProfilesSection() {
   });
 
   const data = profiles.data;
+
+  return {
+    error,
+    create,
+    select,
+    deleting,
+    setDeleting,
+    targetId,
+    setTargetId,
+    typedName,
+    setTypedName,
+    closeDeletion,
+    remove,
+    data,
+  };
+}
+
+/** Ce qu'affichent les pièces de `BetaProfilesSection`. */
+type BetaProfilesSectionModel = ReturnType<typeof useBetaProfiles>;
+
+/**
+ * Bêta : profils secondaires, pour recommencer une partie sans recréer de compte. À retirer
+ * après la bêta (voir `apps/api/src/beta-profiles.ts`).
+ */
+function BetaProfilesSection() {
+  const m = useBetaProfiles();
+  const { error, create, select, deleting, setDeleting, targetId, remove, data } = m;
   if (!data) return null;
   const secondary = data.profiles.filter((p) => !p.main).length;
   const busy = create.isPending || select.isPending || remove.isPending;
   const target = data.profiles.find((p) => p.id === targetId && !p.main);
-
   return (
     <section className="mt-5">
       <h3 className="text-sm font-semibold">
@@ -288,41 +311,7 @@ function BetaProfilesSection() {
         profil : « Nouvel onglet » permet d’en jouer plusieurs en même temps. Ces profils pourront
         être supprimés à la fin de la bêta.
       </p>
-      <ul className="mt-2 space-y-1">
-        {data.profiles.map((p) => {
-          const active = p.id === data.activeProfileId;
-          return (
-            <li key={p.id} className="flex items-center justify-between gap-3 text-sm">
-              <span>
-                {p.trainerName}
-                <span className="ml-1 text-xs text-slate-500">
-                  {p.main ? '(principal)' : !p.starterChosen && '(starter à choisir)'}
-                </span>
-              </span>
-              {active ? (
-                <span className="text-xs font-semibold text-emerald-600">Actif</span>
-              ) : (
-                <span className="flex gap-1">
-                  <button
-                    className="btn-ghost"
-                    disabled={busy}
-                    onClick={() => select.mutate(p.main ? null : p.id)}
-                  >
-                    Jouer
-                  </button>
-                  <button
-                    className="btn-ghost"
-                    title="Jouer ce profil dans un nouvel onglet, en gardant celui-ci"
-                    onClick={() => openProfileInNewTab(p.main ? MAIN_TAB_PROFILE : p.id)}
-                  >
-                    Nouvel onglet
-                  </button>
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <ProfileList m={m} data={data} busy={busy} />
       {secondary < data.maxSecondary && (
         <button className="btn-ghost mt-2" disabled={busy} onClick={() => create.mutate()}>
           Créer un profil secondaire
@@ -336,6 +325,77 @@ function BetaProfilesSection() {
           Supprimer un profil secondaire…
         </button>
       )}
+      <DeleteProfileForm m={m} data={data} busy={busy} target={target} />
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    </section>
+  );
+}
+
+/** Les profils du compte : actif, ou boutons pour le jouer ici ou dans un nouvel onglet. */
+function ProfileList({
+  m,
+  data,
+  busy,
+}: {
+  m: BetaProfilesSectionModel;
+  data: NonNullable<BetaProfilesSectionModel['data']>;
+  busy: boolean;
+}) {
+  const { select } = m;
+  return (
+    <ul className="mt-2 space-y-1">
+      {data.profiles.map((p) => {
+        const active = p.id === data.activeProfileId;
+        return (
+          <li key={p.id} className="flex items-center justify-between gap-3 text-sm">
+            <span>
+              {p.trainerName}
+              <span className="ml-1 text-xs text-slate-500">
+                {p.main ? '(principal)' : !p.starterChosen && '(starter à choisir)'}
+              </span>
+            </span>
+            {active ? (
+              <span className="text-xs font-semibold text-emerald-600">Actif</span>
+            ) : (
+              <span className="flex gap-1">
+                <button
+                  className="btn-ghost"
+                  disabled={busy}
+                  onClick={() => select.mutate(p.main ? null : p.id)}
+                >
+                  Jouer
+                </button>
+                <button
+                  className="btn-ghost"
+                  title="Jouer ce profil dans un nouvel onglet, en gardant celui-ci"
+                  onClick={() => openProfileInNewTab(p.main ? MAIN_TAB_PROFILE : p.id)}
+                >
+                  Nouvel onglet
+                </button>
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Suppression d'un profil secondaire : le choisir, puis recopier son nom. */
+function DeleteProfileForm({
+  m,
+  data,
+  busy,
+  target,
+}: {
+  m: BetaProfilesSectionModel;
+  data: NonNullable<BetaProfilesSectionModel['data']>;
+  busy: boolean;
+  target: NonNullable<BetaProfilesSectionModel['data']>['profiles'][number] | undefined;
+}) {
+  const { deleting, targetId, setTargetId, typedName, setTypedName, closeDeletion, remove } = m;
+  return (
+    <>
       {deleting && (
         <form
           className="mt-3 space-y-2 rounded-lg border border-red-300 p-3 dark:border-red-900"
@@ -393,8 +453,7 @@ function BetaProfilesSection() {
           </div>
         </form>
       )}
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-    </section>
+    </>
   );
 }
 

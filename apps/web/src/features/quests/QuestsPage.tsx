@@ -90,11 +90,8 @@ interface Roaming {
   engaged: boolean;
 }
 
-/**
- * Quêtes (légendaires) : étapes à valider dans l'ordre, puis récompense à réclamer ; le légendaire
- * s'affronte ensuite en combat depuis cette page (les fuyards, eux, en expédition).
- */
-export function QuestsPage({ ctx }: { ctx: GameContext }) {
+/** État de l'onglet des quêtes : quêtes par région, combat légendaire en cours, réclamations. */
+function useQuestsPage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const quests = useQuests();
   const progress = usePlayerProgress();
@@ -131,9 +128,6 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
   );
   const markOver = useCallback(() => setOverBattle(activeId), [activeId]);
 
-  if (ctx.quests.length === 0) {
-    return <p className="text-slate-500">Aucune quête pour le moment.</p>;
-  }
   const byId = new Map(quests.data?.quests.map((q) => [q.questId, q]));
   // Décalages entre l'horloge du serveur et celle du navigateur, pour les comptes à rebours.
   const expeditionOffset = expeditions.data
@@ -211,24 +205,76 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
       : ctx.quests.some((q) => tabOf(q) === id && targetOf(q) && actionable(q))
         ? 'Légendaire à capturer'
         : null;
-  const launchTarget = launchQuest && targetOf(launchQuest);
   const activeQuest = active ? ctx.quest(active.questId) : undefined;
   const activeTarget = active && activeQuest?.rewards.pokemon[active.pokemonIndex];
   const activeTitle = activeTarget
     ? `Combat légendaire : ${speciesName(ctx, activeTarget.speciesId, activeTarget.formId)}`
     : 'Combat légendaire';
-  const captureTarget = capture && ctx.quest(capture.questId);
+  return {
+    ctx,
+    progress,
+    reveal,
+    setReveal,
+    setSelectedRegion,
+    launchQuest,
+    setLaunchQuest,
+    capture,
+    setCapture,
+    defeat,
+    setDefeat,
+    overBattle,
+    claimBattle,
+    setClaimBattle,
+    claim,
+    active,
+    combatOpen,
+    showCombat,
+    markOver,
+    byId,
+    legendaryOffset,
+    states,
+    huntOf,
+    actionable,
+    extra,
+    tab,
+    shown,
+    regionName,
+    ongoing,
+    done,
+    toClaim,
+    activeTarget,
+    activeTitle,
+    targetOf,
+  };
+}
 
-  function finished(data: ClaimLegendaryBattleResponse) {
-    setClaimBattle(null);
-    const { battle } = data;
-    if (battle.outcome === 'win') {
-      setCapture({ battleId: battle.id, questId: battle.questId, isShiny: battle.isShiny });
-    } else {
-      setDefeat(battle);
-    }
+/** Ce qu'affichent les pièces de `QuestsPage`. */
+type QuestsPageModel = ReturnType<typeof useQuestsPage>;
+
+/**
+ * Quêtes (légendaires) : étapes à valider dans l'ordre, puis récompense à réclamer ; le légendaire
+ * s'affronte ensuite en combat depuis cette page (les fuyards, eux, en expédition).
+ */
+export function QuestsPage({ ctx }: { ctx: GameContext }) {
+  const m = useQuestsPage({ ctx });
+  const {
+    reveal,
+    setReveal,
+    defeat,
+    setDefeat,
+    overBattle,
+    claimBattle,
+    setClaimBattle,
+    active,
+    combatOpen,
+    showCombat,
+    done,
+    activeTarget,
+    activeTitle,
+  } = m;
+  if (ctx.quests.length === 0) {
+    return <p className="text-slate-500">Aucune quête pour le moment.</p>;
   }
-
   return (
     <div className="space-y-4">
       {active && !combatOpen && (
@@ -252,49 +298,7 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
           }}
         />
       )}
-      <section className="@container">
-        <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
-          <h2 className="text-lg font-semibold">Quêtes{regionName ? ` de ${regionName}` : ''}</h2>
-          <RegionTabs
-            ctx={ctx}
-            progress={progress}
-            selected={tab}
-            onSelect={setSelectedRegion}
-            marker={toClaim}
-            extra={extra}
-          />
-        </div>
-        {shown.length > 0 && (
-          <LegendaryCase
-            ctx={ctx}
-            quests={[...shown].sort((a, b) => a.order - b.order)}
-            stateOf={(q) => byId.get(q.id)}
-          />
-        )}
-        {claim.error && <p className="mb-3 text-sm text-red-600">{errorText(claim.error)}</p>}
-        {shown.length === 0 && (
-          <p className="text-sm text-slate-500">Aucune quête dans cette région pour le moment.</p>
-        )}
-        <div className={QUEST_GRID}>
-          {ongoing.map((quest) => (
-            <QuestCard
-              key={quest.id}
-              ctx={ctx}
-              quest={quest}
-              state={byId.get(quest.id)}
-              unlockText={
-                isUnlocked(ctx, quest.unlock, progress)
-                  ? null
-                  : (unlockConditionText(ctx, quest.unlock) ?? 'Verrouillée')
-              }
-              claiming={claim.isPending && claim.variables === quest.id}
-              onClaim={() => claim.mutate(quest.id)}
-              hunt={huntOf(quest)}
-              highlight={actionable(quest)}
-            />
-          ))}
-        </div>
-      </section>
+      <QuestList m={m} />
 
       {done.length > 0 && (
         <section className="@container">
@@ -308,6 +312,111 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
       )}
       <QuestReveal ctx={ctx} data={reveal} onClose={() => setReveal(null)} />
 
+      <LegendaryDialogs m={m} />
+      <LegendaryDefeatDialog ctx={ctx} battle={defeat} onClose={() => setDefeat(null)} />
+    </div>
+  );
+}
+
+/** Quêtes de la région de l'onglet : à faire d'abord, puis la grille. */
+function QuestList({ m }: { m: QuestsPageModel }) {
+  const {
+    ctx,
+    progress,
+    setSelectedRegion,
+    claim,
+    byId,
+    huntOf,
+    actionable,
+    extra,
+    tab,
+    shown,
+    regionName,
+    ongoing,
+    toClaim,
+  } = m;
+  return (
+    <section className="@container">
+      <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="text-lg font-semibold">Quêtes{regionName ? ` de ${regionName}` : ''}</h2>
+        <RegionTabs
+          ctx={ctx}
+          progress={progress}
+          selected={tab}
+          onSelect={setSelectedRegion}
+          marker={toClaim}
+          extra={extra}
+        />
+      </div>
+      {shown.length > 0 && (
+        <LegendaryCase
+          ctx={ctx}
+          quests={[...shown].sort((a, b) => a.order - b.order)}
+          stateOf={(q) => byId.get(q.id)}
+        />
+      )}
+      {claim.error && <p className="mb-3 text-sm text-red-600">{errorText(claim.error)}</p>}
+      {shown.length === 0 && (
+        <p className="text-sm text-slate-500">Aucune quête dans cette région pour le moment.</p>
+      )}
+      <div className={QUEST_GRID}>
+        {ongoing.map((quest) => (
+          <QuestCard
+            key={quest.id}
+            ctx={ctx}
+            quest={quest}
+            state={byId.get(quest.id)}
+            unlockText={
+              isUnlocked(ctx, quest.unlock, progress)
+                ? null
+                : (unlockConditionText(ctx, quest.unlock) ?? 'Verrouillée')
+            }
+            claiming={claim.isPending && claim.variables === quest.id}
+            onClaim={() => claim.mutate(quest.id)}
+            hunt={huntOf(quest)}
+            highlight={actionable(quest)}
+          />
+        ))}
+      </div>
+    </section>
+  );
+}
+
+/** Fenêtres du combat légendaire : combat, départ, capture. */
+function LegendaryDialogs({ m }: { m: QuestsPageModel }) {
+  const {
+    ctx,
+    launchQuest,
+    setLaunchQuest,
+    capture,
+    setCapture,
+    claimBattle,
+    setClaimBattle,
+    active,
+    combatOpen,
+    showCombat,
+    markOver,
+    legendaryOffset,
+    states,
+    activeTitle,
+    targetOf,
+    setDefeat,
+  } = m;
+  const launchTarget = launchQuest && targetOf(launchQuest);
+  const captureTarget = capture && ctx.quest(capture.questId);
+
+  function finished(data: ClaimLegendaryBattleResponse) {
+    setClaimBattle(null);
+    const { battle } = data;
+    if (battle.outcome === 'win') {
+      setCapture({ battleId: battle.id, questId: battle.questId, isShiny: battle.isShiny });
+    } else {
+      setDefeat(battle);
+    }
+  }
+
+  return (
+    <>
       {active && (
         <CombatWindow open={combatOpen} onClose={() => showCombat(false)}>
           <DungeonCombat<LegendaryBattleDto, ClaimLegendaryBattleResponse>
@@ -349,8 +458,7 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
           onClose={() => setCapture(null)}
         />
       )}
-      <LegendaryDefeatDialog ctx={ctx} battle={defeat} onClose={() => setDefeat(null)} />
-    </div>
+    </>
   );
 }
 

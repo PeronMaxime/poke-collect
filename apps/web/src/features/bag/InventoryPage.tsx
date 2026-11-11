@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { ITEM_CATEGORIES, normalizeBag } from '@poke/content';
 import type { BagSectionId, ItemCategory } from '@poke/content';
 import type { GameContext } from '@poke/game-core';
+import type { InventoryEntryDto } from '@poke/shared';
 import { CollapseBody, CollapseButton, useCollapsedSection } from '../../components/Collapsible';
 import { Egg, PokemonSprite, ViewTabs } from '../../components/ui';
 import { useCandies, useDaycare, useInventory } from '../../lib/queries';
@@ -73,80 +74,16 @@ export function InventoryPage({ ctx }: { ctx: GameContext }) {
       label: layout.sectionTitles[category],
       content: (
         <ul className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-          {inCategory.map((s) => {
-            const item = ctx.item(s.itemId);
-            const chest = ctx.itemEffect(s.itemId, 'guildChest');
-            const icon = (
-              <img
-                src={itemIcon(ctx, s.itemId)}
-                alt=""
-                className="h-10 w-10 shrink-0 [image-rendering:pixelated]"
-              />
-            );
-            return (
-              <li key={s.itemId} className="card flex items-center gap-3 p-3">
-                {chest ? (
-                  <ChestLootHover ctx={ctx} rarity={chest.rarity}>
-                    {icon}
-                  </ChestLootHover>
-                ) : (
-                  icon
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="flex items-baseline justify-between gap-2">
-                    <span className="font-medium">{item?.name ?? s.itemId}</span>
-                    <span className="font-mono text-sm">× {s.quantity}</span>
-                  </p>
-                  {item && (
-                    <>
-                      <p className={`text-xs ${RARITY_STYLES[item.rarity]}`}>
-                        {RARITY_LABELS[item.rarity]}
-                        {item.effects.map((e) => ` · ${effectText(e)}`).join('')}
-                      </p>
-                      <p className="truncate text-xs text-slate-500" title={item.description}>
-                        {item.description}
-                      </p>
-                    </>
-                  )}
-                </div>
-                {s.quantity > 0 && ctx.itemEffect(s.itemId, 'revive') && (
-                  <button className="btn-primary" onClick={() => setReviving(s.itemId)}>
-                    Utiliser
-                  </button>
-                )}
-                {s.quantity > 0 &&
-                  (ctx.itemEffect(s.itemId, 'happiness') ||
-                    ctx.itemEffect(s.itemId, 'levelUp')) && (
-                    <button className="btn-primary" onClick={() => setCheering(s.itemId)}>
-                      Utiliser
-                    </button>
-                  )}
-                {s.quantity > 0 && chest && (
-                  <span className="flex shrink-0 flex-col gap-1">
-                    <button
-                      className="btn-primary"
-                      onClick={() => setOpening({ itemId: s.itemId, count: 1 })}
-                    >
-                      Ouvrir
-                    </button>
-                    {s.quantity > 1 && (
-                      <button
-                        className="btn-ghost px-2 py-1 text-xs"
-                        onClick={() =>
-                          setOpening({
-                            itemId: s.itemId,
-                            count: Math.min(s.quantity, MAX_CHESTS),
-                          })
-                        }
-                      >
-                        Tout ouvrir
-                      </button>
-                    )}
-                  </span>
-                )}
-              </li>
-            );
-          })}
+          {inCategory.map((s) => (
+            <ItemCard
+              key={s.itemId}
+              ctx={ctx}
+              s={s}
+              setReviving={setReviving}
+              setCheering={setCheering}
+              setOpening={setOpening}
+            />
+          ))}
         </ul>
       ),
     });
@@ -258,5 +195,92 @@ function BagSectionView({ section }: { section: BagSection }) {
         {section.content}
       </CollapseBody>
     </section>
+  );
+}
+
+/** Carte d'un objet du sac : icône, rareté, effets, et son bouton (utiliser, ouvrir). */
+function ItemCard({
+  ctx,
+  s,
+  setReviving,
+  setCheering,
+  setOpening,
+}: {
+  ctx: GameContext;
+  s: InventoryEntryDto;
+  setReviving: (itemId: string) => void;
+  setCheering: (itemId: string) => void;
+  setOpening: (opening: { itemId: string; count: number }) => void;
+}) {
+  const item = ctx.item(s.itemId);
+  const chest = ctx.itemEffect(s.itemId, 'guildChest');
+  const icon = (
+    <img
+      src={itemIcon(ctx, s.itemId)}
+      alt=""
+      className="h-10 w-10 shrink-0 [image-rendering:pixelated]"
+    />
+  );
+  return (
+    <li key={s.itemId} className="card flex items-center gap-3 p-3">
+      {chest ? (
+        <ChestLootHover ctx={ctx} rarity={chest.rarity}>
+          {icon}
+        </ChestLootHover>
+      ) : (
+        icon
+      )}
+      <div className="min-w-0 flex-1">
+        <p className="flex items-baseline justify-between gap-2">
+          <span className="font-medium">{item?.name ?? s.itemId}</span>
+          <span className="font-mono text-sm">× {s.quantity}</span>
+        </p>
+        {item && (
+          <>
+            <p className={`text-xs ${RARITY_STYLES[item.rarity]}`}>
+              {RARITY_LABELS[item.rarity]}
+              {item.effects.map((e) => ` · ${effectText(e)}`).join('')}
+            </p>
+            <p className="truncate text-xs text-slate-500" title={item.description}>
+              {item.description}
+            </p>
+          </>
+        )}
+      </div>
+      {s.quantity > 0 && ctx.itemEffect(s.itemId, 'revive') && (
+        <button className="btn-primary" onClick={() => setReviving(s.itemId)}>
+          Utiliser
+        </button>
+      )}
+      {s.quantity > 0 &&
+        (ctx.itemEffect(s.itemId, 'happiness') || ctx.itemEffect(s.itemId, 'levelUp')) && (
+          <button className="btn-primary" onClick={() => setCheering(s.itemId)}>
+            Utiliser
+          </button>
+        )}
+      {s.quantity > 0 && chest && (
+        <span className="flex shrink-0 flex-col gap-1">
+          <button
+            className="btn-primary"
+            onClick={() => setOpening({ itemId: s.itemId, count: 1 })}
+          >
+            Ouvrir
+          </button>
+          {s.quantity > 1 && (
+            <button
+              className="btn-ghost px-2 py-1 text-xs"
+              onClick={() =>
+                setOpening({
+                  itemId: s.itemId,
+                  count: Math.min(s.quantity, MAX_CHESTS),
+                })
+              }
+            >
+              Tout ouvrir
+            </button>
+          )}
+        </span>
+      )}
+    </li>
   );
 }

@@ -183,91 +183,15 @@ export function DexSheet({
                 <TypeBadge key={t} type={t} />
               ))}
             </div>
-            <div
-              className={`sprite-well relative h-64 sm:h-72 ${shiny ? 'shiny-well' : ''} ${
-                state.caught ? '' : 'border-dashed'
-              }`}
-            >
-              <PokemonSprite
-                speciesId={slot.speciesId}
-                formId={slot.formId}
-                kind="artwork"
-                size={208}
-                shiny={shiny}
-                priority
-                alt={species.nameFr}
-                className={`-mt-8 sm:-mt-6 ${state.caught ? '' : 'opacity-50 grayscale'}`}
-              />
-              {shiny && (
-                <span className="pixel-label absolute top-2 right-2 rounded border-2 border-amber-600 bg-done px-1.5 text-[8px] text-amber-800 dark:text-[#f8d878]">
-                  ★ Chromatique
-                </span>
-              )}
-              {!state.caught && (
-                <span className="pixel-label absolute top-2 left-2 rounded border-2 border-ink bg-white px-1.5 text-[8px] dark:bg-slate-900">
-                  Vu
-                </span>
-              )}
-              <div className="absolute inset-x-2 bottom-2 grid grid-cols-2 overflow-hidden rounded-md border-2 border-ink bg-white sm:right-auto dark:bg-slate-900">
-                <button
-                  type="button"
-                  className={`pixel-label min-h-10 px-3 text-[9px] ${
-                    shiny ? 'text-ink dark:text-slate-200' : 'bg-brand-500 text-white'
-                  }`}
-                  aria-pressed={!shiny}
-                  onClick={() => setShinyView(false)}
-                >
-                  Normal
-                </button>
-                <button
-                  type="button"
-                  className={`pixel-label min-h-10 border-l-2 border-ink px-3 text-[9px] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-400 ${
-                    shiny ? 'bg-brand-500 text-white' : 'text-ink dark:text-slate-200'
-                  }`}
-                  aria-pressed={shiny}
-                  disabled={!state.caughtShiny}
-                  title={state.caughtShiny ? undefined : 'Version chromatique pas encore obtenue'}
-                  onClick={() => setShinyView(true)}
-                >
-                  {state.caughtShiny ? '★ Chromatique' : '★ Pas obtenu'}
-                </button>
-              </div>
-            </div>
+            <SheetArtwork
+              slot={slot}
+              species={species}
+              state={state}
+              shiny={shiny}
+              setShinyView={setShinyView}
+            />
 
-            <div className="card space-y-2 p-3">
-              <p className="flex items-center gap-2.5 font-semibold">
-                <img
-                  src={itemIcon(ctx, 'poke-ball')}
-                  alt=""
-                  width={24}
-                  height={24}
-                  className={`shrink-0 [image-rendering:pixelated] ${state.caught ? '' : 'opacity-40 grayscale'}`}
-                />
-                {state.caughtAt
-                  ? `${isForm ? 'Forme capturée' : 'Capturé'} le ${new Date(
-                      state.caughtAt,
-                    ).toLocaleDateString('fr-FR', {
-                      day: 'numeric',
-                      month: 'long',
-                      year: 'numeric',
-                    })}`
-                  : isForm
-                    ? 'Forme vue, pas encore capturée'
-                    : 'Vu, pas encore capturé'}
-              </p>
-              <p
-                className={`flex items-center gap-2.5 ${
-                  state.caughtShiny ? 'font-semibold' : 'text-slate-500'
-                }`}
-              >
-                <span className="grid w-6 shrink-0 place-items-center text-lg">
-                  <ShinyStar className={state.caughtShiny ? '' : 'opacity-40 grayscale'} />
-                </span>
-                {state.caughtShiny
-                  ? 'Version chromatique obtenue'
-                  : 'Version chromatique pas encore obtenue'}
-              </p>
-            </div>
+            <SheetStatus ctx={ctx} state={state} isForm={isForm} />
 
             <dl className="grid grid-cols-3 gap-2">
               <InfoCell
@@ -680,5 +604,121 @@ function Abilities({ ctx, slot }: { ctx: GameContext; slot: DexSlot }) {
         </ul>
       )}
     </SheetSection>
+  );
+}
+
+/** Illustration de l'espèce, normale ou chromatique, et le choix entre les deux. */
+function SheetArtwork({
+  slot,
+  species,
+  state,
+  shiny,
+  setShinyView,
+}: {
+  slot: DexSlot;
+  species: NonNullable<ReturnType<GameContext['species']>>;
+  state: SlotState;
+  shiny: boolean;
+  setShinyView: (shiny: boolean) => void;
+}) {
+  return (
+    <div
+      className={`sprite-well relative h-64 sm:h-72 ${shiny ? 'shiny-well' : ''} ${
+        state.caught ? '' : 'border-dashed'
+      }`}
+    >
+      <PokemonSprite
+        speciesId={slot.speciesId}
+        formId={slot.formId}
+        kind="artwork"
+        size={208}
+        shiny={shiny}
+        priority
+        alt={species.nameFr}
+        className={`-mt-8 sm:-mt-6 ${state.caught ? '' : 'opacity-50 grayscale'}`}
+      />
+      {shiny && (
+        <span className="pixel-label absolute top-2 right-2 rounded border-2 border-amber-600 bg-done px-1.5 text-[8px] text-amber-800 dark:text-[#f8d878]">
+          ★ Chromatique
+        </span>
+      )}
+      {!state.caught && (
+        <span className="pixel-label absolute top-2 left-2 rounded border-2 border-ink bg-white px-1.5 text-[8px] dark:bg-slate-900">
+          Vu
+        </span>
+      )}
+      <div className="absolute inset-x-2 bottom-2 grid grid-cols-2 overflow-hidden rounded-md border-2 border-ink bg-white sm:right-auto dark:bg-slate-900">
+        <button
+          type="button"
+          className={`pixel-label min-h-10 px-3 text-[9px] ${
+            shiny ? 'text-ink dark:text-slate-200' : 'bg-brand-500 text-white'
+          }`}
+          aria-pressed={!shiny}
+          onClick={() => setShinyView(false)}
+        >
+          Normal
+        </button>
+        <button
+          type="button"
+          className={`pixel-label min-h-10 border-l-2 border-ink px-3 text-[9px] disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-500 dark:disabled:bg-slate-800 dark:disabled:text-slate-400 ${
+            shiny ? 'bg-brand-500 text-white' : 'text-ink dark:text-slate-200'
+          }`}
+          aria-pressed={shiny}
+          disabled={!state.caughtShiny}
+          title={state.caughtShiny ? undefined : 'Version chromatique pas encore obtenue'}
+          onClick={() => setShinyView(true)}
+        >
+          {state.caughtShiny ? '★ Chromatique' : '★ Pas obtenu'}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+/** Capturé (et quand) ou seulement vu, puis la version chromatique. */
+function SheetStatus({
+  ctx,
+  state,
+  isForm,
+}: {
+  ctx: GameContext;
+  state: SlotState;
+  isForm: boolean;
+}) {
+  return (
+    <div className="card space-y-2 p-3">
+      <p className="flex items-center gap-2.5 font-semibold">
+        <img
+          src={itemIcon(ctx, 'poke-ball')}
+          alt=""
+          width={24}
+          height={24}
+          className={`shrink-0 [image-rendering:pixelated] ${state.caught ? '' : 'opacity-40 grayscale'}`}
+        />
+        {state.caughtAt
+          ? `${isForm ? 'Forme capturée' : 'Capturé'} le ${new Date(
+              state.caughtAt,
+            ).toLocaleDateString('fr-FR', {
+              day: 'numeric',
+              month: 'long',
+              year: 'numeric',
+            })}`
+          : isForm
+            ? 'Forme vue, pas encore capturée'
+            : 'Vu, pas encore capturé'}
+      </p>
+      <p
+        className={`flex items-center gap-2.5 ${
+          state.caughtShiny ? 'font-semibold' : 'text-slate-500'
+        }`}
+      >
+        <span className="grid w-6 shrink-0 place-items-center text-lg">
+          <ShinyStar className={state.caughtShiny ? '' : 'opacity-40 grayscale'} />
+        </span>
+        {state.caughtShiny
+          ? 'Version chromatique obtenue'
+          : 'Version chromatique pas encore obtenue'}
+      </p>
+    </div>
   );
 }

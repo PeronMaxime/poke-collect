@@ -33,11 +33,8 @@ function EvolutionMark() {
   );
 }
 
-/**
- * Choix du Pokémon à qui donner une baie de bonheur (Baie Grena) ou un Super Bonbon, depuis le
- * sac : le Pokémon choisi le reste, pour lui en donner plusieurs à la suite.
- */
-export function HappinessDialog({
+/** État du don d'une baie de bonheur ou d'un Super Bonbon : Pokémon utiles, choix, don. */
+function useHappinessDialog({
   ctx,
   itemId,
   onClose,
@@ -93,6 +90,44 @@ export function HappinessDialog({
   const stillNeeded = (p: PokemonDto, required: number) =>
     Math.ceil((required - (levels ? p.level : p.happiness)) / Math.max(1, levels ?? amount));
 
+  return {
+    ctx,
+    itemId,
+    onClose,
+    chosen,
+    setChosen,
+    given,
+    amount,
+    levels,
+    left,
+    give,
+    candidates,
+    picked,
+    evolution,
+    pickedEvolution,
+    status,
+    stillNeeded,
+  };
+}
+
+/** Ce qu'affichent les pièces de `HappinessDialog`. */
+type HappinessDialogModel = ReturnType<typeof useHappinessDialog>;
+
+/**
+ * Choix du Pokémon à qui donner une baie de bonheur (Baie Grena) ou un Super Bonbon, depuis le
+ * sac : le Pokémon choisi le reste, pour lui en donner plusieurs à la suite.
+ */
+export function HappinessDialog({
+  ctx,
+  itemId,
+  onClose,
+}: {
+  ctx: GameContext;
+  itemId: string;
+  onClose: () => void;
+}) {
+  const m = useHappinessDialog({ ctx, itemId, onClose });
+  const { chosen, setChosen, amount, levels, left, candidates, evolution } = m;
   return (
     <ItemPokemonPicker
       ctx={ctx}
@@ -125,83 +160,92 @@ export function HappinessDialog({
       }}
       cellLine={(p) => (levels ? `N.${p.level}` : `N.${p.level} · ♥ ${p.happiness}`)}
       cellBadge={(p) => (evolution(p) ? <EvolutionMark /> : null)}
-      aside={
-        <>
-          <h3 className={SECTION_TITLE}>Pokémon choisi</h3>
-          <ChosenPokemon ctx={ctx} p={picked}>
-            {picked && (
-              <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
-                {levels ? (
-                  <>
-                    <p className="flex justify-between">
-                      <span>Niveau</span>
-                      <b>
-                        {picked.level} / {MAX_LEVEL}
-                      </b>
-                    </p>
-                    <ProgressBar value={picked.level / MAX_LEVEL} barClassName="bg-[#48a8e8]" />
-                  </>
-                ) : (
-                  <>
-                    <p className="flex justify-between">
-                      <span>Bonheur</span>
-                      <b>
-                        {picked.happiness} / {MAX_HAPPINESS}
-                      </b>
-                    </p>
-                    <ProgressBar
-                      value={picked.happiness / MAX_HAPPINESS}
-                      barClassName="bg-pink-400"
-                    />
-                  </>
-                )}
-              </div>
-            )}
-          </ChosenPokemon>
-          {picked && pickedEvolution && (
-            <p className="rounded-md border-2 border-emerald-600 bg-emerald-50 px-2.5 py-1.5 text-sm dark:border-emerald-400 dark:bg-emerald-950/50">
-              Évolue en <b>{speciesName(ctx, pickedEvolution.speciesId, pickedEvolution.formId)}</b>{' '}
-              {levels
-                ? `au niveau ${pickedEvolution.required}`
-                : `à ${pickedEvolution.required} de bonheur`}{' '}
-              <span className="text-slate-600 dark:text-slate-400">
-                (encore {stillNeeded(picked, pickedEvolution.required)})
-              </span>
-            </p>
-          )}
-          {given && (
-            <p className="rounded-md border-2 border-well-line px-2.5 py-1.5 text-sm">
-              {given.count > 1 ? `${given.count} donnés` : 'Donné'} à <b>{given.name}</b>.
-            </p>
-          )}
-          <p className="mt-auto border-t-2 border-well-line pt-2.5 text-xs text-slate-500 dark:text-slate-400">
-            Le Pokémon choisi reste sélectionné : touche « Donner » plusieurs fois pour lui en
-            donner plusieurs. Les Pokémon occupés (expédition, pension…) n’apparaissent pas.
-          </p>
-        </>
-      }
-      footer={
-        <>
-          <StatusPill tone={status.tone} text={status.text} />
-          {give.error && (
-            <span className="text-sm text-red-600 sm:w-auto">{errorText(give.error)}</span>
-          )}
-          <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] gap-2 sm:ml-auto sm:flex sm:w-auto">
-            <button type="button" className="btn-ghost" onClick={onClose}>
-              Fermer
-            </button>
-            <button
-              type="button"
-              className="btn-primary px-6"
-              disabled={status.tone !== 'ok' || give.isPending}
-              onClick={() => give.mutate({ pokemonId: picked!.id, itemId })}
-            >
-              Donner
-            </button>
-          </div>
-        </>
-      }
+      aside={<HappinessAside m={m} />}
+      footer={<HappinessFooter m={m} />}
       onClose={onClose}
     />
+  );
+}
+
+/** Le Pokémon choisi : niveau ou bonheur, évolution attendue, dons faits. */
+function HappinessAside({ m }: { m: HappinessDialogModel }) {
+  const { ctx, given, levels, picked, pickedEvolution, stillNeeded } = m;
+  return (
+    <>
+      <h3 className={SECTION_TITLE}>Pokémon choisi</h3>
+      <ChosenPokemon ctx={ctx} p={picked}>
+        {picked && (
+          <div className="space-y-1 text-xs text-slate-600 dark:text-slate-300">
+            {levels ? (
+              <>
+                <p className="flex justify-between">
+                  <span>Niveau</span>
+                  <b>
+                    {picked.level} / {MAX_LEVEL}
+                  </b>
+                </p>
+                <ProgressBar value={picked.level / MAX_LEVEL} barClassName="bg-[#48a8e8]" />
+              </>
+            ) : (
+              <>
+                <p className="flex justify-between">
+                  <span>Bonheur</span>
+                  <b>
+                    {picked.happiness} / {MAX_HAPPINESS}
+                  </b>
+                </p>
+                <ProgressBar value={picked.happiness / MAX_HAPPINESS} barClassName="bg-pink-400" />
+              </>
+            )}
+          </div>
+        )}
+      </ChosenPokemon>
+      {picked && pickedEvolution && (
+        <p className="rounded-md border-2 border-emerald-600 bg-emerald-50 px-2.5 py-1.5 text-sm dark:border-emerald-400 dark:bg-emerald-950/50">
+          Évolue en <b>{speciesName(ctx, pickedEvolution.speciesId, pickedEvolution.formId)}</b>{' '}
+          {levels
+            ? `au niveau ${pickedEvolution.required}`
+            : `à ${pickedEvolution.required} de bonheur`}{' '}
+          <span className="text-slate-600 dark:text-slate-400">
+            (encore {stillNeeded(picked, pickedEvolution.required)})
+          </span>
+        </p>
+      )}
+      {given && (
+        <p className="rounded-md border-2 border-well-line px-2.5 py-1.5 text-sm">
+          {given.count > 1 ? `${given.count} donnés` : 'Donné'} à <b>{given.name}</b>.
+        </p>
+      )}
+      <p className="mt-auto border-t-2 border-well-line pt-2.5 text-xs text-slate-500 dark:text-slate-400">
+        Le Pokémon choisi reste sélectionné : touche « Donner » plusieurs fois pour lui en donner
+        plusieurs. Les Pokémon occupés (expédition, pension…) n’apparaissent pas.
+      </p>
+    </>
+  );
+}
+
+/** Pied : état du choix, erreur, Fermer et Donner. */
+function HappinessFooter({ m }: { m: HappinessDialogModel }) {
+  const { itemId, onClose, give, picked, status } = m;
+  return (
+    <>
+      <StatusPill tone={status.tone} text={status.text} />
+      {give.error && (
+        <span className="text-sm text-red-600 sm:w-auto">{errorText(give.error)}</span>
+      )}
+      <div className="grid w-full grid-cols-[auto_minmax(0,1fr)] gap-2 sm:ml-auto sm:flex sm:w-auto">
+        <button type="button" className="btn-ghost" onClick={onClose}>
+          Fermer
+        </button>
+        <button
+          type="button"
+          className="btn-primary px-6"
+          disabled={status.tone !== 'ok' || give.isPending}
+          onClick={() => give.mutate({ pokemonId: picked!.id, itemId })}
+        >
+          Donner
+        </button>
+      </div>
+    </>
   );
 }

@@ -487,13 +487,8 @@ const cardStyle = (states: readonly RewardState[]) =>
       ? STATE_STYLES.claimed
       : '';
 
-/**
- * Récompenses de complétion des expéditions, région par région (onglets, comme ailleurs) : une
- * expédition est complétée quand chacun de ses Pokémon est capturé (en chromatique pour les
- * complétions chromatiques). Une seule section : une carte par expédition (normale au-dessus de
- * chromatique) et la complétion de la région en haut à droite.
- */
-export function CompletionsView({ ctx, progress }: { ctx: GameContext; progress: Progress }) {
+/** État de la complétion des expéditions : règles, cibles de la région, réclamations. */
+function useCompletionsView({ ctx, progress }: { ctx: GameContext; progress: Progress }) {
   const claimed = useClaimedRewards();
   const { claim, claimAll, last } = useClaim();
   const pending = claim.isPending || claimAll.isPending;
@@ -528,6 +523,55 @@ export function CompletionsView({ ctx, progress }: { ctx: GameContext; progress:
   );
 
   /** Complétion de la région de l'onglet : avancement, bouton et récompenses de chaque règle. */
+
+  return {
+    ctx,
+    progress,
+    claim,
+    claimAll,
+    last,
+    pending,
+    playerProgress,
+    setSelectedRegion,
+    regionId,
+    targetsOf,
+    stateOf,
+    claimOf,
+    zoneRules,
+    regionRules,
+    hasContent,
+    claimableIn,
+    allClaimable,
+  };
+}
+
+/** Ce qu'affichent les pièces de `CompletionsView`. */
+type CompletionsViewModel = ReturnType<typeof useCompletionsView>;
+
+/**
+ * Récompenses de complétion des expéditions, région par région (onglets, comme ailleurs) : une
+ * expédition est complétée quand chacun de ses Pokémon est capturé (en chromatique pour les
+ * complétions chromatiques). Une seule section : une carte par expédition (normale au-dessus de
+ * chromatique) et la complétion de la région en haut à droite.
+ */
+export function CompletionsView({ ctx, progress }: { ctx: GameContext; progress: Progress }) {
+  const m = useCompletionsView({ ctx, progress });
+  const {
+    claim,
+    claimAll,
+    last,
+    pending,
+    playerProgress,
+    setSelectedRegion,
+    regionId,
+    targetsOf,
+    stateOf,
+    claimOf,
+    zoneRules,
+    regionRules,
+    hasContent,
+    claimableIn,
+  } = m;
   function regionAside() {
     const entries = regionRules.flatMap((c) =>
       targetsOf(c).map((t) => ({ c, t, state: stateOf(c, t) })),
@@ -625,7 +669,6 @@ export function CompletionsView({ ctx, progress }: { ctx: GameContext; progress:
       </CompletionSection>
     );
   }
-
   return (
     <div className="space-y-4">
       <RegionTabs
@@ -635,6 +678,26 @@ export function CompletionsView({ ctx, progress }: { ctx: GameContext; progress:
         onSelect={setSelectedRegion}
         marker={(id) => (claimableIn(id) ? 'Récompense à réclamer' : null)}
       />
+      <ClaimAllButton m={m} />
+      <ClaimedToast ctx={ctx} data={last} />
+      <RegionXpSummary ctx={ctx} regionId={regionId} />
+      {(claim.error ?? claimAll.error) && (
+        <p className="text-sm text-red-600">{errorText(claim.error ?? claimAll.error)}</p>
+      )}
+      {hasContent ? (
+        zoneSection()
+      ) : (
+        <p className="text-slate-500">Aucune récompense de complétion dans cette région.</p>
+      )}
+    </div>
+  );
+}
+
+/** « Tout réclamer » : chaque récompense prête, toutes régions confondues. */
+function ClaimAllButton({ m }: { m: CompletionsViewModel }) {
+  const { claimAll, pending, allClaimable } = m;
+  return (
+    <>
       {allClaimable.length > 0 && (
         <div className="flex justify-end">
           <button
@@ -647,16 +710,6 @@ export function CompletionsView({ ctx, progress }: { ctx: GameContext; progress:
           </button>
         </div>
       )}
-      <ClaimedToast ctx={ctx} data={last} />
-      <RegionXpSummary ctx={ctx} regionId={regionId} />
-      {(claim.error ?? claimAll.error) && (
-        <p className="text-sm text-red-600">{errorText(claim.error ?? claimAll.error)}</p>
-      )}
-      {hasContent ? (
-        zoneSection()
-      ) : (
-        <p className="text-slate-500">Aucune récompense de complétion dans cette région.</p>
-      )}
-    </div>
+    </>
   );
 }

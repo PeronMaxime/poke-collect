@@ -178,67 +178,17 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
         onSelect={setRegionId}
         regions={foreignRegions}
       />
-      <div className="card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-semibold">Pokédex de {region.name}</h2>
-          <p className="text-sm text-slate-500">
-            {shiny ? 'Chromatiques' : `Vus : ${seenCount} · Capturés`} :{' '}
-            {`${progress.caught} / ${progress.total} (${progress.percent.toFixed(1)} %)`}
-          </p>
-        </div>
-        <ProgressBar className="mt-3" value={progress.percent / 100} />
-        {formsTotal > 0 && (
-          <>
-            <p className="mt-3 text-xs text-slate-500">
-              Formes alternatives (hors pourcentage) : {formsCaught} / {formsTotal} (
-              {((formsCaught / formsTotal) * 100).toFixed(1)} %)
-            </p>
-            <ProgressBar
-              className="mt-1"
-              value={formsCaught / formsTotal}
-              barClassName="bg-[#48a8e8]"
-            />
-          </>
-        )}
-      </div>
+      <DexProgressCard
+        region={region}
+        shiny={shiny}
+        seenCount={seenCount}
+        progress={progress}
+        formsCaught={formsCaught}
+        formsTotal={formsTotal}
+      />
 
       {/* Mobile : deux rangées séparées par un trait horizontal ; bureau : une rangée, trait vertical. */}
-      <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
-        <div className="flex gap-2">
-          <button
-            className={shiny ? 'btn-ghost' : 'btn-primary'}
-            onClick={() => setShiny(false)}
-            aria-pressed={!shiny}
-          >
-            Normal
-          </button>
-          <button
-            className={shiny ? 'btn-primary' : 'btn-ghost'}
-            onClick={() => setShiny(true)}
-            aria-pressed={shiny}
-          >
-            <ShinyStar className={shiny ? 'text-white' : ''} /> Chromatique
-          </button>
-        </div>
-        <span className="h-0.5 rounded-full bg-slate-300 sm:mx-1 sm:h-auto sm:w-0.5 dark:bg-slate-500" />
-        <div className="flex gap-1.5 sm:gap-2">
-          {(
-            [
-              ['all', 'Tous'],
-              ['caught', 'Capturés'],
-              ['missing', 'Manquants'],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              className={`${filter === value ? 'btn-primary' : 'btn-ghost'} max-sm:flex-1 max-sm:px-2 max-sm:py-2 max-sm:text-[9px]`}
-              onClick={() => setFilter(value)}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
-      </div>
+      <DexFilters shiny={shiny} setShiny={setShiny} filter={filter} setFilter={setFilter} />
 
       {grid(slots.filter(keep))}
 
@@ -320,5 +270,100 @@ function DexTile({
       </span>
       {caught && shiny && <ShinyStar className="absolute top-0.5 right-1 text-xs" />}
     </button>
+  );
+}
+
+/** Avancement du Pokédex de la région : espèces vues et capturées, puis formes à part. */
+function DexProgressCard({
+  region,
+  shiny,
+  seenCount,
+  progress,
+  formsCaught,
+  formsTotal,
+}: {
+  region: NonNullable<ReturnType<GameContext['region']>>;
+  shiny: boolean;
+  seenCount: number;
+  progress: ReturnType<typeof dexProgress>;
+  formsCaught: number;
+  formsTotal: number;
+}) {
+  return (
+    <div className="card p-4">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <h2 className="text-lg font-semibold">Pokédex de {region.name}</h2>
+        <p className="text-sm text-slate-500">
+          {shiny ? 'Chromatiques' : `Vus : ${seenCount} · Capturés`} :{' '}
+          {`${progress.caught} / ${progress.total} (${progress.percent.toFixed(1)} %)`}
+        </p>
+      </div>
+      <ProgressBar className="mt-3" value={progress.percent / 100} />
+      {formsTotal > 0 && (
+        <>
+          <p className="mt-3 text-xs text-slate-500">
+            Formes alternatives (hors pourcentage) : {formsCaught} / {formsTotal} (
+            {((formsCaught / formsTotal) * 100).toFixed(1)} %)
+          </p>
+          <ProgressBar
+            className="mt-1"
+            value={formsCaught / formsTotal}
+            barClassName="bg-[#48a8e8]"
+          />
+        </>
+      )}
+    </div>
+  );
+}
+
+/** Pokédex normal ou chromatique, puis tous, capturés ou manquants. */
+function DexFilters({
+  shiny,
+  setShiny,
+  filter,
+  setFilter,
+}: {
+  shiny: boolean;
+  setShiny: (shiny: boolean) => void;
+  filter: Filter;
+  setFilter: (filter: Filter) => void;
+}) {
+  return (
+    <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <div className="flex gap-2">
+        <button
+          className={shiny ? 'btn-ghost' : 'btn-primary'}
+          onClick={() => setShiny(false)}
+          aria-pressed={!shiny}
+        >
+          Normal
+        </button>
+        <button
+          className={shiny ? 'btn-primary' : 'btn-ghost'}
+          onClick={() => setShiny(true)}
+          aria-pressed={shiny}
+        >
+          <ShinyStar className={shiny ? 'text-white' : ''} /> Chromatique
+        </button>
+      </div>
+      <span className="h-0.5 rounded-full bg-slate-300 sm:mx-1 sm:h-auto sm:w-0.5 dark:bg-slate-500" />
+      <div className="flex gap-1.5 sm:gap-2">
+        {(
+          [
+            ['all', 'Tous'],
+            ['caught', 'Capturés'],
+            ['missing', 'Manquants'],
+          ] as const
+        ).map(([value, label]) => (
+          <button
+            key={value}
+            className={`${filter === value ? 'btn-primary' : 'btn-ghost'} max-sm:flex-1 max-sm:px-2 max-sm:py-2 max-sm:text-[9px]`}
+            onClick={() => setFilter(value)}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+    </div>
   );
 }

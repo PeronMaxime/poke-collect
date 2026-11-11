@@ -22,11 +22,8 @@ const sameFavorite = (a: FavoritePokemonDto | null, b: FavoritePokemonDto | null
   a === b ||
   (!!a && !!b && a.speciesId === b.speciesId && a.formId === b.formId && a.shiny === b.shiny);
 
-/**
- * Choix du Pokémon favori (son avatar sur la fiche, les classements, la recherche et sa guilde) :
- * parmi les espèces et formes capturées au Pokédex, en chromatique si capturées ainsi.
- */
-export function FavoritePicker({
+/** État du choix du favori : espèces et formes capturées, recherche, enregistrement. */
+function useFavoritePicker({
   ctx,
   starterSpeciesId,
   current,
@@ -108,6 +105,46 @@ export function FavoritePicker({
       ? speciesName(ctx, starterSpeciesId)
       : null;
 
+  return {
+    starterSpeciesId,
+    current,
+    onClose,
+    picked,
+    setPicked,
+    search,
+    setSearch,
+    onlyShiny,
+    setOnlyShiny,
+    save,
+    shown,
+    shownKey,
+    loading,
+    shinyCount,
+    pickedName,
+  };
+}
+
+/** Ce qu'affichent les pièces de `FavoritePicker`. */
+type FavoritePickerModel = ReturnType<typeof useFavoritePicker>;
+
+/**
+ * Choix du Pokémon favori (son avatar sur la fiche, les classements, la recherche et sa guilde) :
+ * parmi les espèces et formes capturées au Pokédex, en chromatique si capturées ainsi.
+ */
+export function FavoritePicker({
+  ctx,
+  starterSpeciesId,
+  current,
+  onClose,
+}: {
+  ctx: GameContext;
+  starterSpeciesId: number | null;
+  /** Favori choisi (null : le starter). */
+  current: FavoritePokemonDto | null;
+  onClose: () => void;
+}) {
+  const m = useFavoritePicker({ ctx, starterSpeciesId, current, onClose });
+  const { search, setSearch, onlyShiny, setOnlyShiny, shown, shinyCount } = m;
   return (
     <TeamPickerDialog open onClose={onClose} title="Pokémon favori">
       <div className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden p-3 sm:p-4">
@@ -135,95 +172,106 @@ export function FavoritePicker({
             {shown.length} Pokémon
           </span>
         </section>
-        <section
-          aria-label="Pokémon capturés"
-          className="tile min-h-0 flex-1 overflow-y-auto p-1.5"
-        >
-          {loading ? (
-            <p className="p-3 text-sm text-slate-500">Chargement…</p>
-          ) : (
-            <div className="grid grid-cols-[repeat(auto-fill,minmax(4.25rem,1fr))] gap-1 sm:grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))]">
-              <ProgressiveItems items={shown} resetKey={shownKey}>
-                {(c) => {
-                  const selected = sameFavorite(picked, c);
-                  return (
-                    <button
-                      key={c.key}
-                      type="button"
-                      onClick={() => setPicked(c)}
-                      aria-pressed={selected}
-                      title={`${c.name}${c.shiny ? ' chromatique' : ''}`}
-                      className={`flex w-full min-w-0 flex-col items-center gap-0.5 rounded-md border-2 p-1 text-center transition ${
-                        selected
-                          ? SELECTED_CELL
-                          : 'border-transparent hover:border-well-line hover:bg-well/40'
-                      }`}
-                    >
-                      <span
-                        className={`sprite-well size-14 sm:size-16 ${c.shiny ? 'shiny-well' : ''}`}
-                      >
-                        <PokemonSprite
-                          speciesId={c.speciesId}
-                          formId={c.formId}
-                          shiny={c.shiny}
-                          size={56}
-                          className="h-auto w-[92%]"
-                        />
-                      </span>
-                      <span className="w-full truncate text-xs font-semibold">
-                        {c.name} {c.shiny && <ShinyStar />}
-                      </span>
-                    </button>
-                  );
-                }}
-              </ProgressiveItems>
-              {shown.length === 0 && (
-                <p className="col-span-full p-3 text-sm text-slate-500 dark:text-slate-400">
-                  Aucun Pokémon capturé ne correspond.
-                </p>
-              )}
-            </div>
-          )}
-        </section>
+        <FavoriteChoices m={m} />
       </div>
 
-      <footer className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-t-[3px] border-ink bg-tile px-3 py-2.5 sm:px-4">
-        {save.error ? (
-          <StatusPill tone="bad" text={errorText(save.error)} />
-        ) : (
-          <StatusPill
-            tone={picked ? 'ok' : 'idle'}
-            text={
-              pickedName
-                ? `${picked ? 'Favori' : 'Starter'} : ${pickedName}${picked?.shiny ? ' chromatique' : ''}`
-                : 'Touche un Pokémon'
-            }
-          />
-        )}
-        <span className="hidden min-w-0 flex-1 sm:block" />
-        <div className="grid w-full grid-cols-[auto_auto_minmax(0,1fr)] gap-2 sm:flex sm:w-auto">
-          <button
-            type="button"
-            className="btn-ghost"
-            onClick={() => setPicked(null)}
-            disabled={picked === null || starterSpeciesId === null}
-            title="Afficher de nouveau ton starter"
-          >
-            Starter
-          </button>
-          <button type="button" className="btn-ghost" onClick={onClose}>
-            Annuler
-          </button>
-          <button
-            type="button"
-            className="btn-primary px-6"
-            disabled={save.isPending || sameFavorite(picked, current)}
-            onClick={() => save.mutate(picked)}
-          >
-            Enregistrer
-          </button>
-        </div>
-      </footer>
+      <FavoriteFooter m={m} />
     </TeamPickerDialog>
+  );
+}
+
+/** Grille des espèces et formes capturées, filtrée par la recherche. */
+function FavoriteChoices({ m }: { m: FavoritePickerModel }) {
+  const { picked, setPicked, shown, shownKey, loading } = m;
+  return (
+    <section aria-label="Pokémon capturés" className="tile min-h-0 flex-1 overflow-y-auto p-1.5">
+      {loading ? (
+        <p className="p-3 text-sm text-slate-500">Chargement…</p>
+      ) : (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(4.25rem,1fr))] gap-1 sm:grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))]">
+          <ProgressiveItems items={shown} resetKey={shownKey}>
+            {(c) => {
+              const selected = sameFavorite(picked, c);
+              return (
+                <button
+                  key={c.key}
+                  type="button"
+                  onClick={() => setPicked(c)}
+                  aria-pressed={selected}
+                  title={`${c.name}${c.shiny ? ' chromatique' : ''}`}
+                  className={`flex w-full min-w-0 flex-col items-center gap-0.5 rounded-md border-2 p-1 text-center transition ${
+                    selected
+                      ? SELECTED_CELL
+                      : 'border-transparent hover:border-well-line hover:bg-well/40'
+                  }`}
+                >
+                  <span className={`sprite-well size-14 sm:size-16 ${c.shiny ? 'shiny-well' : ''}`}>
+                    <PokemonSprite
+                      speciesId={c.speciesId}
+                      formId={c.formId}
+                      shiny={c.shiny}
+                      size={56}
+                      className="h-auto w-[92%]"
+                    />
+                  </span>
+                  <span className="w-full truncate text-xs font-semibold">
+                    {c.name} {c.shiny && <ShinyStar />}
+                  </span>
+                </button>
+              );
+            }}
+          </ProgressiveItems>
+          {shown.length === 0 && (
+            <p className="col-span-full p-3 text-sm text-slate-500 dark:text-slate-400">
+              Aucun Pokémon capturé ne correspond.
+            </p>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+/** Pied du choix : erreur d'enregistrement, Annuler, Retirer, Choisir. */
+function FavoriteFooter({ m }: { m: FavoritePickerModel }) {
+  const { starterSpeciesId, current, onClose, picked, setPicked, save, pickedName } = m;
+  return (
+    <footer className="flex shrink-0 flex-wrap items-center gap-x-3 gap-y-2 border-t-[3px] border-ink bg-tile px-3 py-2.5 sm:px-4">
+      {save.error ? (
+        <StatusPill tone="bad" text={errorText(save.error)} />
+      ) : (
+        <StatusPill
+          tone={picked ? 'ok' : 'idle'}
+          text={
+            pickedName
+              ? `${picked ? 'Favori' : 'Starter'} : ${pickedName}${picked?.shiny ? ' chromatique' : ''}`
+              : 'Touche un Pokémon'
+          }
+        />
+      )}
+      <span className="hidden min-w-0 flex-1 sm:block" />
+      <div className="grid w-full grid-cols-[auto_auto_minmax(0,1fr)] gap-2 sm:flex sm:w-auto">
+        <button
+          type="button"
+          className="btn-ghost"
+          onClick={() => setPicked(null)}
+          disabled={picked === null || starterSpeciesId === null}
+          title="Afficher de nouveau ton starter"
+        >
+          Starter
+        </button>
+        <button type="button" className="btn-ghost" onClick={onClose}>
+          Annuler
+        </button>
+        <button
+          type="button"
+          className="btn-primary px-6"
+          disabled={save.isPending || sameFavorite(picked, current)}
+          onClick={() => save.mutate(picked)}
+        >
+          Enregistrer
+        </button>
+      </div>
+    </footer>
   );
 }

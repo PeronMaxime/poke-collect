@@ -138,7 +138,8 @@ export function WikiPokemonPage({
   );
 }
 
-function PokemonList({
+/** Liste du wiki filtrée et triée selon les filtres, et la valeur affichée par case. */
+function pokemonListView({
   ctx,
   entries,
   isCaught,
@@ -196,77 +197,124 @@ function PokemonList({
     f.forms !== 'all' ||
     f.dex !== 'all';
 
+  return {
+    ctx,
+    isCaught,
+    f,
+    onChange,
+    sortValue,
+    list,
+    showValue,
+    filtered,
+  };
+}
+
+/** Ce qu'affichent les pièces de `PokemonList`. */
+type PokemonListModel = ReturnType<typeof pokemonListView>;
+
+function PokemonList({
+  ctx,
+  entries,
+  isCaught,
+  filters: f,
+  onChange,
+}: {
+  ctx: GameContext;
+  entries: WikiEntry[];
+  isCaught: (e: WikiEntry) => boolean;
+  filters: PokemonFilters;
+  onChange: (patch: Partial<PokemonFilters>) => void;
+}) {
+  const m = pokemonListView({ ctx, entries, isCaught, filters: f, onChange });
   return (
     <div className="space-y-4">
       <WikiBreadcrumb items={[{ label: 'Pokémon' }]} />
-      <div className="card space-y-3 p-4">
-        <div className="flex flex-wrap gap-2">
-          <input
-            className="input max-w-64"
-            placeholder="Nom ou numéro…"
-            value={f.search}
-            onChange={(e) => onChange({ search: e.target.value })}
-          />
-          <Select
-            value={f.regionId}
-            onChange={(regionId) => onChange({ regionId })}
-            options={[
-              ['all', 'Toutes les régions'],
-              ...ctx.regions.map((r): [string, string] => [r.id, `Pokédex de ${r.name}`]),
-            ]}
-          />
-          <Select
-            value={f.type}
-            onChange={(type) => onChange({ type })}
-            options={[
-              ['all', 'Tous les types'],
-              ...ATTACK_TYPES.map((t): [string, string] => [t, typeLabel(t)]),
-            ]}
-          />
-          <Select
-            value={f.category}
-            onChange={(category) => onChange({ category: category as PokemonFilters['category'] })}
-            options={Object.entries(CATEGORIES)}
-          />
-          <Select
-            value={f.forms}
-            onChange={(forms) => onChange({ forms: forms as PokemonFilters['forms'] })}
-            options={Object.entries(FORM_FILTERS)}
-          />
-          <Select
-            value={f.dex}
-            onChange={(dex) => onChange({ dex: dex as PokemonFilters['dex'] })}
-            options={Object.entries(DEX_FILTERS)}
-          />
-        </div>
-        <div className="flex flex-wrap items-center gap-2 text-sm">
-          <span className="text-slate-500">Trier par</span>
-          <Select
-            value={f.sort}
-            onChange={(sort) => onChange({ sort: sort as SortKey })}
-            options={SORTS.map((s): [string, string] => [s.id, s.label])}
-          />
-          <button
-            className="btn-ghost py-1.5"
-            onClick={() => onChange({ descending: !f.descending })}
-            title="Inverser l’ordre"
-          >
-            {f.descending ? '↓ Décroissant' : '↑ Croissant'}
-          </button>
-          {filtered && (
-            <button
-              className="text-brand-600 hover:underline dark:text-brand-500"
-              onClick={() =>
-                onChange({ ...DEFAULT_POKEMON_FILTERS, sort: f.sort, descending: f.descending })
-              }
-            >
-              Réinitialiser les filtres
-            </button>
-          )}
-          <span className="ml-auto text-slate-500">{list.length} Pokémon</span>
-        </div>
-      </div>
+      <PokemonListFilters m={m} />
 
+      <PokemonListBody m={m} />
+    </div>
+  );
+}
+
+/** Filtres de la liste : recherche, types, génération, tri. */
+function PokemonListFilters({ m }: { m: PokemonListModel }) {
+  const { ctx, f, onChange, list, filtered } = m;
+  return (
+    <div className="card space-y-3 p-4">
+      <div className="flex flex-wrap gap-2">
+        <input
+          className="input max-w-64"
+          placeholder="Nom ou numéro…"
+          value={f.search}
+          onChange={(e) => onChange({ search: e.target.value })}
+        />
+        <Select
+          value={f.regionId}
+          onChange={(regionId) => onChange({ regionId })}
+          options={[
+            ['all', 'Toutes les régions'],
+            ...ctx.regions.map((r): [string, string] => [r.id, `Pokédex de ${r.name}`]),
+          ]}
+        />
+        <Select
+          value={f.type}
+          onChange={(type) => onChange({ type })}
+          options={[
+            ['all', 'Tous les types'],
+            ...ATTACK_TYPES.map((t): [string, string] => [t, typeLabel(t)]),
+          ]}
+        />
+        <Select
+          value={f.category}
+          onChange={(category) => onChange({ category: category as PokemonFilters['category'] })}
+          options={Object.entries(CATEGORIES)}
+        />
+        <Select
+          value={f.forms}
+          onChange={(forms) => onChange({ forms: forms as PokemonFilters['forms'] })}
+          options={Object.entries(FORM_FILTERS)}
+        />
+        <Select
+          value={f.dex}
+          onChange={(dex) => onChange({ dex: dex as PokemonFilters['dex'] })}
+          options={Object.entries(DEX_FILTERS)}
+        />
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-slate-500">Trier par</span>
+        <Select
+          value={f.sort}
+          onChange={(sort) => onChange({ sort: sort as SortKey })}
+          options={SORTS.map((s): [string, string] => [s.id, s.label])}
+        />
+        <button
+          className="btn-ghost py-1.5"
+          onClick={() => onChange({ descending: !f.descending })}
+          title="Inverser l’ordre"
+        >
+          {f.descending ? '↓ Décroissant' : '↑ Croissant'}
+        </button>
+        {filtered && (
+          <button
+            className="text-brand-600 hover:underline dark:text-brand-500"
+            onClick={() =>
+              onChange({ ...DEFAULT_POKEMON_FILTERS, sort: f.sort, descending: f.descending })
+            }
+          >
+            Réinitialiser les filtres
+          </button>
+        )}
+        <span className="ml-auto text-slate-500">{list.length} Pokémon</span>
+      </div>
+    </div>
+  );
+}
+
+/** La liste elle-même, ou « aucun Pokémon » si les filtres ne laissent rien. */
+function PokemonListBody({ m }: { m: PokemonListModel }) {
+  const { isCaught, sortValue, list, showValue } = m;
+  return (
+    <>
       {list.length === 0 ? (
         <p className="text-slate-500">Aucun Pokémon ne correspond à ces critères.</p>
       ) : (
@@ -304,7 +352,7 @@ function PokemonList({
           ))}
         </div>
       )}
-    </div>
+    </>
   );
 }
 

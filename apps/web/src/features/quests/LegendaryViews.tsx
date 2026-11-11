@@ -47,7 +47,8 @@ import { formatXp, usePlayerBonuses } from '../common/XpPreview';
 export const formatCaptureChance = (target: QuestPokemon) =>
   `${target.battle.captureChance.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`;
 
-export function LaunchLegendaryDialog({
+/** État du départ d'un combat légendaire : équipe, attaques, vérifications et aperçu. */
+function useLaunchLegendary({
   ctx,
   quest,
   target,
@@ -96,39 +97,70 @@ export function LaunchLegendaryDialog({
   const name = speciesName(ctx, target.speciesId, target.formId);
   const level = legendaryBattleLevel(target);
 
+  return {
+    ctx,
+    quest,
+    target,
+    attempts,
+    onClose,
+    boss,
+    battle,
+    site,
+    picker,
+    moves,
+    setMoves,
+    maxTeamSize,
+    start,
+    members,
+    withMoves,
+    errors,
+    env,
+    power,
+    maxXp,
+    name,
+    level,
+  };
+}
+
+/** Ce qu'affichent les pièces de `LaunchLegendaryDialog`. */
+type LaunchLegendaryDialogModel = ReturnType<typeof useLaunchLegendary>;
+
+export function LaunchLegendaryDialog({
+  ctx,
+  quest,
+  target,
+  attempts,
+  onClose,
+}: {
+  ctx: GameContext;
+  quest: Quest;
+  target: QuestPokemon;
+  /** Combats déjà livrés contre ce légendaire (chaîne chromatique). */
+  attempts: number;
+  onClose: () => void;
+}) {
+  const m = useLaunchLegendary({ ctx, quest, target, attempts, onClose });
+  const {
+    boss,
+    battle,
+    site,
+    picker,
+    moves,
+    setMoves,
+    maxTeamSize,
+    start,
+    members,
+    withMoves,
+    errors,
+    env,
+    power,
+    maxXp,
+    name,
+    level,
+  } = m;
   return (
     <Modal open onClose={onClose} wide>
-      <div className="flex flex-wrap items-center gap-3">
-        <HoverBubble
-          width={232}
-          height={420}
-          content={boss && <EnemyInfo fighter={boss} />}
-          className="grid size-24 shrink-0 place-items-center rounded-xl bg-slate-100 dark:bg-slate-800"
-        >
-          <PokemonSprite
-            speciesId={target.speciesId}
-            formId={target.formId}
-            kind="artwork"
-            size={88}
-          />
-        </HoverBubble>
-        <div className="min-w-0 flex-1">
-          <p className="text-xs font-medium text-amber-600">✦ Combat légendaire · {quest.name}</p>
-          <h2 className="text-xl font-bold">
-            {name} N.{level}
-          </h2>
-          <p className="text-sm text-slate-500">
-            Seul contre ton équipe · PV ×{battle.hpMultiplier} ·{' '}
-            {formatTimeLimit(battle.timeLimitSeconds)} pour le vaincre
-          </p>
-          {battle.enragePercent > 0 && (
-            <p className="text-sm text-red-600 dark:text-red-400">
-              Sous {Math.round(battle.enrageHpFraction * 100)} % de ses PV, il se déchaîne : +
-              {battle.enragePercent} % à ses statistiques.
-            </p>
-          )}
-        </div>
-      </div>
+      <LegendaryHeader m={m} />
 
       <TeamSection
         ctx={ctx}
@@ -174,26 +206,7 @@ export function LaunchLegendaryDialog({
         )}
       </TeamSection>
 
-      <div className="mt-5 grid gap-1 rounded-xl bg-slate-100 p-3 text-sm dark:bg-slate-800/60">
-        <p>
-          <span className="font-semibold">Victoire :</span> {formatXp(maxXp)} par Pokémon, puis une
-          seule Ball : {formatCaptureChance(target)} de chances de le capturer (100 % avec une
-          Master Ball).
-        </p>
-        <p>
-          <span className="font-semibold">Chromatique :</span>{' '}
-          {attempts > 0
-            ? `chaîne ${attempts} (${formatMultiplier(chainMultiplier(ctx, attempts))})`
-            : 'chaque combat livré allonge la chaîne'}
-          , décidé dès l’entrée en combat.
-        </p>
-        <p className="mt-2 text-xs text-slate-500">
-          Défaite, fuite ou Ball ratée : tu pourras le défier de nouveau dans{' '}
-          {formatDuration(ctx.balance.legendary.retryCooldownMinutes)}. Les Pokémon mis K.O. le
-          restent jusqu’à leurs soins au Centre Pokémon. Une fois capturé, il arrive au niveau{' '}
-          {target.level} avec {target.perfectIvs} IV parfaits.
-        </p>
-      </div>
+      <LegendaryTerms m={m} />
 
       {members.length > 0 && errors.length > 0 && (
         <ul className="mt-4 space-y-1 text-sm text-red-600">
@@ -225,14 +238,76 @@ export function LaunchLegendaryDialog({
   );
 }
 
+/** Le légendaire à affronter : sprite, niveau, enragement. */
+function LegendaryHeader({ m }: { m: LaunchLegendaryDialogModel }) {
+  const { quest, target, boss, battle, name, level } = m;
+  return (
+    <div className="flex flex-wrap items-center gap-3">
+      <HoverBubble
+        width={232}
+        height={420}
+        content={boss && <EnemyInfo fighter={boss} />}
+        className="grid size-24 shrink-0 place-items-center rounded-xl bg-slate-100 dark:bg-slate-800"
+      >
+        <PokemonSprite
+          speciesId={target.speciesId}
+          formId={target.formId}
+          kind="artwork"
+          size={88}
+        />
+      </HoverBubble>
+      <div className="min-w-0 flex-1">
+        <p className="text-xs font-medium text-amber-600">✦ Combat légendaire · {quest.name}</p>
+        <h2 className="text-xl font-bold">
+          {name} N.{level}
+        </h2>
+        <p className="text-sm text-slate-500">
+          Seul contre ton équipe · PV ×{battle.hpMultiplier} ·{' '}
+          {formatTimeLimit(battle.timeLimitSeconds)} pour le vaincre
+        </p>
+        {battle.enragePercent > 0 && (
+          <p className="text-sm text-red-600 dark:text-red-400">
+            Sous {Math.round(battle.enrageHpFraction * 100)} % de ses PV, il se déchaîne : +
+            {battle.enragePercent} % à ses statistiques.
+          </p>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Ce que la victoire rapporte, la chance chromatique et ce que coûte une défaite. */
+function LegendaryTerms({ m }: { m: LaunchLegendaryDialogModel }) {
+  const { ctx, target, attempts, maxXp } = m;
+  return (
+    <div className="mt-5 grid gap-1 rounded-xl bg-slate-100 p-3 text-sm dark:bg-slate-800/60">
+      <p>
+        <span className="font-semibold">Victoire :</span> {formatXp(maxXp)} par Pokémon, puis une
+        seule Ball : {formatCaptureChance(target)} de chances de le capturer (100 % avec une Master
+        Ball).
+      </p>
+      <p>
+        <span className="font-semibold">Chromatique :</span>{' '}
+        {attempts > 0
+          ? `chaîne ${attempts} (${formatMultiplier(chainMultiplier(ctx, attempts))})`
+          : 'chaque combat livré allonge la chaîne'}
+        , décidé dès l’entrée en combat.
+      </p>
+      <p className="mt-2 text-xs text-slate-500">
+        Défaite, fuite ou Ball ratée : tu pourras le défier de nouveau dans{' '}
+        {formatDuration(ctx.balance.legendary.retryCooldownMinutes)}. Les Pokémon mis K.O. le
+        restent jusqu’à leurs soins au Centre Pokémon. Une fois capturé, il arrive au niveau{' '}
+        {target.level} avec {target.perfectIvs} IV parfaits.
+      </p>
+    </div>
+  );
+}
+
 /** Durée de l'animation de la Ball (secousses) avant d'annoncer l'issue. */
 const THROW_MS = 2400;
 
-/**
- * Légendaire vaincu : le joueur choisit sa Ball (une seule). La chance ne dépend pas de la Ball,
- * sauf la Master Ball (capture assurée). Animation de la Ball, puis capture ou fuite.
- */
-export function LegendaryCaptureDialog({
+/** État de la capture d'un légendaire vaincu : Balls du sac, lancer, révélation. */
+function useLegendaryCapture({
   ctx,
   battleId,
   target,
@@ -290,6 +365,49 @@ export function LegendaryCaptureDialog({
   const caught = capture.data?.pokemon ?? null;
   const throwing = thrownAt !== null && !revealed;
 
+  return {
+    ctx,
+    target,
+    isShiny,
+    onClose,
+    reduced,
+    owned,
+    balls,
+    setBallId,
+    selected,
+    guaranteed,
+    thrownAt,
+    setThrownAt,
+    revealed,
+    capture,
+    name,
+    caught,
+    throwing,
+  };
+}
+
+/** Ce qu'affichent les pièces de `LegendaryCaptureDialog`. */
+type LegendaryCaptureDialogModel = ReturnType<typeof useLegendaryCapture>;
+
+/**
+ * Légendaire vaincu : le joueur choisit sa Ball (une seule). La chance ne dépend pas de la Ball,
+ * sauf la Master Ball (capture assurée). Animation de la Ball, puis capture ou fuite.
+ */
+export function LegendaryCaptureDialog({
+  ctx,
+  battleId,
+  target,
+  isShiny,
+  onClose,
+}: {
+  ctx: GameContext;
+  battleId: string;
+  target: QuestPokemon;
+  isShiny: boolean;
+  onClose: () => void;
+}) {
+  const m = useLegendaryCapture({ ctx, battleId, target, isShiny, onClose });
+  const { revealed, capture, name, caught, throwing } = m;
   return (
     <Modal open onClose={throwing ? () => {} : onClose}>
       <div className="flex flex-col items-center text-center">
@@ -302,59 +420,7 @@ export function LegendaryCaptureDialog({
             : `${name} est à terre !`}
         </h2>
 
-        <div className="relative mt-3 grid h-44 w-44 place-items-center">
-          {thrownAt === null || (revealed && !caught) ? (
-            <motion.div
-              initial={reduced ? false : { opacity: 0, scale: 0.6 }}
-              animate={revealed ? { opacity: 0, x: 120 } : { opacity: 1, scale: 1 }}
-              transition={{ duration: revealed ? 0.8 : 0.4 }}
-              className="relative"
-            >
-              {isShiny && <ShinySparkles loop radius={90} />}
-              <PokemonSprite
-                speciesId={target.speciesId}
-                formId={target.formId}
-                shiny={isShiny}
-                kind="artwork"
-                size={160}
-              />
-            </motion.div>
-          ) : (
-            <motion.img
-              src={selected ? itemIcon(ctx, selected) : ''}
-              alt=""
-              className="h-16 w-16 [image-rendering:pixelated]"
-              initial={reduced ? false : { y: -120, scale: 0.6 }}
-              animate={
-                revealed
-                  ? { y: 0, scale: [1, 1.3, 1], rotate: 0 }
-                  : { y: 0, scale: 1, rotate: [0, -25, 25, -25, 25, 0, 0, -25, 25, 0] }
-              }
-              transition={
-                revealed
-                  ? { duration: 0.5 }
-                  : { y: { duration: 0.5 }, rotate: { delay: 0.6, duration: 1.8 } }
-              }
-            />
-          )}
-          {revealed && caught && (
-            <motion.div
-              className="absolute inset-0 grid place-items-center"
-              initial={reduced ? false : { opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.4, type: 'spring' }}
-            >
-              {caught.isShiny && <ShinySparkles loop radius={90} />}
-              <PokemonSprite
-                speciesId={caught.speciesId}
-                formId={caught.formId}
-                shiny={caught.isShiny}
-                kind="artwork"
-                size={160}
-              />
-            </motion.div>
-          )}
-        </div>
+        <CaptureStage m={m} />
 
         {isShiny && !revealed && (
           <p className="mt-1 rounded-xl bg-gradient-to-r from-amber-200 via-yellow-100 to-amber-200 px-3 py-1 font-bold text-amber-900 dark:from-amber-900 dark:via-amber-800 dark:to-amber-900 dark:text-amber-100">
@@ -362,73 +428,163 @@ export function LegendaryCaptureDialog({
           </p>
         )}
 
-        {revealed ? (
-          caught ? (
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              {name} {caught.isShiny && <ShinyStar />} N.{caught.level} rejoint ton PC, avec{' '}
-              {Object.values(caught.ivs).filter((iv) => iv === 31).length} IV parfaits.
-            </p>
-          ) : (
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              La Ball n’a pas tenu. Tu pourras de nouveau le défier dans{' '}
-              {formatDuration(ctx.balance.legendary.retryCooldownMinutes)}.
-            </p>
-          )
-        ) : (
-          <>
-            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
-              Une seule Ball : <strong>{guaranteed ? '100 %' : formatCaptureChance(target)}</strong>{' '}
-              de chances de le capturer. En cas d’échec, il s’enfuit.
-            </p>
-            {balls.length > 0 ? (
-              <select
-                className="input mt-3 max-w-xs"
-                value={selected ?? ''}
-                disabled={thrownAt !== null}
-                onChange={(e) => setBallId(e.target.value)}
-              >
-                {balls.map((b) => (
-                  <option key={b.id} value={b.id}>
-                    {b.name} (× {owned.get(b.id)})
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <p className="mt-3 text-sm text-red-600">
-                Tu n’as aucune Ball : achètes-en à la boutique, il t’attendra.
-              </p>
-            )}
-          </>
-        )}
+        <CaptureChoice m={m} />
         {capture.error && <p className="mt-3 text-sm text-red-600">{errorText(capture.error)}</p>}
 
-        <div className="mt-6 flex justify-center gap-2">
-          {revealed ? (
-            <button className="btn-primary" onClick={onClose}>
-              Continuer
-            </button>
-          ) : (
-            <>
-              <button className="btn-ghost" disabled={throwing} onClick={onClose}>
-                Plus tard
-              </button>
-              <button
-                className="btn-primary flex items-center gap-2"
-                disabled={!selected || thrownAt !== null}
-                onClick={() => {
-                  if (!selected) return;
-                  setThrownAt(Date.now());
-                  capture.mutate(selected);
-                }}
-              >
-                {selected && <img src={itemIcon(ctx, selected)} alt="" className="-my-2 h-7" />}
-                Lancer {selected ? `la ${itemName(ctx, selected)}` : 'une Ball'}
-              </button>
-            </>
-          )}
-        </div>
+        <CaptureActions m={m} />
       </div>
     </Modal>
+  );
+}
+
+/** Le légendaire, puis la Ball lancée et son dénouement. */
+function CaptureStage({ m }: { m: LegendaryCaptureDialogModel }) {
+  const { ctx, target, isShiny, reduced, selected, thrownAt, revealed, caught } = m;
+  return (
+    <div className="relative mt-3 grid h-44 w-44 place-items-center">
+      {thrownAt === null || (revealed && !caught) ? (
+        <motion.div
+          initial={reduced ? false : { opacity: 0, scale: 0.6 }}
+          animate={revealed ? { opacity: 0, x: 120 } : { opacity: 1, scale: 1 }}
+          transition={{ duration: revealed ? 0.8 : 0.4 }}
+          className="relative"
+        >
+          {isShiny && <ShinySparkles loop radius={90} />}
+          <PokemonSprite
+            speciesId={target.speciesId}
+            formId={target.formId}
+            shiny={isShiny}
+            kind="artwork"
+            size={160}
+          />
+        </motion.div>
+      ) : (
+        <motion.img
+          src={selected ? itemIcon(ctx, selected) : ''}
+          alt=""
+          className="h-16 w-16 [image-rendering:pixelated]"
+          initial={reduced ? false : { y: -120, scale: 0.6 }}
+          animate={
+            revealed
+              ? { y: 0, scale: [1, 1.3, 1], rotate: 0 }
+              : { y: 0, scale: 1, rotate: [0, -25, 25, -25, 25, 0, 0, -25, 25, 0] }
+          }
+          transition={
+            revealed
+              ? { duration: 0.5 }
+              : { y: { duration: 0.5 }, rotate: { delay: 0.6, duration: 1.8 } }
+          }
+        />
+      )}
+      {revealed && caught && (
+        <motion.div
+          className="absolute inset-0 grid place-items-center"
+          initial={reduced ? false : { opacity: 0, scale: 0.5 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ delay: 0.4, type: 'spring' }}
+        >
+          {caught.isShiny && <ShinySparkles loop radius={90} />}
+          <PokemonSprite
+            speciesId={caught.speciesId}
+            formId={caught.formId}
+            shiny={caught.isShiny}
+            kind="artwork"
+            size={160}
+          />
+        </motion.div>
+      )}
+    </div>
+  );
+}
+
+/** Après le lancer : le Pokémon capturé ou raté ; avant : le choix de la Ball. */
+function CaptureChoice({ m }: { m: LegendaryCaptureDialogModel }) {
+  const {
+    ctx,
+    target,
+    owned,
+    balls,
+    setBallId,
+    selected,
+    guaranteed,
+    thrownAt,
+    revealed,
+    name,
+    caught,
+  } = m;
+  return (
+    <>
+      {revealed ? (
+        caught ? (
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            {name} {caught.isShiny && <ShinyStar />} N.{caught.level} rejoint ton PC, avec{' '}
+            {Object.values(caught.ivs).filter((iv) => iv === 31).length} IV parfaits.
+          </p>
+        ) : (
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            La Ball n’a pas tenu. Tu pourras de nouveau le défier dans{' '}
+            {formatDuration(ctx.balance.legendary.retryCooldownMinutes)}.
+          </p>
+        )
+      ) : (
+        <>
+          <p className="mt-3 text-sm text-slate-600 dark:text-slate-300">
+            Une seule Ball : <strong>{guaranteed ? '100 %' : formatCaptureChance(target)}</strong>{' '}
+            de chances de le capturer. En cas d’échec, il s’enfuit.
+          </p>
+          {balls.length > 0 ? (
+            <select
+              className="input mt-3 max-w-xs"
+              value={selected ?? ''}
+              disabled={thrownAt !== null}
+              onChange={(e) => setBallId(e.target.value)}
+            >
+              {balls.map((b) => (
+                <option key={b.id} value={b.id}>
+                  {b.name} (× {owned.get(b.id)})
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className="mt-3 text-sm text-red-600">
+              Tu n’as aucune Ball : achètes-en à la boutique, il t’attendra.
+            </p>
+          )}
+        </>
+      )}
+    </>
+  );
+}
+
+/** Boutons : lancer, renoncer, ou fermer une fois le dénouement révélé. */
+function CaptureActions({ m }: { m: LegendaryCaptureDialogModel }) {
+  const { ctx, onClose, selected, thrownAt, setThrownAt, revealed, capture, throwing } = m;
+  return (
+    <div className="mt-6 flex justify-center gap-2">
+      {revealed ? (
+        <button className="btn-primary" onClick={onClose}>
+          Continuer
+        </button>
+      ) : (
+        <>
+          <button className="btn-ghost" disabled={throwing} onClick={onClose}>
+            Plus tard
+          </button>
+          <button
+            className="btn-primary flex items-center gap-2"
+            disabled={!selected || thrownAt !== null}
+            onClick={() => {
+              if (!selected) return;
+              setThrownAt(Date.now());
+              capture.mutate(selected);
+            }}
+          >
+            {selected && <img src={itemIcon(ctx, selected)} alt="" className="-my-2 h-7" />}
+            Lancer {selected ? `la ${itemName(ctx, selected)}` : 'une Ball'}
+          </button>
+        </>
+      )}
+    </div>
   );
 }
 
