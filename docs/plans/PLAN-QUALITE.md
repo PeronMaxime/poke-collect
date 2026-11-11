@@ -428,6 +428,21 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
   Méthode à chaque fois : l'état et les règles sortent dans un hook nommé (`useLaunchExpedition`)
   et des fonctions pures testées ; l'affichage est découpé en sous-composants ; cible ≈ 250 lignes
   par composant, sans dogme.
+  - **En cours** (point du 11 novembre) : domaines 1 et 2 faits, quatre commits locaux sur `dev`.
+    Expéditions : `features/expeditions/launch/` (`useLaunchExpedition`, `preview.ts` et ses tests,
+    `zoneSettings.ts`), `ZoneCard.tsx`, `ActiveExpedition.tsx`, `useExpeditionActions.ts`,
+    `zoneLink.ts`, `ExpeditionRevealView.tsx`, `returnSummary.ts` et ses tests. PC :
+    `features/pc/sheet/` (fiche, blocs, actions, évolutions, popin « Objet ») et
+    `transferMode.tsx`. Pension : `features/daycare/deposit/` (`useDepositDialog`, `boxFilters.ts`).
+    Plus aucune fonction de plus de 150 lignes dans `features/expeditions` ni `features/pc` ;
+    `--max-warnings` est passé de 84 à 72. Reste à faire : domaine 3 à partir de `TeamPicker`
+    (rien n'y est encore modifié), puis 4, 5 et 6 ; environ 35 fonctions dépassent encore
+    150 lignes dans `apps/web`.
+  - Méthode suivie, à reprendre telle quelle : le fichier d'origine est relu en entier, puis
+    découpé par un script qui recopie ses lignes depuis `git show HEAD:<fichier>` (le JSX n'est
+    jamais retapé) ; un hook rend un « modèle » que chaque pièce reçoit en un seul paramètre ; les
+    imports inutiles sont retirés d'après le rapport d'ESLint ; puis lint, deadcode, format,
+    typecheck, tests du jeu et de l'admin, build, plafond de 380 Ko, et un commit par domaine.
 
 - [ ] **5.6 Journal des nouveautés** : les données de `ChangelogPage.tsx` (1 122 lignes) passent
       dans un fichier de données à part, **à l'identique** (les entrées en production ne sont pas
