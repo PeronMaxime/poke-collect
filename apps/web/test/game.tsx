@@ -13,8 +13,10 @@ let players = 0;
 export async function newPlayer(): Promise<{ trainerName: string }> {
   clearSession();
   const n = ++players;
-  const stamp = Date.now() % 1_000_000;
-  const trainerName = `Test${stamp}${n}`;
+  // Tiré au hasard : les fichiers de tests tournent en parallèle, chacun avec son compteur, et
+  // deux d'entre eux peuvent commencer dans la même milliseconde.
+  const stamp = Math.random().toString(36).slice(2, 10);
+  const trainerName = `T${stamp}${n}`;
   await api('/api/auth/sign-up/email', {
     method: 'POST',
     json: { email: `ui-${stamp}-${n}@example.com`, password: 'motdepasse-solide', name: 'UI' },
