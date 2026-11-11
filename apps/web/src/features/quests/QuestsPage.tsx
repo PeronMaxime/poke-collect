@@ -37,7 +37,7 @@ import {
 import { trainerBattleLink } from '../battles/BattlesPage';
 import { CombatWindow, OngoingCombatBanner, useCombatWindow } from '../common/CombatWindow';
 import { DungeonCombat } from '../common/DungeonCombat';
-import { zoneLink } from '../expeditions/ExpeditionsPage';
+import { zoneLink } from '../expeditions/zoneLink';
 import {
   LaunchLegendaryDialog,
   LegendaryCaptureDialog,

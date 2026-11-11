@@ -20,11 +20,11 @@ import type {
 } from '@poke/shared';
 import { TagBadge, TagToggleList } from '@web/components/tags';
 import { Modal, PokemonSprite } from '@web/components/ui';
-import { ZoneCard } from '@web/features/expeditions/ExpeditionsPage';
+import { ZoneCard } from '@web/features/expeditions/ZoneCard';
 import { NewbornActionsView } from '@web/features/daycare/HatchReveal';
 import { LAUNCH_DIALOG_CLASS } from '@web/features/common/dialogParts';
 import { LaunchExpeditionForm } from '@web/features/expeditions/launch/LaunchExpeditionForm';
-import { ExpeditionRevealView } from '@web/features/expeditions/LootReveal';
+import { ExpeditionRevealView } from '@web/features/expeditions/ExpeditionRevealView';
 import {
   TeamPicker,
   nameMatcher,

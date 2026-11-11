@@ -10,7 +10,7 @@
     "dev": "pnpm --parallel --filter @poke/api --filter @poke/web --filter @poke/admin dev",
     "build": "pnpm -r build",
     "typecheck": "pnpm -r typecheck",
-    "lint": "eslint . --max-warnings 82",
+    "lint": "eslint . --max-warnings 78",
     "deadcode": "knip",
     "format": "prettier --write .",
     "format:check": "prettier --check .",

@@ -20,7 +20,7 @@ import {
   unlockConditionText,
 } from '../../lib/labels';
 import { InfoCell, LAUNCH_DIALOG_CLASS, SELECTED_CELL, SheetSection } from '../common/dialogParts';
-import { zoneLink } from '../expeditions/ExpeditionsPage';
+import { zoneLink } from '../expeditions/zoneLink';
 import { levelRange, pokemonSources } from './pokemonSources';
 import { wikiAbilityLink, wikiPokemonLink } from '../wiki/wiki';
 
