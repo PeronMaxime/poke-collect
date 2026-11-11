@@ -100,290 +100,26 @@ export function TelemetryPage() {
       {query.isError && <p className="text-red-600">Impossible de charger la télémétrie.</p>}
       {t && (
         <>
-          <p className="text-xs text-slate-500">Calculée le {formatDate(t.generatedAt)}.</p>
-          <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
-            <Tile
-              label="Joueurs"
-              value={fmt(t.players.total)}
-              hint={`${fmt(t.players.withStarter)} avec un starter`}
-            />
-            <Tile label="Nouveaux (7 j)" value={fmt(t.players.new7d)} />
-            <Tile label="Actifs (24 h)" value={fmt(t.players.active1d)} />
-            <Tile label="Actifs (7 j)" value={fmt(t.players.active7d)} />
-            <Tile
-              label={`Gagné / dépensé (${t.days} j)`}
-              value={`${fmt(t.economy.earned)} ₽`}
-              hint={`${fmt(t.economy.spent)} ₽ dépensés en boutique`}
-            />
-            <Tile
-              label="Solde médian"
-              value={
-                t.economy.medianBalance === null
-                  ? '—'
-                  : `${fmt(Math.round(t.economy.medianBalance))} ₽`
-              }
-            />
-          </div>
+          <PlayerTiles t={t} />
 
-          <section className="card overflow-x-auto p-0">
-            <h2 className="px-4 pt-4 font-semibold">Parcours des joueurs</h2>
-            <p className="px-4 text-xs text-slate-500">
-              Part des joueurs (avec starter) ayant atteint chaque étape, et temps écoulé depuis
-              leur inscription. Une étape peu atteinte avec un temps long signale un goulet.
-            </p>
-            <table className="mt-2 w-full min-w-[640px] text-sm">
-              <thead className="text-left text-xs text-slate-500">
-                <tr>
-                  <th className="px-4 py-2 font-normal">Étape</th>
-                  <th className="px-4 py-2 font-normal">Atteinte</th>
-                  <th className="px-4 py-2 text-right font-normal">Joueurs</th>
-                  <th className="px-4 py-2 text-right font-normal">Médiane</th>
-                  <th className="px-4 py-2 text-right font-normal">90 %</th>
-                </tr>
-              </thead>
-              <tbody>
-                {t.steps.map((s) => (
-                  <tr
-                    key={`${s.kind}:${s.id}`}
-                    className="border-t border-slate-100 dark:border-slate-800"
-                  >
-                    <td className="px-4 py-1.5">
-                      <span className="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
-                        {KIND_LABELS[s.kind]}
-                      </span>
-                      {s.label}
-                    </td>
-                    <td className="px-4 py-1.5">
-                      <Meter value={s.reachedPercent} title={durationTitle(s)} />
-                    </td>
-                    <td className="px-4 py-1.5 text-right font-mono">{fmt(s.players)}</td>
-                    <td className="px-4 py-1.5 text-right font-mono">
-                      {formatHours(s.medianHours)}
-                    </td>
-                    <td className="px-4 py-1.5 text-right font-mono">{formatHours(s.p90Hours)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </section>
+          <JourneyTable t={t} />
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <section className="card overflow-x-auto p-0">
-              <h2 className="px-4 pt-4 font-semibold">Dresseurs ({t.days} j)</h2>
-              <p className="px-4 text-xs text-slate-500">
-                « Bloqués » : joueurs qui ont perdu sans jamais gagner. Peu de victoires, ou
-                beaucoup de bloqués, désigne un dresseur trop dur.
-              </p>
-              <table className="mt-2 w-full text-sm">
-                <thead className="text-left text-xs text-slate-500">
-                  <tr>
-                    <th className="px-4 py-2 font-normal">Dresseur</th>
-                    <th className="px-4 py-2 text-right font-normal">Combats</th>
-                    <th className="px-4 py-2 font-normal">Victoires</th>
-                    <th className="px-4 py-2 text-right font-normal">Fuites</th>
-                    <th className="px-4 py-2 text-right font-normal">Bloqués</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...t.trainers]
-                    .sort((a, b) => b.stuckPlayers - a.stuckPlayers || b.battles - a.battles)
-                    .map((tr) => (
-                      <tr
-                        key={tr.trainerId}
-                        className="border-t border-slate-100 dark:border-slate-800"
-                      >
-                        <td className="px-4 py-1.5">{tr.label}</td>
-                        <td className="px-4 py-1.5 text-right font-mono">{fmt(tr.battles)}</td>
-                        <td className="px-4 py-1.5">
-                          <Meter
-                            value={percent(tr.wins, tr.battles)}
-                            title={`${tr.wins} victoire(s), ${tr.losses} défaite(s)`}
-                          />
-                        </td>
-                        <td className="px-4 py-1.5 text-right font-mono">{fmt(tr.fled)}</td>
-                        <td
-                          className={`px-4 py-1.5 text-right font-mono ${tr.stuckPlayers > 0 ? 'font-semibold text-amber-700 dark:text-amber-400' : ''}`}
-                        >
-                          {tr.stuckPlayers > 0 ? `⚠ ${fmt(tr.stuckPlayers)}` : '0'}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </section>
+            <TrainersTable t={t} />
 
-            <section className="card overflow-x-auto p-0">
-              <h2 className="px-4 pt-4 font-semibold">Zones ({t.days} j)</h2>
-              <p className="px-4 text-xs text-slate-500">
-                Expéditions récupérées sur la période. Une zone délaissée ou au taux de capture
-                faible est à revoir (PE minimale, rencontres, durées).
-              </p>
-              <table className="mt-2 w-full text-sm">
-                <thead className="text-left text-xs text-slate-500">
-                  <tr>
-                    <th className="px-4 py-2 font-normal">Zone</th>
-                    <th className="px-4 py-2 text-right font-normal">Expéditions</th>
-                    <th className="px-4 py-2 text-right font-normal">Joueurs</th>
-                    <th className="px-4 py-2 text-right font-normal">Durée moy.</th>
-                    <th className="px-4 py-2 font-normal">Capture</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {t.zones.map((z) => (
-                    <tr key={z.zoneId} className="border-t border-slate-100 dark:border-slate-800">
-                      <td className="px-4 py-1.5">{z.label}</td>
-                      <td className="px-4 py-1.5 text-right font-mono">{fmt(z.expeditions)}</td>
-                      <td className="px-4 py-1.5 text-right font-mono">{fmt(z.players)}</td>
-                      <td className="px-4 py-1.5 text-right font-mono">
-                        {z.avgDurationMinutes === null ? '—' : `${z.avgDurationMinutes} min`}
-                      </td>
-                      <td className="px-4 py-1.5">
-                        <Meter
-                          value={percent(z.captures, z.encounters)}
-                          title={`${z.captures} capture(s) sur ${z.encounters} rencontre(s)`}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </section>
+            <ZonesTable t={t} />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-2">
-            <section className="card overflow-x-auto p-0">
-              <h2 className="px-4 pt-4 font-semibold">Donjons ({t.days} j)</h2>
-              <p className="px-4 text-xs text-slate-500">
-                Tentatives récupérées sur la période (échecs : défaites et temps écoulé). « Bloqués
-                » : joueurs qui ont échoué sans jamais réussir le donjon.
-              </p>
-              <table className="mt-2 w-full text-sm">
-                <thead className="text-left text-xs text-slate-500">
-                  <tr>
-                    <th className="px-4 py-2 font-normal">Donjon</th>
-                    <th className="px-4 py-2 text-right font-normal">Tentatives</th>
-                    <th className="px-4 py-2 font-normal">Réussite</th>
-                    <th className="px-4 py-2 text-right font-normal">Fuites</th>
-                    <th className="px-4 py-2 text-right font-normal">Gemmes</th>
-                    <th className="px-4 py-2 text-right font-normal">Bloqués</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...t.dungeons]
-                    .sort((a, b) => b.stuckPlayers - a.stuckPlayers || b.runs - a.runs)
-                    .map((d) => (
-                      <tr
-                        key={d.dungeonId}
-                        className="border-t border-slate-100 dark:border-slate-800"
-                      >
-                        <td className="px-4 py-1.5">
-                          {d.label}
-                          <span className="ml-2 text-xs text-slate-500">{d.difficulty}</span>
-                        </td>
-                        <td
-                          className="px-4 py-1.5 text-right font-mono"
-                          title={`${d.players} joueur(s)`}
-                        >
-                          {fmt(d.runs)}
-                        </td>
-                        <td className="px-4 py-1.5">
-                          <Meter
-                            value={percent(d.wins, d.runs)}
-                            title={`${d.wins} réussite(s) · ${d.losses} échec(s)`}
-                          />
-                        </td>
-                        <td className="px-4 py-1.5 text-right font-mono">{fmt(d.fled)}</td>
-                        <td className="px-4 py-1.5 text-right font-mono">{fmt(d.gems)}</td>
-                        <td
-                          className={`px-4 py-1.5 text-right font-mono ${d.stuckPlayers > 0 ? 'font-semibold text-amber-700 dark:text-amber-400' : ''}`}
-                        >
-                          {d.stuckPlayers > 0 ? `⚠ ${fmt(d.stuckPlayers)}` : '0'}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </section>
+            <DungeonsTable t={t} />
 
-            <section className="card overflow-x-auto p-0">
-              <h2 className="px-4 pt-4 font-semibold">Méga-Gemmes</h2>
-              <p className="px-4 text-xs text-slate-500">
-                Possession actuelle : joueurs qui en détiennent au moins une, exemplaires dans les
-                sacs et tenus par un Pokémon Méga-Évolué ; obtenues : total depuis le lancement.
-              </p>
-              <table className="mt-2 w-full text-sm">
-                <thead className="text-left text-xs text-slate-500">
-                  <tr>
-                    <th className="px-4 py-2 font-normal">Gemme</th>
-                    <th className="px-4 py-2 font-normal">Possédée par</th>
-                    <th className="px-4 py-2 text-right font-normal">Sacs</th>
-                    <th className="px-4 py-2 text-right font-normal">Tenues</th>
-                    <th className="px-4 py-2 text-right font-normal">Obtenues</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {[...t.megaStones]
-                    .sort((a, b) => b.owners - a.owners || b.dropped - a.dropped)
-                    .map((g) => (
-                      <tr
-                        key={g.itemId}
-                        className="border-t border-slate-100 dark:border-slate-800"
-                      >
-                        <td className="px-4 py-1.5">{g.label}</td>
-                        <td className="px-4 py-1.5">
-                          <Meter
-                            value={percent(g.owners, t.players.withStarter)}
-                            title={`${g.owners} joueur(s)`}
-                          />
-                        </td>
-                        <td className="px-4 py-1.5 text-right font-mono">{fmt(g.inBags)}</td>
-                        <td className="px-4 py-1.5 text-right font-mono">{fmt(g.held)}</td>
-                        <td className="px-4 py-1.5 text-right font-mono">{fmt(g.dropped)}</td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
-            </section>
+            <MegaGemsTable t={t} />
           </div>
 
           <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
-            <section className="card overflow-x-auto p-0">
-              <h2 className="px-4 pt-4 font-semibold">Quêtes</h2>
-              <p className="px-4 text-xs text-slate-500">
-                Joueurs actuellement à chaque étape et depuis combien de temps (médiane).
-              </p>
-              <table className="mt-2 w-full text-sm">
-                <thead className="text-left text-xs text-slate-500">
-                  <tr>
-                    <th className="px-4 py-2 font-normal">Quête / étape</th>
-                    <th className="px-4 py-2 text-right font-normal">Joueurs</th>
-                    <th className="px-4 py-2 text-right font-normal">Depuis</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {t.quests.map((q) => (
-                    <QuestRows key={q.questId} quest={q} />
-                  ))}
-                </tbody>
-              </table>
-            </section>
+            <QuestsTable t={t} />
 
-            <section className="card p-4">
-              <h2 className="font-semibold">Pokédex national</h2>
-              <p className="text-xs text-slate-500">Joueurs par part du Pokédex capturée.</p>
-              <ul className="mt-3 space-y-1.5 text-sm">
-                {t.dexDistribution.map((b) => (
-                  <li key={b.label} className="flex items-center justify-between gap-2">
-                    <span className="w-24 shrink-0 text-slate-500">{b.label}</span>
-                    <Meter
-                      value={percent(b.players, t.players.withStarter)}
-                      title={`${b.players} joueur(s)`}
-                    />
-                    <span className="w-8 text-right font-mono text-xs">{b.players}</span>
-                  </li>
-                ))}
-              </ul>
-            </section>
+            <DexDistribution t={t} />
           </div>
         </>
       )}
@@ -416,5 +152,311 @@ function QuestRows({ quest }: { quest: TelemetryResponse['quests'][number] }) {
         </tr>
       ))}
     </>
+  );
+}
+
+/** Date du calcul et chiffres des joueurs : inscrits, nouveaux, actifs, solde médian… */
+function PlayerTiles({ t }: { t: TelemetryResponse }) {
+  return (
+    <>
+      <p className="text-xs text-slate-500">Calculée le {formatDate(t.generatedAt)}.</p>
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-3 lg:grid-cols-6">
+        <Tile
+          label="Joueurs"
+          value={fmt(t.players.total)}
+          hint={`${fmt(t.players.withStarter)} avec un starter`}
+        />
+        <Tile label="Nouveaux (7 j)" value={fmt(t.players.new7d)} />
+        <Tile label="Actifs (24 h)" value={fmt(t.players.active1d)} />
+        <Tile label="Actifs (7 j)" value={fmt(t.players.active7d)} />
+        <Tile
+          label={`Gagné / dépensé (${t.days} j)`}
+          value={`${fmt(t.economy.earned)} ₽`}
+          hint={`${fmt(t.economy.spent)} ₽ dépensés en boutique`}
+        />
+        <Tile
+          label="Solde médian"
+          value={
+            t.economy.medianBalance === null ? '—' : `${fmt(Math.round(t.economy.medianBalance))} ₽`
+          }
+        />
+      </div>
+    </>
+  );
+}
+
+/** Parcours des joueurs : part ayant atteint chaque étape, et temps écoulé depuis l'inscription. */
+function JourneyTable({ t }: { t: TelemetryResponse }) {
+  return (
+    <section className="card overflow-x-auto p-0">
+      <h2 className="px-4 pt-4 font-semibold">Parcours des joueurs</h2>
+      <p className="px-4 text-xs text-slate-500">
+        Part des joueurs (avec starter) ayant atteint chaque étape, et temps écoulé depuis leur
+        inscription. Une étape peu atteinte avec un temps long signale un goulet.
+      </p>
+      <table className="mt-2 w-full min-w-[640px] text-sm">
+        <thead className="text-left text-xs text-slate-500">
+          <tr>
+            <th className="px-4 py-2 font-normal">Étape</th>
+            <th className="px-4 py-2 font-normal">Atteinte</th>
+            <th className="px-4 py-2 text-right font-normal">Joueurs</th>
+            <th className="px-4 py-2 text-right font-normal">Médiane</th>
+            <th className="px-4 py-2 text-right font-normal">90 %</th>
+          </tr>
+        </thead>
+        <tbody>
+          {t.steps.map((s) => (
+            <tr
+              key={`${s.kind}:${s.id}`}
+              className="border-t border-slate-100 dark:border-slate-800"
+            >
+              <td className="px-4 py-1.5">
+                <span className="mr-2 rounded bg-slate-100 px-1.5 py-0.5 text-[11px] text-slate-600 dark:bg-slate-800 dark:text-slate-300">
+                  {KIND_LABELS[s.kind]}
+                </span>
+                {s.label}
+              </td>
+              <td className="px-4 py-1.5">
+                <Meter value={s.reachedPercent} title={durationTitle(s)} />
+              </td>
+              <td className="px-4 py-1.5 text-right font-mono">{fmt(s.players)}</td>
+              <td className="px-4 py-1.5 text-right font-mono">{formatHours(s.medianHours)}</td>
+              <td className="px-4 py-1.5 text-right font-mono">{formatHours(s.p90Hours)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+/** Dresseurs sur la période : combats, victoires, fuites, joueurs bloqués. */
+function TrainersTable({ t }: { t: TelemetryResponse }) {
+  return (
+    <section className="card overflow-x-auto p-0">
+      <h2 className="px-4 pt-4 font-semibold">Dresseurs ({t.days} j)</h2>
+      <p className="px-4 text-xs text-slate-500">
+        « Bloqués » : joueurs qui ont perdu sans jamais gagner. Peu de victoires, ou beaucoup de
+        bloqués, désigne un dresseur trop dur.
+      </p>
+      <table className="mt-2 w-full text-sm">
+        <thead className="text-left text-xs text-slate-500">
+          <tr>
+            <th className="px-4 py-2 font-normal">Dresseur</th>
+            <th className="px-4 py-2 text-right font-normal">Combats</th>
+            <th className="px-4 py-2 font-normal">Victoires</th>
+            <th className="px-4 py-2 text-right font-normal">Fuites</th>
+            <th className="px-4 py-2 text-right font-normal">Bloqués</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...t.trainers]
+            .sort((a, b) => b.stuckPlayers - a.stuckPlayers || b.battles - a.battles)
+            .map((tr) => (
+              <tr key={tr.trainerId} className="border-t border-slate-100 dark:border-slate-800">
+                <td className="px-4 py-1.5">{tr.label}</td>
+                <td className="px-4 py-1.5 text-right font-mono">{fmt(tr.battles)}</td>
+                <td className="px-4 py-1.5">
+                  <Meter
+                    value={percent(tr.wins, tr.battles)}
+                    title={`${tr.wins} victoire(s), ${tr.losses} défaite(s)`}
+                  />
+                </td>
+                <td className="px-4 py-1.5 text-right font-mono">{fmt(tr.fled)}</td>
+                <td
+                  className={`px-4 py-1.5 text-right font-mono ${tr.stuckPlayers > 0 ? 'font-semibold text-amber-700 dark:text-amber-400' : ''}`}
+                >
+                  {tr.stuckPlayers > 0 ? `⚠ ${fmt(tr.stuckPlayers)}` : '0'}
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+/** Zones sur la période : expéditions, joueurs, durée moyenne, taux de capture. */
+function ZonesTable({ t }: { t: TelemetryResponse }) {
+  return (
+    <section className="card overflow-x-auto p-0">
+      <h2 className="px-4 pt-4 font-semibold">Zones ({t.days} j)</h2>
+      <p className="px-4 text-xs text-slate-500">
+        Expéditions récupérées sur la période. Une zone délaissée ou au taux de capture faible est à
+        revoir (PE minimale, rencontres, durées).
+      </p>
+      <table className="mt-2 w-full text-sm">
+        <thead className="text-left text-xs text-slate-500">
+          <tr>
+            <th className="px-4 py-2 font-normal">Zone</th>
+            <th className="px-4 py-2 text-right font-normal">Expéditions</th>
+            <th className="px-4 py-2 text-right font-normal">Joueurs</th>
+            <th className="px-4 py-2 text-right font-normal">Durée moy.</th>
+            <th className="px-4 py-2 font-normal">Capture</th>
+          </tr>
+        </thead>
+        <tbody>
+          {t.zones.map((z) => (
+            <tr key={z.zoneId} className="border-t border-slate-100 dark:border-slate-800">
+              <td className="px-4 py-1.5">{z.label}</td>
+              <td className="px-4 py-1.5 text-right font-mono">{fmt(z.expeditions)}</td>
+              <td className="px-4 py-1.5 text-right font-mono">{fmt(z.players)}</td>
+              <td className="px-4 py-1.5 text-right font-mono">
+                {z.avgDurationMinutes === null ? '—' : `${z.avgDurationMinutes} min`}
+              </td>
+              <td className="px-4 py-1.5">
+                <Meter
+                  value={percent(z.captures, z.encounters)}
+                  title={`${z.captures} capture(s) sur ${z.encounters} rencontre(s)`}
+                />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+/** Donjons sur la période : tentatives, réussite, fuites, gemmes, joueurs bloqués. */
+function DungeonsTable({ t }: { t: TelemetryResponse }) {
+  return (
+    <section className="card overflow-x-auto p-0">
+      <h2 className="px-4 pt-4 font-semibold">Donjons ({t.days} j)</h2>
+      <p className="px-4 text-xs text-slate-500">
+        Tentatives récupérées sur la période (échecs : défaites et temps écoulé). « Bloqués » :
+        joueurs qui ont échoué sans jamais réussir le donjon.
+      </p>
+      <table className="mt-2 w-full text-sm">
+        <thead className="text-left text-xs text-slate-500">
+          <tr>
+            <th className="px-4 py-2 font-normal">Donjon</th>
+            <th className="px-4 py-2 text-right font-normal">Tentatives</th>
+            <th className="px-4 py-2 font-normal">Réussite</th>
+            <th className="px-4 py-2 text-right font-normal">Fuites</th>
+            <th className="px-4 py-2 text-right font-normal">Gemmes</th>
+            <th className="px-4 py-2 text-right font-normal">Bloqués</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...t.dungeons]
+            .sort((a, b) => b.stuckPlayers - a.stuckPlayers || b.runs - a.runs)
+            .map((d) => (
+              <tr key={d.dungeonId} className="border-t border-slate-100 dark:border-slate-800">
+                <td className="px-4 py-1.5">
+                  {d.label}
+                  <span className="ml-2 text-xs text-slate-500">{d.difficulty}</span>
+                </td>
+                <td className="px-4 py-1.5 text-right font-mono" title={`${d.players} joueur(s)`}>
+                  {fmt(d.runs)}
+                </td>
+                <td className="px-4 py-1.5">
+                  <Meter
+                    value={percent(d.wins, d.runs)}
+                    title={`${d.wins} réussite(s) · ${d.losses} échec(s)`}
+                  />
+                </td>
+                <td className="px-4 py-1.5 text-right font-mono">{fmt(d.fled)}</td>
+                <td className="px-4 py-1.5 text-right font-mono">{fmt(d.gems)}</td>
+                <td
+                  className={`px-4 py-1.5 text-right font-mono ${d.stuckPlayers > 0 ? 'font-semibold text-amber-700 dark:text-amber-400' : ''}`}
+                >
+                  {d.stuckPlayers > 0 ? `⚠ ${fmt(d.stuckPlayers)}` : '0'}
+                </td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+/** Méga-Gemmes : joueurs qui en ont, exemplaires dans les sacs et tenus, total obtenu. */
+function MegaGemsTable({ t }: { t: TelemetryResponse }) {
+  return (
+    <section className="card overflow-x-auto p-0">
+      <h2 className="px-4 pt-4 font-semibold">Méga-Gemmes</h2>
+      <p className="px-4 text-xs text-slate-500">
+        Possession actuelle : joueurs qui en détiennent au moins une, exemplaires dans les sacs et
+        tenus par un Pokémon Méga-Évolué ; obtenues : total depuis le lancement.
+      </p>
+      <table className="mt-2 w-full text-sm">
+        <thead className="text-left text-xs text-slate-500">
+          <tr>
+            <th className="px-4 py-2 font-normal">Gemme</th>
+            <th className="px-4 py-2 font-normal">Possédée par</th>
+            <th className="px-4 py-2 text-right font-normal">Sacs</th>
+            <th className="px-4 py-2 text-right font-normal">Tenues</th>
+            <th className="px-4 py-2 text-right font-normal">Obtenues</th>
+          </tr>
+        </thead>
+        <tbody>
+          {[...t.megaStones]
+            .sort((a, b) => b.owners - a.owners || b.dropped - a.dropped)
+            .map((g) => (
+              <tr key={g.itemId} className="border-t border-slate-100 dark:border-slate-800">
+                <td className="px-4 py-1.5">{g.label}</td>
+                <td className="px-4 py-1.5">
+                  <Meter
+                    value={percent(g.owners, t.players.withStarter)}
+                    title={`${g.owners} joueur(s)`}
+                  />
+                </td>
+                <td className="px-4 py-1.5 text-right font-mono">{fmt(g.inBags)}</td>
+                <td className="px-4 py-1.5 text-right font-mono">{fmt(g.held)}</td>
+                <td className="px-4 py-1.5 text-right font-mono">{fmt(g.dropped)}</td>
+              </tr>
+            ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+/** Quêtes : joueurs actuellement à chaque étape, et depuis combien de temps. */
+function QuestsTable({ t }: { t: TelemetryResponse }) {
+  return (
+    <section className="card overflow-x-auto p-0">
+      <h2 className="px-4 pt-4 font-semibold">Quêtes</h2>
+      <p className="px-4 text-xs text-slate-500">
+        Joueurs actuellement à chaque étape et depuis combien de temps (médiane).
+      </p>
+      <table className="mt-2 w-full text-sm">
+        <thead className="text-left text-xs text-slate-500">
+          <tr>
+            <th className="px-4 py-2 font-normal">Quête / étape</th>
+            <th className="px-4 py-2 text-right font-normal">Joueurs</th>
+            <th className="px-4 py-2 text-right font-normal">Depuis</th>
+          </tr>
+        </thead>
+        <tbody>
+          {t.quests.map((q) => (
+            <QuestRows key={q.questId} quest={q} />
+          ))}
+        </tbody>
+      </table>
+    </section>
+  );
+}
+
+/** Joueurs par part du Pokédex national capturée. */
+function DexDistribution({ t }: { t: TelemetryResponse }) {
+  return (
+    <section className="card p-4">
+      <h2 className="font-semibold">Pokédex national</h2>
+      <p className="text-xs text-slate-500">Joueurs par part du Pokédex capturée.</p>
+      <ul className="mt-3 space-y-1.5 text-sm">
+        {t.dexDistribution.map((b) => (
+          <li key={b.label} className="flex items-center justify-between gap-2">
+            <span className="w-24 shrink-0 text-slate-500">{b.label}</span>
+            <Meter
+              value={percent(b.players, t.players.withStarter)}
+              title={`${b.players} joueur(s)`}
+            />
+            <span className="w-8 text-right font-mono text-xs">{b.players}</span>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }

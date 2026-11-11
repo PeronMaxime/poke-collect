@@ -21,6 +21,8 @@ import {
   TextInput,
 } from '../../components/forms/fields';
 import { FormSelect, ItemIcon, SpeciesSelect } from '../../components/forms/pickers';
+import type { FieldErrors } from '../../components/forms/fields';
+import type { WorkingVersion } from '../../lib/content';
 
 const CATEGORY_LABELS: Record<ItemCategory, string> = {
   ball: 'Ball',
@@ -205,36 +207,7 @@ function ItemForm({
 
   return (
     <div className="space-y-6">
-      {isNew && (
-        <Field
-          label="Partir d’un objet PokéAPI"
-          hint="Pré-remplit l’identifiant, le nom, la description et le sprite."
-        >
-          <select
-            className="input"
-            value=""
-            onChange={(e) => {
-              const src = pokeApiById.get(e.target.value);
-              if (src)
-                onChange({
-                  ...item,
-                  id: src.name,
-                  name: src.nameFr,
-                  description: src.descriptionFr ?? '',
-                });
-            }}
-          >
-            <option value="">Objet maison (aucun)</option>
-            {pokeApiItems
-              .filter((i) => !used.has(i.name))
-              .map((i) => (
-                <option key={i.name} value={i.name}>
-                  {i.nameFr} ({i.name})
-                </option>
-              ))}
-          </select>
-        </Field>
-      )}
+      {isNew && <PokeApiStart item={item} onChange={onChange} used={used} />}
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Identifiant"
@@ -323,334 +296,19 @@ function ItemForm({
             Aucun effet (objet de collection, ou utilisé plus tard).
           </p>
         )}
-        {item.effects.map((effect, i) => {
-          const update = (e: ItemEffect) =>
-            set(
-              'effects',
-              item.effects.map((x, j) => (j === i ? e : x)),
-            );
-          return (
-            <div
-              key={i}
-              className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800"
-            >
-              <div className="min-w-48 flex-1">
-                <p className="text-sm font-medium">{EFFECTS[effect.type].label}</p>
-                <p className="text-xs text-slate-500">{EFFECTS[effect.type].help}</p>
-              </div>
-              {effect.type === 'ball' && (
-                <Field label="Multiplicateur" error={errors.get(`effects.${i}.catchMultiplier`)}>
-                  <NumberInput
-                    className="w-32"
-                    value={effect.catchMultiplier}
-                    min={0}
-                    step={0.1}
-                    unit="×"
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, catchMultiplier: v })}
-                  />
-                </Field>
-              )}
-              {effect.type === 'ball' && (
-                <Field label="Capture">
-                  <SelectInput
-                    value={effect.guaranteed ? 'always' : 'chance'}
-                    disabled={disabled}
-                    onChange={(v) =>
-                      update({ ...effect, guaranteed: v === 'always' ? true : undefined })
-                    }
-                    options={[
-                      { value: 'chance', label: 'Selon le multiplicateur' },
-                      { value: 'always', label: 'Assurée (100 %)' },
-                    ]}
-                  />
-                </Field>
-              )}
-              {effect.type === 'battleHeal' && (
-                <Field label="PV rendus" error={errors.get(`effects.${i}.fraction`)}>
-                  <NumberInput
-                    className="w-32"
-                    value={Math.round(effect.fraction * 100)}
-                    min={1}
-                    max={100}
-                    unit="%"
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, fraction: v / 100 })}
-                  />
-                </Field>
-              )}
-              {effect.type === 'battleHeal' && (
-                <Field label="Recharge" error={errors.get(`effects.${i}.cooldownSeconds`)}>
-                  <NumberInput
-                    className="w-32"
-                    value={effect.cooldownSeconds}
-                    min={0}
-                    max={3600}
-                    unit="s"
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, cooldownSeconds: v })}
-                  />
-                </Field>
-              )}
-              {effect.type === 'levelUp' && (
-                <Field label="Niveaux" error={errors.get(`effects.${i}.levels`)}>
-                  <NumberInput
-                    className="w-24"
-                    value={effect.levels}
-                    min={1}
-                    max={99}
-                    unit="+"
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, levels: v })}
-                  />
-                </Field>
-              )}
-              {effect.type === 'happiness' && (
-                <Field label="Bonheur" error={errors.get(`effects.${i}.amount`)}>
-                  <NumberInput
-                    className="w-24"
-                    value={effect.amount}
-                    min={1}
-                    max={255}
-                    unit="+"
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, amount: v })}
-                  />
-                </Field>
-              )}
-              {effect.type === 'guildChest' && (
-                <Field label="Rareté">
-                  <SelectInput
-                    value={effect.rarity}
-                    disabled={disabled}
-                    onChange={(rarity) => update({ ...effect, rarity })}
-                    options={CHEST_RARITIES.map((r) => ({
-                      value: r,
-                      label: CHEST_RARITY_LABELS[r],
-                    }))}
-                  />
-                </Field>
-              )}
-              {effect.type === 'farmPlot' && (
-                <Field label="Prix à chaque achat" error={errors.get(`effects.${i}.priceGrowth`)}>
-                  <NumberInput
-                    className="w-32"
-                    value={effect.priceGrowth}
-                    min={1}
-                    max={10}
-                    step={0.05}
-                    unit="×"
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, priceGrowth: v })}
-                  />
-                </Field>
-              )}
-              {effect.type === 'encounterBoost' && (
-                <Field label="Rencontres" error={errors.get(`effects.${i}.multiplier`)}>
-                  <NumberInput
-                    className="w-32"
-                    value={effect.multiplier}
-                    min={1}
-                    max={10}
-                    step={0.05}
-                    unit="×"
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, multiplier: v })}
-                  />
-                </Field>
-              )}
-              {effect.type === 'captureBoost' && (
-                <Field label="Multiplicateur" error={errors.get(`effects.${i}.multiplier`)}>
-                  <NumberInput
-                    className="w-32"
-                    value={effect.multiplier}
-                    min={0}
-                    step={0.1}
-                    unit="×"
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, multiplier: v })}
-                  />
-                </Field>
-              )}
-              {effect.type === 'breedingIvs' && (
-                <Field label="IV transmis" error={errors.get(`effects.${i}.count`)}>
-                  <NumberInput
-                    className="w-32"
-                    value={effect.count}
-                    min={0}
-                    max={6}
-                    unit="IV"
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, count: v })}
-                  />
-                </Field>
-              )}
-              {effect.type === 'breedingNature' && (
-                <Field label="Chance" error={errors.get(`effects.${i}.chance`)}>
-                  <NumberInput
-                    className="w-32"
-                    value={effect.chance}
-                    scale={100}
-                    min={0}
-                    max={100}
-                    unit="%"
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, chance: v })}
-                  />
-                </Field>
-              )}
-              {effect.type === 'shinyCharm' && (
-                <Field label="Multiplicateur" error={errors.get(`effects.${i}.multiplier`)}>
-                  <NumberInput
-                    className="w-32"
-                    value={effect.multiplier}
-                    min={1}
-                    max={100}
-                    step={0.5}
-                    unit="×"
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, multiplier: v })}
-                  />
-                </Field>
-              )}
-              {effect.type === 'ivCap' && (
-                <Field label="IV concernés">
-                  <SelectInput
-                    value={effect.all ? 'all' : 'one'}
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, all: v === 'all' })}
-                    options={[
-                      { value: 'one', label: 'Un IV au choix' },
-                      { value: 'all', label: 'Les 6 IV' },
-                    ]}
-                  />
-                </Field>
-              )}
-              {effect.type === 'mint' && (
-                <Field label="Nature" error={errors.get(`effects.${i}.nature`)}>
-                  <SelectInput
-                    value={effect.nature}
-                    disabled={disabled}
-                    onChange={(nature) => update({ ...effect, nature })}
-                    options={natures.map((n) => ({ value: n.name, label: n.nameFr }))}
-                  />
-                </Field>
-              )}
-              {effect.type === 'abilityChange' && (
-                <Field label="Talent visé">
-                  <SelectInput
-                    value={effect.hidden ? 'hidden' : 'regular'}
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, hidden: v === 'hidden' })}
-                    options={[
-                      { value: 'regular', label: 'Talent normal (au hasard, puis l’autre)' },
-                      { value: 'hidden', label: 'Talent caché' },
-                    ]}
-                  />
-                </Field>
-              )}
-              {effect.type === 'fossil' && (
-                <>
-                  <Field label="Pokémon" error={errors.get(`effects.${i}.speciesId`)}>
-                    <SpeciesSelect
-                      ctx={working.ctx}
-                      value={effect.speciesId}
-                      onChange={(speciesId) => update({ ...effect, speciesId, formId: null })}
-                      disabled={disabled}
-                    />
-                    <FormSelect
-                      speciesId={effect.speciesId}
-                      value={effect.formId}
-                      onChange={(formId) => update({ ...effect, formId })}
-                      disabled={disabled}
-                    />
-                  </Field>
-                  <Field label="Niveau" error={errors.get(`effects.${i}.level`)}>
-                    <NumberInput
-                      className="w-24"
-                      value={effect.level}
-                      min={1}
-                      max={100}
-                      disabled={disabled}
-                      onChange={(v) => update({ ...effect, level: v })}
-                    />
-                  </Field>
-                  <Field label="Restauration" error={errors.get(`effects.${i}.minutes`)}>
-                    <NumberInput
-                      className="w-32"
-                      value={effect.minutes}
-                      min={1}
-                      max={10_080}
-                      unit="min"
-                      disabled={disabled}
-                      onChange={(v) => update({ ...effect, minutes: v })}
-                    />
-                  </Field>
-                </>
-              )}
-              {effect.type === 'berryPlant' && (
-                <>
-                  <Field label="Pousse" error={errors.get(`effects.${i}.minutes`)}>
-                    <NumberInput
-                      className="w-32"
-                      value={effect.minutes}
-                      min={1}
-                      max={10_080}
-                      unit="min"
-                      disabled={disabled}
-                      onChange={(v) => update({ ...effect, minutes: v })}
-                    />
-                  </Field>
-                  <Field label="Baies récoltées" error={errors.get(`effects.${i}.minYield`)}>
-                    <span className="flex items-center gap-2">
-                      <NumberInput
-                        className="w-20"
-                        value={effect.minYield}
-                        min={1}
-                        max={99}
-                        disabled={disabled}
-                        onChange={(v) => update({ ...effect, minYield: v })}
-                      />
-                      à
-                      <NumberInput
-                        className="w-20"
-                        value={effect.maxYield}
-                        min={effect.minYield}
-                        max={99}
-                        disabled={disabled}
-                        onChange={(v) => update({ ...effect, maxYield: v })}
-                      />
-                    </span>
-                  </Field>
-                </>
-              )}
-              {effect.type === 'megaEvolution' && (
-                <Field label="Forme Méga" error={errors.get(`effects.${i}.formId`)}>
-                  <SelectInput
-                    value={String(effect.formId)}
-                    disabled={disabled}
-                    onChange={(v) => update({ ...effect, formId: Number(v) })}
-                    options={MEGA_FORMS.map((f) => ({ value: String(f.id), label: f.nameFr }))}
-                  />
-                </Field>
-              )}
-              {editable && (
-                <button
-                  type="button"
-                  className="text-slate-400 hover:text-red-600"
-                  onClick={() =>
-                    set(
-                      'effects',
-                      item.effects.filter((_, j) => j !== i),
-                    )
-                  }
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          );
-        })}
+        {item.effects.map((effect, i) => (
+          <EffectCard
+            key={i}
+            item={item}
+            effect={effect}
+            i={i}
+            set={set}
+            errors={errors}
+            disabled={disabled}
+            editable={editable}
+            working={working}
+          />
+        ))}
         {editable && (
           <div className="flex flex-wrap gap-2">
             {Object.entries(EFFECTS).map(([type, def]) => (
@@ -667,5 +325,477 @@ function ItemForm({
         )}
       </Section>
     </div>
+  );
+}
+
+/** Nouvel objet : partir d'un objet PokéAPI pré-remplit l'identifiant, le nom et la description. */
+function PokeApiStart({
+  item,
+  onChange,
+  used,
+}: {
+  item: Item;
+  onChange: (value: Item) => void;
+  used: ReadonlySet<string>;
+}) {
+  return (
+    <Field
+      label="Partir d’un objet PokéAPI"
+      hint="Pré-remplit l’identifiant, le nom, la description et le sprite."
+    >
+      <select
+        className="input"
+        value=""
+        onChange={(e) => {
+          const src = pokeApiById.get(e.target.value);
+          if (src)
+            onChange({
+              ...item,
+              id: src.name,
+              name: src.nameFr,
+              description: src.descriptionFr ?? '',
+            });
+        }}
+      >
+        <option value="">Objet maison (aucun)</option>
+        {pokeApiItems
+          .filter((i) => !used.has(i.name))
+          .map((i) => (
+            <option key={i.name} value={i.name}>
+              {i.nameFr} ({i.name})
+            </option>
+          ))}
+      </select>
+    </Field>
+  );
+}
+
+/** Carte d'un effet de l'objet : son nom, ses champs, et le bouton qui le retire. */
+function EffectCard({
+  item,
+  effect,
+  i,
+  set,
+  errors,
+  disabled,
+  editable,
+  working,
+}: {
+  item: Item;
+  effect: ItemEffect;
+  i: number;
+  set: <K extends keyof Item>(key: K, v: Item[K]) => void;
+  errors: FieldErrors;
+  disabled: boolean;
+  editable: boolean;
+  working: WorkingVersion;
+}) {
+  const update = (e: ItemEffect) =>
+    set(
+      'effects',
+      item.effects.map((x, j) => (j === i ? e : x)),
+    );
+  return (
+    <div
+      key={i}
+      className="flex flex-wrap items-end gap-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800"
+    >
+      <div className="min-w-48 flex-1">
+        <p className="text-sm font-medium">{EFFECTS[effect.type].label}</p>
+        <p className="text-xs text-slate-500">{EFFECTS[effect.type].help}</p>
+      </div>
+      <BattleEffectFields
+        effect={effect}
+        i={i}
+        errors={errors}
+        update={update}
+        disabled={disabled}
+      />
+      <BonusEffectFields
+        effect={effect}
+        i={i}
+        errors={errors}
+        update={update}
+        disabled={disabled}
+      />
+      <PokemonEffectFields
+        effect={effect}
+        i={i}
+        errors={errors}
+        update={update}
+        disabled={disabled}
+        working={working}
+      />
+      {editable && (
+        <button
+          type="button"
+          className="text-slate-400 hover:text-red-600"
+          onClick={() =>
+            set(
+              'effects',
+              item.effects.filter((_, j) => j !== i),
+            )
+          }
+        >
+          ✕
+        </button>
+      )}
+    </div>
+  );
+}
+
+/** Champs des effets de Ball, de soin en combat, de Super Bonbon et de bonheur. */
+function BattleEffectFields({
+  effect,
+  i,
+  errors,
+  update,
+  disabled,
+}: {
+  effect: ItemEffect;
+  i: number;
+  errors: FieldErrors;
+  update: (e: ItemEffect) => void;
+  disabled: boolean;
+}) {
+  return (
+    <>
+      {effect.type === 'ball' && (
+        <Field label="Multiplicateur" error={errors.get(`effects.${i}.catchMultiplier`)}>
+          <NumberInput
+            className="w-32"
+            value={effect.catchMultiplier}
+            min={0}
+            step={0.1}
+            unit="×"
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, catchMultiplier: v })}
+          />
+        </Field>
+      )}
+      {effect.type === 'ball' && (
+        <Field label="Capture">
+          <SelectInput
+            value={effect.guaranteed ? 'always' : 'chance'}
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, guaranteed: v === 'always' ? true : undefined })}
+            options={[
+              { value: 'chance', label: 'Selon le multiplicateur' },
+              { value: 'always', label: 'Assurée (100 %)' },
+            ]}
+          />
+        </Field>
+      )}
+      {effect.type === 'battleHeal' && (
+        <Field label="PV rendus" error={errors.get(`effects.${i}.fraction`)}>
+          <NumberInput
+            className="w-32"
+            value={Math.round(effect.fraction * 100)}
+            min={1}
+            max={100}
+            unit="%"
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, fraction: v / 100 })}
+          />
+        </Field>
+      )}
+      {effect.type === 'battleHeal' && (
+        <Field label="Recharge" error={errors.get(`effects.${i}.cooldownSeconds`)}>
+          <NumberInput
+            className="w-32"
+            value={effect.cooldownSeconds}
+            min={0}
+            max={3600}
+            unit="s"
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, cooldownSeconds: v })}
+          />
+        </Field>
+      )}
+      {effect.type === 'levelUp' && (
+        <Field label="Niveaux" error={errors.get(`effects.${i}.levels`)}>
+          <NumberInput
+            className="w-24"
+            value={effect.levels}
+            min={1}
+            max={99}
+            unit="+"
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, levels: v })}
+          />
+        </Field>
+      )}
+      {effect.type === 'happiness' && (
+        <Field label="Bonheur" error={errors.get(`effects.${i}.amount`)}>
+          <NumberInput
+            className="w-24"
+            value={effect.amount}
+            min={1}
+            max={255}
+            unit="+"
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, amount: v })}
+          />
+        </Field>
+      )}
+    </>
+  );
+}
+
+/** Champs des coffres, parcelles, bonus de rencontre et de capture, élevage, Charme Chroma et plafonds d'IV. */
+function BonusEffectFields({
+  effect,
+  i,
+  errors,
+  update,
+  disabled,
+}: {
+  effect: ItemEffect;
+  i: number;
+  errors: FieldErrors;
+  update: (e: ItemEffect) => void;
+  disabled: boolean;
+}) {
+  return (
+    <>
+      {effect.type === 'guildChest' && (
+        <Field label="Rareté">
+          <SelectInput
+            value={effect.rarity}
+            disabled={disabled}
+            onChange={(rarity) => update({ ...effect, rarity })}
+            options={CHEST_RARITIES.map((r) => ({
+              value: r,
+              label: CHEST_RARITY_LABELS[r],
+            }))}
+          />
+        </Field>
+      )}
+      {effect.type === 'farmPlot' && (
+        <Field label="Prix à chaque achat" error={errors.get(`effects.${i}.priceGrowth`)}>
+          <NumberInput
+            className="w-32"
+            value={effect.priceGrowth}
+            min={1}
+            max={10}
+            step={0.05}
+            unit="×"
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, priceGrowth: v })}
+          />
+        </Field>
+      )}
+      {effect.type === 'encounterBoost' && (
+        <Field label="Rencontres" error={errors.get(`effects.${i}.multiplier`)}>
+          <NumberInput
+            className="w-32"
+            value={effect.multiplier}
+            min={1}
+            max={10}
+            step={0.05}
+            unit="×"
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, multiplier: v })}
+          />
+        </Field>
+      )}
+      {effect.type === 'captureBoost' && (
+        <Field label="Multiplicateur" error={errors.get(`effects.${i}.multiplier`)}>
+          <NumberInput
+            className="w-32"
+            value={effect.multiplier}
+            min={0}
+            step={0.1}
+            unit="×"
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, multiplier: v })}
+          />
+        </Field>
+      )}
+      {effect.type === 'breedingIvs' && (
+        <Field label="IV transmis" error={errors.get(`effects.${i}.count`)}>
+          <NumberInput
+            className="w-32"
+            value={effect.count}
+            min={0}
+            max={6}
+            unit="IV"
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, count: v })}
+          />
+        </Field>
+      )}
+      {effect.type === 'breedingNature' && (
+        <Field label="Chance" error={errors.get(`effects.${i}.chance`)}>
+          <NumberInput
+            className="w-32"
+            value={effect.chance}
+            scale={100}
+            min={0}
+            max={100}
+            unit="%"
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, chance: v })}
+          />
+        </Field>
+      )}
+      {effect.type === 'shinyCharm' && (
+        <Field label="Multiplicateur" error={errors.get(`effects.${i}.multiplier`)}>
+          <NumberInput
+            className="w-32"
+            value={effect.multiplier}
+            min={1}
+            max={100}
+            step={0.5}
+            unit="×"
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, multiplier: v })}
+          />
+        </Field>
+      )}
+      {effect.type === 'ivCap' && (
+        <Field label="IV concernés">
+          <SelectInput
+            value={effect.all ? 'all' : 'one'}
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, all: v === 'all' })}
+            options={[
+              { value: 'one', label: 'Un IV au choix' },
+              { value: 'all', label: 'Les 6 IV' },
+            ]}
+          />
+        </Field>
+      )}
+    </>
+  );
+}
+
+/** Champs des Aromates, Pilules et Patchs, fossiles, baies à planter et Méga-Gemmes. */
+function PokemonEffectFields({
+  effect,
+  i,
+  errors,
+  update,
+  disabled,
+  working,
+}: {
+  effect: ItemEffect;
+  i: number;
+  errors: FieldErrors;
+  update: (e: ItemEffect) => void;
+  disabled: boolean;
+  working: WorkingVersion;
+}) {
+  return (
+    <>
+      {effect.type === 'mint' && (
+        <Field label="Nature" error={errors.get(`effects.${i}.nature`)}>
+          <SelectInput
+            value={effect.nature}
+            disabled={disabled}
+            onChange={(nature) => update({ ...effect, nature })}
+            options={natures.map((n) => ({ value: n.name, label: n.nameFr }))}
+          />
+        </Field>
+      )}
+      {effect.type === 'abilityChange' && (
+        <Field label="Talent visé">
+          <SelectInput
+            value={effect.hidden ? 'hidden' : 'regular'}
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, hidden: v === 'hidden' })}
+            options={[
+              { value: 'regular', label: 'Talent normal (au hasard, puis l’autre)' },
+              { value: 'hidden', label: 'Talent caché' },
+            ]}
+          />
+        </Field>
+      )}
+      {effect.type === 'fossil' && (
+        <>
+          <Field label="Pokémon" error={errors.get(`effects.${i}.speciesId`)}>
+            <SpeciesSelect
+              ctx={working.ctx}
+              value={effect.speciesId}
+              onChange={(speciesId) => update({ ...effect, speciesId, formId: null })}
+              disabled={disabled}
+            />
+            <FormSelect
+              speciesId={effect.speciesId}
+              value={effect.formId}
+              onChange={(formId) => update({ ...effect, formId })}
+              disabled={disabled}
+            />
+          </Field>
+          <Field label="Niveau" error={errors.get(`effects.${i}.level`)}>
+            <NumberInput
+              className="w-24"
+              value={effect.level}
+              min={1}
+              max={100}
+              disabled={disabled}
+              onChange={(v) => update({ ...effect, level: v })}
+            />
+          </Field>
+          <Field label="Restauration" error={errors.get(`effects.${i}.minutes`)}>
+            <NumberInput
+              className="w-32"
+              value={effect.minutes}
+              min={1}
+              max={10_080}
+              unit="min"
+              disabled={disabled}
+              onChange={(v) => update({ ...effect, minutes: v })}
+            />
+          </Field>
+        </>
+      )}
+      {effect.type === 'berryPlant' && (
+        <>
+          <Field label="Pousse" error={errors.get(`effects.${i}.minutes`)}>
+            <NumberInput
+              className="w-32"
+              value={effect.minutes}
+              min={1}
+              max={10_080}
+              unit="min"
+              disabled={disabled}
+              onChange={(v) => update({ ...effect, minutes: v })}
+            />
+          </Field>
+          <Field label="Baies récoltées" error={errors.get(`effects.${i}.minYield`)}>
+            <span className="flex items-center gap-2">
+              <NumberInput
+                className="w-20"
+                value={effect.minYield}
+                min={1}
+                max={99}
+                disabled={disabled}
+                onChange={(v) => update({ ...effect, minYield: v })}
+              />
+              à
+              <NumberInput
+                className="w-20"
+                value={effect.maxYield}
+                min={effect.minYield}
+                max={99}
+                disabled={disabled}
+                onChange={(v) => update({ ...effect, maxYield: v })}
+              />
+            </span>
+          </Field>
+        </>
+      )}
+      {effect.type === 'megaEvolution' && (
+        <Field label="Forme Méga" error={errors.get(`effects.${i}.formId`)}>
+          <SelectInput
+            value={String(effect.formId)}
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, formId: Number(v) })}
+            options={MEGA_FORMS.map((f) => ({ value: String(f.id), label: f.nameFr }))}
+          />
+        </Field>
+      )}
+    </>
   );
 }

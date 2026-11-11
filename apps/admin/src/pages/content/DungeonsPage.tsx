@@ -127,11 +127,9 @@ function DungeonForm({
   working,
 }: EntityFormProps<Dungeon>) {
   const set = <K extends keyof Dungeon>(key: K, v: Dungeon[K]) => onChange({ ...d, [key]: v });
-  const setBoss = (patch: Partial<TrainerPokemon>) => set('boss', { ...d.boss, ...patch });
   const { ctx } = working;
   const disabled = !editable;
   const rules = ctx.balance.dungeons;
-  const lineage = directLineage(d.boss.speciesId);
 
   return (
     <div className="space-y-6">
@@ -201,107 +199,23 @@ function DungeonForm({
         disabled={disabled}
       />
 
-      <Section title="Boss">
-        <div className="flex flex-wrap items-start gap-4">
-          <Sprite id={d.boss.speciesId} formId={d.boss.formId} size={96} />
-          <div className="grid flex-1 gap-4 sm:grid-cols-2">
-            <Field label="Espèce" error={errors.get('boss.speciesId')}>
-              <SpeciesSelect
-                ctx={ctx}
-                value={d.boss.speciesId}
-                disabled={disabled}
-                onChange={(speciesId) => setBoss({ speciesId, formId: null })}
-              />
-              <FormSelect
-                speciesId={d.boss.speciesId}
-                value={d.boss.formId}
-                disabled={disabled}
-                onChange={(formId) => setBoss({ formId })}
-              />
-              {errorsUnder(errors, 'boss').map((msg) => (
-                <p key={msg} className="text-xs text-red-600">
-                  {msg}
-                </p>
-              ))}
-            </Field>
-            <Field label="Niveau">
-              <NumberInput
-                value={d.boss.level}
-                min={1}
-                max={100}
-                onChange={(level) => setBoss({ level })}
-                disabled={disabled}
-              />
-            </Field>
-            <Field label="IV (×6)" hint={`Vide = ${rules.defaultOpponentIv} (équilibrage).`}>
-              <NullableNumberInput
-                value={d.boss.iv}
-                min={0}
-                max={31}
-                placeholder={String(rules.defaultOpponentIv)}
-                onChange={(iv) => setBoss({ iv })}
-                disabled={disabled}
-              />
-            </Field>
-            <Field label="Nature">
-              <select
-                className="input"
-                value={d.boss.nature ?? ''}
-                disabled={disabled}
-                onChange={(e) => setBoss({ nature: e.target.value || null })}
-              >
-                <option value="">Neutre</option>
-                {natures.map((n) => (
-                  <option key={n.name} value={n.name}>
-                    {n.nameFr}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field
-              label="Multiplicateur de PV du boss"
-              hint={opponentSummary(ctx, d.boss, d.bossHpMultiplier)}
-              error={errors.get('bossHpMultiplier')}
-            >
-              <NumberInput
-                value={d.bossHpMultiplier}
-                min={0.1}
-                max={20}
-                step={0.1}
-                unit="×"
-                onChange={(v) => set('bossHpMultiplier', v)}
-                disabled={disabled}
-              />
-            </Field>
-          </div>
-        </div>
-      </Section>
+      <DungeonBossSection
+        value={d}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
 
-      <Section title="Lignée à capturer">
-        <p className="text-xs text-slate-500">
-          Le donjon apparaît dès qu’une de ces espèces est capturée, et s’ouvre quand elles le sont
-          toutes.
-        </p>
-        <SpeciesSetEditor
-          ctx={ctx}
-          value={d.familySpeciesIds}
-          onChange={(v) => set('familySpeciesIds', v)}
-          disabled={disabled}
-        />
-        {errors.get('familySpeciesIds') && (
-          <p className="text-xs text-red-600">{errors.get('familySpeciesIds')}</p>
-        )}
-        {!disabled && lineage.join() !== d.familySpeciesIds.join() && (
-          <button
-            type="button"
-            className="btn-ghost py-1 text-xs"
-            onClick={() => set('familySpeciesIds', lineage)}
-          >
-            Remplacer par la lignée du boss (
-            {lineage.map((id) => ctx.species(id)?.nameFr ?? id).join(', ')})
-          </button>
-        )}
-      </Section>
+      <DungeonLineageSection
+        value={d}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
 
       <Section title={`Adversaires avant le boss (${d.opponents.length})`}>
         <TeamEditor
@@ -321,124 +235,308 @@ function DungeonForm({
         />
       </Section>
 
-      <Section title="Règles">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field
-            label="Météo"
-            hint="Soleil : Feu ×1,5, Eau ×0,5 ; Pluie : l’inverse ; Sable et Grêle : dégâts à chaque attaque."
-          >
-            <WeatherSelect
-              value={d.weather}
-              disabled={disabled}
-              onChange={(v) => set('weather', v ?? undefined)}
-            />
-          </Field>
-          <Field label="Temps imparti" error={errors.get('timeLimitSeconds')}>
-            <NumberInput
-              value={d.timeLimitSeconds}
-              min={10}
-              max={3600}
-              unit="s"
-              onChange={(v) => set('timeLimitSeconds', v)}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Temps de recharge"
-            hint={`Après chaque tentative. Vide = ${rules.cooldownMinutes} min.`}
-            error={errors.get('cooldownMinutes')}
-          >
-            <NullableNumberInput
-              value={d.cooldownMinutes}
-              min={0}
-              unit="min"
-              placeholder={String(rules.cooldownMinutes)}
-              onChange={(v) => set('cooldownMinutes', v)}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-        <Field label="Condition supplémentaire" error={errorsUnder(errors, 'unlock')[0]}>
-          <UnlockEditor
-            value={d.unlock}
-            regions={ctx.regions}
-            trainers={ctx.trainers}
-            quests={ctx.quests}
-            onChange={(v) => set('unlock', v)}
-            disabled={disabled}
-          />
-        </Field>
-      </Section>
+      <DungeonRulesSection
+        value={d}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
 
-      <Section title="Récompenses de victoire">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Argent" error={errors.get('money')}>
+      <DungeonRewardsSection
+        value={d}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
+    </div>
+  );
+}
+
+/** Le boss : espèce, niveau, IV, nature, multiplicateur de PV. */
+function DungeonBossSection({
+  value: d,
+  onChange,
+  errors,
+  editable,
+  working,
+}: EntityFormProps<Dungeon>) {
+  const set = <K extends keyof Dungeon>(key: K, v: Dungeon[K]) => onChange({ ...d, [key]: v });
+  const setBoss = (patch: Partial<TrainerPokemon>) => set('boss', { ...d.boss, ...patch });
+  const { ctx } = working;
+  const disabled = !editable;
+  const rules = ctx.balance.dungeons;
+
+  return (
+    <Section title="Boss">
+      <div className="flex flex-wrap items-start gap-4">
+        <Sprite id={d.boss.speciesId} formId={d.boss.formId} size={96} />
+        <div className="grid flex-1 gap-4 sm:grid-cols-2">
+          <Field label="Espèce" error={errors.get('boss.speciesId')}>
+            <SpeciesSelect
+              ctx={ctx}
+              value={d.boss.speciesId}
+              disabled={disabled}
+              onChange={(speciesId) => setBoss({ speciesId, formId: null })}
+            />
+            <FormSelect
+              speciesId={d.boss.speciesId}
+              value={d.boss.formId}
+              disabled={disabled}
+              onChange={(formId) => setBoss({ formId })}
+            />
+            {errorsUnder(errors, 'boss').map((msg) => (
+              <p key={msg} className="text-xs text-red-600">
+                {msg}
+              </p>
+            ))}
+          </Field>
+          <Field label="Niveau">
             <NumberInput
-              value={d.money}
-              min={0}
-              unit="₽"
-              onChange={(v) => set('money', v)}
+              value={d.boss.level}
+              min={1}
+              max={100}
+              onChange={(level) => setBoss({ level })}
               disabled={disabled}
             />
           </Field>
-          <Field label="Table de butin" error={errors.get('lootTableId')}>
+          <Field label="IV (×6)" hint={`Vide = ${rules.defaultOpponentIv} (équilibrage).`}>
+            <NullableNumberInput
+              value={d.boss.iv}
+              min={0}
+              max={31}
+              placeholder={String(rules.defaultOpponentIv)}
+              onChange={(iv) => setBoss({ iv })}
+              disabled={disabled}
+            />
+          </Field>
+          <Field label="Nature">
             <select
               className="input"
-              value={d.lootTableId ?? ''}
+              value={d.boss.nature ?? ''}
               disabled={disabled}
-              onChange={(e) => set('lootTableId', e.target.value || null)}
+              onChange={(e) => setBoss({ nature: e.target.value || null })}
             >
-              <option value="">Aucune</option>
-              {working.content.lootTables.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name} ({l.id})
+              <option value="">Neutre</option>
+              {natures.map((n) => (
+                <option key={n.name} value={n.name}>
+                  {n.nameFr}
                 </option>
               ))}
             </select>
           </Field>
-          <Field label="Tirages de butin" error={errors.get('lootRolls')}>
+          <Field
+            label="Multiplicateur de PV du boss"
+            hint={opponentSummary(ctx, d.boss, d.bossHpMultiplier)}
+            error={errors.get('bossHpMultiplier')}
+          >
             <NumberInput
-              value={d.lootRolls}
-              min={0}
+              value={d.bossHpMultiplier}
+              min={0.1}
               max={20}
-              onChange={(v) => set('lootRolls', v)}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Méga-Gemme" error={errors.get('gemItemId')}>
-            <ItemSelect
-              ctx={ctx}
-              value={d.gemItemId}
-              allowNone
-              filter={(id) => ctx.item(id)?.category === 'megaStone'}
-              onChange={(v) => set('gemItemId', v)}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Chance de Méga-Gemme" error={errors.get('gemChance')}>
-            <NumberInput
-              value={d.gemChance}
-              scale={100}
-              min={0}
-              max={100}
-              unit="%"
-              onChange={(v) => set('gemChance', v)}
+              step={0.1}
+              unit="×"
+              onChange={(v) => set('bossHpMultiplier', v)}
               disabled={disabled}
             />
           </Field>
         </div>
-        {d.lootTableId && (
-          <ul className="flex flex-wrap gap-3 text-xs text-slate-500">
-            {ctx.lootTable(d.lootTableId)?.entries.map((e) => (
-              <li key={e.itemId} className="flex items-center gap-1">
-                <ItemIcon ctx={ctx} id={e.itemId} size={20} />
-                {ctx.item(e.itemId)?.name ?? e.itemId} · {Math.round(e.chance * 100)} %
-              </li>
+      </div>
+    </Section>
+  );
+}
+
+/** Lignée à capturer pour révéler le donjon. */
+function DungeonLineageSection({
+  value: d,
+  onChange,
+  errors,
+  editable,
+  working,
+}: EntityFormProps<Dungeon>) {
+  const set = <K extends keyof Dungeon>(key: K, v: Dungeon[K]) => onChange({ ...d, [key]: v });
+  const { ctx } = working;
+  const disabled = !editable;
+  const lineage = directLineage(d.boss.speciesId);
+
+  return (
+    <Section title="Lignée à capturer">
+      <p className="text-xs text-slate-500">
+        Le donjon apparaît dès qu’une de ces espèces est capturée, et s’ouvre quand elles le sont
+        toutes.
+      </p>
+      <SpeciesSetEditor
+        ctx={ctx}
+        value={d.familySpeciesIds}
+        onChange={(v) => set('familySpeciesIds', v)}
+        disabled={disabled}
+      />
+      {errors.get('familySpeciesIds') && (
+        <p className="text-xs text-red-600">{errors.get('familySpeciesIds')}</p>
+      )}
+      {!disabled && lineage.join() !== d.familySpeciesIds.join() && (
+        <button
+          type="button"
+          className="btn-ghost py-1 text-xs"
+          onClick={() => set('familySpeciesIds', lineage)}
+        >
+          Remplacer par la lignée du boss (
+          {lineage.map((id) => ctx.species(id)?.nameFr ?? id).join(', ')})
+        </button>
+      )}
+    </Section>
+  );
+}
+
+/** Règles : météo, temps imparti, temps de recharge, condition supplémentaire. */
+function DungeonRulesSection({
+  value: d,
+  onChange,
+  errors,
+  editable,
+  working,
+}: EntityFormProps<Dungeon>) {
+  const set = <K extends keyof Dungeon>(key: K, v: Dungeon[K]) => onChange({ ...d, [key]: v });
+  const { ctx } = working;
+  const disabled = !editable;
+  const rules = ctx.balance.dungeons;
+
+  return (
+    <Section title="Règles">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field
+          label="Météo"
+          hint="Soleil : Feu ×1,5, Eau ×0,5 ; Pluie : l’inverse ; Sable et Grêle : dégâts à chaque attaque."
+        >
+          <WeatherSelect
+            value={d.weather}
+            disabled={disabled}
+            onChange={(v) => set('weather', v ?? undefined)}
+          />
+        </Field>
+        <Field label="Temps imparti" error={errors.get('timeLimitSeconds')}>
+          <NumberInput
+            value={d.timeLimitSeconds}
+            min={10}
+            max={3600}
+            unit="s"
+            onChange={(v) => set('timeLimitSeconds', v)}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Temps de recharge"
+          hint={`Après chaque tentative. Vide = ${rules.cooldownMinutes} min.`}
+          error={errors.get('cooldownMinutes')}
+        >
+          <NullableNumberInput
+            value={d.cooldownMinutes}
+            min={0}
+            unit="min"
+            placeholder={String(rules.cooldownMinutes)}
+            onChange={(v) => set('cooldownMinutes', v)}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+      <Field label="Condition supplémentaire" error={errorsUnder(errors, 'unlock')[0]}>
+        <UnlockEditor
+          value={d.unlock}
+          regions={ctx.regions}
+          trainers={ctx.trainers}
+          quests={ctx.quests}
+          onChange={(v) => set('unlock', v)}
+          disabled={disabled}
+        />
+      </Field>
+    </Section>
+  );
+}
+
+/** Récompenses de victoire : argent, butin, Méga-Gemme et sa chance. */
+function DungeonRewardsSection({
+  value: d,
+  onChange,
+  errors,
+  editable,
+  working,
+}: EntityFormProps<Dungeon>) {
+  const set = <K extends keyof Dungeon>(key: K, v: Dungeon[K]) => onChange({ ...d, [key]: v });
+  const { ctx } = working;
+  const disabled = !editable;
+
+  return (
+    <Section title="Récompenses de victoire">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Argent" error={errors.get('money')}>
+          <NumberInput
+            value={d.money}
+            min={0}
+            unit="₽"
+            onChange={(v) => set('money', v)}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Table de butin" error={errors.get('lootTableId')}>
+          <select
+            className="input"
+            value={d.lootTableId ?? ''}
+            disabled={disabled}
+            onChange={(e) => set('lootTableId', e.target.value || null)}
+          >
+            <option value="">Aucune</option>
+            {working.content.lootTables.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name} ({l.id})
+              </option>
             ))}
-          </ul>
-        )}
-      </Section>
-    </div>
+          </select>
+        </Field>
+        <Field label="Tirages de butin" error={errors.get('lootRolls')}>
+          <NumberInput
+            value={d.lootRolls}
+            min={0}
+            max={20}
+            onChange={(v) => set('lootRolls', v)}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Méga-Gemme" error={errors.get('gemItemId')}>
+          <ItemSelect
+            ctx={ctx}
+            value={d.gemItemId}
+            allowNone
+            filter={(id) => ctx.item(id)?.category === 'megaStone'}
+            onChange={(v) => set('gemItemId', v)}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Chance de Méga-Gemme" error={errors.get('gemChance')}>
+          <NumberInput
+            value={d.gemChance}
+            scale={100}
+            min={0}
+            max={100}
+            unit="%"
+            onChange={(v) => set('gemChance', v)}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+      {d.lootTableId && (
+        <ul className="flex flex-wrap gap-3 text-xs text-slate-500">
+          {ctx.lootTable(d.lootTableId)?.entries.map((e) => (
+            <li key={e.itemId} className="flex items-center gap-1">
+              <ItemIcon ctx={ctx} id={e.itemId} size={20} />
+              {ctx.item(e.itemId)?.name ?? e.itemId} · {Math.round(e.chance * 100)} %
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
   );
 }
 

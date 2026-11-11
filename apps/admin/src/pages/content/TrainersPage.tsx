@@ -111,15 +111,91 @@ function TrainerForm({
   working,
 }: EntityFormProps<Trainer>) {
   const set = <K extends keyof Trainer>(key: K, v: Trainer[K]) => onChange({ ...t, [key]: v });
-  const setRule = <K extends keyof BattleRules>(key: K, v: BattleRules[K]) =>
-    set('rules', { ...t.rules, [key]: v });
   const { ctx } = working;
   const disabled = !editable;
-  const battles = ctx.balance.battles;
-  const zones = ctx.zones.filter((z) => z.regionId === t.regionId);
 
   return (
     <div className="space-y-6">
+      <TrainerIdentityFields
+        value={t}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
+      <Toggle
+        checked={t.enabled}
+        onChange={(v) => set('enabled', v)}
+        label="Dresseur activé (désactivé : caché aux joueurs, plus aucun combat ne peut être lancé)"
+        disabled={disabled}
+      />
+
+      <Section title={`Équipe — PE ${trainerPower(ctx, t)}`}>
+        <TeamEditor
+          working={working}
+          team={t.team}
+          onChange={(team) => set('team', team)}
+          errors={errors}
+          disabled={disabled}
+        />
+      </Section>
+
+      <TrainerCombatSection
+        value={t}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
+
+      <TrainerRewardsSection
+        value={t}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
+
+      <TrainerQuestSection
+        value={t}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
+
+      <TrainerReplaySection
+        value={t}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
+    </div>
+  );
+}
+
+/** Identité du dresseur : identifiant, nom, classe, sprite, région, zone de rattachement, ordre. */
+function TrainerIdentityFields({
+  value: t,
+  onChange,
+  errors,
+  isNew,
+  editable,
+  working,
+}: EntityFormProps<Trainer>) {
+  const set = <K extends keyof Trainer>(key: K, v: Trainer[K]) => onChange({ ...t, [key]: v });
+  const { ctx } = working;
+  const disabled = !editable;
+  const zones = ctx.zones.filter((z) => z.regionId === t.regionId);
+
+  return (
+    <>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field
           label="Identifiant"
@@ -202,287 +278,325 @@ function TrainerForm({
           />
         </Field>
       </div>
-      <Toggle
-        checked={t.enabled}
-        onChange={(v) => set('enabled', v)}
-        label="Dresseur activé (désactivé : caché aux joueurs, plus aucun combat ne peut être lancé)"
-        disabled={disabled}
-      />
+    </>
+  );
+}
 
-      <Section title={`Équipe — PE ${trainerPower(ctx, t)}`}>
-        <TeamEditor
-          working={working}
-          team={t.team}
-          onChange={(team) => set('team', team)}
-          errors={errors}
-          disabled={disabled}
-        />
-      </Section>
+/** Combat : temps imparti, nombre de Pokémon, niveau maximum, PE minimale, types imposés ou interdits. */
+function TrainerCombatSection({ value: t, onChange, errors, editable }: EntityFormProps<Trainer>) {
+  const set = <K extends keyof Trainer>(key: K, v: Trainer[K]) => onChange({ ...t, [key]: v });
+  const setRule = <K extends keyof BattleRules>(key: K, v: BattleRules[K]) =>
+    set('rules', { ...t.rules, [key]: v });
+  const disabled = !editable;
 
-      <Section title="Combat">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field
-            label="Temps imparti"
-            hint={`Pour vaincre toute l’équipe. Proposé : ${defaultTrainerTimeLimitSeconds(t.team.length)} s (1 min + 30 s par Pokémon).`}
-            error={errors.get('timeLimitSeconds')}
-          >
-            <NumberInput
-              value={t.timeLimitSeconds}
-              min={10}
-              max={3600}
-              step={10}
-              unit="s"
-              onChange={(v) => set('timeLimitSeconds', v)}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Nombre de Pokémon imposé"
-            hint="Vide = libre."
-            error={errors.get('rules.teamSize')}
-          >
-            <NullableNumberInput
-              value={t.rules.teamSize}
-              min={1}
-              max={6}
-              placeholder="Libre"
-              onChange={(v) => setRule('teamSize', v)}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Niveau maximum" hint="Vide = aucun." error={errors.get('rules.maxLevel')}>
-            <NullableNumberInput
-              value={t.rules.maxLevel}
-              min={1}
-              max={100}
-              placeholder="Aucun"
-              onChange={(v) => setRule('maxLevel', v)}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="PE minimale pour lancer" error={errors.get('rules.minPower')}>
-            <NumberInput
-              value={t.rules.minPower}
-              min={0}
-              unit="PE"
-              onChange={(v) => setRule('minPower', v)}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-        <Field label="Types imposés">
-          <div className="space-y-2">
-            {t.rules.requiredTypes.map((r, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <NumberInput
-                  className="w-24"
-                  value={r.count}
-                  min={1}
-                  max={6}
-                  unit="×"
-                  disabled={disabled}
-                  onChange={(count) =>
-                    setRule(
-                      'requiredTypes',
-                      t.rules.requiredTypes.map((x, j) => (j === i ? { ...x, count } : x)),
-                    )
-                  }
-                />
-                <TypeSelect
-                  value={r.type}
-                  disabled={disabled}
-                  onChange={(type) =>
-                    setRule(
-                      'requiredTypes',
-                      t.rules.requiredTypes.map((x, j) => (j === i ? { ...x, type } : x)),
-                    )
-                  }
-                />
-                {!disabled && (
-                  <button
-                    type="button"
-                    className="text-slate-400 hover:text-red-600"
-                    onClick={() =>
-                      setRule(
-                        'requiredTypes',
-                        t.rules.requiredTypes.filter((_, j) => j !== i),
-                      )
-                    }
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
-            {!disabled && (
-              <button
-                type="button"
-                className="btn-ghost py-1 text-xs"
-                onClick={() =>
-                  setRule('requiredTypes', [...t.rules.requiredTypes, { type: 'water', count: 1 }])
-                }
-              >
-                + Type imposé
-              </button>
-            )}
-          </div>
-        </Field>
-        <Field label="Types interdits">
-          <TypeMultiSelect
-            value={t.rules.forbiddenTypes}
-            onChange={(v) => setRule('forbiddenTypes', v)}
+  return (
+    <Section title="Combat">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field
+          label="Temps imparti"
+          hint={`Pour vaincre toute l’équipe. Proposé : ${defaultTrainerTimeLimitSeconds(t.team.length)} s (1 min + 30 s par Pokémon).`}
+          error={errors.get('timeLimitSeconds')}
+        >
+          <NumberInput
+            value={t.timeLimitSeconds}
+            min={10}
+            max={3600}
+            step={10}
+            unit="s"
+            onChange={(v) => set('timeLimitSeconds', v)}
             disabled={disabled}
           />
         </Field>
-      </Section>
-
-      <Section title="Récompenses de victoire">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Argent" error={errors.get('money')}>
-            <NumberInput
-              value={t.money}
-              min={0}
-              unit="₽"
-              onChange={(v) => set('money', v)}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Table de butin" error={errors.get('lootTableId')}>
-            <select
-              className="input"
-              value={t.lootTableId ?? ''}
-              disabled={disabled}
-              onChange={(e) => set('lootTableId', e.target.value || null)}
+        <Field
+          label="Nombre de Pokémon imposé"
+          hint="Vide = libre."
+          error={errors.get('rules.teamSize')}
+        >
+          <NullableNumberInput
+            value={t.rules.teamSize}
+            min={1}
+            max={6}
+            placeholder="Libre"
+            onChange={(v) => setRule('teamSize', v)}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Niveau maximum" hint="Vide = aucun." error={errors.get('rules.maxLevel')}>
+          <NullableNumberInput
+            value={t.rules.maxLevel}
+            min={1}
+            max={100}
+            placeholder="Aucun"
+            onChange={(v) => setRule('maxLevel', v)}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="PE minimale pour lancer" error={errors.get('rules.minPower')}>
+          <NumberInput
+            value={t.rules.minPower}
+            min={0}
+            unit="PE"
+            onChange={(v) => setRule('minPower', v)}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+      <Field label="Types imposés">
+        <div className="space-y-2">
+          {t.rules.requiredTypes.map((r, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <NumberInput
+                className="w-24"
+                value={r.count}
+                min={1}
+                max={6}
+                unit="×"
+                disabled={disabled}
+                onChange={(count) =>
+                  setRule(
+                    'requiredTypes',
+                    t.rules.requiredTypes.map((x, j) => (j === i ? { ...x, count } : x)),
+                  )
+                }
+              />
+              <TypeSelect
+                value={r.type}
+                disabled={disabled}
+                onChange={(type) =>
+                  setRule(
+                    'requiredTypes',
+                    t.rules.requiredTypes.map((x, j) => (j === i ? { ...x, type } : x)),
+                  )
+                }
+              />
+              {!disabled && (
+                <button
+                  type="button"
+                  className="text-slate-400 hover:text-red-600"
+                  onClick={() =>
+                    setRule(
+                      'requiredTypes',
+                      t.rules.requiredTypes.filter((_, j) => j !== i),
+                    )
+                  }
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+          {!disabled && (
+            <button
+              type="button"
+              className="btn-ghost py-1 text-xs"
+              onClick={() =>
+                setRule('requiredTypes', [...t.rules.requiredTypes, { type: 'water', count: 1 }])
+              }
             >
-              <option value="">Aucune</option>
-              {working.content.lootTables.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name} ({l.id})
-                </option>
-              ))}
-            </select>
-          </Field>
-          <Field label="Tirages de butin" error={errors.get('lootRolls')}>
-            <NumberInput
-              value={t.lootRolls}
-              min={0}
-              max={20}
-              onChange={(v) => set('lootRolls', v)}
-              disabled={disabled}
-            />
-          </Field>
+              + Type imposé
+            </button>
+          )}
         </div>
-        {t.lootTableId && (
-          <ul className="flex flex-wrap gap-3 text-xs text-slate-500">
-            {ctx.lootTable(t.lootTableId)?.entries.map((e) => (
-              <li key={e.itemId} className="flex items-center gap-1">
-                <ItemIcon ctx={ctx} id={e.itemId} size={20} />
-                {ctx.item(e.itemId)?.name ?? e.itemId} · {Math.round(e.chance * 100)} %
-              </li>
-            ))}
-          </ul>
-        )}
-        <Toggle
-          label="Donne un badge à la première victoire"
-          checked={t.badge !== null}
-          disabled={disabled || !!t.questId}
-          onChange={(on) =>
-            set('badge', on ? { name: `Badge de ${t.name || '…'}`, image: null } : null)
-          }
+      </Field>
+      <Field label="Types interdits">
+        <TypeMultiSelect
+          value={t.rules.forbiddenTypes}
+          onChange={(v) => setRule('forbiddenTypes', v)}
+          disabled={disabled}
         />
-        {t.badge && (
-          <div className="grid gap-4 sm:grid-cols-2">
-            <Field label="Nom du badge" error={errors.get('badge.name')}>
-              <TextInput
-                value={t.badge.name}
-                onChange={(name) => set('badge', { ...t.badge!, name })}
-                disabled={disabled}
-              />
-            </Field>
-            <Field label="Image du badge (URL)" error={errors.get('badge.image')}>
-              <NullableTextInput
-                value={t.badge.image}
-                onChange={(image) => set('badge', { ...t.badge!, image })}
-                disabled={disabled}
-                placeholder="Médaille par défaut"
-              />
-            </Field>
-          </div>
-        )}
-      </Section>
+      </Field>
+    </Section>
+  );
+}
 
-      <Section title="Dresseur de quête">
-        <p className="text-xs text-slate-500">
-          Réservé à une quête : il n’apparaît aux joueurs, dans la section « Dresseurs de quêtes »
-          tout en bas de la liste et avec la mention « (quête) », qu’une fois atteinte l’étape de
-          cette quête qui demande de le battre (condition « Avoir battu un dresseur »). Il ne se bat
-          qu’une fois et ne donne pas de badge. Seuls les dresseurs d’une quête peuvent être
-          demandés dans ses étapes.
-        </p>
-        <Field label="Quête" error={errors.get('questId')}>
+/** Récompenses de victoire : argent, table et tirages de butin, badge. */
+function TrainerRewardsSection({
+  value: t,
+  onChange,
+  errors,
+  editable,
+  working,
+}: EntityFormProps<Trainer>) {
+  const set = <K extends keyof Trainer>(key: K, v: Trainer[K]) => onChange({ ...t, [key]: v });
+  const { ctx } = working;
+  const disabled = !editable;
+
+  return (
+    <Section title="Récompenses de victoire">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Argent" error={errors.get('money')}>
+          <NumberInput
+            value={t.money}
+            min={0}
+            unit="₽"
+            onChange={(v) => set('money', v)}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Table de butin" error={errors.get('lootTableId')}>
           <select
             className="input"
-            value={t.questId ?? ''}
+            value={t.lootTableId ?? ''}
             disabled={disabled}
-            onChange={(e) => {
-              const questId = e.target.value || null;
-              onChange({
-                ...t,
-                questId,
-                ...(questId && { repeatable: false, cooldownMinutes: null, badge: null }),
-              });
-            }}
+            onChange={(e) => set('lootTableId', e.target.value || null)}
           >
-            <option value="">Aucune (dresseur ordinaire)</option>
-            {t.questId && !working.content.quests.some((q) => q.id === t.questId) && (
-              <option value={t.questId}>{t.questId} (inconnue)</option>
-            )}
-            {working.content.quests.map((q) => (
-              <option key={q.id} value={q.id}>
-                {q.name} ({q.id})
+            <option value="">Aucune</option>
+            {working.content.lootTables.map((l) => (
+              <option key={l.id} value={l.id}>
+                {l.name} ({l.id})
               </option>
             ))}
           </select>
         </Field>
-      </Section>
-
-      <Section title="Rejouabilité et défaite">
-        <Toggle
-          label="Répétable (sinon : une seule victoire possible)"
-          checked={t.repeatable}
-          disabled={disabled || !!t.questId}
-          onChange={(v) => set('repeatable', v)}
-        />
-        <div className="grid gap-4 sm:grid-cols-2">
-          {t.repeatable && (
-            <Field
-              label="Temps de recharge après une victoire"
-              hint={`Vide = ${battles.cooldownMinutes} min (équilibrage).`}
-              error={errors.get('cooldownMinutes')}
-            >
-              <NullableNumberInput
-                value={t.cooldownMinutes}
-                min={0}
-                unit="min"
-                placeholder={String(battles.cooldownMinutes)}
-                onChange={(v) => set('cooldownMinutes', v)}
-                disabled={disabled}
-              />
-            </Field>
-          )}
-        </div>
-        <Field label="Condition de déblocage" error={errorsUnder(errors, 'unlock')[0]}>
-          <UnlockEditor
-            value={t.unlock}
-            regions={ctx.regions}
-            trainers={ctx.trainers.filter((x) => x.id !== t.id)}
-            quests={ctx.quests}
-            onChange={(v) => set('unlock', v)}
+        <Field label="Tirages de butin" error={errors.get('lootRolls')}>
+          <NumberInput
+            value={t.lootRolls}
+            min={0}
+            max={20}
+            onChange={(v) => set('lootRolls', v)}
             disabled={disabled}
           />
         </Field>
-      </Section>
-    </div>
+      </div>
+      {t.lootTableId && (
+        <ul className="flex flex-wrap gap-3 text-xs text-slate-500">
+          {ctx.lootTable(t.lootTableId)?.entries.map((e) => (
+            <li key={e.itemId} className="flex items-center gap-1">
+              <ItemIcon ctx={ctx} id={e.itemId} size={20} />
+              {ctx.item(e.itemId)?.name ?? e.itemId} · {Math.round(e.chance * 100)} %
+            </li>
+          ))}
+        </ul>
+      )}
+      <Toggle
+        label="Donne un badge à la première victoire"
+        checked={t.badge !== null}
+        disabled={disabled || !!t.questId}
+        onChange={(on) =>
+          set('badge', on ? { name: `Badge de ${t.name || '…'}`, image: null } : null)
+        }
+      />
+      {t.badge && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Nom du badge" error={errors.get('badge.name')}>
+            <TextInput
+              value={t.badge.name}
+              onChange={(name) => set('badge', { ...t.badge!, name })}
+              disabled={disabled}
+            />
+          </Field>
+          <Field label="Image du badge (URL)" error={errors.get('badge.image')}>
+            <NullableTextInput
+              value={t.badge.image}
+              onChange={(image) => set('badge', { ...t.badge!, image })}
+              disabled={disabled}
+              placeholder="Médaille par défaut"
+            />
+          </Field>
+        </div>
+      )}
+    </Section>
+  );
+}
+
+/** Dresseur de quête : la quête à l'étape de laquelle il apparaît. */
+function TrainerQuestSection({
+  value: t,
+  onChange,
+  errors,
+  editable,
+  working,
+}: EntityFormProps<Trainer>) {
+  const disabled = !editable;
+
+  return (
+    <Section title="Dresseur de quête">
+      <p className="text-xs text-slate-500">
+        Réservé à une quête : il n’apparaît aux joueurs, dans la section « Dresseurs de quêtes »
+        tout en bas de la liste et avec la mention « (quête) », qu’une fois atteinte l’étape de
+        cette quête qui demande de le battre (condition « Avoir battu un dresseur »). Il ne se bat
+        qu’une fois et ne donne pas de badge. Seuls les dresseurs d’une quête peuvent être demandés
+        dans ses étapes.
+      </p>
+      <Field label="Quête" error={errors.get('questId')}>
+        <select
+          className="input"
+          value={t.questId ?? ''}
+          disabled={disabled}
+          onChange={(e) => {
+            const questId = e.target.value || null;
+            onChange({
+              ...t,
+              questId,
+              ...(questId && { repeatable: false, cooldownMinutes: null, badge: null }),
+            });
+          }}
+        >
+          <option value="">Aucune (dresseur ordinaire)</option>
+          {t.questId && !working.content.quests.some((q) => q.id === t.questId) && (
+            <option value={t.questId}>{t.questId} (inconnue)</option>
+          )}
+          {working.content.quests.map((q) => (
+            <option key={q.id} value={q.id}>
+              {q.name} ({q.id})
+            </option>
+          ))}
+        </select>
+      </Field>
+    </Section>
+  );
+}
+
+/** Rejouabilité, défaite et condition de déblocage. */
+function TrainerReplaySection({
+  value: t,
+  onChange,
+  errors,
+  editable,
+  working,
+}: EntityFormProps<Trainer>) {
+  const set = <K extends keyof Trainer>(key: K, v: Trainer[K]) => onChange({ ...t, [key]: v });
+  const { ctx } = working;
+  const disabled = !editable;
+  const battles = ctx.balance.battles;
+
+  return (
+    <Section title="Rejouabilité et défaite">
+      <Toggle
+        label="Répétable (sinon : une seule victoire possible)"
+        checked={t.repeatable}
+        disabled={disabled || !!t.questId}
+        onChange={(v) => set('repeatable', v)}
+      />
+      <div className="grid gap-4 sm:grid-cols-2">
+        {t.repeatable && (
+          <Field
+            label="Temps de recharge après une victoire"
+            hint={`Vide = ${battles.cooldownMinutes} min (équilibrage).`}
+            error={errors.get('cooldownMinutes')}
+          >
+            <NullableNumberInput
+              value={t.cooldownMinutes}
+              min={0}
+              unit="min"
+              placeholder={String(battles.cooldownMinutes)}
+              onChange={(v) => set('cooldownMinutes', v)}
+              disabled={disabled}
+            />
+          </Field>
+        )}
+      </div>
+      <Field label="Condition de déblocage" error={errorsUnder(errors, 'unlock')[0]}>
+        <UnlockEditor
+          value={t.unlock}
+          regions={ctx.regions}
+          trainers={ctx.trainers.filter((x) => x.id !== t.id)}
+          quests={ctx.quests}
+          onChange={(v) => set('unlock', v)}
+          disabled={disabled}
+        />
+      </Field>
+    </Section>
   );
 }
 

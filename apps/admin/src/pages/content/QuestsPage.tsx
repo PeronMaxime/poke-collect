@@ -94,79 +94,17 @@ function QuestForm({
   const disabled = !editable;
   const { ctx } = working;
   const others = ctx.quests.filter((x) => x.id !== q.id);
-  const setStep = (i: number, step: QuestStep) =>
-    set(
-      'steps',
-      q.steps.map((s, j) => (j === i ? step : s)),
-    );
-  const moveStep = (i: number, delta: number) => {
-    const steps = [...q.steps];
-    const [moved] = steps.splice(i, 1);
-    steps.splice(i + delta, 0, moved!);
-    set('steps', steps);
-  };
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Identifiant"
-          hint="Minuscules et tirets, non modifiable ensuite."
-          error={errors.get('id')}
-        >
-          <TextInput value={q.id} onChange={(v) => set('id', v)} disabled={disabled || !isNew} />
-        </Field>
-        <Field label="Nom" error={errors.get('name')}>
-          <TextInput value={q.name} onChange={(v) => set('name', v)} disabled={disabled} />
-        </Field>
-        <Field label="Description" error={errors.get('description')} className="sm:col-span-2">
-          <TextInput
-            value={q.description}
-            onChange={(v) => set('description', v)}
-            disabled={disabled}
-            multiline
-          />
-        </Field>
-        <Field
-          label="Région"
-          hint="Affichage, et région d’origine des Pokémon offerts."
-          error={errors.get('regionId')}
-        >
-          <select
-            className="input"
-            value={q.regionId ?? ''}
-            disabled={disabled}
-            onChange={(e) => set('regionId', e.target.value || null)}
-          >
-            <option value="">Aucune</option>
-            {ctx.regions.map((r) => (
-              <option key={r.id} value={r.id}>
-                {r.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Ordre" error={errors.get('order')}>
-          <NumberInput
-            value={q.order}
-            min={0}
-            onChange={(v) => set('order', v)}
-            disabled={disabled}
-          />
-        </Field>
-        <Field
-          label="Illustration (URL)"
-          hint="Par défaut : artwork du premier Pokémon offert."
-          error={errors.get('image')}
-          className="sm:col-span-2"
-        >
-          <NullableTextInput
-            value={q.image}
-            onChange={(v) => set('image', v)}
-            disabled={disabled}
-          />
-        </Field>
-      </div>
+      <QuestIdentityFields
+        value={q}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
       <Toggle
         checked={q.enabled}
         onChange={(v) => set('enabled', v)}
@@ -189,104 +127,14 @@ function QuestForm({
         />
       </Section>
 
-      <Section title="Étapes">
-        <p className="text-xs text-slate-500">
-          Validées dans l’ordre. Une condition d’état (Pokédex, dresseur battu…) se valide dès
-          qu’elle est remplie ; une action (captures, expédition, objet de quête) ne compte qu’à
-          partir du début de l’étape, à la récupération des expéditions. Un objet de quête ne se
-          trouve que pendant son étape.
-        </p>
-        {q.steps.map((step, i) => (
-          <div
-            key={i}
-            className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800"
-          >
-            <div className="flex flex-wrap items-center gap-2">
-              <span className="text-sm font-semibold text-slate-500">Étape {i + 1}</span>
-              <div className="min-w-48 flex-1">
-                <TextInput
-                  value={step.name}
-                  onChange={(name) => setStep(i, { ...step, name })}
-                  disabled={disabled}
-                />
-              </div>
-              {editable && (
-                <div className="flex gap-1">
-                  <button
-                    type="button"
-                    className="btn-ghost px-2 py-1 text-xs"
-                    disabled={i === 0}
-                    onClick={() => moveStep(i, -1)}
-                  >
-                    ↑
-                  </button>
-                  <button
-                    type="button"
-                    className="btn-ghost px-2 py-1 text-xs"
-                    disabled={i === q.steps.length - 1}
-                    onClick={() => moveStep(i, 1)}
-                  >
-                    ↓
-                  </button>
-                  <button
-                    type="button"
-                    className="px-2 text-slate-400 hover:text-red-600"
-                    disabled={q.steps.length === 1}
-                    onClick={() =>
-                      set(
-                        'steps',
-                        q.steps.filter((_, j) => j !== i),
-                      )
-                    }
-                  >
-                    ✕
-                  </button>
-                </div>
-              )}
-            </div>
-            {errors.get(`steps.${i}.name`) && (
-              <p className="text-xs text-red-600">{errors.get(`steps.${i}.name`)}</p>
-            )}
-            <TextInput
-              value={step.description}
-              placeholder="Texte affiché au joueur"
-              onChange={(description) => setStep(i, { ...step, description })}
-              disabled={disabled}
-            />
-            <QuestConditionEditor
-              ctx={ctx}
-              questId={q.id}
-              value={step.condition}
-              onChange={(condition) => setStep(i, { ...step, condition })}
-              errors={errors}
-              prefix={`steps.${i}.condition`}
-              disabled={disabled}
-            />
-            <Field
-              label="Dénouement"
-              hint="Affiché une fois l’étape validée : la suite de l’histoire (facultatif)."
-              error={errors.get(`steps.${i}.outcome`)}
-            >
-              <TextInput
-                value={step.outcome}
-                onChange={(outcome) => setStep(i, { ...step, outcome })}
-                disabled={disabled}
-                multiline
-              />
-            </Field>
-          </div>
-        ))}
-        {errors.get('steps') && <p className="text-xs text-red-600">{errors.get('steps')}</p>}
-        {editable && (
-          <button
-            type="button"
-            className="btn-ghost py-1 text-xs"
-            onClick={() => set('steps', [...q.steps, newStep()])}
-          >
-            + Étape
-          </button>
-        )}
-      </Section>
+      <QuestStepsSection
+        value={q}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
 
       <Section title="Pokémon à capturer (combats légendaires)">
         <PokemonRewardsEditor
@@ -312,7 +160,215 @@ function QuestForm({
   );
 }
 
+/** Identité de la quête : identifiant, nom, description, région, ordre, illustration. */
+function QuestIdentityFields({
+  value: q,
+  onChange,
+  errors,
+  isNew,
+  editable,
+  working,
+}: EntityFormProps<Quest>) {
+  const set = <K extends keyof Quest>(key: K, v: Quest[K]) => onChange({ ...q, [key]: v });
+  const disabled = !editable;
+  const { ctx } = working;
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field
+        label="Identifiant"
+        hint="Minuscules et tirets, non modifiable ensuite."
+        error={errors.get('id')}
+      >
+        <TextInput value={q.id} onChange={(v) => set('id', v)} disabled={disabled || !isNew} />
+      </Field>
+      <Field label="Nom" error={errors.get('name')}>
+        <TextInput value={q.name} onChange={(v) => set('name', v)} disabled={disabled} />
+      </Field>
+      <Field label="Description" error={errors.get('description')} className="sm:col-span-2">
+        <TextInput
+          value={q.description}
+          onChange={(v) => set('description', v)}
+          disabled={disabled}
+          multiline
+        />
+      </Field>
+      <Field
+        label="Région"
+        hint="Affichage, et région d’origine des Pokémon offerts."
+        error={errors.get('regionId')}
+      >
+        <select
+          className="input"
+          value={q.regionId ?? ''}
+          disabled={disabled}
+          onChange={(e) => set('regionId', e.target.value || null)}
+        >
+          <option value="">Aucune</option>
+          {ctx.regions.map((r) => (
+            <option key={r.id} value={r.id}>
+              {r.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Ordre" error={errors.get('order')}>
+        <NumberInput
+          value={q.order}
+          min={0}
+          onChange={(v) => set('order', v)}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Illustration (URL)"
+        hint="Par défaut : artwork du premier Pokémon offert."
+        error={errors.get('image')}
+        className="sm:col-span-2"
+      >
+        <NullableTextInput value={q.image} onChange={(v) => set('image', v)} disabled={disabled} />
+      </Field>
+    </div>
+  );
+}
+
+/** Étapes de la quête, dans l'ordre : condition et dénouement de chacune, ajout, déplacement, retrait. */
+function QuestStepsSection({
+  value: q,
+  onChange,
+  errors,
+  editable,
+  working,
+}: EntityFormProps<Quest>) {
+  const set = <K extends keyof Quest>(key: K, v: Quest[K]) => onChange({ ...q, [key]: v });
+  const disabled = !editable;
+  const { ctx } = working;
+  const setStep = (i: number, step: QuestStep) =>
+    set(
+      'steps',
+      q.steps.map((s, j) => (j === i ? step : s)),
+    );
+  const moveStep = (i: number, delta: number) => {
+    const steps = [...q.steps];
+    const [moved] = steps.splice(i, 1);
+    steps.splice(i + delta, 0, moved!);
+    set('steps', steps);
+  };
+
+  return (
+    <Section title="Étapes">
+      <p className="text-xs text-slate-500">
+        Validées dans l’ordre. Une condition d’état (Pokédex, dresseur battu…) se valide dès qu’elle
+        est remplie ; une action (captures, expédition, objet de quête) ne compte qu’à partir du
+        début de l’étape, à la récupération des expéditions. Un objet de quête ne se trouve que
+        pendant son étape.
+      </p>
+      {q.steps.map((step, i) => (
+        <div
+          key={i}
+          className="space-y-3 rounded-lg border border-slate-200 p-3 dark:border-slate-800"
+        >
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-sm font-semibold text-slate-500">Étape {i + 1}</span>
+            <div className="min-w-48 flex-1">
+              <TextInput
+                value={step.name}
+                onChange={(name) => setStep(i, { ...step, name })}
+                disabled={disabled}
+              />
+            </div>
+            {editable && (
+              <div className="flex gap-1">
+                <button
+                  type="button"
+                  className="btn-ghost px-2 py-1 text-xs"
+                  disabled={i === 0}
+                  onClick={() => moveStep(i, -1)}
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  className="btn-ghost px-2 py-1 text-xs"
+                  disabled={i === q.steps.length - 1}
+                  onClick={() => moveStep(i, 1)}
+                >
+                  ↓
+                </button>
+                <button
+                  type="button"
+                  className="px-2 text-slate-400 hover:text-red-600"
+                  disabled={q.steps.length === 1}
+                  onClick={() =>
+                    set(
+                      'steps',
+                      q.steps.filter((_, j) => j !== i),
+                    )
+                  }
+                >
+                  ✕
+                </button>
+              </div>
+            )}
+          </div>
+          {errors.get(`steps.${i}.name`) && (
+            <p className="text-xs text-red-600">{errors.get(`steps.${i}.name`)}</p>
+          )}
+          <TextInput
+            value={step.description}
+            placeholder="Texte affiché au joueur"
+            onChange={(description) => setStep(i, { ...step, description })}
+            disabled={disabled}
+          />
+          <QuestConditionEditor
+            ctx={ctx}
+            questId={q.id}
+            value={step.condition}
+            onChange={(condition) => setStep(i, { ...step, condition })}
+            errors={errors}
+            prefix={`steps.${i}.condition`}
+            disabled={disabled}
+          />
+          <Field
+            label="Dénouement"
+            hint="Affiché une fois l’étape validée : la suite de l’histoire (facultatif)."
+            error={errors.get(`steps.${i}.outcome`)}
+          >
+            <TextInput
+              value={step.outcome}
+              onChange={(outcome) => setStep(i, { ...step, outcome })}
+              disabled={disabled}
+              multiline
+            />
+          </Field>
+        </div>
+      ))}
+      {errors.get('steps') && <p className="text-xs text-red-600">{errors.get('steps')}</p>}
+      {editable && (
+        <button
+          type="button"
+          className="btn-ghost py-1 text-xs"
+          onClick={() => set('steps', [...q.steps, newStep()])}
+        >
+          + Étape
+        </button>
+      )}
+    </Section>
+  );
+}
+
 type ConditionMode = 'catchPokemon' | 'expedition' | 'questItem' | 'state';
+
+/** Props de l'éditeur de condition d'étape, que reçoivent aussi ses pièces. */
+interface QuestConditionEditorProps {
+  ctx: GameContext;
+  questId: string;
+  value: QuestCondition;
+  onChange: (v: QuestCondition) => void;
+  errors: FieldErrors;
+  prefix: string;
+  disabled: boolean;
+}
 
 /**
  * Condition d'une étape : action (captures, expédition, objet de quête) ou condition d'état
@@ -326,20 +382,11 @@ function QuestConditionEditor({
   errors,
   prefix,
   disabled,
-}: {
-  ctx: GameContext;
-  questId: string;
-  value: QuestCondition;
-  onChange: (v: QuestCondition) => void;
-  errors: FieldErrors;
-  prefix: string;
-  disabled: boolean;
-}) {
+}: QuestConditionEditorProps) {
   const mode: ConditionMode =
     value.type === 'catchPokemon' || value.type === 'expedition' || value.type === 'questItem'
       ? value.type
       : 'state';
-  const err = (path: string) => errors.get(`${prefix}.${path}`);
   const initial = (m: ConditionMode): QuestCondition => {
     switch (m) {
       case 'catchPokemon':
@@ -389,6 +436,80 @@ function QuestConditionEditor({
         <option value="state">Condition d’état (Pokédex, dresseur, badges, quête…)</option>
       </select>
 
+      <CatchConditionFields
+        ctx={ctx}
+        questId={questId}
+        value={value}
+        onChange={onChange}
+        errors={errors}
+        prefix={prefix}
+        disabled={disabled}
+      />
+
+      <ExpeditionConditionFields
+        ctx={ctx}
+        questId={questId}
+        value={value}
+        onChange={onChange}
+        errors={errors}
+        prefix={prefix}
+        disabled={disabled}
+      />
+
+      <QuestItemConditionFields
+        ctx={ctx}
+        questId={questId}
+        value={value}
+        onChange={onChange}
+        errors={errors}
+        prefix={prefix}
+        disabled={disabled}
+      />
+
+      {(value.type === 'expedition' || value.type === 'questItem') && (
+        <ExpeditionRequirementsEditor
+          ctx={ctx}
+          value={value}
+          onChange={onChange}
+          disabled={disabled}
+        />
+      )}
+
+      {value.type !== 'catchPokemon' &&
+        value.type !== 'expedition' &&
+        value.type !== 'questItem' && (
+          <>
+            <p className="basis-full text-xs text-slate-500">
+              « Avoir battu un dresseur » : seuls les dresseurs de cette quête (Dresseurs → Dresseur
+              de quête) sont proposés ; ils apparaissent aux joueurs quand l’étape est atteinte.
+            </p>
+            <UnlockEditor
+              value={value}
+              onChange={onChange}
+              regions={ctx.regions}
+              trainers={ctx.trainers.filter((t) => t.questId === questId)}
+              quests={ctx.quests.filter((q) => q.id !== questId)}
+              disabled={disabled}
+            />
+          </>
+        )}
+    </div>
+  );
+}
+
+/** Étape « capturer » : nombre de captures, type ou espèce, zone. */
+function CatchConditionFields({
+  ctx,
+  value,
+  onChange,
+  errors,
+  prefix,
+  disabled,
+}: QuestConditionEditorProps) {
+  const err = (path: string) => errors.get(`${prefix}.${path}`);
+
+  return (
+    <>
       {value.type === 'catchPokemon' && (
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Nombre" error={err('count')}>
@@ -447,7 +568,23 @@ function QuestConditionEditor({
           </Field>
         </div>
       )}
+    </>
+  );
+}
 
+/** Étape « expédition » : zone, nombre de réussites, Pokémon exigés dans l'équipe (nombre, type, PE). */
+function ExpeditionConditionFields({
+  ctx,
+  value,
+  onChange,
+  errors,
+  prefix,
+  disabled,
+}: QuestConditionEditorProps) {
+  const err = (path: string) => errors.get(`${prefix}.${path}`);
+
+  return (
+    <>
       {value.type === 'expedition' && (
         <div className="flex flex-wrap items-end gap-3">
           <Field label="Zone" error={err('zoneId')}>
@@ -508,7 +645,23 @@ function QuestConditionEditor({
           </Field>
         </div>
       )}
+    </>
+  );
+}
 
+/** Étape « objet de quête » : l'objet, la quantité, la zone, la chance par tirage de butin, l'équipe exigée. */
+function QuestItemConditionFields({
+  ctx,
+  value,
+  onChange,
+  errors,
+  prefix,
+  disabled,
+}: QuestConditionEditorProps) {
+  const err = (path: string) => errors.get(`${prefix}.${path}`);
+
+  return (
+    <>
       {value.type === 'questItem' && (
         <div className="space-y-2">
           <div className="flex flex-wrap items-end gap-3">
@@ -586,35 +739,7 @@ function QuestConditionEditor({
           </div>
         </div>
       )}
-
-      {(value.type === 'expedition' || value.type === 'questItem') && (
-        <ExpeditionRequirementsEditor
-          ctx={ctx}
-          value={value}
-          onChange={onChange}
-          disabled={disabled}
-        />
-      )}
-
-      {value.type !== 'catchPokemon' &&
-        value.type !== 'expedition' &&
-        value.type !== 'questItem' && (
-          <>
-            <p className="basis-full text-xs text-slate-500">
-              « Avoir battu un dresseur » : seuls les dresseurs de cette quête (Dresseurs → Dresseur
-              de quête) sont proposés ; ils apparaissent aux joueurs quand l’étape est atteinte.
-            </p>
-            <UnlockEditor
-              value={value}
-              onChange={onChange}
-              regions={ctx.regions}
-              trainers={ctx.trainers.filter((t) => t.questId === questId)}
-              quests={ctx.quests.filter((q) => q.id !== questId)}
-              disabled={disabled}
-            />
-          </>
-        )}
-    </div>
+    </>
   );
 }
 

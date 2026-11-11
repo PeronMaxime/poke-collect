@@ -465,9 +465,16 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
 
 ### Phase 6 : L'administration (`apps/admin`) (M)
 
-- [ ] **6.1 Découpage des formulaires** : `BalanceForm` (911) → une section par domaine
+- [x] **6.1 Découpage des formulaires** : `BalanceForm` (911) → une section par domaine
       d'équilibrage ; `ItemForm` (481), `TrainerForm` (383), `DungeonForm` (323), `ZoneForm`,
       `QuestConditionEditor`, `UnlockEditor`, `PowerCalculatorPage` (414), `TelemetryPage` (329).
+  - **Réalisé** le 11 novembre, avec la même méthode que la 5.5. Avant le découpage, un test qui
+    ouvre la première, la médiane et la dernière fiche de chaque liste (`test/forms.test.tsx`).
+    Les sections d'une fiche reçoivent les mêmes props qu'elle (`EntityFormProps`) ; celles d'un
+    éditeur, une interface partagée (`UnlockEditorProps`, `QuestConditionEditorProps`,
+    `CombatSectionProps`). `BalanceForm` passe par un hook (`useBalanceForm`) et 16 sections ;
+    `PowerCalculatorPage` garde le chargement et confie le reste à `PowerCalculator`. Plafond
+    d'avertissements : 35 → 23.
 - [ ] **6.2 Un modèle unique de page de contenu** autour de `EntityPage` : liste, formulaire,
       validation, enregistrement, écrits une fois et documentés.
 - [ ] **6.3 Pages chargées à la demande** (une par route).
