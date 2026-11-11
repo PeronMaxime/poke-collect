@@ -1,5 +1,5 @@
 import { afterEach, inject } from 'vitest';
-import { cleanup } from '@testing-library/react';
+import { cleanup, configure } from '@testing-library/react';
 
 /**
  * Préparation de chaque fichier de tests d'écran (jsdom).
@@ -8,6 +8,10 @@ import { cleanup } from '@testing-library/react';
  *   les appels partent vers l'API de test (`global-setup.ts`) et le cookie est tenu à la main.
  * - API du navigateur absentes de jsdom : remplacées par le strict nécessaire.
  */
+
+// Tous les fichiers tournent en parallèle contre la même API : le premier affichage d'un écran
+// peut dépasser la seconde d'attente par défaut des `findBy…`.
+configure({ asyncUtilTimeout: 5_000 });
 
 /** Origine du jeu en développement, la seule que l'authentification de test accepte. */
 const TEST_ORIGIN = 'http://localhost:5173';
