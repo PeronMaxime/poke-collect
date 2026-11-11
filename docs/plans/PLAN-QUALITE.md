@@ -488,7 +488,12 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
     `SettingsPage` (testé seul, `test/settings-page.test.tsx`), les gestes `cancel` et `submit`
     vont dans le hook de la page. Le chargement de la version de travail, répété sept fois, est
     `WithWorkingVersion`. Les deux modèles sont décrits dans le `README` de l'admin.
-- [ ] **6.3 Pages chargées à la demande** (une par route).
+- [x] **6.3 Pages chargées à la demande** (une par route).
+  - **Réalisé** le 11 novembre : `routes.tsx` tient une table chemin → chargement (`lazy` de
+    React Router) ; le menu estompe la page d'avant pendant le téléchargement de la suivante. Le
+    contenu de test du tableau de bord ne se télécharge qu'au clic. À l'ouverture : 510 → 120 Ko
+    compressés (`node scripts/bundle-size.mjs apps/admin/dist`) ; le tableau de bord affiché, avec
+    le moteur et les données du jeu que partagent toutes les pages de contenu : ≈ 315 Ko.
 - [ ] **6.4 Client d'API commun** avec le jeu (`@poke/client`, voir 5.3).
 - [ ] **6.5 Documentation** : comment ajouter une page d'édition pour une nouvelle entité de
       contenu.

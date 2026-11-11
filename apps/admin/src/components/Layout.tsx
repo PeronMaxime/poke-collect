@@ -1,10 +1,12 @@
-import { NavLink, Outlet } from 'react-router';
+import { NavLink, Outlet, useNavigation } from 'react-router';
 import { useAdminUser } from '../lib/admin-user';
 import { CURRENT_PHASE, SECTIONS } from '../sections';
 import { SignOutButton } from './SignOutButton';
 
 export function Layout() {
   const user = useAdminUser();
+  // Page suivante en téléchargement (pages chargées à la demande) : celle d'avant s'estompe.
+  const loading = useNavigation().state === 'loading';
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:h-screen md:w-64 md:shrink-0 md:border-r md:border-b-0 dark:border-slate-800 dark:bg-slate-900">
@@ -44,7 +46,10 @@ export function Layout() {
           </div>
         </div>
       </aside>
-      <main className="min-w-0 flex-1 p-4 md:p-8">
+      <main
+        aria-busy={loading}
+        className={`min-w-0 flex-1 p-4 transition-opacity md:p-8 ${loading ? 'opacity-50' : ''}`}
+      >
         <Outlet />
       </main>
     </div>

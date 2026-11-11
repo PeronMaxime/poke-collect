@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { seedContent } from '@poke/content/seed';
 import type { ContentEntityKind } from '@poke/content';
 import type { ContentVersionDto, ContentVersionStatus } from '@poke/shared';
 import { IssueList } from '../components/EntityPage';
@@ -321,7 +320,10 @@ function ImportExportSection({ m }: { m: DashboardPageModel }) {
           className="btn-ghost"
           disabled={!!draft || importContent.isPending}
           onClick={() =>
-            importContent.mutate({ label: 'Contenu de test (seed)', content: seedContent })
+            // Le contenu de test (≈ 50 Ko compressés) ne se télécharge qu'au clic.
+            void import('@poke/content/seed').then(({ seedContent }) =>
+              importContent.mutate({ label: 'Contenu de test (seed)', content: seedContent }),
+            )
           }
         >
           Charger le contenu de test
