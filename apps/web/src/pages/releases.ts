@@ -12,6 +12,7 @@ interface Release {
   changes: { section: string; items: string[] }[];
 }
 
+/** Les entrées, de la plus récente à la plus ancienne. */
 export const RELEASES: Release[] = [
   {
     date: '11 novembre 2026',

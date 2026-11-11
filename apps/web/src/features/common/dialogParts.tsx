@@ -124,6 +124,7 @@ export function PowerGauge({
   );
 }
 
+/** Ton d'un état : bon, mauvais, ou rien à signaler. */
 export type StatusTone = 'ok' | 'bad' | 'idle';
 
 /** État d'une équipe dans la barre du bas : prête, règle non respectée, ou rien de choisi. */

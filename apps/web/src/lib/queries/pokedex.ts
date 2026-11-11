@@ -12,6 +12,7 @@ import { keys } from './keys';
 export const usePokedex = () =>
   useQuery({ queryKey: keys.pokedex, queryFn: () => api<PokedexEntryDto[]>('/api/pokedex') });
 
+/** Formes vues et capturées du Pokédex. */
 export const usePokedexForms = () =>
   useQuery({
     queryKey: [...keys.pokedex, 'forms'],

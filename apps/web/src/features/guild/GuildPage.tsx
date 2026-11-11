@@ -1,3 +1,7 @@
+/**
+ * Onglet « Guilde » : sa guilde (membres, quêtes, coffres, discussion), ou la recherche et la
+ * création d'une guilde ; la fiche des autres guildes.
+ */
 import { useEffect, useRef, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { CHEST_RARITY_LABELS, GUILD_QUEST_DIFFICULTY_LABELS } from '@poke/content';

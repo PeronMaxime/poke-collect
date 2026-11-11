@@ -1,3 +1,7 @@
+/**
+ * Animation d'une évolution (ou d'une Méga-Évolution) : la silhouette alterne avec la nouvelle
+ * forme, puis la nouvelle espèce apparaît.
+ */
 import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import type { GameContext } from '@poke/game-core';

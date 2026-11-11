@@ -1,3 +1,7 @@
+/**
+ * Onglet du Centre Pokémon : places de soins et Pokémon K.O. qui attendent, mis en soins un par
+ * un ou d'un coup.
+ */
 import { ASSISTANT_POST_PLACES, assistantSlotCount } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { PokemonDto } from '@poke/shared';

@@ -24,8 +24,11 @@ export const ENRAGE_BANNER_MS = 2600;
 
 /** Événements du combat, par famille. */
 export type DungeonAttackEvent = DungeonEvent & { kind: 'attack' };
+/** Événement d'un talent qui se déclenche. */
 export type DungeonAbilityEvent = DungeonEvent & { kind: 'ability' };
+/** Événement d'un statut (paralysie, brûlure…). */
 export type DungeonStatusEvent = DungeonEvent & { kind: 'status' };
+/** Événement d'un objet utilisé pendant le combat. */
 export type DungeonItemEvent = DungeonEvent & { kind: 'item' };
 
 /**

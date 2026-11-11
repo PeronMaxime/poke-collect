@@ -1,3 +1,6 @@
+/**
+ * Les guildes : la sienne, la fiche des autres et leur classement.
+ */
 import { useQuery } from '@tanstack/react-query';
 import type {
   CreateGuildInput,
@@ -11,10 +14,6 @@ import type {
 } from '@poke/shared';
 import { api } from '../api';
 import { keys } from './keys';
-
-/**
- * Les guildes : la sienne, la fiche des autres et leur classement.
- */
 
 /** Guilde du joueur (membres, quêtes du jour et de la semaine), ou ses candidatures s'il n'en a pas. */
 export const useGuild = () =>

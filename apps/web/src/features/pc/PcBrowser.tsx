@@ -38,6 +38,7 @@ function savedSort(): Sort {
 /** Onglet de tout le PC, avant les onglets de région (Pokédex régional de chaque espèce). */
 const ALL_TAB = { id: '__tous', label: 'Tous' };
 
+/** Symbole du sexe d'un Pokémon (rien pour un asexué). */
 export const GENDER_LABELS = { male: '♂', female: '♀', genderless: '' } as const;
 
 const ACTIVITY_LABELS: Record<PokemonActivity, string> = {
@@ -48,6 +49,7 @@ const ACTIVITY_LABELS: Record<PokemonActivity, string> = {
   assistant: 'Assistant',
 };
 
+/** Un Pokémon du PC avec ce que les filtres et tris en calculent (espèce, PE, talent, évolution). */
 export interface PcEntry {
   p: PokemonDto;
   species: GameSpecies | undefined;
@@ -190,6 +192,7 @@ export function usePcBrowser(ctx: GameContext, pokemon: readonly PokemonDto[]) {
   };
 }
 
+/** Recherche, filtres et tri du PC, tels que les rend `usePcBrowser`. */
 export type PcBrowser = ReturnType<typeof usePcBrowser>;
 
 /**

@@ -1,3 +1,7 @@
+/**
+ * Fiche d'une espèce ou d'une forme du Pokédex : illustration, statut, formes, lignée, façons de
+ * l'obtenir et talents ; et l'état d'une case du Pokédex.
+ */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { DEX_FORM_SECTIONS, directLineage, getForm, speciesForms } from '@poke/data';

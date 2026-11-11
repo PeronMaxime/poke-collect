@@ -32,11 +32,13 @@ export function parseFilter(raw: unknown): AutoTransferFilter | null {
 export type ZoneAutoTransfer =
   { custom: false } | { custom: true; filter: AutoTransferFilter | null };
 
+/** Transfert automatique qui s'applique à une zone : son réglage propre, sinon le réglage général. */
 export const effectiveAutoTransfer = (
   zone: ZoneAutoTransfer,
   global: AutoTransferFilter | null,
 ): AutoTransferFilter | null => (zone.custom ? zone.filter : global);
 
+/** Résumé lisible d'un réglage de transfert automatique (« Désactivé » sans réglage). */
 export function autoTransferLabel(filter: AutoTransferFilter | null): string {
   if (!filter) return 'Désactivé';
   if (filter.maxPerfectIvs === 0) return 'Déjà capturés sans IV parfait';

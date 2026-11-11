@@ -1,3 +1,6 @@
+/**
+ * Création du dresseur (pseudo) juste après l'inscription.
+ */
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -10,6 +13,7 @@ const ERRORS: Record<string, string> = {
   PROFILE_EXISTS: 'Ton profil existe déjà.',
 };
 
+/** Choix du pseudo de dresseur, juste après l'inscription. */
 export function CreateProfilePage() {
   const queryClient = useQueryClient();
   const [trainerName, setTrainerName] = useState('');

@@ -1,3 +1,9 @@
+/**
+ * Choix des Pokémon sur qui utiliser un objet du sac (Baie Grena, Super Bonbon, Rappel…), dans la
+ * même fenêtre que le choix d'une équipe ou d'un Pokémon de pension : à gauche la « boîte »
+ * (recherche, tri, filtres, grille), à droite le panneau propre à l'objet (`aside`), en bas
+ * l'état et les boutons (`footer`).
+ */
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { effectiveAbility, evolutionOptions } from '@poke/game-core';
@@ -19,13 +25,6 @@ import {
 import { usePinnedSelection } from '../common/teamPicker/useTeamPicker';
 import { TeamPickerDialog } from '../common/TeamSection';
 import { BANNER_LABEL } from '../common/zoneBanner';
-
-/**
- * Choix des Pokémon sur qui utiliser un objet du sac (Baie Grena, Super Bonbon, Rappel…), dans la
- * même fenêtre que le choix d'une équipe ou d'un Pokémon de pension : à gauche la « boîte »
- * (recherche, tri, filtres, grille), à droite le panneau propre à l'objet (`aside`), en bas
- * l'état et les boutons (`footer`).
- */
 
 const BASE_SORTS = {
   level: 'Niveau',
@@ -203,6 +202,7 @@ function useItemPokemonPicker(props: ItemPokemonPickerProps) {
 /** Ce qu'affichent les pièces de `ItemPokemonPicker`. */
 type ItemPokemonPickerModel = ReturnType<typeof useItemPokemonPicker>;
 
+/** Fenêtre de choix des Pokémon sur qui utiliser un objet ; `aside` et `footer` viennent de l'objet. */
 export function ItemPokemonPicker(props: ItemPokemonPickerProps) {
   const m = useItemPokemonPicker(props);
   const { ctx, itemId, title, left, summary, aside, footer, onClose } = props;

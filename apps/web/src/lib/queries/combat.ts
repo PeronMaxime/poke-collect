@@ -1,3 +1,6 @@
+/**
+ * Les combats : dresseurs, légendaires et donjons.
+ */
 import { utcOffsetMinutes } from './clock';
 import { useQuery } from '@tanstack/react-query';
 import type {
@@ -15,10 +18,7 @@ import type {
 import { api } from '../api';
 import { keys } from './keys';
 
-/**
- * Les combats : dresseurs, légendaires et donjons.
- */
-
+/** Combats de dresseurs : celui en cours, le dernier réglé et le bilan contre chaque dresseur. */
 export const useBattles = () =>
   useQuery({ queryKey: keys.battles, queryFn: () => api<BattlesResponse>('/api/battles') });
 
@@ -78,6 +78,7 @@ export const COMBAT_API = {
   dungeons: '/api/dungeons',
   legendary: '/api/legendary-battles',
 } as const;
+/** Chemin de base de l'une des trois familles de combats. */
 export type CombatApi = (typeof COMBAT_API)[keyof typeof COMBAT_API];
 
 /** Ordre donné pendant un combat : changer de Pokémon (`switch`) ou utiliser un objet (`item`). */

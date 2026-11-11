@@ -1,8 +1,12 @@
+/**
+ * Météo d'une zone ou d'un combat : icônes, prévision de la zone, météo imposée par un talent.
+ */
 import type { ImposedWeather, Zone } from '@poke/content';
 import { WEATHER_LABELS, hasVariableWeather, nextWeatherRoll, zoneWeather } from '@poke/game-core';
 import { HoverBubble } from '../../components/ui';
 import { useGameContext } from '../../lib/queries';
 
+/** Emoji de chaque météo. */
 export const WEATHER_ICONS: Record<ImposedWeather, string> = {
   clear: '🌤️',
   sun: '☀️',

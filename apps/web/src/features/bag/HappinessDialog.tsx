@@ -1,3 +1,7 @@
+/**
+ * Don d'une baie de bonheur (Baie Grena) ou d'un Super Bonbon depuis le Sac : choix du Pokémon,
+ * évolution attendue, dons à la suite.
+ */
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { MAX_HAPPINESS, MAX_LEVEL } from '@poke/game-core';

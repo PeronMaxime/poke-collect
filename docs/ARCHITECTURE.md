@@ -193,7 +193,12 @@ déterministe), cachette d'un Pokémon fuyard.
 
 - **Pas de routeur** : `App.tsx` aiguille selon l'état du joueur (non connecté → connexion ; pas
   de dresseur → création ; pas de starter → choix ; sinon le jeu). Dans le jeu, l'onglet affiché
-  suit l'ancre de l'adresse (`#pc`, `#expeditions/<zone>`), gérée par `pages/HomePage.tsx`.
+  suit l'ancre de l'adresse (`#pc`, `#expeditions/<zone>`), gérée par `pages/HomePage.tsx` et
+  sa coquille (`pages/home/` : menu, en-tête, pastilles, onglet affiché).
+- **Écrans** : un dossier par domaine dans `features/` (expéditions, PC, combats, pension…), le
+  commun dans `features/common/`. Chaque dossier a son `README.md` : ce que fait l'écran, ses
+  fichiers, d'où viennent ses données et ce que font ses actions. Un écran long est découpé en
+  un hook qui rend son « modèle » (`useXxxPage`) et des pièces qui le reçoivent.
 - **Données** : TanStack Query. Clés, lectures et rechargements après action sont dans
   `lib/queries/`. Règle issue du plan de stabilité : après une action, on ne recharge que les
   données qu'elle a pu changer (`refreshAfter…`), jamais tout.

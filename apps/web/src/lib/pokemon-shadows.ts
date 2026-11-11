@@ -1,15 +1,14 @@
-import { useEffect } from 'react';
-import { pokemonSprite, pokemonSpriteUrl } from '@poke/data';
-import { FEATURED_POKEMON_MAX } from '@poke/shared';
-import { useTrainerCard } from './queries';
-
-/*
+/**
  * Fond de page « ombres de Pokémon » (test) : les Pokémon de la vitrine de la Fiche Dresseur, complétés
  * par des starters tirés au hasard, sont dessinés en silhouettes blanches dans une tuile qui sert de
  * masque au calque body::before (couleur --grass-line, voir index.css). Les chromatiques reçoivent en
  * plus un voile doré (body::after, --shiny-shadow). Les couleurs suivent donc le thème sans régénérer
  * les tuiles.
  */
+import { useEffect } from 'react';
+import { pokemonSprite, pokemonSpriteUrl } from '@poke/data';
+import { FEATURED_POKEMON_MAX } from '@poke/shared';
+import { useTrainerCard } from './queries';
 
 /** Premières formes des starters de toutes les générations. */
 const STARTERS = [

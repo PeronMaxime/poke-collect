@@ -1,3 +1,6 @@
+/**
+ * Onglet « Donjons » : un donjon par Méga-Évolution, la tentative en cours, le départ et le résultat.
+ */
 import type { Dungeon } from '@poke/content';
 import type { DungeonStatus, GameContext } from '@poke/game-core';
 import type { ClaimDungeonResponse, DungeonRecordDto, DungeonRunDto } from '@poke/shared';

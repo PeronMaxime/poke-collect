@@ -1,3 +1,7 @@
+/**
+ * Le joueur : son compte et son profil, le contenu publié du jeu, son avancement (ce qui
+ * débloque onglets, places et régions) et les récompenses déjà réclamées.
+ */
 import { useMemo } from 'react';
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { createGameContext } from '@poke/game-core';
@@ -16,11 +20,6 @@ import { useBattles } from './combat';
 import { keys } from './keys';
 import { usePokedex } from './pokedex';
 import { useQuests } from './quests';
-
-/**
- * Le joueur : son compte et son profil, le contenu publié du jeu, son avancement (ce qui
- * débloque onglets, places et régions) et les récompenses déjà réclamées.
- */
 
 /**
  * Profil du joueur (`null` : non connecté). Tous les `useQuery` de `keys.me` partent de ces

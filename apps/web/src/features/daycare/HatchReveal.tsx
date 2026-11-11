@@ -1,3 +1,6 @@
+/**
+ * Révélation des œufs éclos, un à un, avec les nouveautés du Pokédex.
+ */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';

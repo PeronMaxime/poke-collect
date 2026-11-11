@@ -18,6 +18,7 @@ export function formatDuration(minutes: number): string {
   return m ? `${h} h ${m}` : `${h} h`;
 }
 
+/** Compte à rebours « 1:05:09 » ou « 5:09 » ; 0 au plus bas. */
 export function formatCountdown(ms: number): string {
   const total = Math.max(0, Math.ceil(ms / 1000));
   const h = Math.floor(total / 3600);
@@ -27,6 +28,7 @@ export function formatCountdown(ms: number): string {
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
 
+/** « 1 500 ₽ ». */
 export function formatMoney(amount: number): string {
   return `${amount.toLocaleString('fr-FR')} ₽`;
 }

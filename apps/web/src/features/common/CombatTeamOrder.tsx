@@ -1,3 +1,7 @@
+/**
+ * Équipe d'un combat en temps réel : ordre d'entrée, attaque de chaque Pokémon et efficacité contre
+ * les adversaires, puis les adversaires eux-mêmes.
+ */
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import type { AbilityEffect } from '@poke/content';
 import { STAT_NAMES, types } from '@poke/data';

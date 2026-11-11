@@ -87,6 +87,7 @@ function useCenterTile({ ctx }: { ctx: GameContext }) {
 /** Ce qu'affichent les pièces de `CenterTile`. */
 type CenterTileModel = ReturnType<typeof useCenterTile>;
 
+/** Fenêtre du Centre Pokémon dans la colonne des bâtiments. */
 export function CenterTile({ ctx }: { ctx: GameContext }) {
   const m = useCenterTile({ ctx });
   const { heal, free, centers, center, setCenter, waiting, setSelected } = m;

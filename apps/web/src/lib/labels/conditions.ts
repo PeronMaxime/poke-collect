@@ -1,3 +1,6 @@
+/**
+ * Conditions en toutes lettres : déblocage d'un onglet ou d'un bâtiment, étape de quête, méthode d'évolution, objectif de guilde.
+ */
 import type {
   EvolutionMethod,
   ImposedWeather,
@@ -8,10 +11,6 @@ import type {
 } from '@poke/content';
 import type { EvolutionRequirement, GameContext } from '@poke/game-core';
 import { itemName, speciesName, typeLabel } from './names';
-
-/**
- * Conditions en toutes lettres : déblocage d'un onglet ou d'un bâtiment, étape de quête, méthode d'évolution, objectif de guilde.
- */
 
 /**
  * Nom d'une région ; une région pas encore ouverte aux joueurs n'est pas dans le contexte : son
@@ -144,6 +143,7 @@ export function evolutionMethodText(ctx: GameContext, m: EvolutionMethod): strin
     .join(' · ');
 }
 
+/** Condition d'une évolution en toutes lettres (niveau, objet, bonheur…). */
 export function requirementText(ctx: GameContext, r: EvolutionRequirement): string {
   switch (r.type) {
     case 'level':

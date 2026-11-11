@@ -1,3 +1,7 @@
+/**
+ * Les Pokémon du joueur : collection du PC, étiquettes, équipes enregistrées, Bonbons et
+ * évolutions possibles.
+ */
 import { utcOffsetMinutes } from './clock';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -22,11 +26,7 @@ import { useInventory } from './inventory';
 import { keys } from './keys';
 import { useDexCatches, usePokedexForms } from './pokedex';
 
-/**
- * Les Pokémon du joueur : collection du PC, étiquettes, équipes enregistrées, Bonbons et
- * évolutions possibles.
- */
-
+/** Tous les Pokémon du joueur (le PC). */
 export const usePokemon = () =>
   useQuery({ queryKey: keys.pokemon, queryFn: () => api<PokemonDto[]>('/api/pokemon') });
 
@@ -77,6 +77,7 @@ export function useNewEvolutionChecker(ctx: GameContext | undefined) {
   }, [evolutionsOf, caughtSpeciesIds, forms.data]);
 }
 
+/** Bonbons du joueur, par lignée. */
 export const useCandies = () =>
   useQuery({ queryKey: keys.candies, queryFn: () => api<CandyDto[]>('/api/candies') });
 

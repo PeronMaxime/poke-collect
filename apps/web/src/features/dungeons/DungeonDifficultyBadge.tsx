@@ -1,3 +1,6 @@
+/**
+ * Pastille de difficulté d'un donjon (étoiles et couleur).
+ */
 import type { Dungeon, DungeonDifficulty } from '@poke/content';
 import { dungeonDifficulty } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';

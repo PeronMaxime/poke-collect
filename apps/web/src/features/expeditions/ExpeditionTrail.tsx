@@ -1,7 +1,4 @@
-import type { PokemonDto } from '@poke/shared';
-import { PokemonSprite } from '../../components/ui';
-
-/*
+/**
  * Chemin d'une expédition en cours : un décor en pixel art selon l'habitat de la zone, qui défile
  * vers la gauche (deux plans, le lointain plus lent), et l'équipe qui marche dessus vers la droite,
  * le premier Pokémon en tête.
@@ -9,6 +6,8 @@ import { PokemonSprite } from '../../components/ui';
  * Chaque plan est une tuile SVG de 256 × 96 répétée à l'horizontale : tout ce qui y est dessiné
  * doit se raccorder d'un bord à l'autre (sinusoïdes et motifs de période divisant 256).
  */
+import type { PokemonDto } from '@poke/shared';
+import { PokemonSprite } from '../../components/ui';
 
 const W = 256;
 const H = 96;
@@ -416,6 +415,7 @@ function sceneUrls(scene: Scene) {
   return found;
 }
 
+/** Chemin animé d'une expédition en cours (voir l'en-tête du fichier). */
 export function ExpeditionTrail({
   habitat,
   team,

@@ -1,3 +1,6 @@
+/**
+ * Rappels utilisés depuis le Sac : choix des Pokémon K.O. à ranimer, un Rappel par Pokémon.
+ */
 import { useState } from 'react';
 import type { GameContext } from '@poke/game-core';
 import { PokemonSprite, ShinyStar } from '../../components/ui';

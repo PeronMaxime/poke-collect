@@ -30,6 +30,7 @@ function textColor(background: string): string {
   return 0.2126 * r! + 0.7152 * g! + 0.0722 * b! > 0.4 ? '#0f172a' : '#ffffff';
 }
 
+/** Pastille d'une étiquette du joueur, à sa couleur. */
 export function TagBadge({ tag, className = '' }: { tag: PokemonTagDto; className?: string }) {
   return (
     <span
@@ -95,6 +96,7 @@ export function useTagFilterOver(tags: readonly PokemonTagDto[]) {
   return { tags, filter, setFilter, matches, compare };
 }
 
+/** Filtre par étiquette des boîtes ; rien tant que le joueur n'a aucune étiquette. */
 export function TagFilterSelect({
   tags,
   value,

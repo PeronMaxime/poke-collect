@@ -127,6 +127,7 @@ function useFarmTile({ ctx }: { ctx: GameContext }) {
 /** Ce qu'affichent les pièces de `FarmTile`. */
 type FarmTileModel = ReturnType<typeof useFarmTile>;
 
+/** Fenêtre de la ferme à baies dans la colonne des bâtiments. */
 export function FarmTile({ ctx }: { ctx: GameContext }) {
   const m = useFarmTile({ ctx });
   const {

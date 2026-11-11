@@ -27,6 +27,7 @@ const DEFAULT_SETTINGS: DuplicateSettings = {
   includedTagIds: [],
 };
 
+/** Réglages des doublons enregistrés sur l'appareil, complétés par les valeurs par défaut. */
 export function loadDuplicateSettings(): DuplicateSettings {
   const saved = readStoredJson(SETTINGS_KEY) as Partial<DuplicateSettings> | null;
   return {

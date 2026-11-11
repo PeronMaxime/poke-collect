@@ -107,6 +107,7 @@ export function megaLocked(p: PokemonDto, members: readonly PokemonDto[]): boole
   );
 }
 
+/** Bulle d'une case grisée parce que l'équipe a déjà un Pokémon Méga-Évolué. */
 export const MEGA_LOCKED_TITLE = 'Un seul Pokémon Méga-Évolué par équipe';
 
 /** Pastille de choix allumée ou non (simulateur de l'admin). */

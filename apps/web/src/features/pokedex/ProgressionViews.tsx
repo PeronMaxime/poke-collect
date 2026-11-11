@@ -1,3 +1,6 @@
+/**
+ * Récompenses du Pokédex : collections de formes et complétion des expéditions, à réclamer.
+ */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
@@ -220,6 +223,7 @@ export function useVisibleCollections(ctx: GameContext): Collection[] {
   return sortedCollections(ctx).filter((c) => c.regionId === null || unlocked.has(c.regionId));
 }
 
+/** Collections de formes de la région de l'onglet, à réclamer une fois complètes. */
 export function CollectionsView({ ctx, progress }: { ctx: GameContext; progress: Progress }) {
   const claimed = useClaimedRewards();
   const { claim, last } = useClaim();

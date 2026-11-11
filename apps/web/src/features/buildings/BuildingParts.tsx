@@ -105,6 +105,7 @@ export const STATE_TAGS = {
   idle: 'border-well-line text-slate-500 dark:text-slate-400',
 } as const;
 
+/** Étiquette d'état d'un bâtiment (arrosé, prêt, libre…), à la couleur de `tone`. */
 export function StateTag({
   tone,
   children,

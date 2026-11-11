@@ -1,3 +1,7 @@
+/**
+ * Assistant d'un poste (pension, couveuse, Musée, champ, Centre) : son talent, son effet sur ce
+ * poste, et le choix d'un autre assistant.
+ */
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {

@@ -141,6 +141,7 @@ function useMuseumTile({ ctx }: { ctx: GameContext }) {
 /** Ce qu'affichent les pièces de `MuseumTile`. */
 type MuseumTileModel = ReturnType<typeof useMuseumTile>;
 
+/** Fenêtre du Musée dans la colonne des bâtiments. */
 export function MuseumTile({ ctx }: { ctx: GameContext }) {
   const m = useMuseumTile({ ctx });
   const {

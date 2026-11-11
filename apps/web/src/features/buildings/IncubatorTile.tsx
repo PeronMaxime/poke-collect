@@ -137,6 +137,7 @@ function useIncubatorTile({ ctx }: { ctx: GameContext }) {
 /** Ce qu'affichent les pièces de `IncubatorTile`. */
 type IncubatorTileModel = ReturnType<typeof useIncubatorTile>;
 
+/** Fenêtre de la couveuse dans la colonne des bâtiments. */
 export function IncubatorTile({ ctx }: { ctx: GameContext }) {
   const m = useIncubatorTile({ ctx });
   const {

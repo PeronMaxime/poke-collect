@@ -1,3 +1,6 @@
+/**
+ * Réglages : thème, installation de l'application, notifications, profils de la bêta et compte.
+ */
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { MeResponse, NotificationSettings } from '@poke/shared';

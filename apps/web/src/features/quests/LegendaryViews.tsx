@@ -1,3 +1,7 @@
+/**
+ * Combats légendaires : lancement depuis une quête réclamée, puis capture du légendaire vaincu
+ * (une seule Ball, chance fixe, Master Ball assurée).
+ */
 import { useEffect, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
@@ -37,11 +41,6 @@ import { TeamPicker } from '../common/TeamPicker';
 import { useTeamPicker } from '../common/teamPicker/useTeamPicker';
 import { TeamSection } from '../common/TeamSection';
 import { formatXp, usePlayerBonuses } from '../common/XpPreview';
-
-/**
- * Combats légendaires : lancement depuis une quête réclamée, puis capture du légendaire vaincu
- * (une seule Ball, chance fixe, Master Ball assurée).
- */
 
 /** Chance de capture d'une Ball ordinaire, en pourcentage lisible. */
 export const formatCaptureChance = (target: QuestPokemon) =>
@@ -125,6 +124,7 @@ function useLaunchLegendary({
 /** Ce qu'affichent les pièces de `LaunchLegendaryDialog`. */
 type LaunchLegendaryDialogModel = ReturnType<typeof useLaunchLegendary>;
 
+/** Fenêtre de départ d'un combat légendaire : le légendaire, l'équipe, ce que la victoire rapporte. */
 export function LaunchLegendaryDialog({
   ctx,
   quest,

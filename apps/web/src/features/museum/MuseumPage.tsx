@@ -1,3 +1,6 @@
+/**
+ * Onglet du Musée : places de restauration, fossiles du sac à déposer et où en trouver.
+ */
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { fossilEffect } from '@poke/game-core';

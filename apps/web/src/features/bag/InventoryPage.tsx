@@ -1,3 +1,7 @@
+/**
+ * Onglet « Sac » : objets rangés en onglets et rubriques (réglés dans l'admin), œufs et Bonbons ;
+ * les boutons ouvrent les fenêtres d'usage (Rappel, baie, Super Bonbon, coffre).
+ */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { ITEM_CATEGORIES, normalizeBag } from '@poke/content';
@@ -36,6 +40,7 @@ interface BagSection {
   content: ReactNode;
 }
 
+/** Onglet « Sac » (voir l'en-tête du fichier). */
 export function InventoryPage({ ctx }: { ctx: GameContext }) {
   const inventory = useInventory();
   const candies = useCandies();

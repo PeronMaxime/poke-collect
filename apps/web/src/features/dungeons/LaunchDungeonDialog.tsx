@@ -1,3 +1,6 @@
+/**
+ * Fenêtre de départ d'un donjon : le boss et ses adversaires, l'équipe, les gains, puis l'entrée.
+ */
 import type { Dungeon } from '@poke/content';
 import { typeWeaknesses } from '@poke/data';
 import { dungeonCooldownMinutes } from '@poke/game-core';

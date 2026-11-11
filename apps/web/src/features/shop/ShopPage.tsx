@@ -1,3 +1,7 @@
+/**
+ * Onglet « Boutique » : achats (limites par jour, semaine ou au total), vente d'objets du sac et
+ * reçu d'achat.
+ */
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'motion/react';
@@ -45,6 +49,7 @@ const SELL_TAB = 'vendre';
 const formatDay = (iso: string) =>
   new Date(iso).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long' });
 
+/** Onglet « Boutique » (voir l'en-tête du fichier). */
 export function ShopPage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const shop = useShop();

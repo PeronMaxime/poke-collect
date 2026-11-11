@@ -1,3 +1,7 @@
+/**
+ * Onglet « Pokédex » : Pokédex par région (normal ou chromatique), collections et complétion des
+ * expéditions ; aussi le Pokédex d'un autre dresseur, en lecture seule.
+ */
 import { useState } from 'react';
 import { DEX_FORM_SECTIONS, speciesForms } from '@poke/data';
 import {

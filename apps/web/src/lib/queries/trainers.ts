@@ -1,3 +1,6 @@
+/**
+ * Les dresseurs : sa Fiche Dresseur, les classements, la fiche et le Pokédex des autres joueurs.
+ */
 import { useQuery } from '@tanstack/react-query';
 import type {
   FavoritePokemonDto,
@@ -13,10 +16,6 @@ import type {
 } from '@poke/shared';
 import { api } from '../api';
 import { keys } from './keys';
-
-/**
- * Les dresseurs : sa Fiche Dresseur, les classements, la fiche et le Pokédex des autres joueurs.
- */
 
 /** Statistiques cumulées de la Fiche Dresseur. */
 export const useTrainerCard = (enabled = true) =>

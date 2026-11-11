@@ -53,6 +53,7 @@ const isStandalone = () =>
 /** iOS n'a pas d'invite : il faut passer par « Partager → Sur l'écran d'accueil ». */
 export const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 
+/** Installation de l'application : possible ou non, déjà faite, et `install()` qui ouvre l'invite. */
 export function useInstallPrompt() {
   const prompt = useSyncExternalStore(subscribe, () => deferredPrompt);
   const install = useCallback(async () => {
@@ -68,6 +69,7 @@ export function useInstallPrompt() {
 
 // --- Notifications push ----------------------------------------------------------------------
 
+/** Vrai si le navigateur sait recevoir des notifications push. */
 export const pushSupported = () =>
   'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 

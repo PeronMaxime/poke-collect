@@ -1,3 +1,7 @@
+/**
+ * Les bâtiments : Pension et couveuses, Musée, Ferme à baies, Centre Pokémon, et leurs
+ * assistants.
+ */
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ASSISTANT_POST_PLACES, facilityPlaces, isHealing } from '@poke/game-core';
 import type { AssistantPost, GameContext, PlayerProgress } from '@poke/game-core';
@@ -24,17 +28,15 @@ import { api } from '../api';
 import { useInventory } from './inventory';
 import { keys, refresh } from './keys';
 
-/**
- * Les bâtiments : Pension et couveuses, Musée, Ferme à baies, Centre Pokémon, et leurs
- * assistants.
- */
-
+/** État de la pension : pensions, couveuses et œufs du sac. */
 export const useDaycare = () =>
   useQuery({ queryKey: keys.daycare, queryFn: () => api<DaycareResponse>('/api/daycare') });
 
+/** État du Musée (places et fossiles en restauration). */
 export const useMuseum = () =>
   useQuery({ queryKey: keys.museum, queryFn: () => api<MuseumResponse>('/api/museum') });
 
+/** État de la ferme à baies (parcelles et baies plantées). */
 export const useFarm = () =>
   useQuery({ queryKey: keys.farm, queryFn: () => api<FarmResponse>('/api/farm') });
 

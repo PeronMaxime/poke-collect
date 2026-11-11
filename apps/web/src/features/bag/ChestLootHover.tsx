@@ -1,3 +1,6 @@
+/**
+ * Bulle au survol d'un coffre de guilde : ce qu'il peut contenir et avec quelle chance.
+ */
 import type { ReactNode } from 'react';
 import type { ChestRarity } from '@poke/content';
 import { chestCandidates } from '@poke/game-core';

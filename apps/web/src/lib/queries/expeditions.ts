@@ -1,3 +1,6 @@
+/**
+ * Les expéditions du joueur.
+ */
 import { utcOffsetMinutes } from './clock';
 import { useQuery } from '@tanstack/react-query';
 import type {
@@ -9,10 +12,7 @@ import type {
 import { api } from '../api';
 import { keys } from './keys';
 
-/**
- * Les expéditions du joueur.
- */
-
+/** Expéditions en cours, places, chaînes, zones favorites et fuyards ; rechargées chaque minute. */
 export const useExpeditions = () =>
   useQuery({
     queryKey: keys.expeditions,

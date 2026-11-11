@@ -1,3 +1,6 @@
+/**
+ * Wiki des Pokémon : liste filtrée et triée (statistiques, types, région), et la fiche d'une espèce.
+ */
 import { useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { STAT_NAMES, TYPE_COLORS, directLineage, eggGroups, getForm, habitats } from '@poke/data';
@@ -55,6 +58,7 @@ const DEX_FILTERS = {
   missing: 'Pas encore capturés',
 } as const;
 
+/** Filtres de la liste des Pokémon du wiki, gardés par le wiki quand on ouvre une fiche. */
 export interface PokemonFilters {
   search: string;
   regionId: string;
@@ -66,6 +70,7 @@ export interface PokemonFilters {
   descending: boolean;
 }
 
+/** Filtres de départ : tout afficher, par numéro du Pokédex. */
 export const DEFAULT_POKEMON_FILTERS: PokemonFilters = {
   search: '',
   regionId: 'all',

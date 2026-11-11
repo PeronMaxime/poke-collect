@@ -1,3 +1,6 @@
+/**
+ * Récapitulatif de l'équipe d'une activité (donjon, combat), et la grande fenêtre où on la choisit.
+ */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import {

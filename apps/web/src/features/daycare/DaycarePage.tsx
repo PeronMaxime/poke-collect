@@ -1,3 +1,7 @@
+/**
+ * Onglet « Pension » : pensions (dépôt, œufs pondus, XP gagnée), couveuses et œufs du sac ; les
+ * œufs éclos s'y révèlent.
+ */
 import { Fragment, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import {
@@ -219,6 +223,7 @@ function useDaycarePage({ ctx }: { ctx: GameContext }) {
 /** Ce qu'affichent les pièces de `DaycarePage`. */
 type DaycarePageModel = ReturnType<typeof useDaycarePage>;
 
+/** Onglet « Pension » (voir l'en-tête du fichier). */
 export function DaycarePage({ ctx }: { ctx: GameContext }) {
   const m = useDaycarePage({ ctx });
   const {

@@ -1,3 +1,7 @@
+/**
+ * Fiche Dresseur : la sienne (vitrine et favori modifiables), celle d'un autre dresseur, son
+ * Pokédex, et la recherche d'un dresseur.
+ */
 import { useEffect, useMemo, useState } from 'react';
 import type { KeyboardEvent, ReactNode } from 'react';
 import { Reorder } from 'motion/react';

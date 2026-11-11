@@ -21,6 +21,7 @@ function roamerOf(ctx: GameContext, questId: string) {
   return ctx.quest(questId)?.rewards.pokemon.find((p) => p.roaming != null);
 }
 
+/** Nom du fuyard d'une quête ; l'identifiant de la quête s'il est introuvable. */
 export function roamerName(ctx: GameContext, questId: string) {
   const p = roamerOf(ctx, questId);
   return p ? speciesName(ctx, p.speciesId, p.formId) : questId;

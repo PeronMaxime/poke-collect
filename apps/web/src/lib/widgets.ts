@@ -6,8 +6,10 @@ import { readStoredJson, writeStoredJson } from './storage';
  * pension. L'ordre et les widgets masqués sont propres à l'appareil (navigateur).
  */
 export const WIDGETS = ['center', 'daycare', 'incubator', 'museum', 'farm'] as const;
+/** Identifiant d'un widget de la colonne de droite. */
 export type WidgetId = (typeof WIDGETS)[number];
 
+/** Nom de chaque widget, dans le menu « Widgets ». */
 export const WIDGET_LABELS: Record<WidgetId, string> = {
   center: 'Centre Pokémon',
   daycare: 'Pension',
@@ -18,6 +20,7 @@ export const WIDGET_LABELS: Record<WidgetId, string> = {
 
 /** Onglets des bâtiments résumés dans la colonne de droite. */
 export const BUILDING_TABS = ['center', 'daycare', 'museum', 'farm'] as const;
+/** Onglet d'un bâtiment résumé dans la colonne de droite. */
 export type BuildingTab = (typeof BUILDING_TABS)[number];
 
 /** Onglet (bâtiment) qui débloque le widget. */
@@ -27,6 +30,7 @@ const ORDER_KEY = 'dexpedition.buildingsOrder';
 const HIDDEN_KEY = 'dexpedition.hiddenWidgets';
 const COLLAPSED_KEY = 'dexpedition.collapsedWidgets';
 
+/** Réglages des widgets sur cet appareil : ordre, masqués, repliés. */
 export type WidgetSettings = {
   order: readonly WidgetId[];
   /** Masqués depuis la fenêtre « Widgets ». */
@@ -82,6 +86,7 @@ export function reorderWidgets(shown: readonly WidgetId[]) {
   });
 }
 
+/** Affiche ou masque un widget. */
 export function setWidgetVisible(id: WidgetId, visible: boolean) {
   const hidden = new Set(settings.hidden);
   if (visible) hidden.delete(id);
@@ -89,6 +94,7 @@ export function setWidgetVisible(id: WidgetId, visible: boolean) {
   update({ ...settings, hidden });
 }
 
+/** Replie ou déplie un widget. */
 export function toggleWidgetCollapsed(id: WidgetId) {
   const collapsed = new Set(settings.collapsed);
   if (!collapsed.delete(id)) collapsed.add(id);

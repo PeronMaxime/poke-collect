@@ -16,6 +16,7 @@ export const GENDER_FILTERS = {
   female: '♀ Femelles',
   genderless: 'Asexués',
 } as const;
+/** Filtre de sexe de la boîte (tous, mâles, femelles…). */
 export type GenderFilter = keyof typeof GENDER_FILTERS;
 
 /** Tri de la boîte et son libellé. */
@@ -25,6 +26,7 @@ export const SORTS = {
   recent: 'Récents',
   tag: 'Étiquette',
 } as const;
+/** Tri de la boîte de la pension. */
 export type Sort = keyof typeof SORTS;
 
 /**

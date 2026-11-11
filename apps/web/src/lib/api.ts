@@ -1,5 +1,10 @@
+/**
+ * Appels à l'API du jeu : `api()` (JSON, cookie de session, erreurs en `ApiError`), et les règles de
+ * nouvelle tentative des requêtes.
+ */
 import { tabProfile } from './tab-profile';
 
+/** Refus de l'API : statut HTTP et code du catalogue (`packages/shared/src/errors.ts`). */
 export class ApiError extends Error {
   constructor(
     readonly status: number,
@@ -55,6 +60,7 @@ function countRequest(path: string) {
   }
 }
 
+/** Appel à l'API du jeu ; `json` est envoyé en JSON ; un refus lève une `ApiError`. */
 export async function api<T>(
   path: string,
   init: RequestInit & { json?: unknown } = {},

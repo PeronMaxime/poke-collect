@@ -16,6 +16,7 @@ export function shortCountdown(ms: number) {
   return m ? `${h} h ${String(m).padStart(2, '0')}` : `${h} h`;
 }
 
+/** « 1 œuf », « 2 œufs » : `word` prend un s au-delà de 1. */
 export const plural = (n: number, word: string) => `${n} ${word}${n > 1 ? 's' : ''}`;
 
 /**
@@ -29,6 +30,7 @@ export type WidgetHandle = {
   toggle: () => void;
 };
 
+/** Commandes de la fenêtre qui l'entoure, pour son en-tête ; `null` hors de la colonne. */
 export const WidgetHandleContext = createContext<WidgetHandle | null>(null);
 
 /** Bouton de repli de l'en-tête d'une fenêtre (à gauche de la poignée). */
@@ -205,6 +207,7 @@ export function Pager({
   );
 }
 
+/** Classes des petits boutons des fenêtres. */
 export const SMALL_BTN = 'shrink-0 whitespace-nowrap px-2.5 py-1.5';
 
 /**
@@ -213,14 +216,18 @@ export const SMALL_BTN = 'shrink-0 whitespace-nowrap px-2.5 py-1.5';
  */
 export const HOVER_PRIMARY = 'enabled:hover:bg-[#2878c8]! enabled:hover:text-white!';
 
+/** Survol des boutons secondaires des fenêtres, comme `HOVER_PRIMARY`. */
 export const HOVER_GHOST = 'enabled:hover:bg-[#b8dcf6]! dark:enabled:hover:bg-[#2c5578]!';
 
+/** Classes d'une place libre (bordure en tirets). */
 export const FREE_PLACE =
   'border-2 border-dashed border-slate-300 text-slate-500 dark:border-slate-700 dark:text-slate-400';
 
+/** Classes d'une place pas encore débloquée (grisée). */
 export const CLOSED_PLACE =
   'border-2 border-slate-200 bg-slate-100 text-slate-400 dark:border-slate-800 dark:bg-slate-900 dark:text-slate-600';
 
+/** Pastille de compte (œufs prêts, Pokémon soignés…) ; rien quand `count` vaut 0. */
 export function Badge({
   count,
   className = 'bg-brand-500 text-white',

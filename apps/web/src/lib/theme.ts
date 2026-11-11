@@ -9,6 +9,7 @@ export type ThemePreference = 'system' | 'light' | 'dark';
 const THEME_KEY = 'theme';
 const SYSTEM_DARK = '(prefers-color-scheme: dark)';
 
+/** Thème enregistré sur l'appareil ; « système » par défaut. */
 export function loadThemePreference(): ThemePreference {
   const saved = readStoredText(THEME_KEY);
   return saved === 'light' || saved === 'dark' ? saved : 'system';
@@ -20,6 +21,7 @@ function applyTheme(preference: ThemePreference) {
   document.documentElement.classList.toggle('dark', dark);
 }
 
+/** Enregistre et applique le thème (« système » efface le choix). */
 export function setThemePreference(preference: ThemePreference) {
   if (preference === 'system') removeStored(THEME_KEY);
   else writeStoredText(THEME_KEY, preference);

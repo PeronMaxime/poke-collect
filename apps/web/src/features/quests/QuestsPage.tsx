@@ -1,3 +1,7 @@
+/**
+ * Onglet « Quêtes » : étapes à valider, récompenses à réclamer, puis le légendaire à affronter ou
+ * le fuyard à croiser en expédition.
+ */
 import { useCallback, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';

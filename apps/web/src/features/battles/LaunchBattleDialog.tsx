@@ -1,3 +1,6 @@
+/**
+ * Fenêtre de départ d'un combat de dresseur : adversaires, équipe et récompenses, puis le combat.
+ */
 import type { Trainer } from '@poke/content';
 import { battleCooldownMinutes } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';

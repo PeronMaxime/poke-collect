@@ -11,6 +11,7 @@ const URL_PARAM = 'profil';
 /** Valeur désignant le profil principal. */
 export const MAIN_TAB_PROFILE = 'main';
 
+/** Profil de cet onglet ; `null` s'il suit le cookie. */
 export function tabProfile(): string | null {
   try {
     return sessionStorage.getItem(KEY);
@@ -19,6 +20,7 @@ export function tabProfile(): string | null {
   }
 }
 
+/** Choisit le profil de cet onglet. */
 export function setTabProfile(profileId: string): void {
   try {
     sessionStorage.setItem(KEY, profileId);

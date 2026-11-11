@@ -11,6 +11,7 @@ function PixelIcon({ children }: { children: ReactNode }) {
   );
 }
 
+/** Icône en pixel art du Centre Pokémon. */
 export function CenterIcon() {
   return (
     <PixelIcon>
@@ -20,6 +21,7 @@ export function CenterIcon() {
   );
 }
 
+/** Icône en pixel art de la pension. */
 export function HouseIcon() {
   return (
     <PixelIcon>
@@ -29,6 +31,7 @@ export function HouseIcon() {
   );
 }
 
+/** Icône en pixel art de la couveuse. */
 export function EggIcon() {
   return (
     <PixelIcon>
@@ -38,6 +41,7 @@ export function EggIcon() {
   );
 }
 
+/** Icône en pixel art du Musée. */
 export function MuseumIcon() {
   return (
     <PixelIcon>
@@ -49,6 +53,7 @@ export function MuseumIcon() {
   );
 }
 
+/** Icône en pixel art de la ferme à baies. */
 export function SproutIcon() {
   return (
     <PixelIcon>
@@ -58,6 +63,7 @@ export function SproutIcon() {
   );
 }
 
+/** Cadenas d'une place ou d'un bâtiment pas encore débloqué. */
 export function LockIcon() {
   return (
     <svg width="10" height="12" viewBox="0 0 7 8" shapeRendering="crispEdges" aria-hidden>

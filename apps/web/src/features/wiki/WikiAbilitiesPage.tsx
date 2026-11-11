@@ -1,3 +1,6 @@
+/**
+ * Wiki des talents : liste filtrée par activité, et la fiche d'un talent.
+ */
 import { useMemo, useState } from 'react';
 import { abilities as abilityData } from '@poke/data';
 import { ABILITY_ACTIVITY_LABELS, abilityEffectSummary, effectActivities } from '@poke/game-core';

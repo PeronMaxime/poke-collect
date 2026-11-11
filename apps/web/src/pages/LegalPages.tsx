@@ -7,7 +7,9 @@ import { openChangelog } from './ChangelogPage';
  */
 
 const LEGAL_NOTICE_PATH = '/mentions-legales';
+/** Adresse de la politique de confidentialité. */
 export const PRIVACY_PATH = '/confidentialite';
+/** Adresses des pages légales, ouvertes même sans être connecté. */
 export const LEGAL_PATHS: readonly string[] = [LEGAL_NOTICE_PATH, PRIVACY_PATH];
 
 const CONTACT_EMAIL = 'contact@dexpedition.fr';
@@ -54,6 +56,7 @@ export function FanDisclaimer() {
   );
 }
 
+/** Page légale (mentions légales ou confidentialité) de l'adresse `pathname`. */
 export function LegalPage({ pathname }: { pathname: string }) {
   return (
     <main className="mx-auto max-w-2xl px-4 py-8">

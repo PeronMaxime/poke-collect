@@ -453,8 +453,13 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
     Écart avec la 5.3 : sa lecture du stockage reste à part, car un stockage illisible doit y
     valoir « déjà vu » (pas de pastille), alors que `readStoredText` ne distingue pas un échec
     d'une absence. `CLAUDE.md` et `docs/RECETTES.md` pointent vers le nouveau fichier.
-- [ ] **5.7 Documentation** : en-tête par dossier de domaine (ce que fait l'écran, d'où viennent
+- [x] **5.7 Documentation** : en-tête par dossier de domaine (ce que fait l'écran, d'où viennent
       ses données, ses actions), une phrase par composant et par hook exportés.
+  - **Réalisé** le 11 novembre : un `README.md` par dossier de `features/` (18 : rôle, fichiers,
+    données, actions et leurs routes), signalés dans `docs/ARCHITECTURE.md` ; un en-tête avant
+    les imports dans chaque fichier de `apps/web/src` (45 en manquaient, ou l'avaient après les
+    imports) et une phrase sur chacun de ses exports (112 en manquaient), vérifiés par un script
+    qui parcourt l'arbre de syntaxe.
 - **But** : ouvrir un écran et comprendre en cinq minutes ce qu'il affiche, d'où ça vient et ce
   qui se passe quand on clique.
 

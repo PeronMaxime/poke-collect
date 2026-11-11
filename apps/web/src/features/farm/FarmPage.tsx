@@ -1,3 +1,7 @@
+/**
+ * Onglet « Ferme à baies » : champs de 9 parcelles, leurs assistants (arrosage, récolte), plantation,
+ * arrachage et récolte.
+ */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';

@@ -59,11 +59,11 @@ export const yieldRange = (effect: { minYield: number; maxYield: number }) =>
     ? `${effect.minYield} à ${effect.maxYield}`
     : `${effect.minYield}`;
 
-/** Probabilité shiny lisible : « 1 / 4 096 ». */
 /** Bonus d'un multiplicateur : 1.01 → « 1 % », 1.255 → « 25,5 % ». */
 export const formatPercentBonus = (multiplier: number) =>
   `${(Math.round((multiplier - 1) * 1000) / 10).toLocaleString('fr-FR')} %`;
 
+/** Probabilité shiny lisible : « 1 / 4 096 » (« 100 % » et « 0 » aux bornes). */
 export function formatShinyRate(probability: number): string {
   if (probability >= 1) return '100 %';
   if (probability <= 0) return '0';

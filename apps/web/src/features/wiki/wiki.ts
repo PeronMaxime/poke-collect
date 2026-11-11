@@ -4,12 +4,14 @@ import type { GameContext, GameSpecies } from '@poke/game-core';
 /** Ancre de la page du wiki (hors onglets du menu : lien « Wiki » de l'en-tête). */
 export const WIKI_HASH = 'wiki';
 
+/** Lien vers une page du wiki : `wikiLink('pokemon', 19)` → `#wiki/pokemon/19`. */
 export const wikiLink = (...parts: (string | number)[]) => `#${[WIKI_HASH, ...parts].join('/')}`;
 
 /** Fiche d'un Pokémon : `#wiki/pokemon/19` ou, pour une forme, `#wiki/pokemon/19/10091`. */
 export const wikiPokemonLink = (speciesId: number, formId: number | null = null) =>
   formId === null ? wikiLink('pokemon', speciesId) : wikiLink('pokemon', speciesId, formId);
 
+/** Fiche d'un talent dans le wiki : `#wiki/talents/<id>`. */
 export const wikiAbilityLink = (abilityId: string) => wikiLink('talents', abilityId);
 
 /** Pokémon du wiki : une espèce (formId null) ou l'une de ses formes du Pokédex. */

@@ -37,6 +37,7 @@ import {
   usePage,
 } from './tileParts';
 
+/** Fenêtre de la pension dans la colonne des bâtiments. */
 export function DaycareTile({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const daycare = useDaycare();

@@ -48,6 +48,7 @@ export const STATUS_BADGES: Record<Status, string> = {
   sleep: 'SOM',
   freeze: 'GEL',
 };
+/** Couleurs de la pastille de chaque statut sur la carte d'un combattant. */
 export const STATUS_COLORS: Record<Status, string> = {
   paralysis: 'bg-yellow-400 text-slate-900',
   burn: 'bg-orange-500 text-white',

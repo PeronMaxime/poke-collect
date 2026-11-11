@@ -7,4 +7,5 @@ export function usePlayerBonuses(ctx: GameContext): PlayerBonuses {
   return playerBonuses(ctx, useClaimedRewards());
 }
 
+/** « 12 500 XP ». */
 export const formatXp = (xp: number) => `${xp.toLocaleString('fr-FR')} XP`;

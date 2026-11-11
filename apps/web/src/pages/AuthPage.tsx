@@ -1,3 +1,6 @@
+/**
+ * Connexion, inscription et mot de passe oublié, avant d'entrer dans le jeu.
+ */
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -12,6 +15,7 @@ export const RESET_PASSWORD_PATH = '/reinitialiser-mot-de-passe';
 
 const PROVIDER_LABELS: Record<string, string> = { google: 'Google', discord: 'Discord' };
 
+/** Écran de connexion, d'inscription et de mot de passe oublié. */
 export function AuthPage() {
   const queryClient = useQueryClient();
   const [mode, setMode] = useState<Mode>('sign-in');

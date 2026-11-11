@@ -123,6 +123,7 @@ export function ShareBar({ value, max }: { value: number; max: number }) {
   );
 }
 
+/** Chevron d'une section repliable, tourné quand elle est ouverte. */
 export function Chevron({ open }: { open: boolean }) {
   return (
     <svg
