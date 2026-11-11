@@ -18,7 +18,8 @@ src/
     content.ts        Version de travail, enregistrement d'une entité, publication
   components/
     AdminGate.tsx     Connexion et contrôle d'accès (affichage seulement)
-    EntityPage.tsx    Modèle d'une page de contenu : liste, formulaire, enregistrement
+    EntityPage.tsx    Modèle d'une page d'entités : liste, fiche, enregistrement ; chargement
+    SettingsPage.tsx  Modèle d'une page de réglages de l'équilibrage : en-tête, Annuler, Enregistrer
     forms/            Champs, sélecteurs (espèce, objet, zone…), éditeurs de récompense et de condition
   pages/
     DashboardPage     Versions du contenu, brouillon, publication, alertes de cohérence, import/export
@@ -39,6 +40,17 @@ test/                 Tests de pages (jsdom contre la vraie API en mémoire, com
    l'ancienne version.
 
 Les activités déjà lancées se terminent avec le contenu de leur départ.
+
+## Deux modèles de page de contenu
+
+- **Une entité à la fois** (régions, objets, zones, dresseurs, donjons, quêtes, boutique…) :
+  `EntityPage` reçoit où lire la liste, la clé, le schéma et la fiche (`renderForm`) ; recherche,
+  sélection, validation, alertes, Créer / Enregistrer / Dupliquer / Supprimer sont communs. Une
+  fiche longue se découpe en sections qui reçoivent les mêmes props (`EntityFormProps`).
+- **Des réglages enregistrés en un bloc** dans l'équilibrage (équilibrage, menu, Sac, bâtiments,
+  complétions d'expédition) : la page se monte dans `WithWorkingVersion` avec
+  `key={w.version.id}`, tient son brouillon dans un hook (état, `dirty`, validité,
+  `useSaveBalance`, gestes `cancel` et `submit`) et s'affiche dans `SettingsPage`.
 
 ## Écrans du jeu réutilisés
 

@@ -1,18 +1,18 @@
 import { useState } from 'react';
 import { DEFAULT_BAG_SECTION_TITLES, DEFAULT_BAG_TABS, normalizeBag } from '@poke/content';
 import type { BagSectionId, BagSettings, BagTab } from '@poke/content';
-import { VersionBanner } from '../../components/EntityPage';
+import { WithWorkingVersion } from '../../components/EntityPage';
+import { SettingsPage } from '../../components/SettingsPage';
 import type { WorkingVersion } from '../../lib/content';
-import { errorMessage, useSaveBalance, useWorkingVersion } from '../../lib/content';
+import { useSaveBalance } from '../../lib/content';
 
 /** Longueur maximale d'un titre d'onglet ou de rubrique (comme le menu). */
 const MAX_TITLE = 30;
 
 export function BagPage() {
-  const working = useWorkingVersion();
-  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
-  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
-  return <BagEditor key={working.data.version.id} working={working.data} />;
+  return (
+    <WithWorkingVersion>{(w) => <BagEditor key={w.version.id} working={w} />}</WithWorkingVersion>
+  );
 }
 
 const copyTabs = (tabs: BagTab[]): BagTab[] =>
@@ -76,14 +76,22 @@ function useBagEditor({ working }: { working: WorkingVersion }) {
     save.mutate({ ...balance, bag });
   }
 
+  const resetToDefault = () => {
+    setTabs(copyTabs(DEFAULT_BAG_TABS));
+    setTitles({});
+  };
+  const cancel = () => {
+    setTabs(copyTabs(initialTabs));
+    setTitles(initialTitles);
+  };
+
   return {
+    resetToDefault,
+    cancel,
     working,
-    initialTabs,
-    initialTitles,
     tabs,
     setTabs,
     titles,
-    setTitles,
     save,
     editable,
     dirty,
@@ -102,23 +110,32 @@ type BagEditorModel = ReturnType<typeof useBagEditor>;
 
 function BagEditor({ working }: { working: WorkingVersion }) {
   const m = useBagEditor({ working });
-  const { save, tabTitlesValid, sectionTitlesValid } = m;
+  const {
+    save,
+    dirty,
+    isDefault,
+    tabTitlesValid,
+    sectionTitlesValid,
+    resetToDefault,
+    cancel,
+    submit,
+  } = m;
   return (
-    <div className="max-w-4xl space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Sac du jeu</h1>
-          <p className="mt-1 text-slate-500">
-            Onglets du Sac et rubriques qu’ils regroupent, affichées l’une sous l’autre dans le jeu
-            (repliables, fermées par défaut). Une rubrique est une catégorie d’objets (réglée sur
-            chaque objet), les œufs ramassés ou les Bonbons de lignée. L’onglet « Tout » s’ajoute
-            toujours en premier ; un onglet sans objet chez le joueur est masqué.
-          </p>
-        </div>
-        <BagActions m={m} />
-      </div>
-      <VersionBanner working={working} />
-      {save.error && <p className="text-sm text-red-600">{errorMessage(save.error)}</p>}
+    <SettingsPage
+      title="Sac du jeu"
+      description="Onglets du Sac et rubriques qu’ils regroupent, affichées l’une sous l’autre dans le jeu (repliables, fermées par défaut). Une rubrique est une catégorie d’objets (réglée sur chaque objet), les œufs ramassés ou les Bonbons de lignée. L’onglet « Tout » s’ajoute toujours en premier ; un onglet sans objet chez le joueur est masqué."
+      working={working}
+      save={save}
+      dirty={dirty}
+      valid={tabTitlesValid && sectionTitlesValid}
+      onCancel={cancel}
+      onSave={submit}
+      extraActions={
+        <button className="btn-ghost" disabled={isDefault} onClick={resetToDefault}>
+          Sac par défaut
+        </button>
+      }
+    >
       {(!tabTitlesValid || !sectionTitlesValid) && (
         <p className="text-sm text-red-600">
           Chaque onglet doit avoir un titre, et les titres font {MAX_TITLE} caractères au plus.
@@ -126,59 +143,7 @@ function BagEditor({ working }: { working: WorkingVersion }) {
       )}
 
       <BagTabsEditor m={m} />
-    </div>
-  );
-}
-
-/** Boutons de retour au rangement par défaut, d'annulation et d'enregistrement. */
-function BagActions({ m }: { m: BagEditorModel }) {
-  const {
-    initialTabs,
-    initialTitles,
-    setTabs,
-    setTitles,
-    save,
-    editable,
-    dirty,
-    isDefault,
-    tabTitlesValid,
-    sectionTitlesValid,
-    submit,
-  } = m;
-  return (
-    <>
-      {editable && (
-        <div className="flex gap-2">
-          <button
-            className="btn-ghost"
-            disabled={isDefault}
-            onClick={() => {
-              setTabs(copyTabs(DEFAULT_BAG_TABS));
-              setTitles({});
-            }}
-          >
-            Sac par défaut
-          </button>
-          <button
-            className="btn-ghost"
-            disabled={!dirty}
-            onClick={() => {
-              setTabs(copyTabs(initialTabs));
-              setTitles(initialTitles);
-            }}
-          >
-            Annuler
-          </button>
-          <button
-            className="btn-primary"
-            disabled={!dirty || !tabTitlesValid || !sectionTitlesValid || save.isPending}
-            onClick={submit}
-          >
-            Enregistrer
-          </button>
-        </div>
-      )}
-    </>
+    </SettingsPage>
   );
 }
 

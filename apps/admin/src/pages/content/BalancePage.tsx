@@ -23,7 +23,8 @@ import {
   hatchMinutes,
   shinyProbability,
 } from '@poke/game-core';
-import { IssueList, VersionBanner } from '../../components/EntityPage';
+import { IssueList, WithWorkingVersion } from '../../components/EntityPage';
+import { SettingsPage } from '../../components/SettingsPage';
 import {
   Field,
   NumberInput,
@@ -37,13 +38,12 @@ import {
 import type { FieldErrors } from '../../components/forms/fields';
 import { ItemSelect, TypeBadge, typeLabel } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
-import { errorMessage, useSaveBalance, useWorkingVersion } from '../../lib/content';
+import { useSaveBalance } from '../../lib/content';
 
 export function BalancePage() {
-  const working = useWorkingVersion();
-  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
-  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
-  return <BalanceForm key={working.data.version.id} working={working.data} />;
+  return (
+    <WithWorkingVersion>{(w) => <BalanceForm key={w.version.id} working={w} />}</WithWorkingVersion>
+  );
 }
 
 /** Espèces d'exemple pour l'aperçu des temps d'éclosion (Magicarpe → Minidraco). */
@@ -79,11 +79,14 @@ function useBalanceForm({ working }: { working: WorkingVersion }) {
   // Aperçu des quantités avec les réglages en cours de saisie.
   const preview = valid ? createGameContext({ ...working.content, balance: b }) : null;
 
+  const cancel = () => setB(initial);
+  const submit = () => save.mutate(b);
+
   return {
+    cancel,
+    submit,
     working,
-    initial,
     b,
-    setB,
     newIvThreshold,
     setNewIvThreshold,
     save,
@@ -107,31 +110,18 @@ type BalanceFormModel = ReturnType<typeof useBalanceForm>;
 
 function BalanceForm({ working }: { working: WorkingVersion }) {
   const m = useBalanceForm({ working });
-  const { initial, b, setB, save, valid, errors, disabled, dirty, issues, set, preview } = m;
+  const { b, save, valid, errors, disabled, dirty, issues, set, preview, cancel, submit } = m;
   return (
-    <div className="max-w-4xl space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Équilibrage</h1>
-          <p className="mt-1 text-slate-500">Réglages globaux du jeu, groupés par thème.</p>
-        </div>
-        {working.editable && (
-          <div className="flex gap-2">
-            <button className="btn-ghost" disabled={!dirty} onClick={() => setB(initial)}>
-              Annuler
-            </button>
-            <button
-              className="btn-primary"
-              disabled={!valid || !dirty || save.isPending}
-              onClick={() => save.mutate(b)}
-            >
-              Enregistrer
-            </button>
-          </div>
-        )}
-      </div>
-      <VersionBanner working={working} />
-      {save.error && <p className="text-sm text-red-600">{errorMessage(save.error)}</p>}
+    <SettingsPage
+      title="Équilibrage"
+      description="Réglages globaux du jeu, groupés par thème."
+      working={working}
+      save={save}
+      dirty={dirty}
+      valid={valid}
+      onCancel={cancel}
+      onSave={submit}
+    >
       {!dirty && <IssueList issues={issues} />}
 
       <ExpeditionsSection m={m} />
@@ -181,7 +171,7 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
         preview={preview?.balance.combat ?? null}
       />
       <GuildSettingsSection s={b.guilds} set={set('guilds')} errors={errors} disabled={disabled} />
-    </div>
+    </SettingsPage>
   );
 }
 

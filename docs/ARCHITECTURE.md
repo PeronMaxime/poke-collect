@@ -212,7 +212,8 @@ déterministe), cachette d'un Pokémon fuyard.
 ## 9. Côté admin (`apps/admin`)
 
 Une page par entité de contenu (`pages/content/*`), construite sur `components/EntityPage.tsx`
-(liste, formulaire, enregistrement dans le brouillon). Le rôle est vérifié par le serveur à
+(liste, formulaire, enregistrement dans le brouillon) ; les réglages enregistrés en un bloc dans
+l'équilibrage (menu, Sac, bâtiments…) sur `components/SettingsPage.tsx`. Le rôle est vérifié par le serveur à
 chaque requête (`requireAdmin`) ; `AdminGate` ne fait qu'adapter l'affichage. Chaque modification
 est inscrite au journal (`packages/db/src/audit.ts`).
 

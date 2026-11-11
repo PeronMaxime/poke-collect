@@ -3,7 +3,7 @@ import { PURCHASE_PERIODS, shopCategorySchema, shopEntrySchema } from '@poke/con
 import type { PurchasePeriod, ShopCategory, ShopEntry, UnlockCondition } from '@poke/content';
 import { isOnSale, regionDexProgress, shopEntryStatus } from '@poke/game-core';
 import type { GameContext, PlayerProgress, ShopEntryState } from '@poke/game-core';
-import { EntityPage, VersionBanner } from '../../components/EntityPage';
+import { EntityPage, VersionBanner, WithWorkingVersion } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
 import {
   Field,
@@ -15,7 +15,6 @@ import {
   Toggle,
 } from '../../components/forms/fields';
 import { ItemIcon, ItemSelect, UnlockEditor } from '../../components/forms/pickers';
-import { errorMessage, useWorkingVersion } from '../../lib/content';
 import type { WorkingVersion } from '../../lib/content';
 
 const VIEWS = [
@@ -578,10 +577,7 @@ const STATE_STYLES: Record<ShopEntryState, string> = {
 
 /** La boutique telle qu'un joueur la voit, selon une progression simulée. */
 function ShopPreview() {
-  const working = useWorkingVersion();
-  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
-  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
-  return <ShopPreviewBody working={working.data} />;
+  return <WithWorkingVersion>{(w) => <ShopPreviewBody working={w} />}</WithWorkingVersion>;
 }
 
 function ShopPreviewBody({ working }: { working: WorkingVersion }) {

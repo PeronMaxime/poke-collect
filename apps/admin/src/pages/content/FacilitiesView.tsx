@@ -8,11 +8,12 @@ import type {
   UnlockCondition,
 } from '@poke/content';
 import { ASSISTANT_POST_PLACES, FARM_PLOTS } from '@poke/game-core';
-import { VersionBanner } from '../../components/EntityPage';
+import { WithWorkingVersion } from '../../components/EntityPage';
+import { SettingsPage } from '../../components/SettingsPage';
 import { Field, NumberInput } from '../../components/forms/fields';
 import { UnlockEditor } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
-import { errorMessage, useSaveBalance, useWorkingVersion } from '../../lib/content';
+import { useSaveBalance } from '../../lib/content';
 
 const NO_UNLOCKS: FacilityUnlocks = {
   expedition: [],
@@ -37,10 +38,11 @@ const HINTS: Record<FacilityId, string> = {
 
 /** Onglet « Bâtiments » : places au départ et paliers de déblocage (expéditions, pensions, couveuses, Musée, ferme, Centres). */
 export function FacilitiesView() {
-  const working = useWorkingVersion();
-  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
-  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
-  return <FacilitiesEditor key={working.data.version.id} working={working.data} />;
+  return (
+    <WithWorkingVersion>
+      {(w) => <FacilitiesEditor key={w.version.id} working={w} />}
+    </WithWorkingVersion>
+  );
 }
 
 /** Réglages modifiés ici, copiés de l'équilibrage. */
@@ -181,11 +183,12 @@ function useFacilitiesEditor({ working }: { working: WorkingVersion }) {
     ),
   };
 
+  const cancel = () => setDraft(initial);
+
   return {
+    cancel,
     working,
-    initial,
     draft,
-    setDraft,
     save,
     editable,
     disabled,
@@ -202,45 +205,19 @@ type FacilitiesEditorModel = ReturnType<typeof useFacilitiesEditor>;
 
 function FacilitiesEditor({ working }: { working: WorkingVersion }) {
   const m = useFacilitiesEditor({ working });
-  const { save } = m;
+  const { save, dirty, cancel, submit } = m;
   return (
-    <div className="max-w-4xl space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Progression : bâtiments</h1>
-          <p className="mt-1 text-slate-500">
-            Emplacements d’expédition, pensions, couveuses, places du Musée, parcelles de la ferme
-            et Centres Pokémon en plus au fil de l’aventure : chaque palier s’ajoute dès que sa
-            condition est remplie (rien à réclamer). Le joueur voit les paliers verrouillés et leur
-            condition dans le bâtiment.
-          </p>
-        </div>
-        <FacilitiesActions m={m} />
-      </div>
-      <VersionBanner working={working} />
-      {save.error && <p className="text-sm text-red-600">{errorMessage(save.error)}</p>}
-
+    <SettingsPage
+      title="Progression : bâtiments"
+      description="Emplacements d’expédition, pensions, couveuses, places du Musée, parcelles de la ferme et Centres Pokémon en plus au fil de l’aventure : chaque palier s’ajoute dès que sa condition est remplie (rien à réclamer). Le joueur voit les paliers verrouillés et leur condition dans le bâtiment."
+      working={working}
+      save={save}
+      dirty={dirty}
+      onCancel={cancel}
+      onSave={submit}
+    >
       <FacilitiesList m={m} />
-    </div>
-  );
-}
-
-/** Boutons d'annulation et d'enregistrement. */
-function FacilitiesActions({ m }: { m: FacilitiesEditorModel }) {
-  const { initial, setDraft, save, editable, dirty, submit } = m;
-  return (
-    <>
-      {editable && (
-        <div className="flex gap-2">
-          <button className="btn-ghost" disabled={!dirty} onClick={() => setDraft(initial)}>
-            Annuler
-          </button>
-          <button className="btn-primary" disabled={!dirty || save.isPending} onClick={submit}>
-            Enregistrer
-          </button>
-        </div>
-      )}
-    </>
+    </SettingsPage>
   );
 }
 

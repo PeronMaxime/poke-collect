@@ -1,3 +1,11 @@
+/**
+ * Modèle des pages de contenu dont chaque entité s'édite à part (régions, objets, zones,
+ * dresseurs, donjons, quêtes, boutique…) : une liste filtrable à gauche, la fiche de l'entité
+ * choisie à droite. La page ne décrit que son contenu (`EntityPageProps` : où lire la liste, quelle
+ * clé, quel schéma, quelle fiche) ; la recherche, la sélection, la validation par le schéma, les
+ * alertes de cohérence, Créer / Enregistrer / Dupliquer / Supprimer sont écrits ici une fois.
+ * Réglages enregistrés en un bloc dans l'équilibrage : `SettingsPage`.
+ */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { useMutation } from '@tanstack/react-query';
@@ -51,6 +59,23 @@ export function VersionBanner({ working }: { working: WorkingVersion }) {
   );
 }
 
+/**
+ * Charge la version de travail : « Chargement… », l'erreur, ou la page que rend `children`. Une
+ * page qui tient un brouillon s'y monte avec `key={w.version.id}`, pour repartir de zéro quand la
+ * version change (brouillon créé, publié ou abandonné).
+ */
+export function WithWorkingVersion({
+  children,
+}: {
+  children: (working: WorkingVersion) => ReactNode;
+}) {
+  const working = useWorkingVersion();
+  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
+  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
+  return children(working.data);
+}
+
+/** Alertes de cohérence d'une entité ou de l'équilibrage, erreurs bloquantes d'abord signalées ⛔. */
 export function IssueList({ issues }: { issues: readonly ContentIssue[] }) {
   if (issues.length === 0) return null;
   return (
@@ -67,26 +92,40 @@ export function IssueList({ issues }: { issues: readonly ContentIssue[] }) {
   );
 }
 
+/** Ce que reçoit la fiche d'une entité (et chacune de ses sections). */
 export interface EntityFormProps<T> {
+  /** L'entité en cours d'édition, non enregistrée. */
   value: T;
   onChange: (value: T) => void;
+  /** Erreurs du schéma, par chemin de champ (`errors.get('rewards.currency')`). */
   errors: FieldErrors;
+  /** Entité pas encore créée : son identifiant reste modifiable. */
   isNew: boolean;
+  /** Faux sur la version publiée, en lecture seule : les champs sont grisés. */
   editable: boolean;
   working: WorkingVersion;
 }
 
+/** Ce qu'une page de contenu décrit ; le reste (liste, fiche, enregistrement) est commun. */
 interface EntityPageProps<T> {
   title: string;
   description: string;
+  /** Segment d'URL de l'API (`/api/admin/content/versions/:id/<collection>`). */
   collection: EntityCollection;
+  /** Type d'entité des alertes de cohérence (marque ⛔ dans la liste, alertes de la fiche). */
   entityKind: ContentEntityKind;
+  /** Schéma de `@poke/content` : il valide la fiche avant l'enregistrement. */
   schema: z.ZodType<T>;
+  /** Les entités de la version de travail, dans l'ordre de la liste. */
   list: (working: WorkingVersion) => T[];
+  /** Identifiant de l'entité (clé de l'URL de l'API et de la sélection). */
   getKey: (entity: T) => string;
+  /** Texte où cherche le filtre (sans accents ni casse). */
   searchText: (entity: T, working: WorkingVersion) => string;
   renderListItem: (entity: T, working: WorkingVersion) => ReactNode;
+  /** Entité de départ du bouton « + ». */
   create: (working: WorkingVersion) => T;
+  /** Copie proposée par « Dupliquer » (nouvel identifiant) ; sans elle, pas de bouton. */
   duplicate?: (entity: T) => T;
   renderForm: (props: EntityFormProps<T>) => ReactNode;
   /** Panneau supplémentaire sous le formulaire (simulateur…). */
@@ -96,6 +135,7 @@ interface EntityPageProps<T> {
   listFilter?: ListFilter<T>;
 }
 
+/** Menu de filtre de la liste, en plus de la recherche. */
 export interface ListFilter<T> {
   label: string;
   /** Première option, sans filtre (« Toutes les régions »). */
@@ -219,6 +259,7 @@ export function EntityPage<T>(props: EntityPageProps<T>) {
   );
 }
 
+/** Fiche de l'entité choisie : boutons, erreurs, alertes, formulaire de la page, panneau en plus. */
 function EntityEditor<T>({
   working,
   isNew,

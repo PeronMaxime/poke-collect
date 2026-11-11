@@ -1,10 +1,11 @@
 import { useState } from 'react';
 import { DEFAULT_MENU_GROUPS, DEFAULT_MENU_TITLES, MENU_TABS, normalizeMenu } from '@poke/content';
 import type { MenuSection, MenuTabId, TabUnlocks, UnlockCondition } from '@poke/content';
-import { VersionBanner } from '../../components/EntityPage';
+import { WithWorkingVersion } from '../../components/EntityPage';
+import { SettingsPage } from '../../components/SettingsPage';
 import { UnlockEditor } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
-import { errorMessage, useSaveBalance, useWorkingVersion } from '../../lib/content';
+import { useSaveBalance } from '../../lib/content';
 
 const LABELS = Object.fromEntries(MENU_TABS.map((t) => [t.id, t.label])) as Record<
   MenuTabId,
@@ -12,10 +13,9 @@ const LABELS = Object.fromEntries(MENU_TABS.map((t) => [t.id, t.label])) as Reco
 >;
 
 export function MenuPage() {
-  const working = useWorkingVersion();
-  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
-  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
-  return <MenuEditor key={working.data.version.id} working={working.data} />;
+  return (
+    <WithWorkingVersion>{(w) => <MenuEditor key={w.version.id} working={w} />}</WithWorkingVersion>
+  );
 }
 
 /** Ce qu'on fait glisser : un onglet, ou un groupe entier (par sa poignée). */
@@ -110,14 +110,27 @@ function useMenuEditor({ working }: { working: WorkingVersion }) {
     index !== drag.index &&
     index !== drag.index + 1 && <div className="h-1 rounded bg-brand-500" />;
 
+  const resetToDefault = () =>
+    setSections(DEFAULT_SECTIONS.map((s) => ({ ...s, tabs: [...s.tabs] })));
+  const cancel = () => {
+    setSections(initial);
+    setUnlocks(initialUnlocks);
+  };
+  const submit = () =>
+    save.mutate({
+      ...balance,
+      menu: { groups, titles: sections.map((s) => s.title.trim()) },
+      tabUnlocks: unlocks,
+    });
+
   return {
+    resetToDefault,
+    cancel,
+    submit,
     working,
-    balance,
-    initial,
     sections,
     setSections,
     groups,
-    initialUnlocks,
     unlocks,
     setUnlocks,
     drag,
@@ -142,22 +155,23 @@ type MenuEditorModel = ReturnType<typeof useMenuEditor>;
 
 function MenuEditor({ working }: { working: WorkingVersion }) {
   const m = useMenuEditor({ working });
-  const { save, titlesValid } = m;
+  const { save, dirty, isDefault, titlesValid, resetToDefault, cancel, submit } = m;
   return (
-    <div className="max-w-4xl space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Menu du jeu</h1>
-          <p className="mt-1 text-slate-500">
-            Ordre des onglets et sections du menu : chaque section a un titre et se replie dans le
-            jeu (accordéon). Glisser un onglet pour le déplacer, une section par sa poignée ⠿ pour
-            la réordonner.
-          </p>
-        </div>
-        <MenuActions m={m} />
-      </div>
-      <VersionBanner working={working} />
-      {save.error && <p className="text-sm text-red-600">{errorMessage(save.error)}</p>}
+    <SettingsPage
+      title="Menu du jeu"
+      description="Ordre des onglets et sections du menu : chaque section a un titre et se replie dans le jeu (accordéon). Glisser un onglet pour le déplacer, une section par sa poignée ⠿ pour la réordonner."
+      working={working}
+      save={save}
+      dirty={dirty}
+      valid={titlesValid}
+      onCancel={cancel}
+      onSave={submit}
+      extraActions={
+        <button className="btn-ghost" disabled={isDefault} onClick={resetToDefault}>
+          Menu par défaut
+        </button>
+      }
+    >
       {!titlesValid && (
         <p className="text-sm text-red-600">
           Chaque section doit avoir un titre (30 caractères au plus).
@@ -171,64 +185,7 @@ function MenuEditor({ working }: { working: WorkingVersion }) {
       </div>
 
       <TabUnlocksSection m={m} />
-    </div>
-  );
-}
-
-/** Boutons d'enregistrement, d'annulation et de retour au menu par défaut. */
-function MenuActions({ m }: { m: MenuEditorModel }) {
-  const {
-    balance,
-    initial,
-    sections,
-    setSections,
-    groups,
-    initialUnlocks,
-    unlocks,
-    setUnlocks,
-    save,
-    editable,
-    dirty,
-    isDefault,
-    titlesValid,
-  } = m;
-  return (
-    <>
-      {editable && (
-        <div className="flex gap-2">
-          <button
-            className="btn-ghost"
-            disabled={isDefault}
-            onClick={() => setSections(DEFAULT_SECTIONS.map((s) => ({ ...s, tabs: [...s.tabs] })))}
-          >
-            Menu par défaut
-          </button>
-          <button
-            className="btn-ghost"
-            disabled={!dirty}
-            onClick={() => {
-              setSections(initial);
-              setUnlocks(initialUnlocks);
-            }}
-          >
-            Annuler
-          </button>
-          <button
-            className="btn-primary"
-            disabled={!dirty || !titlesValid || save.isPending}
-            onClick={() =>
-              save.mutate({
-                ...balance,
-                menu: { groups, titles: sections.map((s) => s.title.trim()) },
-                tabUnlocks: unlocks,
-              })
-            }
-          >
-            Enregistrer
-          </button>
-        </div>
-      )}
-    </>
+    </SettingsPage>
   );
 }
 

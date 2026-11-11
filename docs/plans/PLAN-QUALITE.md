@@ -479,8 +479,15 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
     tableau de bord, boutique, effet de talent, lot de test, complétions, bâtiments, simulateur,
     combat légendaire, récompenses) : plafond 23 → 12. Restent dix fonctions de 152 à 186 lignes,
     `findUsages` (complexité) et le `main` de l'import PokéAPI.
-- [ ] **6.2 Un modèle unique de page de contenu** autour de `EntityPage` : liste, formulaire,
+- [x] **6.2 Un modèle unique de page de contenu** autour de `EntityPage` : liste, formulaire,
       validation, enregistrement, écrits une fois et documentés.
+  - **Réalisé** le 11 novembre. `EntityPage` était déjà le modèle des pages d'entités : il est
+    documenté (en-tête, chaque prop). Les cinq pages de réglages enregistrés en un bloc dans
+    l'équilibrage (équilibrage, menu, Sac, bâtiments, complétions) répétaient chacune leur
+    en-tête, leurs boutons Annuler / Enregistrer, le bandeau et l'erreur : c'est désormais
+    `SettingsPage` (testé seul, `test/settings-page.test.tsx`), les gestes `cancel` et `submit`
+    vont dans le hook de la page. Le chargement de la version de travail, répété sept fois, est
+    `WithWorkingVersion`. Les deux modèles sont décrits dans le `README` de l'admin.
 - [ ] **6.3 Pages chargées à la demande** (une par route).
 - [ ] **6.4 Client d'API commun** avec le jeu (`@poke/client`, voir 5.3).
 - [ ] **6.5 Documentation** : comment ajouter une page d'édition pour une nouvelle entité de

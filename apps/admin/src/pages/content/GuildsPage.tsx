@@ -23,7 +23,7 @@ import { chestCandidates, guildQuestTarget } from '@poke/game-core';
 import type { GameContext, PlayerProgress } from '@poke/game-core';
 import { types } from '@poke/data';
 import type { AdminGuildQuestsResetResponse } from '@poke/shared';
-import { EntityPage, VersionBanner } from '../../components/EntityPage';
+import { EntityPage, VersionBanner, WithWorkingVersion } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
 import {
   Field,
@@ -35,7 +35,7 @@ import {
 } from '../../components/forms/fields';
 import { ItemIcon, ItemSelect, TypeSelect, UnlockEditor } from '../../components/forms/pickers';
 import { api } from '../../lib/api';
-import { errorMessage, useWorkingVersion } from '../../lib/content';
+import { errorMessage } from '../../lib/content';
 import type { WorkingVersion } from '../../lib/content';
 import { unlockSummary } from './ShopPage';
 
@@ -514,10 +514,7 @@ function ChestEntryForm({
 // --- Aperçu -----------------------------------------------------------------------------------
 
 function ChestPreview() {
-  const working = useWorkingVersion();
-  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
-  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
-  return <ChestPreviewBody working={working.data} />;
+  return <WithWorkingVersion>{(w) => <ChestPreviewBody working={w} />}</WithWorkingVersion>;
 }
 
 /** Chances de chaque lot selon une progression simulée (dresseurs battus, Pokédex, œufs). */
