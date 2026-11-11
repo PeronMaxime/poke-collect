@@ -16,12 +16,19 @@ import type { DungeonStat, Status, Weather } from '@poke/content';
 import type { DungeonCommand, DungeonEvent, DungeonFighter, GameContext } from '@poke/game-core';
 import type { CombatItemInput, DungeonRunDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar, TypeBadge } from '../../components/ui';
-import { ApiError, api } from '../../lib/api';
-import { keys, refreshAfterCombat, useInventory } from '../../lib/queries';
+import { ApiError } from '../../lib/api';
+import {
+  endCombat,
+  keys,
+  refreshAfterCombat,
+  sendCombatOrder,
+  useInventory,
+} from '../../lib/queries';
 import { abilityLabel, errorText, formatCountdown, itemIcon, itemName } from '../../lib/labels';
 import { Notice, StateTag } from './BuildingParts';
 import { SECTION_TITLE, SELECTED_CELL, SLOT_CLASS } from './dialogParts';
 import { CHECKER } from './zoneBanner';
+import type { CombatApi } from '../../lib/queries';
 
 /** Combat en cours (tentative de donjon ou combat de dresseur) : ce qu'il faut pour le rejouer. */
 export type CombatRun = Pick<DungeonRunDto, 'id' | 'setup' | 'commands' | 'fledAtMs' | 'startedAt'>;
@@ -518,8 +525,8 @@ export function DungeonCombat<R extends CombatRun, C>({
   ctx: GameContext;
   /** Titre de la fenêtre (« Donjon : … », « Combat contre … »). */
   title: string;
-  /** Routes du combat : `${apiBase}/${id}/switch`, `/item`, `/claim`, `/flee`. */
-  apiBase: string;
+  /** Famille du combat (dresseur, donjon, légendaire) : la racine de ses routes. */
+  apiBase: CombatApi;
   /** Requête dont `active` est ce combat (mise à jour après un changement de Pokémon). */
   queryKey: QueryKey;
   /** Le dernier adversaire est un boss (plus grand, couronné). */
@@ -573,14 +580,13 @@ export function DungeonCombat<R extends CombatRun, C>({
 
   const switchMember = useMutation({
     mutationFn: (input: { member: number; atMs: number }) =>
-      api<R>(`${apiBase}/${run.id}/switch`, { method: 'POST', json: input }),
+      sendCombatOrder<R>(apiBase, run.id, 'switch', input),
     onSuccess: (next) => updateRun(next),
     onError: () => setPending(null),
   });
 
   const giveItem = useMutation({
-    mutationFn: (input: CombatItemInput) =>
-      api<R>(`${apiBase}/${run.id}/item`, { method: 'POST', json: input }),
+    mutationFn: (input: CombatItemInput) => sendCombatOrder<R>(apiBase, run.id, 'item', input),
     onSuccess: (next) => {
       updateRun(next);
       return queryClient.invalidateQueries({ queryKey: keys.inventory });
@@ -589,7 +595,7 @@ export function DungeonCombat<R extends CombatRun, C>({
   });
 
   const claim = useMutation({
-    mutationFn: () => api<C>(`${apiBase}/${run.id}/claim`, { method: 'POST' }),
+    mutationFn: () => endCombat<C>(apiBase, run.id, 'claim'),
     onSuccess: (data) => {
       onFinished(data);
       return refresh();
@@ -604,7 +610,7 @@ export function DungeonCombat<R extends CombatRun, C>({
   });
 
   const flee = useMutation({
-    mutationFn: () => api<C>(`${apiBase}/${run.id}/flee`, { method: 'POST' }),
+    mutationFn: () => endCombat<C>(apiBase, run.id, 'flee'),
     onSuccess: (data) => {
       setFinished(true);
       onFinished(data);

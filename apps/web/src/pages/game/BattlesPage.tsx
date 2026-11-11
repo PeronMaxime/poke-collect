@@ -6,8 +6,15 @@ import { isTrainerRevealed, trainerStatus } from '@poke/game-core';
 import type { GameContext, TrainerStatus } from '@poke/game-core';
 import type { BattleDto, ClaimBattleResponse, TrainerRecordDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge, useNow } from '../../components/ui';
-import { api } from '../../lib/api';
-import { keys, serverOffset, useBattles, usePlayerProgress, useQuests } from '../../lib/queries';
+import {
+  COMBAT_API,
+  keys,
+  markBattleSeen,
+  serverOffset,
+  useBattles,
+  usePlayerProgress,
+  useQuests,
+} from '../../lib/queries';
 import {
   TYPE_COLORS,
   formatCountdown,
@@ -252,7 +259,7 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
     if (shownResult) {
       const id = shownResult.battle.id;
       setSeen(id);
-      api(`/api/battles/${id}/seen`, { method: 'POST' })
+      markBattleSeen(id)
         .then(() => queryClient.invalidateQueries({ queryKey: keys.battles }))
         .catch(() => {
           // Échec : le résultat pourra s'afficher de nouveau au prochain passage.
@@ -358,7 +365,7 @@ export function BattlesPage({ ctx }: { ctx: GameContext }) {
             key={active.id}
             ctx={ctx}
             title={activeTitle}
-            apiBase="/api/battles"
+            apiBase={COMBAT_API.battles}
             queryKey={keys.battles}
             run={active}
             offsetMs={offset}

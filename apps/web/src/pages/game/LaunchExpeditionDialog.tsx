@@ -39,7 +39,7 @@ import type {
   GameContext,
   PlayerBonuses,
 } from '@poke/game-core';
-import type { ExpeditionDto, PokemonDto, RoamerDto, StartExpeditionInput } from '@poke/shared';
+import type { PokemonDto, RoamerDto, StartExpeditionInput } from '@poke/shared';
 import {
   HoverBubble,
   Modal,
@@ -48,16 +48,16 @@ import {
   ViewTabs,
   useNow,
 } from '../../components/ui';
-import { ApiError, api } from '../../lib/api';
+import { ApiError } from '../../lib/api';
 import {
   refreshAfterExpeditionStart,
+  startExpedition,
   useDexCatches,
-  usePokemon,
   useExpeditions,
   useInventory,
+  usePokemon,
   useShinyBonus,
   useShinyCharm,
-  utcOffsetMinutes,
 } from '../../lib/queries';
 import {
   errorMessage,
@@ -253,11 +253,7 @@ export function LaunchExpeditionDialog({
   }, [picker.team, zone.id]);
 
   const start = useMutation({
-    mutationFn: (input: StartExpeditionInput) =>
-      api<ExpeditionDto>('/api/expeditions', {
-        method: 'POST',
-        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
-      }),
+    mutationFn: (input: StartExpeditionInput) => startExpedition(input),
     onSuccess: () => {
       // Fermer avant le rechargement : l'équipe envoyée devient « occupée » et sortirait de la liste.
       onClose();

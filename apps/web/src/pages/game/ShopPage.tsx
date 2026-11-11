@@ -6,8 +6,15 @@ import { maxPurchasableLots, purchaseGift } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { PurchaseResponse, SellResponse, ShopEntryStatusDto } from '@poke/shared';
 import { Modal, useNow, ViewTabs } from '../../components/ui';
-import { api } from '../../lib/api';
-import { keys, serverOffset, useInventory, useShop } from '../../lib/queries';
+import {
+  keys,
+  markShopSeen,
+  purchase,
+  sellItem,
+  serverOffset,
+  useInventory,
+  useShop,
+} from '../../lib/queries';
 import {
   RARITY_LABELS,
   RARITY_STYLES,
@@ -58,8 +65,7 @@ export function ShopPage({ ctx }: { ctx: GameContext }) {
     if (fresh.length > 0) setHighlight(new Set([...highlight, ...fresh]));
   }
   const { mutate: markSeen } = useMutation({
-    mutationFn: (entryIds: string[]) =>
-      api('/api/shop/seen', { method: 'POST', json: { entryIds } }),
+    mutationFn: (entryIds: string[]) => markShopSeen(entryIds),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.shop }),
   });
   useEffect(() => {
@@ -67,8 +73,7 @@ export function ShopPage({ ctx }: { ctx: GameContext }) {
   }, [fresh, markSeen]);
 
   const buy = useMutation({
-    mutationFn: (input: { entryId: string; lots: number }) =>
-      api<PurchaseResponse>('/api/shop/purchase', { method: 'POST', json: input }),
+    mutationFn: (input: { entryId: string; lots: number }) => purchase(input),
     onSuccess: (data) => {
       setReceipt(data);
       return Promise.all(
@@ -377,8 +382,7 @@ function SellPanel({ ctx }: { ctx: GameContext }) {
   const [receipt, setReceipt] = useState<SellResponse | null>(null);
 
   const sell = useMutation({
-    mutationFn: (input: { itemId: string; quantity: number }) =>
-      api<SellResponse>('/api/shop/sell', { method: 'POST', json: input }),
+    mutationFn: (input: { itemId: string; quantity: number }) => sellItem(input),
     onSuccess: (data) => {
       setPending(null);
       setReceipt(data);

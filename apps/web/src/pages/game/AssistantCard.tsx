@@ -9,10 +9,17 @@ import {
 } from '@poke/game-core';
 import type { AbilityActivity, AssistantPost, GameContext } from '@poke/game-core';
 import { searchKey } from '@poke/shared';
-import type { AssignAssistantInput, AssistantDto, PokemonDto } from '@poke/shared';
+import type { AssignAssistantInput, PokemonDto } from '@poke/shared';
 import { Modal, PokemonSprite, useNow } from '../../components/ui';
-import { api } from '../../lib/api';
-import { isUsable, keys, refresh, useAssistants, usePokemon } from '../../lib/queries';
+import {
+  assignAssistant,
+  isUsable,
+  keys,
+  refresh,
+  removeAssistant,
+  useAssistants,
+  usePokemon,
+} from '../../lib/queries';
 import { abilityLabel, errorText, speciesName, typeLabel } from '../../lib/labels';
 
 /** Données du bâtiment où travaille l'assistant d'un poste. */
@@ -70,15 +77,14 @@ function useAssistantSlot(post: AssistantPost, slot: number) {
   // L'assistant occupe son Pokémon et change le rythme du bâtiment où il travaille.
   const refreshPost = () => refresh(queryClient, keys.assistants, keys.pokemon, ...POST_KEYS[post]);
   const assign = useMutation({
-    mutationFn: (input: AssignAssistantInput) =>
-      api<AssistantDto>(`/api/assistants/${post}/${slot}`, { method: 'PUT', json: input }),
+    mutationFn: (input: AssignAssistantInput) => assignAssistant(post, slot, input),
     onSuccess: () => {
       setPicking(false);
       return refreshPost();
     },
   });
   const release = useMutation({
-    mutationFn: () => api(`/api/assistants/${post}/${slot}`, { method: 'DELETE' }),
+    mutationFn: () => removeAssistant(post, slot),
     onSuccess: () => {
       setPicking(false);
       return refreshPost();

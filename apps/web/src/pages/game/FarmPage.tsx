@@ -5,13 +5,15 @@ import { FARM_PLOTS, assistantSlotOf, berryPlantEffect } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { BerryPlotDto, HarvestBerriesResponse, PlantBerryInput } from '@poke/shared';
 import { HoverBubble, Modal, ProgressBar, useNow } from '../../components/ui';
-import { api } from '../../lib/api';
 import {
-  keys,
-  refresh,
   assistantPlaces,
+  harvestBerries,
+  keys,
+  plantBerry,
+  refresh,
   serverOffset,
   shownPlaces,
+  uprootBerry,
   useAssistants,
   useFarm,
   useInventory,
@@ -59,21 +61,17 @@ export function FarmPage({ ctx }: { ctx: GameContext }) {
   const refreshFarm = () => refresh(queryClient, keys.farm, keys.inventory);
   const plant = useMutation({
     mutationFn: async (inputs: PlantBerryInput[]) => {
-      for (const json of inputs) await api<BerryPlotDto>('/api/farm', { method: 'POST', json });
+      for (const json of inputs) await plantBerry(json);
     },
     onSettled: refreshFarm,
   });
   const uproot = useMutation({
-    mutationFn: (plot: number) => api<BerryPlotDto>(`/api/farm/${plot}`, { method: 'DELETE' }),
+    mutationFn: (plot: number) => uprootBerry(plot),
     onSuccess: refreshFarm,
   });
   const harvest = useMutation({
     // Sans parcelle : toutes les baies mûres.
-    mutationFn: (plot?: number) =>
-      api<HarvestBerriesResponse>(
-        plot === undefined ? '/api/farm/harvest' : `/api/farm/${plot}/harvest`,
-        { method: 'POST' },
-      ),
+    mutationFn: (plot?: number) => harvestBerries(plot),
     onSuccess: (data) => {
       setHarvested(data);
       return refreshFarm();

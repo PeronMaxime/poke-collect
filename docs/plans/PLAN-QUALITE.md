@@ -386,9 +386,16 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
     n'est plus mis en cache à sa place, et l'échec de chargement déclenche tout de suite la
     proposition de rechargement. CI : `pnpm build`, absent jusque-là, puis
     `scripts/bundle-size.mjs` plafonné à 380 Ko.
-- [ ] **5.2 Couche de données** : `lib/game.ts` (56 exports) → `lib/queries/` par domaine (clés,
+- [x] **5.2 Couche de données** : `lib/game.ts` (56 exports) → `lib/queries/` par domaine (clés,
       lectures, actions et ce que chaque action invalide). Les 91 appels `api()` et 83
       `useQuery` / `useMutation` des écrans y sont déplacés : un écran n'écrit plus d'URL.
+  - **Réalisé** le 11 novembre (écarts avec le plan) : `lib/queries/` (16 fichiers) remplace
+    `lib/game.ts`. Les 93 appels `api()` des écrans sont devenus 71 fonctions de requête, une par
+    action de l'API : plus aucune adresse dans les écrans, et les requêtes écrites deux fois
+    (page et widget d'un même bâtiment) n'existent plus qu'une fois. Les `useMutation` restent
+    dans les écrans (84 `useQuery` / `useMutation`) : leur `onSuccess` mêle le rechargement du
+    cache à l'état de l'écran (révélations, messages, fermeture d'un dialogue). Ils deviennent
+    des hooks nommés à l'étape 5.5, domaine par domaine, quand chaque écran est découpé.
 - [ ] **5.3 Utilitaires** : `lib/storage.ts` (un seul `usePersistentState` pour les 12 fichiers qui
       manipulent `localStorage`) ; `components/ui.tsx` (22 composants) → un fichier par composant ;
       `lib/labels.ts` par domaine ; `api.ts` partagé avec l'admin (paquet `@poke/client`).

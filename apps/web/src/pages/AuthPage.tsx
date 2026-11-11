@@ -2,8 +2,8 @@ import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { authClient } from '../lib/auth-client';
-import { api } from '../lib/api';
 import { FanDisclaimer, LegalLinks, PRIVACY_PATH } from './LegalPages';
+import { fetchAuthConfig } from '../lib/queries';
 
 type Mode = 'sign-in' | 'sign-up' | 'forgot';
 
@@ -23,7 +23,7 @@ export function AuthPage() {
 
   const config = useQuery({
     queryKey: ['config'],
-    queryFn: () => api<{ oauthProviders: string[]; passwordReset: boolean }>('/api/config'),
+    queryFn: () => fetchAuthConfig(),
   });
 
   async function onSubmit(e: FormEvent) {

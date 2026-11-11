@@ -13,13 +13,13 @@ import {
   ShinySparkles,
   ShinyStar,
 } from '../../components/ui';
-import { ApiError, api } from '../../lib/api';
+import { ApiError } from '../../lib/api';
 import {
-  refreshAfterExpeditionStart,
   newInDexTracker,
+  refreshAfterExpeditionStart,
+  startExpedition,
   useInventory,
   usePokemon,
-  utcOffsetMinutes,
 } from '../../lib/queries';
 import { errorMessage, candyName, itemIcon, itemName, speciesName } from '../../lib/labels';
 import { Notice, StateTag } from './BuildingParts';
@@ -102,10 +102,7 @@ function RevealContent({
         ...(e.encounterBerryItemId ? { encounterBerryCount: e.encounterBerries } : {}),
         autoTransfer: e.autoTransfer,
       };
-      return api<ExpeditionDto>('/api/expeditions', {
-        method: 'POST',
-        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
-      });
+      return startExpedition(input);
     },
     onSuccess: () => {
       onClose();

@@ -1,10 +1,10 @@
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'motion/react';
-import type { PlayerProfileDto, PokemonDto } from '@poke/shared';
+import type { PlayerProfileDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge } from '../components/ui';
-import { ApiError, api } from '../lib/api';
-import { PLAYER_STATE_KEYS, refresh, useGameContext } from '../lib/queries';
+import { ApiError } from '../lib/api';
+import { PLAYER_STATE_KEYS, chooseStarter, refresh, useGameContext } from '../lib/queries';
 import { errorMessage } from '../lib/labels';
 
 /** Choix du premier Pokémon parmi les starters de la région de départ (contenu publié). */
@@ -15,8 +15,7 @@ export function StarterPage({ profile }: { profile: PlayerProfileDto }) {
   const region = ctx?.region(profile.regionUnlocked);
 
   const choose = useMutation({
-    mutationFn: (speciesId: number) =>
-      api<PokemonDto>('/api/starter', { method: 'POST', json: { speciesId } }),
+    mutationFn: (speciesId: number) => chooseStarter(speciesId),
     onSuccess: () => refresh(queryClient, ...PLAYER_STATE_KEYS),
   });
 

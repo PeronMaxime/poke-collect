@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import { api } from './api';
 import { logError } from './log';
+import { deletePushSubscription, savePushSubscription } from './queries';
 
 /**
  * Mode PWA : service worker (jeu installable, cache des sprites, notifications push) et invite
@@ -114,7 +114,7 @@ export function useDeviceSubscription() {
         userVisibleOnly: true,
         applicationServerKey: applicationServerKey(publicKey),
       }));
-    await api('/api/push/subscriptions', { method: 'POST', json: sub.toJSON() });
+    await savePushSubscription(sub.toJSON());
     setSubscription(sub);
     return true;
   }, []);
@@ -123,7 +123,7 @@ export function useDeviceSubscription() {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
     if (sub) {
-      await api('/api/push/subscriptions', { method: 'DELETE', json: { endpoint: sub.endpoint } });
+      await deletePushSubscription(sub.endpoint);
       await sub.unsubscribe();
     }
     setSubscription(null);

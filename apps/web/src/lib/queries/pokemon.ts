@@ -1,8 +1,22 @@
+import { utcOffsetMinutes } from './clock';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { isHealing, pokemonEvolutions } from '@poke/game-core';
 import type { EvolutionCheck, GameContext } from '@poke/game-core';
-import type { CandyDto, PokemonDto, PokemonTagDto, PokemonTeamDto } from '@poke/shared';
+import type {
+  CandyDto,
+  EvolveResponse,
+  MegaEvolveInput,
+  PokemonDto,
+  PokemonTagDto,
+  PokemonTeamDto,
+  ReleaseLegendaryResponse,
+  TagInput,
+  TeamInput,
+  TransferPokemonResponse,
+  UseItemInput,
+  UseItemResponse,
+} from '@poke/shared';
 import { api } from '../api';
 import { useInventory } from './inventory';
 import { keys } from './keys';
@@ -65,3 +79,62 @@ export function useNewEvolutionChecker(ctx: GameContext | undefined) {
 
 export const useCandies = () =>
   useQuery({ queryKey: keys.candies, queryFn: () => api<CandyDto[]>('/api/candies') });
+
+// --- Requêtes d'action ---------------------------------------------------------------------
+
+/** Verrouille ou déverrouille un Pokémon, ou change ses étiquettes. */
+export const updatePokemon = (id: string, patch: { locked?: boolean; tagIds?: string[] }) =>
+  api<PokemonDto>(`/api/pokemon/${id}`, { method: 'PATCH', json: patch });
+
+/** Transfère des Pokémon contre des Bonbons (au plus `TRANSFER_BATCH_MAX` par requête). */
+export const transferPokemon = (ids: string[]) =>
+  api<TransferPokemonResponse>('/api/pokemon/transfer', { method: 'POST', json: { ids } });
+
+/** Fait évoluer un Pokémon vers l'espèce (et la forme) choisie. */
+export const evolvePokemon = (
+  id: string,
+  target: { toSpeciesId: number; toFormId: number | null },
+) =>
+  api<EvolveResponse>(`/api/pokemon/${id}/evolve`, {
+    method: 'POST',
+    json: { ...target, utcOffsetMinutes: utcOffsetMinutes() },
+  });
+
+/** Méga-Évolution au PC, avec une Méga-Gemme du sac. */
+export const megaEvolvePokemon = (id: string, input: MegaEvolveInput) =>
+  api<EvolveResponse>(`/api/pokemon/${id}/mega`, { method: 'POST', json: input });
+
+/** Annule la Méga-Évolution : la gemme revient dans le sac. */
+export const revertMegaEvolution = (id: string) =>
+  api<PokemonDto>(`/api/pokemon/${id}/mega`, { method: 'DELETE' });
+
+/** Donne `count` niveaux à un Pokémon avec les Bonbons de sa lignée. */
+export const giveCandies = (id: string, count: number) =>
+  api<PokemonDto>(`/api/pokemon/${id}/candies`, { method: 'POST', json: { count } });
+
+/** Utilise un objet du sac sur un Pokémon. */
+export const applyItem = (id: string, input: UseItemInput) =>
+  api<UseItemResponse>(`/api/pokemon/${id}/use-item`, { method: 'POST', json: input });
+
+/** Relâche un Pokémon légendaire : sa quête peut reprendre. */
+export const releaseLegendary = (id: string) =>
+  api<ReleaseLegendaryResponse>(`/api/pokemon/${id}/release`, { method: 'POST' });
+
+/** Crée une étiquette (`id` null) ou la modifie. */
+export const saveTag = (id: string | null, input: TagInput) =>
+  id
+    ? api<PokemonTagDto>(`/api/tags/${id}`, { method: 'PUT', json: input })
+    : api<PokemonTagDto>('/api/tags', { method: 'POST', json: input });
+
+/** Supprime une étiquette. */
+export const deleteTag = (id: string) => api<void>(`/api/tags/${id}`, { method: 'DELETE' });
+
+/** Crée une équipe enregistrée (`id` absent) ou la modifie. */
+export const saveTeam = (id: string | null | undefined, input: TeamInput) =>
+  api<PokemonTeamDto>(id ? `/api/teams/${id}` : '/api/teams', {
+    method: id ? 'PUT' : 'POST',
+    json: input,
+  });
+
+/** Supprime une équipe enregistrée. */
+export const deleteTeam = (id: string) => api(`/api/teams/${id}`, { method: 'DELETE' });

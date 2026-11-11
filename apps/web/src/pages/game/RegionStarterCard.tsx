@@ -2,10 +2,9 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { Region } from '@poke/content';
 import type { GameContext } from '@poke/game-core';
-import type { PokemonDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge } from '../../components/ui';
-import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, refresh } from '../../lib/queries';
+import { ApiError } from '../../lib/api';
+import { PLAYER_STATE_KEYS, chooseRegionStarter, refresh } from '../../lib/queries';
 import { errorMessage } from '../../lib/labels';
 
 /**
@@ -16,8 +15,7 @@ export function RegionStarterCard({ ctx, region }: { ctx: GameContext; region: R
   const queryClient = useQueryClient();
   const [selected, setSelected] = useState<number | null>(null);
   const choose = useMutation({
-    mutationFn: (speciesId: number) =>
-      api<PokemonDto>(`/api/regions/${region.id}/starter`, { method: 'POST', json: { speciesId } }),
+    mutationFn: (speciesId: number) => chooseRegionStarter(region.id, speciesId),
     onSuccess: () => refresh(queryClient, ...PLAYER_STATE_KEYS),
   });
 

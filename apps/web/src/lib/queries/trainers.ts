@@ -1,5 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import type {
+  FavoritePokemonDto,
+  FavoritePokemonInput,
+  FeaturedPokemonDto,
+  FeaturedPokemonInput,
   LeaderboardKind,
   LeaderboardResponse,
   TrainerCardResponse,
@@ -54,4 +58,20 @@ export const useTrainerSearch = (query: string) =>
     queryFn: () => api<TrainerSearchResultDto[]>(`/api/trainers?q=${encodeURIComponent(query)}`),
     enabled: query.length > 0,
     staleTime: 30_000,
+  });
+
+// --- Requêtes d'action ---------------------------------------------------------------------
+
+/** Choisit son Pokémon favori (`null` : revenir au starter). */
+export const setFavoritePokemon = (favorite: FavoritePokemonDto | null) =>
+  api<FavoritePokemonDto | null>('/api/trainer-card/favorite', {
+    method: 'PUT',
+    json: { favorite } satisfies FavoritePokemonInput,
+  });
+
+/** Choisit les Pokémon de sa vitrine, dans l'ordre. */
+export const setFeaturedPokemon = (pokemonIds: string[]) =>
+  api<FeaturedPokemonDto[]>('/api/trainer-card/featured', {
+    method: 'PUT',
+    json: { pokemonIds } satisfies FeaturedPokemonInput,
   });

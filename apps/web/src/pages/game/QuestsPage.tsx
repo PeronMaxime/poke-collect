@@ -13,8 +13,9 @@ import type {
   QuestProgressDto,
 } from '@poke/shared';
 import { Modal, PokemonSprite, ProgressBar, useNow } from '../../components/ui';
-import { api } from '../../lib/api';
 import {
+  COMBAT_API,
+  claimQuest,
   keys,
   refresh,
   refreshAfterReward,
@@ -112,8 +113,7 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
   const [overBattle, setOverBattle] = useState<string | null>(null);
   const [claimBattle, setClaimBattle] = useState<string | null>(null);
   const claim = useMutation({
-    mutationFn: (questId: string) =>
-      api<ClaimQuestResponse>(`/api/quests/${questId}/claim`, { method: 'POST' }),
+    mutationFn: (questId: string) => claimQuest(questId),
     onSuccess: (data) => {
       setReveal(data);
       return Promise.all([
@@ -314,7 +314,7 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
             key={active.id}
             ctx={ctx}
             title={activeTitle}
-            apiBase="/api/legendary-battles"
+            apiBase={COMBAT_API.legendary}
             queryKey={keys.legendaryBattles}
             bossLast
             run={active}

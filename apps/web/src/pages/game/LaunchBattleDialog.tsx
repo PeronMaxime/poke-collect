@@ -14,10 +14,9 @@ import {
   zoneWeather,
 } from '@poke/game-core';
 import type { BattleError, DungeonMove, ExpeditionSite, GameContext } from '@poke/game-core';
-import type { BattleDto, StartBattleInput } from '@poke/shared';
+import type { StartBattleInput } from '@poke/shared';
 import { HoverBubble, Modal, PokemonSprite, useNow } from '../../components/ui';
-import { api } from '../../lib/api';
-import { keys, refresh, utcOffsetMinutes } from '../../lib/queries';
+import { keys, refresh, startBattle } from '../../lib/queries';
 import { errorText, formatDuration, formatMoney, trainerName, typeLabel } from '../../lib/labels';
 import {
   BadgeIcon,
@@ -90,11 +89,7 @@ export function LaunchBattleDialog({
   const bonuses = usePlayerBonuses(ctx);
 
   const start = useMutation({
-    mutationFn: (input: StartBattleInput) =>
-      api<BattleDto>('/api/battles', {
-        method: 'POST',
-        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
-      }),
+    mutationFn: (input: StartBattleInput) => startBattle(input),
     onSuccess: () => {
       onClose();
       return refresh(queryClient, keys.battles, keys.pokemon);

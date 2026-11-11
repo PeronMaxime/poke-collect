@@ -9,16 +9,29 @@ import type {
   GuildDto,
   GuildJoinMode,
   GuildMemberDto,
-  GuildMessagesResponse,
   GuildQuestDto,
   GuildRole,
-  GuildSearchResponse,
   GuildStateResponse,
   GuildSummaryDto,
 } from '@poke/shared';
 import { PokemonSprite, ProgressBar, useNow, ViewTabs } from '../../components/ui';
-import { api } from '../../lib/api';
-import { keys, useGuild, useGuildProfile } from '../../lib/queries';
+import {
+  answerGuildRequest,
+  cancelGuildRequest,
+  createGuild,
+  deleteGuildMessage,
+  fetchGuildMessages,
+  joinGuild,
+  keys,
+  kickGuildMember,
+  leaveGuild,
+  postGuildMessage,
+  searchGuilds,
+  setGuildMemberRole,
+  updateGuild,
+  useGuild,
+  useGuildProfile,
+} from '../../lib/queries';
 import { errorText, formatMoney, guildObjectiveText, itemIcon } from '../../lib/labels';
 import { ChestLootHover } from './ChestLootHover';
 import { guildLink, trainerLink } from './TrainerCardPage';
@@ -148,7 +161,7 @@ function GuildSearch() {
   }, [query]);
   const results = useQuery({
     queryKey: [...keys.guild, 'search', debounced.toLowerCase()],
-    queryFn: () => api<GuildSearchResponse>(`/api/guilds?q=${encodeURIComponent(debounced)}`),
+    queryFn: () => searchGuilds(debounced),
   });
   return (
     <section className="space-y-2">
@@ -196,10 +209,8 @@ function GuildCard({ guild: g }: { guild: GuildSummaryDto }) {
 
 /** Rejoindre la guilde, y postuler ou retirer sa candidature. */
 function JoinButtons({ guild: g }: { guild: GuildSummaryDto }) {
-  const join = useGuildAction(() =>
-    api<{ joined: boolean }>(`/api/guilds/${g.id}/join`, { method: 'POST' }),
-  );
-  const cancel = useGuildAction(() => api(`/api/guilds/${g.id}/request`, { method: 'DELETE' }));
+  const join = useGuildAction(() => joinGuild(g.id));
+  const cancel = useGuildAction(() => cancelGuildRequest(g.id));
   const full = g.memberCount >= g.maxMembers;
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -317,9 +328,7 @@ function CreateGuild({
     description: '',
     joinMode: 'open',
   });
-  const create = useGuildAction((input: CreateGuildInput) =>
-    api<GuildStateResponse>('/api/guilds', { method: 'POST', json: input }),
-  );
+  const create = useGuildAction((input: CreateGuildInput) => createGuild(input));
   const tooPoor = currency < cost;
   return (
     <section className="card space-y-3">
@@ -464,11 +473,8 @@ function MemberList({ guild }: { guild: GuildDto }) {
 
 function MemberRow({ member: m, myRole }: { member: GuildMemberDto; myRole: GuildRole }) {
   const [confirm, setConfirm] = useState<'kick' | 'leader' | null>(null);
-  const name = encodeURIComponent(m.trainerName);
-  const kick = useGuildAction(() => api(`/api/guild/members/${name}/kick`, { method: 'POST' }));
-  const role = useGuildAction((r: GuildRole) =>
-    api(`/api/guild/members/${name}/role`, { method: 'POST', json: { role: r } }),
-  );
+  const kick = useGuildAction(() => kickGuildMember(m.trainerName));
+  const role = useGuildAction((r: GuildRole) => setGuildMemberRole(m.trainerName, r));
   const canKick = !m.isMe && (myRole === 'leader' || (myRole === 'officer' && m.role === 'member'));
   const canPromote = !m.isMe && myRole === 'leader';
   const pending = kick.isPending || role.isPending;
@@ -563,9 +569,7 @@ function MemberRow({ member: m, myRole }: { member: GuildMemberDto; myRole: Guil
 
 function JoinRequests({ guild }: { guild: GuildDto }) {
   const answer = useGuildAction(({ name, accept }: { name: string; accept: boolean }) =>
-    api(`/api/guild/requests/${encodeURIComponent(name)}/${accept ? 'accept' : 'decline'}`, {
-      method: 'POST',
-    }),
+    answerGuildRequest(name, accept),
   );
   return (
     <section className="card space-y-2 p-4">
@@ -604,7 +608,7 @@ function JoinRequests({ guild }: { guild: GuildDto }) {
 function GuildSettings({ guild }: { guild: GuildDto }) {
   const [description, setDescription] = useState(guild.description);
   const update = useGuildAction((input: { description?: string; joinMode?: GuildJoinMode }) =>
-    api('/api/guild', { method: 'PATCH', json: input }),
+    updateGuild(input),
   );
   return (
     <section className="card space-y-2 p-4">
@@ -638,7 +642,7 @@ function GuildSettings({ guild }: { guild: GuildDto }) {
 
 function LeaveGuild({ guild }: { guild: GuildDto }) {
   const [confirming, setConfirming] = useState(false);
-  const leave = useGuildAction(() => api('/api/guild/leave', { method: 'POST' }));
+  const leave = useGuildAction(() => leaveGuild());
   const alone = guild.members.length === 1;
   return (
     <div className="space-y-1 text-sm">
@@ -682,20 +686,19 @@ function GuildChat({ moderator }: { moderator: boolean }) {
   const messagesKey = [...keys.guild, 'messages'];
   const messages = useQuery({
     queryKey: messagesKey,
-    queryFn: () => api<GuildMessagesResponse>('/api/guild/messages'),
+    queryFn: () => fetchGuildMessages(),
     refetchInterval: CHAT_REFRESH_MS,
   });
   const [body, setBody] = useState('');
   const send = useMutation({
-    mutationFn: (text: string) =>
-      api('/api/guild/messages', { method: 'POST', json: { body: text } }),
+    mutationFn: (text: string) => postGuildMessage(text),
     onSuccess: () => {
       setBody('');
       return queryClient.invalidateQueries({ queryKey: messagesKey });
     },
   });
   const remove = useMutation({
-    mutationFn: (id: string) => api(`/api/guild/messages/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => deleteGuildMessage(id),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: messagesKey }),
   });
   const list = useRef<HTMLDivElement>(null);

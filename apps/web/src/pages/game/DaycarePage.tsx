@@ -18,7 +18,6 @@ import type {
   DaycareDto,
   EggDto,
   HatchEggsResponse,
-  IncubateEggsResponse,
   PokemonDto,
 } from '@poke/shared';
 import {
@@ -31,12 +30,14 @@ import {
   ShinyStar,
   useNow,
 } from '../../components/ui';
-import { api } from '../../lib/api';
 import {
   PROGRESS_KEYS,
+  assistantPlaces,
+  collectEggs,
+  hatchEggs,
+  incubateEggs,
   keys,
   refresh,
-  assistantPlaces,
   serverOffset,
   shownPlaces,
   useAssistants,
@@ -44,6 +45,8 @@ import {
   usePokemon,
   useShinyBonus,
   useShinyCharm,
+  withdrawDaycareParent,
+  withdrawEgg,
 } from '../../lib/queries';
 import {
   errorText,
@@ -103,32 +106,31 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
 
   const collect = useMutation({
     mutationFn: ({ slot, to }: { slot: number; to: CollectEggsInput['to'] }) =>
-      api<CollectEggsResponse>(`/api/daycare/${slot}/collect`, { method: 'POST', json: { to } }),
+      collectEggs(slot, to),
     onSuccess: collected,
   });
   const withdraw = useMutation({
     mutationFn: ({ slot, side }: { slot: number; side: 0 | 1 }) =>
-      api<CollectEggsResponse>(`/api/daycare/${slot}/parents/${side}`, { method: 'DELETE' }),
+      withdrawDaycareParent(slot, side),
     onSuccess: collected,
   });
   const incubate = useMutation({
-    mutationFn: (ids: string[]) =>
-      api<IncubateEggsResponse>('/api/eggs/incubate', { method: 'POST', json: { ids } }),
+    mutationFn: (ids: string[]) => incubateEggs(ids),
     onSuccess: (res) => {
       const n = res.incubated.length;
       setNotice(`${eggCount(n)} placé${n > 1 ? 's' : ''} dans la couveuse.`);
       return refresh(queryClient, keys.daycare);
     },
   });
-  const withdrawEgg = useMutation({
-    mutationFn: (id: string) => api<BagEggDto>(`/api/eggs/${id}`, { method: 'DELETE' }),
+  const storeEgg = useMutation({
+    mutationFn: (id: string) => withdrawEgg(id),
     onSuccess: (egg) => {
       setNotice(`Œuf de ${speciesName(ctx, egg.speciesId, egg.formId)} rangé dans le sac.`);
       return refresh(queryClient, keys.daycare);
     },
   });
   const hatch = useMutation({
-    mutationFn: () => api<HatchEggsResponse>('/api/eggs/hatch', { method: 'POST' }),
+    mutationFn: () => hatchEggs(),
     onSuccess: (data) => {
       setHatched(data);
       // Éclosion : nouveaux Pokémon, Pokédex, quêtes et activité de guilde.
@@ -160,10 +162,8 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
     (i) => !takenPlaces.has(i),
   ).length;
   const readyEggs = incubated.filter((e) => Date.parse(e.hatchAt) <= serverNow).length;
-  const busy =
-    collect.isPending || withdraw.isPending || incubate.isPending || withdrawEgg.isPending;
-  const error =
-    collect.error ?? withdraw.error ?? incubate.error ?? withdrawEgg.error ?? hatch.error;
+  const busy = collect.isPending || withdraw.isPending || incubate.isPending || storeEgg.isPending;
+  const error = collect.error ?? withdraw.error ?? incubate.error ?? storeEgg.error ?? hatch.error;
 
   const incubators = assistantSlotCount('incubator', shownEggs);
   const occupiedPensions = (data?.pensions ?? []).filter((p) => p.slotIndex < openSlots).length;
@@ -284,7 +284,7 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
                       egg={egg}
                       serverNow={serverNow}
                       busy={busy}
-                      onWithdraw={() => withdrawEgg.mutate(egg.id)}
+                      onWithdraw={() => storeEgg.mutate(egg.id)}
                     />
                   ) : (
                     <div

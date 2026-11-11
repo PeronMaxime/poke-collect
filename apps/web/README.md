@@ -31,12 +31,29 @@ public/               `sw.js`, `manifest.webmanifest`, icônes
 
 ## Comment un écran obtient ses données
 
-1. Une lecture est un hook de `lib/queries/` (`useExpeditions()`, `usePokemon()`…), qui appelle
-   `api()` sous une clé de `keys`.
+Tout passe par `lib/queries/` : un écran n'écrit aucune adresse de l'API.
+
+| Fichier                       | Contenu                                                           |
+| ----------------------------- | ----------------------------------------------------------------- |
+| `keys.ts`                     | Clés de cache, `refresh()` et les `refreshAfter…` par famille     |
+| `cache.ts`                    | Retouches du cache sans relire le serveur (`patchPokemon`…)       |
+| `clock.ts`                    | Heure locale envoyée au serveur, écart avec l'horloge du serveur  |
+| `player.ts`                   | Compte, profil, contenu du jeu, avancement, récompenses           |
+| `pokemon.ts`, `pokedex.ts`    | PC, étiquettes, équipes, Bonbons, évolutions ; Pokédex            |
+| `inventory.ts`, `shop.ts`     | Sac, coffres ; boutique                                           |
+| `expeditions.ts`, `combat.ts` | Expéditions ; dresseurs, donjons, légendaires                     |
+| `buildings.ts`                | Pension, couveuses, Musée, Ferme, Centre, assistants              |
+| `guild.ts`, `quests.ts`       | Guildes ; quêtes                                                  |
+| `trainers.ts`, `settings.ts`  | Fiche Dresseur, classements, autres joueurs ; notifications, bêta |
+
+1. Une lecture est un hook (`useExpeditions()`, `usePokemon()`…), qui appelle `api()` sous une clé
+   de `keys`.
 2. Les données restent fraîches 30 s : changer d'onglet ne recharge rien.
-3. Une action est un `useMutation` qui appelle `api()` puis recharge **seulement** les clés
-   qu'elle a pu changer (`refresh(queryClient, keys.expeditions, keys.inventory)` ou une fonction
-   `refreshAfter…`). Recharger tout (`PLAYER_STATE_KEYS`) est réservé au choix du starter.
+3. Une action est une fonction de requête du domaine (`startExpedition(input)`,
+   `collectEggs(slot, to)`…), appelée par le `useMutation` de l'écran. Son `onSuccess` recharge
+   **seulement** les clés que l'action a pu changer (`refresh(queryClient, keys.expeditions)` ou
+   une fonction `refreshAfter…`). Recharger tout (`PLAYER_STATE_KEYS`) est réservé au choix d'un
+   starter.
 4. Le contenu du jeu (`useGameContext()`) est chargé une fois et gardé tant que le serveur
    n'annonce pas une autre version.
 5. Un aperçu (puissance, chances, XP) se calcule avec les fonctions de `@poke/game-core`, les

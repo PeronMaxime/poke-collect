@@ -9,7 +9,6 @@ import { FEATURED_POKEMON_MAX } from '@poke/shared';
 import type {
   FavoritePokemonDto,
   FeaturedPokemonDto,
-  FeaturedPokemonInput,
   PlayerProfileDto,
   PokemonDto,
   TrainerCardResponse,
@@ -17,9 +16,10 @@ import type {
 } from '@poke/shared';
 import { PokemonSprite, ShinyStar, ViewTabs } from '../../components/ui';
 import { PokemonTagBadges, TagFilterSelect } from '../../components/tags';
-import { ApiError, api } from '../../lib/api';
+import { ApiError } from '../../lib/api';
 import {
   keys,
+  setFeaturedPokemon,
   useDexCatches,
   usePlayerProgress,
   usePokemon,
@@ -584,11 +584,7 @@ function FeaturedEditor({
   const [filtersOpen, setFiltersOpen] = useState(false);
   const byId = new Map((pokemon.data ?? []).map((p) => [p.id, p]));
   const save = useMutation({
-    mutationFn: (pokemonIds: string[]) =>
-      api<FeaturedPokemonDto[]>('/api/trainer-card/featured', {
-        method: 'PUT',
-        json: { pokemonIds } satisfies FeaturedPokemonInput,
-      }),
+    mutationFn: (pokemonIds: string[]) => setFeaturedPokemon(pokemonIds),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: keys.trainerCard });
       onClose();

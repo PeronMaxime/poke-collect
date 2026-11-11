@@ -5,7 +5,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import { STAT_NAMES } from '@poke/data';
 import { MAX_IV, isTransferableSpecies } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { HatchEggsResponse, PokemonDto, TransferPokemonResponse } from '@poke/shared';
+import type { HatchEggsResponse, PokemonDto } from '@poke/shared';
 import {
   Egg,
   GenderSymbol,
@@ -16,8 +16,14 @@ import {
   ShinyStar,
 } from '../../components/ui';
 import { TagPicker } from '../../components/tags';
-import { api } from '../../lib/api';
-import { applyTransfer, newInDexTracker, patchPokemon, usePokemon } from '../../lib/queries';
+import {
+  applyTransfer,
+  newInDexTracker,
+  patchPokemon,
+  transferPokemon,
+  updatePokemon,
+  usePokemon,
+} from '../../lib/queries';
 import { errorText, natureLabel, speciesName } from '../../lib/labels';
 import { CornerTag, CrossIcon, LAUNCH_DIALOG_CLASS, ResultFrame } from './dialogParts';
 
@@ -132,8 +138,7 @@ function HatchContent({
     );
   const shinyCount = transferable.filter((p) => p.isShiny).length;
   const transferAll = useMutation({
-    mutationFn: (ids: string[]) =>
-      api<TransferPokemonResponse>('/api/pokemon/transfer', { method: 'POST', json: { ids } }),
+    mutationFn: (ids: string[]) => transferPokemon(ids),
     onSuccess: (res, ids) => {
       markTransferred(ids);
       setConfirmingAll(false);
@@ -319,16 +324,11 @@ export function NewbornActions({
 }) {
   const queryClient = useQueryClient();
   const toggleLock = useMutation({
-    mutationFn: () =>
-      api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { locked: !p.locked } }),
+    mutationFn: () => updatePokemon(p.id, { locked: !p.locked }),
     onSuccess: (updated) => patchPokemon(queryClient, updated),
   });
   const transfer = useMutation({
-    mutationFn: () =>
-      api<TransferPokemonResponse>('/api/pokemon/transfer', {
-        method: 'POST',
-        json: { ids: [p.id] },
-      }),
+    mutationFn: () => transferPokemon([p.id]),
     onSuccess: (res) => {
       onTransferred?.();
       return applyTransfer(queryClient, [p], res.gained);

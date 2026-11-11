@@ -3,10 +3,9 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { getForm } from '@poke/data';
 import type { GameContext } from '@poke/game-core';
 import { searchKey } from '@poke/shared';
-import type { FavoritePokemonDto, FavoritePokemonInput } from '@poke/shared';
+import type { FavoritePokemonDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar } from '../../components/ui';
-import { api } from '../../lib/api';
-import { keys, usePokedex, usePokedexForms } from '../../lib/queries';
+import { keys, setFavoritePokemon, usePokedex, usePokedexForms } from '../../lib/queries';
 import { errorText, speciesName } from '../../lib/labels';
 import { ProgressiveItems } from '../../components/ProgressiveGrid';
 import { SELECTED_CELL, StatusPill } from './dialogParts';
@@ -47,11 +46,7 @@ export function FavoritePicker({
   const [onlyShiny, setOnlyShiny] = useState(current?.shiny ?? false);
 
   const save = useMutation({
-    mutationFn: (favorite: FavoritePokemonDto | null) =>
-      api<FavoritePokemonDto | null>('/api/trainer-card/favorite', {
-        method: 'PUT',
-        json: { favorite } satisfies FavoritePokemonInput,
-      }),
+    mutationFn: (favorite: FavoritePokemonDto | null) => setFavoritePokemon(favorite),
     onSuccess: async () => {
       await Promise.all(
         [keys.me, keys.trainerCard].map((queryKey) => queryClient.invalidateQueries({ queryKey })),

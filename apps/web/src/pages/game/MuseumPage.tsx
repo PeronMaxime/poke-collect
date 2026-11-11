@@ -4,17 +4,19 @@ import { fossilEffect } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type { FossilRevivalDto, ReviveFossilsResponse } from '@poke/shared';
 import { PokemonSprite, ProgressBar, useNow } from '../../components/ui';
-import { api } from '../../lib/api';
 import {
   PROGRESS_KEYS,
+  assistantPlaces,
+  depositFossil,
   keys,
   refresh,
-  assistantPlaces,
+  reviveFossils,
   serverOffset,
   shownPlaces,
   useAssistants,
   useInventory,
   useMuseum,
+  withdrawFossil,
 } from '../../lib/queries';
 import {
   errorText,
@@ -40,16 +42,15 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
   // Dépôt et annulation : fossile du sac. Réanimation : nouveaux Pokémon, donc Pokédex et quêtes.
   const refreshMuseum = () => refresh(queryClient, keys.museum, keys.inventory);
   const deposit = useMutation({
-    mutationFn: (itemId: string) =>
-      api<FossilRevivalDto>('/api/museum', { method: 'POST', json: { itemId } }),
+    mutationFn: (itemId: string) => depositFossil(itemId),
     onSuccess: refreshMuseum,
   });
   const cancel = useMutation({
-    mutationFn: (id: string) => api<FossilRevivalDto>(`/api/museum/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => withdrawFossil(id),
     onSuccess: refreshMuseum,
   });
   const revive = useMutation({
-    mutationFn: () => api<ReviveFossilsResponse>('/api/museum/revive', { method: 'POST' }),
+    mutationFn: () => reviveFossils(),
     onSuccess: (data) => {
       setRevived(data);
       return Promise.all([refreshMuseum(), refresh(queryClient, keys.pokemon, ...PROGRESS_KEYS)]);

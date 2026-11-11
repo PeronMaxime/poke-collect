@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { TAG_LABEL_MAX } from '@poke/shared';
 import type { PokemonDto, PokemonTagDto, TagInput } from '@poke/shared';
-import { api } from '../lib/api';
-import { keys, usePokemon, useTags } from '../lib/queries';
+import { deleteTag, keys, saveTag, updatePokemon, usePokemon, useTags } from '../lib/queries';
 import { errorText } from '../lib/labels';
 import { Modal } from './ui';
 
@@ -141,8 +140,7 @@ export function TagPicker({
   const queryClient = useQueryClient();
   const tags = useTags().data ?? [];
   const assign = useMutation({
-    mutationFn: (tagIds: string[]) =>
-      api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { tagIds } }),
+    mutationFn: (tagIds: string[]) => updatePokemon(p.id, { tagIds }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.pokemon }),
   });
   // Les étiquettes supprimées entre-temps ne sont pas renvoyées.
@@ -230,17 +228,14 @@ export function TagManagerDialog({ open, onClose }: { open: boolean; onClose: ()
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const save = useMutation({
-    mutationFn: ({ id, input }: { id: string | null; input: TagInput }) =>
-      id
-        ? api<PokemonTagDto>(`/api/tags/${id}`, { method: 'PUT', json: input })
-        : api<PokemonTagDto>('/api/tags', { method: 'POST', json: input }),
+    mutationFn: ({ id, input }: { id: string | null; input: TagInput }) => saveTag(id, input),
     onSuccess: () => {
       setEditing(null);
       return queryClient.invalidateQueries({ queryKey: keys.tags });
     },
   });
   const remove = useMutation({
-    mutationFn: (id: string) => api<void>(`/api/tags/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => deleteTag(id),
     onSuccess: () => {
       setConfirmDelete(null);
       setEditing(null);

@@ -6,8 +6,14 @@ import { dungeonStatus } from '@poke/game-core';
 import type { DungeonStatus, GameContext } from '@poke/game-core';
 import type { ClaimDungeonResponse, DungeonRecordDto, DungeonRunDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge, useNow } from '../../components/ui';
-import { api } from '../../lib/api';
-import { keys, serverOffset, useDungeons, usePlayerProgress } from '../../lib/queries';
+import {
+  COMBAT_API,
+  keys,
+  markDungeonSeen,
+  serverOffset,
+  useDungeons,
+  usePlayerProgress,
+} from '../../lib/queries';
 import {
   formatCountdown,
   itemIcon,
@@ -94,7 +100,7 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
     if (shownResult) {
       const id = shownResult.run.id;
       setSeen(id);
-      api(`/api/dungeons/${id}/seen`, { method: 'POST' })
+      markDungeonSeen(id)
         .then(() => queryClient.invalidateQueries({ queryKey: keys.dungeons }))
         .catch(() => {
           // Échec : le résultat pourra s'afficher de nouveau au prochain passage.
@@ -179,7 +185,7 @@ export function DungeonsPage({ ctx }: { ctx: GameContext }) {
             key={active.id}
             ctx={ctx}
             title={`Donjon : ${ctx.dungeon(active.dungeonId)?.name ?? active.dungeonId}`}
-            apiBase="/api/dungeons"
+            apiBase={COMBAT_API.dungeons}
             queryKey={keys.dungeons}
             bossLast
             run={active}

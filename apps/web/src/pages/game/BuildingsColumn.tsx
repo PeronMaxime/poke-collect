@@ -23,14 +23,12 @@ import type {
   FossilRevivalDto,
   HarvestBerriesResponse,
   HatchEggsResponse,
-  IncubateEggsResponse,
   PlantBerryInput,
   PokemonDto,
   ReviveFossilsResponse,
 } from '@poke/shared';
 import { CollapseBody, CollapseButton } from '../../components/Collapsible';
 import { Egg, EggTimer, Modal, PokemonSprite, ProgressBar, useNow } from '../../components/ui';
-import { api } from '../../lib/api';
 import {
   reorderWidgets,
   toggleWidgetCollapsed,
@@ -42,8 +40,15 @@ import {
   PROGRESS_KEYS,
   assistantPlaces,
   centerState,
+  collectEggs,
+  depositFossil,
+  harvestBerries,
+  hatchEggs,
+  incubateEggs,
   keys,
+  plantBerry,
   refresh,
+  reviveFossils,
   serverOffset,
   shownPlaces,
   useAssistants,
@@ -54,6 +59,9 @@ import {
   useMuseum,
   usePlayerProgress,
   usePokemon,
+  withdrawDaycareParent,
+  withdrawEgg,
+  withdrawFossil,
 } from '../../lib/queries';
 import {
   errorText,
@@ -599,15 +607,14 @@ function DaycareTile({ ctx }: { ctx: GameContext }) {
   };
   const collect = useMutation({
     mutationFn: ({ slot, to }: { slot: number; to: CollectEggsInput['to'] }) =>
-      api<CollectEggsResponse>(`/api/daycare/${slot}/collect`, { method: 'POST', json: { to } }),
+      collectEggs(slot, to),
     onSuccess: (res) => {
       setNotice(res.bagged > 0 ? `${plural(res.bagged, 'œuf')} dans le sac.` : null);
       return refreshDaycare();
     },
   });
   const withdraw = useMutation({
-    mutationFn: ({ slot, side }: Place) =>
-      api<CollectEggsResponse>(`/api/daycare/${slot}/parents/${side}`, { method: 'DELETE' }),
+    mutationFn: ({ slot, side }: Place) => withdrawDaycareParent(slot, side),
     onSuccess: (res) => {
       xpNotice(res);
       setFocus(null);
@@ -961,7 +968,7 @@ function IncubatorTile({ ctx }: { ctx: GameContext }) {
   const [focusId, setFocusId] = useState<string | null>(null);
 
   const hatch = useMutation({
-    mutationFn: () => api<HatchEggsResponse>('/api/eggs/hatch', { method: 'POST' }),
+    mutationFn: () => hatchEggs(),
     onSuccess: (data) => {
       setHatched(data);
       // Éclosion : nouveaux Pokémon, Pokédex, quêtes et activité de guilde.
@@ -969,12 +976,11 @@ function IncubatorTile({ ctx }: { ctx: GameContext }) {
     },
   });
   const incubate = useMutation({
-    mutationFn: (ids: string[]) =>
-      api<IncubateEggsResponse>('/api/eggs/incubate', { method: 'POST', json: { ids } }),
+    mutationFn: (ids: string[]) => incubateEggs(ids),
     onSuccess: () => refresh(queryClient, keys.daycare),
   });
   const withdraw = useMutation({
-    mutationFn: (id: string) => api<BagEggDto>(`/api/eggs/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => withdrawEgg(id),
     onSuccess: () => {
       setFocusId(null);
       return refresh(queryClient, keys.daycare);
@@ -1321,19 +1327,18 @@ function MuseumTile({ ctx }: { ctx: GameContext }) {
   // Fossile cliqué (fenêtre Retirer).
   const [focusId, setFocusId] = useState<string | null>(null);
   const withdraw = useMutation({
-    mutationFn: (id: string) => api<FossilRevivalDto>(`/api/museum/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => withdrawFossil(id),
     onSuccess: () => {
       setFocusId(null);
       return refresh(queryClient, keys.museum, keys.inventory);
     },
   });
   const deposit = useMutation({
-    mutationFn: (itemId: string) =>
-      api<FossilRevivalDto>('/api/museum', { method: 'POST', json: { itemId } }),
+    mutationFn: (itemId: string) => depositFossil(itemId),
     onSuccess: () => refresh(queryClient, keys.museum, keys.inventory),
   });
   const revive = useMutation({
-    mutationFn: () => api<ReviveFossilsResponse>('/api/museum/revive', { method: 'POST' }),
+    mutationFn: () => reviveFossils(),
     onSuccess: (data) => {
       setRevived(data);
       return refresh(queryClient, keys.museum, keys.inventory, keys.pokemon, ...PROGRESS_KEYS);
@@ -1592,17 +1597,13 @@ function FarmTile({ ctx }: { ctx: GameContext }) {
   const refreshFarm = () => refresh(queryClient, keys.farm, keys.inventory);
   const plant = useMutation({
     mutationFn: async (inputs: PlantBerryInput[]) => {
-      for (const json of inputs) await api<BerryPlotDto>('/api/farm', { method: 'POST', json });
+      for (const json of inputs) await plantBerry(json);
     },
     onSettled: refreshFarm,
   });
   const harvest = useMutation({
     // Sans parcelle : toutes les baies mûres.
-    mutationFn: (plot?: number) =>
-      api<HarvestBerriesResponse>(
-        plot === undefined ? '/api/farm/harvest' : `/api/farm/${plot}/harvest`,
-        { method: 'POST' },
-      ),
+    mutationFn: (plot?: number) => harvestBerries(plot),
     onSuccess: (data) => {
       setHarvested(data);
       return refreshFarm();

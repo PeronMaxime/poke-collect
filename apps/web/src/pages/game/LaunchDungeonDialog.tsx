@@ -19,10 +19,9 @@ import type {
   ExpeditionSite,
   GameContext,
 } from '@poke/game-core';
-import type { DungeonRunDto, StartDungeonInput } from '@poke/shared';
+import type { StartDungeonInput } from '@poke/shared';
 import { HoverBubble, Modal, PokemonSprite, TypeBadge } from '../../components/ui';
-import { api } from '../../lib/api';
-import { keys, refresh, utcOffsetMinutes } from '../../lib/queries';
+import { keys, refresh, startDungeon } from '../../lib/queries';
 import {
   errorText,
   formatDuration,
@@ -93,11 +92,7 @@ export function LaunchDungeonDialog({
   const bossInfo = <BossInfo ctx={ctx} dungeon={dungeon} />;
 
   const start = useMutation({
-    mutationFn: (input: StartDungeonInput) =>
-      api<DungeonRunDto>('/api/dungeons', {
-        method: 'POST',
-        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
-      }),
+    mutationFn: (input: StartDungeonInput) => startDungeon(input),
     onSuccess: () => {
       onClose();
       return refresh(queryClient, keys.dungeons, keys.pokemon);

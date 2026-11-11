@@ -1,17 +1,22 @@
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type {
-  BetaProfilesResponse,
-  MeResponse,
-  NotificationSettings,
-  PushConfigResponse,
-} from '@poke/shared';
+import type { MeResponse, NotificationSettings } from '@poke/shared';
 import { Modal } from '../components/ui';
-import { ApiError, api } from '../lib/api';
+import { ApiError } from '../lib/api';
 import { authClient } from '../lib/auth-client';
 import { isIos, pushSupported, useDeviceSubscription, useInstallPrompt } from '../lib/pwa';
 import { MAIN_TAB_PROFILE, openProfileInNewTab, setTabProfile } from '../lib/tab-profile';
 import { loadThemePreference, setThemePreference, type ThemePreference } from '../lib/theme';
+import {
+  activateBetaProfile,
+  createBetaProfile,
+  deleteBetaProfile,
+  fetchBetaProfiles,
+  fetchPushConfig,
+  saveNotificationSettings,
+  savePushSubscription,
+  sendTestNotification,
+} from '../lib/queries';
 
 const PUSH_KEY = ['push'] as const;
 
@@ -107,7 +112,7 @@ function NotificationSection() {
   const queryClient = useQueryClient();
   const config = useQuery({
     queryKey: PUSH_KEY,
-    queryFn: () => api<PushConfigResponse>('/api/push'),
+    queryFn: () => fetchPushConfig(),
   });
   const device = useDeviceSubscription();
   const [error, setError] = useState<string | null>(null);
@@ -117,7 +122,7 @@ function NotificationSection() {
   const enabledOnServer = !!config.data?.publicKey;
   useEffect(() => {
     if (!subscription || !enabledOnServer) return;
-    api('/api/push/subscriptions', { method: 'POST', json: subscription.toJSON() })
+    savePushSubscription(subscription.toJSON())
       .then(() => queryClient.invalidateQueries({ queryKey: PUSH_KEY }))
       .catch(() => {});
   }, [subscription, enabledOnServer, queryClient]);
@@ -134,12 +139,11 @@ function NotificationSection() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: PUSH_KEY }),
   });
   const saveSettings = useMutation({
-    mutationFn: (settings: NotificationSettings) =>
-      api<NotificationSettings>('/api/push/settings', { method: 'PUT', json: settings }),
+    mutationFn: (settings: NotificationSettings) => saveNotificationSettings(settings),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: PUSH_KEY }),
   });
   const test = useMutation({
-    mutationFn: () => api<{ sent: number }>('/api/push/test', { method: 'POST' }),
+    mutationFn: () => sendTestNotification(),
   });
 
   if (config.isPending) return <p className="mt-5 text-sm text-slate-500">Chargement…</p>;
@@ -215,7 +219,7 @@ function BetaProfilesSection() {
   const queryClient = useQueryClient();
   const profiles = useQuery({
     queryKey: ['beta-profiles'],
-    queryFn: () => api<BetaProfilesResponse>('/api/beta/profiles'),
+    queryFn: () => fetchBetaProfiles(),
   });
   const [error, setError] = useState<string | null>(null);
   // Changer de profil change toutes les données du jeu : on recharge l'application.
@@ -227,7 +231,7 @@ function BetaProfilesSection() {
         : 'Action impossible, réessaie plus tard.',
     );
   const create = useMutation({
-    mutationFn: () => api<BetaProfilesResponse>('/api/beta/profiles', { method: 'POST' }),
+    mutationFn: () => createBetaProfile(),
     onSuccess: (data) => {
       setTabProfile(data.activeProfileId);
       onSwitched();
@@ -235,11 +239,7 @@ function BetaProfilesSection() {
     onError,
   });
   const select = useMutation({
-    mutationFn: (profileId: string | null) =>
-      api<BetaProfilesResponse>('/api/beta/profiles/active', {
-        method: 'POST',
-        json: { profileId },
-      }),
+    mutationFn: (profileId: string | null) => activateBetaProfile(profileId),
     // Le cookie devient le profil par défaut des nouveaux onglets ; celui-ci garde le sien.
     onSuccess: (data) => {
       const main = data.profiles.find((p) => p.main);
@@ -259,8 +259,7 @@ function BetaProfilesSection() {
     setError(null);
   };
   const remove = useMutation({
-    mutationFn: (profileId: string) =>
-      api<BetaProfilesResponse>(`/api/beta/profiles/${profileId}`, { method: 'DELETE' }),
+    mutationFn: (profileId: string) => deleteBetaProfile(profileId),
     onSuccess: (data, profileId) => {
       closeDeletion();
       if (profileId === profiles.data?.activeProfileId) {

@@ -1,8 +1,15 @@
 import { useMemo } from 'react';
 import { queryOptions, useQuery } from '@tanstack/react-query';
 import { createGameContext } from '@poke/game-core';
-import type { ClaimedRewards, GameContext, PlayerProgress } from '@poke/game-core';
-import type { MeResponse, ProgressionResponse, PublicContentDto } from '@poke/shared';
+import type { ClaimedRewards, GameContext, PlayerProgress, RewardKind } from '@poke/game-core';
+import type {
+  ClaimRewardResponse,
+  MeResponse,
+  PlayerProfileDto,
+  PokemonDto,
+  ProgressionResponse,
+  PublicContentDto,
+} from '@poke/shared';
 import { ApiError, api } from '../api';
 import { useDaycare } from './buildings';
 import { useBattles } from './combat';
@@ -98,10 +105,24 @@ export function useClaimedRewards(): ClaimedRewards {
   }, [progression.data]);
 }
 
-/** Décalage de l'heure locale par rapport à UTC, envoyé au serveur (évolutions jour / nuit). */
-export const utcOffsetMinutes = () => -new Date().getTimezoneOffset();
+// --- Requêtes d'action ---------------------------------------------------------------------
 
-/** Décalage entre l'horloge du serveur et celle du navigateur (comptes à rebours justes). */
-export function serverOffset(data: { serverTime: string } | undefined, updatedAt: number) {
-  return data ? Date.parse(data.serverTime) - updatedAt : 0;
-}
+/** Ce que le serveur propose pour se connecter (page de connexion, sans session). */
+export const fetchAuthConfig = () =>
+  api<{ oauthProviders: string[]; passwordReset: boolean }>('/api/config');
+
+/** Crée le profil du dresseur. */
+export const createProfile = (trainerName: string) =>
+  api<PlayerProfileDto>('/api/profile', { method: 'POST', json: { trainerName } });
+
+/** Choisit le starter du début de l'aventure. */
+export const chooseStarter = (speciesId: number) =>
+  api<PokemonDto>('/api/starter', { method: 'POST', json: { speciesId } });
+
+/** Choisit le starter offert à l'arrivée dans une région. */
+export const chooseRegionStarter = (regionId: string, speciesId: number) =>
+  api<PokemonDto>(`/api/regions/${regionId}/starter`, { method: 'POST', json: { speciesId } });
+
+/** Réclame une récompense de collection ou de complétion. */
+export const claimReward = (input: { kind: RewardKind; rewardId: string; targetId?: string }) =>
+  api<ClaimRewardResponse>('/api/progression/claim', { method: 'POST', json: input });

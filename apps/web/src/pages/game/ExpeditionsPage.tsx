@@ -37,11 +37,14 @@ import {
   TypeBadge,
   useNow,
 } from '../../components/ui';
-import { ApiError, api } from '../../lib/api';
+import { ApiError } from '../../lib/api';
 import {
+  cancelExpedition,
+  claimExpedition,
+  keys,
   refreshAfterExpeditionClaim,
   refreshAfterExpeditionStart,
-  keys,
+  setFavoriteZone,
   shownPlaces,
   useExpeditions,
   usePlayerProgress,
@@ -108,8 +111,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   const [favoritesCollapsed, toggleFavorites] = useCollapsedSection('expeditions.favorites');
 
   const claim = useMutation({
-    mutationFn: (id: string) =>
-      api<ClaimExpeditionResponse>(`/api/expeditions/${id}/claim`, { method: 'POST' }),
+    mutationFn: (id: string) => claimExpedition(id),
     onSuccess: (data) => {
       setReveal(data);
       return refreshAfterExpeditionClaim(queryClient);
@@ -117,11 +119,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   });
 
   const favorite = useMutation({
-    mutationFn: ({ zoneId, on }: { zoneId: string; on: boolean }) =>
-      api<{ favoriteZoneIds: string[] }>(`/api/expeditions/favorites/${zoneId}`, {
-        method: 'PUT',
-        json: { favorite: on },
-      }),
+    mutationFn: ({ zoneId, on }: { zoneId: string; on: boolean }) => setFavoriteZone(zoneId, on),
     onSuccess: ({ favoriteZoneIds }) =>
       queryClient.setQueryData<ExpeditionsResponse>(
         keys.expeditions,
@@ -130,7 +128,7 @@ export function ExpeditionsPage({ ctx, profile }: { ctx: GameContext; profile: P
   });
 
   const cancel = useMutation({
-    mutationFn: (id: string) => api<void>(`/api/expeditions/${id}/cancel`, { method: 'POST' }),
+    mutationFn: (id: string) => cancelExpedition(id),
     onSuccess: () => refreshAfterExpeditionStart(queryClient),
   });
 

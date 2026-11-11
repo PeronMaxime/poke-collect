@@ -2,10 +2,8 @@ import { useEffect, useRef } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
 import type { GameContext } from '@poke/game-core';
-import type { OpenChestResponse } from '@poke/shared';
 import { Modal } from '../../components/ui';
-import { api } from '../../lib/api';
-import { keys } from '../../lib/queries';
+import { keys, openChest } from '../../lib/queries';
 import { errorText, itemIcon, itemName } from '../../lib/labels';
 
 /** Ouverture de coffres de guilde : la demande part à l'ouverture, puis les lots s'affichent. */
@@ -23,8 +21,7 @@ export function ChestOpenDialog({
   const queryClient = useQueryClient();
   const reduceMotion = useReducedMotion();
   const open = useMutation({
-    mutationFn: () =>
-      api<OpenChestResponse>('/api/items/open-chest', { method: 'POST', json: { itemId, count } }),
+    mutationFn: () => openChest(itemId, count),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.inventory }),
   });
   const { mutate } = open;

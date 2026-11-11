@@ -25,8 +25,12 @@ import type {
 } from '@poke/game-core';
 import type { ClaimRewardResponse } from '@poke/shared';
 import { PokemonSprite, ProgressBar, ShinyStar } from '../../components/ui';
-import { api } from '../../lib/api';
-import { refreshAfterReward, useClaimedRewards, usePlayerProgress } from '../../lib/queries';
+import {
+  claimReward,
+  refreshAfterReward,
+  useClaimedRewards,
+  usePlayerProgress,
+} from '../../lib/queries';
 import {
   errorText,
   formatPercentBonus,
@@ -42,8 +46,7 @@ type Progress = DexCatches;
 
 type ClaimInput = { kind: RewardKind; rewardId: string; targetId?: string };
 
-const postClaim = (input: ClaimInput) =>
-  api<ClaimRewardResponse>('/api/progression/claim', { method: 'POST', json: input });
+const postClaim = (input: ClaimInput) => claimReward(input);
 
 /**
  * Réclamation d'une récompense (collection ou complétion d'expédition), ou de plusieurs à la

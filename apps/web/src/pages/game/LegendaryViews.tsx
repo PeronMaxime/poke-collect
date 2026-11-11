@@ -13,14 +13,15 @@ import {
   pokemonPower,
 } from '@poke/game-core';
 import type { DungeonMove, ExpeditionSite, GameContext } from '@poke/game-core';
-import type {
-  LegendaryBattleDto,
-  LegendaryCaptureResponse,
-  StartLegendaryBattleInput,
-} from '@poke/shared';
+import type { LegendaryBattleDto, StartLegendaryBattleInput } from '@poke/shared';
 import { HoverBubble, Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
-import { api } from '../../lib/api';
-import { keys, refresh, useInventory, utcOffsetMinutes } from '../../lib/queries';
+import {
+  captureLegendary,
+  keys,
+  refresh,
+  startLegendaryBattle,
+  useInventory,
+} from '../../lib/queries';
 import {
   errorText,
   formatDuration,
@@ -74,11 +75,7 @@ export function LaunchLegendaryDialog({
   const bonuses = usePlayerBonuses(ctx);
 
   const start = useMutation({
-    mutationFn: (input: StartLegendaryBattleInput) =>
-      api<LegendaryBattleDto>(`/api/quests/${quest.id}/battle`, {
-        method: 'POST',
-        json: { ...input, utcOffsetMinutes: utcOffsetMinutes() },
-      }),
+    mutationFn: (input: StartLegendaryBattleInput) => startLegendaryBattle(quest.id, input),
     onSuccess: () => {
       onClose();
       return refresh(queryClient, keys.legendaryBattles, keys.pokemon);
@@ -269,11 +266,7 @@ export function LegendaryCaptureDialog({
   const [revealed, setRevealed] = useState(false);
 
   const capture = useMutation({
-    mutationFn: (ballItemId: string) =>
-      api<LegendaryCaptureResponse>(`/api/legendary-battles/${battleId}/capture`, {
-        method: 'POST',
-        json: { ballItemId },
-      }),
+    mutationFn: (ballItemId: string) => captureLegendary(battleId, ballItemId),
     onSuccess: () =>
       refresh(
         queryClient,

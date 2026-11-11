@@ -2,7 +2,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { charmMultiplier } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { InventoryEntryDto } from '@poke/shared';
+import type { InventoryEntryDto, OpenChestResponse } from '@poke/shared';
 import { api } from '../api';
 import { keys } from './keys';
 
@@ -42,3 +42,9 @@ export function useShinyCharm(ctx: GameContext | undefined): number {
     [ctx, inventory.data],
   );
 }
+
+// --- Requêtes d'action ---------------------------------------------------------------------
+
+/** Ouvre `count` coffres du sac. */
+export const openChest = (itemId: string, count: number) =>
+  api<OpenChestResponse>('/api/items/open-chest', { method: 'POST', json: { itemId, count } });

@@ -38,10 +38,8 @@ import type {
   MegaEvolveInput,
   PokemonActivity,
   PokemonDto,
-  ReleaseLegendaryResponse,
   TransferPokemonResponse,
   UseItemInput,
-  UseItemResponse,
 } from '@poke/shared';
 import { TRANSFER_BATCH_MAX } from '@poke/shared';
 import {
@@ -55,29 +53,35 @@ import {
 } from '../../components/ui';
 import { TagManagerDialog, TagPicker } from '../../components/tags';
 import { usePlayerBonuses } from './XpPreview';
-import { api } from '../../lib/api';
 import {
   PROGRESS_KEYS,
+  applyItem,
   applyTransfer,
   centerState,
+  evolvePokemon,
+  giveCandies,
   isUsable,
   keys,
+  megaEvolvePokemon,
   patchPokemon,
   refresh,
+  releaseLegendary,
+  revertMegaEvolution,
   setItemQuantity,
+  transferPokemon,
+  updatePokemon,
   useAssistants,
   useCandies,
+  useDexIndex,
   useEvolutionChecker,
   useHeal,
-  useRevive,
-  useReviveStacks,
-  useDexIndex,
   useInventory,
   useItemQuantities,
   usePlayerProgress,
   usePokemon,
   useQuests,
-  utcOffsetMinutes,
+  useRevive,
+  useReviveStacks,
 } from '../../lib/queries';
 import {
   STAT_LABELS,
@@ -145,10 +149,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
       let transferred = 0;
       const gained = new Map<number, number>();
       for (let i = 0; i < ids.length; i += TRANSFER_BATCH_MAX) {
-        const res = await api<TransferPokemonResponse>('/api/pokemon/transfer', {
-          method: 'POST',
-          json: { ids: ids.slice(i, i + TRANSFER_BATCH_MAX) },
-        });
+        const res = await transferPokemon(ids.slice(i, i + TRANSFER_BATCH_MAX));
         transferred += res.transferred;
         for (const g of res.gained)
           gained.set(g.lineageId, (gained.get(g.lineageId) ?? 0) + g.quantity);
@@ -438,8 +439,7 @@ export function PcPage({ ctx }: { ctx: GameContext }) {
 function FavoriteToggle({ pokemon: p }: { pokemon: PokemonDto }) {
   const queryClient = useQueryClient();
   const toggle = useMutation({
-    mutationFn: () =>
-      api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { locked: !p.locked } }),
+    mutationFn: () => updatePokemon(p.id, { locked: !p.locked }),
     onSuccess: (updated) => {
       queryClient.setQueryData<PokemonDto[]>(keys.pokemon, (list) =>
         list?.map((q) => (q.id === updated.id ? updated : q)),
@@ -645,8 +645,7 @@ function PokemonDetail({
     );
   };
   const megaEvolve = useMutation({
-    mutationFn: (input: MegaEvolveInput) =>
-      api<EvolveResponse>(`/api/pokemon/${p.id}/mega`, { method: 'POST', json: input }),
+    mutationFn: (input: MegaEvolveInput) => megaEvolvePokemon(p.id, input),
     onSuccess: (data) => {
       setRevealMega(true);
       setReveal(data);
@@ -654,7 +653,7 @@ function PokemonDetail({
     },
   });
   const megaRevert = useMutation({
-    mutationFn: () => api<PokemonDto>(`/api/pokemon/${p.id}/mega`, { method: 'DELETE' }),
+    mutationFn: () => revertMegaEvolution(p.id),
     // La Méga-Gemme revient dans le sac.
     onSuccess: (updated) => {
       patchPokemon(queryClient, updated);
@@ -663,10 +662,7 @@ function PokemonDetail({
   });
   const evolve = useMutation({
     mutationFn: ({ toSpeciesId, toFormId }: Pick<EvolutionOption, 'toSpeciesId' | 'toFormId'>) =>
-      api<EvolveResponse>(`/api/pokemon/${p.id}/evolve`, {
-        method: 'POST',
-        json: { toSpeciesId, toFormId, utcOffsetMinutes: utcOffsetMinutes() },
-      }),
+      evolvePokemon(p.id, { toSpeciesId, toFormId }),
     onSuccess: (data) => {
       setRevealMega(false);
       setReveal(data);
@@ -692,8 +688,7 @@ function PokemonDetail({
   const ivTotal = STAT_NAMES.reduce((sum, s) => sum + p.ivs[s], 0);
 
   const toggleLock = useMutation({
-    mutationFn: () =>
-      api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { locked: !p.locked } }),
+    mutationFn: () => updatePokemon(p.id, { locked: !p.locked }),
     onSuccess: (updated) => patchPokemon(queryClient, updated),
   });
   // Affichage optimiste : le cœur change dès le clic.
@@ -710,8 +705,7 @@ function PokemonDetail({
   // Aperçu : XP gagnée et niveau atteint avec les Bonbons choisis.
   const fed = applyCandies(ctx, p, candiesToGive, bonuses);
   const feed = useMutation({
-    mutationFn: (count: number) =>
-      api<PokemonDto>(`/api/pokemon/${p.id}/candies`, { method: 'POST', json: { count } }),
+    mutationFn: (count: number) => giveCandies(p.id, count),
     onSuccess: (updated) => {
       patchPokemon(queryClient, updated);
       return refresh(queryClient, keys.candies);
@@ -724,11 +718,7 @@ function PokemonDetail({
 
   const [confirmTransfer, setConfirmTransfer] = useState(false);
   const transfer = useMutation({
-    mutationFn: () =>
-      api<TransferPokemonResponse>('/api/pokemon/transfer', {
-        method: 'POST',
-        json: { ids: [p.id] },
-      }),
+    mutationFn: () => transferPokemon([p.id]),
     onSuccess: async (data) => {
       onTransferred(data);
       await applyTransfer(queryClient, [p], data.gained);
@@ -752,8 +742,7 @@ function PokemonDetail({
     releaseFrom !== undefined &&
     quests.data?.quests.find((q) => q.questId === releaseFrom.questId)?.restartOnRelease === true;
   const release = useMutation({
-    mutationFn: () =>
-      api<ReleaseLegendaryResponse>(`/api/pokemon/${p.id}/release`, { method: 'POST' }),
+    mutationFn: () => releaseLegendary(p.id),
     onSuccess: async (data) => {
       onReleased(
         data.restarted
@@ -1736,8 +1725,7 @@ function ItemUseDialog({
   const [chosenStats, setChosenStats] = useState<Record<string, StatName>>({});
   const [done, setDone] = useState<string | null>(null);
   const use = useMutation({
-    mutationFn: (input: UseItemInput) =>
-      api<UseItemResponse>(`/api/pokemon/${p.id}/use-item`, { method: 'POST', json: input }),
+    mutationFn: (input: UseItemInput) => applyItem(p.id, input),
     onSuccess: (data, input) => {
       setChosenStats({});
       setDone(

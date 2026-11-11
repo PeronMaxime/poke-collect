@@ -13,8 +13,14 @@ import type {
 import { IvHover, PokemonSprite, ShinyStar, ViewTabs, useNow } from '../../components/ui';
 import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { ProgressiveItems } from '../../components/ProgressiveGrid';
-import { api } from '../../lib/api';
-import { isUsable, keys, refresh, useInventory, usePokemon } from '../../lib/queries';
+import {
+  isUsable,
+  keys,
+  refresh,
+  setDaycareParent,
+  useInventory,
+  usePokemon,
+} from '../../lib/queries';
 import { errorText, formatDuration, itemName, speciesName } from '../../lib/labels';
 import { AbilityLine } from './AssistantCard';
 import { SECTION_TITLE, SELECTED_CELL, SLOT_CLASS, StatusPill } from './dialogParts';
@@ -125,11 +131,7 @@ export function DepositDialog({
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const deposit = useMutation({
-    mutationFn: (input: SetDaycareParentInput) =>
-      api<CollectEggsResponse>(`/api/daycare/${slotIndex}/parents/${side}`, {
-        method: 'PUT',
-        json: input,
-      }),
+    mutationFn: (input: SetDaycareParentInput) => setDaycareParent(slotIndex, side, input),
     onSuccess: async (res, input) => {
       const deposited = all.find((p) => p.id === input.pokemonId) ?? null;
       // L'autre place était libre : on enchaîne sur le choix de son partenaire.

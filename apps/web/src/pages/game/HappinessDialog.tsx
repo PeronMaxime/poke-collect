@@ -2,10 +2,15 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { MAX_HAPPINESS, MAX_LEVEL } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
-import type { PokemonDto, UseItemInput, UseItemResponse } from '@poke/shared';
+import type { PokemonDto, UseItemInput } from '@poke/shared';
 import { ProgressBar } from '../../components/ui';
-import { api } from '../../lib/api';
-import { patchPokemon, setItemQuantity, useInventory, usePokemon } from '../../lib/queries';
+import {
+  applyItem,
+  patchPokemon,
+  setItemQuantity,
+  useInventory,
+  usePokemon,
+} from '../../lib/queries';
 import { errorText, itemName, speciesName } from '../../lib/labels';
 import { SECTION_TITLE, StatusPill } from './dialogParts';
 import type { StatusTone } from './dialogParts';
@@ -52,7 +57,7 @@ export function HappinessDialog({
   const left = inventory.data?.find((s) => s.itemId === itemId)?.quantity ?? 0;
   const give = useMutation({
     mutationFn: ({ pokemonId, ...input }: UseItemInput & { pokemonId: string }) =>
-      api<UseItemResponse>(`/api/pokemon/${pokemonId}/use-item`, { method: 'POST', json: input }),
+      applyItem(pokemonId, input),
     onSuccess: (data) => {
       patchPokemon(queryClient, data.pokemon);
       setItemQuantity(queryClient, data.itemId, data.remaining);
