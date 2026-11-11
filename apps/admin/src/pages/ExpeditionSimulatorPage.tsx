@@ -22,10 +22,8 @@ import { TagBadge, TagToggleList } from '@web/components/tags';
 import { Modal, PokemonSprite } from '@web/components/ui';
 import { ZoneCard } from '@web/features/expeditions/ExpeditionsPage';
 import { NewbornActionsView } from '@web/features/daycare/HatchReveal';
-import {
-  LAUNCH_DIALOG_CLASS,
-  LaunchExpeditionForm,
-} from '@web/features/expeditions/LaunchExpeditionDialog';
+import { LAUNCH_DIALOG_CLASS } from '@web/features/common/dialogParts';
+import { LaunchExpeditionForm } from '@web/features/expeditions/launch/LaunchExpeditionForm';
 import { ExpeditionRevealView } from '@web/features/expeditions/LootReveal';
 import {
   TeamPicker,
