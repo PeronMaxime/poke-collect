@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { GameContext } from '@poke/game-core';
 import { PokemonSprite, ShinyStar } from '../../components/ui';
-import { usePokemon, useRevive, useReviveStacks } from '../../lib/game';
+import { usePokemon, useRevive, useReviveStacks } from '../../lib/queries';
 import { errorText, itemName } from '../../lib/labels';
 import { CrossIcon, SECTION_TITLE, SLOT_BUTTON, SLOT_CLASS, StatusPill } from './dialogParts';
 import type { StatusTone } from './dialogParts';

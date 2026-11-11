@@ -3,7 +3,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { TAG_LABEL_MAX } from '@poke/shared';
 import type { PokemonDto, PokemonTagDto, TagInput } from '@poke/shared';
 import { api } from '../lib/api';
-import { keys, usePokemon, useTags } from '../lib/game';
+import { keys, usePokemon, useTags } from '../lib/queries';
 import { errorText } from '../lib/labels';
 import { Modal } from './ui';
 

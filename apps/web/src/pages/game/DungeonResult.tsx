@@ -5,7 +5,7 @@ import type { DungeonOutcome, GameContext, TeamMemberResult } from '@poke/game-c
 import type { ItemStack } from '@poke/content';
 import type { DungeonRunDto } from '@poke/shared';
 import { Modal, PokemonSprite, ShinySparkles, ShinyStar, useNow } from '../../components/ui';
-import { centerState, useHeal, usePlayerProgress, usePokemon } from '../../lib/game';
+import { centerState, useHeal, usePlayerProgress, usePokemon } from '../../lib/queries';
 import { errorText, formatMoney, itemIcon, itemName, speciesName } from '../../lib/labels';
 import { StateTag } from './BuildingParts';
 import { LAUNCH_DIALOG_CLASS, ResultFrame, SheetSection } from './dialogParts';

@@ -5,7 +5,7 @@ import type { GameContext } from '@poke/game-core';
 import type { OpenChestResponse } from '@poke/shared';
 import { Modal } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys } from '../../lib/game';
+import { keys } from '../../lib/queries';
 import { errorText, itemIcon, itemName } from '../../lib/labels';
 
 /** Ouverture de coffres de guilde : la demande part à l'ouverture, puis les lots s'affichent. */

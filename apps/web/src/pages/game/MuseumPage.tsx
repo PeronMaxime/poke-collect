@@ -15,7 +15,7 @@ import {
   useAssistants,
   useInventory,
   useMuseum,
-} from '../../lib/game';
+} from '../../lib/queries';
 import {
   errorText,
   formatCountdown,

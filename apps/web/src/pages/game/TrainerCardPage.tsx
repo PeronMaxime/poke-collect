@@ -27,7 +27,7 @@ import {
   useTrainerPokedex,
   useTrainerProfile,
   useTrainerSearch,
-} from '../../lib/game';
+} from '../../lib/queries';
 import { abilityLabel, errorText, formatMoney, natureLabel, speciesName } from '../../lib/labels';
 import { BadgeIcon } from './BattlesPage';
 import { ProgressiveItems } from '../../components/ProgressiveGrid';

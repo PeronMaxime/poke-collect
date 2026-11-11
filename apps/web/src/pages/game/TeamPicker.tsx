@@ -38,7 +38,7 @@ import {
   ViewTabs,
   useNow,
 } from '../../components/ui';
-import { isUsable, usePokemon, useTags, useTeams } from '../../lib/game';
+import { isUsable, usePokemon, useTags, useTeams } from '../../lib/queries';
 import { STAT_LABELS, abilityLabel, speciesName, typeLabel } from '../../lib/labels';
 import { CombatTeamOrder, effectivenessLabel } from './CombatTeamOrder';
 import type { CombatTarget } from './CombatTeamOrder';

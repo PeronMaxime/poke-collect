@@ -10,7 +10,7 @@ import {
   patchPokemon,
   refresh,
   setItemQuantity,
-} from './game';
+} from './index';
 
 const mon = (id: string, extra: Partial<PokemonDto> = {}) =>
   ({ id, speciesId: 1, level: 5, megaStone: null, ...extra }) as PokemonDto;

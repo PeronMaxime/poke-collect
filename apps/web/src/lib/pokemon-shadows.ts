@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { pokemonSprite, pokemonSpriteUrl } from '@poke/data';
 import { FEATURED_POKEMON_MAX } from '@poke/shared';
-import { useTrainerCard } from './game';
+import { useTrainerCard } from './queries';
 
 /*
  * Fond de page « ombres de Pokémon » (test) : les Pokémon de la vitrine de la Fiche Dresseur, complétés

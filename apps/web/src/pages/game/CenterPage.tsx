@@ -10,7 +10,7 @@ import {
   useHeal,
   usePlayerProgress,
   usePokemon,
-} from '../../lib/game';
+} from '../../lib/queries';
 import { errorText, formatCountdown, formatDuration, speciesName } from '../../lib/labels';
 import { AssistantCard } from './AssistantCard';
 import { BuildingSection, EMPTY_PLACE, Notice, StateTag } from './BuildingParts';

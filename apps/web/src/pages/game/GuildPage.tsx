@@ -18,7 +18,7 @@ import type {
 } from '@poke/shared';
 import { PokemonSprite, ProgressBar, useNow, ViewTabs } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, useGuild, useGuildProfile } from '../../lib/game';
+import { keys, useGuild, useGuildProfile } from '../../lib/queries';
 import { errorText, formatMoney, guildObjectiveText, itemIcon } from '../../lib/labels';
 import { ChestLootHover } from './ChestLootHover';
 import { guildLink, trainerLink } from './TrainerCardPage';

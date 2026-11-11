@@ -5,7 +5,7 @@ import type { GameContext } from '@poke/game-core';
 import type { PokemonDto } from '@poke/shared';
 import { Modal } from '../../components/ui';
 import { TagToggleList } from '../../components/tags';
-import { useTags } from '../../lib/game';
+import { useTags } from '../../lib/queries';
 import { MaxPerfectIvsOptions, maxPerfectIvsHint } from './AutoTransferSettings';
 
 /** Réglages de « Sélectionner les doublons », conservés d'une visite à l'autre. */

@@ -6,7 +6,7 @@ import { searchKey } from '@poke/shared';
 import type { PokemonActivity, PokemonDto, PokemonTagDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar, sharedNow, useNow } from '../../components/ui';
 import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
-import { useNewEvolutionChecker, usePlayerProgress } from '../../lib/game';
+import { useNewEvolutionChecker, usePlayerProgress } from '../../lib/queries';
 import { abilityLabel, formatCountdown } from '../../lib/labels';
 import { RegionTabs, currentRegionTab } from './RegionTabs';
 import { TypeFilterSelect } from './TeamPicker';

@@ -20,7 +20,7 @@ import {
   useInventory,
   usePokemon,
   utcOffsetMinutes,
-} from '../../lib/game';
+} from '../../lib/queries';
 import { errorMessage, candyName, itemIcon, itemName, speciesName } from '../../lib/labels';
 import { Notice, StateTag } from './BuildingParts';
 import {

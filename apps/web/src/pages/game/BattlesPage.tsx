@@ -7,7 +7,7 @@ import type { GameContext, TrainerStatus } from '@poke/game-core';
 import type { BattleDto, ClaimBattleResponse, TrainerRecordDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, serverOffset, useBattles, usePlayerProgress, useQuests } from '../../lib/game';
+import { keys, serverOffset, useBattles, usePlayerProgress, useQuests } from '../../lib/queries';
 import {
   TYPE_COLORS,
   formatCountdown,

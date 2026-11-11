@@ -7,7 +7,7 @@ import type { GameContext } from '@poke/game-core';
 import type { PurchaseResponse, SellResponse, ShopEntryStatusDto } from '@poke/shared';
 import { Modal, useNow, ViewTabs } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, serverOffset, useInventory, useShop } from '../../lib/game';
+import { keys, serverOffset, useInventory, useShop } from '../../lib/queries';
 import {
   RARITY_LABELS,
   RARITY_STYLES,

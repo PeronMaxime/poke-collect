@@ -58,7 +58,7 @@ import {
   useShinyBonus,
   useShinyCharm,
   utcOffsetMinutes,
-} from '../../lib/game';
+} from '../../lib/queries';
 import {
   errorMessage,
   formatDuration,

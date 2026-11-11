@@ -17,7 +17,7 @@ import type { DungeonCommand, DungeonEvent, DungeonFighter, GameContext } from '
 import type { CombatItemInput, DungeonRunDto } from '@poke/shared';
 import { PokemonSprite, ShinyStar, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { keys, refreshAfterCombat, useInventory } from '../../lib/game';
+import { keys, refreshAfterCombat, useInventory } from '../../lib/queries';
 import { abilityLabel, errorText, formatCountdown, itemIcon, itemName } from '../../lib/labels';
 import { Notice, StateTag } from './BuildingParts';
 import { SECTION_TITLE, SELECTED_CELL, SLOT_CLASS } from './dialogParts';

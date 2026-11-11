@@ -27,7 +27,7 @@ import {
   usePokemon,
   useQuests,
   useShop,
-} from '../lib/game';
+} from '../lib/queries';
 import { formatMoney, unlockConditionText } from '../lib/labels';
 import {
   BattlesPage,

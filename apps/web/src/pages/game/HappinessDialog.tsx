@@ -5,7 +5,7 @@ import type { GameContext } from '@poke/game-core';
 import type { PokemonDto, UseItemInput, UseItemResponse } from '@poke/shared';
 import { ProgressBar } from '../../components/ui';
 import { api } from '../../lib/api';
-import { patchPokemon, setItemQuantity, useInventory, usePokemon } from '../../lib/game';
+import { patchPokemon, setItemQuantity, useInventory, usePokemon } from '../../lib/queries';
 import { errorText, itemName, speciesName } from '../../lib/labels';
 import { SECTION_TITLE, StatusPill } from './dialogParts';
 import type { StatusTone } from './dialogParts';

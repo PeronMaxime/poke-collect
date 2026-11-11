@@ -20,7 +20,7 @@ import type {
 } from '@poke/shared';
 import { HoverBubble, Modal, PokemonSprite, ShinySparkles, ShinyStar } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, refresh, useInventory, utcOffsetMinutes } from '../../lib/game';
+import { keys, refresh, useInventory, utcOffsetMinutes } from '../../lib/queries';
 import {
   errorText,
   formatDuration,

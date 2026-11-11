@@ -15,7 +15,7 @@ import {
   usePokedex,
   usePokedexForms,
   usePlayerProgress,
-} from '../../lib/game';
+} from '../../lib/queries';
 import { DexSheet, dexSlotState } from './DexSheet';
 import type { DexSlot, SlotState } from './DexSheet';
 import { CollectionsView, CompletionsView, useVisibleCollections } from './ProgressionViews';

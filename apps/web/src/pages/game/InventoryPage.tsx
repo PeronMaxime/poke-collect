@@ -5,7 +5,7 @@ import type { BagSectionId, ItemCategory } from '@poke/content';
 import type { GameContext } from '@poke/game-core';
 import { CollapseBody, CollapseButton, useCollapsedSection } from '../../components/Collapsible';
 import { Egg, PokemonSprite, ViewTabs } from '../../components/ui';
-import { useCandies, useDaycare, useInventory } from '../../lib/game';
+import { useCandies, useDaycare, useInventory } from '../../lib/queries';
 import {
   RARITY_LABELS,
   RARITY_STYLES,

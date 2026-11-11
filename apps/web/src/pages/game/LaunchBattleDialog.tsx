@@ -17,7 +17,7 @@ import type { BattleError, DungeonMove, ExpeditionSite, GameContext } from '@pok
 import type { BattleDto, StartBattleInput } from '@poke/shared';
 import { HoverBubble, Modal, PokemonSprite, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, refresh, utcOffsetMinutes } from '../../lib/game';
+import { keys, refresh, utcOffsetMinutes } from '../../lib/queries';
 import { errorText, formatDuration, formatMoney, trainerName, typeLabel } from '../../lib/labels';
 import {
   BadgeIcon,

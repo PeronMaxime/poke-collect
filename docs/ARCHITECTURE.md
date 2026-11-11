@@ -88,7 +88,7 @@ api   routes/game.ts                  1. valide l'entrée (schéma Zod de @poke/
       base                            ligne `expeditions` : zone, équipe, graine, version du contenu
         │
         ▼
-web   refreshAfterExpeditionStart()   ne recharge que ce que l'action a changé (lib/game.ts)
+web   refreshAfterExpeditionStart()   ne recharge que ce que l'action a changé (lib/queries/keys.ts)
 ```
 
 Plus tard, `POST /api/expeditions/:id/claim` relit la ligne, appelle `resolveExpedition` de
@@ -195,7 +195,7 @@ déterministe), cachette d'un Pokémon fuyard.
   de dresseur → création ; pas de starter → choix ; sinon le jeu). Dans le jeu, l'onglet affiché
   suit l'ancre de l'adresse (`#pc`, `#expeditions/<zone>`), gérée par `pages/HomePage.tsx`.
 - **Données** : TanStack Query. Clés, lectures et rechargements après action sont dans
-  `lib/game.ts`. Règle issue du plan de stabilité : après une action, on ne recharge que les
+  `lib/queries/`. Règle issue du plan de stabilité : après une action, on ne recharge que les
   données qu'elle a pu changer (`refreshAfter…`), jamais tout.
 - **Appels** : `lib/api.ts` (`api()`), qui gère délai maximal, erreurs typées (`ApiError`) et
   réessais des lectures.

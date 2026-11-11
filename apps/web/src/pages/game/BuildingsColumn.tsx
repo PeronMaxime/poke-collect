@@ -54,7 +54,7 @@ import {
   useMuseum,
   usePlayerProgress,
   usePokemon,
-} from '../../lib/game';
+} from '../../lib/queries';
 import {
   errorText,
   formatDuration,

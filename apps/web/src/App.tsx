@@ -1,7 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PublicContentDto } from '@poke/shared';
-import { keys, meQuery } from './lib/game';
+import { keys, meQuery } from './lib/queries';
 import { usePokemonShadows } from './lib/pokemon-shadows';
 import { AuthPage, RESET_PASSWORD_PATH } from './pages/AuthPage';
 import { CHANGELOG_PATH, ChangelogDialog, openChangelog } from './pages/ChangelogPage';

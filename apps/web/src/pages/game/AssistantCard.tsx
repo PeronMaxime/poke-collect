@@ -12,7 +12,7 @@ import { searchKey } from '@poke/shared';
 import type { AssignAssistantInput, AssistantDto, PokemonDto } from '@poke/shared';
 import { Modal, PokemonSprite, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { isUsable, keys, refresh, useAssistants, usePokemon } from '../../lib/game';
+import { isUsable, keys, refresh, useAssistants, usePokemon } from '../../lib/queries';
 import { abilityLabel, errorText, speciesName, typeLabel } from '../../lib/labels';
 
 /** Données du bâtiment où travaille l'assistant d'un poste. */

@@ -5,7 +5,7 @@ import type { GameContext } from '@poke/game-core';
 import type { PokemonDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge } from '../../components/ui';
 import { ApiError, api } from '../../lib/api';
-import { PLAYER_STATE_KEYS, refresh } from '../../lib/game';
+import { PLAYER_STATE_KEYS, refresh } from '../../lib/queries';
 import { errorMessage } from '../../lib/labels';
 
 /**

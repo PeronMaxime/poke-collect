@@ -78,7 +78,7 @@ import {
   usePokemon,
   useQuests,
   utcOffsetMinutes,
-} from '../../lib/game';
+} from '../../lib/queries';
 import {
   STAT_LABELS,
   abilityLabel,

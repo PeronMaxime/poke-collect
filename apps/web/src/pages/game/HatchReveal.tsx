@@ -17,7 +17,7 @@ import {
 } from '../../components/ui';
 import { TagPicker } from '../../components/tags';
 import { api } from '../../lib/api';
-import { applyTransfer, newInDexTracker, patchPokemon, usePokemon } from '../../lib/game';
+import { applyTransfer, newInDexTracker, patchPokemon, usePokemon } from '../../lib/queries';
 import { errorText, natureLabel, speciesName } from '../../lib/labels';
 import { CornerTag, CrossIcon, LAUNCH_DIALOG_CLASS, ResultFrame } from './dialogParts';
 

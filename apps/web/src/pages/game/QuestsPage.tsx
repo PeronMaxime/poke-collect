@@ -22,7 +22,7 @@ import {
   useLegendaryBattles,
   usePlayerProgress,
   useQuests,
-} from '../../lib/game';
+} from '../../lib/queries';
 import {
   errorText,
   formatCountdown,

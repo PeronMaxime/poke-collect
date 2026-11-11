@@ -14,7 +14,7 @@ src/
   index.css           Thème (style rétro), utilitaires `card`, `tile`, `sprite-well`, `count-badge`
   lib/
     api.ts            `api()` : appel de l'API, délai maximal, `ApiError`, réessais des lectures
-    game.ts           Clés de cache, lectures (`usePokemon`…), rechargements après action
+    queries/          Couche de données : clés de cache, lectures, requêtes d'action, par domaine
     labels.ts         Libellés partagés et messages d'erreur (`GAME_ERRORS`)
     widgets.ts        Rangement de la colonne des bâtiments (par navigateur)
     lazy.ts           `lazyPage()` : page chargée à la demande, préchargement
@@ -31,7 +31,7 @@ public/               `sw.js`, `manifest.webmanifest`, icônes
 
 ## Comment un écran obtient ses données
 
-1. Une lecture est un hook de `lib/game.ts` (`useExpeditions()`, `usePokemon()`…), qui appelle
+1. Une lecture est un hook de `lib/queries/` (`useExpeditions()`, `usePokemon()`…), qui appelle
    `api()` sous une clé de `keys`.
 2. Les données restent fraîches 30 s : changer d'onglet ne recharge rien.
 3. Une action est un `useMutation` qui appelle `api()` puis recharge **seulement** les clés

@@ -3,7 +3,7 @@ import type { ChestRarity } from '@poke/content';
 import { chestCandidates } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import { HoverBubble } from '../../components/ui';
-import { usePlayerProgress } from '../../lib/game';
+import { usePlayerProgress } from '../../lib/queries';
 import { itemIcon } from '../../lib/labels';
 
 const percent = (chance: number) =>

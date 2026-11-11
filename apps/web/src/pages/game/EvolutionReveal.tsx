@@ -3,7 +3,7 @@ import { motion, useReducedMotion } from 'motion/react';
 import type { GameContext } from '@poke/game-core';
 import type { EvolveResponse } from '@poke/shared';
 import { PokemonSprite, ShinyStar } from '../../components/ui';
-import { newInDexTracker } from '../../lib/game';
+import { newInDexTracker } from '../../lib/queries';
 import { itemName, speciesName } from '../../lib/labels';
 
 const MORPH_SECONDS = 2.4;

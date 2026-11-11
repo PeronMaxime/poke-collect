@@ -6,7 +6,7 @@ import { searchKey } from '@poke/shared';
 import type { FavoritePokemonDto, FavoritePokemonInput } from '@poke/shared';
 import { PokemonSprite, ShinyStar } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, usePokedex, usePokedexForms } from '../../lib/game';
+import { keys, usePokedex, usePokedexForms } from '../../lib/queries';
 import { errorText, speciesName } from '../../lib/labels';
 import { ProgressiveItems } from '../../components/ProgressiveGrid';
 import { SELECTED_CELL, StatusPill } from './dialogParts';

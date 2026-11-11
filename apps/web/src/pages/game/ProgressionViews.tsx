@@ -26,7 +26,7 @@ import type {
 import type { ClaimRewardResponse } from '@poke/shared';
 import { PokemonSprite, ProgressBar, ShinyStar } from '../../components/ui';
 import { api } from '../../lib/api';
-import { refreshAfterReward, useClaimedRewards, usePlayerProgress } from '../../lib/game';
+import { refreshAfterReward, useClaimedRewards, usePlayerProgress } from '../../lib/queries';
 import {
   errorText,
   formatPercentBonus,

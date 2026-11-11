@@ -8,7 +8,7 @@ import { MAX_TEAMS, TEAM_MAX_SIZE, TEAM_NAME_MAX } from '@poke/shared';
 import type { PokemonDto, PokemonTeamDto, TeamInput } from '@poke/shared';
 import { PokemonSprite, ShinyStar } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, usePokemon, useTeams } from '../../lib/game';
+import { keys, usePokemon, useTeams } from '../../lib/queries';
 import { errorText } from '../../lib/labels';
 import { ProgressiveItems } from '../../components/ProgressiveGrid';
 import { PcFilterBar, PcPokemonCard, usePcBrowser } from './PcBrowser';

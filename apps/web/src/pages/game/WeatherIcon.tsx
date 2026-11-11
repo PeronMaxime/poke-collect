@@ -1,7 +1,7 @@
 import type { ImposedWeather, Zone } from '@poke/content';
 import { WEATHER_LABELS, hasVariableWeather, nextWeatherRoll, zoneWeather } from '@poke/game-core';
 import { HoverBubble } from '../../components/ui';
-import { useGameContext } from '../../lib/game';
+import { useGameContext } from '../../lib/queries';
 
 export const WEATHER_ICONS: Record<ImposedWeather, string> = {
   clear: '🌤️',

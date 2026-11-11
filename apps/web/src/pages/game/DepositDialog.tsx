@@ -14,7 +14,7 @@ import { IvHover, PokemonSprite, ShinyStar, ViewTabs, useNow } from '../../compo
 import { PokemonTagBadges, TagFilterSelect, useTagFilter } from '../../components/tags';
 import { ProgressiveItems } from '../../components/ProgressiveGrid';
 import { api } from '../../lib/api';
-import { isUsable, keys, refresh, useInventory, usePokemon } from '../../lib/game';
+import { isUsable, keys, refresh, useInventory, usePokemon } from '../../lib/queries';
 import { errorText, formatDuration, itemName, speciesName } from '../../lib/labels';
 import { AbilityLine } from './AssistantCard';
 import { SECTION_TITLE, SELECTED_CELL, SLOT_CLASS, StatusPill } from './dialogParts';

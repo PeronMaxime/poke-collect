@@ -7,7 +7,7 @@ import type { DungeonStatus, GameContext } from '@poke/game-core';
 import type { ClaimDungeonResponse, DungeonRecordDto, DungeonRunDto } from '@poke/shared';
 import { PokemonSprite, TypeBadge, useNow } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, serverOffset, useDungeons, usePlayerProgress } from '../../lib/game';
+import { keys, serverOffset, useDungeons, usePlayerProgress } from '../../lib/queries';
 import {
   formatCountdown,
   itemIcon,

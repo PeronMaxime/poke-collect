@@ -22,7 +22,7 @@ import type {
 import type { DungeonRunDto, StartDungeonInput } from '@poke/shared';
 import { HoverBubble, Modal, PokemonSprite, TypeBadge } from '../../components/ui';
 import { api } from '../../lib/api';
-import { keys, refresh, utcOffsetMinutes } from '../../lib/game';
+import { keys, refresh, utcOffsetMinutes } from '../../lib/queries';
 import {
   errorText,
   formatDuration,

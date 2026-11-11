@@ -13,7 +13,7 @@ import {
 } from '@poke/game-core';
 import type { GameContext, GameSpecies } from '@poke/game-core';
 import { PokemonSprite, TypeBadge } from '../../components/ui';
-import { usePokedex, usePokedexForms } from '../../lib/game';
+import { usePokedex, usePokedexForms } from '../../lib/queries';
 import {
   STAT_LABELS,
   abilityLabel,

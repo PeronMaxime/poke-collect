@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import type { GuildLeaderboardEntryDto, LeaderboardEntryDto, LeaderboardKind } from '@poke/shared';
 import { PokemonSprite, ViewTabs } from '../../components/ui';
-import { useGuildLeaderboard, useLeaderboard } from '../../lib/game';
+import { useGuildLeaderboard, useLeaderboard } from '../../lib/queries';
 import { formatMoney } from '../../lib/labels';
 import { guildLink, trainerLink } from './TrainerCardPage';
 
