@@ -15,7 +15,8 @@ src/
   lib/
     api.ts            `api()` : appel de l'API, délai maximal, `ApiError`, réessais des lectures
     queries/          Couche de données : clés de cache, lectures, requêtes d'action, par domaine
-    labels.ts         Libellés partagés et messages d'erreur (`GAME_ERRORS`)
+    labels/           Textes composés : noms, effets, conditions, récompenses, durées, erreurs
+                      (`GAME_ERRORS` dans `errors.ts`)
     widgets.ts        Rangement de la colonne des bâtiments (par navigateur)
     lazy.ts           `lazyPage()` : page chargée à la demande, préchargement
     storage.ts        Accès à `localStorage` qui ne plante jamais (navigation privée, quota)
@@ -61,7 +62,7 @@ Tout passe par `lib/queries/` : un écran n'écrit aucune adresse de l'API.
 5. Un aperçu (puissance, chances, XP) se calcule avec les fonctions de `@poke/game-core`, les
    mêmes que le serveur.
 
-Une erreur d'action s'affiche avec `errorText(err)` (`lib/labels.ts`).
+Une erreur d'action s'affiche avec `errorText(err)` (`lib/labels/errors.ts`).
 
 ## Navigation
 

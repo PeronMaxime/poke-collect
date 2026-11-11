@@ -396,9 +396,16 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
     dans les écrans (84 `useQuery` / `useMutation`) : leur `onSuccess` mêle le rechargement du
     cache à l'état de l'écran (révélations, messages, fermeture d'un dialogue). Ils deviennent
     des hooks nommés à l'étape 5.5, domaine par domaine, quand chaque écran est découpé.
-- [ ] **5.3 Utilitaires** : `lib/storage.ts` (un seul `usePersistentState` pour les 12 fichiers qui
+- [x] **5.3 Utilitaires** : `lib/storage.ts` (un seul `usePersistentState` pour les 12 fichiers qui
       manipulent `localStorage`) ; `components/ui.tsx` (22 composants) → un fichier par composant ;
       `lib/labels.ts` par domaine ; `api.ts` partagé avec l'admin (paquet `@poke/client`).
+  - **Réalisé** le 11 novembre (écarts avec le plan) : `components/ui/` (14 fichiers) et
+    `lib/labels/` (6 fichiers par domaine), chacun derrière un `index.ts` : aucun import des
+    écrans n'a changé. `lib/storage.ts` n'est pas un `usePersistentState` : sur les 12 fichiers,
+    5 gardent leur réglage hors de React (thème, widgets, sections repliées) et chacun valide ce
+    qu'il relit à sa façon. Le point commun, lire et écrire sans jamais planter, est écrit une
+    fois ; 11 fichiers l'utilisent, `ChangelogPage.tsx` attend l'étape 5.6. Le client d'API
+    commun avec l'admin (`@poke/client`) est fait à l'étape 6.4, avec l'admin.
 - [ ] **5.4 Un dossier par domaine** : `pages/game` (63 fichiers à plat) → `features/expeditions`,
       `pc`, `battles`, `dungeons`, `daycare`, `farm`, `museum`, `center`, `guild`, `quests`,
       `shop`, `pokedex`, `teams`, `trainer`, `wiki`, `buildings` ; le commun (choix d'équipe,

@@ -1,7 +1,7 @@
 /**
  * Catalogue des codes d'erreur de l'API. Un refus est toujours un code stable (`{ error: 'CODE' }`),
  * jamais une phrase : le jeu affiche le message qu'il associe au code (`GAME_ERRORS`,
- * `apps/web/src/lib/labels.ts`).
+ * `apps/web/src/lib/labels/errors.ts`).
  *
  * Ajouter un code ici le rend utilisable par `GameError` côté serveur, et oblige le jeu à lui
  * donner un message : sans lui, le jeu ne compile plus.

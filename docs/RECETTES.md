@@ -38,7 +38,7 @@ La CI lance les mêmes commandes. Trois règles à ne jamais oublier :
    module, renvoyer le DTO. Pas de requête SQL ni de règle de jeu dans la route.
 4. **Code d'erreur** : ajouter chaque nouveau code à `PLAYER_ERROR_CODES`
    (`packages/shared/src/errors.ts`), puis son message à `GAME_ERRORS`
-   (`apps/web/src/lib/labels.ts`). `GameError` refuse un code hors catalogue, et le jeu ne
+   (`apps/web/src/lib/labels/errors.ts`). `GameError` refuse un code hors catalogue, et le jeu ne
    compile pas tant que le message manque.
 5. **Test** dans `apps/api/src/` : la vraie application sur une base en mémoire (modèle :
    `game.test.ts`), avec l'horloge injectée pour faire passer le temps.
@@ -129,7 +129,7 @@ Les effets sont des unions discriminées par `type`, dans `packages/content/src/
    dans `abilities/` (et `dungeon/traits.ts` pour les effets de combat). ESLint
    (`switch-exhaustiveness-check`) signale chaque `switch` qui ne traite pas le nouveau cas.
 3. Son éditeur dans l'admin (`ItemsPage.tsx`, `AbilityEffectEditor.tsx`) et son libellé dans le
-   jeu (`apps/web/src/lib/labels.ts`).
+   jeu (`apps/web/src/lib/labels/effects.ts`).
 4. Un test de la règle dans `game-core`. Les tests « à graine égale » ne doivent **pas** bouger
    tant que le contenu de test n'utilise pas le nouvel effet.
 

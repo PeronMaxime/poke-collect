@@ -113,7 +113,7 @@ graine), **attendre** (rien ne tourne), **réclamer** (calculer, appliquer).
 
 - Un module de jeu refuse une action par `throw new GameError(statut, 'CODE')`
   (`game/errors.ts`). Le code est stable et vient du catalogue `packages/shared/src/errors.ts` :
-  c'est lui que le jeu traduit en message (`GAME_ERRORS` dans `apps/web/src/lib/labels.ts`), et
+  c'est lui que le jeu traduit en message (`GAME_ERRORS` dans `apps/web/src/lib/labels/errors.ts`), et
   le jeu ne compile pas si un code du catalogue n'a pas de message.
 - Une entrée invalide (Zod) répond 400 `VALIDATION`.
 - Les erreurs Postgres attendues sous charge sont traduites dans `app.ts` : doublon → 409
@@ -200,7 +200,7 @@ déterministe), cachette d'un Pokémon fuyard.
 - **Appels** : `lib/api.ts` (`api()`), qui gère délai maximal, erreurs typées (`ApiError`) et
   réessais des lectures.
 - **Textes** : en français, dans les composants ; les libellés partagés et les messages d'erreur
-  dans `lib/labels.ts`.
+  dans `lib/labels/`.
 - **Hors ligne et installation** : PWA écrite à la main (`public/sw.js`,
   `manifest.webmanifest`, `lib/pwa.ts`).
 
