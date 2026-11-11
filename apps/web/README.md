@@ -18,6 +18,7 @@ src/
     labels.ts         Libellés partagés et messages d'erreur (`GAME_ERRORS`)
     widgets.ts        Rangement de la colonne des bâtiments (par navigateur)
     lazy.ts           `lazyPage()` : page chargée à la demande, préchargement
+    storage.ts        Accès à `localStorage` qui ne plante jamais (navigation privée, quota)
     pwa.ts, theme.ts, tab-profile.ts, log.ts, pokemon-shadows.ts
   components/         Briques communes : `ui/` (un fichier par composant : `Modal`, `PokemonSprite`,
                       `HoverBubble`, `useNow`…), étiquettes, grille, repli

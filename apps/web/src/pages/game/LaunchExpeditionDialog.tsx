@@ -90,6 +90,7 @@ import {
   SELECTED_CELL,
   StatusPill,
 } from './dialogParts';
+import { readStoredJson, writeStoredJson } from '../../lib/storage';
 
 /** Ce que reçoit le choix de l'équipe du formulaire de lancement. */
 export interface TeamChoice {
@@ -178,24 +179,12 @@ interface ZoneSettings {
 const settingsKey = (zoneId: string) => `expedition-settings:${zoneId}`;
 
 function storedZoneSettings(zoneId: string): ZoneSettings {
-  try {
-    const raw = localStorage.getItem(settingsKey(zoneId));
-    return raw ? (JSON.parse(raw) as ZoneSettings) : {};
-  } catch {
-    return {};
-  }
+  return (readStoredJson(settingsKey(zoneId)) as ZoneSettings | null) ?? {};
 }
 
 /** Met à jour une partie des réglages retenus pour la zone. */
 function storeZoneSettings(zoneId: string, patch: ZoneSettings) {
-  try {
-    localStorage.setItem(
-      settingsKey(zoneId),
-      JSON.stringify({ ...storedZoneSettings(zoneId), ...patch }),
-    );
-  } catch {
-    // Stockage indisponible (navigation privée…) : les réglages ne seront pas retenus.
-  }
+  writeStoredJson(settingsKey(zoneId), { ...storedZoneSettings(zoneId), ...patch });
 }
 
 function teamErrorText(e: ExpeditionError): string {

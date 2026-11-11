@@ -1,4 +1,5 @@
 import { useSyncExternalStore } from 'react';
+import { readStoredJson, writeStoredJson } from './storage';
 
 /**
  * Widgets de la colonne de droite (grand écran) : un par bâtiment, la couveuse à côté de la
@@ -35,22 +36,12 @@ export type WidgetSettings = {
 };
 
 function readIds(key: string): WidgetId[] {
-  try {
-    const raw: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
-    if (!Array.isArray(raw)) return [];
-    return [...new Set(raw)].filter((id): id is WidgetId => WIDGETS.includes(id as WidgetId));
-  } catch {
-    return [];
-  }
+  const raw = readStoredJson(key);
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw)].filter((id): id is WidgetId => WIDGETS.includes(id as WidgetId));
 }
 
-function write(key: string, ids: readonly WidgetId[]) {
-  try {
-    localStorage.setItem(key, JSON.stringify(ids));
-  } catch {
-    // Stockage indisponible : le réglage vaut pour la session.
-  }
-}
+const write = (key: string, ids: readonly WidgetId[]) => writeStoredJson(key, ids);
 
 function load(): WidgetSettings {
   const saved = readIds(ORDER_KEY);

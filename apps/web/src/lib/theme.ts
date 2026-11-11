@@ -1,3 +1,5 @@
+import { readStoredText, removeStored, writeStoredText } from './storage';
+
 /**
  * Thème de l'interface, choisi par appareil. Le script en ligne de `index.html` applique déjà le
  * thème enregistré avant le premier affichage (même clé, même logique) pour éviter un flash.
@@ -8,12 +10,8 @@ const THEME_KEY = 'theme';
 const SYSTEM_DARK = '(prefers-color-scheme: dark)';
 
 export function loadThemePreference(): ThemePreference {
-  try {
-    const saved = localStorage.getItem(THEME_KEY);
-    return saved === 'light' || saved === 'dark' ? saved : 'system';
-  } catch {
-    return 'system';
-  }
+  const saved = readStoredText(THEME_KEY);
+  return saved === 'light' || saved === 'dark' ? saved : 'system';
 }
 
 function applyTheme(preference: ThemePreference) {
@@ -23,12 +21,8 @@ function applyTheme(preference: ThemePreference) {
 }
 
 export function setThemePreference(preference: ThemePreference) {
-  try {
-    if (preference === 'system') localStorage.removeItem(THEME_KEY);
-    else localStorage.setItem(THEME_KEY, preference);
-  } catch {
-    // Stockage indisponible : le thème vaut pour cette visite seulement.
-  }
+  if (preference === 'system') removeStored(THEME_KEY);
+  else writeStoredText(THEME_KEY, preference);
   applyTheme(preference);
 }
 

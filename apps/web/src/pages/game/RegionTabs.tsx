@@ -4,6 +4,7 @@ import { isRegionUnlocked } from '@poke/game-core';
 import type { GameContext, PlayerProgress } from '@poke/game-core';
 import { ScrollRow } from '../../components/ui';
 import { unlockConditionText } from '../../lib/labels';
+import { readStoredText, writeStoredText } from '../../lib/storage';
 
 /** Régions débloquées, puis la suivante (verrouillée) : les autres restent cachées. */
 export function visibleRegions(ctx: GameContext, progress: PlayerProgress) {
@@ -112,10 +113,10 @@ export function currentRegionTab(
 /** Onglet choisi par le joueur, conservé d'une visite à l'autre (une clé par section). */
 export function useSavedRegionTab(section: string) {
   const key = `region-tab:${section}`;
-  const [selected, setSelected] = useState<string | null>(() => localStorage.getItem(key));
+  const [selected, setSelected] = useState<string | null>(() => readStoredText(key));
   const select = (id: string) => {
     setSelected(id);
-    localStorage.setItem(key, id);
+    writeStoredText(key, id);
   };
   return [selected, select] as const;
 }

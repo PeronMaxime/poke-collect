@@ -7,6 +7,7 @@ import { Modal } from '../../components/ui';
 import { TagToggleList } from '../../components/tags';
 import { useTags } from '../../lib/queries';
 import { MaxPerfectIvsOptions, maxPerfectIvsHint } from './AutoTransferSettings';
+import { readStoredJson, writeStoredJson } from '../../lib/storage';
 
 /** Réglages de « Sélectionner les doublons », conservés d'une visite à l'autre. */
 export interface DuplicateSettings {
@@ -27,32 +28,21 @@ const DEFAULT_SETTINGS: DuplicateSettings = {
 };
 
 export function loadDuplicateSettings(): DuplicateSettings {
-  try {
-    const saved = JSON.parse(
-      localStorage.getItem(SETTINGS_KEY) ?? 'null',
-    ) as Partial<DuplicateSettings> | null;
-    return {
-      keep: saved?.keep === 'lineage' ? 'lineage' : 'species',
-      maxPerfectIvs:
-        typeof saved?.maxPerfectIvs === 'number'
-          ? Math.min(STAT_NAMES.length, Math.max(0, Math.round(saved.maxPerfectIvs)))
-          : DEFAULT_SETTINGS.maxPerfectIvs,
-      includedTagIds: Array.isArray(saved?.includedTagIds)
-        ? saved.includedTagIds.filter((id) => typeof id === 'string')
-        : [],
-    };
-  } catch {
-    return DEFAULT_SETTINGS;
-  }
+  const saved = readStoredJson(SETTINGS_KEY) as Partial<DuplicateSettings> | null;
+  return {
+    keep: saved?.keep === 'lineage' ? 'lineage' : 'species',
+    maxPerfectIvs:
+      typeof saved?.maxPerfectIvs === 'number'
+        ? Math.min(STAT_NAMES.length, Math.max(0, Math.round(saved.maxPerfectIvs)))
+        : DEFAULT_SETTINGS.maxPerfectIvs,
+    includedTagIds: Array.isArray(saved?.includedTagIds)
+      ? saved.includedTagIds.filter((id) => typeof id === 'string')
+      : [],
+  };
 }
 
-function saveDuplicateSettings(settings: DuplicateSettings) {
-  try {
-    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
-  } catch {
-    // Stockage indisponible : les réglages valent pour cette visite seulement.
-  }
-}
+const saveDuplicateSettings = (settings: DuplicateSettings) =>
+  writeStoredJson(SETTINGS_KEY, settings);
 
 const perfectIvCount = (p: PokemonDto) => STAT_NAMES.filter((s) => p.ivs[s] === MAX_IV).length;
 

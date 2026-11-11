@@ -4,6 +4,7 @@ import { PokemonSprite, ViewTabs } from '../../components/ui';
 import { useGuildLeaderboard, useLeaderboard } from '../../lib/queries';
 import { formatMoney } from '../../lib/labels';
 import { guildLink, trainerLink } from './TrainerCardPage';
+import { readStoredText, writeStoredText } from '../../lib/storage';
 
 /** Classements de dresseurs, puis celui des guildes. */
 type Board = LeaderboardKind | 'guilds';
@@ -40,7 +41,7 @@ const MEDALS = ['🥇', '🥈', '🥉'];
 const STORAGE_KEY = 'leaderboard-tab';
 
 function savedBoard(): Board {
-  const saved = localStorage.getItem(STORAGE_KEY);
+  const saved = readStoredText(STORAGE_KEY);
   return BOARDS.find((b) => b.id === saved)?.id ?? 'species';
 }
 
@@ -56,7 +57,7 @@ export function LeaderboardPage() {
 
   function select(id: Board) {
     setKind(id);
-    localStorage.setItem(STORAGE_KEY, id);
+    writeStoredText(STORAGE_KEY, id);
   }
 
   const format = (value: number) =>

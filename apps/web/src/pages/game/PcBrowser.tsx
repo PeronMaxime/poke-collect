@@ -10,6 +10,7 @@ import { useNewEvolutionChecker, usePlayerProgress } from '../../lib/queries';
 import { abilityLabel, formatCountdown } from '../../lib/labels';
 import { RegionTabs, currentRegionTab } from './RegionTabs';
 import { TypeFilterSelect } from './TeamPicker';
+import { readStoredText, writeStoredText } from '../../lib/storage';
 
 /**
  * Parcours du PC (onglets de région, recherche, tri, filtres) et cartes de sa grille : partagés par
@@ -30,7 +31,7 @@ const SORTS: Record<Sort, string> = {
 const SORT_KEY = 'pc-sort';
 
 function savedSort(): Sort {
-  const saved = localStorage.getItem(SORT_KEY);
+  const saved = readStoredText(SORT_KEY);
   return saved && Object.hasOwn(SORTS, saved) ? (saved as Sort) : 'dex';
 }
 
@@ -325,7 +326,7 @@ export function PcSortSelect({
       onChange={(e) => {
         const next = e.target.value as Sort;
         b.setSort(next);
-        localStorage.setItem(SORT_KEY, next);
+        writeStoredText(SORT_KEY, next);
       }}
     >
       {Object.entries(SORTS).map(([value, label]) => (

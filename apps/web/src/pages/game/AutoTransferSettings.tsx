@@ -3,6 +3,7 @@ import { STAT_NAMES } from '@poke/data';
 import { MAX_IV } from '@poke/game-core';
 import type { AutoTransferFilter } from '@poke/game-core';
 import { Modal } from '../../components/ui';
+import { readStoredJson, writeStoredJson } from '../../lib/storage';
 
 /**
  * Transfert automatique des captures au retour d'expédition : un filtre global (page des
@@ -14,20 +15,11 @@ const GLOBAL_KEY = 'expedition-auto-transfer';
 
 /** Filtre global ; null = désactivé (par défaut). */
 export function loadGlobalAutoTransfer(): AutoTransferFilter | null {
-  try {
-    return parseFilter(JSON.parse(localStorage.getItem(GLOBAL_KEY) ?? 'null'));
-  } catch {
-    return null;
-  }
+  return parseFilter(readStoredJson(GLOBAL_KEY));
 }
 
-function saveGlobalAutoTransfer(filter: AutoTransferFilter | null) {
-  try {
-    localStorage.setItem(GLOBAL_KEY, JSON.stringify(filter));
-  } catch {
-    // Stockage indisponible : le réglage vaut pour cette visite seulement.
-  }
-}
+const saveGlobalAutoTransfer = (filter: AutoTransferFilter | null) =>
+  writeStoredJson(GLOBAL_KEY, filter);
 
 /** Filtre lu du stockage, ramené dans les bornes ; null = désactivé ou illisible. */
 export function parseFilter(raw: unknown): AutoTransferFilter | null {

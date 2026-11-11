@@ -58,6 +58,7 @@ import { WIKI_HASH, wikiLink } from './game/wiki';
 import { openChangelog, useUnseenChangelog } from './ChangelogPage';
 import { FanDisclaimer, LegalLinks } from './LegalPages';
 import { SettingsDialog } from './SettingsDialog';
+import { readStoredJson, writeStoredJson } from '../lib/storage';
 
 const TAB_LABELS = Object.fromEntries(MENU_TABS.map((t) => [t.id, t.label])) as Record<
   TabId,
@@ -85,21 +86,12 @@ const WINDOWED_TABS = new Set<PageId>([
 const CLOSED_SECTIONS_KEY = 'dexpedition.menuClosedSections';
 
 function readClosedSections(): Set<string> {
-  try {
-    const saved: unknown = JSON.parse(localStorage.getItem(CLOSED_SECTIONS_KEY) ?? '[]');
-    return new Set(Array.isArray(saved) ? saved.filter((t) => typeof t === 'string') : []);
-  } catch {
-    return new Set();
-  }
+  const saved = readStoredJson(CLOSED_SECTIONS_KEY);
+  return new Set(Array.isArray(saved) ? saved.filter((t) => typeof t === 'string') : []);
 }
 
-function saveClosedSections(closed: ReadonlySet<string>) {
-  try {
-    localStorage.setItem(CLOSED_SECTIONS_KEY, JSON.stringify([...closed]));
-  } catch {
-    // Stockage indisponible (navigation privée…) : le choix ne dure que le temps de la visite.
-  }
-}
+const saveClosedSections = (closed: ReadonlySet<string>) =>
+  writeStoredJson(CLOSED_SECTIONS_KEY, [...closed]);
 
 function tabFromHash(): PageId {
   // `#expeditions/<zone>` : l'onglet, suivi d'une cible propre à la page.

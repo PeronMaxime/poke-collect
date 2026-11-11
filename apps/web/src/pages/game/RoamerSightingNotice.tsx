@@ -3,26 +3,18 @@ import type { GameContext } from '@poke/game-core';
 import type { ExpeditionDto } from '@poke/shared';
 import { Modal, PokemonSprite } from '../../components/ui';
 import { speciesName } from '../../lib/labels';
+import { readStoredJson, writeStoredJson } from '../../lib/storage';
 
 /** Fuyards déjà annoncés au joueur, sous la forme `<expédition>:<quête>`. */
 const SEEN_KEY = 'dex.roamersSeen';
 
 function readSeen(): Set<string> {
-  try {
-    const raw = localStorage.getItem(SEEN_KEY);
-    return new Set(raw ? (JSON.parse(raw) as string[]) : []);
-  } catch {
-    return new Set();
-  }
+  const raw = readStoredJson(SEEN_KEY);
+  return new Set(Array.isArray(raw) ? (raw as string[]) : []);
 }
 
-function writeSeen(seen: Iterable<string>) {
-  try {
-    localStorage.setItem(SEEN_KEY, JSON.stringify([...seen]));
-  } catch {
-    // Stockage indisponible : l'annonce reviendra au prochain chargement, sans gravité.
-  }
-}
+/** Sans stockage, l'annonce revient au prochain chargement : sans gravité. */
+const writeSeen = (seen: Iterable<string>) => writeStoredJson(SEEN_KEY, [...seen]);
 
 /** Pokémon fuyard d'une quête (le premier de sa récompense qui erre). */
 function roamerOf(ctx: GameContext, questId: string) {
