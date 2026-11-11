@@ -41,7 +41,8 @@ import {
   usePage,
 } from './tileParts';
 
-export function IncubatorTile({ ctx }: { ctx: GameContext }) {
+/** État de la fenêtre de la couveuse : couveuse affichée, œufs prêts, éclosion, couvaison et retrait. */
+function useIncubatorTile({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const daycare = useDaycare();
   const assistants = useAssistants();
@@ -96,6 +97,71 @@ export function IncubatorTile({ ctx }: { ctx: GameContext }) {
   const busy = hatch.isPending || incubate.isPending;
   const error = hatch.error ?? incubate.error;
 
+  return {
+    ctx,
+    queryClient,
+    daycare,
+    assistants,
+    now,
+    hatched,
+    setHatched,
+    picking,
+    setPicking,
+    focusId,
+    setFocusId,
+    hatch,
+    incubate,
+    withdraw,
+    data,
+    serverNow,
+    incubated,
+    focused,
+    maxEggs,
+    bagEggs,
+    shownEggs,
+    size,
+    incubators,
+    incubator,
+    setIncubator,
+    first,
+    isReady,
+    readyEggs,
+    taken,
+    freePlaces,
+    toIncubate,
+    busy,
+    error,
+  };
+}
+
+/** Ce qu'affichent les pièces de `IncubatorTile`. */
+type IncubatorTileModel = ReturnType<typeof useIncubatorTile>;
+
+export function IncubatorTile({ ctx }: { ctx: GameContext }) {
+  const m = useIncubatorTile({ ctx });
+  const {
+    hatched,
+    setHatched,
+    picking,
+    setPicking,
+    setFocusId,
+    incubate,
+    withdraw,
+    serverNow,
+    incubated,
+    focused,
+    bagEggs,
+    size,
+    incubators,
+    incubator,
+    setIncubator,
+    isReady,
+    readyEggs,
+    freePlaces,
+    toIncubate,
+    busy,
+    error,
+  } = m;
   return (
     <>
       <Tile
@@ -116,107 +182,8 @@ export function IncubatorTile({ ctx }: { ctx: GameContext }) {
             incubated.some((e) => Math.floor(e.slotIndex / size) === k && isReady(e)),
           )}
         />
-        {incubators > 0 && (
-          <div className="flex items-center gap-2">
-            <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
-              {Array.from({ length: Math.min(size, shownEggs - first) }, (_, i) => {
-                const place = first + i;
-                const egg = incubated.find((e) => e.slotIndex === place);
-                if (egg) {
-                  const ready = isReady(egg);
-                  const start = Date.parse(egg.incubatedAt);
-                  const end = Date.parse(egg.hatchAt);
-                  const timer = (
-                    <EggTimer
-                      progress={(serverNow - start) / (end - start)}
-                      ready={ready}
-                      title={`${speciesName(ctx, egg.speciesId, egg.formId)} ? ${
-                        ready
-                          ? 'Prêt à éclore'
-                          : `Éclosion dans ${shortCountdown(end - serverNow)}. Cliquer pour le retirer.`
-                      }`}
-                    />
-                  );
-                  return (
-                    <div key={place} className="flex justify-center">
-                      {ready ? (
-                        timer
-                      ) : (
-                        <button
-                          type="button"
-                          className="rounded-full outline-offset-1 outline-brand-500 transition hover:outline-2 focus-visible:outline-2"
-                          onClick={() => {
-                            withdraw.reset();
-                            setFocusId(egg.id);
-                          }}
-                        >
-                          {timer}
-                        </button>
-                      )}
-                    </div>
-                  );
-                }
-                return place < maxEggs ? (
-                  <div
-                    key={place}
-                    title="Place libre"
-                    className={`mx-auto size-12 rounded-full ${FREE_PLACE}`}
-                  />
-                ) : (
-                  <div
-                    key={place}
-                    title="Place fermée"
-                    className={`mx-auto grid size-12 place-items-center rounded-full ${CLOSED_PLACE}`}
-                  >
-                    <LockIcon />
-                  </div>
-                );
-              })}
-            </div>
-            <AssistantCircle
-              ctx={ctx}
-              post="incubator"
-              slot={incubator}
-              closed={first >= maxEggs}
-            />
-          </div>
-        )}
-        {incubators > 0 && (readyEggs > 0 || bagEggs.length > 0) && (
-          <TileFooter
-            text={
-              <>
-                {readyEggs > 0 && `${plural(readyEggs, 'œuf')} prêt${readyEggs > 1 ? 's' : ''}`}
-                {bagEggs.length > 0 && (
-                  <span className="block text-xs text-slate-500">
-                    {plural(bagEggs.length, 'œuf')} dans le sac
-                  </span>
-                )}
-              </>
-            }
-          >
-            <span className="flex shrink-0 gap-1.5">
-              {toIncubate > 0 && (
-                <button
-                  className={`btn-ghost ${SMALL_BTN} ${HOVER_GHOST}`}
-                  disabled={busy}
-                  onClick={() => setPicking(true)}
-                  title="Choisis les œufs du sac à placer dans les places libres de la couveuse."
-                >
-                  Couver
-                </button>
-              )}
-              {readyEggs > 0 && (
-                <button
-                  className={`btn-primary ${SMALL_BTN} ${HOVER_PRIMARY}`}
-                  disabled={busy}
-                  onClick={() => hatch.mutate()}
-                >
-                  {hatch.isPending ? 'Éclosion…' : `Éclore (${readyEggs})`}
-                </button>
-              )}
-            </span>
-          </TileFooter>
-        )}
+        <IncubatorEggs m={m} />
+        <IncubatorActions m={m} />
         {error && <p className="text-xs text-red-600">{errorText(error)}</p>}
       </Tile>
       {picking && (
@@ -246,6 +213,133 @@ export function IncubatorTile({ ctx }: { ctx: GameContext }) {
         />
       )}
       <HatchReveal ctx={ctx} data={hatched} onClose={() => setHatched(null)} />
+    </>
+  );
+}
+
+/** Œufs de la couveuse affichée : un par place, prêts à éclore ou en cours. */
+function IncubatorEggs({ m }: { m: IncubatorTileModel }) {
+  const {
+    ctx,
+    setFocusId,
+    withdraw,
+    serverNow,
+    incubated,
+    maxEggs,
+    shownEggs,
+    size,
+    incubators,
+    incubator,
+    first,
+    isReady,
+  } = m;
+  return (
+    <>
+      {incubators > 0 && (
+        <div className="flex items-center gap-2">
+          <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
+            {Array.from({ length: Math.min(size, shownEggs - first) }, (_, i) => {
+              const place = first + i;
+              const egg = incubated.find((e) => e.slotIndex === place);
+              if (egg) {
+                const ready = isReady(egg);
+                const start = Date.parse(egg.incubatedAt);
+                const end = Date.parse(egg.hatchAt);
+                const timer = (
+                  <EggTimer
+                    progress={(serverNow - start) / (end - start)}
+                    ready={ready}
+                    title={`${speciesName(ctx, egg.speciesId, egg.formId)} ? ${
+                      ready
+                        ? 'Prêt à éclore'
+                        : `Éclosion dans ${shortCountdown(end - serverNow)}. Cliquer pour le retirer.`
+                    }`}
+                  />
+                );
+                return (
+                  <div key={place} className="flex justify-center">
+                    {ready ? (
+                      timer
+                    ) : (
+                      <button
+                        type="button"
+                        className="rounded-full outline-offset-1 outline-brand-500 transition hover:outline-2 focus-visible:outline-2"
+                        onClick={() => {
+                          withdraw.reset();
+                          setFocusId(egg.id);
+                        }}
+                      >
+                        {timer}
+                      </button>
+                    )}
+                  </div>
+                );
+              }
+              return place < maxEggs ? (
+                <div
+                  key={place}
+                  title="Place libre"
+                  className={`mx-auto size-12 rounded-full ${FREE_PLACE}`}
+                />
+              ) : (
+                <div
+                  key={place}
+                  title="Place fermée"
+                  className={`mx-auto grid size-12 place-items-center rounded-full ${CLOSED_PLACE}`}
+                >
+                  <LockIcon />
+                </div>
+              );
+            })}
+          </div>
+          <AssistantCircle ctx={ctx} post="incubator" slot={incubator} closed={first >= maxEggs} />
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Barre d'actions : faire éclore les œufs prêts, couver ceux du sac. */
+function IncubatorActions({ m }: { m: IncubatorTileModel }) {
+  const { setPicking, hatch, bagEggs, incubators, readyEggs, toIncubate, busy } = m;
+  return (
+    <>
+      {incubators > 0 && (readyEggs > 0 || bagEggs.length > 0) && (
+        <TileFooter
+          text={
+            <>
+              {readyEggs > 0 && `${plural(readyEggs, 'œuf')} prêt${readyEggs > 1 ? 's' : ''}`}
+              {bagEggs.length > 0 && (
+                <span className="block text-xs text-slate-500">
+                  {plural(bagEggs.length, 'œuf')} dans le sac
+                </span>
+              )}
+            </>
+          }
+        >
+          <span className="flex shrink-0 gap-1.5">
+            {toIncubate > 0 && (
+              <button
+                className={`btn-ghost ${SMALL_BTN} ${HOVER_GHOST}`}
+                disabled={busy}
+                onClick={() => setPicking(true)}
+                title="Choisis les œufs du sac à placer dans les places libres de la couveuse."
+              >
+                Couver
+              </button>
+            )}
+            {readyEggs > 0 && (
+              <button
+                className={`btn-primary ${SMALL_BTN} ${HOVER_PRIMARY}`}
+                disabled={busy}
+                onClick={() => hatch.mutate()}
+              >
+                {hatch.isPending ? 'Éclosion…' : `Éclore (${readyEggs})`}
+              </button>
+            )}
+          </span>
+        </TileFooter>
+      )}
     </>
   );
 }

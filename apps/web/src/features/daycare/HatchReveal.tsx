@@ -103,7 +103,8 @@ function FossilStone({ size = 64 }: { size?: number }) {
   );
 }
 
-function HatchContent({
+/** Révélation des œufs éclos : ordre d'apparition, nouveautés du Pokédex, transfert au Professeur. */
+function useHatchContent({
   ctx,
   data,
   onClose,
@@ -153,6 +154,62 @@ function HatchContent({
   const allCandies = transferAll.data?.gained.reduce((sum, g) => sum + g.quantity, 0) ?? 0;
   const confirming = confirmingAll && transferable.length > 0;
 
+  return {
+    ctx,
+    data,
+    onClose,
+    kind,
+    title,
+    cover,
+    reduced,
+    skipped,
+    setSkipped,
+    instant,
+    isFirstNew,
+    firstNew,
+    delay,
+    pokemon,
+    current,
+    queryClient,
+    transferred,
+    setTransferred,
+    markTransferred,
+    confirmingAll,
+    setConfirmingAll,
+    transferable,
+    shinyCount,
+    transferAll,
+    allCandies,
+    confirming,
+  };
+}
+
+/** Ce qu'affichent les pièces de `HatchContent`. */
+type HatchContentModel = ReturnType<typeof useHatchContent>;
+
+function HatchContent({
+  ctx,
+  data,
+  onClose,
+  kind,
+}: {
+  ctx: GameContext;
+  data: HatchEggsResponse;
+  onClose: () => void;
+  kind: keyof typeof KINDS;
+}) {
+  const m = useHatchContent({ ctx, data, onClose, kind });
+  const {
+    title,
+    setSkipped,
+    instant,
+    setConfirmingAll,
+    transferable,
+    shinyCount,
+    transferAll,
+    allCandies,
+    confirming,
+  } = m;
   return (
     <ResultFrame
       title={title(data.hatched.length)}
@@ -219,90 +276,109 @@ function HatchContent({
       }
     >
       {/* Remonté au clic sur « Tout afficher » : les animations en cours gardent sinon leur délai. */}
-      <div
-        key={String(instant)}
-        className={`grid gap-x-2 gap-y-4 pt-1.5 ${kind === 'fossil' ? FOSSIL_GRID : EGG_GRID}`}
-      >
-        {data.hatched.map((p, i) => {
-          const perfect = STAT_NAMES.filter((s) => p.ivs[s] === MAX_IV).length;
-          const total = STAT_NAMES.reduce((sum, s) => sum + p.ivs[s], 0);
-          const appear = {
-            initial: instant ? false : { opacity: 0 },
-            animate: { opacity: 1 },
-            transition: { delay: delay(i) },
-          } as const;
-          return (
-            <div
-              key={p.id}
-              className={`tile relative flex flex-col items-center px-1.5 pt-3 pb-2 text-center text-xs ${
-                p.isShiny ? 'border-amber-600 bg-done dark:border-[#f8d878]' : ''
-              }`}
+      <HatchedGrid m={m} />
+    </ResultFrame>
+  );
+}
+
+/** Les Pokémon éclos, révélés un à un (nouveaux au Pokédex marqués). */
+function HatchedGrid({ m }: { m: HatchContentModel }) {
+  const {
+    ctx,
+    data,
+    kind,
+    cover,
+    instant,
+    firstNew,
+    delay,
+    current,
+    transferred,
+    markTransferred,
+  } = m;
+  return (
+    <div
+      key={String(instant)}
+      className={`grid gap-x-2 gap-y-4 pt-1.5 ${kind === 'fossil' ? FOSSIL_GRID : EGG_GRID}`}
+    >
+      {data.hatched.map((p, i) => {
+        const perfect = STAT_NAMES.filter((s) => p.ivs[s] === MAX_IV).length;
+        const total = STAT_NAMES.reduce((sum, s) => sum + p.ivs[s], 0);
+        const appear = {
+          initial: instant ? false : { opacity: 0 },
+          animate: { opacity: 1 },
+          transition: { delay: delay(i) },
+        } as const;
+        return (
+          <div
+            key={p.id}
+            className={`tile relative flex flex-col items-center px-1.5 pt-3 pb-2 text-center text-xs ${
+              p.isShiny ? 'border-amber-600 bg-done dark:border-[#f8d878]' : ''
+            }`}
+          >
+            {firstNew.has(p.id) && (
+              <motion.span {...appear}>
+                <CornerTag className="bg-brand-500">Nouveau !</CornerTag>
+              </motion.span>
+            )}
+            <span
+              className={`sprite-well relative size-24 shrink-0 ${p.isShiny ? 'shiny-well' : ''}`}
             >
-              {firstNew.has(p.id) && (
-                <motion.span {...appear}>
-                  <CornerTag className="bg-brand-500">Nouveau !</CornerTag>
+              {!instant && (
+                <motion.span
+                  // Reste en place une fois invisible : sans ça, il intercepte les clics.
+                  className="pointer-events-none absolute inset-0 grid place-items-center"
+                  initial={{ opacity: 1, rotate: 0 }}
+                  animate={{ rotate: [0, -12, 12, -8, 8, 0], opacity: [1, 1, 1, 1, 1, 0] }}
+                  transition={{ delay: delay(i) - 0.6, duration: 0.6 }}
+                >
+                  {cover}
                 </motion.span>
               )}
-              <span
-                className={`sprite-well relative size-24 shrink-0 ${p.isShiny ? 'shiny-well' : ''}`}
+              <motion.span
+                className="relative"
+                initial={instant ? false : { opacity: 0, scale: 0.4 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: delay(i), type: 'spring', stiffness: 260, damping: 16 }}
               >
-                {!instant && (
-                  <motion.span
-                    // Reste en place une fois invisible : sans ça, il intercepte les clics.
-                    className="pointer-events-none absolute inset-0 grid place-items-center"
-                    initial={{ opacity: 1, rotate: 0 }}
-                    animate={{ rotate: [0, -12, 12, -8, 8, 0], opacity: [1, 1, 1, 1, 1, 0] }}
-                    transition={{ delay: delay(i) - 0.6, duration: 0.6 }}
-                  >
-                    {cover}
-                  </motion.span>
-                )}
-                <motion.span
-                  className="relative"
-                  initial={instant ? false : { opacity: 0, scale: 0.4 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ delay: delay(i), type: 'spring', stiffness: 260, damping: 16 }}
-                >
-                  {p.isShiny && <ShinySparkles delay={delay(i)} loop />}
-                  <IvHover ivs={p.ivs}>
-                    <PokemonSprite
-                      priority
-                      speciesId={p.speciesId}
-                      formId={p.formId}
-                      shiny={p.isShiny}
-                      size={72}
-                    />
-                  </IvHover>
-                </motion.span>
+                {p.isShiny && <ShinySparkles delay={delay(i)} loop />}
+                <IvHover ivs={p.ivs}>
+                  <PokemonSprite
+                    priority
+                    speciesId={p.speciesId}
+                    formId={p.formId}
+                    shiny={p.isShiny}
+                    size={72}
+                  />
+                </IvHover>
+              </motion.span>
+            </span>
+            <motion.div className="mt-1.5 flex w-full flex-col items-center" {...appear}>
+              <span className="leading-tight font-semibold">
+                {speciesName(ctx, p.speciesId, p.formId)} <GenderSymbol gender={p.gender} />{' '}
+                {p.isShiny && <ShinyStar />}
               </span>
-              <motion.div className="mt-1.5 flex w-full flex-col items-center" {...appear}>
-                <span className="leading-tight font-semibold">
-                  {speciesName(ctx, p.speciesId, p.formId)} <GenderSymbol gender={p.gender} />{' '}
-                  {p.isShiny && <ShinyStar />}
-                </span>
-                <span className="text-slate-500 dark:text-slate-400">{natureLabel(p.nature)}</span>
-                <span
-                  className={
-                    perfect >= 3
-                      ? 'font-semibold text-amber-700 dark:text-[#f8d878]'
-                      : 'text-slate-500 dark:text-slate-400'
-                  }
-                >
-                  IV {total} / {MAX_IV * 6}
-                  {perfect > 0 && ` · ${perfect} × 31`}
-                </span>
-                <NewbornActions
-                  ctx={ctx}
-                  pokemon={current.get(p.id) ?? p}
-                  transferred={transferred.has(p.id)}
-                  onTransferred={() => markTransferred([p.id])}
-                />
-              </motion.div>
-            </div>
-          );
-        })}
-      </div>
-    </ResultFrame>
+              <span className="text-slate-500 dark:text-slate-400">{natureLabel(p.nature)}</span>
+              <span
+                className={
+                  perfect >= 3
+                    ? 'font-semibold text-amber-700 dark:text-[#f8d878]'
+                    : 'text-slate-500 dark:text-slate-400'
+                }
+              >
+                IV {total} / {MAX_IV * 6}
+                {perfect > 0 && ` · ${perfect} × 31`}
+              </span>
+              <NewbornActions
+                ctx={ctx}
+                pokemon={current.get(p.id) ?? p}
+                transferred={transferred.has(p.id)}
+                onTransferred={() => markTransferred([p.id])}
+              />
+            </motion.div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 

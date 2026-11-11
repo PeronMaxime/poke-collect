@@ -36,8 +36,8 @@ import {
 } from '../buildings/BuildingParts';
 import { HatchReveal } from '../daycare/HatchReveal';
 
-/** Musée : les fossiles trouvés en expédition y redeviennent des Pokémon, après un délai. */
-export function MuseumPage({ ctx }: { ctx: GameContext }) {
+/** État de l'onglet du Musée : places, fossiles du sac, sites de fouille et actions. */
+function useMuseumPage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const museum = useMuseum();
   const inventory = useInventory();
@@ -85,6 +85,52 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
   const pending = deposit.isPending || cancel.isPending || revive.isPending;
   const error = deposit.error ?? cancel.error ?? revive.error;
 
+  return {
+    ctx,
+    queryClient,
+    museum,
+    inventory,
+    assistants,
+    now,
+    revived,
+    setRevived,
+    refreshMuseum,
+    deposit,
+    cancel,
+    revive,
+    data,
+    serverNow,
+    revivals,
+    slots,
+    shown,
+    full,
+    ready,
+    fossils,
+    digSites,
+    pending,
+    error,
+  };
+}
+
+/** Ce qu'affichent les pièces de `MuseumPage`. */
+type MuseumPageModel = ReturnType<typeof useMuseumPage>;
+
+/** Musée : les fossiles trouvés en expédition y redeviennent des Pokémon, après un délai. */
+export function MuseumPage({ ctx }: { ctx: GameContext }) {
+  const m = useMuseumPage({ ctx });
+  const {
+    revived,
+    setRevived,
+    cancel,
+    revive,
+    serverNow,
+    revivals,
+    slots,
+    shown,
+    ready,
+    pending,
+    error,
+  } = m;
   return (
     <div className="space-y-5">
       <BuildingSection
@@ -139,56 +185,7 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
         </div>
       </BuildingSection>
 
-      <BuildingSection
-        id="museum.fossils"
-        title="Tes fossiles"
-        label="tes fossiles"
-        count={fossils.reduce((n, s) => n + s.quantity, 0)}
-        countTitle="Fossiles dans le sac"
-      >
-        {fossils.length === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Aucun fossile dans ton sac.
-            {digSites.length > 0 &&
-              ` On en trouve parfois en expédition : ${digSites.map((z) => z.name).join(', ')}.`}
-          </p>
-        ) : (
-          <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-2.5">
-            {fossils.map((s) => {
-              const effect = fossilEffect(ctx, s.itemId)!;
-              return (
-                <li key={s.itemId} className="tile flex items-center gap-3 p-2.5">
-                  <span className="sprite-well size-12 shrink-0">
-                    <img
-                      src={itemIcon(ctx, s.itemId)}
-                      alt=""
-                      className="size-10 [image-rendering:pixelated]"
-                    />
-                  </span>
-                  <div className="min-w-0 flex-1 text-sm">
-                    <p className="flex items-baseline justify-between gap-2">
-                      <span className="truncate font-medium">{itemName(ctx, s.itemId)}</span>
-                      <span className="shrink-0 font-mono text-slate-500">× {s.quantity}</span>
-                    </p>
-                    <p className="text-xs text-slate-500">
-                      {speciesName(ctx, effect.speciesId, effect.formId)} · N.{effect.level} ·{' '}
-                      {formatDuration(effect.minutes)}
-                    </p>
-                  </div>
-                  <button
-                    className="btn-primary px-3 py-2"
-                    disabled={full || pending}
-                    title={full ? 'Toutes les places du Musée sont occupées.' : undefined}
-                    onClick={() => deposit.mutate(s.itemId)}
-                  >
-                    Déposer
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </BuildingSection>
+      <FossilsSection m={m} />
 
       <HatchReveal
         ctx={ctx}
@@ -197,6 +194,63 @@ export function MuseumPage({ ctx }: { ctx: GameContext }) {
         kind="fossil"
       />
     </div>
+  );
+}
+
+/** Fossiles du sac à déposer, et où en trouver. */
+function FossilsSection({ m }: { m: MuseumPageModel }) {
+  const { ctx, deposit, full, fossils, digSites, pending } = m;
+  return (
+    <BuildingSection
+      id="museum.fossils"
+      title="Tes fossiles"
+      label="tes fossiles"
+      count={fossils.reduce((n, s) => n + s.quantity, 0)}
+      countTitle="Fossiles dans le sac"
+    >
+      {fossils.length === 0 ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Aucun fossile dans ton sac.
+          {digSites.length > 0 &&
+            ` On en trouve parfois en expédition : ${digSites.map((z) => z.name).join(', ')}.`}
+        </p>
+      ) : (
+        <ul className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,18rem),1fr))] gap-2.5">
+          {fossils.map((s) => {
+            const effect = fossilEffect(ctx, s.itemId)!;
+            return (
+              <li key={s.itemId} className="tile flex items-center gap-3 p-2.5">
+                <span className="sprite-well size-12 shrink-0">
+                  <img
+                    src={itemIcon(ctx, s.itemId)}
+                    alt=""
+                    className="size-10 [image-rendering:pixelated]"
+                  />
+                </span>
+                <div className="min-w-0 flex-1 text-sm">
+                  <p className="flex items-baseline justify-between gap-2">
+                    <span className="truncate font-medium">{itemName(ctx, s.itemId)}</span>
+                    <span className="shrink-0 font-mono text-slate-500">× {s.quantity}</span>
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {speciesName(ctx, effect.speciesId, effect.formId)} · N.{effect.level} ·{' '}
+                    {formatDuration(effect.minutes)}
+                  </p>
+                </div>
+                <button
+                  className="btn-primary px-3 py-2"
+                  disabled={full || pending}
+                  title={full ? 'Toutes les places du Musée sont occupées.' : undefined}
+                  onClick={() => deposit.mutate(s.itemId)}
+                >
+                  Déposer
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </BuildingSection>
   );
 }
 

@@ -42,7 +42,8 @@ import {
 /** Places du Musée affichées ensemble. */
 const MUSEUM_PAGE = 2;
 
-export function MuseumTile({ ctx }: { ctx: GameContext }) {
+/** État de la fenêtre du Musée : places affichées, fossiles prêts, dépôt, restauration et retrait. */
+function useMuseumTile({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const museum = useMuseum();
   const assistants = useAssistants();
@@ -102,6 +103,68 @@ export function MuseumTile({ ctx }: { ctx: GameContext }) {
     return places.length > 1 ? `Places ${places.join(' et ')}` : `Place ${places[0]}`;
   };
 
+  return {
+    ctx,
+    queryClient,
+    museum,
+    assistants,
+    now,
+    inventory,
+    revived,
+    setRevived,
+    picking,
+    setPicking,
+    focusId,
+    setFocusId,
+    withdraw,
+    deposit,
+    revive,
+    data,
+    serverNow,
+    revivals,
+    focused,
+    slots,
+    shown,
+    pages,
+    page,
+    setPage,
+    placesOf,
+    isReady,
+    ready,
+    fossils,
+    busy,
+    error,
+    pageName,
+  };
+}
+
+/** Ce qu'affichent les pièces de `MuseumTile`. */
+type MuseumTileModel = ReturnType<typeof useMuseumTile>;
+
+export function MuseumTile({ ctx }: { ctx: GameContext }) {
+  const m = useMuseumTile({ ctx });
+  const {
+    revived,
+    setRevived,
+    setPicking,
+    setFocusId,
+    withdraw,
+    revive,
+    serverNow,
+    revivals,
+    focused,
+    slots,
+    pages,
+    page,
+    setPage,
+    placesOf,
+    isReady,
+    ready,
+    fossils,
+    busy,
+    error,
+    pageName,
+  } = m;
   return (
     <>
       <Tile tab="museum" title="Musée" icon={<MuseumIcon />} badge={<Badge count={ready} />}>
@@ -147,47 +210,7 @@ export function MuseumTile({ ctx }: { ctx: GameContext }) {
         {error && <p className="text-xs text-red-600">{errorText(error)}</p>}
       </Tile>
 
-      <Modal open={picking} onClose={() => setPicking(false)}>
-        <h2 className="text-xl font-bold">Déposer un fossile</h2>
-        {fossils.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">Aucun fossile dans ton sac.</p>
-        ) : (
-          <ul className="-mx-1 mt-2 grid max-h-[60vh] gap-2 overflow-y-auto p-1">
-            {fossils.map((s) => {
-              const effect = fossilEffect(ctx, s.itemId)!;
-              return (
-                <li key={s.itemId} className="card flex items-center gap-3 p-3">
-                  <img
-                    src={itemIcon(ctx, s.itemId)}
-                    alt=""
-                    className="h-10 w-10 shrink-0 [image-rendering:pixelated]"
-                  />
-                  <span className="min-w-0 flex-1 text-sm">
-                    <span className="flex items-baseline justify-between gap-2">
-                      <span className="font-medium">{itemName(ctx, s.itemId)}</span>
-                      <span className="font-mono">× {s.quantity}</span>
-                    </span>
-                    <span className="block text-xs text-slate-500">
-                      {speciesName(ctx, effect.speciesId, effect.formId)} · N.{effect.level} ·{' '}
-                      {formatDuration(effect.minutes)}
-                    </span>
-                  </span>
-                  <button
-                    className={`btn-primary ${SMALL_BTN}`}
-                    disabled={busy}
-                    onClick={() => {
-                      deposit.mutate(s.itemId);
-                      setPicking(false);
-                    }}
-                  >
-                    Déposer
-                  </button>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Modal>
+      <FossilPicker m={m} />
       {focused && (
         <WithdrawDialog
           title={`Musée · place ${focused.slotIndex + 1}`}
@@ -214,6 +237,54 @@ export function MuseumTile({ ctx }: { ctx: GameContext }) {
         kind="fossil"
       />
     </>
+  );
+}
+
+/** Choix du fossile à déposer dans une place libre. */
+function FossilPicker({ m }: { m: MuseumTileModel }) {
+  const { ctx, picking, setPicking, deposit, fossils, busy } = m;
+  return (
+    <Modal open={picking} onClose={() => setPicking(false)}>
+      <h2 className="text-xl font-bold">Déposer un fossile</h2>
+      {fossils.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">Aucun fossile dans ton sac.</p>
+      ) : (
+        <ul className="-mx-1 mt-2 grid max-h-[60vh] gap-2 overflow-y-auto p-1">
+          {fossils.map((s) => {
+            const effect = fossilEffect(ctx, s.itemId)!;
+            return (
+              <li key={s.itemId} className="card flex items-center gap-3 p-3">
+                <img
+                  src={itemIcon(ctx, s.itemId)}
+                  alt=""
+                  className="h-10 w-10 shrink-0 [image-rendering:pixelated]"
+                />
+                <span className="min-w-0 flex-1 text-sm">
+                  <span className="flex items-baseline justify-between gap-2">
+                    <span className="font-medium">{itemName(ctx, s.itemId)}</span>
+                    <span className="font-mono">× {s.quantity}</span>
+                  </span>
+                  <span className="block text-xs text-slate-500">
+                    {speciesName(ctx, effect.speciesId, effect.formId)} · N.{effect.level} ·{' '}
+                    {formatDuration(effect.minutes)}
+                  </span>
+                </span>
+                <button
+                  className={`btn-primary ${SMALL_BTN}`}
+                  disabled={busy}
+                  onClick={() => {
+                    deposit.mutate(s.itemId);
+                    setPicking(false);
+                  }}
+                >
+                  Déposer
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Modal>
   );
 }
 

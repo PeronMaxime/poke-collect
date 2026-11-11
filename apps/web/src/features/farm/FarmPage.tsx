@@ -46,12 +46,8 @@ const berryTitle = (ctx: GameContext, itemId: string) => {
 const remainingOf = (plot: BerryPlotDto, serverNow: number) =>
   plot.readyAt ? Math.max(0, Date.parse(plot.readyAt) - serverNow) : plot.remainingMs;
 
-/**
- * Ferme à baies : des champs de 3 × 3 parcelles, chacun avec ses assistants (deux champs par ligne
- * sur grand écran). Une baie plantée ne pousse que tant qu'un assistant de type Eau arrose son
- * champ ; mûre, elle donne quelques baies de la même espèce.
- */
-export function FarmPage({ ctx }: { ctx: GameContext }) {
+/** État de l'onglet de la ferme : champs, baies du sac, plantation, arrachage et récolte. */
+function useFarmPage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const farm = useFarm();
   const inventory = useInventory();
@@ -101,6 +97,48 @@ export function FarmPage({ ctx }: { ctx: GameContext }) {
   const pending = plant.isPending || uproot.isPending || harvest.isPending;
   const error = plant.error ?? uproot.error ?? harvest.error;
 
+  return {
+    ctx,
+    queryClient,
+    farm,
+    inventory,
+    assistants,
+    now,
+    chosen,
+    setChosen,
+    picking,
+    setPicking,
+    harvested,
+    setHarvested,
+    refreshFarm,
+    plant,
+    uproot,
+    harvest,
+    data,
+    serverNow,
+    planted,
+    plots,
+    shown,
+    ripe,
+    fields,
+    seeds,
+    pending,
+    error,
+  };
+}
+
+/** Ce qu'affichent les pièces de `FarmPage`. */
+type FarmPageModel = ReturnType<typeof useFarmPage>;
+
+/**
+ * Ferme à baies : des champs de 3 × 3 parcelles, chacun avec ses assistants (deux champs par ligne
+ * sur grand écran). Une baie plantée ne pousse que tant qu'un assistant de type Eau arrose son
+ * champ ; mûre, elle donne quelques baies de la même espèce.
+ */
+export function FarmPage({ ctx }: { ctx: GameContext }) {
+  const m = useFarmPage({ ctx });
+  const { harvested, setHarvested, harvest, planted, plots, ripe, fields, seeds, pending, error } =
+    m;
   return (
     <div className="space-y-5">
       <BuildingSection
@@ -145,208 +183,74 @@ export function FarmPage({ ctx }: { ctx: GameContext }) {
           parcelles, alignés quelle que soit la hauteur des assistants (talent).
         */}
         <div className="grid grid-cols-1 gap-3.5 lg:grid-cols-2">
-          {Array.from({ length: fields }, (_, field) => {
-            const first = field * FARM_PLOTS;
-            const indexes = Array.from({ length: FARM_PLOTS }, (_, k) => first + k);
-            const watered = !!assistants.data?.some((a) => a.post === 'farm' && a.slot === field);
-            const growing = planted.some((p) => assistantSlotOf('farm', p.plotIndex) === field);
-            const seed = seeds.find((s) => s.itemId === chosen[field]) ?? seeds[0];
-            const free = indexes.filter(
-              (i) => i < plots && !planted.some((p) => p.plotIndex === i),
-            );
-            const closed = first >= plots;
-            return (
-              <div
-                key={field}
-                className="tile flex flex-col gap-3 p-3 lg:row-span-2 lg:grid lg:grid-rows-subgrid"
-              >
-                <div className="flex flex-col gap-2.5">
-                  <div className="flex items-center justify-between gap-2">
-                    <h3 className={SECTION_TITLE}>Champ {field + 1}</h3>
-                    <StateTag tone={watered ? 'water' : 'idle'}>
-                      {watered ? '💧 Arrosé' : 'Pas arrosé'}
-                    </StateTag>
-                  </div>
-                  <AssistantCard
-                    ctx={ctx}
-                    post="farm"
-                    slot={field}
-                    frame="none"
-                    label="Arrosage"
-                    closed={closed}
-                  />
-                  {!watered && growing && (
-                    <Notice tone="warn">
-                      Le champ n’est pas arrosé : ses baies ne poussent pas.
-                    </Notice>
-                  )}
-                  <div className="border-t-2 border-dashed border-well-line pt-2.5">
-                    <AssistantCard
-                      ctx={ctx}
-                      post="harvest"
-                      slot={field}
-                      frame="none"
-                      label="Récolte"
-                      closed={closed}
-                    />
-                  </div>
-                </div>
-                <div className="flex flex-col items-center gap-3 border-t-2 border-dashed border-well-line pt-3">
-                  {seeds.length > 0 && (
-                    <div className="flex w-full flex-wrap items-center justify-center gap-2">
-                      <div className="flex flex-wrap justify-center gap-1.5">
-                        {seeds.map((s) => {
-                          const selected = s.itemId === seed?.itemId;
-                          return (
-                            <HoverBubble
-                              key={s.itemId}
-                              width={240}
-                              height={80}
-                              focusable={false}
-                              content={<BerryInfo ctx={ctx} itemId={s.itemId} />}
-                            >
-                              <button
-                                type="button"
-                                onClick={() => setChosen({ ...chosen, [field]: s.itemId })}
-                                aria-pressed={selected}
-                                aria-label={itemName(ctx, s.itemId)}
-                                className={`sprite-well relative size-11 transition hover:border-brand-500 ${
-                                  selected ? SELECTED_CELL : ''
-                                }`}
-                              >
-                                <img
-                                  src={itemIcon(ctx, s.itemId)}
-                                  alt=""
-                                  className="size-8 [image-rendering:pixelated]"
-                                />
-                                <span className="absolute -right-1.5 -bottom-1.5 rounded border-2 border-ink bg-white px-0.5 font-mono text-[10px] leading-tight dark:bg-slate-900">
-                                  {s.quantity}
-                                </span>
-                              </button>
-                            </HoverBubble>
-                          );
-                        })}
-                      </div>
-                      <button
-                        className={`btn-ghost ${SMALL_BUTTON}`}
-                        disabled={!seed || free.length === 0 || pending}
-                        onClick={() =>
-                          seed &&
-                          plant.mutate(
-                            free
-                              .slice(0, seed.quantity)
-                              .map((plotIndex) => ({ plotIndex, itemId: seed.itemId })),
-                          )
-                        }
-                      >
-                        Tout planter
-                      </button>
-                    </div>
-                  )}
-                  <div className="grid w-full max-w-80 grid-cols-3 gap-2">
-                    {indexes.map((i) => {
-                      const plot = planted.find((p) => p.plotIndex === i);
-                      if (!plot && i >= plots) {
-                        return (
-                          <div
-                            key={i}
-                            title="Parcelle à débloquer"
-                            className={`grid aspect-square place-items-center text-lg opacity-50 ${EMPTY_PLACE}`}
-                          >
-                            🔒
-                          </div>
-                        );
-                      }
-                      return plot ? (
-                        <PlotCard
-                          key={i}
-                          ctx={ctx}
-                          plot={plot}
-                          watered={watered}
-                          serverNow={serverNow}
-                          busy={pending}
-                          onUproot={() => uproot.mutate(i)}
-                          onHarvest={() => harvest.mutate(i)}
-                        />
-                      ) : (
-                        <button
-                          key={i}
-                          type="button"
-                          disabled={seeds.length === 0 || pending}
-                          onClick={() => setPicking(i)}
-                          title={seeds.length ? 'Planter une baie' : 'Aucune baie à planter.'}
-                          className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-well-line bg-well/50 text-slate-500 transition enabled:hover:border-brand-500 enabled:hover:text-brand-500 disabled:cursor-default dark:text-slate-400"
-                        >
-                          <Mound watered={watered} />
-                          <span className="pixel-label text-[8px]">
-                            {seeds.length ? 'Planter' : 'Vide'}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-              </div>
-            );
-          })}
+          {Array.from({ length: fields }, (_, field) => (
+            <FieldCard key={field} m={m} field={field} />
+          ))}
         </div>
       </BuildingSection>
 
-      <Modal open={picking !== null} onClose={() => setPicking(null)}>
-        <h2 className="text-xl font-bold">Planter une baie</h2>
-        {seeds.length === 0 ? (
-          <p className="mt-3 text-sm text-slate-500">Aucune baie à planter dans ton sac.</p>
-        ) : (
-          <ul className="-mx-1 mt-3 grid max-h-[60vh] gap-2 overflow-y-auto p-1">
-            {seeds.map((s) => {
-              const effect = berryPlantEffect(ctx, s.itemId)!;
-              return (
-                <li key={s.itemId}>
-                  <HoverBubble
-                    width={240}
-                    height={60}
-                    className="block"
-                    focusable={false}
-                    content={ctx.item(s.itemId)?.description || itemName(ctx, s.itemId)}
-                  >
-                    <button
-                      type="button"
-                      disabled={pending}
-                      onClick={() => {
-                        if (picking !== null) {
-                          plant.mutate([{ plotIndex: picking, itemId: s.itemId }]);
-                        }
-                        setPicking(null);
-                      }}
-                      className="tile flex w-full items-center gap-3 p-2.5 text-left transition enabled:hover:border-brand-500 enabled:hover:bg-selected"
-                    >
-                      <span className="sprite-well size-12 shrink-0">
-                        <img
-                          src={itemIcon(ctx, s.itemId)}
-                          alt=""
-                          className="size-10 [image-rendering:pixelated]"
-                        />
-                      </span>
-                      <span className="min-w-0 flex-1 text-sm">
-                        <span className="flex items-baseline justify-between gap-2">
-                          <span className="font-medium">{itemName(ctx, s.itemId)}</span>
-                          <span className="font-mono text-slate-500">× {s.quantity}</span>
-                        </span>
-                        <span className="block text-xs text-slate-500">
-                          Pousse en {formatDuration(effect.minutes)} · donne {yieldRange(effect)}{' '}
-                          baie
-                          {effect.maxYield > 1 ? 's' : ''}
-                        </span>
-                      </span>
-                    </button>
-                  </HoverBubble>
-                </li>
-              );
-            })}
-          </ul>
-        )}
-      </Modal>
+      <PlantDialog m={m} />
     </div>
+  );
+}
+
+/** Choix de la baie à planter dans une parcelle vide. */
+function PlantDialog({ m }: { m: FarmPageModel }) {
+  const { ctx, picking, setPicking, plant, seeds, pending } = m;
+  return (
+    <Modal open={picking !== null} onClose={() => setPicking(null)}>
+      <h2 className="text-xl font-bold">Planter une baie</h2>
+      {seeds.length === 0 ? (
+        <p className="mt-3 text-sm text-slate-500">Aucune baie à planter dans ton sac.</p>
+      ) : (
+        <ul className="-mx-1 mt-3 grid max-h-[60vh] gap-2 overflow-y-auto p-1">
+          {seeds.map((s) => {
+            const effect = berryPlantEffect(ctx, s.itemId)!;
+            return (
+              <li key={s.itemId}>
+                <HoverBubble
+                  width={240}
+                  height={60}
+                  className="block"
+                  focusable={false}
+                  content={ctx.item(s.itemId)?.description || itemName(ctx, s.itemId)}
+                >
+                  <button
+                    type="button"
+                    disabled={pending}
+                    onClick={() => {
+                      if (picking !== null) {
+                        plant.mutate([{ plotIndex: picking, itemId: s.itemId }]);
+                      }
+                      setPicking(null);
+                    }}
+                    className="tile flex w-full items-center gap-3 p-2.5 text-left transition enabled:hover:border-brand-500 enabled:hover:bg-selected"
+                  >
+                    <span className="sprite-well size-12 shrink-0">
+                      <img
+                        src={itemIcon(ctx, s.itemId)}
+                        alt=""
+                        className="size-10 [image-rendering:pixelated]"
+                      />
+                    </span>
+                    <span className="min-w-0 flex-1 text-sm">
+                      <span className="flex items-baseline justify-between gap-2">
+                        <span className="font-medium">{itemName(ctx, s.itemId)}</span>
+                        <span className="font-mono text-slate-500">× {s.quantity}</span>
+                      </span>
+                      <span className="block text-xs text-slate-500">
+                        Pousse en {formatDuration(effect.minutes)} · donne {yieldRange(effect)} baie
+                        {effect.maxYield > 1 ? 's' : ''}
+                      </span>
+                    </span>
+                  </button>
+                </HoverBubble>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+    </Modal>
   );
 }
 
@@ -453,5 +357,172 @@ function Mound({ watered, children }: { watered: boolean; children?: ReactNode }
     >
       {children}
     </span>
+  );
+}
+
+/** Carte d'un champ : ses parcelles, la baie à planter, ses assistants et ses actions. */
+function FieldCard({ m, field }: { m: FarmPageModel; field: number }) {
+  const {
+    ctx,
+    assistants,
+    chosen,
+    setPicking,
+    uproot,
+    harvest,
+    serverNow,
+    planted,
+    plots,
+    seeds,
+    pending,
+  } = m;
+  const first = field * FARM_PLOTS;
+  const indexes = Array.from({ length: FARM_PLOTS }, (_, k) => first + k);
+  const watered = !!assistants.data?.some((a) => a.post === 'farm' && a.slot === field);
+  const growing = planted.some((p) => assistantSlotOf('farm', p.plotIndex) === field);
+  const seed = seeds.find((s) => s.itemId === chosen[field]) ?? seeds[0];
+  const free = indexes.filter((i) => i < plots && !planted.some((p) => p.plotIndex === i));
+  const closed = first >= plots;
+  return (
+    <div
+      key={field}
+      className="tile flex flex-col gap-3 p-3 lg:row-span-2 lg:grid lg:grid-rows-subgrid"
+    >
+      <div className="flex flex-col gap-2.5">
+        <div className="flex items-center justify-between gap-2">
+          <h3 className={SECTION_TITLE}>Champ {field + 1}</h3>
+          <StateTag tone={watered ? 'water' : 'idle'}>
+            {watered ? '💧 Arrosé' : 'Pas arrosé'}
+          </StateTag>
+        </div>
+        <AssistantCard
+          ctx={ctx}
+          post="farm"
+          slot={field}
+          frame="none"
+          label="Arrosage"
+          closed={closed}
+        />
+        {!watered && growing && (
+          <Notice tone="warn">Le champ n’est pas arrosé : ses baies ne poussent pas.</Notice>
+        )}
+        <div className="border-t-2 border-dashed border-well-line pt-2.5">
+          <AssistantCard
+            ctx={ctx}
+            post="harvest"
+            slot={field}
+            frame="none"
+            label="Récolte"
+            closed={closed}
+          />
+        </div>
+      </div>
+      <div className="flex flex-col items-center gap-3 border-t-2 border-dashed border-well-line pt-3">
+        {seeds.length > 0 && <SeedPicker m={m} field={field} seed={seed} free={free} />}
+        <div className="grid w-full max-w-80 grid-cols-3 gap-2">
+          {indexes.map((i) => {
+            const plot = planted.find((p) => p.plotIndex === i);
+            if (!plot && i >= plots) {
+              return (
+                <div
+                  key={i}
+                  title="Parcelle à débloquer"
+                  className={`grid aspect-square place-items-center text-lg opacity-50 ${EMPTY_PLACE}`}
+                >
+                  🔒
+                </div>
+              );
+            }
+            return plot ? (
+              <PlotCard
+                key={i}
+                ctx={ctx}
+                plot={plot}
+                watered={watered}
+                serverNow={serverNow}
+                busy={pending}
+                onUproot={() => uproot.mutate(i)}
+                onHarvest={() => harvest.mutate(i)}
+              />
+            ) : (
+              <button
+                key={i}
+                type="button"
+                disabled={seeds.length === 0 || pending}
+                onClick={() => setPicking(i)}
+                title={seeds.length ? 'Planter une baie' : 'Aucune baie à planter.'}
+                className="flex aspect-square flex-col items-center justify-center gap-1 rounded-md border-2 border-dashed border-well-line bg-well/50 text-slate-500 transition enabled:hover:border-brand-500 enabled:hover:text-brand-500 disabled:cursor-default dark:text-slate-400"
+              >
+                <Mound watered={watered} />
+                <span className="pixel-label text-[8px]">{seeds.length ? 'Planter' : 'Vide'}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/** Baies du sac à choisir pour un champ, et « Tout planter » dans ses parcelles libres. */
+function SeedPicker({
+  m,
+  field,
+  seed,
+  free,
+}: {
+  m: FarmPageModel;
+  field: number;
+  seed: FarmPageModel['seeds'][number] | undefined;
+  free: number[];
+}) {
+  const { ctx, chosen, setChosen, plant, seeds, pending } = m;
+  return (
+    <div className="flex w-full flex-wrap items-center justify-center gap-2">
+      <div className="flex flex-wrap justify-center gap-1.5">
+        {seeds.map((s) => {
+          const selected = s.itemId === seed?.itemId;
+          return (
+            <HoverBubble
+              key={s.itemId}
+              width={240}
+              height={80}
+              focusable={false}
+              content={<BerryInfo ctx={ctx} itemId={s.itemId} />}
+            >
+              <button
+                type="button"
+                onClick={() => setChosen({ ...chosen, [field]: s.itemId })}
+                aria-pressed={selected}
+                aria-label={itemName(ctx, s.itemId)}
+                className={`sprite-well relative size-11 transition hover:border-brand-500 ${
+                  selected ? SELECTED_CELL : ''
+                }`}
+              >
+                <img
+                  src={itemIcon(ctx, s.itemId)}
+                  alt=""
+                  className="size-8 [image-rendering:pixelated]"
+                />
+                <span className="absolute -right-1.5 -bottom-1.5 rounded border-2 border-ink bg-white px-0.5 font-mono text-[10px] leading-tight dark:bg-slate-900">
+                  {s.quantity}
+                </span>
+              </button>
+            </HoverBubble>
+          );
+        })}
+      </div>
+      <button
+        className={`btn-ghost ${SMALL_BUTTON}`}
+        disabled={!seed || free.length === 0 || pending}
+        onClick={() =>
+          seed &&
+          plant.mutate(
+            free.slice(0, seed.quantity).map((plotIndex) => ({ plotIndex, itemId: seed.itemId })),
+          )
+        }
+      >
+        Tout planter
+      </button>
+    </div>
   );
 }

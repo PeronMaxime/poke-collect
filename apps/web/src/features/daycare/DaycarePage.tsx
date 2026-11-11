@@ -73,7 +73,8 @@ import { formatXp, usePlayerBonuses } from '../common/XpPreview';
 
 const eggCount = (n: number) => `${n} œuf${n > 1 ? 's' : ''}`;
 
-export function DaycarePage({ ctx }: { ctx: GameContext }) {
+/** État de l'onglet de la pension : pensions, couveuses, œufs du sac, et leurs actions. */
+function useDaycarePage({ ctx }: { ctx: GameContext }) {
   const queryClient = useQueryClient();
   const daycare = useDaycare();
   const pokemon = usePokemon();
@@ -174,6 +175,67 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
   const incubators = assistantSlotCount('incubator', shownEggs);
   const occupiedPensions = (data?.pensions ?? []).filter((p) => p.slotIndex < openSlots).length;
 
+  return {
+    ctx,
+    queryClient,
+    daycare,
+    pokemon,
+    assistants,
+    charm,
+    now,
+    depositAt,
+    setDepositAt,
+    hatched,
+    setHatched,
+    notice,
+    setNotice,
+    pokemonById,
+    refreshDaycare,
+    collected,
+    collect,
+    withdraw,
+    incubate,
+    storeEgg,
+    hatch,
+    data,
+    serverNow,
+    openSlots,
+    shownSlots,
+    helperOf,
+    incubated,
+    bagEggs,
+    maxEggs,
+    shownEggs,
+    takenPlaces,
+    freePlaces,
+    readyEggs,
+    busy,
+    error,
+    incubators,
+    occupiedPensions,
+  };
+}
+
+/** Ce qu'affichent les pièces de `DaycarePage`. */
+type DaycarePageModel = ReturnType<typeof useDaycarePage>;
+
+export function DaycarePage({ ctx }: { ctx: GameContext }) {
+  const m = useDaycarePage({ ctx });
+  const {
+    depositAt,
+    setDepositAt,
+    hatched,
+    setHatched,
+    notice,
+    setNotice,
+    collected,
+    incubate,
+    data,
+    bagEggs,
+    freePlaces,
+    busy,
+    error,
+  } = m;
   return (
     <div className="space-y-5">
       {notice && (
@@ -183,134 +245,9 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
       )}
       {error && <Notice tone="bad">{errorText(error)}</Notice>}
 
-      <BuildingSection
-        id="daycare.pensions"
-        title="Pension"
-        label="les pensions"
-        count={`${occupiedPensions}/${openSlots}`}
-        countTitle="Pensions occupées / ouvertes"
-        intro={
-          <>
-            Chaque pension accueille deux Pokémon, déposés et retirés un par un. Deux Pokémon
-            compatibles (même groupe d’œufs et sexes opposés, ou un Métamorph) pondent un œuf toutes
-            les {formatDuration(ctx.balance.breeding.eggMinutes)} (plus ou moins vite selon leurs
-            talents et celui de l’assistant de la pension), jusqu’à{' '}
-            {ctx.balance.breeding.pensionMaxEggs} œufs en attente. Pendant leur séjour, ils gagnent{' '}
-            {formatXp(ctx.balance.breeding.parentXpPerHour)} par heure, reçus quand tu les retires.
-            Un Pokémon seul, ou deux qui ne peuvent pas s’accoupler, y séjournent juste pour l’XP.
-          </>
-        }
-      >
-        {data?.slots === 0 ? (
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Aucune pension débloquée pour l’instant.
-          </p>
-        ) : (
-          <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))] gap-3.5">
-            {Array.from({ length: shownSlots }, (_, slot) => {
-              const pension = data?.pensions.find((p) => p.slotIndex === slot);
-              return pension ? (
-                <PensionCard
-                  key={slot}
-                  ctx={ctx}
-                  pension={pension}
-                  parents={[pension.parentAId, pension.parentBId].map((id) =>
-                    id ? pokemonById.get(id) : undefined,
-                  )}
-                  charm={charm}
-                  helper={helperOf(slot)}
-                  closed={slot >= openSlots}
-                  serverNow={serverNow}
-                  busy={busy}
-                  onCollect={(to) => collect.mutate({ slot, to })}
-                  onDeposit={(side) => setDepositAt({ slot, side })}
-                  onWithdraw={(side) => withdraw.mutate({ slot, side })}
-                />
-              ) : (
-                <div key={slot} className={`flex min-h-56 flex-col gap-2.5 p-2.5 ${EMPTY_PLACE}`}>
-                  {slot >= openSlots ? (
-                    <span className="grid flex-1 place-items-center text-center text-sm">
-                      Pension fermée
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => setDepositAt({ slot, side: 0 })}
-                      className="pixel-label grid flex-1 place-items-center rounded-md text-center transition hover:bg-well hover:text-brand-600 dark:hover:text-brand-500"
-                    >
-                      + Déposer un Pokémon
-                    </button>
-                  )}
-                  <AssistantCard ctx={ctx} post="daycare" slot={slot} closed={slot >= openSlots} />
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </BuildingSection>
+      <PensionsSection m={m} />
 
-      <BuildingSection
-        id="daycare.incubator"
-        title="Couveuse"
-        label="la couveuse"
-        count={`${incubated.length}/${maxEggs}`}
-        countTitle="Œufs en couveuse / places"
-        actions={
-          <button
-            className="btn-primary"
-            disabled={readyEggs === 0 || hatch.isPending}
-            onClick={() => hatch.mutate()}
-          >
-            {hatch.isPending ? 'Éclosion…' : `Faire éclore${readyEggs ? ` (${readyEggs})` : ''}`}
-          </button>
-        }
-        intro="L’assistant d’une couveuse agit sur la durée d’éclosion des œufs qu’on y pose."
-        className="space-y-5"
-      >
-        {Array.from({ length: incubators }, (_, incubator) => {
-          const size = ASSISTANT_POST_PLACES.incubator;
-          const first = incubator * size;
-          return (
-            <div key={incubator} className="space-y-3">
-              {incubators > 1 && <h3 className={SECTION_TITLE}>Couveuse {incubator + 1}</h3>}
-              <AssistantCard
-                ctx={ctx}
-                post="incubator"
-                slot={incubator}
-                frame="tile"
-                closed={first >= maxEggs}
-              />
-              <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-2">
-                {Array.from({ length: Math.min(size, shownEggs - first) }, (_, i) => {
-                  const egg = incubated.find((e) => e.slotIndex === first + i);
-                  return egg ? (
-                    <EggCard
-                      key={i}
-                      ctx={ctx}
-                      egg={egg}
-                      serverNow={serverNow}
-                      busy={busy}
-                      onWithdraw={() => storeEgg.mutate(egg.id)}
-                    />
-                  ) : (
-                    <div
-                      key={i}
-                      title={first + i < maxEggs ? 'Place libre' : 'Place fermée'}
-                      className={`grid aspect-square place-items-center p-2 ${EMPTY_PLACE} ${
-                        first + i < maxEggs ? '' : 'opacity-50'
-                      }`}
-                    >
-                      <span className="pixel-label text-center text-[8px]">
-                        {first + i < maxEggs ? 'Libre' : 'Fermée'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          );
-        })}
-      </BuildingSection>
+      <IncubatorsSection m={m} />
 
       <BagEggsSection
         ctx={ctx}
@@ -332,6 +269,172 @@ export function DaycarePage({ ctx }: { ctx: GameContext }) {
       )}
       <HatchReveal ctx={ctx} data={hatched} onClose={() => setHatched(null)} />
     </div>
+  );
+}
+
+/** Section des pensions : une carte par pension ouverte. */
+function PensionsSection({ m }: { m: DaycarePageModel }) {
+  const {
+    ctx,
+    charm,
+    setDepositAt,
+    pokemonById,
+    collect,
+    withdraw,
+    data,
+    serverNow,
+    openSlots,
+    shownSlots,
+    helperOf,
+    busy,
+    occupiedPensions,
+  } = m;
+  return (
+    <BuildingSection
+      id="daycare.pensions"
+      title="Pension"
+      label="les pensions"
+      count={`${occupiedPensions}/${openSlots}`}
+      countTitle="Pensions occupées / ouvertes"
+      intro={
+        <>
+          Chaque pension accueille deux Pokémon, déposés et retirés un par un. Deux Pokémon
+          compatibles (même groupe d’œufs et sexes opposés, ou un Métamorph) pondent un œuf toutes
+          les {formatDuration(ctx.balance.breeding.eggMinutes)} (plus ou moins vite selon leurs
+          talents et celui de l’assistant de la pension), jusqu’à{' '}
+          {ctx.balance.breeding.pensionMaxEggs} œufs en attente. Pendant leur séjour, ils gagnent{' '}
+          {formatXp(ctx.balance.breeding.parentXpPerHour)} par heure, reçus quand tu les retires. Un
+          Pokémon seul, ou deux qui ne peuvent pas s’accoupler, y séjournent juste pour l’XP.
+        </>
+      }
+    >
+      {data?.slots === 0 ? (
+        <p className="text-sm text-slate-500 dark:text-slate-400">
+          Aucune pension débloquée pour l’instant.
+        </p>
+      ) : (
+        <div className="grid grid-cols-[repeat(auto-fill,minmax(min(100%,22rem),1fr))] gap-3.5">
+          {Array.from({ length: shownSlots }, (_, slot) => {
+            const pension = data?.pensions.find((p) => p.slotIndex === slot);
+            return pension ? (
+              <PensionCard
+                key={slot}
+                ctx={ctx}
+                pension={pension}
+                parents={[pension.parentAId, pension.parentBId].map((id) =>
+                  id ? pokemonById.get(id) : undefined,
+                )}
+                charm={charm}
+                helper={helperOf(slot)}
+                closed={slot >= openSlots}
+                serverNow={serverNow}
+                busy={busy}
+                onCollect={(to) => collect.mutate({ slot, to })}
+                onDeposit={(side) => setDepositAt({ slot, side })}
+                onWithdraw={(side) => withdraw.mutate({ slot, side })}
+              />
+            ) : (
+              <div key={slot} className={`flex min-h-56 flex-col gap-2.5 p-2.5 ${EMPTY_PLACE}`}>
+                {slot >= openSlots ? (
+                  <span className="grid flex-1 place-items-center text-center text-sm">
+                    Pension fermée
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => setDepositAt({ slot, side: 0 })}
+                    className="pixel-label grid flex-1 place-items-center rounded-md text-center transition hover:bg-well hover:text-brand-600 dark:hover:text-brand-500"
+                  >
+                    + Déposer un Pokémon
+                  </button>
+                )}
+                <AssistantCard ctx={ctx} post="daycare" slot={slot} closed={slot >= openSlots} />
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </BuildingSection>
+  );
+}
+
+/** Section des couveuses : une par assistant, avec ses œufs. */
+function IncubatorsSection({ m }: { m: DaycarePageModel }) {
+  const {
+    ctx,
+    storeEgg,
+    hatch,
+    serverNow,
+    incubated,
+    maxEggs,
+    shownEggs,
+    readyEggs,
+    busy,
+    incubators,
+  } = m;
+  return (
+    <BuildingSection
+      id="daycare.incubator"
+      title="Couveuse"
+      label="la couveuse"
+      count={`${incubated.length}/${maxEggs}`}
+      countTitle="Œufs en couveuse / places"
+      actions={
+        <button
+          className="btn-primary"
+          disabled={readyEggs === 0 || hatch.isPending}
+          onClick={() => hatch.mutate()}
+        >
+          {hatch.isPending ? 'Éclosion…' : `Faire éclore${readyEggs ? ` (${readyEggs})` : ''}`}
+        </button>
+      }
+      intro="L’assistant d’une couveuse agit sur la durée d’éclosion des œufs qu’on y pose."
+      className="space-y-5"
+    >
+      {Array.from({ length: incubators }, (_, incubator) => {
+        const size = ASSISTANT_POST_PLACES.incubator;
+        const first = incubator * size;
+        return (
+          <div key={incubator} className="space-y-3">
+            {incubators > 1 && <h3 className={SECTION_TITLE}>Couveuse {incubator + 1}</h3>}
+            <AssistantCard
+              ctx={ctx}
+              post="incubator"
+              slot={incubator}
+              frame="tile"
+              closed={first >= maxEggs}
+            />
+            <div className="grid grid-cols-[repeat(auto-fill,minmax(5.5rem,1fr))] gap-2">
+              {Array.from({ length: Math.min(size, shownEggs - first) }, (_, i) => {
+                const egg = incubated.find((e) => e.slotIndex === first + i);
+                return egg ? (
+                  <EggCard
+                    key={i}
+                    ctx={ctx}
+                    egg={egg}
+                    serverNow={serverNow}
+                    busy={busy}
+                    onWithdraw={() => storeEgg.mutate(egg.id)}
+                  />
+                ) : (
+                  <div
+                    key={i}
+                    title={first + i < maxEggs ? 'Place libre' : 'Place fermée'}
+                    className={`grid aspect-square place-items-center p-2 ${EMPTY_PLACE} ${
+                      first + i < maxEggs ? '' : 'opacity-50'
+                    }`}
+                  >
+                    <span className="pixel-label text-center text-[8px]">
+                      {first + i < maxEggs ? 'Libre' : 'Fermée'}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </BuildingSection>
   );
 }
 
@@ -435,7 +538,8 @@ function BagEggsSection({
   );
 }
 
-function PensionCard({
+/** Œufs pondus, prochain œuf, règles d'héritage et chance chromatique d'une pension. */
+function usePensionCard({
   ctx,
   pension,
   parents,
@@ -485,6 +589,79 @@ function PensionCard({
 
   const full = waiting >= pensionMaxEggs;
 
+  return {
+    ctx,
+    pension,
+    parents,
+    charm,
+    helper,
+    closed,
+    serverNow,
+    busy,
+    onCollect,
+    onDeposit,
+    onWithdraw,
+    shinyBonus,
+    bonuses,
+    pensionMaxEggs,
+    start,
+    laid,
+    waiting,
+    cycle,
+    nextAt,
+    held,
+    rules,
+    pa,
+    pb,
+    shinyRate,
+    shinyBonuses,
+    full,
+  };
+}
+
+/** Ce qu'affichent les pièces de `PensionCard`. */
+type PensionCardModel = ReturnType<typeof usePensionCard>;
+
+function PensionCard({
+  ctx,
+  pension,
+  parents,
+  charm,
+  helper,
+  closed,
+  serverNow,
+  busy,
+  onCollect,
+  onDeposit,
+  onWithdraw,
+}: {
+  ctx: GameContext;
+  pension: DaycareDto;
+  parents: (PokemonDto | undefined)[];
+  charm: number;
+  helper: AbilityHolder | undefined;
+  closed: boolean;
+  serverNow: number;
+  busy: boolean;
+  onCollect: (to: CollectEggsInput['to']) => void;
+  /** Dépôt d'un Pokémon à cette place (à la place de celui qui y est). */
+  onDeposit: (side: 0 | 1) => void;
+  onWithdraw: (side: 0 | 1) => void;
+}) {
+  const m = usePensionCard({
+    ctx,
+    pension,
+    parents,
+    charm,
+    helper,
+    closed,
+    serverNow,
+    busy,
+    onCollect,
+    onDeposit,
+    onWithdraw,
+  });
+  const { pensionMaxEggs, waiting, full } = m;
   return (
     <div
       className={`tile flex flex-col gap-3 p-3 ${waiting > 0 ? 'border-amber-600 bg-done' : ''}`}
@@ -499,122 +676,159 @@ function PensionCard({
           <StateTag tone="idle">XP seule</StateTag>
         )}
       </div>
-      <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2">
-        {([0, 1] as const).map((side) => {
-          const p = parents[side];
-          const since = side === 0 ? pension.parentADepositedAt : pension.parentBDepositedAt;
-          const gain =
-            p && since ? daycareXp(ctx, p, new Date(since), new Date(serverNow), bonuses) : null;
-          const parent = (
-            <div
-              key={side}
-              className="flex min-w-0 flex-col items-center gap-1 text-center text-xs"
-            >
-              {p && gain ? (
-                <>
-                  <span
-                    className={`sprite-well h-20 w-full overflow-hidden ${p.isShiny ? 'shiny-well' : ''}`}
-                  >
-                    <IvHover ivs={p.ivs}>
-                      <PokemonSprite
-                        speciesId={p.speciesId}
-                        formId={p.formId}
-                        shiny={p.isShiny}
-                        size={64}
-                      />
-                    </IvHover>
-                  </span>
-                  <span className="w-full truncate text-sm font-medium">
-                    {speciesName(ctx, p.speciesId, p.formId)} <GenderSymbol gender={p.gender} />{' '}
-                    {p.isShiny && <ShinyStar />}
-                  </span>
-                  <span title="XP gagnée depuis le dépôt, reçue en retirant le Pokémon de la pension.">
-                    <span className="text-slate-500">N.{p.level}</span>
-                    {gain.xpGained > 0 ? (
-                      <>
-                        {' · '}
-                        <span className="text-emerald-600 dark:text-emerald-400">
-                          +{formatXp(gain.xpGained)}
-                        </span>
-                        {gain.levelAfter > gain.levelBefore && (
-                          <strong className="text-emerald-600 dark:text-emerald-400">
-                            {' '}
-                            ▶ N.{gain.levelAfter}
-                          </strong>
-                        )}
-                      </>
-                    ) : (
-                      <span className="text-slate-500">
-                        {' · '}
-                        {p.level >= 100 ? 'Niveau maximal' : 'Pas encore d’XP'}
-                      </span>
-                    )}
-                  </span>
-                  <AbilityLine ctx={ctx} p={p} activities={['breeding']} />
-                  <span className="mt-1 flex flex-wrap justify-center gap-1">
-                    <button
-                      className={`btn-ghost ${SMALL_BUTTON}`}
-                      disabled={busy}
-                      onClick={() => onDeposit(side)}
-                      title="Le remplace par un autre Pokémon ; il reçoit son XP."
-                    >
-                      Changer
-                    </button>
-                    <button
-                      className={`btn-ghost ${SMALL_BUTTON}`}
-                      disabled={busy}
-                      onClick={() => onWithdraw(side)}
-                      title={
-                        pension.breeds
-                          ? 'Il reçoit son XP ; les œufs prêts sont couvés, ceux qui ne tiennent pas dans la couveuse vont dans le sac.'
-                          : 'Il reçoit son XP.'
-                      }
-                    >
-                      Retirer
-                    </button>
-                  </span>
-                </>
-              ) : (
-                <button
-                  type="button"
-                  disabled={busy || closed}
-                  onClick={() => onDeposit(side)}
-                  className={`grid h-20 w-full place-items-center font-pixel text-base transition enabled:hover:border-brand-500 enabled:hover:text-brand-500 ${EMPTY_PLACE}`}
-                  title={closed ? 'Pension fermée' : 'Déposer un Pokémon'}
-                  aria-label={closed ? 'Pension fermée' : 'Déposer un Pokémon'}
+      <PensionParents m={m} />
+      <PensionEggs m={m} />
+      {pension.breeds && (
+        <div className="flex flex-wrap items-center justify-end gap-2">
+          <button
+            className="btn-ghost px-3 py-2"
+            disabled={waiting === 0 || busy}
+            onClick={() => onCollect('bag')}
+            title="Range les œufs prêts dans le sac."
+          >
+            Ramasser
+          </button>
+          <button
+            className="btn-primary px-3 py-2"
+            disabled={waiting === 0 || busy}
+            onClick={() => onCollect('incubator')}
+            title="Place les œufs prêts dans la couveuse ; ceux qui n’y tiennent pas vont dans le sac."
+          >
+            Couver{waiting > 0 ? ` (${waiting})` : ''}
+          </button>
+        </div>
+      )}
+      <AssistantCard ctx={ctx} post="daycare" slot={pension.slotIndex} closed={closed} />
+    </div>
+  );
+}
+
+/** Les deux parents de la pension (ou leur place libre) et ce qu'ils transmettent. */
+function PensionParents({ m }: { m: PensionCardModel }) {
+  const { ctx, pension, parents, closed, serverNow, busy, onDeposit, onWithdraw, bonuses, held } =
+    m;
+  return (
+    <div className="grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-start gap-2">
+      {([0, 1] as const).map((side) => {
+        const p = parents[side];
+        const since = side === 0 ? pension.parentADepositedAt : pension.parentBDepositedAt;
+        const gain =
+          p && since ? daycareXp(ctx, p, new Date(since), new Date(serverNow), bonuses) : null;
+        const parent = (
+          <div key={side} className="flex min-w-0 flex-col items-center gap-1 text-center text-xs">
+            {p && gain ? (
+              <>
+                <span
+                  className={`sprite-well h-20 w-full overflow-hidden ${p.isShiny ? 'shiny-well' : ''}`}
                 >
-                  +
-                </button>
-              )}
-              {held[side] && (
-                <span className="flex items-center gap-1 text-slate-500">
-                  <img
-                    src={itemIcon(ctx, held[side])}
-                    alt=""
-                    className="size-5 [image-rendering:pixelated]"
-                  />
-                  {itemName(ctx, held[side])}
+                  <IvHover ivs={p.ivs}>
+                    <PokemonSprite
+                      speciesId={p.speciesId}
+                      formId={p.formId}
+                      shiny={p.isShiny}
+                      size={64}
+                    />
+                  </IvHover>
                 </span>
-              )}
-            </div>
-          );
-          return side === 0 ? (
-            parent
-          ) : (
-            <Fragment key={side}>
-              <span
-                className={`mt-7 font-pixel text-base ${pension.breeds ? 'text-rose-500' : 'text-slate-300 dark:text-slate-600'}`}
-                title={pension.breeds ? undefined : 'Ces deux Pokémon ne peuvent pas s’accoupler.'}
-                aria-label={pension.breeds ? undefined : 'Ne peuvent pas s’accoupler'}
-                aria-hidden={pension.breeds}
+                <span className="w-full truncate text-sm font-medium">
+                  {speciesName(ctx, p.speciesId, p.formId)} <GenderSymbol gender={p.gender} />{' '}
+                  {p.isShiny && <ShinyStar />}
+                </span>
+                <span title="XP gagnée depuis le dépôt, reçue en retirant le Pokémon de la pension.">
+                  <span className="text-slate-500">N.{p.level}</span>
+                  {gain.xpGained > 0 ? (
+                    <>
+                      {' · '}
+                      <span className="text-emerald-600 dark:text-emerald-400">
+                        +{formatXp(gain.xpGained)}
+                      </span>
+                      {gain.levelAfter > gain.levelBefore && (
+                        <strong className="text-emerald-600 dark:text-emerald-400">
+                          {' '}
+                          ▶ N.{gain.levelAfter}
+                        </strong>
+                      )}
+                    </>
+                  ) : (
+                    <span className="text-slate-500">
+                      {' · '}
+                      {p.level >= 100 ? 'Niveau maximal' : 'Pas encore d’XP'}
+                    </span>
+                  )}
+                </span>
+                <AbilityLine ctx={ctx} p={p} activities={['breeding']} />
+                <span className="mt-1 flex flex-wrap justify-center gap-1">
+                  <button
+                    className={`btn-ghost ${SMALL_BUTTON}`}
+                    disabled={busy}
+                    onClick={() => onDeposit(side)}
+                    title="Le remplace par un autre Pokémon ; il reçoit son XP."
+                  >
+                    Changer
+                  </button>
+                  <button
+                    className={`btn-ghost ${SMALL_BUTTON}`}
+                    disabled={busy}
+                    onClick={() => onWithdraw(side)}
+                    title={
+                      pension.breeds
+                        ? 'Il reçoit son XP ; les œufs prêts sont couvés, ceux qui ne tiennent pas dans la couveuse vont dans le sac.'
+                        : 'Il reçoit son XP.'
+                    }
+                  >
+                    Retirer
+                  </button>
+                </span>
+              </>
+            ) : (
+              <button
+                type="button"
+                disabled={busy || closed}
+                onClick={() => onDeposit(side)}
+                className={`grid h-20 w-full place-items-center font-pixel text-base transition enabled:hover:border-brand-500 enabled:hover:text-brand-500 ${EMPTY_PLACE}`}
+                title={closed ? 'Pension fermée' : 'Déposer un Pokémon'}
+                aria-label={closed ? 'Pension fermée' : 'Déposer un Pokémon'}
               >
-                ♥
+                +
+              </button>
+            )}
+            {held[side] && (
+              <span className="flex items-center gap-1 text-slate-500">
+                <img
+                  src={itemIcon(ctx, held[side])}
+                  alt=""
+                  className="size-5 [image-rendering:pixelated]"
+                />
+                {itemName(ctx, held[side])}
               </span>
-              {parent}
-            </Fragment>
-          );
-        })}
-      </div>
+            )}
+          </div>
+        );
+        return side === 0 ? (
+          parent
+        ) : (
+          <Fragment key={side}>
+            <span
+              className={`mt-7 font-pixel text-base ${pension.breeds ? 'text-rose-500' : 'text-slate-300 dark:text-slate-600'}`}
+              title={pension.breeds ? undefined : 'Ces deux Pokémon ne peuvent pas s’accoupler.'}
+              aria-label={pension.breeds ? undefined : 'Ne peuvent pas s’accoupler'}
+              aria-hidden={pension.breeds}
+            >
+              ♥
+            </span>
+            {parent}
+          </Fragment>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Œufs de la pension : ceux qui attendent d'être ramassés, puis le suivant. */
+function PensionEggs({ m }: { m: PensionCardModel }) {
+  const { ctx, pension, serverNow, cycle, nextAt, rules, shinyRate, shinyBonuses, full } = m;
+  return (
+    <>
       {pension.breeds ? (
         <div className="flex items-center gap-3 rounded-md border-2 border-well-line p-2.5">
           <span className="sprite-well size-12 shrink-0 overflow-hidden">
@@ -662,28 +876,7 @@ function PensionCard({
           {formatXp(ctx.balance.breeding.parentXpPerHour)} par heure.
         </p>
       )}
-      {pension.breeds && (
-        <div className="flex flex-wrap items-center justify-end gap-2">
-          <button
-            className="btn-ghost px-3 py-2"
-            disabled={waiting === 0 || busy}
-            onClick={() => onCollect('bag')}
-            title="Range les œufs prêts dans le sac."
-          >
-            Ramasser
-          </button>
-          <button
-            className="btn-primary px-3 py-2"
-            disabled={waiting === 0 || busy}
-            onClick={() => onCollect('incubator')}
-            title="Place les œufs prêts dans la couveuse ; ceux qui n’y tiennent pas vont dans le sac."
-          >
-            Couver{waiting > 0 ? ` (${waiting})` : ''}
-          </button>
-        </div>
-      )}
-      <AssistantCard ctx={ctx} post="daycare" slot={pension.slotIndex} closed={closed} />
-    </div>
+    </>
   );
 }
 

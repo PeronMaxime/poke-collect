@@ -30,7 +30,8 @@ import {
   usePage,
 } from './tileParts';
 
-export function CenterTile({ ctx }: { ctx: GameContext }) {
+/** État de la fenêtre du Centre : Centre affiché, Pokémon K.O. qui attendent, choix de ceux à soigner. */
+function useCenterTile({ ctx }: { ctx: GameContext }) {
   const pokemon = usePokemon();
   const progress = usePlayerProgress();
   const assistants = useAssistants();
@@ -58,6 +59,37 @@ export function CenterTile({ ctx }: { ctx: GameContext }) {
           : chosen,
     );
 
+  return {
+    ctx,
+    pokemon,
+    progress,
+    assistants,
+    heal,
+    now,
+    slots,
+    healing,
+    knockedOut,
+    free,
+    shown,
+    size,
+    centers,
+    center,
+    setCenter,
+    first,
+    waiting,
+    selected,
+    setSelected,
+    chosen,
+    toggle,
+  };
+}
+
+/** Ce qu'affichent les pièces de `CenterTile`. */
+type CenterTileModel = ReturnType<typeof useCenterTile>;
+
+export function CenterTile({ ctx }: { ctx: GameContext }) {
+  const m = useCenterTile({ ctx });
+  const { heal, free, centers, center, setCenter, waiting, setSelected } = m;
   return (
     <>
       <Tile
@@ -73,53 +105,7 @@ export function CenterTile({ ctx }: { ctx: GameContext }) {
         }
       >
         <Pager label="Centre" count={centers} index={center} onChange={setCenter} />
-        {centers > 0 && (
-          <div className="flex items-center gap-2">
-            <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
-              {Array.from({ length: Math.min(size, shown - first) }, (_, i) => {
-                const place = first + i;
-                const p = healing.find((h) => h.healSlot === place);
-                if (p) {
-                  const left = shortCountdown(Date.parse(p.healUntil!) - now);
-                  return (
-                    <div
-                      key={place}
-                      className="flex h-12 flex-col items-center justify-end overflow-hidden rounded-md border-2 border-well-line bg-well pb-0.5"
-                      title={`${speciesName(ctx, p.speciesId, p.formId)} : soins ${left}`}
-                    >
-                      <PokemonSprite
-                        speciesId={p.speciesId}
-                        formId={p.formId}
-                        shiny={p.isShiny}
-                        size={36}
-                        className="-my-1"
-                      />
-                      <span className="font-mono text-[10px] leading-none text-pink-700 dark:text-pink-300">
-                        {left}
-                      </span>
-                    </div>
-                  );
-                }
-                return place < slots ? (
-                  <div
-                    key={place}
-                    title="Place libre"
-                    className={`h-12 rounded-md ${FREE_PLACE}`}
-                  />
-                ) : (
-                  <div
-                    key={place}
-                    title="Place fermée"
-                    className={`grid h-12 place-items-center rounded-md ${CLOSED_PLACE}`}
-                  >
-                    <LockIcon />
-                  </div>
-                );
-              })}
-            </div>
-            <AssistantCircle ctx={ctx} post="center" slot={center} closed={first >= slots} />
-          </div>
-        )}
+        <CenterPlaces m={m} />
         <TileFooter
           text={
             waiting.length > 0 ? `${waiting.length} Pokémon K.O. en attente` : 'Aucun Pokémon K.O.'
@@ -142,72 +128,132 @@ export function CenterTile({ ctx }: { ctx: GameContext }) {
         </TileFooter>
         {heal.error && <p className="text-xs text-red-600">{errorText(heal.error)}</p>}
       </Tile>
-      <Modal open={selected !== null} onClose={() => setSelected(null)}>
-        <h2 className="text-xl font-bold">Soigner des Pokémon</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {waiting.length} Pokémon K.O. pour{' '}
-          {free > 1 ? `${free} places libres` : `${free} place libre`} : choisis ceux à soigner.
-        </p>
-        <ul className="-mx-1 mt-3 grid max-h-[60vh] gap-2 overflow-y-auto p-1">
-          {waiting.map((p) => {
-            const on = chosen.includes(p.id);
-            return (
-              <li key={p.id}>
-                <button
-                  type="button"
-                  aria-pressed={on}
-                  disabled={!on && chosen.length >= free}
-                  onClick={() => toggle(p.id)}
-                  className={`flex w-full items-center gap-3 rounded-md border-2 p-2 text-left transition enabled:hover:border-brand-500 disabled:cursor-default disabled:opacity-50 ${
-                    on ? 'border-ink bg-done' : 'border-well-line bg-tile'
+      <HealDialog m={m} />
+    </>
+  );
+}
+
+/** Places du Centre affiché : Pokémon en soins et places libres. */
+function CenterPlaces({ m }: { m: CenterTileModel }) {
+  const { ctx, now, slots, healing, shown, size, centers, center, first } = m;
+  return (
+    <>
+      {centers > 0 && (
+        <div className="flex items-center gap-2">
+          <div className="grid min-w-0 flex-1 grid-cols-3 gap-1">
+            {Array.from({ length: Math.min(size, shown - first) }, (_, i) => {
+              const place = first + i;
+              const p = healing.find((h) => h.healSlot === place);
+              if (p) {
+                const left = shortCountdown(Date.parse(p.healUntil!) - now);
+                return (
+                  <div
+                    key={place}
+                    className="flex h-12 flex-col items-center justify-end overflow-hidden rounded-md border-2 border-well-line bg-well pb-0.5"
+                    title={`${speciesName(ctx, p.speciesId, p.formId)} : soins ${left}`}
+                  >
+                    <PokemonSprite
+                      speciesId={p.speciesId}
+                      formId={p.formId}
+                      shiny={p.isShiny}
+                      size={36}
+                      className="-my-1"
+                    />
+                    <span className="font-mono text-[10px] leading-none text-pink-700 dark:text-pink-300">
+                      {left}
+                    </span>
+                  </div>
+                );
+              }
+              return place < slots ? (
+                <div key={place} title="Place libre" className={`h-12 rounded-md ${FREE_PLACE}`} />
+              ) : (
+                <div
+                  key={place}
+                  title="Place fermée"
+                  className={`grid h-12 place-items-center rounded-md ${CLOSED_PLACE}`}
+                >
+                  <LockIcon />
+                </div>
+              );
+            })}
+          </div>
+          <AssistantCircle ctx={ctx} post="center" slot={center} closed={first >= slots} />
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Choix des Pokémon K.O. à soigner, dans la limite des places libres. */
+function HealDialog({ m }: { m: CenterTileModel }) {
+  const { ctx, heal, free, waiting, selected, setSelected, chosen, toggle } = m;
+  return (
+    <Modal open={selected !== null} onClose={() => setSelected(null)}>
+      <h2 className="text-xl font-bold">Soigner des Pokémon</h2>
+      <p className="mt-1 text-sm text-slate-500">
+        {waiting.length} Pokémon K.O. pour{' '}
+        {free > 1 ? `${free} places libres` : `${free} place libre`} : choisis ceux à soigner.
+      </p>
+      <ul className="-mx-1 mt-3 grid max-h-[60vh] gap-2 overflow-y-auto p-1">
+        {waiting.map((p) => {
+          const on = chosen.includes(p.id);
+          return (
+            <li key={p.id}>
+              <button
+                type="button"
+                aria-pressed={on}
+                disabled={!on && chosen.length >= free}
+                onClick={() => toggle(p.id)}
+                className={`flex w-full items-center gap-3 rounded-md border-2 p-2 text-left transition enabled:hover:border-brand-500 disabled:cursor-default disabled:opacity-50 ${
+                  on ? 'border-ink bg-done' : 'border-well-line bg-tile'
+                }`}
+              >
+                <PokemonSprite
+                  speciesId={p.speciesId}
+                  formId={p.formId}
+                  shiny={p.isShiny}
+                  size={40}
+                />
+                <span className="min-w-0 flex-1 text-sm">
+                  <span className="block font-medium">
+                    {speciesName(ctx, p.speciesId, p.formId)}
+                  </span>
+                  <span className="text-xs text-slate-500">Niveau {p.level}</span>
+                </span>
+                <span
+                  aria-hidden
+                  className={`grid size-5 shrink-0 place-items-center rounded-[3px] border-2 text-xs font-bold ${
+                    on
+                      ? 'border-ink bg-ink text-white dark:border-title dark:bg-title dark:text-ink'
+                      : 'border-slate-400'
                   }`}
                 >
-                  <PokemonSprite
-                    speciesId={p.speciesId}
-                    formId={p.formId}
-                    shiny={p.isShiny}
-                    size={40}
-                  />
-                  <span className="min-w-0 flex-1 text-sm">
-                    <span className="block font-medium">
-                      {speciesName(ctx, p.speciesId, p.formId)}
-                    </span>
-                    <span className="text-xs text-slate-500">Niveau {p.level}</span>
-                  </span>
-                  <span
-                    aria-hidden
-                    className={`grid size-5 shrink-0 place-items-center rounded-[3px] border-2 text-xs font-bold ${
-                      on
-                        ? 'border-ink bg-ink text-white dark:border-title dark:bg-title dark:text-ink'
-                        : 'border-slate-400'
-                    }`}
-                  >
-                    {on ? '✓' : ''}
-                  </span>
-                </button>
-              </li>
-            );
-          })}
-        </ul>
-        {heal.error && <p className="mt-2 text-sm text-red-600">{errorText(heal.error)}</p>}
-        <div className="mt-4 flex items-center justify-between gap-2">
-          <span className="text-sm text-slate-500">
-            {chosen.length} / {free} place{free > 1 ? 's' : ''}
-          </span>
-          <span className="flex gap-2">
-            <button className="btn-ghost" onClick={() => setSelected(null)}>
-              Annuler
-            </button>
-            <button
-              className="btn-primary"
-              disabled={chosen.length === 0 || heal.isPending}
-              onClick={() => heal.mutate(chosen, { onSuccess: () => setSelected(null) })}
-            >
-              {chosen.length > 1 ? `Soigner (${chosen.length})` : 'Soigner'}
-            </button>
-          </span>
-        </div>
-      </Modal>
-    </>
+                  {on ? '✓' : ''}
+                </span>
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      {heal.error && <p className="mt-2 text-sm text-red-600">{errorText(heal.error)}</p>}
+      <div className="mt-4 flex items-center justify-between gap-2">
+        <span className="text-sm text-slate-500">
+          {chosen.length} / {free} place{free > 1 ? 's' : ''}
+        </span>
+        <span className="flex gap-2">
+          <button className="btn-ghost" onClick={() => setSelected(null)}>
+            Annuler
+          </button>
+          <button
+            className="btn-primary"
+            disabled={chosen.length === 0 || heal.isPending}
+            onClick={() => heal.mutate(chosen, { onSuccess: () => setSelected(null) })}
+          >
+            {chosen.length > 1 ? `Soigner (${chosen.length})` : 'Soigner'}
+          </button>
+        </span>
+      </div>
+    </Modal>
   );
 }
