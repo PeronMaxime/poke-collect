@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react';
 import { Modal } from '../components/ui';
-import { LAUNCH_DIALOG_CLASS, ResultFrame } from './game/dialogParts';
+import { LAUNCH_DIALOG_CLASS, ResultFrame } from '../features/common/dialogParts';
 
 /**
  * Nouveautés (changelog), en popup ouverte depuis n'importe quel écran, même sans être connecté.

@@ -49,12 +49,12 @@ import {
   TeamsPage,
   TrainerCardPage,
   WikiPage,
-} from './game/pages';
-import { WidgetsDialog } from './game/WidgetsDialog';
+} from '../features/pages';
+import { WidgetsDialog } from '../features/buildings/WidgetsDialog';
 import { preloadWhenIdle } from '../lib/lazy';
 import { BUILDING_TABS, WIDGETS, useWidgetSettings, widgetTab } from '../lib/widgets';
-import { RoamerSightingNotice } from './game/RoamerSightingNotice';
-import { WIKI_HASH, wikiLink } from './game/wiki';
+import { RoamerSightingNotice } from '../features/expeditions/RoamerSightingNotice';
+import { WIKI_HASH, wikiLink } from '../features/wiki/wiki';
 import { openChangelog, useUnseenChangelog } from './ChangelogPage';
 import { FanDisclaimer, LegalLinks } from './LegalPages';
 import { SettingsDialog } from './SettingsDialog';

@@ -26,8 +26,14 @@ src/
   pages/
     HomePage.tsx      Coquille du jeu : en-tête, menu, onglet affiché (ancre de l'adresse)
     AuthPage, CreateProfilePage, StarterPage, SettingsDialog, ChangelogPage, LegalPages…
-    game/             Les écrans du jeu : un fichier `…Page.tsx` par onglet, et leurs morceaux
-      pages.ts        La liste des pages, chargées à la demande
+  features/           Les écrans du jeu, un dossier par domaine
+    pages.ts          La liste des pages (une par onglet), chargées à la demande
+    expeditions/ pc/ battles/ dungeons/ daycare/ farm/ museum/ center/ quests/ shop/ bag/
+    pokedex/ teams/ trainer/ guild/ wiki/
+                      Un domaine : sa page `…Page.tsx`, ses dialogues et ses morceaux
+    buildings/        Colonne des bâtiments (grand écran), assistants, pièces communes
+    common/           Ce que plusieurs domaines partagent : choix d'équipe (`TeamPicker`), combat
+                      en temps réel (`DungeonCombat`), onglets de région, cadres de dialogue
 test/                 Tests d'écran (jsdom contre la vraie API en mémoire)
 public/               `sw.js`, `manifest.webmanifest`, icônes
 ```
@@ -77,7 +83,7 @@ les bibliothèques (`vendor-….js`) et les données PokéAPI (`data-….js`). C
 fichiers portent un nom tiré de leur contenu : tant qu'ils ne changent pas, ils restent en cache
 d'une mise en ligne à l'autre.
 
-Chaque onglet est une page chargée à la demande, déclarée dans `pages/game/pages.ts` avec
+Chaque onglet est une page chargée à la demande, déclarée dans `features/pages.ts` avec
 `lazyPage()`. Une fois le jeu affiché, les pages de `PRELOADED_PAGES` se téléchargent en avance
 (navigateur inactif) : changer d'onglet reste immédiat. Le wiki attend qu'on l'ouvre.
 

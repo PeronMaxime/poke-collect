@@ -406,10 +406,16 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
     qu'il relit à sa façon. Le point commun, lire et écrire sans jamais planter, est écrit une
     fois ; 11 fichiers l'utilisent, `ChangelogPage.tsx` attend l'étape 5.6. Le client d'API
     commun avec l'admin (`@poke/client`) est fait à l'étape 6.4, avec l'admin.
-- [ ] **5.4 Un dossier par domaine** : `pages/game` (63 fichiers à plat) → `features/expeditions`,
+- [x] **5.4 Un dossier par domaine** : `pages/game` (63 fichiers à plat) → `features/expeditions`,
       `pc`, `battles`, `dungeons`, `daycare`, `farm`, `museum`, `center`, `guild`, `quests`,
       `shop`, `pokedex`, `teams`, `trainer`, `wiki`, `buildings` ; le commun (choix d'équipe,
       révélations, cartes) dans `features/common`. Déplacements seuls, sans modification.
+  - **Réalisé** le 11 novembre (écarts avec le plan) : 64 fichiers déplacés par `git mv` dans
+    `src/features/` ; seuls les chemins d'import ont changé. Un dossier `bag` en plus (Sac, coffres,
+    objets utilisés sur un Pokémon), que le plan n'avait pas listé. Le classement est rangé avec
+    la fiche Dresseur (`trainer`), les combats légendaires avec les quêtes qui les lancent.
+    `DungeonCombat`, écran commun aux trois familles de combats, est dans `common`. Les pages hors
+    du jeu (connexion, starter, réglages, nouveautés) restent dans `pages/`.
 - [ ] **5.5 Découpage des composants géants**, un domaine par livraison, dans cet ordre :
   1. Expéditions : `LaunchExpeditionForm` (1 016), `ExpeditionsPage`, `ZoneCard`, `LootReveal` ;
   2. PC : `PokemonDetail` (745), `PcPage`, `ItemUseDialog`, `DepositDialog` (626) ;

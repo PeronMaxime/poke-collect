@@ -113,7 +113,8 @@ Pour qu'un changement de contenu arrive en production (dont la base a ses propre
 
 1. `MENU_TABS` dans `packages/content/src/schemas/` (identifiant et libellé). Un onglet absent
    du menu réglé dans l'admin est ajouté à la fin automatiquement (`normalizeMenu`).
-2. La page dans `apps/web/src/pages/game/`, branchée dans `HomePage.tsx`.
+2. La page dans `apps/web/src/features/<domaine>/`, déclarée dans `features/pages.ts` et
+   affichée par `HomePage.tsx`.
 3. Sa condition de déblocage éventuelle : `balance.tabUnlocks`, réglable dans l'admin
    (Progression).
 4. Le test `apps/web/test/tabs.test.tsx` couvre le nouvel onglet sans modification : il parcourt

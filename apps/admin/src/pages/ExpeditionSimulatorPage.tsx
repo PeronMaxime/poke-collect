@@ -20,11 +20,19 @@ import type {
 } from '@poke/shared';
 import { TagBadge, TagToggleList } from '@web/components/tags';
 import { Modal, PokemonSprite } from '@web/components/ui';
-import { ZoneCard } from '@web/pages/game/ExpeditionsPage';
-import { NewbornActionsView } from '@web/pages/game/HatchReveal';
-import { LAUNCH_DIALOG_CLASS, LaunchExpeditionForm } from '@web/pages/game/LaunchExpeditionDialog';
-import { ExpeditionRevealView } from '@web/pages/game/LootReveal';
-import { TeamPicker, nameMatcher, pillClass, useTeamPickerOver } from '@web/pages/game/TeamPicker';
+import { ZoneCard } from '@web/features/expeditions/ExpeditionsPage';
+import { NewbornActionsView } from '@web/features/daycare/HatchReveal';
+import {
+  LAUNCH_DIALOG_CLASS,
+  LaunchExpeditionForm,
+} from '@web/features/expeditions/LaunchExpeditionDialog';
+import { ExpeditionRevealView } from '@web/features/expeditions/LootReveal';
+import {
+  TeamPicker,
+  nameMatcher,
+  pillClass,
+  useTeamPickerOver,
+} from '@web/features/common/TeamPicker';
 import { VersionBanner } from '../components/EntityPage';
 import { WeatherSelect } from '../components/forms/pickers';
 import { errorMessage, useWorkingVersion } from '../lib/content';
