@@ -1,3 +1,7 @@
+/**
+ * Page « Versions et journal » : historique des modifications faites dans l'admin (qui, quand,
+ * quoi), page par page.
+ */
 import { useInfiniteQuery } from '@tanstack/react-query';
 import type { AuditLogEntryDto, Paginated } from '@poke/shared';
 import { api } from '../lib/api';
@@ -49,6 +53,7 @@ function actionLabel(action: string): string {
   return action;
 }
 
+/** Page « Versions et journal » (voir l'en-tête du fichier). */
 export function AuditLogPage() {
   const log = useInfiniteQuery({
     queryKey: ['audit-log'],

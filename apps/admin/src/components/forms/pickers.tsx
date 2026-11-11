@@ -1,3 +1,7 @@
+/**
+ * Sélecteurs des fiches de contenu : espèce, forme, ensemble d'espèces, types, objet, météo, et
+ * l'éditeur visuel d'une condition de déblocage ; sprites et icônes pour les aperçus.
+ */
 import { useState } from 'react';
 import { ITEM_CATEGORIES, WEATHERS } from '@poke/content';
 import type {
@@ -38,8 +42,10 @@ const FORM_KINDS: [FormKind, string][] = [
 ];
 
 const typeNames = new Map(types.map((t) => [t.name, t.nameFr]));
+/** Nom français d'un type (« fire » → « Feu ») ; le nom brut s'il est inconnu. */
 export const typeLabel = (t: string) => typeNames.get(t) ?? t;
 
+/** Sprite d'une espèce, ou d'une de ses formes avec `formId`. */
 export function Sprite({
   id,
   formId = null,
@@ -64,6 +70,7 @@ export function Sprite({
   );
 }
 
+/** Icône d'un objet : celle réglée dans le contenu, sinon le sprite PokéAPI. */
 export function ItemIcon({ ctx, id, size = 28 }: { ctx: GameContext; id: string; size?: number }) {
   return (
     <img
@@ -76,6 +83,7 @@ export function ItemIcon({ ctx, id, size = 28 }: { ctx: GameContext; id: string;
   );
 }
 
+/** Pastille d'un type, à sa couleur. */
 export function TypeBadge({ type }: { type: string }) {
   return (
     <span
@@ -291,6 +299,7 @@ export function SpeciesSetEditor({
   );
 }
 
+/** Choix de plusieurs types : une pastille à cocher par type. */
 export function TypeMultiSelect({
   value,
   onChange,
@@ -323,6 +332,7 @@ export function TypeMultiSelect({
   );
 }
 
+/** Choix d'un type dans une liste déroulante. */
 export function TypeSelect({
   value,
   onChange,

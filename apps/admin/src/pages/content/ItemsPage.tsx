@@ -1,3 +1,7 @@
+/**
+ * Page « Objets » : catalogue des objets (nom, catégorie, rareté, prix) et leurs effets, un
+ * formulaire par type d'effet.
+ */
 import {
   CHEST_RARITIES,
   CHEST_RARITY_LABELS,
@@ -39,6 +43,7 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
   misc: 'Divers',
 };
 
+/** Libellé de chaque rareté d'objet. */
 export const RARITY_LABELS: Record<Rarity, string> = {
   common: 'Commun',
   uncommon: 'Peu commun',
@@ -151,6 +156,7 @@ const EFFECTS: Record<
 
 const pokeApiById = new Map(pokeApiItems.map((i) => [i.name, i]));
 
+/** Page « Objets » (voir l'en-tête du fichier). */
 export function ItemsPage() {
   return (
     <EntityPage<Item>

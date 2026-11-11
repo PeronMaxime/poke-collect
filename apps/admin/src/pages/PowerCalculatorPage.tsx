@@ -1,3 +1,7 @@
+/**
+ * Page « Calculateur de PE » : équipes de test gardées dans ce navigateur, comparées à la PE minimale
+ * des zones et des combats légendaires d'une région.
+ */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { STAT_NAMES, abilities as abilityData, natures } from '@poke/data';

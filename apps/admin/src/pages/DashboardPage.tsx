@@ -1,3 +1,7 @@
+/**
+ * Page « Tableau de bord » : versions du contenu (publiée, brouillon, historique), alertes de
+ * cohérence, publication, import et export.
+ */
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
@@ -143,6 +147,7 @@ function useDashboard() {
 /** Ce qu'affichent les pièces de `DashboardPage`. */
 type DashboardPageModel = ReturnType<typeof useDashboard>;
 
+/** Page « Tableau de bord » (voir l'en-tête du fichier). */
 export function DashboardPage() {
   const m = useDashboard();
   const { badJson, mutationError } = m;

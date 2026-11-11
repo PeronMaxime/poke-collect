@@ -1,3 +1,7 @@
+/**
+ * Page « Télémétrie » : parcours des joueurs et goulets (dresseurs, zones, donjons, quêtes),
+ * possession des Méga-Gemmes et Pokédex, pour régler le contenu.
+ */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import type { DurationStats, TelemetryResponse, TelemetryStepKind } from '@poke/shared';

@@ -1,3 +1,7 @@
+/**
+ * Onglet « Bâtiments » de la page Progression : places au départ et paliers de déblocage de chaque
+ * bâtiment.
+ */
 import { useState } from 'react';
 import { FACILITIES } from '@poke/content';
 import type {

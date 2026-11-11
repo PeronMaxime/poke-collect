@@ -1,3 +1,4 @@
+/** Quêtes : étapes ordonnées (conditions déclaratives) et récompenses, dont les légendaires. */
 import { IMPOSED_WEATHERS, questSchema, unlockParts } from '@poke/content';
 import type { Quest, QuestCondition, QuestExpeditionCondition, QuestStep } from '@poke/content';
 import { types } from '@poke/data';
@@ -19,8 +20,6 @@ import { ItemSelect, SpeciesSelect, Sprite, UnlockEditor } from '../../component
 import type { WorkingVersion } from '../../lib/content';
 import { PokemonRewardsEditor } from './QuestPokemonEditor';
 
-/** Quêtes : étapes ordonnées (conditions déclaratives) et récompenses, dont les légendaires. */
-
 const newStep = (): QuestStep => ({
   name: 'Nouvelle étape',
   description: '',
@@ -28,6 +27,7 @@ const newStep = (): QuestStep => ({
   outcome: '',
 });
 
+/** Page « Quêtes » (voir l'en-tête du fichier). */
 export function QuestsPage() {
   return (
     <EntityPage<Quest>

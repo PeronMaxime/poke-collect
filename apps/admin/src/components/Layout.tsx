@@ -1,11 +1,18 @@
+/**
+ * Cadre des pages : le menu des sections à gauche (en haut sur mobile), le compte connecté, la page
+ * au centre.
+ */
 import { NavLink, Outlet, useNavigation } from 'react-router';
 import { useAdminUser } from '../lib/admin-user';
 import { CURRENT_PHASE, SECTIONS } from '../sections';
 import { SignOutButton } from './SignOutButton';
 
+/**
+ * Cadre des pages (voir l'en-tête du fichier) ; pendant le téléchargement de la page suivante,
+ * celle d'avant s'estompe.
+ */
 export function Layout() {
   const user = useAdminUser();
-  // Page suivante en téléchargement (pages chargées à la demande) : celle d'avant s'estompe.
   const loading = useNavigation().state === 'loading';
   return (
     <div className="flex min-h-screen flex-col md:flex-row">

@@ -1,3 +1,6 @@
+/**
+ * Récapitulatif des effets de talents réglés, par type d'effet, pour une région ou tout le jeu.
+ */
 import { useState } from 'react';
 import { ABILITY_PARAM_IDS, IMPOSED_WEATHERS, STATUSES, WEATHERS } from '@poke/content';
 import type { AbilityEffect, AbilityEffectType, GameAbility } from '@poke/content';
@@ -12,6 +15,7 @@ import {
 } from '@poke/game-core';
 import type { AbilityActivity, GameContext } from '@poke/game-core';
 
+/** Talent du récapitulatif : sa fiche PokéAPI, et son réglage s'il en a un. */
 export interface SummaryRow {
   ability: Ability;
   entry: GameAbility | undefined;

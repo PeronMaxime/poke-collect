@@ -1,3 +1,7 @@
+/**
+ * Page « Menu du jeu » : ordre des onglets, sections et leurs titres, conditions de déblocage des
+ * onglets.
+ */
 import { useState } from 'react';
 import { DEFAULT_MENU_GROUPS, DEFAULT_MENU_TITLES, MENU_TABS, normalizeMenu } from '@poke/content';
 import type { MenuSection, MenuTabId, TabUnlocks, UnlockCondition } from '@poke/content';
@@ -12,6 +16,7 @@ const LABELS = Object.fromEntries(MENU_TABS.map((t) => [t.id, t.label])) as Reco
   string
 >;
 
+/** Page « Menu du jeu » (voir l'en-tête du fichier). */
 export function MenuPage() {
   return (
     <WithWorkingVersion>{(w) => <MenuEditor key={w.version.id} working={w} />}</WithWorkingVersion>

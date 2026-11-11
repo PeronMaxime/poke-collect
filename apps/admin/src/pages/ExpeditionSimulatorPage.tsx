@@ -1,3 +1,7 @@
+/**
+ * Page « Simulateur d'expédition » : une expédition instantanée avec les vrais écrans du jeu (alias
+ * `@web`) et un PC fictif, sur la version de travail.
+ */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Weather, Zone } from '@poke/content';

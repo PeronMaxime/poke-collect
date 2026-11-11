@@ -1,3 +1,7 @@
+/**
+ * Récompense d'un palier, d'une collection, d'une quête ou d'une complétion : argent, objets,
+ * emplacements en plus et bonus permanents, son éditeur et son résumé d'une ligne.
+ */
 import type { PermanentBonus, PermanentBonusType, ProgressReward } from '@poke/content';
 import { ASSISTANT_POST_PLACES } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
@@ -5,6 +9,7 @@ import { Field, NumberInput, SelectInput } from './fields';
 import type { FieldErrors } from './fields';
 import { ItemSelect } from './pickers';
 
+/** Libellé de chaque type de bonus permanent. */
 export const BONUS_LABELS: Record<PermanentBonusType, string> = {
   capture: 'Capture en expédition',
   xp: 'XP gagnée (expéditions et combats)',
@@ -12,6 +17,7 @@ export const BONUS_LABELS: Record<PermanentBonusType, string> = {
   shiny: 'Chance de chromatique (expéditions, œufs, fossiles)',
 };
 
+/** Récompense vide, point de départ d'une nouvelle récompense. */
 export const emptyReward = (): ProgressReward => ({
   currency: 0,
   items: [],

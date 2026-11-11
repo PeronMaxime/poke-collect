@@ -44,6 +44,10 @@ function byExpeditionOrder(w: WorkingVersion): LootTable[] {
   return [...w.content.lootTables].sort((a, b) => rankOf(a) - rankOf(b));
 }
 
+/**
+ * Page « Tables de butin » : tables réutilisables, dans l'ordre des expéditions, filtrables par
+ * région.
+ */
 export function LootTablesPage() {
   return (
     <EntityPage<LootTable>

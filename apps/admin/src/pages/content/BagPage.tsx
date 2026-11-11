@@ -9,6 +9,7 @@ import { useSaveBalance } from '../../lib/content';
 /** Longueur maximale d'un titre d'onglet ou de rubrique (comme le menu). */
 const MAX_TITLE = 30;
 
+/** Page « Sac du jeu » : onglets du Sac et rubriques qu'ils regroupent. */
 export function BagPage() {
   return (
     <WithWorkingVersion>{(w) => <BagEditor key={w.version.id} working={w} />}</WithWorkingVersion>

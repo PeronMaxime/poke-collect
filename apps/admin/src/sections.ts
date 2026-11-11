@@ -10,6 +10,7 @@ export interface AdminSection {
   phase: number;
 }
 
+/** Les sections du menu, dans l'ordre ; `routes.tsx` leur associe une page. */
 export const SECTIONS: AdminSection[] = [
   {
     path: '/',

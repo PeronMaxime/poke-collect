@@ -501,8 +501,13 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
     l'admin gagne le délai maximal (2 min, pour les imports et la télémétrie) et des erreurs
     `NETWORK` / `TIMEOUT` lisibles au lieu de « Erreur inconnue ». ESLint interdit au client
     d'importer un autre paquet.
-- [ ] **6.5 Documentation** : comment ajouter une page d'édition pour une nouvelle entité de
+- [x] **6.5 Documentation** : comment ajouter une page d'édition pour une nouvelle entité de
       contenu.
+  - **Réalisé** le 11 novembre : recette « Ajouter une page d'édition dans l'admin » dans
+    `docs/RECETTES.md` (les deux modèles, un exemple de page d'entités, l'inscription dans
+    `routes.tsx` et `sections.ts`, les tests qui la couvrent d'office). Comme le jeu en 5.7 : un
+    en-tête avant les imports dans chaque fichier de `apps/admin/src` (34 en manquaient, un
+    autre l'avait après les imports) et une phrase sur chaque export (50 en manquaient).
 - **But** : ajouter un réglage dans l'admin sans chercher dans 1 400 lignes.
 
 ### Phase 7 : Verrouillage et passage de relais (S)

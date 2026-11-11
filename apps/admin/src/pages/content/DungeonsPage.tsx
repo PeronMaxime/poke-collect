@@ -1,3 +1,7 @@
+/**
+ * Page « Donjons » : boss, lignée à capturer, règles et récompenses de chaque donjon, et un
+ * simulateur de combat contre une équipe type.
+ */
 import { useState } from 'react';
 import { DUNGEON_DIFFICULTIES, dungeonSchema } from '@poke/content';
 import type { Dungeon, DungeonDifficulty, TrainerPokemon } from '@poke/content';

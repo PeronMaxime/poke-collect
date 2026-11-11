@@ -1,3 +1,7 @@
+/**
+ * Page « Dresseurs » : identité, équipe, combat, récompenses et rejouabilité de chaque dresseur, et
+ * un simulateur de combat contre une équipe type.
+ */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { defaultTrainerTimeLimitSeconds, trainerSchema } from '@poke/content';
@@ -34,6 +38,7 @@ import {
 } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
 
+/** Page « Dresseurs » (voir l'en-tête du fichier). */
 export function TrainersPage() {
   return (
     <EntityPage<Trainer>

@@ -1,3 +1,7 @@
+/**
+ * Page « Guildes » : quêtes de guilde (objectifs du jour et de la semaine), lots des coffres et
+ * aperçu de leurs chances.
+ */
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
@@ -78,6 +82,7 @@ const goalText = (goal: GuildQuestGoal | null) =>
 const newObjective = (type: GuildObjectiveType): GuildObjective =>
   type === 'catchPokemon' ? { type, pokemonType: null } : { type };
 
+/** Page « Guildes » (voir l'en-tête du fichier). */
 export function GuildsPage() {
   const [view, setView] = useState<View>('quests');
   return (

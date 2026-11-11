@@ -1,3 +1,7 @@
+/**
+ * Page « Zones » : rencontres, accès, butin, météo et rencontres spéciales de chaque zone, et un
+ * simulateur d'expéditions.
+ */
 import { useState } from 'react';
 import { DEFAULT_SPECIAL_ENCOUNTER_CHANCE, IMPOSED_WEATHERS, zoneSchema } from '@poke/content';
 import type { Encounter, ImposedWeather, SpecialEncounter, Zone } from '@poke/content';
@@ -29,6 +33,7 @@ import {
 } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
 
+/** Page « Zones » (voir l'en-tête du fichier). */
 export function ZonesPage() {
   return (
     <EntityPage<Zone>

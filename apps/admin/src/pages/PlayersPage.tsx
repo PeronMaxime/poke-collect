@@ -1,3 +1,7 @@
+/**
+ * Page « Joueurs » : inscrits (présence, recherche, tri), la fiche de chacun, et les outils de test
+ * des comptes admin.
+ */
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { ACTIVE_WINDOW_MS, ONLINE_WINDOW_MS, searchKey } from '@poke/shared';

@@ -1,3 +1,7 @@
+/**
+ * Onglet « Complétion d'expédition » de la page Progression : récompenses quand chaque Pokémon
+ * d'une expédition est capturé.
+ */
 import { useState } from 'react';
 import { expeditionCompletionSchema } from '@poke/content';
 import type {

@@ -1,3 +1,7 @@
+/**
+ * Page « Boutique » : articles (prix, limites, cadeaux, dates), catégories, et la boutique vue par
+ * un joueur selon une progression simulée.
+ */
 import { useMemo, useState } from 'react';
 import { PURCHASE_PERIODS, shopCategorySchema, shopEntrySchema } from '@poke/content';
 import type { PurchasePeriod, ShopCategory, ShopEntry, UnlockCondition } from '@poke/content';
@@ -60,6 +64,7 @@ export function unlockSummary(ctx: GameContext, u: UnlockCondition): string {
   }
 }
 
+/** Page « Boutique » : articles, catégories et aperçu joueur, en onglets. */
 export function ShopPage() {
   const [view, setView] = useState<View>('entries');
   return (

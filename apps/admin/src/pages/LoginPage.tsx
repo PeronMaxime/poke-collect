@@ -1,8 +1,10 @@
+/** Connexion à l'admin (adresse et mot de passe) ; le rôle est vérifié ensuite par `AdminGate`. */
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '../lib/auth-client';
 
+/** Formulaire de connexion ; une fois connecté, `AdminGate` relit le rôle. */
 export function LoginPage() {
   const queryClient = useQueryClient();
   const [email, setEmail] = useState('');

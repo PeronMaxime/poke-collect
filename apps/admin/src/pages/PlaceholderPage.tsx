@@ -3,6 +3,7 @@ import type { AdminSection } from '../sections';
 /** Dernière phase numérotée de la roadmap (docs/plans/PLAN.md) ; au-delà : « Plus tard ». */
 const LAST_ROADMAP_PHASE = 8;
 
+/** Emplacement réservé d'une section pas encore construite : sa description et sa phase. */
 export function PlaceholderPage({ section }: { section: AdminSection }) {
   return (
     <div className="max-w-2xl">

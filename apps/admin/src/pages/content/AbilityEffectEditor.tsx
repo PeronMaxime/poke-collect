@@ -1,3 +1,7 @@
+/**
+ * Effets d'un talent : la liste, l'ajout d'un effet par type, et la ligne de chacun (paramètres,
+ * conditions).
+ */
 import {
   ABILITY_EFFECT_TYPES,
   ABILITY_PARAM_IDS,
@@ -197,6 +201,7 @@ function newCondition(type: AbilityConditionType): AbilityCondition {
   }
 }
 
+/** Effets d'un talent : la ligne de chacun, et un bouton d'ajout par type d'effet. */
 export function AbilityEffectEditor({
   effects,
   onChange,

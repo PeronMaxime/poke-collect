@@ -1,3 +1,7 @@
+/**
+ * Page « Progression » : collections de formes, complétions d'expédition et bâtiments à débloquer,
+ * en onglets.
+ */
 import { useState } from 'react';
 import { collectionSchema } from '@poke/content';
 import type { Collection } from '@poke/content';
@@ -25,6 +29,7 @@ const VIEWS = [
 ] as const;
 type View = (typeof VIEWS)[number]['id'];
 
+/** Page « Progression » (voir l'en-tête du fichier). */
 export function ProgressionPage() {
   const [view, setView] = useState<View>('collections');
   return (

@@ -1,3 +1,7 @@
+/**
+ * Page « Santé de l'API » : requêtes, erreurs et durées par route et par minute, gardées en mémoire
+ * par le processus de l'API.
+ */
 import { useQuery } from '@tanstack/react-query';
 import type { ApiMetricsResponse } from '@poke/shared';
 import { api } from '../lib/api';

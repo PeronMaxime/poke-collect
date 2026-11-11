@@ -93,7 +93,60 @@ En plus des étapes ci-dessus : la table dans `versionedContentTables`
 (`packages/db/src/schema/content.ts`, sinon elle n'est pas copiée dans les brouillons), l'entité
 dans `entityDefs` (`packages/db/src/content-repo.ts`), sa route dans `ENTITY_ROUTES`
 (`apps/api/src/routes/admin/content.ts`), son accès dans `GameContext`
-(`packages/game-core/src/context.ts`), et sa page dans l'admin (`routes.tsx`, `sections.ts`).
+(`packages/game-core/src/context.ts`), et sa page dans l'admin (ci-dessous).
+
+### Ajouter une page d'édition dans l'admin
+
+Deux modèles (détail dans `apps/admin/README.md`), à choisir selon la façon dont le contenu
+s'enregistre :
+
+**Une entité à la fois** (elle a sa collection et sa route `ENTITY_ROUTES`) : la page ne décrit
+que son contenu, `EntityPage` fait le reste (liste, recherche, sélection, validation par le
+schéma, alertes de cohérence, Créer / Enregistrer / Dupliquer / Supprimer). Modèle :
+`pages/content/RegionsPage.tsx`.
+
+1. Le segment d'URL de la collection dans `EntityCollection` (`apps/admin/src/lib/content.ts`), et
+   le type d'entité des alertes dans `ContentEntityKind` (`packages/content/src/integrity/types.ts`).
+2. La page dans `apps/admin/src/pages/content/` :
+
+   ```tsx
+   export function BadgesPage() {
+     return (
+       <EntityPage<Badge>
+         title="Badges"
+         description="…"
+         collection="badges"
+         entityKind="badge"
+         schema={badgeSchema}
+         list={(w) => w.content.badges}
+         getKey={(b) => b.id}
+         searchText={(b) => `${b.id} ${b.name}`}
+         renderListItem={(b) => b.name}
+         create={() => ({ id: '', name: '' })}
+         renderForm={(p) => <BadgeForm {...p} />}
+       />
+     );
+   }
+   ```
+
+   La fiche (`BadgeForm`) reçoit `EntityFormProps<Badge>` : la valeur, `onChange`, les erreurs
+   du schéma par chemin, `isNew` (identifiant modifiable), `editable` (faux sur la version
+   publiée), la version de travail. Les champs viennent de `components/forms/fields.tsx` et
+   `pickers.tsx`. Une fiche de plus de 150 lignes se découpe en sections qui reçoivent les mêmes
+   props (`<BadgeRewardsSection {...p} />`).
+
+**Des réglages enregistrés en un bloc dans l'équilibrage** (`balance.…`) : la page se monte dans
+`WithWorkingVersion` avec `key={w.version.id}`, tient son brouillon dans un hook (état initial
+lu dans `working.content.balance`, `dirty`, validité, `useSaveBalance`, gestes `cancel` et
+`submit`) et s'affiche dans `SettingsPage`, qui écrit l'en-tête, Annuler / Enregistrer, le
+bandeau de version et l'erreur. Modèle : `pages/content/FacilitiesView.tsx`.
+
+Dans les deux cas :
+
+3. Le chemin dans `PAGES` (`apps/admin/src/routes.tsx`, chargée à la demande) et la section du
+   menu dans `SECTIONS` (`apps/admin/src/sections.ts`).
+4. Les tests de l'admin la couvrent sans modification : `pages.test.tsx` affiche chaque section,
+   `forms.test.tsx` ouvre la première, la médiane et la dernière fiche de chaque liste.
 
 ### Migration de contenu
 

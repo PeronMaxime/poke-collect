@@ -1,3 +1,7 @@
+/**
+ * Page « Équilibrage » : tous les réglages globaux du jeu (expéditions, capture, chromatiques,
+ * élevage, combats…), une section par domaine, avec leurs aperçus calculés.
+ */
 import { useState } from 'react';
 import {
   CHEST_RARITIES,
@@ -40,6 +44,7 @@ import { ItemSelect, TypeBadge, typeLabel } from '../../components/forms/pickers
 import type { WorkingVersion } from '../../lib/content';
 import { useSaveBalance } from '../../lib/content';
 
+/** Page « Équilibrage » (voir l'en-tête du fichier). */
 export function BalancePage() {
   return (
     <WithWorkingVersion>{(w) => <BalanceForm key={w.version.id} working={w} />}</WithWorkingVersion>

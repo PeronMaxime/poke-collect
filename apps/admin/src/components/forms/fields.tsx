@@ -27,6 +27,7 @@ export function errorsUnder(errors: FieldErrors, prefix: string): string[] {
   return [...errors].filter(([p]) => p === prefix || p.startsWith(`${prefix}.`)).map(([, m]) => m);
 }
 
+/** Champ étiqueté : libellé, aide, erreur du schéma sous le contrôle. */
 export function Field({
   label,
   hint,
@@ -53,6 +54,7 @@ export function Field({
   );
 }
 
+/** Champ de texte (ou zone de texte avec `multiline`) ; rend toujours une chaîne. */
 export function TextInput({
   value,
   onChange,
@@ -148,6 +150,7 @@ export function NumberInput({
   );
 }
 
+/** Case à cocher avec son libellé. */
 export function Toggle({
   checked,
   onChange,
@@ -174,6 +177,7 @@ export function Toggle({
   );
 }
 
+/** Liste déroulante typée : la valeur rendue est l'une des `options`. */
 export function SelectInput<T extends string>({
   value,
   onChange,
@@ -201,6 +205,7 @@ export function SelectInput<T extends string>({
   );
 }
 
+/** Bloc titré d'une fiche (une carte). */
 export function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
     <fieldset className="card space-y-4">
