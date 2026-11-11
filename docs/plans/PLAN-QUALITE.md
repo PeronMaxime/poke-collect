@@ -491,10 +491,16 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
 - [x] **6.3 Pages chargées à la demande** (une par route).
   - **Réalisé** le 11 novembre : `routes.tsx` tient une table chemin → chargement (`lazy` de
     React Router) ; le menu estompe la page d'avant pendant le téléchargement de la suivante. Le
-    contenu de test du tableau de bord ne se télécharge qu'au clic. À l'ouverture : 510 → 120 Ko
+    contenu de test du tableau de bord ne se télécharge qu'au clic. À l'ouverture : 500 → 120 Ko
     compressés (`node scripts/bundle-size.mjs apps/admin/dist`) ; le tableau de bord affiché, avec
     le moteur et les données du jeu que partagent toutes les pages de contenu : ≈ 315 Ko.
-- [ ] **6.4 Client d'API commun** avec le jeu (`@poke/client`, voir 5.3).
+- [x] **6.4 Client d'API commun** avec le jeu (`@poke/client`, voir 5.3).
+  - **Réalisé** le 11 novembre : `packages/client` (sans dépendance, testé seul) rend
+    `createApi()`, `ApiError` et les règles de réessai ; chaque application crée son `api` dans
+    `lib/api.ts`. Le jeu y ajoute l'en-tête du profil de l'onglet et le compteur de requêtes ;
+    l'admin gagne le délai maximal (2 min, pour les imports et la télémétrie) et des erreurs
+    `NETWORK` / `TIMEOUT` lisibles au lieu de « Erreur inconnue ». ESLint interdit au client
+    d'importer un autre paquet.
 - [ ] **6.5 Documentation** : comment ajouter une page d'édition pour une nouvelle entité de
       contenu.
 - **But** : ajouter un réglage dans l'admin sans chercher dans 1 400 lignes.

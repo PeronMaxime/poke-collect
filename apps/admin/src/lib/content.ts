@@ -129,7 +129,7 @@ export function useSaveBalance(versionId: number | undefined) {
   });
 }
 
-/** Message lisible d'une erreur d'API (avec la liste des usages pour IN_USE). */
+/** Message lisible d'une erreur d'API (avec la liste des usages pour IN_USE, et sans réponse). */
 export function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     const body = err.body as { message?: string; details?: unknown; issues?: unknown[] } | null;
@@ -137,6 +137,8 @@ export function errorMessage(err: unknown): string {
       return `Impossible de supprimer : encore utilisé par ${body.details.join(', ')}.`;
     }
     if (err.code === 'VALIDATION' && body?.issues) return 'Données invalides (voir les champs).';
+    if (err.code === 'NETWORK') return 'Serveur injoignable : vérifiez la connexion et réessayez.';
+    if (err.code === 'TIMEOUT') return 'Le serveur n’a pas répondu à temps : réessayez.';
     return body?.message ?? err.code;
   }
   return 'Erreur inconnue';

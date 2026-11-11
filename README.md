@@ -69,6 +69,7 @@ packages/
   data/        Données PokéAPI importées (JSON), types, adresses des sprites
   db/          Schéma Drizzle, migrations, contenu versionné, journal d'admin
   shared/      Contrat de l'API : schémas des entrées, types des réponses
+  client/      Client HTTP de l'API, commun au jeu et à l'admin
 scripts/       Import PokéAPI et sprites, scénario de charge
 content/       Instantané du contenu publié (game-content.json)
 deploy/        Scripts et configuration du serveur de production

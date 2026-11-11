@@ -14,7 +14,7 @@ src/
   routes.tsx          Table des pages (toutes derrière `AdminGate` puis `Layout`)
   sections.ts         Le menu : chemin, libellé, description de chaque page
   lib/
-    api.ts            Appel de l'API
+    api.ts            `api()` de `@poke/client` (délai plus long que dans le jeu)
     content.ts        Version de travail, enregistrement d'une entité, publication
   components/
     AdminGate.tsx     Connexion et contrôle d'accès (affichage seulement)

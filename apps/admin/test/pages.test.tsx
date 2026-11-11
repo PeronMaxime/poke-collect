@@ -38,6 +38,8 @@ describe('pages de l’admin', () => {
     await waitFor(() => expect(main.textContent).not.toMatch(/Chargement/));
     await waitFor(() => expect(main.textContent).not.toBe(''));
     expect(screen.queryByText(/Accès refusé|Impossible de/)).toBeNull();
-    expect(main.textContent).not.toMatch(/Erreur inconnue|HTTP_\d+|INTERNAL/);
+    expect(main.textContent).not.toMatch(
+      /Erreur inconnue|HTTP_\d+|INTERNAL|Serveur injoignable|pas répondu/,
+    );
   });
 });

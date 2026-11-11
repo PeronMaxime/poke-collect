@@ -31,6 +31,7 @@ packages/
   content/    Schémas (Zod) du contenu réglable dans l'admin, cohérence, contenu de test
   game-core/  Règles du jeu, en fonctions pures : aucune base, aucun réseau, aucune horloge
   shared/     Contrat de l'API : schémas des entrées, types des réponses
+  client/     Client HTTP de l'API (`api()`, `ApiError`, réessais), commun au jeu et à l'admin
   db/         Schéma Drizzle, migrations, contenu versionné, journal d'admin
 scripts/
   import-pokeapi/  Régénère packages/data depuis PokéAPI, télécharge les sprites
@@ -50,6 +51,8 @@ Les flèches se lisent « importe ». Elles ne vont que dans un sens, et ESLint 
 data  ◄──  content  ◄──  game-core  ◄──┬──  shared  ◄──┬──  web
                                        │               ├──  admin
                                        └──  db  ◄──────┴──  api   (web et admin n'importent pas db)
+
+client  ◄──  web, admin   (client n'importe aucun paquet)
 ```
 
 | Paquet      | Peut importer                   | Ne doit jamais importer        |
@@ -59,6 +62,7 @@ data  ◄──  content  ◄──  game-core  ◄──┬──  shared  ◄�
 | `game-core` | `data`, `content`               | `db`, `shared`, Fastify, React |
 | `shared`    | `data`, `content`, `game-core`  | `db`                           |
 | `db`        | `content`, types de `game-core` | `shared`, les applications     |
+| `client`    | rien                            | tous les autres paquets        |
 | `web`       | tout sauf `db`                  | `db`, Drizzle, Fastify         |
 | `admin`     | tout sauf `db`, et `web`        | `db`, Drizzle, Fastify         |
 | `api`       | tous les paquets                | `web`, `admin`                 |
@@ -202,8 +206,9 @@ déterministe), cachette d'un Pokémon fuyard.
 - **Données** : TanStack Query. Clés, lectures et rechargements après action sont dans
   `lib/queries/`. Règle issue du plan de stabilité : après une action, on ne recharge que les
   données qu'elle a pu changer (`refreshAfter…`), jamais tout.
-- **Appels** : `lib/api.ts` (`api()`), qui gère délai maximal, erreurs typées (`ApiError`) et
-  réessais des lectures.
+- **Appels** : `lib/api.ts` (`api()`), créé avec `@poke/client` (commun avec l'admin), qui gère
+  délai maximal, erreurs typées (`ApiError`) et réessais des lectures ; le jeu y ajoute l'en-tête
+  du profil de l'onglet et un compteur de requêtes en développement.
 - **Textes** : en français, dans les composants ; les libellés partagés et les messages d'erreur
   dans `lib/labels/`.
 - **Hors ligne et installation** : PWA écrite à la main (`public/sw.js`,

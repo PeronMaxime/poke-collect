@@ -13,7 +13,7 @@ src/
   App.tsx             Aiguillage : connexion, création du dresseur, starter, ou le jeu
   index.css           Thème (style rétro), utilitaires `card`, `tile`, `sprite-well`, `count-badge`
   lib/
-    api.ts            `api()` : appel de l'API, délai maximal, `ApiError`, réessais des lectures
+    api.ts            `api()` de `@poke/client`, avec le profil de l’onglet et le compteur de requêtes
     queries/          Couche de données : clés de cache, lectures, requêtes d'action, par domaine
     labels/           Textes composés : noms, effets, conditions, récompenses, durées, erreurs
                       (`GAME_ERRORS` dans `errors.ts`)

@@ -80,6 +80,16 @@ export default tseslint.config(
     rules: { 'no-restricted-imports': ['error', { patterns: forbidden('db') }] },
   },
   {
+    // Le client HTTP ne connaît que `fetch` : ni le contenu, ni les règles, ni le contrat.
+    files: ['packages/client/**/*.ts'],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        { patterns: forbidden('content', 'data', 'db', 'game-core', 'shared') },
+      ],
+    },
+  },
+  {
     files: ['apps/admin/**/*.{ts,tsx}'],
     rules: { 'no-restricted-imports': ['error', { patterns: forbidden('db') }] },
   },
