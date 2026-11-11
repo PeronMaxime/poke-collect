@@ -369,12 +369,23 @@ Sous la protection des tests « à graine égale » (0.2).
 
 Le plus gros du travail : c'est là que le code est le moins commenté et le plus massif.
 
-- [ ] **5.1 Chargement à la demande** (livrable seul, gain immédiat pour les joueurs) :
+- [x] **5.1 Chargement à la demande** (livrable seul, gain immédiat pour les joueurs) :
   - une page par onglet chargée à l'ouverture (`React.lazy`), wiki compris ;
   - données PokéAPI et bibliothèques dans des fichiers à part, gardés en cache entre deux mises en
     ligne ;
   - vérification du service worker et de la proposition de rechargement après mise en ligne ;
   - plafond de taille contrôlé par la CI.
+  - **Réalisé** le 10 novembre (écarts avec le plan) : `lib/lazy.ts` (`lazyPage`) et
+    `pages/game/pages.ts` ; les 17 pages et la colonne des bâtiments sont chargées à la demande,
+    puis préchargées quand le navigateur est inactif (sauf le wiki), ce que le plan ne prévoyait
+    pas : changer d'onglet reste immédiat. Fichiers `data` et `vendor` à part. JavaScript à
+    l'ouverture : 495 Ko → 363 Ko compressés (la mesure de 560 Ko de la section 5 comptait aussi
+    le CSS et les polices). La cible de 250 Ko n'est pas atteinte : les données PokéAPI (118 Ko)
+    servent aux règles dès l'ouverture, et les bibliothèques pèsent 153 Ko. Service worker : un
+    fichier de code disparu après une mise en ligne (le serveur répond alors la page d'accueil)
+    n'est plus mis en cache à sa place, et l'échec de chargement déclenche tout de suite la
+    proposition de rechargement. CI : `pnpm build`, absent jusque-là, puis
+    `scripts/bundle-size.mjs` plafonné à 380 Ko.
 - [ ] **5.2 Couche de données** : `lib/game.ts` (56 exports) → `lib/queries/` par domaine (clés,
       lectures, actions et ce que chaque action invalide). Les 91 appels `api()` et 83
       `useQuery` / `useMutation` des écrans y sont déplacés : un écran n'écrit plus d'URL.

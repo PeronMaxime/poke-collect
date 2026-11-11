@@ -26,6 +26,22 @@ export default defineConfig(({ command }) => ({
   plugins: [react(), tailwindcss(), versionFile()],
   // En développement, pas de version : le serveur Vite recharge déjà les modules.
   define: { __BUILD_ID__: JSON.stringify(command === 'build' ? BUILD_ID : 'dev') },
+  build: {
+    rolldownOptions: {
+      output: {
+        // Deux fichiers à part, dont le nom (tiré du contenu) ne change que si eux-mêmes changent :
+        // le navigateur les garde d'une mise en ligne à l'autre, au lieu de tout retélécharger.
+        codeSplitting: {
+          groups: [
+            // Données PokéAPI (espèces, formes, talents…) : régénérées rarement.
+            { name: 'data', test: /packages[\\/]data[\\/]/, priority: 20 },
+            // Bibliothèques (React, TanStack Query, Motion, Zod, Better Auth).
+            { name: 'vendor', test: /node_modules/, priority: 10 },
+          ],
+        },
+      },
+    },
+  },
   server: {
     // Même origine que l'API en dev : les cookies de session fonctionnent sans configuration CORS.
     proxy: { '/api': 'http://127.0.0.1:3000' },

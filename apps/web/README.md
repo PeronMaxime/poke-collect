@@ -17,12 +17,14 @@ src/
     game.ts           Clés de cache, lectures (`usePokemon`…), rechargements après action
     labels.ts         Libellés partagés et messages d'erreur (`GAME_ERRORS`)
     widgets.ts        Rangement de la colonne des bâtiments (par navigateur)
+    lazy.ts           `lazyPage()` : page chargée à la demande, préchargement
     pwa.ts, theme.ts, tab-profile.ts, log.ts, pokemon-shadows.ts
   components/         Briques communes : `ui.tsx` (boutons, dialogues, sprites), étiquettes, grille
   pages/
     HomePage.tsx      Coquille du jeu : en-tête, menu, onglet affiché (ancre de l'adresse)
     AuthPage, CreateProfilePage, StarterPage, SettingsDialog, ChangelogPage, LegalPages…
     game/             Les écrans du jeu : un fichier `…Page.tsx` par onglet, et leurs morceaux
+      pages.ts        La liste des pages, chargées à la demande
 test/                 Tests d'écran (jsdom contre la vraie API en mémoire)
 public/               `sw.js`, `manifest.webmanifest`, icônes
 ```
@@ -47,6 +49,28 @@ Une erreur d'action s'affiche avec `errorText(err)` (`lib/labels.ts`).
 Pas de routeur. L'onglet suit l'ancre : `#pc`, `#expeditions/<zone>`, `#wiki/pokemon`. Les
 onglets, leur ordre et leur regroupement viennent du contenu (`MENU_TABS`, `balance.menu`) ; un
 onglet verrouillé (`balance.tabUnlocks`) retombe sur les expéditions.
+
+## Ce qui est chargé, et quand
+
+À l'ouverture, le navigateur ne reçoit que la coquille (`HomePage`), les composants communs,
+les bibliothèques (`vendor-….js`) et les données PokéAPI (`data-….js`). Ces deux derniers
+fichiers portent un nom tiré de leur contenu : tant qu'ils ne changent pas, ils restent en cache
+d'une mise en ligne à l'autre.
+
+Chaque onglet est une page chargée à la demande, déclarée dans `pages/game/pages.ts` avec
+`lazyPage()`. Une fois le jeu affiché, les pages de `PRELOADED_PAGES` se téléchargent en avance
+(navigateur inactif) : changer d'onglet reste immédiat. Le wiki attend qu'on l'ouvre.
+
+Ajouter un onglet : exporter sa page depuis `pages.ts`, l'afficher dans `HomePage`, et ne jamais
+l'importer directement depuis la coquille (elle reviendrait dans le code d'ouverture).
+
+Si un fichier a disparu parce qu'une mise en ligne a eu lieu pendant la visite, le chargement
+échoue : `UpdatePrompt` vérifie aussitôt `/version.json` et propose de recharger.
+
+```sh
+pnpm --filter @poke/web build
+node scripts/bundle-size.mjs apps/web/dist   # poids à l'ouverture, plafonné par la CI
+```
 
 ## Ce que le navigateur garde
 

@@ -37,7 +37,7 @@ import {
   useWidgetSettings,
   widgetTab,
 } from '../../lib/widgets';
-import type { WidgetId } from '../../lib/widgets';
+import type { BuildingTab, WidgetId } from '../../lib/widgets';
 import {
   PROGRESS_KEYS,
   assistantPlaces,
@@ -68,10 +68,6 @@ import { groupBagEggs } from './DaycarePage';
 import { DepositDialog } from './DepositDialog';
 import { HatchReveal } from './HatchReveal';
 import { formatXp, usePlayerBonuses } from './XpPreview';
-
-/** Onglets des bâtiments résumés dans la colonne de droite. */
-export const BUILDING_TABS = ['center', 'daycare', 'museum', 'farm'] as const;
-export type BuildingTab = (typeof BUILDING_TABS)[number];
 
 /** Temps restant en minutes ou en heures (« 34 min », « 2 h 05 »). */
 function shortCountdown(ms: number) {

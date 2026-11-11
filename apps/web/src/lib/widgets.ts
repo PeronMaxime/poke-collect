@@ -15,6 +15,10 @@ export const WIDGET_LABELS: Record<WidgetId, string> = {
   farm: 'Ferme à baies',
 };
 
+/** Onglets des bâtiments résumés dans la colonne de droite. */
+export const BUILDING_TABS = ['center', 'daycare', 'museum', 'farm'] as const;
+export type BuildingTab = (typeof BUILDING_TABS)[number];
+
 /** Onglet (bâtiment) qui débloque le widget. */
 export const widgetTab = (id: WidgetId) => (id === 'incubator' ? 'daycare' : id);
 

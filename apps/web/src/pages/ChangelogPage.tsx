@@ -20,6 +20,18 @@ interface Release {
 
 const RELEASES: Release[] = [
   {
+    date: '11 novembre 2026',
+    title: 'Un jeu plus rapide à ouvrir',
+    changes: [
+      {
+        section: 'Confort',
+        items: [
+          'Le jeu s’ouvre plus vite : chaque page n’est chargée qu’au moment où tu en as besoin, et ce qui ne change pas d’une mise à jour à l’autre reste gardé par ton navigateur.',
+        ],
+      },
+    ],
+  },
+  {
     date: '10 novembre 2026',
     title: 'Un nouveau look rétro, des dresseurs en plus et ton Pokémon favori',
     changes: [

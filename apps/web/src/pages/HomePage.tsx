@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Suspense, useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import type { MeResponse, PlayerProfileDto } from '@poke/shared';
 import { ErrorBoundary } from '../components/ErrorBoundary';
@@ -29,27 +29,31 @@ import {
   useShop,
 } from '../lib/game';
 import { formatMoney, unlockConditionText } from '../lib/labels';
-import { BattlesPage } from './game/BattlesPage';
-import { BUILDING_TABS, BuildingsColumn } from './game/BuildingsColumn';
+import {
+  BattlesPage,
+  BuildingsColumn,
+  CenterPage,
+  DaycarePage,
+  DungeonsPage,
+  ExpeditionsPage,
+  FarmPage,
+  GuildPage,
+  InventoryPage,
+  LeaderboardPage,
+  MuseumPage,
+  PRELOADED_PAGES,
+  PcPage,
+  PokedexPage,
+  QuestsPage,
+  ShopPage,
+  TeamsPage,
+  TrainerCardPage,
+  WikiPage,
+} from './game/pages';
 import { WidgetsDialog } from './game/WidgetsDialog';
-import { WIDGETS, useWidgetSettings, widgetTab } from '../lib/widgets';
-import { CenterPage } from './game/CenterPage';
-import { DaycarePage } from './game/DaycarePage';
-import { DungeonsPage } from './game/DungeonsPage';
-import { ExpeditionsPage } from './game/ExpeditionsPage';
-import { InventoryPage } from './game/InventoryPage';
-import { LeaderboardPage } from './game/LeaderboardPage';
-import { FarmPage } from './game/FarmPage';
-import { GuildPage } from './game/GuildPage';
-import { MuseumPage } from './game/MuseumPage';
-import { PcPage } from './game/PcPage';
-import { PokedexPage } from './game/PokedexPage';
-import { QuestsPage } from './game/QuestsPage';
+import { preloadWhenIdle } from '../lib/lazy';
+import { BUILDING_TABS, WIDGETS, useWidgetSettings, widgetTab } from '../lib/widgets';
 import { RoamerSightingNotice } from './game/RoamerSightingNotice';
-import { ShopPage } from './game/ShopPage';
-import { TeamsPage } from './game/TeamsPage';
-import { TrainerCardPage } from './game/TrainerCardPage';
-import { WikiPage } from './game/WikiPage';
 import { WIKI_HASH, wikiLink } from './game/wiki';
 import { openChangelog, useUnseenChangelog } from './ChangelogPage';
 import { FanDisclaimer, LegalLinks } from './LegalPages';
@@ -215,6 +219,9 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
     hudObserver.current = new ResizeObserver(publish);
     hudObserver.current.observe(el);
   }, []);
+
+  // Les autres pages se téléchargent en avance, une fois le jeu affiché.
+  useEffect(() => preloadWhenIdle(PRELOADED_PAGES), []);
 
   useBodyScrollLock(menuOpen);
   useEffect(() => {
@@ -707,26 +714,28 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
                 <p className="text-slate-600 dark:text-slate-300">Chargement…</p>
               ) : (
                 // Les Expéditions et les bâtiments découpent leur page en fenêtres ; les autres
-                // pages tiennent dans une.
-                <div className={WINDOWED_TABS.has(tab) ? '' : 'card p-3 md:p-5'}>
-                  {tab === 'expeditions' && <ExpeditionsPage ctx={ctx} profile={profile} />}
-                  {tab === 'battles' && <BattlesPage ctx={ctx} />}
-                  {tab === 'dungeons' && <DungeonsPage ctx={ctx} />}
-                  {tab === 'center' && <CenterPage ctx={ctx} />}
-                  {tab === 'daycare' && <DaycarePage ctx={ctx} />}
-                  {tab === 'museum' && <MuseumPage ctx={ctx} />}
-                  {tab === 'farm' && <FarmPage ctx={ctx} />}
-                  {tab === 'quests' && <QuestsPage ctx={ctx} />}
-                  {tab === 'shop' && <ShopPage ctx={ctx} />}
-                  {tab === 'pc' && <PcPage ctx={ctx} />}
-                  {tab === 'teams' && <TeamsPage ctx={ctx} />}
-                  {tab === 'pokedex' && <PokedexPage ctx={ctx} />}
-                  {tab === 'bag' && <InventoryPage ctx={ctx} />}
-                  {tab === 'trainer' && <TrainerCardPage ctx={ctx} profile={profile} />}
-                  {tab === 'guild' && <GuildPage ctx={ctx} />}
-                  {tab === 'leaderboard' && <LeaderboardPage />}
-                  {tab === WIKI_HASH && <WikiPage ctx={ctx} />}
-                </div>
+                // pages tiennent dans une. Le code de la page arrive à son ouverture.
+                <Suspense fallback={<PageLoading />}>
+                  <div className={WINDOWED_TABS.has(tab) ? '' : 'card p-3 md:p-5'}>
+                    {tab === 'expeditions' && <ExpeditionsPage ctx={ctx} profile={profile} />}
+                    {tab === 'battles' && <BattlesPage ctx={ctx} />}
+                    {tab === 'dungeons' && <DungeonsPage ctx={ctx} />}
+                    {tab === 'center' && <CenterPage ctx={ctx} />}
+                    {tab === 'daycare' && <DaycarePage ctx={ctx} />}
+                    {tab === 'museum' && <MuseumPage ctx={ctx} />}
+                    {tab === 'farm' && <FarmPage ctx={ctx} />}
+                    {tab === 'quests' && <QuestsPage ctx={ctx} />}
+                    {tab === 'shop' && <ShopPage ctx={ctx} />}
+                    {tab === 'pc' && <PcPage ctx={ctx} />}
+                    {tab === 'teams' && <TeamsPage ctx={ctx} />}
+                    {tab === 'pokedex' && <PokedexPage ctx={ctx} />}
+                    {tab === 'bag' && <InventoryPage ctx={ctx} />}
+                    {tab === 'trainer' && <TrainerCardPage ctx={ctx} profile={profile} />}
+                    {tab === 'guild' && <GuildPage ctx={ctx} />}
+                    {tab === 'leaderboard' && <LeaderboardPage />}
+                    {tab === WIKI_HASH && <WikiPage ctx={ctx} />}
+                  </div>
+                </Suspense>
               )}
             </ErrorBoundary>
           )}
@@ -734,10 +743,14 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
 
         {/* Grand écran : les bâtiments débloqués en version réduite, à droite. */}
         {ctx && progressLoaded && (
-          <BuildingsColumn
-            ctx={ctx}
-            buildings={BUILDING_TABS.filter((id) => !lockedTabs.has(id))}
-          />
+          <ErrorBoundary>
+            <Suspense fallback={null}>
+              <BuildingsColumn
+                ctx={ctx}
+                buildings={BUILDING_TABS.filter((id) => !lockedTabs.has(id))}
+              />
+            </Suspense>
+          </ErrorBoundary>
         )}
       </div>
 
@@ -749,6 +762,11 @@ export function HomePage({ me, profile }: { me: MeResponse; profile: PlayerProfi
       </footer>
     </div>
   );
+}
+
+/** Affiché le temps que le code d'une page arrive. */
+function PageLoading() {
+  return <p className="text-slate-600 dark:text-slate-300">Chargement…</p>;
 }
 
 /** Pastille du bandeau du dresseur : petit libellé pixel, puis la valeur. */

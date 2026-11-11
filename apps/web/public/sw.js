@@ -48,7 +48,13 @@ async function networkFirst(request) {
   const cache = await caches.open(APP_CACHE);
   try {
     const response = await fetch(request);
-    if (response.ok && response.type === 'basic') cache.put(request, response.clone());
+    // Un fichier de code disparu après une mise en ligne revient sous la forme de la page
+    // d'accueil (repli du serveur) : on ne la garde pas à sa place.
+    const html = (response.headers.get('content-type') ?? '').includes('text/html');
+    const staleAsset = html && new URL(request.url).pathname.startsWith('/assets/');
+    if (response.ok && response.type === 'basic' && !staleAsset) {
+      cache.put(request, response.clone());
+    }
     return response;
   } catch (err) {
     const cached =
