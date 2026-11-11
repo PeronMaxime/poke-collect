@@ -19,7 +19,8 @@ src/
     widgets.ts        Rangement de la colonne des bâtiments (par navigateur)
     lazy.ts           `lazyPage()` : page chargée à la demande, préchargement
     pwa.ts, theme.ts, tab-profile.ts, log.ts, pokemon-shadows.ts
-  components/         Briques communes : `ui.tsx` (boutons, dialogues, sprites), étiquettes, grille
+  components/         Briques communes : `ui/` (un fichier par composant : `Modal`, `PokemonSprite`,
+                      `HoverBubble`, `useNow`…), étiquettes, grille, repli
   pages/
     HomePage.tsx      Coquille du jeu : en-tête, menu, onglet affiché (ancre de l'adresse)
     AuthPage, CreateProfilePage, StarterPage, SettingsDialog, ChangelogPage, LegalPages…
