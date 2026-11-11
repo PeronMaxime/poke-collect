@@ -533,7 +533,40 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
   - **Réalisé** le 11 novembre, mesures refaites de la même façon qu'au départ. Cibles
     atteintes, sauf deux : 11 fichiers de plus de 800 lignes (25 au départ) et 366 Ko à
     l'ouverture du jeu (cible 250 Ko, voir la 5.1).
-- [ ] **7.4 Liste de ce qui reste** : ce qui a été volontairement laissé, et pourquoi.
+- [x] **7.4 Liste de ce qui reste** : ce qui a été volontairement laissé, et pourquoi.
+  - **Réalisé** le 11 novembre. À reprendre si l'occasion se présente, du plus utile au moins
+    utile :
+    1. **Dix fichiers d'écran de plus de 800 lignes** (`BalancePage`, `TrainerCardPage`,
+       `QuestsPage` du jeu et de l'admin, `WikiPokemonPage`, `DaycarePage`, `ZonesPage`,
+       `GuildPage`, `TrainersPage`, `ItemsPage`). Leurs fonctions sont découpées (aucune au-delà
+       de 186 lignes) ; les pièces sont restées à côté de leur écran, comme convenu en 5.5, pour
+       qu'un découpage ne soit pas aussi un déplacement. Les répartir en dossiers (`balance/`…)
+       se fait en deux commits : déplacer, puis modifier. `pages/releases.ts` (données) reste
+       entier.
+    2. **Douze fonctions dans la liste « dette restante »** d'`eslint.config.js` : dix écrans de
+       l'admin de 152 à 186 lignes (outils peu modifiés, juste au-dessus du seuil), `findUsages`
+       (`packages/content/src/integrity/usages.ts`, une liste plate de 59 cas, plus lisible d'un
+       bloc) et le `main` de l'import PokéAPI (un script lu de haut en bas, lancé à la main).
+    3. **JavaScript du jeu à l'ouverture : 366 Ko**, pour 250 visés. Les données PokéAPI (118 Ko)
+       servent aux règles dès le premier écran et les bibliothèques pèsent 153 Ko ; descendre
+       plus bas demande de servir les données par l'API, ce qui change l'architecture (5.1).
+    4. **Parcours d'édition de l'admin non testés de bout en bout** : chaque page s'affiche et
+       chaque fiche s'ouvre (tests paramétrés), `SettingsPage` est testé seul, mais aucun test
+       ne modifie et n'enregistre une entité sur la vraie API : il faudrait un brouillon par
+       fichier de test, que les fichiers lancés en parallèle ne se partagent pas.
+    5. **Cinq pages de l'admin chargent la version de travail elles-mêmes** au lieu de
+       `WithWorkingVersion`. Talents, Évolutions et Espèces déclarent leur état (filtres,
+       sélection) avant le chargement, qui survit ainsi à la création d'un brouillon : les passer
+       au modèle commun le perdrait. Le résumé de Progression et le calculateur de PE (son propre
+       affichage) pourraient y passer sans perte.
+    6. **Fichiers du serveur laissés entiers** en 4.3 : `game/daycare.ts` (764 lignes) et
+       `game/legendary.ts` (622), hors du plan et sous la limite de 800.
+    7. **Lecture du stockage du journal des nouveautés** à part de `lib/storage.ts` (5.6) : un
+       stockage illisible doit y valoir « déjà vu », ce que l'utilitaire ne distingue pas.
+  - Hors de ce plan, et suivis ailleurs : plusieurs processus d'API
+    ([SURCHARGE.md](../SURCHARGE.md)), retrait des profils secondaires après la bêta
+    ([DECISIONS.md](../DECISIONS.md)), passage à TypeScript 7 quand `typescript-eslint` le
+    prendra en charge.
 - **But** : que la qualité obtenue tienne toute seule.
 
 ---
