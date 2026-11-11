@@ -81,8 +81,27 @@ ajouter quoi.
 
 ## Documentation
 
-**Par où commencer** : [ARCHITECTURE](docs/ARCHITECTURE.md), puis le
-[GLOSSAIRE](docs/GLOSSAIRE.md) au fil de la lecture du code.
+### Par où commencer
+
+1. **Lancer le jeu** en local ([DEMARRAGE](docs/DEMARRAGE.md)), y jouer quelques minutes, puis
+   ouvrir l'admin : on lit mieux le code d'un écran qu'on a vu.
+2. **[ARCHITECTURE](docs/ARCHITECTURE.md), sections 1 à 3** : les paquets, qui importe qui, et le
+   trajet d'une action, du bouton à la base.
+3. **Suivre ce trajet dans le code**, pour une expédition :
+   `apps/web/src/features/expeditions/LaunchExpeditionDialog.tsx` →
+   `apps/web/src/lib/queries/expeditions.ts` → `apps/api/src/routes/game.ts` →
+   `apps/api/src/game/expeditions/start.ts` (puis `claim.ts`) → `packages/game-core/src/` (les
+   règles, en fonctions pures). Le [GLOSSAIRE](docs/GLOSSAIRE.md) traduit au passage les mots du
+   jeu (PE, pitié, fuyard…) en noms du code.
+4. **[CLAUDE.md](CLAUDE.md)** : les conventions et les pièges, en une page, avant d'écrire.
+5. **Pour changer quelque chose** : la recette correspondante dans
+   [RECETTES](docs/RECETTES.md) ; et, avant de toucher à un choix de structure, sa raison dans
+   [DECISIONS](docs/DECISIONS.md).
+
+Chaque dossier d'écran du jeu (`apps/web/src/features/*`) a aussi son `README.md` : ce qu'il
+affiche, d'où viennent ses données, ce que font ses boutons.
+
+### Les documents
 
 | Document                                                     | Pour                                                                  |
 | ------------------------------------------------------------ | --------------------------------------------------------------------- |

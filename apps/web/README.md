@@ -26,6 +26,7 @@ src/
   pages/
     HomePage.tsx      Coquille du jeu : en-tête, menu, onglet affiché (ancre de l'adresse)
     AuthPage, CreateProfilePage, StarterPage, SettingsDialog, ChangelogPage, LegalPages…
+    releases.ts       Le journal des nouveautés (`RELEASES`), lu par `ChangelogPage`
   features/           Les écrans du jeu, un dossier par domaine
     pages.ts          La liste des pages (une par onglet), chargées à la demande
     expeditions/ pc/ battles/ dungeons/ daycare/ farm/ museum/ center/ quests/ shop/ bag/

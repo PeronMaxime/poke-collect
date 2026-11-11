@@ -102,6 +102,33 @@ refuser par la limite de requêtes (voir [plans/PLAN-STABILITE.md](plans/PLAN-ST
 **Prix.** Chaque nouvelle action doit dire ce qu'elle invalide. En développement, `lib/api.ts`
 avertit dans la console au-delà de 20 requêtes en 5 secondes.
 
+## Un écran long : un hook et des pièces
+
+**Choix.** Un écran ou un formulaire de plus de 150 lignes se découpe en un hook qui rend son
+« modèle » (`useBattlesPage`, `useBalanceForm`…) et des pièces qui le reçoivent en un seul
+paramètre (`{ m }`) ; une fiche de l'admin, en sections qui reçoivent les mêmes props qu'elle.
+ESLint refuse une fonction plus longue (voir [plans/PLAN-QUALITE.md](plans/PLAN-QUALITE.md)).
+
+**Pourquoi.** Les écrans dépassaient le millier de lignes : on ne savait plus où lire l'état, ni
+où poser un champ. Le modèle unique évite de recopier une liste de props à chaque pièce, et le
+découpage s'est fait sans retaper le JSX, donc sans changer l'affichage.
+
+**Prix.** Une pièce voit tout le modèle, pas seulement ce dont elle se sert ; le type
+`…Model = ReturnType<typeof useX>` suit le hook sans qu'on l'écrive.
+
+## Pages chargées à la demande, client d'API partagé
+
+**Choix.** Le jeu (`lazyPage`) et l'admin (`lazy` de React Router) ne téléchargent le code d'une
+page qu'à sa première visite. Les deux appellent l'API par le même client, `@poke/client`.
+
+**Pourquoi.** Tout le code partait au premier affichage (560 Ko compressés pour le jeu, 500 pour
+l'admin) ; et les deux `api()` divergeaient (délai maximal, erreurs réseau, réessais seulement
+dans le jeu).
+
+**Prix.** La première visite d'une page attend son téléchargement (dans le jeu, les pages sont
+préchargées dès que le navigateur est libre) ; la CI plafonne le poids à l'ouverture
+(`scripts/bundle-size.mjs`).
+
 ## PWA écrite à la main
 
 **Choix.** `public/sw.js` et `manifest.webmanifest` sont écrits à la main, sans extension Vite.

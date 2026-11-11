@@ -520,8 +520,15 @@ Le plus gros du travail : c'est là que le code est le moins commenté et le plu
     d'`eslint.config.js`, où elles restent des avertissements plafonnés (12). Couverture
     minimale, juste sous le niveau atteint : `game-core` lignes 90 % et branches 80 %, `content`
     95 % et 86 %, `api` 93 % et 77 % (sans Postgres ; la CI est au-dessus).
-- [ ] **7.2 Relecture complète de la documentation** contre le code final (`docs/`, `README` des
+- [x] **7.2 Relecture complète de la documentation** contre le code final (`docs/`, `README` des
       paquets, `CLAUDE.md`), et parcours « par où commencer » dans le `README`.
+  - **Réalisé** le 11 novembre. Un script relève chaque chemin et chaque nom cités entre
+    accents graves dans les 39 fichiers Markdown (hors plans) et les cherche dans le dépôt : un
+    seul écart réel (le test d'actions simultanées, déplacé dans `apps/api/test/platform/`).
+    Ajouts : `releases.ts` dans le `README` du jeu, deux décisions (« un hook et des pièces »,
+    « pages à la demande, client partagé »), et le parcours « Par où commencer » du `README` :
+    lancer, lire l'architecture, suivre une expédition du bouton à `game-core`, les
+    conventions, les recettes.
 - [ ] **7.3 Tableau avant / après** de la section 5 rempli.
 - [ ] **7.4 Liste de ce qui reste** : ce qui a été volontairement laissé, et pourquoi.
 - **But** : que la qualité obtenue tienne toute seule.

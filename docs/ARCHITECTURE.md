@@ -172,7 +172,8 @@ Toute action d'un joueur qui écrit passe par `playerTransaction(db, userId, fn)
   donc être appelée plusieurs fois et ne doit modifier que la base ;
 - **`afterCommit`** : ce qui ne doit arriver qu'une fois la transaction validée (compteurs).
 
-`apps/api/src/concurrency.test.ts` rejoue des actions simultanées sur un vrai Postgres (en CI).
+`apps/api/test/platform/concurrency.test.ts` rejoue des actions simultanées sur un vrai
+Postgres (en CI).
 
 ## 6. Rattrapage du temps écoulé
 
@@ -248,15 +249,15 @@ processus.
 
 ## 11. Tests
 
-| Quoi                              | Où                                 | Comment                                               |
-| --------------------------------- | ---------------------------------- | ----------------------------------------------------- |
-| Règles du jeu                     | `packages/game-core/src/*.test.ts` | Fonctions pures, contenu de test                      |
-| Non-régression « à graine égale » | `game-core/src/golden.test.ts`     | Empreintes de 800 résultats                           |
-| Contenu et cohérence              | `packages/content/src/*.test.ts`   | Le contenu de test doit être valide et publiable      |
-| API                               | `apps/api/test/**/*.test.ts`       | Vraie application, PGlite en mémoire, horloge avancée |
-| Actions simultanées               | `apps/api/src/concurrency.test.ts` | Vrai Postgres (`TEST_DATABASE_URL`, en CI)            |
-| Écrans du jeu                     | `apps/web/test/*.test.tsx`         | jsdom contre la vraie API en mémoire                  |
-| Pages de l'admin                  | `apps/admin/test/*.test.tsx`       | Idem, avec un compte administrateur                   |
+| Quoi                              | Où                                           | Comment                                               |
+| --------------------------------- | -------------------------------------------- | ----------------------------------------------------- |
+| Règles du jeu                     | `packages/game-core/src/*.test.ts`           | Fonctions pures, contenu de test                      |
+| Non-régression « à graine égale » | `game-core/src/golden.test.ts`               | Empreintes de 800 résultats                           |
+| Contenu et cohérence              | `packages/content/src/*.test.ts`             | Le contenu de test doit être valide et publiable      |
+| API                               | `apps/api/test/**/*.test.ts`                 | Vraie application, PGlite en mémoire, horloge avancée |
+| Actions simultanées               | `apps/api/test/platform/concurrency.test.ts` | Vrai Postgres (`TEST_DATABASE_URL`, en CI)            |
+| Écrans du jeu                     | `apps/web/test/*.test.tsx`                   | jsdom contre la vraie API en mémoire                  |
+| Pages de l'admin                  | `apps/admin/test/*.test.tsx`                 | Idem, avec un compte administrateur                   |
 
 La CI (`.github/workflows/ci.yml`) lance lint, code mort (`knip`), format, types, tests avec
 couverture (seuils minimaux dans les `vitest.config.ts` de `game-core`, `content` et `api`),
