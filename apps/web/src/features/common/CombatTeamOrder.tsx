@@ -18,6 +18,7 @@ import type { PokemonDto } from '@poke/shared';
 import { HoverBubble, PokemonSprite, ShinyStar, StatLines, TypeBadge } from '../../components/ui';
 import { STAT_LABELS, abilityLabel, speciesName } from '../../lib/labels';
 import { CrossIcon, ExpandableLine, SELECTED_CELL, SLOT_BUTTON, SLOT_CLASS } from './dialogParts';
+import { SortableSlot } from './teamPicker/SortableSlot';
 
 /** Multiplicateur lisible (×2, ×½, ×¼, ×⅛…). */
 export function effectivenessLabel(e: number): string {
@@ -72,39 +73,29 @@ interface OrderProps {
   setMoves: Dispatch<SetStateAction<Record<string, DungeonMove>>>;
   setTeam: Dispatch<SetStateAction<string[]>>;
   targets: readonly CombatTarget[];
+  /** Échange le membre `index` avec son voisin (clavier). */
+  onMove: (index: number, delta: -1 | 1) => void;
 }
 
 /**
  * Cases de l'équipe d'un combat, dans son ordre d'entrée : chaque Pokémon avec son talent (et son
- * effet ici), ses flèches pour changer l'ordre, le retrait, puis son attaque (un de ses types, avec
+ * effet ici), sa poignée pour changer l'ordre, le retrait, puis son attaque (un de ses types, avec
  * son efficacité contre chaque adversaire de `targets`, en physique ou en spécial).
- * Rend des `<li>`, à poser dans la liste de l'équipe.
+ * Rend des cases déplaçables, à poser dans le `Reorder.Group` de l'équipe.
  */
 export function CombatTeamOrder(props: OrderProps) {
-  const { members, setTeam } = props;
-  function move(index: number, delta: number) {
-    setTeam((t) => {
-      const next = [...t];
-      const target = index + delta;
-      if (target < 0 || target >= next.length) return t;
-      [next[index], next[target]] = [next[target]!, next[index]!];
-      return next;
-    });
-  }
-
   return (
     <>
-      {members.map((p, i) => (
-        <CombatMemberRow key={p.id} {...props} pokemon={p} index={i} move={move} />
+      {props.members.map((p, i) => (
+        <CombatMemberRow key={p.id} {...props} pokemon={p} index={i} />
       ))}
     </>
   );
 }
 
-/** Case d'un membre : son talent, les flèches d'ordre, le retrait, puis le choix de son attaque. */
+/** Case d'un membre : son talent, la poignée d'ordre, le retrait, puis le choix de son attaque. */
 function CombatMemberRow({
   ctx,
-  members,
   effectsOf,
   moves,
   setMoves,
@@ -112,12 +103,11 @@ function CombatMemberRow({
   targets,
   pokemon: p,
   index: i,
-  move,
+  onMove,
 }: OrderProps & {
   pokemon: PokemonDto;
   /** Rang dans l'équipe (0 = entre en premier). */
   index: number;
-  move: (index: number, delta: number) => void;
 }) {
   const species = ctx.species(p.speciesId, p.formId)!;
   const stats = computeStats(species, p);
@@ -128,75 +118,67 @@ function CombatMemberRow({
   const ability = abilityLabel(effectiveAbility(ctx, p));
   const effectText = effects.map(abilityEffectText).join(' · ');
   return (
-    <li
-      key={p.id}
+    <SortableSlot
+      id={p.id}
+      label={`${i + 1}. ${species.nameFr}`}
+      onMove={(delta) => onMove(i, delta)}
       className={`${SLOT_CLASS} flex flex-col gap-2 p-2 ${
         effects.length > 0 ? 'border-emerald-500 dark:border-emerald-400' : 'border-well-line'
       }`}
     >
-      <div className="flex items-center gap-2">
-        <span className="w-5 shrink-0 text-center font-pixel text-[10px] text-slate-500 dark:text-slate-400">
-          {i + 1}
-        </span>
-        <span className={`sprite-well size-12 shrink-0 ${p.isShiny ? 'shiny-well' : ''}`}>
-          <PokemonSprite speciesId={p.speciesId} formId={p.formId} shiny={p.isShiny} size={44} />
-        </span>
-        <span className="flex min-w-0 flex-1 flex-col">
-          <span className="truncate text-sm font-semibold">
-            {species.nameFr} {p.isShiny && <ShinyStar />}{' '}
-            <span className="font-normal text-slate-500 dark:text-slate-400">N.{p.level}</span>
-          </span>
-          {effects.length > 0 ? (
-            <ExpandableLine
-              className="text-xs text-emerald-700 dark:text-emerald-400"
-              title={`${species.nameFr} · ${ability} : ${effectText}`}
+      {(grip) => (
+        <>
+          <div className="flex items-center gap-2">
+            <span className="w-5 shrink-0 text-center font-pixel text-[10px] text-slate-500 dark:text-slate-400">
+              {i + 1}
+            </span>
+            <span className={`sprite-well size-12 shrink-0 ${p.isShiny ? 'shiny-well' : ''}`}>
+              <PokemonSprite
+                speciesId={p.speciesId}
+                formId={p.formId}
+                shiny={p.isShiny}
+                size={44}
+              />
+            </span>
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate text-sm font-semibold">
+                {species.nameFr} {p.isShiny && <ShinyStar />}{' '}
+                <span className="font-normal text-slate-500 dark:text-slate-400">N.{p.level}</span>
+              </span>
+              {effects.length > 0 ? (
+                <ExpandableLine
+                  className="text-xs text-emerald-700 dark:text-emerald-400"
+                  title={`${species.nameFr} · ${ability} : ${effectText}`}
+                >
+                  ✦ {ability} : {effectText}
+                </ExpandableLine>
+              ) : (
+                <span className="truncate text-xs text-slate-500 dark:text-slate-400">
+                  {ability}
+                </span>
+              )}
+            </span>
+            {grip}
+            <button
+              type="button"
+              className={`${SLOT_BUTTON} hover:border-red-500 hover:text-red-600 dark:hover:text-red-400`}
+              onClick={() => setTeam((t) => t.filter((id) => id !== p.id))}
+              aria-label={`Retirer ${species.nameFr}`}
             >
-              ✦ {ability} : {effectText}
-            </ExpandableLine>
-          ) : (
-            <span className="truncate text-xs text-slate-500 dark:text-slate-400">{ability}</span>
-          )}
-        </span>
-        <button
-          type="button"
-          className={SLOT_BUTTON}
-          disabled={i === 0}
-          onClick={() => move(i, -1)}
-          aria-label={`Monter ${species.nameFr}`}
-        >
-          <svg viewBox="0 0 10 10" className="size-2.5" aria-hidden>
-            <path d="M5 2L9 7H1z" fill="currentColor" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className={SLOT_BUTTON}
-          disabled={i === members.length - 1}
-          onClick={() => move(i, 1)}
-          aria-label={`Descendre ${species.nameFr}`}
-        >
-          <svg viewBox="0 0 10 10" className="size-2.5" aria-hidden>
-            <path d="M5 8L1 3h8z" fill="currentColor" />
-          </svg>
-        </button>
-        <button
-          type="button"
-          className={`${SLOT_BUTTON} hover:border-red-500 hover:text-red-600 dark:hover:text-red-400`}
-          onClick={() => setTeam((t) => t.filter((id) => id !== p.id))}
-          aria-label={`Retirer ${species.nameFr}`}
-        >
-          <CrossIcon className="size-2.5" />
-        </button>
-      </div>
-      <MoveChoice
-        ctx={ctx}
-        species={species}
-        stats={stats}
-        current={current}
-        setMove={setMove}
-        targets={targets}
-      />
-    </li>
+              <CrossIcon className="size-2.5" />
+            </button>
+          </div>
+          <MoveChoice
+            ctx={ctx}
+            species={species}
+            stats={stats}
+            current={current}
+            setMove={setMove}
+            targets={targets}
+          />
+        </>
+      )}
+    </SortableSlot>
   );
 }
 

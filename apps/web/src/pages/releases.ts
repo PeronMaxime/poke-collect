@@ -22,6 +22,9 @@ export const RELEASES: Release[] = [
         section: 'Confort',
         items: [
           'Le jeu s’ouvre plus vite : chaque page n’est chargée qu’au moment où tu en as besoin, et ce qui ne change pas d’une mise à jour à l’autre reste gardé par ton navigateur.',
+          'Au choix de l’équipe d’une expédition ou d’un combat, glisse une case pour changer l’ordre des Pokémon (au doigt, par sa poignée), comme pour la vitrine de ta Fiche Dresseur. Les flèches haut et bas marchent aussi au clavier.',
+          'La fiche d’un Pokémon du PC est plus haute : plus besoin de la faire défiler pour tout voir sur un grand écran.',
+          'Le cadre d’une étiquette choisie sur la fiche d’un Pokémon épouse maintenant l’étiquette.',
         ],
       },
     ],

@@ -204,7 +204,8 @@ export function TagToggleList({
               disabled={pending}
               onClick={() => onToggle(t.id)}
               aria-pressed={active}
-              className={`rounded transition ${
+              // En flex : la case épouse l'étiquette (sinon la ligne de texte l'agrandit).
+              className={`flex max-w-full rounded transition ${
                 active
                   ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900'
                   : 'opacity-40 hover:opacity-100'

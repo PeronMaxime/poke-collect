@@ -29,7 +29,7 @@ export const ORIGIN_LABELS: Record<PokemonDto['origin'], string> = {
 };
 
 /** Taille fixe : l'en-tête et ses ‹ › restent au même endroit d'une fiche à l'autre. */
-export const PC_SHEET_CLASS = 'flex h-[min(50rem,calc(100dvh-2rem))] flex-col overflow-hidden p-0';
+export const PC_SHEET_CLASS = 'flex h-[min(64rem,calc(100dvh-2rem))] flex-col overflow-hidden p-0';
 
 /** Pastille du bandeau de la fiche (numéro, niveau, PE). */
 export const HUD_PILL =

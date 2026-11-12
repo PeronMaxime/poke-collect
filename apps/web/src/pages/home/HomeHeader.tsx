@@ -94,9 +94,13 @@ export function DesktopHeader({ h }: { h: HomeModel }) {
       </div>
       <a
         href="#expeditions"
-        className="font-pixel text-lg text-[#f8d030] [text-shadow:3px_3px_0_#d83828]"
+        className="relative font-pixel text-lg text-[#f8d030] [text-shadow:3px_3px_0_#d83828]"
       >
         DEXPEDITION
+        {/* Hors du flux : le titre reste centré dans la bannière. */}
+        <span className="absolute bottom-1/2 -right-11 -rotate-12 font-pixel text-[9px] text-[#ff5040] [text-shadow:1px_1px_0_#10203a]">
+          BÊTA
+        </span>
       </a>
       <nav className="flex flex-wrap items-center justify-end gap-2" aria-label="Compte">
         <AccountLinks
