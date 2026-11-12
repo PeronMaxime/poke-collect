@@ -10,8 +10,9 @@ import { cleanup, configure } from '@testing-library/react';
  */
 
 // Tous les fichiers tournent en parallèle contre la même API : le premier affichage d'un écran
-// peut dépasser la seconde d'attente par défaut des `findBy…`.
-configure({ asyncUtilTimeout: 5_000 });
+// peut dépasser la seconde d'attente par défaut des `findBy…`. La CI va environ trois fois moins
+// vite qu'un poste de travail : la grille des zones d'expédition (2 s en local) y dépasse 5 s.
+configure({ asyncUtilTimeout: 15_000 });
 
 /** Origine du jeu en développement, la seule que l'authentification de test accepte. */
 const TEST_ORIGIN = 'http://localhost:5173';
