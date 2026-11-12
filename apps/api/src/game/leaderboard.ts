@@ -7,8 +7,13 @@ import type { GameContext } from '@poke/game-core';
 import type { LeaderboardEntryDto, LeaderboardKind, LeaderboardResponse } from '@poke/shared';
 import { displayedFavorite, favoriteColumns } from './favorite';
 
+/**
+ * Classements des dresseurs, calculés en SQL à chaque lecture (les 50 premiers et le rang du
+ * joueur).
+ */
+
 /** Nombre de dresseurs affichés en tête de classement. */
-export const LEADERBOARD_SIZE = 50;
+const LEADERBOARD_SIZE = 50;
 
 /** Formes qui ont leur case au Pokédex (régionales, Méga…) : comptées avec les espèces. */
 const DEX_FORM_IDS = sql.join(

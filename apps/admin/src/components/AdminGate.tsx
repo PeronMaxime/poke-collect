@@ -1,3 +1,8 @@
+/**
+ * Garde de toutes les pages : formulaire de connexion sans session, « Accès refusé » sans le rôle
+ * admin, sinon les pages, avec l'utilisateur connecté dans `AdminUserContext`. Le serveur vérifie
+ * le rôle à chaque requête : ce garde n'adapte que l'affichage.
+ */
 import { useQuery } from '@tanstack/react-query';
 import { Outlet } from 'react-router';
 import { ApiError, api } from '../lib/api';

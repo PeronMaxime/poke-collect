@@ -5,10 +5,11 @@ import { guildMembers, playerProfiles, users } from '@poke/db';
 import type { Db } from '@poke/db';
 import { selectBetaProfileInputSchema } from '@poke/shared';
 import type { BetaProfilesResponse } from '@poke/shared';
-import type { ContentCache } from './content-cache';
+import { GameError } from './game/errors';
 import { leaveGuild } from './game/guilds';
 import { playerTransaction } from './game/tx';
-import type { sessionHooks } from './plugins/session';
+import { sessionUser } from './routes/deps';
+import type { RouteDeps } from './routes/deps';
 
 /**
  * Bêta : profils secondaires. Un profil secondaire est un utilisateur sans identifiant de
@@ -25,7 +26,7 @@ import type { sessionHooks } from './plugins/session';
  * `apps/web/src/lib/tab-profile.ts` et son usage dans `api.ts` côté web, et les profils secondaires en base (`delete from users where parent_user_id is not null`).
  */
 
-export const BETA_PROFILE_COOKIE = 'dex_profile';
+const BETA_PROFILE_COOKIE = 'dex_profile';
 const BETA_PROFILE_HEADER = 'x-dex-profile';
 /** Valeur de l'en-tête désignant le profil principal. */
 const MAIN_PROFILE = 'main';
@@ -60,17 +61,14 @@ function readCookie(request: FastifyRequest, name: string): string | null {
   return null;
 }
 
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
+interface BetaProfileDeps extends RouteDeps {
   secureCookie: boolean;
 }
 
+/** Routes /api/beta/profiles : lister, créer, activer et supprimer ses profils secondaires. */
 export async function betaProfileRoutes(
   app: FastifyInstance,
-  { db, content, hooks, now, secureCookie }: Deps,
+  { db, content, hooks, now, secureCookie }: BetaProfileDeps,
 ) {
   const setCookie = (reply: FastifyReply, profileId: string | null) => {
     const attributes = `Path=/; HttpOnly; SameSite=Lax${secureCookie ? '; Secure' : ''}`;
@@ -107,25 +105,25 @@ export async function betaProfileRoutes(
   };
 
   app.get('/api/beta/profiles', { preHandler: hooks.requireUser }, async (request) => {
-    const user = request.user!;
+    const user = sessionUser(request);
     return list(user.accountUserId, user.id);
   });
 
   /** Crée un profil secondaire (partie neuve, starter à choisir) et le rend actif. */
   app.post('/api/beta/profiles', { preHandler: hooks.requireUser }, async (request, reply) => {
-    const { accountUserId } = request.user!;
+    const { accountUserId } = sessionUser(request);
     const [main] = await db
       .select({ trainerName: playerProfiles.trainerName })
       .from(playerProfiles)
       .where(eq(playerProfiles.userId, accountUserId));
-    if (!main) return reply.code(409).send({ error: 'NO_PROFILE' });
+    if (!main) throw new GameError(409, 'NO_PROFILE');
 
     const existing = await db
       .select({ name: users.name })
       .from(users)
       .where(eq(users.parentUserId, accountUserId));
     if (existing.length >= MAX_SECONDARY_PROFILES) {
-      return reply.code(409).send({ error: 'TOO_MANY_PROFILES' });
+      throw new GameError(409, 'TOO_MANY_PROFILES');
     }
     const used = new Set(existing.map((u) => u.name.toLowerCase()));
     let n = 1;
@@ -133,7 +131,7 @@ export async function betaProfileRoutes(
     const trainerName = `${NAME_PREFIX}${n}_${main.trainerName}`;
 
     const startRegion = (await content.get()).regions[0];
-    if (!startRegion) return reply.code(503).send({ error: 'NO_REGION_CONFIGURED' });
+    if (!startRegion) throw new GameError(503, 'NO_REGION_CONFIGURED');
 
     const id = randomUUID();
     const at = now();
@@ -154,7 +152,7 @@ export async function betaProfileRoutes(
       });
     } catch {
       // Pseudo déjà pris par un autre joueur (index unique insensible à la casse).
-      return reply.code(409).send({ error: 'TRAINER_NAME_TAKEN' });
+      throw new GameError(409, 'TRAINER_NAME_TAKEN');
     }
     setCookie(reply, id);
     return reply.code(201).send(await list(accountUserId, id));
@@ -166,13 +164,13 @@ export async function betaProfileRoutes(
     { preHandler: hooks.requireUser },
     async (request, reply) => {
       const { profileId } = selectBetaProfileInputSchema.parse(request.body);
-      const { accountUserId } = request.user!;
+      const { accountUserId } = sessionUser(request);
       if (profileId && profileId !== accountUserId) {
         const [owned] = await db
           .select({ id: users.id })
           .from(users)
           .where(and(eq(users.id, profileId), eq(users.parentUserId, accountUserId)));
-        if (!owned) return reply.code(404).send({ error: 'PROFILE_NOT_FOUND' });
+        if (!owned) throw new GameError(404, 'PROFILE_NOT_FOUND');
         setCookie(reply, profileId);
         return list(accountUserId, profileId);
       }
@@ -190,12 +188,12 @@ export async function betaProfileRoutes(
     { preHandler: hooks.requireUser },
     async (request, reply) => {
       const { profileId } = request.params;
-      const { accountUserId, id: activeId } = request.user!;
+      const { accountUserId, id: activeId } = sessionUser(request);
       const [owned] = await db
         .select({ id: users.id })
         .from(users)
         .where(and(eq(users.id, profileId), eq(users.parentUserId, accountUserId)));
-      if (!owned) return reply.code(404).send({ error: 'PROFILE_NOT_FOUND' });
+      if (!owned) throw new GameError(404, 'PROFILE_NOT_FOUND');
 
       const [member] = await db
         .select({ userId: guildMembers.userId })

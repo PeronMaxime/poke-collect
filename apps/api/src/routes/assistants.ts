@@ -1,21 +1,18 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { Db } from '@poke/db';
 import { ASSISTANT_POSTS, assistantSlotCount } from '@poke/game-core';
 import type { AssistantPost } from '@poke/game-core';
 import { assignAssistantInputSchema } from '@poke/shared';
 import type { AssistantDto } from '@poke/shared';
-import type { ContentCache } from '../content-cache';
 import { assignAssistant, listAssistants, removeAssistant } from '../game/assistants';
 import { playerFacilityPlaces } from '../game/store';
-import type { sessionHooks } from '../plugins/session';
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
-}
+/**
+ * Routes des assistants (/api/assistants) : lister, placer, retirer. Chaque route valide sa
+ * requête, appelle le module de jeu et répond.
+ */
 
 const slotParams = z.object({
   post: z.enum(ASSISTANT_POSTS),
@@ -23,7 +20,10 @@ const slotParams = z.object({
 });
 
 /** Assistants des pensions, des couveuses, des places du Musée, des Centres Pokémon et de la ferme. */
-export async function assistantRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
+export async function assistantRoutes(
+  app: FastifyInstance,
+  { db, content, hooks, now }: RouteDeps,
+) {
   app.addHook('preHandler', hooks.requireUser);
 
   /** Postes ouverts au joueur : pensions, couveuses, places du Musée, Centres Pokémon, ferme. */
@@ -45,20 +45,20 @@ export async function assistantRoutes(app: FastifyInstance, { db, content, hooks
   }
 
   app.get('/api/assistants', async (request): Promise<AssistantDto[]> =>
-    listAssistants(db, request.user!.id),
+    listAssistants(db, currentUserId(request)),
   );
 
   app.put('/api/assistants/:post/:slot', async (request): Promise<AssistantDto> => {
     const { post, slot } = slotParams.parse(request.params);
     const { pokemonId } = assignAssistantInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const slots = await slotCount(userId, post);
     return assignAssistant(db, await content.get(), userId, post, slot, slots, pokemonId, now());
   });
 
   app.delete('/api/assistants/:post/:slot', async (request, reply) => {
     const { post, slot } = slotParams.parse(request.params);
-    await removeAssistant(db, await content.get(), request.user!.id, post, slot, now());
+    await removeAssistant(db, await content.get(), currentUserId(request), post, slot, now());
     return reply.code(204).send();
   });
 }

@@ -41,9 +41,11 @@ import {
  * réclamation.
  */
 
+/** Un combat de dresseur tel qu'il est enregistré. */
 export type BattleRow = typeof trainerRuns.$inferSelect;
 type TrainerProgressRow = typeof trainerProgress.$inferSelect;
 
+/** Le combat tel que le jeu le reçoit. */
 export function toBattleDto(row: BattleRow): BattleDto {
   return {
     id: row.id,
@@ -62,6 +64,7 @@ export function toBattleDto(row: BattleRow): BattleDto {
   };
 }
 
+/** Le bilan du joueur contre un dresseur (victoires, défaites, dates) tel que le jeu le reçoit. */
 export function toRecordDto(row: TrainerProgressRow): TrainerRecordDto {
   return {
     trainerId: row.trainerId,
@@ -73,6 +76,7 @@ export function toRecordDto(row: TrainerProgressRow): TrainerRecordDto {
   };
 }
 
+/** Bilan du joueur contre chaque dresseur qu'il a affronté. */
 export async function trainerRecords(db: Db, userId: string): Promise<TrainerProgressRow[]> {
   return db.select().from(trainerProgress).where(eq(trainerProgress.ownerId, userId));
 }
@@ -121,7 +125,7 @@ function elapsedMs(battle: BattleRow, now: Date): number {
 }
 
 /** État du combat à l'instant `now`. */
-export function battleState(battle: BattleRow, now: Date) {
+function battleState(battle: BattleRow, now: Date) {
   return simulateDungeon(battle.setup, battle.commands, battle.fledAtMs, elapsedMs(battle, now))
     .state;
 }

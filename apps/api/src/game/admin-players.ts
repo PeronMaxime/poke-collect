@@ -25,13 +25,18 @@ import type {
   AdminTestQuestsResponse,
   AdminTestTrainersResponse,
 } from '@poke/shared';
-import { toDto } from '../routes/player';
+import { toProfileDto } from './profile';
 import { flushSpeciesCounts } from './capture-stats';
 import { GameError } from './errors';
 import { playerTransaction } from './tx';
 import { newSeed, requireStartedProfile } from './expeditions';
 import { trainerCard } from './stats';
 import { addItems, playerProgress, pokemonActivities, recordPokedex } from './store';
+
+/**
+ * Lectures et actions de l'administration sur les joueurs : liste, fiche, statistiques par espèce,
+ * et aides de test réservées aux comptes administrateurs (objets, dresseurs, quêtes, Pokémon).
+ */
 
 /**
  * Dernière activité connue : présence enregistrée à chaque requête, complétée par la dernière
@@ -130,7 +135,7 @@ export async function playerDetail(
 
   return {
     player: playerDto(row),
-    profile: toDto(profile),
+    profile: toProfileDto(profile),
     card,
     speciesCaught: dex?.caught ?? 0,
     shinySpeciesCaught: dex?.shiny ?? 0,
@@ -189,11 +194,7 @@ const baseStatTotal = (s: { baseStats: Record<string, number> }) =>
   Object.values(s.baseStats).reduce((a, b) => a + b, 0);
 
 /** Espèces du lot de test : lignées des donjons de la région, puis les plus fortes par type. */
-export function testPokemonSpecies(
-  ctx: GameContext,
-  regionId: string,
-  legendaries: boolean,
-): number[] {
+function testPokemonSpecies(ctx: GameContext, regionId: string, legendaries: boolean): number[] {
   const region = ctx.region(regionId);
   if (!region) return [];
   const ids = new Set<number>();

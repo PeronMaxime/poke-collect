@@ -18,6 +18,8 @@ import type { GameContext } from '@poke/game-core';
 import type { FeaturedPokemonDto, TrainerCardResponse } from '@poke/shared';
 import { toInstance } from './store';
 
+/** Fiche Dresseur : statistiques d'un joueur et Pokémon qu'il met en avant. Lectures seules. */
+
 /** Statistiques de la Fiche Dresseur, recalculées à partir de l'historique du joueur. */
 export async function trainerCard(
   db: Db,

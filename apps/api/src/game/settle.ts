@@ -6,6 +6,11 @@ import { settleFinishedDungeonRun } from './dungeons';
 import { settleFinishedLegendaryBattle } from './legendary';
 import { nextExpeditionThrow, settleExpeditionBalls } from './expeditions';
 
+/**
+ * Rattrapage à la connexion : ce qui s'est terminé pendant l'absence d'un joueur est réglé avant de
+ * lui répondre, sans tâche de fond par joueur.
+ */
+
 /** Au plus tard, un joueur est revérifié après ce délai (ce que rien ne date : places fermées…). */
 const RECHECK_MS = 30_000;
 

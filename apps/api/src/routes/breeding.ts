@@ -1,8 +1,5 @@
 import type { FastifyInstance } from 'fastify';
-import { and, asc, eq, gt } from 'drizzle-orm';
 import { z } from 'zod';
-import { candies } from '@poke/db';
-import type { Db } from '@poke/db';
 import {
   collectEggsInputSchema,
   depositDaycareInputSchema,
@@ -21,7 +18,6 @@ import type {
   PokemonDto,
   TransferPokemonResponse,
 } from '@poke/shared';
-import type { ContentCache } from '../content-cache';
 import {
   collectEggs,
   depositDaycare,
@@ -29,6 +25,7 @@ import {
   hatchEggs,
   incubateEggs,
   isInBag,
+  listCandies,
   loadDaycare,
   pendingEggs,
   setDaycareParent,
@@ -47,14 +44,14 @@ import {
   pokemonActivities,
   toPokemonDto,
 } from '../game/store';
-import type { sessionHooks } from '../plugins/session';
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
-}
+/**
+ * Routes de l'élevage : pensions (/api/daycare), œufs (/api/eggs), transfert et Bonbons
+ * (/api/pokemon/transfer, /api/candies). Chaque route valide sa requête, appelle le module de jeu
+ * et répond.
+ */
 
 const slotParams = z.object({ slot: z.coerce.number().int().min(0).max(999) });
 const uuidParams = z.object({ id: z.uuid() });
@@ -68,11 +65,11 @@ const parentParams = slotParams.extend({
 });
 
 /** Pension, œufs, transfert de Pokémon et Bonbons de lignée. */
-export async function breedingRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
+export async function breedingRoutes(app: FastifyInstance, { db, content, hooks, now }: RouteDeps) {
   app.addHook('preHandler', hooks.requireUser);
 
   app.get('/api/daycare', async (request): Promise<DaycareResponse> => {
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const ctx = await content.get();
     await hooks.settleAll(userId);
     const [{ slots, parents }, eggRows, eggsHatched, places, eggPlaces, helpers] =
@@ -100,7 +97,7 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
 
   app.post('/api/daycare', async (request, reply) => {
     const input = depositDaycareInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     await assertTabUnlocked(db, await content.get(), userId, 'daycare');
     const row = await depositDaycare(db, content, userId, input, now());
     const { parents } = await loadDaycare(db, userId);
@@ -111,13 +108,13 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
   app.post('/api/daycare/:slot/collect', async (request): Promise<CollectEggsResponse> => {
     const { slot } = slotParams.parse(request.params);
     const { to } = collectEggsInputSchema.parse(request.body ?? {});
-    const result = await collectEggs(db, content, request.user!.id, slot, to, now());
+    const result = await collectEggs(db, content, currentUserId(request), slot, to, now());
     return { incubated: result.incubated.map(toEggDto), bagged: result.bagged };
   });
 
   app.delete('/api/daycare/:slot', async (request): Promise<CollectEggsResponse> => {
     const { slot } = slotParams.parse(request.params);
-    const result = await withdrawDaycare(db, content, request.user!.id, slot, now());
+    const result = await withdrawDaycare(db, content, currentUserId(request), slot, now());
     return {
       incubated: result.incubated.map(toEggDto),
       bagged: result.bagged,
@@ -129,7 +126,7 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
   app.put('/api/daycare/:slot/parents/:side', async (request): Promise<CollectEggsResponse> => {
     const { slot, side } = parentParams.parse(request.params);
     const input = setDaycareParentInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     await assertTabUnlocked(db, await content.get(), userId, 'daycare');
     const result = await setDaycareParent(db, content, userId, slot, side, input, now());
     return { ...result, incubated: result.incubated.map(toEggDto) };
@@ -137,43 +134,47 @@ export async function breedingRoutes(app: FastifyInstance, { db, content, hooks,
 
   app.delete('/api/daycare/:slot/parents/:side', async (request): Promise<CollectEggsResponse> => {
     const { slot, side } = parentParams.parse(request.params);
-    const result = await setDaycareParent(db, content, request.user!.id, slot, side, null, now());
+    const result = await setDaycareParent(
+      db,
+      content,
+      currentUserId(request),
+      slot,
+      side,
+      null,
+      now(),
+    );
     return { ...result, incubated: result.incubated.map(toEggDto) };
   });
 
   app.post('/api/eggs/incubate', async (request): Promise<IncubateEggsResponse> => {
     const { ids } = incubateEggsInputSchema.parse(request.body);
-    const incubated = await incubateEggs(db, content, request.user!.id, ids, now());
+    const incubated = await incubateEggs(db, content, currentUserId(request), ids, now());
     return { incubated: incubated.map(toEggDto) };
   });
 
   app.delete('/api/eggs/:id', async (request): Promise<BagEggDto> => {
     const { id } = uuidParams.parse(request.params);
-    return toBagEggDto(await withdrawEgg(db, request.user!.id, id, now()));
+    return toBagEggDto(await withdrawEgg(db, currentUserId(request), id, now()));
   });
 
   app.post('/api/eggs/hatch', async (request): Promise<HatchEggsResponse> => {
-    const { hatched, ...newInDex } = await hatchEggs(db, content, request.user!.id, now());
+    const { hatched, ...newInDex } = await hatchEggs(db, content, currentUserId(request), now());
     return { hatched: hatched.map((r) => toPokemonDto(r)), ...newInDex };
   });
 
   app.post('/api/pokemon/transfer', async (request): Promise<TransferPokemonResponse> => {
     const { ids } = transferPokemonInputSchema.parse(request.body);
-    return transferPokemon(db, content, request.user!.id, ids);
+    return transferPokemon(db, content, currentUserId(request), ids);
   });
 
   app.get('/api/candies', async (request): Promise<CandyDto[]> =>
-    db
-      .select({ lineageId: candies.lineageId, quantity: candies.quantity })
-      .from(candies)
-      .where(and(eq(candies.ownerId, request.user!.id), gt(candies.quantity, 0)))
-      .orderBy(asc(candies.lineageId)),
+    listCandies(db, currentUserId(request)),
   );
 
   app.post('/api/pokemon/:id/candies', async (request): Promise<PokemonDto> => {
     const { id } = uuidParams.parse(request.params);
     const { count } = feedCandiesInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const row = await feedCandies(db, content, userId, id, count);
     const busy = await pokemonActivities(db, userId);
     return toPokemonDto(row, busy.get(row.id));

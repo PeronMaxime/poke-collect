@@ -1,3 +1,7 @@
+/**
+ * Page « Calculateur de PE » : équipes de test gardées dans ce navigateur, comparées à la PE minimale
+ * des zones et des combats légendaires d'une région.
+ */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import { STAT_NAMES, abilities as abilityData, natures } from '@poke/data';
@@ -22,6 +26,7 @@ import {
   typeLabel,
 } from '../components/forms/pickers';
 import { errorMessage, useWorkingVersion } from '../lib/content';
+import type { WorkingVersion } from '../lib/content';
 import { useStored } from './ExpeditionSimulatorPage';
 
 /** Membre d'une équipe de test : IV uniformes sur les 6 statistiques. */
@@ -117,14 +122,18 @@ function requiredLevel(ctx: GameContext, place: CalcSite, members: readonly Calc
  */
 export function PowerCalculatorPage() {
   const { data: w, isPending, error } = useWorkingVersion();
+  if (isPending) return <p className="text-sm text-slate-500">Chargement…</p>;
+  if (!w) return <p className="text-sm text-red-600">{errorMessage(error)}</p>;
+  return <PowerCalculator w={w} />;
+}
+
+/** État du calculateur : équipes gardées dans le navigateur, valeurs par défaut, PE de l'équipe, sites de la région. */
+function usePowerCalculator({ w }: { w: WorkingVersion }) {
   const [teams, setTeams] = useStored<CalcTeam[]>('power-calculator-teams', []);
   const [currentId, setCurrentId] = useStored<string | null>('power-calculator-current', null);
   const [regionId, setRegionId] = useStored<string | null>('power-calculator-region', null);
   const [defaultLevel, setDefaultLevel] = useState(30);
   const [defaultIv, setDefaultIv] = useState(15);
-
-  if (isPending) return <p className="text-sm text-slate-500">Chargement…</p>;
-  if (!w) return <p className="text-sm text-red-600">{errorMessage(error)}</p>;
   const { ctx } = w;
   const region = ctx.region(regionId ?? '') ?? ctx.regions[0];
   const maxSize = ctx.balance.expeditions.maxTeamSize;
@@ -212,6 +221,42 @@ export function PowerCalculatorPage() {
     );
   const outside = region ? outOfRegionSpecies(ctx, region.id, members) : [];
 
+  return {
+    w,
+    teams,
+    setCurrentId,
+    setRegionId,
+    defaultLevel,
+    setDefaultLevel,
+    defaultIv,
+    setDefaultIv,
+    ctx,
+    region,
+    maxSize,
+    team,
+    members,
+    saveTeam,
+    setMembers,
+    updateMember,
+    createTeam,
+    removeTeam,
+    memberOf,
+    fillRandom,
+    instances,
+    basePower,
+    zones,
+    legendaries,
+    outside,
+  };
+}
+
+/** Ce qu'affichent les pièces de `PowerCalculator`. */
+type PowerCalculatorModel = ReturnType<typeof usePowerCalculator>;
+
+/** Le calculateur, une fois la version de travail chargée. */
+function PowerCalculator({ w }: { w: WorkingVersion }) {
+  const m = usePowerCalculator({ w });
+  const { team } = m;
   return (
     <div className="space-y-6">
       <VersionBanner working={w} />
@@ -225,261 +270,19 @@ export function PowerCalculatorPage() {
       </div>
 
       <section className="card space-y-4 p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {teams.map((t) => (
-            <button
-              key={t.id}
-              type="button"
-              onClick={() => setCurrentId(t.id)}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                t.id === team?.id
-                  ? 'bg-brand-500 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-              }`}
-            >
-              {t.name} · {t.members.length}
-            </button>
-          ))}
-          <button type="button" className="btn-ghost text-sm" onClick={() => createTeam()}>
-            + Nouvelle équipe
-          </button>
-        </div>
+        <TeamTabs m={m} />
 
         {team ? (
           <>
-            <div className="flex flex-wrap items-center gap-2 text-sm">
-              <input
-                className="input w-56"
-                value={team.name}
-                aria-label="Nom de l’équipe"
-                onChange={(e) => saveTeam({ ...team, name: e.target.value })}
-              />
-              <button type="button" className="btn-ghost text-sm" onClick={() => createTeam(team)}>
-                Dupliquer
-              </button>
-              <button
-                type="button"
-                className="text-sm text-red-600 hover:underline"
-                onClick={() => removeTeam(team.id)}
-              >
-                Supprimer
-              </button>
-              <span className="ml-auto text-lg font-bold">PE {basePower}</span>
-            </div>
+            <TeamToolbar m={m} team={team} />
 
-            <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-slate-50 p-3 text-xs dark:bg-slate-800/50">
-              <label className="flex items-center gap-2">
-                <span className="text-slate-500">Niveau</span>
-                <input
-                  type="number"
-                  className="input w-16 py-0.5 text-xs"
-                  min={1}
-                  max={MAX_LEVEL}
-                  value={defaultLevel}
-                  onChange={(e) => setDefaultLevel(clamp(Number(e.target.value), 1, MAX_LEVEL))}
-                />
-              </label>
-              <label className="flex items-center gap-2">
-                <span className="text-slate-500">IV</span>
-                <input
-                  type="number"
-                  className="input w-16 py-0.5 text-xs"
-                  min={0}
-                  max={MAX_IV}
-                  value={defaultIv}
-                  onChange={(e) => setDefaultIv(clamp(Number(e.target.value), 0, MAX_IV))}
-                />
-              </label>
-              <button
-                type="button"
-                className="btn-ghost px-2 py-0.5 text-xs"
-                disabled={members.length === 0}
-                onClick={() =>
-                  setMembers(members.map((m) => ({ ...m, level: defaultLevel, iv: defaultIv })))
-                }
-              >
-                Appliquer à toute l’équipe
-              </button>
-              <span className="text-slate-400">
-                Valeurs des nouveaux membres (IV 15 ≈ Pokémon sauvage moyen, 31 = parfait).
-              </span>
-            </div>
+            <MemberDefaults m={m} />
 
-            {members.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead className="text-left text-xs text-slate-500">
-                    <tr>
-                      <th className="py-1 pr-2">Pokémon</th>
-                      <th className="px-2 py-1">Niveau</th>
-                      <th className="px-2 py-1">IV</th>
-                      <th className="px-2 py-1">Nature</th>
-                      <th className="px-2 py-1">Talent</th>
-                      <th className="px-2 py-1 text-right">PE</th>
-                      <th />
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {members.map((m, i) => {
-                      const species = ctx.species(m.speciesId, m.formId);
-                      return (
-                        <tr
-                          key={m.key}
-                          className="border-t border-slate-100 align-top dark:border-slate-800"
-                        >
-                          <td className="w-64 py-1.5 pr-2">
-                            <SpeciesSelect
-                              ctx={ctx}
-                              value={m.speciesId}
-                              onChange={(id) =>
-                                updateMember(m.key, {
-                                  speciesId: id,
-                                  formId: null,
-                                  ability: NO_ABILITY,
-                                })
-                              }
-                            />
-                            <FormSelect
-                              speciesId={m.speciesId}
-                              value={m.formId}
-                              onChange={(formId) =>
-                                updateMember(m.key, { formId, ability: NO_ABILITY })
-                              }
-                            />
-                            <div className="mt-1 flex flex-wrap gap-1">
-                              {species?.types.map((t) => (
-                                <TypeBadge key={t} type={t} />
-                              ))}
-                              {outside.includes(m.speciesId) && (
-                                <span className="text-xs text-amber-600">
-                                  Hors du Pokédex de {region?.name}
-                                </span>
-                              )}
-                            </div>
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <input
-                              type="number"
-                              className="input w-16"
-                              min={1}
-                              max={MAX_LEVEL}
-                              value={m.level}
-                              onChange={(e) =>
-                                updateMember(m.key, {
-                                  level: clamp(Number(e.target.value), 1, MAX_LEVEL),
-                                })
-                              }
-                            />
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <input
-                              type="number"
-                              className="input w-16"
-                              min={0}
-                              max={MAX_IV}
-                              value={m.iv}
-                              onChange={(e) =>
-                                updateMember(m.key, {
-                                  iv: clamp(Number(e.target.value), 0, MAX_IV),
-                                })
-                              }
-                            />
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <select
-                              className="input"
-                              value={m.nature}
-                              onChange={(e) => updateMember(m.key, { nature: e.target.value })}
-                            >
-                              {NATURE_OPTIONS.map((n) => (
-                                <option key={n.name} value={n.name}>
-                                  {n.label}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="px-2 py-1.5">
-                            <select
-                              className="input"
-                              value={m.ability}
-                              onChange={(e) => updateMember(m.key, { ability: e.target.value })}
-                            >
-                              <option value={NO_ABILITY}>Aucun talent</option>
-                              {species?.abilities.map((a) => (
-                                <option key={a.name} value={a.name}>
-                                  {abilityNames.get(a.name) ?? a.name}
-                                  {a.isHidden ? ' (caché)' : ''}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td className="px-2 py-1.5 text-right font-semibold tabular-nums">
-                            {memberPower(ctx, instances[i]!)}
-                          </td>
-                          <td className="py-1.5 pl-2 text-right">
-                            <button
-                              type="button"
-                              className="text-slate-400 hover:text-red-600"
-                              aria-label="Retirer de l’équipe"
-                              onClick={() => setMembers(members.filter((q) => q.key !== m.key))}
-                            >
-                              ✕
-                            </button>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <MembersTable m={m} />
 
-            {members.length < maxSize ? (
-              <div className="flex flex-wrap items-center gap-2">
-                <div className="w-64">
-                  <SpeciesSelect
-                    ctx={ctx}
-                    value={null}
-                    onChange={(id) => setMembers([...members, memberOf(id)])}
-                  />
-                </div>
-                <button type="button" className="btn-ghost text-sm" onClick={fillRandom}>
-                  Compléter au hasard ({region?.name})
-                </button>
-                <span className="text-xs text-slate-400">
-                  {members.length} / {maxSize} Pokémon
-                </span>
-              </div>
-            ) : (
-              <p className="text-xs text-slate-400">
-                Équipe complète ({maxSize} Pokémon au plus en expédition).
-              </p>
-            )}
+            <AddMember m={m} />
 
-            {members.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="text-xs tabular-nums">
-                  <tbody>
-                    <tr>
-                      <th className="pr-3 text-left font-medium text-slate-500">Niveau commun</th>
-                      {CURVE_LEVELS.map((l) => (
-                        <td key={l} className="px-2 text-right text-slate-500">
-                          {l}
-                        </td>
-                      ))}
-                    </tr>
-                    <tr>
-                      <th className="pr-3 text-left font-medium text-slate-500">PE</th>
-                      {CURVE_LEVELS.map((l) => (
-                        <td key={l} className="px-2 text-right font-semibold">
-                          {members.reduce((sum, m) => sum + memberPower(ctx, instance(m, l)), 0)}
-                        </td>
-                      ))}
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            )}
+            <PowerCurve m={m} />
           </>
         ) : (
           <p className="text-sm text-slate-500">
@@ -488,45 +291,347 @@ export function PowerCalculatorPage() {
         )}
       </section>
 
-      <section className="space-y-3">
-        <div className="flex flex-wrap gap-1" role="tablist">
-          {ctx.regions.map((r) => (
-            <button
-              key={r.id}
-              role="tab"
-              aria-selected={r.id === region?.id}
-              onClick={() => setRegionId(r.id)}
-              className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
-                r.id === region?.id
-                  ? 'bg-brand-500 text-white'
-                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
-              }`}
-            >
-              {r.name}
-              {!r.enabled && ' (désactivée)'}
-            </button>
-          ))}
-        </div>
-        <SiteTable
-          ctx={ctx}
-          title={`Zones de ${region?.name}`}
-          column="Zone"
-          empty="Aucune zone."
-          sites={zones}
-          members={members}
-          instances={instances}
-        />
-        <SiteTable
-          ctx={ctx}
-          title={`Combats légendaires de ${region?.name}`}
-          column="Légendaire"
-          empty="Aucun combat légendaire (les Pokémon fuyards n’en ont pas)."
-          sites={legendaries}
-          members={members}
-          instances={instances}
-        />
-      </section>
+      <RegionSites m={m} />
     </div>
+  );
+}
+
+/** Onglets des équipes de test, et le bouton qui en crée une. */
+function TeamTabs({ m }: { m: PowerCalculatorModel }) {
+  const { teams, setCurrentId, team, createTeam } = m;
+  return (
+    <div className="flex flex-wrap items-center gap-2">
+      {teams.map((t) => (
+        <button
+          key={t.id}
+          type="button"
+          onClick={() => setCurrentId(t.id)}
+          className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+            t.id === team?.id
+              ? 'bg-brand-500 text-white'
+              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+          }`}
+        >
+          {t.name} · {t.members.length}
+        </button>
+      ))}
+      <button type="button" className="btn-ghost text-sm" onClick={() => createTeam()}>
+        + Nouvelle équipe
+      </button>
+    </div>
+  );
+}
+
+/** Nom de l'équipe, dupliquer, supprimer, et sa PE. */
+function TeamToolbar({ m, team }: { m: PowerCalculatorModel; team: CalcTeam }) {
+  const { saveTeam, createTeam, removeTeam, basePower } = m;
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-sm">
+      <input
+        className="input w-56"
+        value={team.name}
+        aria-label="Nom de l’équipe"
+        onChange={(e) => saveTeam({ ...team, name: e.target.value })}
+      />
+      <button type="button" className="btn-ghost text-sm" onClick={() => createTeam(team)}>
+        Dupliquer
+      </button>
+      <button
+        type="button"
+        className="text-sm text-red-600 hover:underline"
+        onClick={() => removeTeam(team.id)}
+      >
+        Supprimer
+      </button>
+      <span className="ml-auto text-lg font-bold">PE {basePower}</span>
+    </div>
+  );
+}
+
+/** Niveau et IV des nouveaux membres, applicables à toute l'équipe. */
+function MemberDefaults({ m }: { m: PowerCalculatorModel }) {
+  const { defaultLevel, setDefaultLevel, defaultIv, setDefaultIv, members, setMembers } = m;
+  return (
+    <div className="flex flex-wrap items-center gap-x-6 gap-y-2 rounded-lg bg-slate-50 p-3 text-xs dark:bg-slate-800/50">
+      <label className="flex items-center gap-2">
+        <span className="text-slate-500">Niveau</span>
+        <input
+          type="number"
+          className="input w-16 py-0.5 text-xs"
+          min={1}
+          max={MAX_LEVEL}
+          value={defaultLevel}
+          onChange={(e) => setDefaultLevel(clamp(Number(e.target.value), 1, MAX_LEVEL))}
+        />
+      </label>
+      <label className="flex items-center gap-2">
+        <span className="text-slate-500">IV</span>
+        <input
+          type="number"
+          className="input w-16 py-0.5 text-xs"
+          min={0}
+          max={MAX_IV}
+          value={defaultIv}
+          onChange={(e) => setDefaultIv(clamp(Number(e.target.value), 0, MAX_IV))}
+        />
+      </label>
+      <button
+        type="button"
+        className="btn-ghost px-2 py-0.5 text-xs"
+        disabled={members.length === 0}
+        onClick={() =>
+          setMembers(members.map((m) => ({ ...m, level: defaultLevel, iv: defaultIv })))
+        }
+      >
+        Appliquer à toute l’équipe
+      </button>
+      <span className="text-slate-400">
+        Valeurs des nouveaux membres (IV 15 ≈ Pokémon sauvage moyen, 31 = parfait).
+      </span>
+    </div>
+  );
+}
+
+/** Membres de l'équipe : espèce, niveau, IV, nature, talent, PE de chacun. */
+function MembersTable({ m }: { m: PowerCalculatorModel }) {
+  const { ctx, region, members, setMembers, updateMember, instances, outside } = m;
+  return (
+    <>
+      {members.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm">
+            <thead className="text-left text-xs text-slate-500">
+              <tr>
+                <th className="py-1 pr-2">Pokémon</th>
+                <th className="px-2 py-1">Niveau</th>
+                <th className="px-2 py-1">IV</th>
+                <th className="px-2 py-1">Nature</th>
+                <th className="px-2 py-1">Talent</th>
+                <th className="px-2 py-1 text-right">PE</th>
+                <th />
+              </tr>
+            </thead>
+            <tbody>
+              {members.map((m, i) => {
+                const species = ctx.species(m.speciesId, m.formId);
+                return (
+                  <tr
+                    key={m.key}
+                    className="border-t border-slate-100 align-top dark:border-slate-800"
+                  >
+                    <td className="w-64 py-1.5 pr-2">
+                      <SpeciesSelect
+                        ctx={ctx}
+                        value={m.speciesId}
+                        onChange={(id) =>
+                          updateMember(m.key, {
+                            speciesId: id,
+                            formId: null,
+                            ability: NO_ABILITY,
+                          })
+                        }
+                      />
+                      <FormSelect
+                        speciesId={m.speciesId}
+                        value={m.formId}
+                        onChange={(formId) => updateMember(m.key, { formId, ability: NO_ABILITY })}
+                      />
+                      <div className="mt-1 flex flex-wrap gap-1">
+                        {species?.types.map((t) => (
+                          <TypeBadge key={t} type={t} />
+                        ))}
+                        {outside.includes(m.speciesId) && (
+                          <span className="text-xs text-amber-600">
+                            Hors du Pokédex de {region?.name}
+                          </span>
+                        )}
+                      </div>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <input
+                        type="number"
+                        className="input w-16"
+                        min={1}
+                        max={MAX_LEVEL}
+                        value={m.level}
+                        onChange={(e) =>
+                          updateMember(m.key, {
+                            level: clamp(Number(e.target.value), 1, MAX_LEVEL),
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <input
+                        type="number"
+                        className="input w-16"
+                        min={0}
+                        max={MAX_IV}
+                        value={m.iv}
+                        onChange={(e) =>
+                          updateMember(m.key, {
+                            iv: clamp(Number(e.target.value), 0, MAX_IV),
+                          })
+                        }
+                      />
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <select
+                        className="input"
+                        value={m.nature}
+                        onChange={(e) => updateMember(m.key, { nature: e.target.value })}
+                      >
+                        {NATURE_OPTIONS.map((n) => (
+                          <option key={n.name} value={n.name}>
+                            {n.label}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-2 py-1.5">
+                      <select
+                        className="input"
+                        value={m.ability}
+                        onChange={(e) => updateMember(m.key, { ability: e.target.value })}
+                      >
+                        <option value={NO_ABILITY}>Aucun talent</option>
+                        {species?.abilities.map((a) => (
+                          <option key={a.name} value={a.name}>
+                            {abilityNames.get(a.name) ?? a.name}
+                            {a.isHidden ? ' (caché)' : ''}
+                          </option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="px-2 py-1.5 text-right font-semibold tabular-nums">
+                      {memberPower(ctx, instances[i]!)}
+                    </td>
+                    <td className="py-1.5 pl-2 text-right">
+                      <button
+                        type="button"
+                        className="text-slate-400 hover:text-red-600"
+                        aria-label="Retirer de l’équipe"
+                        onClick={() => setMembers(members.filter((q) => q.key !== m.key))}
+                      >
+                        ✕
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Ajout d'un membre (choisi ou au hasard dans la région), tant que l'équipe n'est pas complète. */
+function AddMember({ m }: { m: PowerCalculatorModel }) {
+  const { ctx, region, maxSize, members, setMembers, memberOf, fillRandom } = m;
+  return (
+    <>
+      {members.length < maxSize ? (
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="w-64">
+            <SpeciesSelect
+              ctx={ctx}
+              value={null}
+              onChange={(id) => setMembers([...members, memberOf(id)])}
+            />
+          </div>
+          <button type="button" className="btn-ghost text-sm" onClick={fillRandom}>
+            Compléter au hasard ({region?.name})
+          </button>
+          <span className="text-xs text-slate-400">
+            {members.length} / {maxSize} Pokémon
+          </span>
+        </div>
+      ) : (
+        <p className="text-xs text-slate-400">
+          Équipe complète ({maxSize} Pokémon au plus en expédition).
+        </p>
+      )}
+    </>
+  );
+}
+
+/** PE de l'équipe à quelques niveaux communs. */
+function PowerCurve({ m }: { m: PowerCalculatorModel }) {
+  const { ctx, members } = m;
+  return (
+    <>
+      {members.length > 0 && (
+        <div className="overflow-x-auto">
+          <table className="text-xs tabular-nums">
+            <tbody>
+              <tr>
+                <th className="pr-3 text-left font-medium text-slate-500">Niveau commun</th>
+                {CURVE_LEVELS.map((l) => (
+                  <td key={l} className="px-2 text-right text-slate-500">
+                    {l}
+                  </td>
+                ))}
+              </tr>
+              <tr>
+                <th className="pr-3 text-left font-medium text-slate-500">PE</th>
+                {CURVE_LEVELS.map((l) => (
+                  <td key={l} className="px-2 text-right font-semibold">
+                    {members.reduce((sum, m) => sum + memberPower(ctx, instance(m, l)), 0)}
+                  </td>
+                ))}
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      )}
+    </>
+  );
+}
+
+/** Onglets des régions, et les zones et combats légendaires de la région comparés à l'équipe. */
+function RegionSites({ m }: { m: PowerCalculatorModel }) {
+  const { setRegionId, ctx, region, members, instances, zones, legendaries } = m;
+  return (
+    <section className="space-y-3">
+      <div className="flex flex-wrap gap-1" role="tablist">
+        {ctx.regions.map((r) => (
+          <button
+            key={r.id}
+            role="tab"
+            aria-selected={r.id === region?.id}
+            onClick={() => setRegionId(r.id)}
+            className={`rounded-full px-3 py-1.5 text-sm font-medium transition ${
+              r.id === region?.id
+                ? 'bg-brand-500 text-white'
+                : 'bg-slate-100 text-slate-600 hover:bg-slate-200 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700'
+            }`}
+          >
+            {r.name}
+            {!r.enabled && ' (désactivée)'}
+          </button>
+        ))}
+      </div>
+      <SiteTable
+        ctx={ctx}
+        title={`Zones de ${region?.name}`}
+        column="Zone"
+        empty="Aucune zone."
+        sites={zones}
+        members={members}
+        instances={instances}
+      />
+      <SiteTable
+        ctx={ctx}
+        title={`Combats légendaires de ${region?.name}`}
+        column="Légendaire"
+        empty="Aucun combat légendaire (les Pokémon fuyards n’en ont pas)."
+        sites={legendaries}
+        members={members}
+        instances={instances}
+      />
+    </section>
   );
 }
 

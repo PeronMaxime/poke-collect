@@ -1,7 +1,12 @@
-import { seedContent } from '@poke/content';
+import { seedContent } from '@poke/content/seed';
 import type { GameContentData } from '@poke/content';
 import { createGameContext } from './context';
 import type { TeamMember } from './expedition';
+
+/**
+ * Aides des tests de `game-core` : un contexte de jeu bâti sur le contenu de test, et des Pokémon
+ * aux IV parfaits pour des chiffres prévisibles. N'est importé que par les fichiers `*.test.ts`.
+ */
 
 /** Contexte de test à partir du seed, avec des modifications éventuelles. */
 export function testContext(patch: (c: GameContentData) => void = () => {}) {
@@ -19,6 +24,7 @@ const PERFECT = {
   speed: 31,
 };
 
+/** Membre d'équipe de test : IV parfaits, nature neutre, sauf précision dans `extra`. */
 export function member(
   id: string,
   speciesId: number,

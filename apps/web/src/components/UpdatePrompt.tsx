@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CHUNK_ERROR_EVENT } from '../lib/lazy';
 import { Modal } from './ui';
 
 /** Fréquence de vérification d'une nouvelle version, en plus du retour sur l'onglet. */
@@ -33,9 +34,12 @@ export function UpdatePrompt() {
     check();
     const id = window.setInterval(check, CHECK_INTERVAL_MS);
     document.addEventListener('visibilitychange', onVisible);
+    // Une page n'a pas pu être chargée : ses fichiers ont peut-être été remplacés.
+    window.addEventListener(CHUNK_ERROR_EVENT, check);
     return () => {
       window.clearInterval(id);
       document.removeEventListener('visibilitychange', onVisible);
+      window.removeEventListener(CHUNK_ERROR_EVENT, check);
     };
   }, []);
 

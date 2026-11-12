@@ -1,39 +1,36 @@
 import type { FastifyInstance } from 'fastify';
-import type { Db } from '@poke/db';
 import { markShopSeenInputSchema, purchaseInputSchema, sellInputSchema } from '@poke/shared';
 import type { PurchaseResponse, SellResponse, ShopResponse } from '@poke/shared';
-import type { ContentCache } from '../content-cache';
 import { markShopSeen, purchase, sell, shopState } from '../game/shop';
-import type { sessionHooks } from '../plugins/session';
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
-}
+/**
+ * Routes de la boutique (/api/shop) : acheter, vendre. Chaque route valide sa requête, appelle le
+ * module de jeu et répond.
+ */
 
 /** Boutique : articles visibles, achat, vente, badge « Nouveau ! ». */
-export async function shopRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
+export async function shopRoutes(app: FastifyInstance, { db, content, hooks, now }: RouteDeps) {
   app.addHook('preHandler', hooks.requireUser);
 
   app.get('/api/shop', async (request): Promise<ShopResponse> =>
-    shopState(db, content, request.user!.id, now()),
+    shopState(db, content, currentUserId(request), now()),
   );
 
   app.post('/api/shop/purchase', async (request): Promise<PurchaseResponse> => {
     const input = purchaseInputSchema.parse(request.body);
-    return purchase(db, content, request.user!.id, input, now());
+    return purchase(db, content, currentUserId(request), input, now());
   });
 
   app.post('/api/shop/sell', async (request): Promise<SellResponse> => {
     const input = sellInputSchema.parse(request.body);
-    return sell(db, content, request.user!.id, input, now());
+    return sell(db, content, currentUserId(request), input, now());
   });
 
   app.post('/api/shop/seen', async (request, reply) => {
     const { entryIds } = markShopSeenInputSchema.parse(request.body);
-    await markShopSeen(db, request.user!.id, entryIds, now());
+    await markShopSeen(db, currentUserId(request), entryIds, now());
     return reply.code(204).send();
   });
 }

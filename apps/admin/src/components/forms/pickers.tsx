@@ -1,3 +1,7 @@
+/**
+ * Sélecteurs des fiches de contenu : espèce, forme, ensemble d'espèces, types, objet, météo, et
+ * l'éditeur visuel d'une condition de déblocage ; sprites et icônes pour les aperçus.
+ */
 import { useState } from 'react';
 import { ITEM_CATEGORIES, WEATHERS } from '@poke/content';
 import type {
@@ -38,8 +42,10 @@ const FORM_KINDS: [FormKind, string][] = [
 ];
 
 const typeNames = new Map(types.map((t) => [t.name, t.nameFr]));
+/** Nom français d'un type (« fire » → « Feu ») ; le nom brut s'il est inconnu. */
 export const typeLabel = (t: string) => typeNames.get(t) ?? t;
 
+/** Sprite d'une espèce, ou d'une de ses formes avec `formId`. */
 export function Sprite({
   id,
   formId = null,
@@ -64,6 +70,7 @@ export function Sprite({
   );
 }
 
+/** Icône d'un objet : celle réglée dans le contenu, sinon le sprite PokéAPI. */
 export function ItemIcon({ ctx, id, size = 28 }: { ctx: GameContext; id: string; size?: number }) {
   return (
     <img
@@ -76,6 +83,7 @@ export function ItemIcon({ ctx, id, size = 28 }: { ctx: GameContext; id: string;
   );
 }
 
+/** Pastille d'un type, à sa couleur. */
 export function TypeBadge({ type }: { type: string }) {
   return (
     <span
@@ -291,6 +299,7 @@ export function SpeciesSetEditor({
   );
 }
 
+/** Choix de plusieurs types : une pastille à cocher par type. */
 export function TypeMultiSelect({
   value,
   onChange,
@@ -323,6 +332,7 @@ export function TypeMultiSelect({
   );
 }
 
+/** Choix d'un type dans une liste déroulante. */
 export function TypeSelect({
   value,
   onChange,
@@ -421,16 +431,8 @@ export function ItemSelect({
 
 const COUNT_UNITS = { badgeCount: 'badge(s)', speciesCaught: 'espèce(s)', eggsHatched: 'œuf(s)' };
 
-/** Éditeur visuel d'une condition de déblocage : type, puis paramètres. */
-export function UnlockEditor({
-  value,
-  onChange,
-  regions,
-  trainers = [],
-  quests = [],
-  disabled,
-  nested,
-}: {
+/** Props de l'éditeur de condition de déblocage, que reçoivent aussi ses pièces. */
+interface UnlockEditorProps {
   value: UnlockCondition;
   onChange: (v: UnlockCondition) => void;
   regions: readonly Region[];
@@ -441,7 +443,18 @@ export function UnlockEditor({
   disabled?: boolean;
   /** Brique d'un « toutes ces conditions » : pas de combinaison imbriquée. */
   nested?: boolean;
-}) {
+}
+
+/** Éditeur visuel d'une condition de déblocage : type, puis paramètres. */
+export function UnlockEditor({
+  value,
+  onChange,
+  regions,
+  trainers = [],
+  quests = [],
+  disabled,
+  nested,
+}: UnlockEditorProps) {
   const initial = (type: UnlockCondition['type']): UnlockCondition => {
     switch (type) {
       case 'always':
@@ -472,8 +485,6 @@ export function UnlockEditor({
         };
     }
   };
-  const editorProps = { regions, trainers, quests, disabled, nested: true };
-  const quest = 'questId' in value ? quests.find((q) => q.id === value.questId) : undefined;
   return (
     <div className="flex flex-wrap items-center gap-2">
       <select
@@ -499,6 +510,58 @@ export function UnlockEditor({
         </option>
         {!nested && <option value="allOf">Plusieurs conditions (toutes)</option>}
       </select>
+      <AllOfConditions
+        value={value}
+        onChange={onChange}
+        regions={regions}
+        trainers={trainers}
+        quests={quests}
+        disabled={disabled}
+        nested={nested}
+      />
+      <QuestUnlockFields
+        value={value}
+        onChange={onChange}
+        regions={regions}
+        trainers={trainers}
+        quests={quests}
+        disabled={disabled}
+        nested={nested}
+      />
+      <RegionTrainerUnlockFields
+        value={value}
+        onChange={onChange}
+        regions={regions}
+        trainers={trainers}
+        quests={quests}
+        disabled={disabled}
+        nested={nested}
+      />
+      <CountUnlockFields
+        value={value}
+        onChange={onChange}
+        regions={regions}
+        trainers={trainers}
+        quests={quests}
+        disabled={disabled}
+        nested={nested}
+      />
+    </div>
+  );
+}
+
+/** Briques d'un « toutes ces conditions » : chacune son éditeur, ajout et retrait. */
+function AllOfConditions({
+  value,
+  onChange,
+  regions,
+  trainers = [],
+  quests = [],
+  disabled,
+}: UnlockEditorProps) {
+  const editorProps = { regions, trainers, quests, disabled, nested: true };
+  return (
+    <>
       {value.type === 'allOf' && (
         <div className="basis-full space-y-2 border-l-2 border-slate-200 pl-3 dark:border-slate-700">
           {value.conditions.map((condition, i) => (
@@ -541,6 +604,15 @@ export function UnlockEditor({
           </button>
         </div>
       )}
+    </>
+  );
+}
+
+/** Paramètres des conditions d'avancement de quête : la quête, le nombre d'étapes. */
+function QuestUnlockFields({ value, onChange, quests = [], disabled }: UnlockEditorProps) {
+  const quest = 'questId' in value ? quests.find((q) => q.id === value.questId) : undefined;
+  return (
+    <>
       {value.type === 'questStepsDone' && (
         <NumberInput
           className="w-36"
@@ -567,6 +639,20 @@ export function UnlockEditor({
           ))}
         </select>
       )}
+    </>
+  );
+}
+
+/** Paramètres des conditions de région (pourcentage du Pokédex, déblocage) et de dresseur battu. */
+function RegionTrainerUnlockFields({
+  value,
+  onChange,
+  regions,
+  trainers = [],
+  disabled,
+}: UnlockEditorProps) {
+  return (
+    <>
       {value.type === 'regionDexPercent' && (
         <>
           <NumberInput
@@ -629,6 +715,14 @@ export function UnlockEditor({
           ))}
         </select>
       )}
+    </>
+  );
+}
+
+/** Paramètres des conditions de nombre (badges, espèces, œufs) et de la région des badges. */
+function CountUnlockFields({ value, onChange, regions, disabled }: UnlockEditorProps) {
+  return (
+    <>
       {(value.type === 'badgeCount' ||
         value.type === 'speciesCaught' ||
         value.type === 'eggsHatched') && (
@@ -663,7 +757,7 @@ export function UnlockEditor({
           ))}
         </select>
       )}
-    </div>
+    </>
   );
 }
 

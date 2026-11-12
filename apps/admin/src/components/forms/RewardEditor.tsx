@@ -1,3 +1,7 @@
+/**
+ * Récompense d'un palier, d'une collection, d'une quête ou d'une complétion : argent, objets,
+ * emplacements en plus et bonus permanents, son éditeur et son résumé d'une ligne.
+ */
 import type { PermanentBonus, PermanentBonusType, ProgressReward } from '@poke/content';
 import { ASSISTANT_POST_PLACES } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
@@ -5,6 +9,7 @@ import { Field, NumberInput, SelectInput } from './fields';
 import type { FieldErrors } from './fields';
 import { ItemSelect } from './pickers';
 
+/** Libellé de chaque type de bonus permanent. */
 export const BONUS_LABELS: Record<PermanentBonusType, string> = {
   capture: 'Capture en expédition',
   xp: 'XP gagnée (expéditions et combats)',
@@ -12,6 +17,7 @@ export const BONUS_LABELS: Record<PermanentBonusType, string> = {
   shiny: 'Chance de chromatique (expéditions, œufs, fossiles)',
 };
 
+/** Récompense vide, point de départ d'une nouvelle récompense. */
 export const emptyReward = (): ProgressReward => ({
   currency: 0,
   items: [],
@@ -34,6 +40,17 @@ export function rewardSummary(r: ProgressReward): string {
   return parts.length ? parts.join(' · ') : 'aucune récompense';
 }
 
+/** Props de l'éditeur de récompense, que reçoivent aussi ses pièces. */
+interface RewardEditorProps {
+  ctx: GameContext;
+  value: ProgressReward;
+  onChange: (v: ProgressReward) => void;
+  errors: FieldErrors;
+  /** Chemin du champ dans l'entité (`rewards`), pour les messages d'erreur. */
+  prefix: string;
+  disabled: boolean;
+}
+
 /**
  * Récompense d'un palier ou d'une collection : argent, objets, emplacements supplémentaires
  * et bonus permanents (briques génériques).
@@ -45,24 +62,10 @@ export function RewardEditor({
   errors,
   prefix,
   disabled,
-}: {
-  ctx: GameContext;
-  value: ProgressReward;
-  onChange: (v: ProgressReward) => void;
-  errors: FieldErrors;
-  /** Chemin du champ dans l'entité (`rewards`), pour les messages d'erreur. */
-  prefix: string;
-  disabled: boolean;
-}) {
+}: RewardEditorProps) {
   const set = <K extends keyof ProgressReward>(key: K, v: ProgressReward[K]) =>
     onChange({ ...value, [key]: v });
   const err = (path: string) => errors.get(`${prefix}.${path}`);
-  const { balance } = ctx;
-  const setBonus = (i: number, patch: Partial<PermanentBonus>) =>
-    set(
-      'bonuses',
-      value.bonuses.map((b, j) => (j === i ? ({ ...b, ...patch } as PermanentBonus) : b)),
-    );
 
   return (
     <div className="space-y-4">
@@ -79,165 +82,231 @@ export function RewardEditor({
         </Field>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-3">
-        <Field
-          label="Emplacements d’expédition"
-          hint={`Départ ${balance.expeditions.initialSlots}, max ${balance.expeditions.maxSlots}`}
-          error={err('expeditionSlots')}
-        >
-          <NumberInput
-            value={value.expeditionSlots}
-            min={0}
-            max={6}
-            unit="+"
-            onChange={(v) => set('expeditionSlots', v)}
-            disabled={disabled}
-          />
-        </Field>
-        <Field
-          label="Pensions"
-          hint={`Départ ${balance.daycare.initialSlots}, sans maximum`}
-          error={err('daycareSlots')}
-        >
-          <NumberInput
-            value={value.daycareSlots}
-            min={0}
-            max={10}
-            unit="+"
-            onChange={(v) => set('daycareSlots', v)}
-            disabled={disabled}
-          />
-        </Field>
-        <Field
-          label="Couveuses"
-          hint={`${ASSISTANT_POST_PLACES.incubator} places et un assistant chacune`}
-          error={err('incubators')}
-        >
-          <NumberInput
-            value={value.incubators}
-            min={0}
-            max={10}
-            unit="+"
-            onChange={(v) => set('incubators', v)}
-            disabled={disabled}
-          />
-        </Field>
-      </div>
+      <FacilityRewardFields
+        ctx={ctx}
+        value={value}
+        onChange={onChange}
+        errors={errors}
+        prefix={prefix}
+        disabled={disabled}
+      />
 
-      <Field label="Objets">
-        <div className="space-y-2">
-          {value.items.map((s, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <ItemSelect
-                ctx={ctx}
-                value={s.itemId}
-                disabled={disabled}
-                onChange={(itemId) =>
-                  itemId &&
-                  set(
-                    'items',
-                    value.items.map((x, j) => (j === i ? { ...x, itemId } : x)),
-                  )
-                }
-              />
-              <NumberInput
-                className="w-32"
-                value={s.quantity}
-                min={1}
-                unit="×"
-                disabled={disabled}
-                onChange={(quantity) =>
-                  set(
-                    'items',
-                    value.items.map((x, j) => (j === i ? { ...x, quantity } : x)),
-                  )
-                }
-              />
-              {!disabled && (
-                <button
-                  type="button"
-                  className="text-slate-400 hover:text-red-600"
-                  onClick={() =>
-                    set(
-                      'items',
-                      value.items.filter((_, j) => j !== i),
-                    )
-                  }
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          ))}
-          {!disabled && ctx.content.items.length > 0 && (
-            <button
-              type="button"
-              className="btn-ghost py-1 text-xs"
-              onClick={() =>
-                set('items', [...value.items, { itemId: ctx.content.items[0]!.id, quantity: 1 }])
-              }
-            >
-              + Objet
-            </button>
-          )}
-        </div>
-      </Field>
+      <RewardItemsField
+        ctx={ctx}
+        value={value}
+        onChange={onChange}
+        errors={errors}
+        prefix={prefix}
+        disabled={disabled}
+      />
 
+      <RewardBonusesField
+        ctx={ctx}
+        value={value}
+        onChange={onChange}
+        errors={errors}
+        prefix={prefix}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
+
+/** Emplacements d'expédition, pensions et couveuses en plus. */
+function FacilityRewardFields({
+  ctx,
+  value,
+  onChange,
+  errors,
+  prefix,
+  disabled,
+}: RewardEditorProps) {
+  const set = <K extends keyof ProgressReward>(key: K, v: ProgressReward[K]) =>
+    onChange({ ...value, [key]: v });
+  const err = (path: string) => errors.get(`${prefix}.${path}`);
+  const { balance } = ctx;
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-3">
       <Field
-        label="Bonus permanents"
-        hint="Actifs dès que le joueur réclame la récompense ; les bonus de même type s’additionnent."
+        label="Emplacements d’expédition"
+        hint={`Départ ${balance.expeditions.initialSlots}, max ${balance.expeditions.maxSlots}`}
+        error={err('expeditionSlots')}
       >
-        <div className="space-y-2">
-          {value.bonuses.map((b, i) => (
-            <div key={i} className="flex flex-wrap items-center gap-2">
-              <SelectInput
-                value={b.type}
-                disabled={disabled}
-                onChange={(type) => setBonus(i, { type })}
-                options={(Object.keys(BONUS_LABELS) as PermanentBonusType[]).map((t) => ({
-                  value: t,
-                  label: BONUS_LABELS[t],
-                }))}
-              />
-              <NumberInput
-                className="w-32"
-                value={b.percent}
-                min={0}
-                step={1}
-                unit="%"
-                disabled={disabled}
-                onChange={(percent) => setBonus(i, { percent })}
-              />
-              {!disabled && (
-                <button
-                  type="button"
-                  className="text-slate-400 hover:text-red-600"
-                  onClick={() =>
-                    set(
-                      'bonuses',
-                      value.bonuses.filter((_, j) => j !== i),
-                    )
-                  }
-                >
-                  ✕
-                </button>
-              )}
-              {err(`bonuses.${i}.percent`) && (
-                <span className="text-xs text-red-600">{err(`bonuses.${i}.percent`)}</span>
-              )}
-            </div>
-          ))}
-          {!disabled && (
-            <button
-              type="button"
-              className="btn-ghost py-1 text-xs"
-              onClick={() => set('bonuses', [...value.bonuses, { type: 'capture', percent: 5 }])}
-            >
-              + Bonus
-            </button>
-          )}
-        </div>
+        <NumberInput
+          value={value.expeditionSlots}
+          min={0}
+          max={6}
+          unit="+"
+          onChange={(v) => set('expeditionSlots', v)}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Pensions"
+        hint={`Départ ${balance.daycare.initialSlots}, sans maximum`}
+        error={err('daycareSlots')}
+      >
+        <NumberInput
+          value={value.daycareSlots}
+          min={0}
+          max={10}
+          unit="+"
+          onChange={(v) => set('daycareSlots', v)}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Couveuses"
+        hint={`${ASSISTANT_POST_PLACES.incubator} places et un assistant chacune`}
+        error={err('incubators')}
+      >
+        <NumberInput
+          value={value.incubators}
+          min={0}
+          max={10}
+          unit="+"
+          onChange={(v) => set('incubators', v)}
+          disabled={disabled}
+        />
       </Field>
     </div>
+  );
+}
+
+/** Objets donnés, avec leur quantité. */
+function RewardItemsField({ ctx, value, onChange, disabled }: RewardEditorProps) {
+  const set = <K extends keyof ProgressReward>(key: K, v: ProgressReward[K]) =>
+    onChange({ ...value, [key]: v });
+
+  return (
+    <Field label="Objets">
+      <div className="space-y-2">
+        {value.items.map((s, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <ItemSelect
+              ctx={ctx}
+              value={s.itemId}
+              disabled={disabled}
+              onChange={(itemId) =>
+                itemId &&
+                set(
+                  'items',
+                  value.items.map((x, j) => (j === i ? { ...x, itemId } : x)),
+                )
+              }
+            />
+            <NumberInput
+              className="w-32"
+              value={s.quantity}
+              min={1}
+              unit="×"
+              disabled={disabled}
+              onChange={(quantity) =>
+                set(
+                  'items',
+                  value.items.map((x, j) => (j === i ? { ...x, quantity } : x)),
+                )
+              }
+            />
+            {!disabled && (
+              <button
+                type="button"
+                className="text-slate-400 hover:text-red-600"
+                onClick={() =>
+                  set(
+                    'items',
+                    value.items.filter((_, j) => j !== i),
+                  )
+                }
+              >
+                ✕
+              </button>
+            )}
+          </div>
+        ))}
+        {!disabled && ctx.content.items.length > 0 && (
+          <button
+            type="button"
+            className="btn-ghost py-1 text-xs"
+            onClick={() =>
+              set('items', [...value.items, { itemId: ctx.content.items[0]!.id, quantity: 1 }])
+            }
+          >
+            + Objet
+          </button>
+        )}
+      </div>
+    </Field>
+  );
+}
+
+/** Bonus permanents, actifs dès la récompense réclamée. */
+function RewardBonusesField({ value, onChange, errors, prefix, disabled }: RewardEditorProps) {
+  const set = <K extends keyof ProgressReward>(key: K, v: ProgressReward[K]) =>
+    onChange({ ...value, [key]: v });
+  const err = (path: string) => errors.get(`${prefix}.${path}`);
+  const setBonus = (i: number, patch: Partial<PermanentBonus>) =>
+    set(
+      'bonuses',
+      value.bonuses.map((b, j) => (j === i ? ({ ...b, ...patch } as PermanentBonus) : b)),
+    );
+
+  return (
+    <Field
+      label="Bonus permanents"
+      hint="Actifs dès que le joueur réclame la récompense ; les bonus de même type s’additionnent."
+    >
+      <div className="space-y-2">
+        {value.bonuses.map((b, i) => (
+          <div key={i} className="flex flex-wrap items-center gap-2">
+            <SelectInput
+              value={b.type}
+              disabled={disabled}
+              onChange={(type) => setBonus(i, { type })}
+              options={(Object.keys(BONUS_LABELS) as PermanentBonusType[]).map((t) => ({
+                value: t,
+                label: BONUS_LABELS[t],
+              }))}
+            />
+            <NumberInput
+              className="w-32"
+              value={b.percent}
+              min={0}
+              step={1}
+              unit="%"
+              disabled={disabled}
+              onChange={(percent) => setBonus(i, { percent })}
+            />
+            {!disabled && (
+              <button
+                type="button"
+                className="text-slate-400 hover:text-red-600"
+                onClick={() =>
+                  set(
+                    'bonuses',
+                    value.bonuses.filter((_, j) => j !== i),
+                  )
+                }
+              >
+                ✕
+              </button>
+            )}
+            {err(`bonuses.${i}.percent`) && (
+              <span className="text-xs text-red-600">{err(`bonuses.${i}.percent`)}</span>
+            )}
+          </div>
+        ))}
+        {!disabled && (
+          <button
+            type="button"
+            className="btn-ghost py-1 text-xs"
+            onClick={() => set('bonuses', [...value.bonuses, { type: 'capture', percent: 5 }])}
+          >
+            + Bonus
+          </button>
+        )}
+      </div>
+    </Field>
   );
 }

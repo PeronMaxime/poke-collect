@@ -27,6 +27,7 @@ import { addItems, playerFacilityPlaces, takeItems } from './store';
  * le talent de l'assistant qui arrose peut accélérer la pousse (`ready_at` en tient compte).
  */
 
+/** Une parcelle plantée telle qu'elle est enregistrée. */
 export type BerryPlotRow = typeof berryPlots.$inferSelect;
 
 /** `speed` : vitesse de pousse actuelle du champ (durées affichées à cette vitesse). */
@@ -41,6 +42,7 @@ export function toBerryPlotDto(row: BerryPlotRow, speed = 1): BerryPlotDto {
   };
 }
 
+/** Parcelles plantées du joueur, dans l'ordre de la ferme. */
 export async function farmPlots(db: Db, userId: string): Promise<BerryPlotRow[]> {
   return db
     .select()

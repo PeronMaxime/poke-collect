@@ -1,3 +1,7 @@
+/**
+ * Page « Simulateur d'expédition » : une expédition instantanée avec les vrais écrans du jeu (alias
+ * `@web`) et un PC fictif, sur la version de travail.
+ */
 import { useState } from 'react';
 import type { ReactNode } from 'react';
 import type { Weather, Zone } from '@poke/content';
@@ -20,11 +24,14 @@ import type {
 } from '@poke/shared';
 import { TagBadge, TagToggleList } from '@web/components/tags';
 import { Modal, PokemonSprite } from '@web/components/ui';
-import { ZoneCard } from '@web/pages/game/ExpeditionsPage';
-import { NewbornActionsView } from '@web/pages/game/HatchReveal';
-import { LAUNCH_DIALOG_CLASS, LaunchExpeditionForm } from '@web/pages/game/LaunchExpeditionDialog';
-import { ExpeditionRevealView } from '@web/pages/game/LootReveal';
-import { TeamPicker, nameMatcher, pillClass, useTeamPickerOver } from '@web/pages/game/TeamPicker';
+import { ZoneCard } from '@web/features/expeditions/ZoneCard';
+import { NewbornActionsView } from '@web/features/daycare/HatchReveal';
+import { LAUNCH_DIALOG_CLASS } from '@web/features/common/dialogParts';
+import { LaunchExpeditionForm } from '@web/features/expeditions/launch/LaunchExpeditionForm';
+import { ExpeditionRevealView } from '@web/features/expeditions/ExpeditionRevealView';
+import { TeamPicker } from '@web/features/common/TeamPicker';
+import { nameMatcher, pillClass } from '@web/features/common/teamPicker/filters';
+import { useTeamPickerOver } from '@web/features/common/teamPicker/useTeamPicker';
 import { VersionBanner } from '../components/EntityPage';
 import { WeatherSelect } from '../components/forms/pickers';
 import { errorMessage, useWorkingVersion } from '../lib/content';
@@ -271,7 +278,8 @@ export function ExpeditionSimulatorPage() {
   );
 }
 
-function SimulatorDialog({
+/** État du simulateur : équipe choisie, météo, durée, simulation lancée et son résultat. */
+function useSimulator({
   ctx,
   zone,
   pc,
@@ -355,6 +363,71 @@ function SimulatorDialog({
     onChainChange(simChain + 1);
   }
 
+  return {
+    ctx,
+    zone,
+    pc,
+    onPcChange,
+    chain,
+    onChainChange,
+    charm,
+    settings,
+    onClose,
+    picker,
+    weather,
+    setWeather,
+    sim,
+    setSim,
+    minutes,
+    setMinutes,
+    runs,
+    pcById,
+    caught,
+    run,
+  };
+}
+
+/** Ce qu'affichent les pièces de `SimulatorDialog`. */
+type SimulatorDialogModel = ReturnType<typeof useSimulator>;
+
+function SimulatorDialog({
+  ctx,
+  zone,
+  pc,
+  onPcChange,
+  chain,
+  onChainChange,
+  charm,
+  emptyDex,
+  settings,
+  onClose,
+}: {
+  ctx: GameContext;
+  zone: Zone;
+  pc: PokemonDto[];
+  onPcChange: (pc: PokemonDto[]) => void;
+  /** Maillon qu'aurait la prochaine expédition dans la zone. */
+  chain: number;
+  onChainChange: (chain: number) => void;
+  charm: number;
+  emptyDex: boolean;
+  /** Réglages de la simulation (Pokédex, Charme Chroma), partagés avec la page. */
+  settings: ReactNode;
+  onClose: () => void;
+}) {
+  const m = useSimulator({
+    ctx,
+    zone,
+    pc,
+    onPcChange,
+    chain,
+    onChainChange,
+    charm,
+    emptyDex,
+    settings,
+    onClose,
+  });
+  const { sim, setSim } = m;
   return (
     <Modal
       open
@@ -363,97 +436,133 @@ function SimulatorDialog({
       className={LAUNCH_DIALOG_CLASS}
     >
       {/* Le formulaire reste monté pendant le résultat : ses réglages sont conservés. */}
-      <div hidden={!!sim} className="flex min-h-0 flex-1 flex-col">
-        <LaunchExpeditionForm
-          ctx={ctx}
-          zone={zone}
-          chain={chain}
-          charm={charm}
-          owned={() => Number.MAX_SAFE_INTEGER}
-          unlimitedItems
-          weather={weather}
-          caught={caught}
-          team={picker.team}
-          members={picker.members}
-          onAutoTeam={() => picker.autoSelect(ctx.balance.expeditions.maxTeamSize)}
-          renderTeam={({ power, env, errors, onDone }) => (
-            <TeamPicker
-              ctx={ctx}
-              zone={zone}
-              picker={picker}
-              power={power}
-              abilityEnv={env}
-              errors={errors}
-              onDone={onDone}
-              extra={
-                <div className="p-2">
-                  <VirtualPcEditor
-                    ctx={ctx}
-                    regionId={zone.regionId}
-                    pc={pc}
-                    onChange={(next) => {
-                      // Un Pokémon retiré du PC quitte aussi l'équipe.
-                      picker.setTeam((t) => t.filter((id) => next.some((p) => p.id === id)));
-                      onPcChange(next);
-                    }}
-                  />
-                </div>
-              }
-            />
-          )}
-          extra={
-            <div className="mt-3 space-y-2 rounded-xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
-              <label className="flex items-center gap-2 text-xs">
-                <span className="font-semibold text-slate-500">Simulation</span>
-                <span className="ml-4 text-slate-500">Maillon de chaîne</span>
-                <input
-                  type="number"
-                  className="input w-20 py-1"
-                  min={0}
-                  value={chain}
-                  onChange={(e) =>
-                    onChainChange(Math.max(0, Math.floor(Number(e.target.value) || 0)))
-                  }
+      <SimulatorForm m={m} />
+      <SimulationResult m={m} />
+    </Modal>
+  );
+}
+
+/** Formulaire de départ, monté même pendant le résultat pour garder ses réglages. */
+function SimulatorForm({ m }: { m: SimulatorDialogModel }) {
+  const {
+    ctx,
+    zone,
+    pc,
+    onPcChange,
+    chain,
+    onChainChange,
+    charm,
+    settings,
+    onClose,
+    picker,
+    weather,
+    setWeather,
+    sim,
+    minutes,
+    setMinutes,
+    caught,
+    run,
+  } = m;
+  return (
+    <div hidden={!!sim} className="flex min-h-0 flex-1 flex-col">
+      <LaunchExpeditionForm
+        ctx={ctx}
+        zone={zone}
+        chain={chain}
+        charm={charm}
+        owned={() => Number.MAX_SAFE_INTEGER}
+        unlimitedItems
+        weather={weather}
+        caught={caught}
+        team={picker.team}
+        members={picker.members}
+        onAutoTeam={() => picker.autoSelect(ctx.balance.expeditions.maxTeamSize)}
+        renderTeam={({ power, env, errors, onDone }) => (
+          <TeamPicker
+            ctx={ctx}
+            zone={zone}
+            picker={picker}
+            power={power}
+            abilityEnv={env}
+            errors={errors}
+            onDone={onDone}
+            extra={
+              <div className="p-2">
+                <VirtualPcEditor
+                  ctx={ctx}
+                  regionId={zone.regionId}
+                  pc={pc}
+                  onChange={(next) => {
+                    // Un Pokémon retiré du PC quitte aussi l'équipe.
+                    picker.setTeam((t) => t.filter((id) => next.some((p) => p.id === id)));
+                    onPcChange(next);
+                  }}
                 />
-              </label>
-              <label className="flex items-center gap-2 text-xs">
-                <span className="text-slate-500">Durée simulée (min)</span>
-                <input
-                  type="number"
-                  className="input w-24 py-1"
-                  min={1}
-                  max={ctx.balance.expeditions.maxDurationMinutes}
-                  value={minutes}
-                  onChange={(e) =>
-                    setMinutes(
-                      Math.max(
-                        1,
-                        Math.min(
-                          ctx.balance.expeditions.maxDurationMinutes,
-                          Math.floor(Number(e.target.value) || 1),
-                        ),
+              </div>
+            }
+          />
+        )}
+        extra={
+          <div className="mt-3 space-y-2 rounded-xl border border-dashed border-slate-300 p-3 dark:border-slate-700">
+            <label className="flex items-center gap-2 text-xs">
+              <span className="font-semibold text-slate-500">Simulation</span>
+              <span className="ml-4 text-slate-500">Maillon de chaîne</span>
+              <input
+                type="number"
+                className="input w-20 py-1"
+                min={0}
+                value={chain}
+                onChange={(e) =>
+                  onChainChange(Math.max(0, Math.floor(Number(e.target.value) || 0)))
+                }
+              />
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <span className="text-slate-500">Durée simulée (min)</span>
+              <input
+                type="number"
+                className="input w-24 py-1"
+                min={1}
+                max={ctx.balance.expeditions.maxDurationMinutes}
+                value={minutes}
+                onChange={(e) =>
+                  setMinutes(
+                    Math.max(
+                      1,
+                      Math.min(
+                        ctx.balance.expeditions.maxDurationMinutes,
+                        Math.floor(Number(e.target.value) || 1),
                       ),
-                    )
-                  }
-                />
-              </label>
-              <label className="flex items-center gap-2 text-xs">
-                <span className="text-slate-500">Météo de la zone</span>
-                <span className="w-40">
-                  <WeatherSelect value={weather} onChange={setWeather} />
-                </span>
-              </label>
-              {settings}
-            </div>
-          }
-          pending={false}
-          error={null}
-          previewMinutes={minutes}
-          submitLabel="Partir pour la durée simulée — instantané"
-          onCancel={onClose}
-          onSubmit={(input, minutes) => run(input, minutes, chain)}
-        />
-      </div>
+                    ),
+                  )
+                }
+              />
+            </label>
+            <label className="flex items-center gap-2 text-xs">
+              <span className="text-slate-500">Météo de la zone</span>
+              <span className="w-40">
+                <WeatherSelect value={weather} onChange={setWeather} />
+              </span>
+            </label>
+            {settings}
+          </div>
+        }
+        pending={false}
+        error={null}
+        previewMinutes={minutes}
+        submitLabel="Partir pour la durée simulée — instantané"
+        onCancel={onClose}
+        onSubmit={(input, minutes) => run(input, minutes, chain)}
+      />
+    </div>
+  );
+}
+
+/** Révélation de l'expédition simulée (avec sa graine), et les boutons pour retirer au même maillon, relancer au suivant ou revenir au formulaire. */
+function SimulationResult({ m }: { m: SimulatorDialogModel }) {
+  const { ctx, zone, sim, setSim, runs, pcById, run } = m;
+  return (
+    <>
       {sim && (
         <ExpeditionRevealView
           key={runs}
@@ -488,7 +597,7 @@ function SimulatorDialog({
           }
         />
       )}
-    </Modal>
+    </>
   );
 }
 

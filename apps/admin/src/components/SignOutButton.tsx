@@ -1,6 +1,10 @@
+/** Bouton de déconnexion. */
 import { useQueryClient } from '@tanstack/react-query';
 import { authClient } from '../lib/auth-client';
 
+/**
+ * Déconnexion : l'admin revient au formulaire de connexion et les données en cache sont oubliées.
+ */
 export function SignOutButton({ className = 'btn-ghost' }: { className?: string }) {
   const queryClient = useQueryClient();
   return (

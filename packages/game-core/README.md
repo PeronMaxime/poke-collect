@@ -1,0 +1,83 @@
+# `@poke/game-core` : les règles du jeu
+
+Toutes les règles, en **fonctions pures** : pas de base, pas de réseau, pas d'horloge, pas de
+`Math.random()`. Une fonction reçoit le contenu (`GameContext`), des entrées et une graine, et
+renvoie un résultat. Le serveur s'en sert pour décider ; le jeu et l'admin pour afficher des
+aperçus avec les mêmes formules.
+
+Vue d'ensemble : [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md). Les mots du jeu :
+[docs/GLOSSAIRE.md](../../docs/GLOSSAIRE.md).
+
+## Les deux objets à connaître
+
+- **`GameContext`** (`context.ts`) : le contenu publié, indexé (`ctx.zone(id)`, `ctx.item(id)`,
+  `ctx.species(id, formId)`, `ctx.balance`…). Toute règle le reçoit en premier paramètre :
+  `game-core` ne connaît aucune valeur de contenu à l'avance.
+- **`Rng`** (`rng.ts`) : générateur à graine (`createRng(seed)`). Même graine, même suite de
+  tirages. L'ordre des tirages fait partie du comportement : en ajouter un au milieu d'une
+  fonction change tous les résultats suivants.
+
+## Les modules
+
+| Fichier                                            | Règles                                                                      |
+| -------------------------------------------------- | --------------------------------------------------------------------------- |
+| `pokemon.ts`                                       | Statistiques, PE, courbes d'XP, génération d'un Pokémon                     |
+| `expedition/`                                      | Rencontres, capture, pitié, plan de Balls, butin, cadence, XP d'équipe      |
+| `shiny.ts`                                         | Chromatiques : taux, chaîne, Charme, Masuda                                 |
+| `weather.ts`, `roaming.ts`                         | Météo horaire des zones ; cachette des Pokémon fuyards                      |
+| `dungeon/`                                         | Le moteur de combat en temps réel (`simulateDungeon`) et les donjons        |
+| `battle.ts`, `legendary.ts`                        | Combats de dresseurs et légendaires, sur le même moteur                     |
+| `abilities/`                                       | Talents : modificateurs, conditions, effets de combat, postes d'assistant   |
+| `breeding.ts`                                      | Pension, œufs, héritage, transfert et Bonbons de lignée                     |
+| `evolution.ts`, `forms.ts`, `mega.ts`              | Évolutions (formes comprises), Méga-Évolution                               |
+| `endgame.ts`                                       | Objets utilisés sur un Pokémon : Capsules, Aromates, Pilule et Patch Talent |
+| `museum.ts`, `center.ts`, `farm.ts`                | Fossiles, soins, baies                                                      |
+| `progress.ts`                                      | Conditions de déblocage et avancement du joueur                             |
+| `progression.ts`, `completion.ts`, `facilities.ts` | Collections, complétions, bâtiments débloqués, bonus                        |
+| `quest.ts`, `guilds.ts`, `shop.ts`                 | Quêtes, quêtes et coffres de guilde, boutique                               |
+| `auto-team.ts`, `auto-transfer.ts`                 | Sélection automatique d'une équipe ; règles de transfert automatique        |
+| `simulate.ts`                                      | Simulateur de zone de l'admin (moyennes sur N expéditions)                  |
+
+`index.ts` est la surface publique du paquet : une liste explicite de ce que l'API, le jeu,
+l'admin et `@poke/db` utilisent. Ce qui ne sert qu'à l'intérieur du paquet n'y figure pas (les
+modules s'importent entre eux directement). Pour rendre une fonction utilisable hors du paquet,
+l'ajouter à `index.ts`, dans la ligne de son module ; `pnpm deadcode` signale un export que plus
+personne n'utilise.
+
+## Tests
+
+```sh
+pnpm --filter @poke/game-core test
+```
+
+- Un fichier `*.test.ts` par module, sur le contenu de test (`testContext()` dans
+  `test-helpers.ts`, qui accepte une fonction pour l'ajuster).
+- **`golden.test.ts`** : 800 situations tirées au hasard, dont l'empreinte du résultat est
+  comparée à celle enregistrée dans `__snapshots__/`. Il garantit qu'un rangement de code ne
+  change aucun résultat. Il échoue donc, à dessein, dès qu'une règle ou le contenu de test
+  change : relire les lignes modifiées, puis réenregistrer avec `-- -u`.
+
+## Mesures de vitesse
+
+```sh
+pnpm --filter @poke/game-core bench
+```
+
+`src/perf.bench.ts` mesure les calculs les plus lourds. Chiffres de référence (10 novembre 2026,
+poste de développement, contenu de test) :
+
+| Calcul                                                 | Durée moyenne |
+| ------------------------------------------------------ | ------------: |
+| Expédition de 24 h rejouée en entier (201 rencontres)  |       0,43 ms |
+| Expédition de 1 h                                      |       0,05 ms |
+| Mise en place d'un donjon                              |       0,01 ms |
+| Combat de donjon complet (46 événements)               |       0,04 ms |
+| Construction du contexte de jeu (une fois par version) |        2,8 ms |
+
+Rien ici ne demande d'optimisation : ces calculs se comptent en fractions de milliseconde. Les
+chiffres servent à repérer un ralentissement après un changement.
+
+## Ce que ce paquet n'a pas le droit de faire
+
+Importer `@poke/db`, `@poke/shared`, Fastify ou React ; lire l'heure courante ; utiliser
+`Math.random()`. ESLint vérifie les imports.

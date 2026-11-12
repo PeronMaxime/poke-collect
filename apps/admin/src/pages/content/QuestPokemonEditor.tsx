@@ -158,6 +158,18 @@ export function PokemonRewardsEditor({
   );
 }
 
+/** Props de l'éditeur d'un combat légendaire, que reçoivent aussi ses pièces. */
+interface LegendaryBattleEditorProps {
+  value: LegendaryBattle;
+  rewardLevel: number;
+  /** Faiblesses du Pokémon : type proposé pour un nouveau type requis. */
+  weaknesses: string[];
+  onChange: (v: LegendaryBattle) => void;
+  errors: FieldErrors;
+  prefix: string;
+  disabled: boolean;
+}
+
 /** Combat légendaire d'un Pokémon : renforcement, phase déchaînée, conditions, capture. */
 function LegendaryBattleEditor({
   value,
@@ -167,196 +179,257 @@ function LegendaryBattleEditor({
   errors,
   prefix,
   disabled,
-}: {
-  value: LegendaryBattle;
-  rewardLevel: number;
-  /** Faiblesses du Pokémon : type proposé pour un nouveau type requis. */
-  weaknesses: string[];
-  onChange: (v: LegendaryBattle) => void;
-  errors: FieldErrors;
-  prefix: string;
-  disabled: boolean;
-}) {
+}: LegendaryBattleEditorProps) {
+  return (
+    <div className="space-y-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
+      <p className="text-xs font-semibold text-slate-500">Combat légendaire</p>
+      <LegendaryStatsFields
+        value={value}
+        rewardLevel={rewardLevel}
+        weaknesses={weaknesses}
+        onChange={onChange}
+        errors={errors}
+        prefix={prefix}
+        disabled={disabled}
+      />
+      <LegendaryEnrageFields
+        value={value}
+        rewardLevel={rewardLevel}
+        weaknesses={weaknesses}
+        onChange={onChange}
+        errors={errors}
+        prefix={prefix}
+        disabled={disabled}
+      />
+      <LegendaryRequiredTypes
+        value={value}
+        rewardLevel={rewardLevel}
+        weaknesses={weaknesses}
+        onChange={onChange}
+        errors={errors}
+        prefix={prefix}
+        disabled={disabled}
+      />
+    </div>
+  );
+}
+
+/** Niveau, IV, multiplicateurs de PV et de statistiques, durée maximale du combat. */
+function LegendaryStatsFields({
+  value,
+  rewardLevel,
+  onChange,
+  errors,
+  prefix,
+  disabled,
+}: LegendaryBattleEditorProps) {
   const set = <K extends keyof LegendaryBattle>(key: K, v: LegendaryBattle[K]) =>
     onChange({ ...value, [key]: v });
   const err = (path: string) => errors.get(`${prefix}.${path}`);
+
+  return (
+    <div className="flex flex-wrap items-end gap-3">
+      <Field
+        label="Niveau en combat"
+        hint={value.level == null ? `Niveau de la récompense (${rewardLevel}).` : undefined}
+        error={err('level')}
+      >
+        <div className="flex items-center gap-2">
+          <label className="flex items-center gap-1 text-sm">
+            <input
+              type="checkbox"
+              checked={value.level == null}
+              disabled={disabled}
+              onChange={(e) => set('level', e.target.checked ? null : rewardLevel)}
+            />
+            Récompense
+          </label>
+          {value.level != null && (
+            <NumberInput
+              className="w-28"
+              value={value.level}
+              min={1}
+              max={100}
+              unit="niveau"
+              disabled={disabled}
+              onChange={(v) => set('level', v)}
+            />
+          )}
+        </div>
+      </Field>
+      <Field label="IV en combat" error={err('iv')}>
+        <NumberInput
+          className="w-24"
+          value={value.iv}
+          min={0}
+          max={31}
+          disabled={disabled}
+          onChange={(v) => set('iv', v)}
+        />
+      </Field>
+      <Field label="PV" error={err('hpMultiplier')}>
+        <NumberInput
+          className="w-24"
+          value={value.hpMultiplier}
+          min={1}
+          max={100}
+          step={0.5}
+          unit="×"
+          disabled={disabled}
+          onChange={(v) => set('hpMultiplier', v)}
+        />
+      </Field>
+      <Field label="Statistiques (hors PV)" error={err('statMultiplier')}>
+        <NumberInput
+          className="w-24"
+          value={value.statMultiplier}
+          min={0.1}
+          max={10}
+          step={0.05}
+          unit="×"
+          disabled={disabled}
+          onChange={(v) => set('statMultiplier', v)}
+        />
+      </Field>
+      <Field label="Durée maximale" error={err('timeLimitSeconds')}>
+        <NumberInput
+          className="w-28"
+          value={value.timeLimitSeconds}
+          min={30}
+          max={3600}
+          step={30}
+          unit="s"
+          disabled={disabled}
+          onChange={(v) => set('timeLimitSeconds', v)}
+        />
+      </Field>
+    </div>
+  );
+}
+
+/** Déchaînement (seuil de PV, gain de statistiques), chance de capture, PE minimale de l'équipe. */
+function LegendaryEnrageFields({
+  value,
+  onChange,
+  errors,
+  prefix,
+  disabled,
+}: LegendaryBattleEditorProps) {
+  const set = <K extends keyof LegendaryBattle>(key: K, v: LegendaryBattle[K]) =>
+    onChange({ ...value, [key]: v });
+  const err = (path: string) => errors.get(`${prefix}.${path}`);
+
+  return (
+    <div className="flex flex-wrap items-end gap-3">
+      <Field label="Se déchaîne sous" hint="0 % = jamais." error={err('enrageHpFraction')}>
+        <NumberInput
+          className="w-28"
+          value={Math.round(value.enrageHpFraction * 100)}
+          min={0}
+          max={100}
+          step={5}
+          unit="% PV"
+          disabled={disabled}
+          onChange={(v) => set('enrageHpFraction', v / 100)}
+        />
+      </Field>
+      <Field label="Gain de statistiques" error={err('enragePercent')}>
+        <NumberInput
+          className="w-28"
+          value={value.enragePercent}
+          min={0}
+          max={500}
+          step={5}
+          unit="%"
+          disabled={disabled}
+          onChange={(v) => set('enragePercent', v)}
+        />
+      </Field>
+      <Field label="Chance de capture" error={err('captureChance')}>
+        <NumberInput
+          className="w-28"
+          value={value.captureChance}
+          min={0.1}
+          max={100}
+          step={1}
+          unit="%"
+          disabled={disabled}
+          onChange={(v) => set('captureChance', v)}
+        />
+      </Field>
+      <Field label="PE minimale de l’équipe" error={err('minPower')}>
+        <NumberInput
+          className="w-36"
+          value={value.minPower}
+          min={0}
+          step={100}
+          unit="PE"
+          disabled={disabled}
+          onChange={(v) => set('minPower', v)}
+        />
+      </Field>
+    </div>
+  );
+}
+
+/** Types requis dans l'équipe. */
+function LegendaryRequiredTypes({
+  value,
+  weaknesses,
+  onChange,
+  disabled,
+}: LegendaryBattleEditorProps) {
+  const set = <K extends keyof LegendaryBattle>(key: K, v: LegendaryBattle[K]) =>
+    onChange({ ...value, [key]: v });
   const setRequired = (requiredTypes: LegendaryBattle['requiredTypes']) =>
     set('requiredTypes', requiredTypes);
 
   return (
-    <div className="space-y-3 rounded-lg bg-slate-50 p-3 dark:bg-slate-900">
-      <p className="text-xs font-semibold text-slate-500">Combat légendaire</p>
-      <div className="flex flex-wrap items-end gap-3">
-        <Field
-          label="Niveau en combat"
-          hint={value.level == null ? `Niveau de la récompense (${rewardLevel}).` : undefined}
-          error={err('level')}
-        >
-          <div className="flex items-center gap-2">
-            <label className="flex items-center gap-1 text-sm">
-              <input
-                type="checkbox"
-                checked={value.level == null}
-                disabled={disabled}
-                onChange={(e) => set('level', e.target.checked ? null : rewardLevel)}
-              />
-              Récompense
-            </label>
-            {value.level != null && (
-              <NumberInput
-                className="w-28"
-                value={value.level}
-                min={1}
-                max={100}
-                unit="niveau"
-                disabled={disabled}
-                onChange={(v) => set('level', v)}
-              />
+    <Field label="Types requis">
+      <div className="space-y-2">
+        {value.requiredTypes.map((r, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <NumberInput
+              className="w-24"
+              value={r.count}
+              min={1}
+              max={6}
+              unit="×"
+              disabled={disabled}
+              onChange={(count) =>
+                setRequired(value.requiredTypes.map((x, j) => (j === i ? { ...x, count } : x)))
+              }
+            />
+            <TypeSelect
+              value={r.type}
+              disabled={disabled}
+              onChange={(type) =>
+                setRequired(value.requiredTypes.map((x, j) => (j === i ? { ...x, type } : x)))
+              }
+            />
+            {!disabled && (
+              <button
+                type="button"
+                className="text-slate-400 hover:text-red-600"
+                onClick={() => setRequired(value.requiredTypes.filter((_, j) => j !== i))}
+              >
+                ✕
+              </button>
             )}
           </div>
-        </Field>
-        <Field label="IV en combat" error={err('iv')}>
-          <NumberInput
-            className="w-24"
-            value={value.iv}
-            min={0}
-            max={31}
-            disabled={disabled}
-            onChange={(v) => set('iv', v)}
-          />
-        </Field>
-        <Field label="PV" error={err('hpMultiplier')}>
-          <NumberInput
-            className="w-24"
-            value={value.hpMultiplier}
-            min={1}
-            max={100}
-            step={0.5}
-            unit="×"
-            disabled={disabled}
-            onChange={(v) => set('hpMultiplier', v)}
-          />
-        </Field>
-        <Field label="Statistiques (hors PV)" error={err('statMultiplier')}>
-          <NumberInput
-            className="w-24"
-            value={value.statMultiplier}
-            min={0.1}
-            max={10}
-            step={0.05}
-            unit="×"
-            disabled={disabled}
-            onChange={(v) => set('statMultiplier', v)}
-          />
-        </Field>
-        <Field label="Durée maximale" error={err('timeLimitSeconds')}>
-          <NumberInput
-            className="w-28"
-            value={value.timeLimitSeconds}
-            min={30}
-            max={3600}
-            step={30}
-            unit="s"
-            disabled={disabled}
-            onChange={(v) => set('timeLimitSeconds', v)}
-          />
-        </Field>
+        ))}
+        {!disabled && (
+          <button
+            type="button"
+            className="btn-ghost py-1 text-xs"
+            onClick={() =>
+              setRequired([...value.requiredTypes, { type: weaknesses[0] ?? 'water', count: 1 }])
+            }
+          >
+            + Type requis
+          </button>
+        )}
       </div>
-      <div className="flex flex-wrap items-end gap-3">
-        <Field label="Se déchaîne sous" hint="0 % = jamais." error={err('enrageHpFraction')}>
-          <NumberInput
-            className="w-28"
-            value={Math.round(value.enrageHpFraction * 100)}
-            min={0}
-            max={100}
-            step={5}
-            unit="% PV"
-            disabled={disabled}
-            onChange={(v) => set('enrageHpFraction', v / 100)}
-          />
-        </Field>
-        <Field label="Gain de statistiques" error={err('enragePercent')}>
-          <NumberInput
-            className="w-28"
-            value={value.enragePercent}
-            min={0}
-            max={500}
-            step={5}
-            unit="%"
-            disabled={disabled}
-            onChange={(v) => set('enragePercent', v)}
-          />
-        </Field>
-        <Field label="Chance de capture" error={err('captureChance')}>
-          <NumberInput
-            className="w-28"
-            value={value.captureChance}
-            min={0.1}
-            max={100}
-            step={1}
-            unit="%"
-            disabled={disabled}
-            onChange={(v) => set('captureChance', v)}
-          />
-        </Field>
-        <Field label="PE minimale de l’équipe" error={err('minPower')}>
-          <NumberInput
-            className="w-36"
-            value={value.minPower}
-            min={0}
-            step={100}
-            unit="PE"
-            disabled={disabled}
-            onChange={(v) => set('minPower', v)}
-          />
-        </Field>
-      </div>
-      <Field label="Types requis">
-        <div className="space-y-2">
-          {value.requiredTypes.map((r, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <NumberInput
-                className="w-24"
-                value={r.count}
-                min={1}
-                max={6}
-                unit="×"
-                disabled={disabled}
-                onChange={(count) =>
-                  setRequired(value.requiredTypes.map((x, j) => (j === i ? { ...x, count } : x)))
-                }
-              />
-              <TypeSelect
-                value={r.type}
-                disabled={disabled}
-                onChange={(type) =>
-                  setRequired(value.requiredTypes.map((x, j) => (j === i ? { ...x, type } : x)))
-                }
-              />
-              {!disabled && (
-                <button
-                  type="button"
-                  className="text-slate-400 hover:text-red-600"
-                  onClick={() => setRequired(value.requiredTypes.filter((_, j) => j !== i))}
-                >
-                  ✕
-                </button>
-              )}
-            </div>
-          ))}
-          {!disabled && (
-            <button
-              type="button"
-              className="btn-ghost py-1 text-xs"
-              onClick={() =>
-                setRequired([...value.requiredTypes, { type: weaknesses[0] ?? 'water', count: 1 }])
-              }
-            >
-              + Type requis
-            </button>
-          )}
-        </div>
-      </Field>
-    </div>
+    </Field>
   );
 }

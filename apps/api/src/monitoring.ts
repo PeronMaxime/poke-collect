@@ -6,8 +6,13 @@ import type {
   ApiRouteMetricsDto,
 } from '@poke/shared';
 
+/**
+ * Supervision en mémoire : requêtes, erreurs et lenteurs par route, pour la page Supervision de
+ * l'admin et les journaux. Rien n'est écrit en base ; un redémarrage remet tout à zéro.
+ */
+
 /** Requête plus longue que ce seuil : journalisée (route et durée). */
-export const SLOW_REQUEST_MS = 500;
+const SLOW_REQUEST_MS = 500;
 
 /** Erreurs 5xx gardées en mémoire (les plus récentes). */
 const KEPT_ERRORS = 50;

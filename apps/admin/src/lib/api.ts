@@ -1,29 +1,11 @@
-export class ApiError extends Error {
-  constructor(
-    readonly status: number,
-    readonly code: string,
-    readonly body: unknown,
-  ) {
-    super(code);
-  }
-}
+/**
+ * Appels à l'API depuis l'admin : `api()` de `@poke/client`, commun avec le jeu (JSON, cookie de
+ * session, erreurs en `ApiError`), avec un délai plus long que dans le jeu : import du contenu,
+ * publication et télémétrie peuvent prendre du temps.
+ */
+import { createApi } from '@poke/client';
 
-export async function api<T>(
-  path: string,
-  init: RequestInit & { json?: unknown } = {},
-): Promise<T> {
-  const { json, headers, ...rest } = init;
-  const res = await fetch(path, {
-    credentials: 'include',
-    ...rest,
-    headers: json !== undefined ? { 'content-type': 'application/json', ...headers } : headers,
-    body: json !== undefined ? JSON.stringify(json) : rest.body,
-  });
-  if (res.status === 204) return undefined as T;
-  const body: unknown = await res.json().catch(() => null);
-  if (!res.ok) {
-    const code = (body as { error?: string } | null)?.error ?? `HTTP_${res.status}`;
-    throw new ApiError(res.status, code, body);
-  }
-  return body as T;
-}
+export { ApiError } from '@poke/client';
+
+/** Appel à l'API ; `json` est envoyé en JSON ; un refus lève une `ApiError`. */
+export const api = createApi({ timeoutMs: 120_000 });

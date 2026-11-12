@@ -8,9 +8,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "typecheck": "tsc -p tsconfig.json",
-    "test": "vitest run --passWithNoTests"
+    "test": "vitest run"
   },
   "dependencies": {
+    "@poke/client": "workspace:*",
     "@poke/content": "workspace:*",
     "@poke/data": "workspace:*",
     "@poke/game-core": "workspace:*",
@@ -24,9 +25,12 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@testing-library/react": "^16.3.3",
+    "@testing-library/user-event": "^14.6.9",
     "@types/react": "^19.3.0",
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.1.2",
+    "jsdom": "^31.0.0",
     "tailwindcss": "^4.3.3",
     "vite": "^8.3.3"
   }

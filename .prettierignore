@@ -3,5 +3,5 @@ packages/data/generated/
 packages/db/drizzle/
 dist/
 .data/
-PLAN.md
+docs/plans/PLAN.md
 content/game-content.json

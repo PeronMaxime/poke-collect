@@ -1,3 +1,7 @@
+/**
+ * Page « Espèces » : base PokéAPI en lecture seule et surcharges, une section par type de forme,
+ * avec où chaque espèce ou forme s'obtient.
+ */
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { RARITIES, speciesOverrideSchema } from '@poke/content';

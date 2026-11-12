@@ -15,6 +15,7 @@ import type {
   DungeonRecordDto,
   DungeonRunDto,
   CombatItemInput,
+  ErrorCode,
   StartDungeonInput,
   StoredDungeonResult,
   SwitchDungeonInput,
@@ -40,6 +41,7 @@ import {
  * pour en connaître l'issue ; le résultat s'applique à la réclamation.
  */
 
+/** Une tentative de donjon telle qu'elle est enregistrée. */
 export type DungeonRunRow = typeof dungeonRuns.$inferSelect;
 type DungeonProgressRow = typeof dungeonProgress.$inferSelect;
 
@@ -47,7 +49,7 @@ type DungeonProgressRow = typeof dungeonProgress.$inferSelect;
  * Retard toléré sur l'heure d'un changement de Pokémon envoyé par le navigateur (latence) : le
  * changement prend effet à l'instant où le joueur a cliqué, s'il date de moins que ça.
  */
-export const SWITCH_TOLERANCE_MS = 1500;
+const SWITCH_TOLERANCE_MS = 1500;
 
 /** Instant d'une action du joueur, recalé comme un changement de Pokémon. */
 export function commandAtMs(
@@ -76,7 +78,7 @@ export function combatHealCommand(
   combat: { setup: DungeonSetup; commands: DungeonCommand[]; fledAtMs: number | null },
   input: CombatItemInput,
   elapsed: number,
-  finished: string,
+  finished: ErrorCode,
 ): DungeonCommand {
   const effect = ctx.itemEffect(input.itemId, 'battleHeal');
   if (!effect) throw new GameError(400, 'NOT_A_BATTLE_ITEM');
@@ -97,6 +99,7 @@ export function combatHealCommand(
   return result.command;
 }
 
+/** La tentative telle que le jeu la reçoit. */
 export function toDungeonRunDto(row: DungeonRunRow): DungeonRunDto {
   return {
     id: row.id,
@@ -115,6 +118,7 @@ export function toDungeonRunDto(row: DungeonRunRow): DungeonRunDto {
   };
 }
 
+/** Le bilan du joueur dans un donjon (victoires, défaites, gemmes) tel que le jeu le reçoit. */
 export function toDungeonRecordDto(row: DungeonProgressRow): DungeonRecordDto {
   return {
     dungeonId: row.dungeonId,
@@ -126,6 +130,7 @@ export function toDungeonRecordDto(row: DungeonProgressRow): DungeonRecordDto {
   };
 }
 
+/** Bilan du joueur dans chaque donjon qu'il a tenté. */
 export async function dungeonRecords(db: Db, userId: string): Promise<DungeonProgressRow[]> {
   return db.select().from(dungeonProgress).where(eq(dungeonProgress.ownerId, userId));
 }
@@ -171,7 +176,7 @@ function elapsedMs(run: DungeonRunRow, now: Date): number {
 }
 
 /** État du combat à l'instant `now`. */
-export function runState(run: DungeonRunRow, now: Date) {
+function runState(run: DungeonRunRow, now: Date) {
   return simulateDungeon(run.setup, run.commands, run.fledAtMs, elapsedMs(run, now)).state;
 }
 

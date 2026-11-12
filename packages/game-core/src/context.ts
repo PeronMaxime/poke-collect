@@ -75,6 +75,10 @@ export interface GameContext {
   ): Extract<ItemEffect, { type: T }> | undefined;
 }
 
+/**
+ * Construit le contexte de jeu d'une version du contenu : index par identifiant, listes triées,
+ * espèces avec leurs surcharges. À construire une fois par version, pas par requête.
+ */
 export function createGameContext(content: GameContent): GameContext {
   const regions = [...content.regions].sort((a, b) => a.order - b.order);
   const regionOrder = new Map(regions.map((r, i) => [r.id, i]));

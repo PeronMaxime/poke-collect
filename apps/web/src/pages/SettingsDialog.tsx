@@ -1,17 +1,25 @@
+/**
+ * Réglages : thème, installation de l'application, notifications, profils de la bêta et compte.
+ */
 import { useEffect, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import type {
-  BetaProfilesResponse,
-  MeResponse,
-  NotificationSettings,
-  PushConfigResponse,
-} from '@poke/shared';
+import type { MeResponse, NotificationSettings } from '@poke/shared';
 import { Modal } from '../components/ui';
-import { ApiError, api } from '../lib/api';
+import { ApiError } from '../lib/api';
 import { authClient } from '../lib/auth-client';
 import { isIos, pushSupported, useDeviceSubscription, useInstallPrompt } from '../lib/pwa';
 import { MAIN_TAB_PROFILE, openProfileInNewTab, setTabProfile } from '../lib/tab-profile';
 import { loadThemePreference, setThemePreference, type ThemePreference } from '../lib/theme';
+import {
+  activateBetaProfile,
+  createBetaProfile,
+  deleteBetaProfile,
+  fetchBetaProfiles,
+  fetchPushConfig,
+  saveNotificationSettings,
+  savePushSubscription,
+  sendTestNotification,
+} from '../lib/queries';
 
 const PUSH_KEY = ['push'] as const;
 
@@ -107,7 +115,7 @@ function NotificationSection() {
   const queryClient = useQueryClient();
   const config = useQuery({
     queryKey: PUSH_KEY,
-    queryFn: () => api<PushConfigResponse>('/api/push'),
+    queryFn: () => fetchPushConfig(),
   });
   const device = useDeviceSubscription();
   const [error, setError] = useState<string | null>(null);
@@ -117,7 +125,7 @@ function NotificationSection() {
   const enabledOnServer = !!config.data?.publicKey;
   useEffect(() => {
     if (!subscription || !enabledOnServer) return;
-    api('/api/push/subscriptions', { method: 'POST', json: subscription.toJSON() })
+    savePushSubscription(subscription.toJSON())
       .then(() => queryClient.invalidateQueries({ queryKey: PUSH_KEY }))
       .catch(() => {});
   }, [subscription, enabledOnServer, queryClient]);
@@ -134,12 +142,11 @@ function NotificationSection() {
     onSettled: () => queryClient.invalidateQueries({ queryKey: PUSH_KEY }),
   });
   const saveSettings = useMutation({
-    mutationFn: (settings: NotificationSettings) =>
-      api<NotificationSettings>('/api/push/settings', { method: 'PUT', json: settings }),
+    mutationFn: (settings: NotificationSettings) => saveNotificationSettings(settings),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: PUSH_KEY }),
   });
   const test = useMutation({
-    mutationFn: () => api<{ sent: number }>('/api/push/test', { method: 'POST' }),
+    mutationFn: () => sendTestNotification(),
   });
 
   if (config.isPending) return <p className="mt-5 text-sm text-slate-500">Chargement…</p>;
@@ -207,15 +214,12 @@ function NotificationSection() {
   );
 }
 
-/**
- * Bêta : profils secondaires, pour recommencer une partie sans recréer de compte. À retirer
- * après la bêta (voir `apps/api/src/beta-profiles.ts`).
- */
-function BetaProfilesSection() {
+/** Profils de la bêta : liste, création, changement et suppression (confirmée par le nom). */
+function useBetaProfiles() {
   const queryClient = useQueryClient();
   const profiles = useQuery({
     queryKey: ['beta-profiles'],
-    queryFn: () => api<BetaProfilesResponse>('/api/beta/profiles'),
+    queryFn: () => fetchBetaProfiles(),
   });
   const [error, setError] = useState<string | null>(null);
   // Changer de profil change toutes les données du jeu : on recharge l'application.
@@ -227,7 +231,7 @@ function BetaProfilesSection() {
         : 'Action impossible, réessaie plus tard.',
     );
   const create = useMutation({
-    mutationFn: () => api<BetaProfilesResponse>('/api/beta/profiles', { method: 'POST' }),
+    mutationFn: () => createBetaProfile(),
     onSuccess: (data) => {
       setTabProfile(data.activeProfileId);
       onSwitched();
@@ -235,11 +239,7 @@ function BetaProfilesSection() {
     onError,
   });
   const select = useMutation({
-    mutationFn: (profileId: string | null) =>
-      api<BetaProfilesResponse>('/api/beta/profiles/active', {
-        method: 'POST',
-        json: { profileId },
-      }),
+    mutationFn: (profileId: string | null) => activateBetaProfile(profileId),
     // Le cookie devient le profil par défaut des nouveaux onglets ; celui-ci garde le sien.
     onSuccess: (data) => {
       const main = data.profiles.find((p) => p.main);
@@ -259,8 +259,7 @@ function BetaProfilesSection() {
     setError(null);
   };
   const remove = useMutation({
-    mutationFn: (profileId: string) =>
-      api<BetaProfilesResponse>(`/api/beta/profiles/${profileId}`, { method: 'DELETE' }),
+    mutationFn: (profileId: string) => deleteBetaProfile(profileId),
     onSuccess: (data, profileId) => {
       closeDeletion();
       if (profileId === profiles.data?.activeProfileId) {
@@ -274,11 +273,37 @@ function BetaProfilesSection() {
   });
 
   const data = profiles.data;
+
+  return {
+    error,
+    create,
+    select,
+    deleting,
+    setDeleting,
+    targetId,
+    setTargetId,
+    typedName,
+    setTypedName,
+    closeDeletion,
+    remove,
+    data,
+  };
+}
+
+/** Ce qu'affichent les pièces de `BetaProfilesSection`. */
+type BetaProfilesSectionModel = ReturnType<typeof useBetaProfiles>;
+
+/**
+ * Bêta : profils secondaires, pour recommencer une partie sans recréer de compte. À retirer
+ * après la bêta (voir `apps/api/src/beta-profiles.ts`).
+ */
+function BetaProfilesSection() {
+  const m = useBetaProfiles();
+  const { error, create, select, deleting, setDeleting, targetId, remove, data } = m;
   if (!data) return null;
   const secondary = data.profiles.filter((p) => !p.main).length;
   const busy = create.isPending || select.isPending || remove.isPending;
   const target = data.profiles.find((p) => p.id === targetId && !p.main);
-
   return (
     <section className="mt-5">
       <h3 className="text-sm font-semibold">
@@ -289,41 +314,7 @@ function BetaProfilesSection() {
         profil : « Nouvel onglet » permet d’en jouer plusieurs en même temps. Ces profils pourront
         être supprimés à la fin de la bêta.
       </p>
-      <ul className="mt-2 space-y-1">
-        {data.profiles.map((p) => {
-          const active = p.id === data.activeProfileId;
-          return (
-            <li key={p.id} className="flex items-center justify-between gap-3 text-sm">
-              <span>
-                {p.trainerName}
-                <span className="ml-1 text-xs text-slate-500">
-                  {p.main ? '(principal)' : !p.starterChosen && '(starter à choisir)'}
-                </span>
-              </span>
-              {active ? (
-                <span className="text-xs font-semibold text-emerald-600">Actif</span>
-              ) : (
-                <span className="flex gap-1">
-                  <button
-                    className="btn-ghost"
-                    disabled={busy}
-                    onClick={() => select.mutate(p.main ? null : p.id)}
-                  >
-                    Jouer
-                  </button>
-                  <button
-                    className="btn-ghost"
-                    title="Jouer ce profil dans un nouvel onglet, en gardant celui-ci"
-                    onClick={() => openProfileInNewTab(p.main ? MAIN_TAB_PROFILE : p.id)}
-                  >
-                    Nouvel onglet
-                  </button>
-                </span>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+      <ProfileList m={m} data={data} busy={busy} />
       {secondary < data.maxSecondary && (
         <button className="btn-ghost mt-2" disabled={busy} onClick={() => create.mutate()}>
           Créer un profil secondaire
@@ -337,6 +328,77 @@ function BetaProfilesSection() {
           Supprimer un profil secondaire…
         </button>
       )}
+      <DeleteProfileForm m={m} data={data} busy={busy} target={target} />
+      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
+    </section>
+  );
+}
+
+/** Les profils du compte : actif, ou boutons pour le jouer ici ou dans un nouvel onglet. */
+function ProfileList({
+  m,
+  data,
+  busy,
+}: {
+  m: BetaProfilesSectionModel;
+  data: NonNullable<BetaProfilesSectionModel['data']>;
+  busy: boolean;
+}) {
+  const { select } = m;
+  return (
+    <ul className="mt-2 space-y-1">
+      {data.profiles.map((p) => {
+        const active = p.id === data.activeProfileId;
+        return (
+          <li key={p.id} className="flex items-center justify-between gap-3 text-sm">
+            <span>
+              {p.trainerName}
+              <span className="ml-1 text-xs text-slate-500">
+                {p.main ? '(principal)' : !p.starterChosen && '(starter à choisir)'}
+              </span>
+            </span>
+            {active ? (
+              <span className="text-xs font-semibold text-emerald-600">Actif</span>
+            ) : (
+              <span className="flex gap-1">
+                <button
+                  className="btn-ghost"
+                  disabled={busy}
+                  onClick={() => select.mutate(p.main ? null : p.id)}
+                >
+                  Jouer
+                </button>
+                <button
+                  className="btn-ghost"
+                  title="Jouer ce profil dans un nouvel onglet, en gardant celui-ci"
+                  onClick={() => openProfileInNewTab(p.main ? MAIN_TAB_PROFILE : p.id)}
+                >
+                  Nouvel onglet
+                </button>
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+/** Suppression d'un profil secondaire : le choisir, puis recopier son nom. */
+function DeleteProfileForm({
+  m,
+  data,
+  busy,
+  target,
+}: {
+  m: BetaProfilesSectionModel;
+  data: NonNullable<BetaProfilesSectionModel['data']>;
+  busy: boolean;
+  target: NonNullable<BetaProfilesSectionModel['data']>['profiles'][number] | undefined;
+}) {
+  const { deleting, targetId, setTargetId, typedName, setTypedName, closeDeletion, remove } = m;
+  return (
+    <>
       {deleting && (
         <form
           className="mt-3 space-y-2 rounded-lg border border-red-300 p-3 dark:border-red-900"
@@ -394,8 +456,7 @@ function BetaProfilesSection() {
           </div>
         </form>
       )}
-      {error && <p className="mt-2 text-sm text-red-600">{error}</p>}
-    </section>
+    </>
   );
 }
 

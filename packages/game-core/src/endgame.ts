@@ -7,12 +7,12 @@ import type { Rng } from './rng';
 import type { PokemonInstance } from './pokemon';
 
 /**
- * Objets utilisés sur un Pokémon (PLAN.md, section 2.7) : Capsules (IV à 31), Aromates (nature
+ * Objets utilisés sur un Pokémon (docs/plans/PLAN.md, section 2.7) : Capsules (IV à 31), Aromates (nature
  * effective), Pilule et Patch Talent (talent), Baie Grena (bonheur), Super Bonbon (niveau). L'objet
  * est consommé.
  */
 
-export type PokemonItemEffect = Extract<
+type PokemonItemEffect = Extract<
   ItemEffect,
   { type: 'ivCap' | 'mint' | 'abilityChange' | 'happiness' | 'levelUp' }
 >;
@@ -29,7 +29,7 @@ const POKEMON_EFFECTS = new Set<ItemEffect['type']>([
 export const MAX_HAPPINESS = 255;
 
 /** Effet utilisable sur un Pokémon porté par l'objet (le premier). */
-export function pokemonItemEffect(ctx: GameContext, itemId: string): PokemonItemEffect | undefined {
+function pokemonItemEffect(ctx: GameContext, itemId: string): PokemonItemEffect | undefined {
   return ctx.item(itemId)?.effects.find((e): e is PokemonItemEffect => POKEMON_EFFECTS.has(e.type));
 }
 
@@ -52,6 +52,10 @@ export interface ItemUseOptions {
   usable: boolean;
 }
 
+/**
+ * Ce qu'un objet peut faire sur ce Pokémon ; `undefined` si l'objet ne s'utilise pas sur un
+ * Pokémon.
+ */
 export function itemUseOptions(
   ctx: GameContext,
   target: ItemTarget,
@@ -86,6 +90,7 @@ export function itemUseOptions(
   }
 }
 
+/** Choix du joueur quand l'objet en demande un (la statistique d'une Capsule). */
 export interface ItemUseChoice {
   stat?: StatName;
 }
@@ -101,8 +106,13 @@ export interface PokemonPatch {
   xp?: number;
 }
 
+/** Refus d'utiliser un objet sur un Pokémon. */
 export type ItemUseError = 'NOT_USABLE_ON_POKEMON' | 'NO_EFFECT' | 'CHOICE_REQUIRED';
 
+/**
+ * Calcule ce qu'un objet change à un Pokémon, sans rien écrire. `rng` ne sert qu'au tirage du
+ * talent (Pilule, Patch).
+ */
 export function applyItemToPokemon(
   ctx: GameContext,
   target: ItemTarget,

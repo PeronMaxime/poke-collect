@@ -1,5 +1,11 @@
 import nodemailer from 'nodemailer';
 
+/**
+ * Envoi des e-mails (réinitialisation du mot de passe) : par SMTP, ou dans la console en
+ * développement.
+ */
+
+/** Un e-mail à envoyer, en version texte et en version HTML. */
 export interface MailMessage {
   to: string;
   subject: string;

@@ -1,3 +1,7 @@
+/**
+ * Page « Zones » : rencontres, accès, butin, météo et rencontres spéciales de chaque zone, et un
+ * simulateur d'expéditions.
+ */
 import { useState } from 'react';
 import { DEFAULT_SPECIAL_ENCOUNTER_CHANCE, IMPOSED_WEATHERS, zoneSchema } from '@poke/content';
 import type { Encounter, ImposedWeather, SpecialEncounter, Zone } from '@poke/content';
@@ -29,6 +33,7 @@ import {
 } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
 
+/** Page « Zones » (voir l'en-tête du fichier). */
 export function ZonesPage() {
   return (
     <EntityPage<Zone>
@@ -162,109 +167,14 @@ function ZoneForm({ value: z, onChange, errors, isNew, editable, working }: Enti
         disabled={disabled}
       />
 
-      <Section title="Accès">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="PE minimale de l’équipe" error={errors.get('minPower')}>
-            <NumberInput
-              value={z.minPower}
-              min={0}
-              unit="PE"
-              onChange={(v) => set('minPower', v)}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Condition de déblocage" error={errorsUnder(errors, 'unlock')[0]}>
-            <UnlockEditor
-              value={z.unlock}
-              regions={ctx.regions}
-              trainers={ctx.trainers}
-              quests={ctx.quests}
-              onChange={(v) => set('unlock', v)}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-        <Field label="Types requis" hint="Exemple : 2 Pokémon Eau pour une zone sous-marine.">
-          <div className="space-y-2">
-            {z.requiredTypes.map((r, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <NumberInput
-                  className="w-24"
-                  value={r.count}
-                  min={1}
-                  max={6}
-                  unit="×"
-                  disabled={disabled}
-                  onChange={(count) =>
-                    set(
-                      'requiredTypes',
-                      z.requiredTypes.map((x, j) => (j === i ? { ...x, count } : x)),
-                    )
-                  }
-                />
-                <TypeSelect
-                  value={r.type}
-                  disabled={disabled}
-                  onChange={(type) =>
-                    set(
-                      'requiredTypes',
-                      z.requiredTypes.map((x, j) => (j === i ? { ...x, type } : x)),
-                    )
-                  }
-                />
-                {!disabled && (
-                  <button
-                    type="button"
-                    className="text-slate-400 hover:text-red-600"
-                    onClick={() =>
-                      set(
-                        'requiredTypes',
-                        z.requiredTypes.filter((_, j) => j !== i),
-                      )
-                    }
-                  >
-                    ✕
-                  </button>
-                )}
-              </div>
-            ))}
-            {!disabled && (
-              <button
-                type="button"
-                className="btn-ghost py-1 text-xs"
-                onClick={() =>
-                  set('requiredTypes', [...z.requiredTypes, { type: 'water', count: 1 }])
-                }
-              >
-                + Type requis
-              </button>
-            )}
-          </div>
-        </Field>
-        <Field
-          label="Types en affinité"
-          hint="Chaque membre ayant l’un de ces types augmente la capture."
-        >
-          <TypeMultiSelect
-            value={z.affinityTypes}
-            onChange={(v) => set('affinityTypes', v)}
-            disabled={disabled}
-          />
-        </Field>
-        <Field
-          label="Durée minimum"
-          hint="Temps avant de pouvoir arrêter l’expédition."
-          error={errors.get('minDurationMinutes')}
-        >
-          <NumberInput
-            value={z.minDurationMinutes}
-            min={1}
-            unit="min"
-            disabled={disabled}
-            onChange={(v) => set('minDurationMinutes', v)}
-          />
-        </Field>
-      </Section>
+      <ZoneAccessSection
+        value={z}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
 
       <Section title="Rencontres">
         <EncounterTable
@@ -295,35 +205,172 @@ function ZoneForm({ value: z, onChange, errors, isNew, editable, working }: Enti
         />
       </Section>
 
-      <Section title="Butin">
-        <Field label="Table de butin" error={errors.get('lootTableId')}>
-          <select
-            className="input"
-            value={z.lootTableId ?? ''}
-            disabled={disabled}
-            onChange={(e) => set('lootTableId', e.target.value || null)}
-          >
-            <option value="">Aucune</option>
-            {working.content.lootTables.map((t) => (
-              <option key={t.id} value={t.id}>
-                {t.name} ({t.id})
-              </option>
-            ))}
-          </select>
-        </Field>
-        {z.lootTableId && (
-          <ul className="flex flex-wrap gap-3 text-xs text-slate-500">
-            {ctx.lootTable(z.lootTableId)?.entries.map((e) => (
-              <li key={e.itemId} className="flex items-center gap-1">
-                <ItemIcon ctx={ctx} id={e.itemId} size={20} />
-                {ctx.item(e.itemId)?.name ?? e.itemId} · {Math.round(e.chance * 100)} % · {e.min}–
-                {e.max}
-              </li>
-            ))}
-          </ul>
-        )}
-      </Section>
+      <ZoneLootSection
+        value={z}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
     </div>
+  );
+}
+
+/** Accès : PE minimale, condition de déblocage, types requis ou en affinité, durée minimum. */
+function ZoneAccessSection({
+  value: z,
+  onChange,
+  errors,
+  editable,
+  working,
+}: EntityFormProps<Zone>) {
+  const set = <K extends keyof Zone>(key: K, v: Zone[K]) => onChange({ ...z, [key]: v });
+  const { ctx } = working;
+  const disabled = !editable;
+
+  return (
+    <Section title="Accès">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="PE minimale de l’équipe" error={errors.get('minPower')}>
+          <NumberInput
+            value={z.minPower}
+            min={0}
+            unit="PE"
+            onChange={(v) => set('minPower', v)}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Condition de déblocage" error={errorsUnder(errors, 'unlock')[0]}>
+          <UnlockEditor
+            value={z.unlock}
+            regions={ctx.regions}
+            trainers={ctx.trainers}
+            quests={ctx.quests}
+            onChange={(v) => set('unlock', v)}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+      <Field label="Types requis" hint="Exemple : 2 Pokémon Eau pour une zone sous-marine.">
+        <div className="space-y-2">
+          {z.requiredTypes.map((r, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <NumberInput
+                className="w-24"
+                value={r.count}
+                min={1}
+                max={6}
+                unit="×"
+                disabled={disabled}
+                onChange={(count) =>
+                  set(
+                    'requiredTypes',
+                    z.requiredTypes.map((x, j) => (j === i ? { ...x, count } : x)),
+                  )
+                }
+              />
+              <TypeSelect
+                value={r.type}
+                disabled={disabled}
+                onChange={(type) =>
+                  set(
+                    'requiredTypes',
+                    z.requiredTypes.map((x, j) => (j === i ? { ...x, type } : x)),
+                  )
+                }
+              />
+              {!disabled && (
+                <button
+                  type="button"
+                  className="text-slate-400 hover:text-red-600"
+                  onClick={() =>
+                    set(
+                      'requiredTypes',
+                      z.requiredTypes.filter((_, j) => j !== i),
+                    )
+                  }
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+          ))}
+          {!disabled && (
+            <button
+              type="button"
+              className="btn-ghost py-1 text-xs"
+              onClick={() =>
+                set('requiredTypes', [...z.requiredTypes, { type: 'water', count: 1 }])
+              }
+            >
+              + Type requis
+            </button>
+          )}
+        </div>
+      </Field>
+      <Field
+        label="Types en affinité"
+        hint="Chaque membre ayant l’un de ces types augmente la capture."
+      >
+        <TypeMultiSelect
+          value={z.affinityTypes}
+          onChange={(v) => set('affinityTypes', v)}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Durée minimum"
+        hint="Temps avant de pouvoir arrêter l’expédition."
+        error={errors.get('minDurationMinutes')}
+      >
+        <NumberInput
+          value={z.minDurationMinutes}
+          min={1}
+          unit="min"
+          disabled={disabled}
+          onChange={(v) => set('minDurationMinutes', v)}
+        />
+      </Field>
+    </Section>
+  );
+}
+
+/** Butin : table de butin de la zone et son aperçu. */
+function ZoneLootSection({ value: z, onChange, errors, editable, working }: EntityFormProps<Zone>) {
+  const set = <K extends keyof Zone>(key: K, v: Zone[K]) => onChange({ ...z, [key]: v });
+  const { ctx } = working;
+  const disabled = !editable;
+
+  return (
+    <Section title="Butin">
+      <Field label="Table de butin" error={errors.get('lootTableId')}>
+        <select
+          className="input"
+          value={z.lootTableId ?? ''}
+          disabled={disabled}
+          onChange={(e) => set('lootTableId', e.target.value || null)}
+        >
+          <option value="">Aucune</option>
+          {working.content.lootTables.map((t) => (
+            <option key={t.id} value={t.id}>
+              {t.name} ({t.id})
+            </option>
+          ))}
+        </select>
+      </Field>
+      {z.lootTableId && (
+        <ul className="flex flex-wrap gap-3 text-xs text-slate-500">
+          {ctx.lootTable(z.lootTableId)?.entries.map((e) => (
+            <li key={e.itemId} className="flex items-center gap-1">
+              <ItemIcon ctx={ctx} id={e.itemId} size={20} />
+              {ctx.item(e.itemId)?.name ?? e.itemId} · {Math.round(e.chance * 100)} % · {e.min}–
+              {e.max}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Section>
   );
 }
 

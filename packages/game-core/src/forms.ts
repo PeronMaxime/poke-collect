@@ -26,6 +26,7 @@ const STRICT_KINDS: ReadonlySet<FormKind> = new Set([
 const EVENT_FORM_NAME =
   /^(pikachu-(.+-cap|rock-star|belle|pop-star|phd|libre|cosplay|starter)|eevee-starter|pichu-spiky-eared)$/;
 
+/** La forme est-elle une forme événementielle (voir `EVENT_FORM_NAME`) ? */
 export function isEventForm(formId: number | null | undefined): boolean {
   const form = formId != null ? getForm(formId) : undefined;
   return !!form && EVENT_FORM_NAME.test(form.name);

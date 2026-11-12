@@ -1,3 +1,7 @@
+/**
+ * Page « Équilibrage » : tous les réglages globaux du jeu (expéditions, capture, chromatiques,
+ * élevage, combats…), une section par domaine, avec leurs aperçus calculés.
+ */
 import { useState } from 'react';
 import {
   CHEST_RARITIES,
@@ -23,7 +27,8 @@ import {
   hatchMinutes,
   shinyProbability,
 } from '@poke/game-core';
-import { IssueList, VersionBanner } from '../../components/EntityPage';
+import { IssueList, WithWorkingVersion } from '../../components/EntityPage';
+import { SettingsPage } from '../../components/SettingsPage';
 import {
   Field,
   NumberInput,
@@ -37,13 +42,13 @@ import {
 import type { FieldErrors } from '../../components/forms/fields';
 import { ItemSelect, TypeBadge, typeLabel } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
-import { errorMessage, useSaveBalance, useWorkingVersion } from '../../lib/content';
+import { useSaveBalance } from '../../lib/content';
 
+/** Page « Équilibrage » (voir l'en-tête du fichier). */
 export function BalancePage() {
-  const working = useWorkingVersion();
-  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
-  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
-  return <BalanceForm key={working.data.version.id} working={working.data} />;
+  return (
+    <WithWorkingVersion>{(w) => <BalanceForm key={w.version.id} working={w} />}</WithWorkingVersion>
+  );
 }
 
 /** Espèces d'exemple pour l'aperçu des temps d'éclosion (Magicarpe → Minidraco). */
@@ -53,7 +58,8 @@ const HATCH_EXAMPLES = [129, 25, 1, 133, 147];
 const formatMinutes = (m: number) =>
   m < 60 ? `${m} min` : `${Math.floor(m / 60)} h${m % 60 ? ` ${m % 60}` : ''}`;
 
-function BalanceForm({ working }: { working: WorkingVersion }) {
+/** État du formulaire d'équilibrage : réglages modifiés, validation, aperçu calculé, enregistrement. */
+function useBalanceForm({ working }: { working: WorkingVersion }) {
   const initial = working.content.balance;
   const [b, setB] = useState<BalanceSettings>(initial);
   const [newIvThreshold, setNewIvThreshold] = useState(5);
@@ -78,438 +84,62 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
   // Aperçu des quantités avec les réglages en cours de saisie.
   const preview = valid ? createGameContext({ ...working.content, balance: b }) : null;
 
+  const cancel = () => setB(initial);
+  const submit = () => save.mutate(b);
+
+  return {
+    cancel,
+    submit,
+    working,
+    b,
+    newIvThreshold,
+    setNewIvThreshold,
+    save,
+    valid,
+    errors,
+    disabled,
+    dirty,
+    issues,
+    set,
+    exp,
+    cap,
+    bat,
+    sh,
+    err,
+    preview,
+  };
+}
+
+/** Ce qu'affichent les pièces de `BalanceForm`. */
+type BalanceFormModel = ReturnType<typeof useBalanceForm>;
+
+function BalanceForm({ working }: { working: WorkingVersion }) {
+  const m = useBalanceForm({ working });
+  const { b, save, valid, errors, disabled, dirty, issues, set, preview, cancel, submit } = m;
   return (
-    <div className="max-w-4xl space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Équilibrage</h1>
-          <p className="mt-1 text-slate-500">Réglages globaux du jeu, groupés par thème.</p>
-        </div>
-        {working.editable && (
-          <div className="flex gap-2">
-            <button className="btn-ghost" disabled={!dirty} onClick={() => setB(initial)}>
-              Annuler
-            </button>
-            <button
-              className="btn-primary"
-              disabled={!valid || !dirty || save.isPending}
-              onClick={() => save.mutate(b)}
-            >
-              Enregistrer
-            </button>
-          </div>
-        )}
-      </div>
-      <VersionBanner working={working} />
-      {save.error && <p className="text-sm text-red-600">{errorMessage(save.error)}</p>}
+    <SettingsPage
+      title="Équilibrage"
+      description="Réglages globaux du jeu, groupés par thème."
+      working={working}
+      save={save}
+      dirty={dirty}
+      valid={valid}
+      onCancel={cancel}
+      onSave={submit}
+    >
       {!dirty && <IssueList issues={issues} />}
 
-      <Section title="Expéditions">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Emplacements au départ" error={err('expeditions.initialSlots')}>
-            <NumberInput
-              value={b.expeditions.initialSlots}
-              min={1}
-              max={6}
-              onChange={exp('initialSlots')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Emplacements maximum" error={err('expeditions.maxSlots')}>
-            <NumberInput
-              value={b.expeditions.maxSlots}
-              min={1}
-              max={9}
-              onChange={exp('maxSlots')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Taille d’équipe maximale" error={err('expeditions.maxTeamSize')}>
-            <NumberInput
-              value={b.expeditions.maxTeamSize}
-              min={1}
-              max={6}
-              unit="Pokémon"
-              onChange={exp('maxTeamSize')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Durée maximale" error={err('expeditions.maxDurationMinutes')}>
-            <NumberInput
-              value={b.expeditions.maxDurationMinutes}
-              min={1}
-              unit="min"
-              onChange={exp('maxDurationMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Une rencontre toutes les"
-            error={err('expeditions.encounterIntervalMinutes')}
-          >
-            <NumberInput
-              value={b.expeditions.encounterIntervalMinutes}
-              min={0.1}
-              step={0.5}
-              unit="min"
-              onChange={exp('encounterIntervalMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Allongement par heure passée"
-            hint="Ajouté à l’intervalle entre deux rencontres à chaque heure d’expédition (par palier) ; 0 = rythme constant. Talents et baies s’appliquent à l’intervalle allongé. Figé au départ de chaque expédition."
-            error={err('expeditions.encounterIntervalGrowthMinutes')}
-          >
-            <NumberInput
-              value={b.expeditions.encounterIntervalGrowthMinutes}
-              min={0}
-              step={0.5}
-              unit="min"
-              onChange={exp('encounterIntervalGrowthMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Un tirage de butin toutes les"
-            error={err('expeditions.lootIntervalMinutes')}
-          >
-            <NumberInput
-              value={b.expeditions.lootIntervalMinutes}
-              min={0.1}
-              step={0.5}
-              unit="min"
-              onChange={exp('lootIntervalMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Effet d’une baie"
-            hint="Baies de capture et de rencontres, l’une après l’autre depuis le départ."
-            error={err('expeditions.berryDurationMinutes')}
-          >
-            <NumberInput
-              value={b.expeditions.berryDurationMinutes}
-              min={0.1}
-              step={1}
-              unit="min"
-              onChange={exp('berryDurationMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-        {preview && (
-          <table className="text-sm">
-            <thead className="text-left text-xs text-slate-500">
-              <tr>
-                <th className="pr-6 font-normal">Durée</th>
-                <th className="pr-6 font-normal">Rencontres</th>
-                <th className="font-normal">Tirages de butin</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[60, 240, 480, 720, b.expeditions.maxDurationMinutes].map((d) => (
-                <tr key={d}>
-                  <td className="pr-6">{formatMinutes(d)}</td>
-                  <td className="pr-6 font-mono">{expeditionPlan(preview, d).encounters}</td>
-                  <td className="font-mono">{expeditionPlan(preview, d).lootRolls}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
-      </Section>
+      <ExpeditionsSection m={m} />
 
-      <Section title="Capture">
-        <p className="text-xs text-slate-500">
-          Probabilité = taux de capture de l’espèce × Ball × baie × (3 − 2 × PV restants) / 3 × (1 +
-          bonus d’affinité × membres en affinité) × multiplicateur global / 255.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Multiplicateur global" error={err('capture.globalMultiplier')}>
-            <NumberInput
-              value={b.capture.globalMultiplier}
-              min={0}
-              step={0.1}
-              unit="×"
-              onChange={cap('globalMultiplier')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="PV restants supposés"
-            hint="100 % = Pokémon en pleine santé (plus difficile)."
-            error={err('capture.assumedHpFraction')}
-          >
-            <NumberInput
-              value={b.capture.assumedHpFraction}
-              scale={100}
-              min={0}
-              max={100}
-              unit="%"
-              onChange={cap('assumedHpFraction')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Bonus par membre en affinité"
-            error={err('capture.affinityBonusPerPokemon')}
-          >
-            <NumberInput
-              value={b.capture.affinityBonusPerPokemon}
-              scale={100}
-              min={0}
-              unit="%"
-              onChange={cap('affinityBonusPerPokemon')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Chance de talent caché"
-            hint="Pokémon adverses (donjons, dresseurs) : ceux du joueur arrivent sans talent."
-            error={err('capture.hiddenAbilityChance')}
-          >
-            <NumberInput
-              value={b.capture.hiddenAbilityChance}
-              scale={100}
-              min={0}
-              max={100}
-              step={0.5}
-              unit="%"
-              onChange={cap('hiddenAbilityChance')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-      </Section>
+      <CaptureSection m={m} />
 
-      <Section title="Pitié">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Bonus de rencontre par échec" error={err('pity.weightBonusPerMiss')}>
-            <NumberInput
-              value={b.pity.weightBonusPerMiss}
-              scale={100}
-              min={0}
-              unit="%"
-              onChange={set('pity')('weightBonusPerMiss')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Plafond de pitié" error={err('pity.maxMultiplier')}>
-            <NumberInput
-              value={b.pity.maxMultiplier}
-              min={1}
-              step={0.5}
-              unit="×"
-              onChange={set('pity')('maxMultiplier')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-      </Section>
+      <PitySection m={m} />
 
-      <Section title="Chromatiques">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field
-            label="Taux chromatique de base"
-            hint="Rencontres d’expédition et éclosions."
-            error={err('shiny.baseRateDenominator')}
-          >
-            <NumberInput
-              value={b.shiny.baseRateDenominator}
-              min={1}
-              unit="1 / X"
-              onChange={sh('baseRateDenominator')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Chaîne : bonus par maillon"
-            hint="Chaque expédition relancée de suite dans la même zone."
-            error={err('shiny.chainBonusPerExpedition')}
-          >
-            <NumberInput
-              value={b.shiny.chainBonusPerExpedition}
-              scale={100}
-              min={0}
-              unit="%"
-              onChange={sh('chainBonusPerExpedition')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Chaîne : plafond" error={err('shiny.chainMaxMultiplier')}>
-            <NumberInput
-              value={b.shiny.chainMaxMultiplier}
-              min={1}
-              step={0.5}
-              unit="×"
-              onChange={sh('chainMaxMultiplier')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Chaîne : délai de relance"
-            hint="Après la récupération de l’expédition précédente ; sinon, retour à 0."
-            error={err('shiny.chainWindowMinutes')}
-          >
-            <NumberInput
-              value={b.shiny.chainWindowMinutes}
-              min={1}
-              unit="min"
-              onChange={sh('chainWindowMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Bonus Masuda (élevage)"
-            hint="Parents capturés dans des régions différentes."
-            error={err('shiny.masudaMultiplier')}
-          >
-            <NumberInput
-              value={b.shiny.masudaMultiplier}
-              min={1}
-              step={0.5}
-              unit="×"
-              onChange={sh('masudaMultiplier')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-        <Field
-          label="Chaîne : IV parfaits garantis"
-          hint="Maillons à atteindre dans une zone : chaque palier garantit un IV à 31 de plus aux Pokémon sauvages."
-          error={err('shiny.chainPerfectIvThresholds')}
-        >
-          <div className="flex flex-wrap items-center gap-2">
-            {b.shiny.chainPerfectIvThresholds.map((t, i) => (
-              <span
-                key={t}
-                className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm dark:bg-slate-800"
-              >
-                {t} maillon{t > 1 ? 's' : ''} → {i + 1} IV
-                {!disabled && (
-                  <button
-                    type="button"
-                    className="text-slate-400 hover:text-red-600"
-                    onClick={() =>
-                      sh('chainPerfectIvThresholds')(
-                        b.shiny.chainPerfectIvThresholds.filter((x) => x !== t),
-                      )
-                    }
-                  >
-                    ✕
-                  </button>
-                )}
-              </span>
-            ))}
-            {b.shiny.chainPerfectIvThresholds.length === 0 && (
-              <span className="text-sm text-slate-500">Aucun palier</span>
-            )}
-            {!disabled && b.shiny.chainPerfectIvThresholds.length < 6 && (
-              <span className="flex items-center gap-1">
-                <NumberInput
-                  className="w-32"
-                  value={newIvThreshold}
-                  min={1}
-                  unit="maillons"
-                  onChange={setNewIvThreshold}
-                />
-                <button
-                  type="button"
-                  className="btn-ghost py-1"
-                  disabled={
-                    !Number.isInteger(newIvThreshold) ||
-                    newIvThreshold < 1 ||
-                    b.shiny.chainPerfectIvThresholds.includes(newIvThreshold)
-                  }
-                  onClick={() =>
-                    sh('chainPerfectIvThresholds')(
-                      [...b.shiny.chainPerfectIvThresholds, newIvThreshold].sort((x, y) => x - y),
-                    )
-                  }
-                >
-                  Ajouter
-                </button>
-              </span>
-            )}
-          </div>
-        </Field>
-        {preview && <ShinyRatesPreview ctx={preview} />}
-      </Section>
+      <ShinySection m={m} />
 
-      <Section title="XP et bonheur">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field
-            label="Multiplicateur d’XP"
-            hint="XP par rencontre = XP de base × niveau / 7 × multiplicateur."
-            error={err('xp.multiplier')}
-          >
-            <NumberInput
-              value={b.xp.multiplier}
-              min={0}
-              step={0.1}
-              unit="×"
-              onChange={set('xp')('multiplier')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Bonheur par expédition" error={err('xp.happinessPerExpedition')}>
-            <NumberInput
-              value={b.xp.happinessPerExpedition}
-              min={0}
-              max={255}
-              onChange={set('xp')('happinessPerExpedition')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-      </Section>
+      <XpSection m={m} />
 
-      <Section title="Évolutions">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field
-            label="Objet qui remplace l’échange"
-            hint="Consommé par les évolutions par échange (Câble Link). Aucun : impossibles."
-            error={err('evolution.tradeItemId')}
-          >
-            <ItemSelect
-              ctx={working.ctx}
-              value={b.evolution.tradeItemId}
-              allowNone
-              onChange={set('evolution')('tradeItemId')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Début du jour"
-            hint="Heure locale du joueur."
-            error={err('evolution.dayStartHour')}
-          >
-            <NumberInput
-              value={b.evolution.dayStartHour}
-              min={0}
-              max={23}
-              unit="h"
-              onChange={set('evolution')('dayStartHour')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Début de la nuit" error={err('evolution.nightStartHour')}>
-            <NumberInput
-              value={b.evolution.nightStartHour}
-              min={0}
-              max={23}
-              unit="h"
-              onChange={set('evolution')('nightStartHour')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-        <p className="text-xs text-slate-500">
-          Les conditions de chaque évolution (niveau, objet, bonheur, moment de la journée) se
-          règlent dans la section Évolutions.
-        </p>
-      </Section>
+      <EvolutionSection m={m} />
 
       <Section title="Élevage et pensions">
         <p className="text-xs text-slate-500">
@@ -517,160 +147,647 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
           effets « Héritage d’IV » et « Transmission de nature ».
         </p>
         <div className="grid gap-4 sm:grid-cols-3">
-          <Field
-            label="Éclosion par cycle"
-            hint="Temps d’éclosion = cycles de l’espèce (PokéAPI) × cette durée."
-            error={err('breeding.hatchMinutesPerCounter')}
-          >
-            <NumberInput
-              value={b.breeding.hatchMinutesPerCounter}
-              min={0}
-              step={0.5}
-              unit="min"
-              onChange={set('breeding')('hatchMinutesPerCounter')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Ponte"
-            hint="Un couple pond un œuf toutes les X minutes."
-            error={err('breeding.eggMinutes')}
-          >
-            <NumberInput
-              value={b.breeding.eggMinutes}
-              min={1}
-              unit="min"
-              onChange={set('breeding')('eggMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Places des couveuses au départ"
-            hint="6 par couveuse, + paliers de Progression → Bâtiments."
-            error={err('breeding.maxEggs')}
-          >
-            <NumberInput
-              value={b.breeding.maxEggs}
-              min={1}
-              max={30}
-              unit="œufs"
-              onChange={set('breeding')('maxEggs')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Œufs en attente par pension"
-            hint="Une pension pleine arrête de pondre jusqu’au prochain ramassage."
-            error={err('breeding.pensionMaxEggs')}
-          >
-            <NumberInput
-              value={b.breeding.pensionMaxEggs}
-              min={1}
-              max={50}
-              unit="œufs"
-              onChange={set('breeding')('pensionMaxEggs')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="XP des parents en pension"
-            hint="Gagnée par chaque parent au fil du séjour, versée au retrait (plafonnée au niveau 100)."
-            error={err('breeding.parentXpPerHour')}
-          >
-            <NumberInput
-              value={b.breeding.parentXpPerHour}
-              min={0}
-              unit="XP / h"
-              onChange={set('breeding')('parentXpPerHour')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="IV hérités (sans objet)"
-            hint="Tirés au hasard parmi les 6 stats, chacun d’un parent au hasard."
-            error={err('breeding.inheritedIvCount')}
-          >
-            <NumberInput
-              value={b.breeding.inheritedIvCount}
-              min={0}
-              max={6}
-              unit="IV"
-              onChange={set('breeding')('inheritedIvCount')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Transmission du talent caché"
-            hint="Sans effet : les œufs éclosent sans talent (Pilule / Patch Talent)."
-            error={err('breeding.hiddenAbilityInheritChance')}
-          >
-            <NumberInput
-              value={b.breeding.hiddenAbilityInheritChance}
-              scale={100}
-              min={0}
-              max={100}
-              unit="%"
-              onChange={set('breeding')('hiddenAbilityInheritChance')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Niveau à l’éclosion" error={err('breeding.eggLevel')}>
-            <NumberInput
-              value={b.breeding.eggLevel}
-              min={1}
-              max={100}
-              onChange={set('breeding')('eggLevel')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Pensions au départ" error={err('daycare.initialSlots')}>
-            <NumberInput
-              value={b.daycare.initialSlots}
-              min={0}
-              onChange={set('daycare')('initialSlots')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Places au Musée"
-            hint="Fossiles restaurés en même temps (la durée se règle sur chaque fossile, dans Objets)."
-            error={err('museum.slots')}
-          >
-            <NumberInput
-              value={b.museum.slots}
-              min={1}
-              onChange={set('museum')('slots')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Places au Centre Pokémon"
-            hint="Pokémon K.O. soignés en même temps."
-            error={err('center.slots')}
-          >
-            <NumberInput
-              value={b.center.slots}
-              min={1}
-              onChange={set('center')('slots')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Durée des soins"
-            hint="Au Centre Pokémon, avant talents (Médic Nature, Cœur Soin…)."
-            error={err('center.healMinutes')}
-          >
-            <NumberInput
-              value={b.center.healMinutes}
-              min={1}
-              unit="min"
-              onChange={set('center')('healMinutes')}
-              disabled={disabled}
-            />
-          </Field>
+          <EggFields m={m} />
+          <DaycareFields m={m} />
         </div>
       </Section>
 
+      <HatchPreview m={m} />
+
+      <TransferSection m={m} />
+
+      <NewPlayersSection m={m} />
+
+      <TrainerBattlesSection m={m} />
+
+      <LegendarySection m={m} />
+
+      <DungeonSettingsSection
+        s={b.dungeons}
+        set={set('dungeons')}
+        errors={errors}
+        disabled={disabled}
+      />
+      <CombatSettingsSections
+        s={b.combat}
+        set={set('combat')}
+        errors={errors}
+        disabled={disabled}
+        preview={preview?.balance.combat ?? null}
+      />
+      <GuildSettingsSection s={b.guilds} set={set('guilds')} errors={errors} disabled={disabled} />
+    </SettingsPage>
+  );
+}
+
+/** Expéditions : emplacements, équipe, durée, rythme des rencontres et du butin, effet des baies, et leur aperçu. */
+function ExpeditionsSection({ m }: { m: BalanceFormModel }) {
+  const { b, disabled, exp, err, preview } = m;
+  return (
+    <Section title="Expéditions">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Emplacements au départ" error={err('expeditions.initialSlots')}>
+          <NumberInput
+            value={b.expeditions.initialSlots}
+            min={1}
+            max={6}
+            onChange={exp('initialSlots')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Emplacements maximum" error={err('expeditions.maxSlots')}>
+          <NumberInput
+            value={b.expeditions.maxSlots}
+            min={1}
+            max={9}
+            onChange={exp('maxSlots')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Taille d’équipe maximale" error={err('expeditions.maxTeamSize')}>
+          <NumberInput
+            value={b.expeditions.maxTeamSize}
+            min={1}
+            max={6}
+            unit="Pokémon"
+            onChange={exp('maxTeamSize')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Durée maximale" error={err('expeditions.maxDurationMinutes')}>
+          <NumberInput
+            value={b.expeditions.maxDurationMinutes}
+            min={1}
+            unit="min"
+            onChange={exp('maxDurationMinutes')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Une rencontre toutes les" error={err('expeditions.encounterIntervalMinutes')}>
+          <NumberInput
+            value={b.expeditions.encounterIntervalMinutes}
+            min={0.1}
+            step={0.5}
+            unit="min"
+            onChange={exp('encounterIntervalMinutes')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Allongement par heure passée"
+          hint="Ajouté à l’intervalle entre deux rencontres à chaque heure d’expédition (par palier) ; 0 = rythme constant. Talents et baies s’appliquent à l’intervalle allongé. Figé au départ de chaque expédition."
+          error={err('expeditions.encounterIntervalGrowthMinutes')}
+        >
+          <NumberInput
+            value={b.expeditions.encounterIntervalGrowthMinutes}
+            min={0}
+            step={0.5}
+            unit="min"
+            onChange={exp('encounterIntervalGrowthMinutes')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Un tirage de butin toutes les" error={err('expeditions.lootIntervalMinutes')}>
+          <NumberInput
+            value={b.expeditions.lootIntervalMinutes}
+            min={0.1}
+            step={0.5}
+            unit="min"
+            onChange={exp('lootIntervalMinutes')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Effet d’une baie"
+          hint="Baies de capture et de rencontres, l’une après l’autre depuis le départ."
+          error={err('expeditions.berryDurationMinutes')}
+        >
+          <NumberInput
+            value={b.expeditions.berryDurationMinutes}
+            min={0.1}
+            step={1}
+            unit="min"
+            onChange={exp('berryDurationMinutes')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+      {preview && (
+        <table className="text-sm">
+          <thead className="text-left text-xs text-slate-500">
+            <tr>
+              <th className="pr-6 font-normal">Durée</th>
+              <th className="pr-6 font-normal">Rencontres</th>
+              <th className="font-normal">Tirages de butin</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[60, 240, 480, 720, b.expeditions.maxDurationMinutes].map((d) => (
+              <tr key={d}>
+                <td className="pr-6">{formatMinutes(d)}</td>
+                <td className="pr-6 font-mono">{expeditionPlan(preview, d).encounters}</td>
+                <td className="font-mono">{expeditionPlan(preview, d).lootRolls}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+    </Section>
+  );
+}
+
+/** Capture : multiplicateur global, PV supposés, bonus d'affinité, chance de talent caché. */
+function CaptureSection({ m }: { m: BalanceFormModel }) {
+  const { b, disabled, cap, err } = m;
+  return (
+    <Section title="Capture">
+      <p className="text-xs text-slate-500">
+        Probabilité = taux de capture de l’espèce × Ball × baie × (3 − 2 × PV restants) / 3 × (1 +
+        bonus d’affinité × membres en affinité) × multiplicateur global / 255.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Multiplicateur global" error={err('capture.globalMultiplier')}>
+          <NumberInput
+            value={b.capture.globalMultiplier}
+            min={0}
+            step={0.1}
+            unit="×"
+            onChange={cap('globalMultiplier')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="PV restants supposés"
+          hint="100 % = Pokémon en pleine santé (plus difficile)."
+          error={err('capture.assumedHpFraction')}
+        >
+          <NumberInput
+            value={b.capture.assumedHpFraction}
+            scale={100}
+            min={0}
+            max={100}
+            unit="%"
+            onChange={cap('assumedHpFraction')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Bonus par membre en affinité" error={err('capture.affinityBonusPerPokemon')}>
+          <NumberInput
+            value={b.capture.affinityBonusPerPokemon}
+            scale={100}
+            min={0}
+            unit="%"
+            onChange={cap('affinityBonusPerPokemon')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Chance de talent caché"
+          hint="Pokémon adverses (donjons, dresseurs) : ceux du joueur arrivent sans talent."
+          error={err('capture.hiddenAbilityChance')}
+        >
+          <NumberInput
+            value={b.capture.hiddenAbilityChance}
+            scale={100}
+            min={0}
+            max={100}
+            step={0.5}
+            unit="%"
+            onChange={cap('hiddenAbilityChance')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+    </Section>
+  );
+}
+
+/** Pitié : bonus de rencontre d'une espèce à chaque expédition sans elle, et son plafond. */
+function PitySection({ m }: { m: BalanceFormModel }) {
+  const { b, disabled, set, err } = m;
+  return (
+    <Section title="Pitié">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Bonus de rencontre par échec" error={err('pity.weightBonusPerMiss')}>
+          <NumberInput
+            value={b.pity.weightBonusPerMiss}
+            scale={100}
+            min={0}
+            unit="%"
+            onChange={set('pity')('weightBonusPerMiss')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Plafond de pitié" error={err('pity.maxMultiplier')}>
+          <NumberInput
+            value={b.pity.maxMultiplier}
+            min={1}
+            step={0.5}
+            unit="×"
+            onChange={set('pity')('maxMultiplier')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+    </Section>
+  );
+}
+
+/** Chromatiques : taux de base, chaînes (bonus, plafond, relance, IV garantis), Masuda, et l'aperçu des taux. */
+function ShinySection({ m }: { m: BalanceFormModel }) {
+  const { b, newIvThreshold, setNewIvThreshold, disabled, sh, err, preview } = m;
+  return (
+    <Section title="Chromatiques">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field
+          label="Taux chromatique de base"
+          hint="Rencontres d’expédition et éclosions."
+          error={err('shiny.baseRateDenominator')}
+        >
+          <NumberInput
+            value={b.shiny.baseRateDenominator}
+            min={1}
+            unit="1 / X"
+            onChange={sh('baseRateDenominator')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Chaîne : bonus par maillon"
+          hint="Chaque expédition relancée de suite dans la même zone."
+          error={err('shiny.chainBonusPerExpedition')}
+        >
+          <NumberInput
+            value={b.shiny.chainBonusPerExpedition}
+            scale={100}
+            min={0}
+            unit="%"
+            onChange={sh('chainBonusPerExpedition')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Chaîne : plafond" error={err('shiny.chainMaxMultiplier')}>
+          <NumberInput
+            value={b.shiny.chainMaxMultiplier}
+            min={1}
+            step={0.5}
+            unit="×"
+            onChange={sh('chainMaxMultiplier')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Chaîne : délai de relance"
+          hint="Après la récupération de l’expédition précédente ; sinon, retour à 0."
+          error={err('shiny.chainWindowMinutes')}
+        >
+          <NumberInput
+            value={b.shiny.chainWindowMinutes}
+            min={1}
+            unit="min"
+            onChange={sh('chainWindowMinutes')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Bonus Masuda (élevage)"
+          hint="Parents capturés dans des régions différentes."
+          error={err('shiny.masudaMultiplier')}
+        >
+          <NumberInput
+            value={b.shiny.masudaMultiplier}
+            min={1}
+            step={0.5}
+            unit="×"
+            onChange={sh('masudaMultiplier')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+      <Field
+        label="Chaîne : IV parfaits garantis"
+        hint="Maillons à atteindre dans une zone : chaque palier garantit un IV à 31 de plus aux Pokémon sauvages."
+        error={err('shiny.chainPerfectIvThresholds')}
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          {b.shiny.chainPerfectIvThresholds.map((t, i) => (
+            <span
+              key={t}
+              className="flex items-center gap-1 rounded-full bg-slate-100 px-3 py-1 text-sm dark:bg-slate-800"
+            >
+              {t} maillon{t > 1 ? 's' : ''} → {i + 1} IV
+              {!disabled && (
+                <button
+                  type="button"
+                  className="text-slate-400 hover:text-red-600"
+                  onClick={() =>
+                    sh('chainPerfectIvThresholds')(
+                      b.shiny.chainPerfectIvThresholds.filter((x) => x !== t),
+                    )
+                  }
+                >
+                  ✕
+                </button>
+              )}
+            </span>
+          ))}
+          {b.shiny.chainPerfectIvThresholds.length === 0 && (
+            <span className="text-sm text-slate-500">Aucun palier</span>
+          )}
+          {!disabled && b.shiny.chainPerfectIvThresholds.length < 6 && (
+            <span className="flex items-center gap-1">
+              <NumberInput
+                className="w-32"
+                value={newIvThreshold}
+                min={1}
+                unit="maillons"
+                onChange={setNewIvThreshold}
+              />
+              <button
+                type="button"
+                className="btn-ghost py-1"
+                disabled={
+                  !Number.isInteger(newIvThreshold) ||
+                  newIvThreshold < 1 ||
+                  b.shiny.chainPerfectIvThresholds.includes(newIvThreshold)
+                }
+                onClick={() =>
+                  sh('chainPerfectIvThresholds')(
+                    [...b.shiny.chainPerfectIvThresholds, newIvThreshold].sort((x, y) => x - y),
+                  )
+                }
+              >
+                Ajouter
+              </button>
+            </span>
+          )}
+        </div>
+      </Field>
+      {preview && <ShinyRatesPreview ctx={preview} />}
+    </Section>
+  );
+}
+
+/** XP et bonheur gagnés par les Pokémon. */
+function XpSection({ m }: { m: BalanceFormModel }) {
+  const { b, disabled, set, err } = m;
+  return (
+    <Section title="XP et bonheur">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field
+          label="Multiplicateur d’XP"
+          hint="XP par rencontre = XP de base × niveau / 7 × multiplicateur."
+          error={err('xp.multiplier')}
+        >
+          <NumberInput
+            value={b.xp.multiplier}
+            min={0}
+            step={0.1}
+            unit="×"
+            onChange={set('xp')('multiplier')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Bonheur par expédition" error={err('xp.happinessPerExpedition')}>
+          <NumberInput
+            value={b.xp.happinessPerExpedition}
+            min={0}
+            max={255}
+            onChange={set('xp')('happinessPerExpedition')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+    </Section>
+  );
+}
+
+/** Évolutions : objet qui remplace l'échange, heures du jour et de la nuit. */
+function EvolutionSection({ m }: { m: BalanceFormModel }) {
+  const { working, b, disabled, set, err } = m;
+  return (
+    <Section title="Évolutions">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field
+          label="Objet qui remplace l’échange"
+          hint="Consommé par les évolutions par échange (Câble Link). Aucun : impossibles."
+          error={err('evolution.tradeItemId')}
+        >
+          <ItemSelect
+            ctx={working.ctx}
+            value={b.evolution.tradeItemId}
+            allowNone
+            onChange={set('evolution')('tradeItemId')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Début du jour"
+          hint="Heure locale du joueur."
+          error={err('evolution.dayStartHour')}
+        >
+          <NumberInput
+            value={b.evolution.dayStartHour}
+            min={0}
+            max={23}
+            unit="h"
+            onChange={set('evolution')('dayStartHour')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Début de la nuit" error={err('evolution.nightStartHour')}>
+          <NumberInput
+            value={b.evolution.nightStartHour}
+            min={0}
+            max={23}
+            unit="h"
+            onChange={set('evolution')('nightStartHour')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+      <p className="text-xs text-slate-500">
+        Les conditions de chaque évolution (niveau, objet, bonheur, moment de la journée) se règlent
+        dans la section Évolutions.
+      </p>
+    </Section>
+  );
+}
+
+/** Élevage : éclosion, ponte, couveuses, œufs en attente, XP des parents, IV et talent hérités. */
+function EggFields({ m }: { m: BalanceFormModel }) {
+  const { b, disabled, set, err } = m;
+  return (
+    <>
+      <Field
+        label="Éclosion par cycle"
+        hint="Temps d’éclosion = cycles de l’espèce (PokéAPI) × cette durée."
+        error={err('breeding.hatchMinutesPerCounter')}
+      >
+        <NumberInput
+          value={b.breeding.hatchMinutesPerCounter}
+          min={0}
+          step={0.5}
+          unit="min"
+          onChange={set('breeding')('hatchMinutesPerCounter')}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Ponte"
+        hint="Un couple pond un œuf toutes les X minutes."
+        error={err('breeding.eggMinutes')}
+      >
+        <NumberInput
+          value={b.breeding.eggMinutes}
+          min={1}
+          unit="min"
+          onChange={set('breeding')('eggMinutes')}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Places des couveuses au départ"
+        hint="6 par couveuse, + paliers de Progression → Bâtiments."
+        error={err('breeding.maxEggs')}
+      >
+        <NumberInput
+          value={b.breeding.maxEggs}
+          min={1}
+          max={30}
+          unit="œufs"
+          onChange={set('breeding')('maxEggs')}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Œufs en attente par pension"
+        hint="Une pension pleine arrête de pondre jusqu’au prochain ramassage."
+        error={err('breeding.pensionMaxEggs')}
+      >
+        <NumberInput
+          value={b.breeding.pensionMaxEggs}
+          min={1}
+          max={50}
+          unit="œufs"
+          onChange={set('breeding')('pensionMaxEggs')}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="XP des parents en pension"
+        hint="Gagnée par chaque parent au fil du séjour, versée au retrait (plafonnée au niveau 100)."
+        error={err('breeding.parentXpPerHour')}
+      >
+        <NumberInput
+          value={b.breeding.parentXpPerHour}
+          min={0}
+          unit="XP / h"
+          onChange={set('breeding')('parentXpPerHour')}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="IV hérités (sans objet)"
+        hint="Tirés au hasard parmi les 6 stats, chacun d’un parent au hasard."
+        error={err('breeding.inheritedIvCount')}
+      >
+        <NumberInput
+          value={b.breeding.inheritedIvCount}
+          min={0}
+          max={6}
+          unit="IV"
+          onChange={set('breeding')('inheritedIvCount')}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Transmission du talent caché"
+        hint="Sans effet : les œufs éclosent sans talent (Pilule / Patch Talent)."
+        error={err('breeding.hiddenAbilityInheritChance')}
+      >
+        <NumberInput
+          value={b.breeding.hiddenAbilityInheritChance}
+          scale={100}
+          min={0}
+          max={100}
+          unit="%"
+          onChange={set('breeding')('hiddenAbilityInheritChance')}
+          disabled={disabled}
+        />
+      </Field>
+    </>
+  );
+}
+
+/** Niveau à l'éclosion, places de départ des pensions, du Musée et du Centre, durée des soins. */
+function DaycareFields({ m }: { m: BalanceFormModel }) {
+  const { b, disabled, set, err } = m;
+  return (
+    <>
+      <Field label="Niveau à l’éclosion" error={err('breeding.eggLevel')}>
+        <NumberInput
+          value={b.breeding.eggLevel}
+          min={1}
+          max={100}
+          onChange={set('breeding')('eggLevel')}
+          disabled={disabled}
+        />
+      </Field>
+      <Field label="Pensions au départ" error={err('daycare.initialSlots')}>
+        <NumberInput
+          value={b.daycare.initialSlots}
+          min={0}
+          onChange={set('daycare')('initialSlots')}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Places au Musée"
+        hint="Fossiles restaurés en même temps (la durée se règle sur chaque fossile, dans Objets)."
+        error={err('museum.slots')}
+      >
+        <NumberInput
+          value={b.museum.slots}
+          min={1}
+          onChange={set('museum')('slots')}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Places au Centre Pokémon"
+        hint="Pokémon K.O. soignés en même temps."
+        error={err('center.slots')}
+      >
+        <NumberInput
+          value={b.center.slots}
+          min={1}
+          onChange={set('center')('slots')}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Durée des soins"
+        hint="Au Centre Pokémon, avant talents (Médic Nature, Cœur Soin…)."
+        error={err('center.healMinutes')}
+      >
+        <NumberInput
+          value={b.center.healMinutes}
+          min={1}
+          unit="min"
+          onChange={set('center')('healMinutes')}
+          disabled={disabled}
+        />
+      </Field>
+    </>
+  );
+}
+
+/** Aperçu des durées d'éclosion de quelques espèces. */
+function HatchPreview({ m }: { m: BalanceFormModel }) {
+  const { preview } = m;
+  return (
+    <>
       {preview && (
         <Section title="Aperçu : temps d’éclosion">
           <table className="text-sm">
@@ -691,277 +808,286 @@ function BalanceForm({ working }: { working: WorkingVersion }) {
           </table>
         </Section>
       )}
+    </>
+  );
+}
 
-      <Section title="Transfert et Bonbons de lignée">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Bonbons par transfert" error={err('transfer.candiesPerPokemon')}>
-            <NumberInput
-              value={b.transfer.candiesPerPokemon}
-              min={0}
-              onChange={set('transfer')('candiesPerPokemon')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Bonus chromatique"
-            hint="Bonbons en plus pour un Pokémon chromatique."
-            error={err('transfer.shinyBonusCandies')}
-          >
-            <NumberInput
-              value={b.transfer.shinyBonusCandies}
-              min={0}
-              onChange={set('transfer')('shinyBonusCandies')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Bonbons par niveau (niveau 1)"
-            hint="Un Bonbon donne 1/N du niveau en cours ; le surplus passe au niveau suivant."
-            error={err('transfer.candiesPerLevelStart')}
-          >
-            <NumberInput
-              value={b.transfer.candiesPerLevelStart}
-              min={1}
-              onChange={set('transfer')('candiesPerLevelStart')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Bonbons par niveau (niveau 99)"
-            hint="Le coût monte en ligne droite entre le niveau 1 et le niveau 99."
-            error={err('transfer.candiesPerLevelEnd')}
-          >
-            <NumberInput
-              value={b.transfer.candiesPerLevelEnd}
-              min={1}
-              onChange={set('transfer')('candiesPerLevelEnd')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-      </Section>
-
-      <Section title="Nouveaux joueurs">
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Niveau du starter" error={err('newPlayer.starterLevel')}>
-            <NumberInput
-              value={b.newPlayer.starterLevel}
-              min={1}
-              max={100}
-              onChange={set('newPlayer')('starterLevel')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Argent de départ" error={err('newPlayer.startingCurrency')}>
-            <NumberInput
-              value={b.newPlayer.startingCurrency}
-              min={0}
-              unit="₽"
-              onChange={set('newPlayer')('startingCurrency')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-        <Field label="Inventaire de départ">
-          <div className="space-y-2">
-            {b.newPlayer.startingInventory.map((s, i) => {
-              const update = (patch: Partial<typeof s>) =>
-                set('newPlayer')('startingInventory')(
-                  b.newPlayer.startingInventory.map((x, j) => (j === i ? { ...x, ...patch } : x)),
-                );
-              return (
-                <div key={i} className="flex items-center gap-2">
-                  <ItemSelect
-                    ctx={working.ctx}
-                    value={s.itemId}
-                    disabled={disabled}
-                    onChange={(itemId) => itemId && update({ itemId })}
-                  />
-                  <NumberInput
-                    className="w-32"
-                    value={s.quantity}
-                    min={1}
-                    unit="×"
-                    disabled={disabled}
-                    onChange={(quantity) => update({ quantity })}
-                  />
-                  {!disabled && (
-                    <button
-                      type="button"
-                      className="text-slate-400 hover:text-red-600"
-                      onClick={() =>
-                        set('newPlayer')('startingInventory')(
-                          b.newPlayer.startingInventory.filter((_, j) => j !== i),
-                        )
-                      }
-                    >
-                      ✕
-                    </button>
-                  )}
-                </div>
-              );
-            })}
-            {!disabled && working.content.items.length > 0 && (
-              <button
-                type="button"
-                className="btn-ghost py-1 text-xs"
-                onClick={() =>
-                  set('newPlayer')('startingInventory')([
-                    ...b.newPlayer.startingInventory,
-                    { itemId: working.content.items[0]!.id, quantity: 1 },
-                  ])
-                }
-              >
-                + Objet
-              </button>
-            )}
-          </div>
+/** Transfert au Professeur et Bonbons de lignée. */
+function TransferSection({ m }: { m: BalanceFormModel }) {
+  const { b, disabled, set, err } = m;
+  return (
+    <Section title="Transfert et Bonbons de lignée">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Bonbons par transfert" error={err('transfer.candiesPerPokemon')}>
+          <NumberInput
+            value={b.transfer.candiesPerPokemon}
+            min={0}
+            onChange={set('transfer')('candiesPerPokemon')}
+            disabled={disabled}
+          />
         </Field>
-      </Section>
+        <Field
+          label="Bonus chromatique"
+          hint="Bonbons en plus pour un Pokémon chromatique."
+          error={err('transfer.shinyBonusCandies')}
+        >
+          <NumberInput
+            value={b.transfer.shinyBonusCandies}
+            min={0}
+            onChange={set('transfer')('shinyBonusCandies')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Bonbons par niveau (niveau 1)"
+          hint="Un Bonbon donne 1/N du niveau en cours ; le surplus passe au niveau suivant."
+          error={err('transfer.candiesPerLevelStart')}
+        >
+          <NumberInput
+            value={b.transfer.candiesPerLevelStart}
+            min={1}
+            onChange={set('transfer')('candiesPerLevelStart')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Bonbons par niveau (niveau 99)"
+          hint="Le coût monte en ligne droite entre le niveau 1 et le niveau 99."
+          error={err('transfer.candiesPerLevelEnd')}
+        >
+          <NumberInput
+            value={b.transfer.candiesPerLevelEnd}
+            min={1}
+            onChange={set('transfer')('candiesPerLevelEnd')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+    </Section>
+  );
+}
 
-      <Section title="Combats de dresseurs">
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Taille d’équipe maximale" error={err('battles.maxTeamSize')}>
-            <NumberInput
-              value={b.battles.maxTeamSize}
-              min={1}
-              max={6}
-              unit="Pokémon"
-              onChange={bat('maxTeamSize')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Temps de recharge"
-            hint="Dresseur répétable, après chaque combat (surchargeable)."
-            error={err('battles.cooldownMinutes')}
-          >
-            <NumberInput
-              value={b.battles.cooldownMinutes}
-              min={0}
-              unit="min"
-              onChange={bat('cooldownMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="IV des Pokémon des dresseurs"
-            hint="Si le dresseur n’en fixe pas."
-            error={err('battles.defaultTrainerIv')}
-          >
-            <NumberInput
-              value={b.battles.defaultTrainerIv}
-              min={0}
-              max={31}
-              onChange={bat('defaultTrainerIv')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Multiplicateur d’XP"
-            hint="XP des Pokémon adverses vaincus, pour chaque membre."
-            error={err('battles.xpMultiplier')}
-          >
-            <NumberInput
-              value={b.battles.xpMultiplier}
-              min={0}
-              step={0.1}
-              unit="×"
-              onChange={bat('xpMultiplier')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Bonheur (victoire)" error={err('battles.happinessOnWin')}>
-            <NumberInput
-              value={b.battles.happinessOnWin}
-              min={-255}
-              max={255}
-              onChange={bat('happinessOnWin')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Bonheur (défaite)"
-            hint="Négatif : le bonheur baisse."
-            error={err('battles.happinessOnLoss')}
-          >
-            <NumberInput
-              value={b.battles.happinessOnLoss}
-              min={-255}
-              max={255}
-              onChange={bat('happinessOnLoss')}
-              disabled={disabled}
-            />
-          </Field>
+/** Nouveaux joueurs : niveau du starter, argent et inventaire de départ. */
+function NewPlayersSection({ m }: { m: BalanceFormModel }) {
+  const { working, b, disabled, set, err } = m;
+  return (
+    <Section title="Nouveaux joueurs">
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Niveau du starter" error={err('newPlayer.starterLevel')}>
+          <NumberInput
+            value={b.newPlayer.starterLevel}
+            min={1}
+            max={100}
+            onChange={set('newPlayer')('starterLevel')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Argent de départ" error={err('newPlayer.startingCurrency')}>
+          <NumberInput
+            value={b.newPlayer.startingCurrency}
+            min={0}
+            unit="₽"
+            onChange={set('newPlayer')('startingCurrency')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+      <Field label="Inventaire de départ">
+        <div className="space-y-2">
+          {b.newPlayer.startingInventory.map((s, i) => {
+            const update = (patch: Partial<typeof s>) =>
+              set('newPlayer')('startingInventory')(
+                b.newPlayer.startingInventory.map((x, j) => (j === i ? { ...x, ...patch } : x)),
+              );
+            return (
+              <div key={i} className="flex items-center gap-2">
+                <ItemSelect
+                  ctx={working.ctx}
+                  value={s.itemId}
+                  disabled={disabled}
+                  onChange={(itemId) => itemId && update({ itemId })}
+                />
+                <NumberInput
+                  className="w-32"
+                  value={s.quantity}
+                  min={1}
+                  unit="×"
+                  disabled={disabled}
+                  onChange={(quantity) => update({ quantity })}
+                />
+                {!disabled && (
+                  <button
+                    type="button"
+                    className="text-slate-400 hover:text-red-600"
+                    onClick={() =>
+                      set('newPlayer')('startingInventory')(
+                        b.newPlayer.startingInventory.filter((_, j) => j !== i),
+                      )
+                    }
+                  >
+                    ✕
+                  </button>
+                )}
+              </div>
+            );
+          })}
+          {!disabled && working.content.items.length > 0 && (
+            <button
+              type="button"
+              className="btn-ghost py-1 text-xs"
+              onClick={() =>
+                set('newPlayer')('startingInventory')([
+                  ...b.newPlayer.startingInventory,
+                  { itemId: working.content.items[0]!.id, quantity: 1 },
+                ])
+              }
+            >
+              + Objet
+            </button>
+          )}
         </div>
-      </Section>
+      </Field>
+    </Section>
+  );
+}
 
-      <Section title="Légendaires">
-        <p className="text-xs text-slate-500">
-          Combats légendaires lancés depuis les Quêtes (renforcement et chance de capture : sur
-          chaque Pokémon de la récompense). Les fuyards, eux, se capturent en expédition.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field
-            label="Délai avant de retenter"
-            hint="Après une défaite, une fuite ou une Ball ratée."
-            error={err('legendary.retryCooldownMinutes')}
-          >
-            <NumberInput
-              value={b.legendary.retryCooldownMinutes}
-              min={0}
-              unit="min"
-              onChange={set('legendary')('retryCooldownMinutes')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Multiplicateur d’XP"
-            hint="XP du légendaire vaincu, pour chaque membre."
-            error={err('legendary.xpMultiplier')}
-          >
-            <NumberInput
-              value={b.legendary.xpMultiplier}
-              min={0}
-              step={0.1}
-              unit="×"
-              onChange={set('legendary')('xpMultiplier')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Capture des fuyards"
-            hint="Multiplie la chance de capture habituelle d’un fuyard."
-            error={err('legendary.roamerCaptureMultiplier')}
-          >
-            <NumberInput
-              value={b.legendary.roamerCaptureMultiplier}
-              min={1}
-              max={100}
-              step={0.5}
-              unit="×"
-              onChange={set('legendary')('roamerCaptureMultiplier')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-      </Section>
+/** Combats de dresseurs : équipe, temps de recharge, IV des adversaires, XP et bonheur. */
+function TrainerBattlesSection({ m }: { m: BalanceFormModel }) {
+  const { b, disabled, bat, err } = m;
+  return (
+    <Section title="Combats de dresseurs">
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Taille d’équipe maximale" error={err('battles.maxTeamSize')}>
+          <NumberInput
+            value={b.battles.maxTeamSize}
+            min={1}
+            max={6}
+            unit="Pokémon"
+            onChange={bat('maxTeamSize')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Temps de recharge"
+          hint="Dresseur répétable, après chaque combat (surchargeable)."
+          error={err('battles.cooldownMinutes')}
+        >
+          <NumberInput
+            value={b.battles.cooldownMinutes}
+            min={0}
+            unit="min"
+            onChange={bat('cooldownMinutes')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="IV des Pokémon des dresseurs"
+          hint="Si le dresseur n’en fixe pas."
+          error={err('battles.defaultTrainerIv')}
+        >
+          <NumberInput
+            value={b.battles.defaultTrainerIv}
+            min={0}
+            max={31}
+            onChange={bat('defaultTrainerIv')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Multiplicateur d’XP"
+          hint="XP des Pokémon adverses vaincus, pour chaque membre."
+          error={err('battles.xpMultiplier')}
+        >
+          <NumberInput
+            value={b.battles.xpMultiplier}
+            min={0}
+            step={0.1}
+            unit="×"
+            onChange={bat('xpMultiplier')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Bonheur (victoire)" error={err('battles.happinessOnWin')}>
+          <NumberInput
+            value={b.battles.happinessOnWin}
+            min={-255}
+            max={255}
+            onChange={bat('happinessOnWin')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Bonheur (défaite)"
+          hint="Négatif : le bonheur baisse."
+          error={err('battles.happinessOnLoss')}
+        >
+          <NumberInput
+            value={b.battles.happinessOnLoss}
+            min={-255}
+            max={255}
+            onChange={bat('happinessOnLoss')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+    </Section>
+  );
+}
 
-      <DungeonSettingsSection
-        s={b.dungeons}
-        set={set('dungeons')}
-        errors={errors}
-        disabled={disabled}
-      />
-      <CombatSettingsSections
-        s={b.combat}
-        set={set('combat')}
-        errors={errors}
-        disabled={disabled}
-        preview={preview?.balance.combat ?? null}
-      />
-      <GuildSettingsSection s={b.guilds} set={set('guilds')} errors={errors} disabled={disabled} />
-    </div>
+/** Légendaires : délai avant de retenter, XP, capture des fuyards. */
+function LegendarySection({ m }: { m: BalanceFormModel }) {
+  const { b, disabled, set, err } = m;
+  return (
+    <Section title="Légendaires">
+      <p className="text-xs text-slate-500">
+        Combats légendaires lancés depuis les Quêtes (renforcement et chance de capture : sur chaque
+        Pokémon de la récompense). Les fuyards, eux, se capturent en expédition.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field
+          label="Délai avant de retenter"
+          hint="Après une défaite, une fuite ou une Ball ratée."
+          error={err('legendary.retryCooldownMinutes')}
+        >
+          <NumberInput
+            value={b.legendary.retryCooldownMinutes}
+            min={0}
+            unit="min"
+            onChange={set('legendary')('retryCooldownMinutes')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Multiplicateur d’XP"
+          hint="XP du légendaire vaincu, pour chaque membre."
+          error={err('legendary.xpMultiplier')}
+        >
+          <NumberInput
+            value={b.legendary.xpMultiplier}
+            min={0}
+            step={0.1}
+            unit="×"
+            onChange={set('legendary')('xpMultiplier')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Capture des fuyards"
+          hint="Multiplie la chance de capture habituelle d’un fuyard."
+          error={err('legendary.roamerCaptureMultiplier')}
+        >
+          <NumberInput
+            value={b.legendary.roamerCaptureMultiplier}
+            min={1}
+            max={100}
+            step={0.5}
+            unit="×"
+            onChange={set('legendary')('roamerCaptureMultiplier')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+    </Section>
   );
 }
 
@@ -1216,253 +1342,270 @@ function DungeonSettingsSection({
  * Réglages communs aux combats en temps réel (donjons et dresseurs) ; un combat en cours garde
  * ceux de son départ.
  */
-function CombatSettingsSections({
-  s,
-  set,
-  errors,
-  disabled,
-  preview,
-}: {
+function CombatSettingsSections(props: CombatSectionProps) {
+  return (
+    <>
+      <CombatPaceSection {...props} />
+      <CombatDamageSection {...props} />
+      <CombatAttacksSection {...props} />
+    </>
+  );
+}
+
+/** Ce que reçoit chaque section des réglages de combat. */
+interface CombatSectionProps {
   s: CombatSettings;
   set: <K extends keyof CombatSettings>(key: K) => (v: CombatSettings[K]) => void;
   errors: FieldErrors;
   disabled: boolean;
   preview: CombatSettings | null;
-}) {
+}
+
+/** Combat : délai entre deux attaques selon la Vitesse, et son aperçu. */
+function CombatPaceSection({ s, set, errors, disabled, preview }: CombatSectionProps) {
   const err = (path: string) => errors.get(`combat.${path}`);
   return (
-    <>
-      <Section title="Combat : rythme des attaques">
+    <Section title="Combat : rythme des attaques">
+      <p className="text-xs text-slate-500">
+        Réglages communs aux donjons et aux combats de dresseurs.
+      </p>
+      <p className="text-xs text-slate-500">
+        Délai linéaire selon la Vitesse : le délai à Vitesse 0 diminue d’un même nombre de
+        millisecondes par point de Vitesse, pour atteindre le délai de référence à la Vitesse de
+        référence, et continue au-delà sans limite jusqu’au plancher technique.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-4">
+        <Field label="Délai à Vitesse 0" error={err('maxAttackIntervalMs')}>
+          <NumberInput
+            value={s.maxAttackIntervalMs}
+            min={100}
+            step={100}
+            unit="ms"
+            onChange={set('maxAttackIntervalMs')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Délai de référence" error={err('baseAttackIntervalMs')}>
+          <NumberInput
+            value={s.baseAttackIntervalMs}
+            min={100}
+            step={100}
+            unit="ms"
+            onChange={set('baseAttackIntervalMs')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field label="Vitesse de référence" error={err('referenceSpeed')}>
+          <NumberInput
+            value={s.referenceSpeed}
+            min={1}
+            onChange={set('referenceSpeed')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Plancher technique"
+          hint="Délai le plus court possible."
+          error={err('minAttackIntervalMs')}
+        >
+          <NumberInput
+            value={s.minAttackIntervalMs}
+            min={100}
+            step={100}
+            unit="ms"
+            onChange={set('minAttackIntervalMs')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+      {preview && (
         <p className="text-xs text-slate-500">
-          Réglages communs aux donjons et aux combats de dresseurs.
+          {Math.round(preview.maxAttackIntervalMs - preview.baseAttackIntervalMs)} ms gagnées tous
+          les {preview.referenceSpeed} points de Vitesse. Aperçu :{' '}
+          {[0, 50, 100, 150, 200, 300, 400]
+            .map(
+              (speed) =>
+                `Vitesse ${speed} → ${(attackIntervalMs(preview, speed) / 1000).toFixed(2)} s`,
+            )
+            .join(' · ')}
         </p>
-        <p className="text-xs text-slate-500">
-          Délai linéaire selon la Vitesse : le délai à Vitesse 0 diminue d’un même nombre de
-          millisecondes par point de Vitesse, pour atteindre le délai de référence à la Vitesse de
-          référence, et continue au-delà sans limite jusqu’au plancher technique.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-4">
-          <Field label="Délai à Vitesse 0" error={err('maxAttackIntervalMs')}>
-            <NumberInput
-              value={s.maxAttackIntervalMs}
-              min={100}
-              step={100}
-              unit="ms"
-              onChange={set('maxAttackIntervalMs')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Délai de référence" error={err('baseAttackIntervalMs')}>
-            <NumberInput
-              value={s.baseAttackIntervalMs}
-              min={100}
-              step={100}
-              unit="ms"
-              onChange={set('baseAttackIntervalMs')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field label="Vitesse de référence" error={err('referenceSpeed')}>
-            <NumberInput
-              value={s.referenceSpeed}
-              min={1}
-              onChange={set('referenceSpeed')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Plancher technique"
-            hint="Délai le plus court possible."
-            error={err('minAttackIntervalMs')}
-          >
-            <NumberInput
-              value={s.minAttackIntervalMs}
-              min={100}
-              step={100}
-              unit="ms"
-              onChange={set('minAttackIntervalMs')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-        {preview && (
-          <p className="text-xs text-slate-500">
-            {Math.round(preview.maxAttackIntervalMs - preview.baseAttackIntervalMs)} ms gagnées tous
-            les {preview.referenceSpeed} points de Vitesse. Aperçu :{' '}
-            {[0, 50, 100, 150, 200, 300, 400]
-              .map(
-                (speed) =>
-                  `Vitesse ${speed} → ${(attackIntervalMs(preview, speed) / 1000).toFixed(2)} s`,
-              )
-              .join(' · ')}
-          </p>
-        )}
-      </Section>
+      )}
+    </Section>
+  );
+}
 
-      <Section title="Combat : dégâts">
-        <p className="text-xs text-slate-500">
-          Dégâts = ((2 × niveau / 5 + 2) × puissance × Att / Déf / 50 + 2) × bonus de même type ×
-          efficacité × aléa × multiplicateur × coup critique. Attaque physique : Attaque contre
-          Défense ; spéciale : Atq. Spé. contre Déf. Spé.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Multiplicateur de dégâts" error={err('damageMultiplier')}>
-            <NumberInput
-              value={s.damageMultiplier}
-              min={0.01}
-              step={0.05}
-              unit="×"
-              onChange={set('damageMultiplier')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Bonus de même type (STAB)"
-            hint="Attaque d’un des types de l’attaquant."
-            error={err('stabMultiplier')}
-          >
-            <NumberInput
-              value={s.stabMultiplier}
-              min={1}
-              max={5}
-              step={0.1}
-              unit="×"
-              onChange={set('stabMultiplier')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Aléa minimum"
-            hint="Les dégâts varient entre ce pourcentage et 100 %."
-            error={err('minDamageRoll')}
-          >
-            <NumberInput
-              value={s.minDamageRoll}
-              scale={100}
-              min={0}
-              max={100}
-              unit="%"
-              onChange={set('minDamageRoll')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Chance de coup critique"
-            hint="À chaque attaque. 0 % = aucun coup critique."
-            error={err('critChance')}
-          >
-            <NumberInput
-              value={s.critChance}
-              scale={100}
-              min={0}
-              max={100}
-              step={0.25}
-              unit="%"
-              onChange={set('critChance')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Dégâts d’un coup critique"
-            hint="Ignore aussi les baisses d’Attaque (Intimidation)."
-            error={err('critMultiplier')}
-          >
-            <NumberInput
-              value={s.critMultiplier}
-              min={1}
-              max={5}
-              step={0.1}
-              unit="×"
-              onChange={set('critMultiplier')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Délai de retour après un rappel"
-            hint="Un Pokémon rappelé ne peut pas revenir au combat avant ce délai, sauf s’il est le dernier encore debout."
-            error={err('recallCooldownSeconds')}
-          >
-            <NumberInput
-              value={s.recallCooldownSeconds}
-              min={0}
-              max={60}
-              step={0.5}
-              unit="s"
-              onChange={set('recallCooldownSeconds')}
-              disabled={disabled}
-            />
-          </Field>
-          <Field
-            label="Intervalle des pertes de météo et de statut"
-            hint="Sable, grêle, brûlure et poison retirent leur part de PV aux deux Pokémon en face à cet intervalle, quelle que soit leur vitesse. Les combats déjà lancés gardent l’ancien calcul (après chaque attaque)."
-            error={err('chipTickSeconds')}
-          >
-            <NumberInput
-              value={s.chipTickSeconds}
-              min={1}
-              max={30}
-              step={0.5}
-              unit="s"
-              onChange={set('chipTickSeconds')}
-              disabled={disabled}
-            />
-          </Field>
-        </div>
-        <Toggle
-          checked={s.enemyAbilities}
-          onChange={set('enemyAbilities')}
-          disabled={disabled}
-          label="Talents des adversaires (donjons et dresseurs) : chacun a le premier talent de son espèce (le boss d’un donjon, celui de sa forme Méga), avec l’effet réglé dans la section Talents"
-        />
-      </Section>
+/** Combat : dégâts (multiplicateur, même type, aléa, critiques), délais de rappel et de météo, talents des adversaires. */
+function CombatDamageSection({ s, set, errors, disabled }: CombatSectionProps) {
+  const err = (path: string) => errors.get(`combat.${path}`);
+  return (
+    <Section title="Combat : dégâts">
+      <p className="text-xs text-slate-500">
+        Dégâts = ((2 × niveau / 5 + 2) × puissance × Att / Déf / 50 + 2) × bonus de même type ×
+        efficacité × aléa × multiplicateur × coup critique. Attaque physique : Attaque contre
+        Défense ; spéciale : Atq. Spé. contre Déf. Spé.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Field label="Multiplicateur de dégâts" error={err('damageMultiplier')}>
+          <NumberInput
+            value={s.damageMultiplier}
+            min={0.01}
+            step={0.05}
+            unit="×"
+            onChange={set('damageMultiplier')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Bonus de même type (STAB)"
+          hint="Attaque d’un des types de l’attaquant."
+          error={err('stabMultiplier')}
+        >
+          <NumberInput
+            value={s.stabMultiplier}
+            min={1}
+            max={5}
+            step={0.1}
+            unit="×"
+            onChange={set('stabMultiplier')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Aléa minimum"
+          hint="Les dégâts varient entre ce pourcentage et 100 %."
+          error={err('minDamageRoll')}
+        >
+          <NumberInput
+            value={s.minDamageRoll}
+            scale={100}
+            min={0}
+            max={100}
+            unit="%"
+            onChange={set('minDamageRoll')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Chance de coup critique"
+          hint="À chaque attaque. 0 % = aucun coup critique."
+          error={err('critChance')}
+        >
+          <NumberInput
+            value={s.critChance}
+            scale={100}
+            min={0}
+            max={100}
+            step={0.25}
+            unit="%"
+            onChange={set('critChance')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Dégâts d’un coup critique"
+          hint="Ignore aussi les baisses d’Attaque (Intimidation)."
+          error={err('critMultiplier')}
+        >
+          <NumberInput
+            value={s.critMultiplier}
+            min={1}
+            max={5}
+            step={0.1}
+            unit="×"
+            onChange={set('critMultiplier')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Délai de retour après un rappel"
+          hint="Un Pokémon rappelé ne peut pas revenir au combat avant ce délai, sauf s’il est le dernier encore debout."
+          error={err('recallCooldownSeconds')}
+        >
+          <NumberInput
+            value={s.recallCooldownSeconds}
+            min={0}
+            max={60}
+            step={0.5}
+            unit="s"
+            onChange={set('recallCooldownSeconds')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
+          label="Intervalle des pertes de météo et de statut"
+          hint="Sable, grêle, brûlure et poison retirent leur part de PV aux deux Pokémon en face à cet intervalle, quelle que soit leur vitesse. Les combats déjà lancés gardent l’ancien calcul (après chaque attaque)."
+          error={err('chipTickSeconds')}
+        >
+          <NumberInput
+            value={s.chipTickSeconds}
+            min={1}
+            max={30}
+            step={0.5}
+            unit="s"
+            onChange={set('chipTickSeconds')}
+            disabled={disabled}
+          />
+        </Field>
+      </div>
+      <Toggle
+        checked={s.enemyAbilities}
+        onChange={set('enemyAbilities')}
+        disabled={disabled}
+        label="Talents des adversaires (donjons et dresseurs) : chacun a le premier talent de son espèce (le boss d’un donjon, celui de sa forme Méga), avec l’effet réglé dans la section Talents"
+      />
+    </Section>
+  );
+}
 
-      <Section title="Combat : attaque de chaque type">
-        <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
-          {POKEMON_TYPES.map((t) => {
-            const attack = s.attacks[t.name];
-            const update = (patch: Partial<{ name: string; power: number }>) =>
-              set('attacks')({
-                ...s.attacks,
-                [t.name]: {
-                  name: attack?.name ?? `Attaque ${t.nameFr}`,
-                  power: attack?.power ?? 60,
-                  ...patch,
-                },
-              });
-            return (
-              <div key={t.name} className="flex items-center gap-2">
-                <span className="w-20 shrink-0">
-                  <TypeBadge type={t.name} />
-                </span>
-                <TextInput
-                  value={attack?.name ?? ''}
-                  onChange={(name) => update({ name })}
-                  disabled={disabled}
-                />
-                <NumberInput
-                  className="w-28 shrink-0"
-                  value={attack?.power ?? 60}
-                  min={1}
-                  max={250}
-                  unit="puiss."
-                  onChange={(power) => update({ power })}
-                  disabled={disabled}
-                />
-              </div>
-            );
-          })}
-        </div>
-        {errorsUnder(errors, 'combat.attacks').map((msg) => (
-          <p key={msg} className="text-xs text-red-600">
-            {msg}
-          </p>
-        ))}
-        <p className="text-xs text-slate-500">
-          Un Pokémon attaque avec le type choisi par le joueur ; les adversaires prennent leur type
-          le plus efficace contre le Pokémon en face. Sans réglage, un type utilise « Attaque{' '}
-          {typeLabel('normal')} » de puissance 60.
+/** Combat : l'attaque de chaque type (puissance, effets). */
+function CombatAttacksSection({ s, set, errors, disabled }: CombatSectionProps) {
+  return (
+    <Section title="Combat : attaque de chaque type">
+      <div className="grid gap-x-6 gap-y-2 sm:grid-cols-2">
+        {POKEMON_TYPES.map((t) => {
+          const attack = s.attacks[t.name];
+          const update = (patch: Partial<{ name: string; power: number }>) =>
+            set('attacks')({
+              ...s.attacks,
+              [t.name]: {
+                name: attack?.name ?? `Attaque ${t.nameFr}`,
+                power: attack?.power ?? 60,
+                ...patch,
+              },
+            });
+          return (
+            <div key={t.name} className="flex items-center gap-2">
+              <span className="w-20 shrink-0">
+                <TypeBadge type={t.name} />
+              </span>
+              <TextInput
+                value={attack?.name ?? ''}
+                onChange={(name) => update({ name })}
+                disabled={disabled}
+              />
+              <NumberInput
+                className="w-28 shrink-0"
+                value={attack?.power ?? 60}
+                min={1}
+                max={250}
+                unit="puiss."
+                onChange={(power) => update({ power })}
+                disabled={disabled}
+              />
+            </div>
+          );
+        })}
+      </div>
+      {errorsUnder(errors, 'combat.attacks').map((msg) => (
+        <p key={msg} className="text-xs text-red-600">
+          {msg}
         </p>
-      </Section>
-    </>
+      ))}
+      <p className="text-xs text-slate-500">
+        Un Pokémon attaque avec le type choisi par le joueur ; les adversaires prennent leur type le
+        plus efficace contre le Pokémon en face. Sans réglage, un type utilise « Attaque{' '}
+        {typeLabel('normal')} » de puissance 60.
+      </p>
+    </Section>
   );
 }

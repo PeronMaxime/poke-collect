@@ -1,3 +1,7 @@
+/**
+ * Onglet « Complétion d'expédition » de la page Progression : récompenses quand chaque Pokémon
+ * d'une expédition est capturé.
+ */
 import { useState } from 'react';
 import { expeditionCompletionSchema } from '@poke/content';
 import type {
@@ -7,7 +11,8 @@ import type {
   RegionBonusType,
 } from '@poke/content';
 import { completableZones, completionTargets } from '@poke/game-core';
-import { VersionBanner } from '../../components/EntityPage';
+import { WithWorkingVersion } from '../../components/EntityPage';
+import { SettingsPage } from '../../components/SettingsPage';
 import {
   Field,
   NumberInput,
@@ -19,7 +24,7 @@ import {
 import type { FieldErrors } from '../../components/forms/fields';
 import { RewardEditor, emptyReward, rewardSummary } from '../../components/forms/RewardEditor';
 import type { WorkingVersion } from '../../lib/content';
-import { errorMessage, useSaveBalance, useWorkingVersion } from '../../lib/content';
+import { useSaveBalance } from '../../lib/content';
 
 const REGION_BONUS_LABELS: Record<RegionBonusType, string> = {
   xp: 'XP gagnée (toutes sources : expéditions, combats, donjons, pensions, Bonbons)',
@@ -41,13 +46,15 @@ const SCOPES: { value: ExpeditionCompletionScope; label: string }[] = [
  * réclame dans son Pokédex, onglet « Expéditions ».
  */
 export function ExpeditionCompletionsView() {
-  const working = useWorkingVersion();
-  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
-  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
-  return <CompletionsEditor key={working.data.version.id} working={working.data} />;
+  return (
+    <WithWorkingVersion>
+      {(w) => <CompletionsEditor key={w.version.id} working={w} />}
+    </WithWorkingVersion>
+  );
 }
 
-function CompletionsEditor({ working }: { working: WorkingVersion }) {
+/** État de l'éditeur des complétions d'expédition : brouillon, validation, ajout, enregistrement. */
+function useCompletionsEditor({ working }: { working: WorkingVersion }) {
   const balance = working.content.balance;
   const initial = balance.expeditionCompletions ?? [];
   const [draft, setDraft] = useState<ExpeditionCompletion[]>(initial);
@@ -83,40 +90,50 @@ function CompletionsEditor({ working }: { working: WorkingVersion }) {
     ]);
   }
 
+  const cancel = () => setDraft(initial);
+  const submit = () =>
+    save.mutate({
+      ...balance,
+      expeditionCompletions: draft.length > 0 || initial.length > 0 ? draft : undefined,
+    });
+
+  return {
+    cancel,
+    submit,
+    working,
+    draft,
+    setDraft,
+    save,
+    editable,
+    disabled,
+    dirty,
+    ctx,
+    savedIds,
+    checks,
+    duplicate,
+    valid,
+    update,
+    add,
+  };
+}
+
+/** Ce qu'affichent les pièces de `CompletionsEditor`. */
+type CompletionsEditorModel = ReturnType<typeof useCompletionsEditor>;
+
+function CompletionsEditor({ working }: { working: WorkingVersion }) {
+  const m = useCompletionsEditor({ working });
+  const { draft, save, editable, dirty, valid, duplicate, add, cancel, submit } = m;
   return (
-    <div className="max-w-4xl space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Progression : complétion d’expédition</h1>
-          <p className="mt-1 text-slate-500">
-            Une expédition est complétée quand chaque Pokémon de ses rencontres (espèce, ou forme
-            pour une rencontre de forme) est capturé, en version chromatique pour une complétion
-            chromatique. Chaque récompense se réclame une fois par expédition ou par région
-            complétée, dans le Pokédex du joueur (onglet « Expéditions »).
-          </p>
-        </div>
-        {editable && (
-          <div className="flex gap-2">
-            <button className="btn-ghost" disabled={!dirty} onClick={() => setDraft(initial)}>
-              Annuler
-            </button>
-            <button
-              className="btn-primary"
-              disabled={!dirty || !valid || save.isPending}
-              onClick={() =>
-                save.mutate({
-                  ...balance,
-                  expeditionCompletions: draft.length > 0 || initial.length > 0 ? draft : undefined,
-                })
-              }
-            >
-              Enregistrer
-            </button>
-          </div>
-        )}
-      </div>
-      <VersionBanner working={working} />
-      {save.error && <p className="text-sm text-red-600">{errorMessage(save.error)}</p>}
+    <SettingsPage
+      title="Progression : complétion d’expédition"
+      description="Une expédition est complétée quand chaque Pokémon de ses rencontres (espèce, ou forme pour une rencontre de forme) est capturé, en version chromatique pour une complétion chromatique. Chaque récompense se réclame une fois par expédition ou par région complétée, dans le Pokédex du joueur (onglet « Expéditions »)."
+      working={working}
+      save={save}
+      dirty={dirty}
+      valid={valid}
+      onCancel={cancel}
+      onSave={submit}
+    >
       {duplicate && (
         <p className="text-sm text-red-600">Deux récompenses ont le même identifiant.</p>
       )}
@@ -124,6 +141,21 @@ function CompletionsEditor({ working }: { working: WorkingVersion }) {
         <p className="text-slate-500">Aucune récompense de complétion pour le moment.</p>
       )}
 
+      <CompletionsList m={m} />
+      {editable && (
+        <button className="btn-ghost" onClick={add}>
+          + Ajouter une récompense de complétion
+        </button>
+      )}
+    </SettingsPage>
+  );
+}
+
+/** Chaque complétion : identifiant, nom, condition (région, expédition, chromatique), récompenses et bonus de région, retrait. */
+function CompletionsList({ m }: { m: CompletionsEditorModel }) {
+  const { draft, setDraft, editable, disabled, ctx, savedIds, checks, update } = m;
+  return (
+    <>
       {draft.map((c, i) => {
         const { errors } = checks[i]!;
         const targets = completionTargets(ctx, c).length;
@@ -256,12 +288,7 @@ function CompletionsEditor({ working }: { working: WorkingVersion }) {
           </fieldset>
         );
       })}
-      {editable && (
-        <button className="btn-ghost" onClick={add}>
-          + Ajouter une récompense de complétion
-        </button>
-      )}
-    </div>
+    </>
   );
 }
 

@@ -43,10 +43,11 @@ export { typeEffectiveness };
 // --- Dresseurs ------------------------------------------------------------------------------
 
 /** Pokémon d'un dresseur : IV uniformes, nature neutre par défaut (aucun aléatoire). */
-export function trainerPokemonInstance(ctx: GameContext, member: TrainerPokemon) {
+function trainerPokemonInstance(ctx: GameContext, member: TrainerPokemon) {
   return dungeonOpponentInstance(member, ctx.balance.battles.defaultTrainerIv);
 }
 
+/** PE d'un Pokémon de dresseur (0 si son espèce est inconnue). */
 export function trainerMemberPower(ctx: GameContext, member: TrainerPokemon): number {
   const species = ctx.species(member.speciesId, member.formId);
   return species ? pokemonPower(species, trainerPokemonInstance(ctx, member)) : 0;
@@ -73,7 +74,7 @@ function trainerPlaceWeather(
 }
 
 /** Combat contre un dresseur, lancé à `startedAt` (météo de sa zone à cet instant). */
-export function trainerArena(
+function trainerArena(
   ctx: GameContext,
   trainer: Trainer,
   startedAt?: Date | number | null,
@@ -127,11 +128,13 @@ export function battleEnv(
   return { activity: 'battle', team, opponentTypes, hour, weather };
 }
 
+/** Temps de recharge d'un dresseur répétable : le sien, sinon `balance.battles.cooldownMinutes`. */
 export const battleCooldownMinutes = (ctx: GameContext, trainer: Trainer) =>
   trainer.cooldownMinutes ?? ctx.balance.battles.cooldownMinutes;
 
 // --- Conditions d'équipe ------------------------------------------------------------------------
 
+/** Raison pour laquelle une équipe ne peut pas affronter un dresseur. */
 export type BattleError =
   | { code: 'TEAM_EMPTY' }
   | { code: 'TEAM_TOO_LARGE'; max: number }
@@ -148,6 +151,7 @@ export type BattleError =
   /** Une attaque choisie n'est pas d'un type du Pokémon. */
   | { code: 'INVALID_MOVE' };
 
+/** Contrôle une équipe contre les règles du dresseur ; liste vide = équipe acceptée. */
 export function checkBattleTeam(
   ctx: GameContext,
   trainer: Trainer,
@@ -193,12 +197,14 @@ export function checkBattleTeam(
   return errors;
 }
 
+/** Ce que le joueur a déjà fait contre un dresseur. */
 export interface TrainerRecord {
   wins: number;
   /** Fin du dernier combat (début du temps de recharge d'un dresseur répétable). */
   lastEndedAt: Date | string | null;
 }
 
+/** Disponibilité d'un dresseur pour un joueur. */
 export type TrainerStatus =
   | { state: 'locked' }
   /** Dresseur unique déjà battu. */
@@ -267,6 +273,7 @@ export function trainerStatus(
 
 // --- Résultat ------------------------------------------------------------------------------------
 
+/** Ce qu'un combat de dresseur terminé rapporte. */
 export interface BattleResult {
   outcome: DungeonOutcome;
   /** Fin du combat, en millisecondes depuis le départ. */
@@ -281,6 +288,7 @@ export interface BattleResult {
   loot: ItemStack[];
 }
 
+/** Ce qu'il faut pour résoudre un combat de dresseur terminé. */
 export interface BattleInput {
   trainer: Trainer;
   setup: DungeonSetup;

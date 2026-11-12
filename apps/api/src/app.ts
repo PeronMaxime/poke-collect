@@ -7,8 +7,8 @@ import { createAuth } from './auth';
 import { ContentCache } from './content-cache';
 import type { Env } from './env';
 import type { Mailer } from './mail';
+import type { ErrorCode } from '@poke/shared';
 import { GameError } from './game/errors';
-import { startSpeciesCountsFlush } from './game/capture-stats';
 import { PlayerSettler } from './game/settle';
 import { pgErrorCode } from './game/tx';
 import { webPushSender } from './game/push';
@@ -18,6 +18,7 @@ import { sessionHooks } from './plugins/session';
 import { betaProfileRoutes } from './beta-profiles';
 import { Monitoring, registerMonitoring, routeLabel } from './monitoring';
 import { registerRateLimits } from './rate-limit';
+import type { RouteDeps } from './routes/deps';
 import { adminRoutes } from './routes/admin';
 import { battleRoutes } from './routes/battles';
 import { legendaryRoutes } from './routes/legendary';
@@ -39,6 +40,15 @@ import { shopRoutes } from './routes/shop';
 import { guildRoutes } from './routes/guilds';
 import { spriteRoutes } from './routes/sprites';
 
+/**
+ * L'application Fastify, sans écoute ni tâches de fond : c'est ce que les tests lancent sur une
+ * base en mémoire, et ce que `server.ts` met en ligne.
+ */
+
+/**
+ * Ce dont `buildApp` a besoin ; tout sauf la base et la configuration est facultatif (les tests y
+ * injectent leur horloge et leurs faux expéditeurs).
+ */
 export interface AppOptions {
   db: Db;
   env: Env;
@@ -59,7 +69,7 @@ export interface AppOptions {
  */
 function pgErrorResponse(
   code: string | undefined,
-): { status: number; error: string; retryAfter?: number } | null {
+): { status: number; error: ErrorCode; retryAfter?: number } | null {
   switch (code) {
     case '23505': // unique_violation
       return { status: 409, error: 'CONFLICT' };
@@ -74,6 +84,11 @@ function pgErrorResponse(
   }
 }
 
+/**
+ * Assemble l'application Fastify : supervision, authentification, limites de requêtes, traduction
+ * des erreurs, puis tous les groupes de routes. Ne lance ni l'écoute ni les tâches de fond (voir
+ * `server.ts`).
+ */
 export async function buildApp({
   db,
   env,
@@ -98,12 +113,6 @@ export async function buildApp({
   // requêtes du joueur (jeu fermé entre-temps compris), sans toucher la base s'il n'y a rien à faire.
   const hooks = sessionHooks(auth, db, now, new PlayerSettler(db, content, now));
   const push = env.vapid ? (pushSender ?? webPushSender(env.vapid)) : null;
-
-  // Compteurs globaux des espèces : écrits toutes les 30 s (et à l'arrêt), hors des transactions.
-  const stopSpeciesCounts = startSpeciesCountsFlush(db, 30_000, (err) =>
-    app.log.error(err, 'Compteurs des espèces'),
-  );
-  app.addHook('onClose', stopSpeciesCounts);
 
   app.decorateRequest('user', null);
   await app.register(cors, { origin: env.trustedOrigins, credentials: true });
@@ -155,38 +164,33 @@ export async function buildApp({
   }));
   await app.register(spriteRoutes);
   await app.register(authRoutes, { auth });
-  await app.register(playerRoutes, { db, content, hooks, now });
+  const deps: RouteDeps = { db, content, hooks, now };
+  await app.register(playerRoutes, deps);
   await app.register(betaProfileRoutes, {
-    db,
-    content,
-    hooks,
-    now,
+    ...deps,
     secureCookie: env.authUrl.startsWith('https:'),
   });
-  await app.register(gameRoutes, { db, content, hooks, now });
-  await app.register(tagRoutes, { db, hooks });
-  await app.register(teamRoutes, { db, hooks });
-  await app.register(breedingRoutes, { db, content, hooks, now });
-  await app.register(museumRoutes, { db, content, hooks, now });
-  await app.register(centerRoutes, { db, content, hooks, now });
-  await app.register(farmRoutes, { db, content, hooks, now });
-  await app.register(assistantRoutes, { db, content, hooks, now });
-  await app.register(battleRoutes, { db, content, hooks, now });
-  await app.register(legendaryRoutes, { db, content, hooks, now });
-  await app.register(dungeonRoutes, { db, content, hooks, now });
-  await app.register(shopRoutes, { db, content, hooks, now });
-  await app.register(guildRoutes, { db, content, hooks, now });
-  await app.register(progressionRoutes, { db, content, hooks, now });
-  await app.register(leaderboardRoutes, { db, content, hooks });
-  await app.register(trainerRoutes, { db, content, hooks });
+  await app.register(gameRoutes, deps);
+  await app.register(tagRoutes, deps);
+  await app.register(teamRoutes, deps);
+  await app.register(breedingRoutes, deps);
+  await app.register(museumRoutes, deps);
+  await app.register(centerRoutes, deps);
+  await app.register(farmRoutes, deps);
+  await app.register(assistantRoutes, deps);
+  await app.register(battleRoutes, deps);
+  await app.register(legendaryRoutes, deps);
+  await app.register(dungeonRoutes, deps);
+  await app.register(shopRoutes, deps);
+  await app.register(guildRoutes, deps);
+  await app.register(progressionRoutes, deps);
+  await app.register(leaderboardRoutes, deps);
+  await app.register(trainerRoutes, deps);
   await app.register(pushRoutes, {
-    db,
-    hooks,
-    now,
+    ...deps,
     publicKey: env.vapid?.publicKey ?? null,
     send: push,
   });
-  await app.register(adminRoutes, { db, content, hooks, now, onContentPublished, monitoring });
-
+  await app.register(adminRoutes, { ...deps, onContentPublished, monitoring });
   return { app, auth, content, push, monitoring };
 }

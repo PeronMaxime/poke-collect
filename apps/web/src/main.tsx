@@ -1,3 +1,7 @@
+/**
+ * Point d'entrée du jeu : cache des requêtes (nouvelles tentatives, erreurs journalisées), thème,
+ * service worker et profil de l'onglet, puis l'application.
+ */
 import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { MutationCache, QueryCache, QueryClient, QueryClientProvider } from '@tanstack/react-query';

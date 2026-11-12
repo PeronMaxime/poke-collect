@@ -1,12 +1,13 @@
-import { and, eq, gt, inArray, isNull, lte } from 'drizzle-orm';
+import { and, count, eq, gt, inArray, isNull, lte, sql } from 'drizzle-orm';
 import webpush from 'web-push';
 import { eggs, expeditions, fossilRevivals, playerProfiles, pushSubscriptions } from '@poke/db';
 import type { Db } from '@poke/db';
 import type { GameContext } from '@poke/game-core';
 import { DEFAULT_NOTIFICATION_SETTINGS, notificationSettingsSchema } from '@poke/shared';
-import type { NotificationSettings, PushPayload } from '@poke/shared';
+import type { NotificationSettings, PushPayload, PushSubscriptionInput } from '@poke/shared';
 import type { ContentCache } from '../content-cache';
 import type { VapidKeys } from '../env';
+import { GameError } from './errors';
 
 /**
  * Notifications Web Push : une tournée périodique repère les expéditions et combats terminés, les
@@ -17,6 +18,7 @@ import type { VapidKeys } from '../env';
 /** Au-delà, un élément terminé pendant une coupure du serveur n'est plus notifié. */
 const MAX_DELAY_MS = 6 * 60 * 60_000;
 
+/** Un appareil abonné : son adresse chez le service push et ses clés de chiffrement. */
 export interface PushTarget {
   endpoint: string;
   p256dh: string;
@@ -26,6 +28,10 @@ export interface PushTarget {
 /** Envoie une notification ; `gone` = abonnement expiré (à supprimer). */
 export type PushSender = (target: PushTarget, payload: PushPayload) => Promise<'ok' | 'gone'>;
 
+/**
+ * L'expéditeur réel : envoie par Web Push, signé avec les clés VAPID. Un abonnement refusé pour de
+ * bon (404, 410) est signalé `gone`.
+ */
 export function webPushSender(vapid: VapidKeys): PushSender {
   const vapidDetails = {
     subject: vapid.subject,
@@ -48,13 +54,75 @@ export function webPushSender(vapid: VapidKeys): PushSender {
   };
 }
 
-export function notificationSettings(settings: Record<string, unknown>): NotificationSettings {
+function notificationSettings(settings: Record<string, unknown>): NotificationSettings {
   const parsed = notificationSettingsSchema.safeParse(settings.notifications);
   return parsed.success ? parsed.data : DEFAULT_NOTIFICATION_SETTINGS;
 }
 
+/** Réglages de notification du joueur et nombre de ses appareils abonnés. */
+export async function pushStatus(
+  db: Db,
+  userId: string,
+): Promise<{ settings: NotificationSettings; subscriptions: number }> {
+  const loadSettings = async () => {
+    const [profile] = await db
+      .select({ settings: playerProfiles.settings })
+      .from(playerProfiles)
+      .where(eq(playerProfiles.userId, userId));
+    if (!profile) throw new GameError(404, 'PROFILE_NOT_FOUND');
+    return notificationSettings(profile.settings);
+  };
+  const [settings, [subs]] = await Promise.all([
+    loadSettings(),
+    db.select({ n: count() }).from(pushSubscriptions).where(eq(pushSubscriptions.ownerId, userId)),
+  ]);
+  return { settings, subscriptions: subs?.n ?? 0 };
+}
+
+/**
+ * Abonne un appareil aux notifications du joueur. Un appareil déjà abonné change de propriétaire
+ * s'il se reconnecte avec un autre compte.
+ */
+export async function subscribeDevice(
+  db: Db,
+  userId: string,
+  { endpoint, keys }: PushSubscriptionInput,
+  userAgent: string | null,
+): Promise<void> {
+  await db
+    .insert(pushSubscriptions)
+    .values({ ownerId: userId, endpoint, p256dh: keys.p256dh, auth: keys.auth, userAgent })
+    .onConflictDoUpdate({
+      target: pushSubscriptions.endpoint,
+      set: { ownerId: userId, p256dh: keys.p256dh, auth: keys.auth, userAgent },
+    });
+}
+
+/** Désabonne un appareil du joueur (sans effet s'il ne l'était pas). */
+export async function unsubscribeDevice(db: Db, userId: string, endpoint: string): Promise<void> {
+  await db
+    .delete(pushSubscriptions)
+    .where(and(eq(pushSubscriptions.ownerId, userId), eq(pushSubscriptions.endpoint, endpoint)));
+}
+
+/** Enregistre les types de notification voulus par le joueur, dans les réglages de son profil. */
+export async function saveNotificationSettings(
+  db: Db,
+  userId: string,
+  settings: NotificationSettings,
+): Promise<void> {
+  const updated = await db
+    .update(playerProfiles)
+    .set({
+      settings: sql`${playerProfiles.settings} || ${JSON.stringify({ notifications: settings })}::jsonb`,
+    })
+    .where(eq(playerProfiles.userId, userId))
+    .returning({ userId: playerProfiles.userId });
+  if (updated.length === 0) throw new GameError(404, 'PROFILE_NOT_FOUND');
+}
+
 /** Ce qui attend un joueur depuis la tournée précédente. */
-export interface ActivitySummary {
+interface ActivitySummary {
   zoneIds: string[];
   /** Expéditions légendaires terminées (quêtes). */
   questIds: string[];
@@ -63,7 +131,7 @@ export interface ActivitySummary {
 }
 
 /** Texte de la notification groupée ; null si rien à signaler (types désactivés). */
-export function pushMessage(
+function pushMessage(
   ctx: GameContext,
   summary: ActivitySummary,
   settings: NotificationSettings,
@@ -220,32 +288,4 @@ export async function runPushRound(
     if (payload) sent += await sendToOwner(db, send, profile.userId, payload, now);
   }
   return sent;
-}
-
-/** Lance la tournée périodique ; retourne la fonction d'arrêt. */
-export function startPushNotifier({
-  db,
-  content,
-  send,
-  intervalSeconds,
-  onError,
-}: {
-  db: Db;
-  content: ContentCache;
-  send: PushSender;
-  intervalSeconds: number;
-  onError: (err: unknown) => void;
-}): () => void {
-  let running = false;
-  const timer = setInterval(() => {
-    if (running) return;
-    running = true;
-    runPushRound(db, content, send, new Date())
-      .catch(onError)
-      .finally(() => {
-        running = false;
-      });
-  }, intervalSeconds * 1000);
-  timer.unref();
-  return () => clearInterval(timer);
 }

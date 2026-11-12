@@ -1,3 +1,7 @@
+/**
+ * Page « Guildes » : quêtes de guilde (objectifs du jour et de la semaine), lots des coffres et
+ * aperçu de leurs chances.
+ */
 import { useMemo, useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import {
@@ -23,7 +27,7 @@ import { chestCandidates, guildQuestTarget } from '@poke/game-core';
 import type { GameContext, PlayerProgress } from '@poke/game-core';
 import { types } from '@poke/data';
 import type { AdminGuildQuestsResetResponse } from '@poke/shared';
-import { EntityPage, VersionBanner } from '../../components/EntityPage';
+import { EntityPage, VersionBanner, WithWorkingVersion } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
 import {
   Field,
@@ -35,7 +39,7 @@ import {
 } from '../../components/forms/fields';
 import { ItemIcon, ItemSelect, TypeSelect, UnlockEditor } from '../../components/forms/pickers';
 import { api } from '../../lib/api';
-import { errorMessage, useWorkingVersion } from '../../lib/content';
+import { errorMessage } from '../../lib/content';
 import type { WorkingVersion } from '../../lib/content';
 import { unlockSummary } from './ShopPage';
 
@@ -78,6 +82,7 @@ const goalText = (goal: GuildQuestGoal | null) =>
 const newObjective = (type: GuildObjectiveType): GuildObjective =>
   type === 'catchPokemon' ? { type, pokemonType: null } : { type };
 
+/** Page « Guildes » (voir l'en-tête du fichier). */
 export function GuildsPage() {
   const [view, setView] = useState<View>('quests');
   return (
@@ -514,10 +519,7 @@ function ChestEntryForm({
 // --- Aperçu -----------------------------------------------------------------------------------
 
 function ChestPreview() {
-  const working = useWorkingVersion();
-  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
-  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
-  return <ChestPreviewBody working={working.data} />;
+  return <WithWorkingVersion>{(w) => <ChestPreviewBody working={w} />}</WithWorkingVersion>;
 }
 
 /** Chances de chaque lot selon une progression simulée (dresseurs battus, Pokédex, œufs). */

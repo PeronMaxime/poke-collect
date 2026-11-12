@@ -68,9 +68,11 @@ export function regionCompletion(
   return { caught, total: zones.length, complete: zones.length > 0 && caught === zones.length };
 }
 
+/** Ce qu'une complétion récompense : une expédition (zone) ou une région entière. */
 export type CompletionTarget =
   { kind: 'zone'; id: string; zone: Zone } | { kind: 'region'; id: string; region: Region };
 
+/** Complétions réglées dans l'équilibrage (aucune dans les anciens contenus). */
 export function expeditionCompletions(ctx: GameContext): ExpeditionCompletion[] {
   return ctx.balance.expeditionCompletions ?? [];
 }
@@ -95,6 +97,10 @@ export function completionTargets(
 export const completionRewardId = (completionId: string, targetId: string) =>
   `${completionId}:${targetId}`;
 
+/**
+ * La cible (expédition ou région) est-elle complétée, en version chromatique si la complétion
+ * l'exige ?
+ */
 export function isCompletionReached(
   ctx: GameContext,
   completion: ExpeditionCompletion,
@@ -108,6 +114,7 @@ export function isCompletionReached(
   return !!zone && zoneCompletion(ctx, zone, catches, completion.shiny).complete;
 }
 
+/** État de la récompense d'une complétion pour une cible donnée. */
 export function completionState(
   ctx: GameContext,
   completion: ExpeditionCompletion,

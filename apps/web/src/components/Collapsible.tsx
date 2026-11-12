@@ -1,6 +1,7 @@
 import { useSyncExternalStore } from 'react';
 import type { ReactNode } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { readStoredJson, writeStoredJson } from '../lib/storage';
 
 /**
  * Repli en accordéon commun : chevron de l'en-tête et contenu animé (widgets de la colonne de
@@ -72,12 +73,8 @@ export function CollapseBody({
 const SECTIONS_KEY = 'dexpedition.collapsedSections';
 
 function readSections(): ReadonlySet<string> {
-  try {
-    const raw: unknown = JSON.parse(localStorage.getItem(SECTIONS_KEY) ?? '[]');
-    return new Set(Array.isArray(raw) ? raw.filter((id) => typeof id === 'string') : []);
-  } catch {
-    return new Set();
-  }
+  const raw = readStoredJson(SECTIONS_KEY);
+  return new Set(Array.isArray(raw) ? raw.filter((id) => typeof id === 'string') : []);
 }
 
 let collapsedSections = readSections();
@@ -92,11 +89,7 @@ function toggleSection(id: string) {
   const next = new Set(collapsedSections);
   if (!next.delete(id)) next.add(id);
   collapsedSections = next;
-  try {
-    localStorage.setItem(SECTIONS_KEY, JSON.stringify([...next]));
-  } catch {
-    // Stockage indisponible : le réglage vaut pour la session.
-  }
+  writeStoredJson(SECTIONS_KEY, [...next]);
   for (const listener of listeners) listener();
 }
 

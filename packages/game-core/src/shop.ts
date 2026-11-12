@@ -23,6 +23,7 @@ export interface ShopPurchaseRecord {
   at: Date | string;
 }
 
+/** Où en est le joueur de la limite d'achat d'un article. */
 export interface PurchaseLimitStatus {
   /** Lots encore achetables ; null = illimité. */
   remainingLots: number | null;
@@ -64,6 +65,7 @@ export function isOnSale(ctx: GameContext, entry: ShopEntry, now: Date | number)
   );
 }
 
+/** État d'un article de la boutique pour un joueur. */
 export type ShopEntryState =
   /** Achetable. */
   | 'available'
@@ -74,6 +76,7 @@ export type ShopEntryState =
   /** Invisible pour le joueur. */
   | 'hidden';
 
+/** État d'un article, son prix du moment et ce que le joueur peut encore en acheter. */
 export interface ShopEntryStatus extends PurchaseLimitStatus {
   state: ShopEntryState;
   /** Prix du prochain lot (il augmente à chaque achat d'une parcelle de ferme). */
@@ -122,6 +125,10 @@ export function nextLotPrice(
   return escalatedPrice(entry.price, plot.priceGrowth, bought);
 }
 
+/**
+ * État d'un article pour un joueur à l'instant `now` : apparition, limite d'achat, prix du prochain
+ * lot.
+ */
 export function shopEntryStatus(
   ctx: GameContext,
   entry: ShopEntry,
@@ -184,6 +191,7 @@ export function maxPurchasableLots(
   );
 }
 
+/** Résultat du contrôle d'un achat : ce qu'il coûte et rapporte, ou la raison du refus. */
 export type PurchaseCheck =
   | { ok: true; totalPrice: number; stack: ItemStack; gift: ItemStack | null }
   | { ok: false; error: 'NOT_ON_SALE' | 'ENTRY_LOCKED' }

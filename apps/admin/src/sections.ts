@@ -1,7 +1,7 @@
 /** Phase de la roadmap en cours : les sections des phases suivantes sont des emplacements réservés. */
 export const CURRENT_PHASE = 8;
 
-/** Sections du panneau d'administration, dans l'ordre de PLAN.md (section 5.2). */
+/** Sections du panneau d'administration, dans l'ordre de docs/plans/PLAN.md (section 5.2). */
 export interface AdminSection {
   path: string;
   label: string;
@@ -10,6 +10,7 @@ export interface AdminSection {
   phase: number;
 }
 
+/** Les sections du menu, dans l'ordre ; `routes.tsx` leur associe une page. */
 export const SECTIONS: AdminSection[] = [
   {
     path: '/',

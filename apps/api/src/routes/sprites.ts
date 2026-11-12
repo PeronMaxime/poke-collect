@@ -2,6 +2,8 @@ import { readFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import type { FastifyInstance } from 'fastify';
 
+/** Images du jeu servies par l'API en développement (/api/sprites/*). */
+
 /** Images téléchargées par `pnpm sprites:download`. */
 const SPRITES_DIR = fileURLToPath(new URL('../../sprites/', import.meta.url));
 /** Dossier, puis nom de fichier : rien d'autre n'est servi (pas de `..`). */

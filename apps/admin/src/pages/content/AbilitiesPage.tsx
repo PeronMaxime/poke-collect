@@ -1,3 +1,7 @@
+/**
+ * Page « Talents » : talents possédés par les Pokémon du jeu, filtrés par région et par effet, la
+ * fiche de leurs effets, et les propositions d'effets à ajouter au brouillon.
+ */
 import { useState } from 'react';
 import { useMutation } from '@tanstack/react-query';
 import { ABILITY_PROPOSALS, abilitySchema } from '@poke/content';
@@ -118,6 +122,7 @@ function isNewInRegion(ctx: GameContext, regionId: string, abilityName: string) 
   return !(HOLDERS.get(abilityName) ?? []).some((h) => earlier.has(h.speciesId));
 }
 
+/** Page « Talents » (voir l'en-tête du fichier). */
 export function AbilitiesPage() {
   const working = useWorkingVersion();
   const [search, setSearch] = useState('');

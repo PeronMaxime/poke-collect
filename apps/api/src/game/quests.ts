@@ -112,10 +112,7 @@ export async function syncQuests(
   return [...byId.values()];
 }
 
-export function toQuestProgressDto(
-  ctx: GameContext,
-  row: QuestProgressRow,
-): QuestProgressDto | null {
+function toQuestProgressDto(ctx: GameContext, row: QuestProgressRow): QuestProgressDto | null {
   const quest = ctx.quest(row.questId);
   if (!quest) return null; // quête supprimée du contenu
   const step = Math.min(questRowStep(ctx, row), quest.steps.length);

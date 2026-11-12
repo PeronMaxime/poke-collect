@@ -16,7 +16,7 @@ import type { ClaimedRewards } from './progression';
  */
 
 /** Places ajoutées par une unité de palier : une couveuse et un Centre Pokémon comptent 6 places, le reste 1. */
-export const FACILITY_UNIT_PLACES: Record<FacilityId, number> = {
+const FACILITY_UNIT_PLACES: Record<FacilityId, number> = {
   expedition: 1,
   daycare: 1,
   incubator: ASSISTANT_POST_PLACES.incubator,

@@ -51,11 +51,13 @@ import type { PokemonRow } from './store';
  * sans capture (défaite, fuite, Ball ratée) impose un délai avant la suivante.
  */
 
+/** Un combat légendaire tel qu'il est enregistré. */
 export type LegendaryBattleRow = typeof legendaryBattles.$inferSelect;
 
 /** Graine du lancer de Ball (indépendante de celle du Pokémon capturé). */
 const BALL_SEED_SALT = 0x5bd1e995;
 
+/** Le combat légendaire tel que le jeu le reçoit. */
 export function toLegendaryBattleDto(
   ctx: GameContext,
   row: LegendaryBattleRow,
@@ -177,7 +179,7 @@ function elapsedMs(battle: LegendaryBattleRow, now: Date): number {
   );
 }
 
-export function legendaryBattleState(battle: LegendaryBattleRow, now: Date) {
+function legendaryBattleState(battle: LegendaryBattleRow, now: Date) {
   return simulateDungeon(battle.setup, battle.commands, battle.fledAtMs, elapsedMs(battle, now))
     .state;
 }

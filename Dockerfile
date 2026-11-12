@@ -1,4 +1,4 @@
-# Images de production (voir MISE-EN-PRODUCTION.md), construites par docker-compose.prod.yml :
+# Images de production (voir docs/MISE-EN-PRODUCTION.md), construites par docker-compose.prod.yml :
 #  - api   : l'API Node (Fastify, lancée avec tsx comme en développement) ;
 #  - caddy : le serveur web (HTTPS automatique) avec les pages du jeu et de l'admin, et les sprites.
 
@@ -9,10 +9,12 @@ RUN npm install -g pnpm@10.18.0
 WORKDIR /app
 
 # Les package.json d'abord : l'installation reste en cache tant que les dépendances ne changent pas.
+# Un nouveau paquet du dépôt s'ajoute ici, sinon `--frozen-lockfile` échoue.
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/admin/package.json apps/admin/
 COPY apps/api/package.json apps/api/
 COPY apps/web/package.json apps/web/
+COPY packages/client/package.json packages/client/
 COPY packages/content/package.json packages/content/
 COPY packages/data/package.json packages/data/
 COPY packages/db/package.json packages/db/

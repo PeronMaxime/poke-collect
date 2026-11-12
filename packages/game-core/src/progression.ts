@@ -39,6 +39,7 @@ export interface DexCatches {
   caughtShinyFormIds?: ReadonlySet<number>;
 }
 
+/** Aucune récompense réclamée (nouveau joueur, tests). */
 export const NO_CLAIMS: ClaimedRewards = { collectionIds: new Set() };
 
 /** Espèces d'un Pokédex : une région, ou toutes les régions (Pokédex national). */
@@ -59,6 +60,7 @@ export function dexForms(speciesIds?: readonly number[]): PokemonForm[] {
   return list.filter((f) => DEX_FORM_KINDS.has(f.kind));
 }
 
+/** Avancement d'un Pokédex (d'une région, ou national avec `null`), normal ou chromatique. */
 export function dexProgress(
   ctx: GameContext,
   regionId: string | null,
@@ -87,12 +89,15 @@ export function collectionProgress(
   return { caught, total, complete: caught === total };
 }
 
+/** Collections dans leur ordre d'affichage. */
 export function sortedCollections(ctx: GameContext): Collection[] {
   return [...ctx.content.collections].sort((a, b) => a.order - b.order);
 }
 
+/** État d'une récompense : pas encore gagnée, à réclamer, déjà réclamée. */
 export type RewardState = 'locked' | 'claimable' | 'claimed';
 
+/** État de la récompense d'une collection pour un joueur. */
 export function collectionState(
   collection: Collection,
   progress: Pick<DexCatches, 'caughtSpeciesIds' | 'caughtFormIds'>,
@@ -133,6 +138,7 @@ export function claimedIncubators(ctx: GameContext, claimed: ClaimedRewards): nu
   return claimedRewardList(ctx, claimed).reduce((sum, r) => sum + r.incubators, 0);
 }
 
+/** Emplacements d'expédition et de pension gagnés par un joueur. */
 export interface PlayerSlots {
   expeditions: number;
   daycare: number;
@@ -162,8 +168,13 @@ export type PlayerBonuses = Record<PermanentBonusType, number> & {
   regionXp?: Readonly<Record<string, number>>;
 };
 
+/** Aucun bonus permanent : tous les multiplicateurs à 1. */
 export const NO_BONUSES: PlayerBonuses = { capture: 1, xp: 1, money: 1, shiny: 1 };
 
+/**
+ * Bonus permanents d'un joueur : ceux des récompenses réclamées (additionnés par type), et les
+ * bonus d'XP par région des complétions d'expédition.
+ */
 export function playerBonuses(ctx: GameContext, claimed: ClaimedRewards): PlayerBonuses {
   const bonuses: PlayerBonuses = { ...NO_BONUSES };
   for (const reward of claimedRewardList(ctx, claimed)) {

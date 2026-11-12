@@ -1,3 +1,7 @@
+/**
+ * Onglet « Bâtiments » de la page Progression : places au départ et paliers de déblocage de chaque
+ * bâtiment.
+ */
 import { useState } from 'react';
 import { FACILITIES } from '@poke/content';
 import type {
@@ -8,11 +12,12 @@ import type {
   UnlockCondition,
 } from '@poke/content';
 import { ASSISTANT_POST_PLACES, FARM_PLOTS } from '@poke/game-core';
-import { VersionBanner } from '../../components/EntityPage';
+import { WithWorkingVersion } from '../../components/EntityPage';
+import { SettingsPage } from '../../components/SettingsPage';
 import { Field, NumberInput } from '../../components/forms/fields';
 import { UnlockEditor } from '../../components/forms/pickers';
 import type { WorkingVersion } from '../../lib/content';
-import { errorMessage, useSaveBalance, useWorkingVersion } from '../../lib/content';
+import { useSaveBalance } from '../../lib/content';
 
 const NO_UNLOCKS: FacilityUnlocks = {
   expedition: [],
@@ -37,10 +42,11 @@ const HINTS: Record<FacilityId, string> = {
 
 /** Onglet « Bâtiments » : places au départ et paliers de déblocage (expéditions, pensions, couveuses, Musée, ferme, Centres). */
 export function FacilitiesView() {
-  const working = useWorkingVersion();
-  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
-  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
-  return <FacilitiesEditor key={working.data.version.id} working={working.data} />;
+  return (
+    <WithWorkingVersion>
+      {(w) => <FacilitiesEditor key={w.version.id} working={w} />}
+    </WithWorkingVersion>
+  );
 }
 
 /** Réglages modifiés ici, copiés de l'équilibrage. */
@@ -68,7 +74,8 @@ function draftOf(balance: BalanceSettings): Draft {
   };
 }
 
-function FacilitiesEditor({ working }: { working: WorkingVersion }) {
+/** État de l'éditeur des bâtiments : brouillon des paliers de chaque bâtiment, enregistrement. */
+function useFacilitiesEditor({ working }: { working: WorkingVersion }) {
   const balance = working.content.balance;
   const initial = draftOf(balance);
   const [draft, setDraft] = useState<Draft>(initial);
@@ -180,32 +187,49 @@ function FacilitiesEditor({ working }: { working: WorkingVersion }) {
     ),
   };
 
-  return (
-    <div className="max-w-4xl space-y-4">
-      <div className="flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold">Progression : bâtiments</h1>
-          <p className="mt-1 text-slate-500">
-            Emplacements d’expédition, pensions, couveuses, places du Musée, parcelles de la ferme
-            et Centres Pokémon en plus au fil de l’aventure : chaque palier s’ajoute dès que sa
-            condition est remplie (rien à réclamer). Le joueur voit les paliers verrouillés et leur
-            condition dans le bâtiment.
-          </p>
-        </div>
-        {editable && (
-          <div className="flex gap-2">
-            <button className="btn-ghost" disabled={!dirty} onClick={() => setDraft(initial)}>
-              Annuler
-            </button>
-            <button className="btn-primary" disabled={!dirty || save.isPending} onClick={submit}>
-              Enregistrer
-            </button>
-          </div>
-        )}
-      </div>
-      <VersionBanner working={working} />
-      {save.error && <p className="text-sm text-red-600">{errorMessage(save.error)}</p>}
+  const cancel = () => setDraft(initial);
 
+  return {
+    cancel,
+    working,
+    draft,
+    save,
+    editable,
+    disabled,
+    dirty,
+    ctx,
+    setSteps,
+    submit,
+    base,
+  };
+}
+
+/** Ce qu'affichent les pièces de `FacilitiesEditor`. */
+type FacilitiesEditorModel = ReturnType<typeof useFacilitiesEditor>;
+
+function FacilitiesEditor({ working }: { working: WorkingVersion }) {
+  const m = useFacilitiesEditor({ working });
+  const { save, dirty, cancel, submit } = m;
+  return (
+    <SettingsPage
+      title="Progression : bâtiments"
+      description="Emplacements d’expédition, pensions, couveuses, places du Musée, parcelles de la ferme et Centres Pokémon en plus au fil de l’aventure : chaque palier s’ajoute dès que sa condition est remplie (rien à réclamer). Le joueur voit les paliers verrouillés et leur condition dans le bâtiment."
+      working={working}
+      save={save}
+      dirty={dirty}
+      onCancel={cancel}
+      onSave={submit}
+    >
+      <FacilitiesList m={m} />
+    </SettingsPage>
+  );
+}
+
+/** Chaque bâtiment : ce qui est ouvert d'office, et ses paliers de déblocage. */
+function FacilitiesList({ m }: { m: FacilitiesEditorModel }) {
+  const { working, draft, editable, disabled, ctx, setSteps, base } = m;
+  return (
+    <>
       {FACILITIES.map(({ id, label, units }) => {
         const steps = draft.unlocks[id];
         return (
@@ -281,6 +305,6 @@ function FacilitiesEditor({ working }: { working: WorkingVersion }) {
           </fieldset>
         );
       })}
-    </div>
+    </>
   );
 }

@@ -1,10 +1,19 @@
-import { NavLink, Outlet } from 'react-router';
+/**
+ * Cadre des pages : le menu des sections à gauche (en haut sur mobile), le compte connecté, la page
+ * au centre.
+ */
+import { NavLink, Outlet, useNavigation } from 'react-router';
 import { useAdminUser } from '../lib/admin-user';
 import { CURRENT_PHASE, SECTIONS } from '../sections';
 import { SignOutButton } from './SignOutButton';
 
+/**
+ * Cadre des pages (voir l'en-tête du fichier) ; pendant le téléchargement de la page suivante,
+ * celle d'avant s'estompe.
+ */
 export function Layout() {
   const user = useAdminUser();
+  const loading = useNavigation().state === 'loading';
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:h-screen md:w-64 md:shrink-0 md:border-r md:border-b-0 dark:border-slate-800 dark:bg-slate-900">
@@ -44,7 +53,10 @@ export function Layout() {
           </div>
         </div>
       </aside>
-      <main className="min-w-0 flex-1 p-4 md:p-8">
+      <main
+        aria-busy={loading}
+        className={`min-w-0 flex-1 p-4 transition-opacity md:p-8 ${loading ? 'opacity-50' : ''}`}
+      >
         <Outlet />
       </main>
     </div>

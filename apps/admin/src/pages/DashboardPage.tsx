@@ -1,7 +1,10 @@
+/**
+ * Page « Tableau de bord » : versions du contenu (publiée, brouillon, historique), alertes de
+ * cohérence, publication, import et export.
+ */
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'react-router';
-import { seedContent } from '@poke/content';
 import type { ContentEntityKind } from '@poke/content';
 import type { ContentVersionDto, ContentVersionStatus } from '@poke/shared';
 import { IssueList } from '../components/EntityPage';
@@ -48,7 +51,8 @@ function errorMessage(err: unknown): string {
   return 'Erreur inconnue';
 }
 
-export function DashboardPage() {
+/** Versions du contenu (publiée, brouillon, historique), alertes, et les actions : brouillon, publication, abandon, import, export. */
+function useDashboard() {
   const queryClient = useQueryClient();
   const [label, setLabel] = useState('');
   const [badJson, setBadJson] = useState(false);
@@ -119,6 +123,34 @@ export function DashboardPage() {
   const issues = working.data?.issues ?? [];
   const errorCount = issues.filter((i) => i.severity === 'error').length;
 
+  return {
+    label,
+    setLabel,
+    badJson,
+    versions,
+    working,
+    importContent,
+    exportContent,
+    importFile,
+    createDraft,
+    publish,
+    discard,
+    list,
+    published,
+    draft,
+    mutationError,
+    issues,
+    errorCount,
+  };
+}
+
+/** Ce qu'affichent les pièces de `DashboardPage`. */
+type DashboardPageModel = ReturnType<typeof useDashboard>;
+
+/** Page « Tableau de bord » (voir l'en-tête du fichier). */
+export function DashboardPage() {
+  const m = useDashboard();
+  const { badJson, mutationError } = m;
   return (
     <div className="max-w-4xl space-y-6">
       <div>
@@ -128,71 +160,93 @@ export function DashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="card">
-          <p className="text-sm text-slate-500">Version publiée</p>
-          <p className="mt-1 text-xl font-semibold">
-            {published ? `v${published.id} — ${published.label}` : 'Aucune'}
-          </p>
-          <p className="mt-1 text-xs text-slate-500">
-            Publiée le {formatDate(published?.publishedAt ?? null)}
-          </p>
-        </div>
-
-        <div className="card">
-          <p className="text-sm text-slate-500">Brouillon en cours</p>
-          {draft ? (
-            <>
-              <p className="mt-1 text-xl font-semibold">
-                v{draft.id} — {draft.label}
-              </p>
-              <p className="mt-1 text-xs text-slate-500">Basé sur v{draft.basedOnId}</p>
-              <div className="mt-4 flex gap-2">
-                <button
-                  className="btn-primary"
-                  disabled={publish.isPending}
-                  onClick={() => publish.mutate(draft.id)}
-                >
-                  Publier
-                </button>
-                <button
-                  className="btn-danger"
-                  disabled={discard.isPending}
-                  onClick={() => discard.mutate(draft.id)}
-                >
-                  Supprimer
-                </button>
-              </div>
-            </>
-          ) : (
-            <form
-              className="mt-2 flex gap-2"
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (label.trim()) createDraft.mutate({ label: label.trim() });
-              }}
-            >
-              <input
-                className="input"
-                placeholder="Nom du brouillon"
-                value={label}
-                maxLength={120}
-                onChange={(e) => setLabel(e.target.value)}
-              />
-              <button
-                className="btn-primary shrink-0"
-                disabled={!label.trim() || createDraft.isPending}
-              >
-                Créer
-              </button>
-            </form>
-          )}
-        </div>
-      </div>
+      <VersionCards m={m} />
 
       {mutationError && <p className="text-sm text-red-600">{errorMessage(mutationError)}</p>}
       {badJson && <p className="text-sm text-red-600">Fichier JSON illisible.</p>}
 
+      <IssuesSection m={m} />
+
+      <ImportExportSection m={m} />
+
+      <VersionHistory m={m} />
+    </div>
+  );
+}
+
+/** Version publiée, et brouillon en cours avec ses actions (créer, publier, abandonner). */
+function VersionCards({ m }: { m: DashboardPageModel }) {
+  const { label, setLabel, createDraft, publish, discard, published, draft } = m;
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <div className="card">
+        <p className="text-sm text-slate-500">Version publiée</p>
+        <p className="mt-1 text-xl font-semibold">
+          {published ? `v${published.id} — ${published.label}` : 'Aucune'}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          Publiée le {formatDate(published?.publishedAt ?? null)}
+        </p>
+      </div>
+
+      <div className="card">
+        <p className="text-sm text-slate-500">Brouillon en cours</p>
+        {draft ? (
+          <>
+            <p className="mt-1 text-xl font-semibold">
+              v{draft.id} — {draft.label}
+            </p>
+            <p className="mt-1 text-xs text-slate-500">Basé sur v{draft.basedOnId}</p>
+            <div className="mt-4 flex gap-2">
+              <button
+                className="btn-primary"
+                disabled={publish.isPending}
+                onClick={() => publish.mutate(draft.id)}
+              >
+                Publier
+              </button>
+              <button
+                className="btn-danger"
+                disabled={discard.isPending}
+                onClick={() => discard.mutate(draft.id)}
+              >
+                Supprimer
+              </button>
+            </div>
+          </>
+        ) : (
+          <form
+            className="mt-2 flex gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (label.trim()) createDraft.mutate({ label: label.trim() });
+            }}
+          >
+            <input
+              className="input"
+              placeholder="Nom du brouillon"
+              value={label}
+              maxLength={120}
+              onChange={(e) => setLabel(e.target.value)}
+            />
+            <button
+              className="btn-primary shrink-0"
+              disabled={!label.trim() || createDraft.isPending}
+            >
+              Créer
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Alertes de cohérence de la version de travail. */
+function IssuesSection({ m }: { m: DashboardPageModel }) {
+  const { working, issues, errorCount } = m;
+  return (
+    <>
       {working.data && (
         <section className="card space-y-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -235,86 +289,101 @@ export function DashboardPage() {
           )}
         </section>
       )}
+    </>
+  );
+}
 
-      <section className="card space-y-3">
-        <h2 className="font-semibold">Import / export</h2>
-        <p className="text-sm text-slate-500">
-          Sauvegarde ou transfert du contenu complet entre environnements. Un import crée un
-          brouillon (aucun brouillon ne doit exister).
-        </p>
-        <div className="flex flex-wrap gap-2">
-          <button className="btn-ghost" disabled={!working.data} onClick={exportContent}>
-            Exporter v{working.data?.version.id ?? '…'} (JSON)
-          </button>
-          <label className={`btn-ghost ${draft ? 'pointer-events-none opacity-50' : ''}`}>
-            Importer un JSON…
-            <input
-              type="file"
-              accept="application/json,.json"
-              className="hidden"
-              disabled={!!draft}
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                e.target.value = '';
-                if (file) void importFile(file);
-              }}
-            />
-          </label>
-          <button
-            className="btn-ghost"
-            disabled={!!draft || importContent.isPending}
-            onClick={() =>
-              importContent.mutate({ label: 'Contenu de test (seed)', content: seedContent })
-            }
-          >
-            Charger le contenu de test
-          </button>
-        </div>
-      </section>
+/** Export du contenu complet, et import d'un fichier JSON en brouillon. */
+function ImportExportSection({ m }: { m: DashboardPageModel }) {
+  const { working, importContent, exportContent, importFile, draft } = m;
+  return (
+    <section className="card space-y-3">
+      <h2 className="font-semibold">Import / export</h2>
+      <p className="text-sm text-slate-500">
+        Sauvegarde ou transfert du contenu complet entre environnements. Un import crée un brouillon
+        (aucun brouillon ne doit exister).
+      </p>
+      <div className="flex flex-wrap gap-2">
+        <button className="btn-ghost" disabled={!working.data} onClick={exportContent}>
+          Exporter v{working.data?.version.id ?? '…'} (JSON)
+        </button>
+        <label className={`btn-ghost ${draft ? 'pointer-events-none opacity-50' : ''}`}>
+          Importer un JSON…
+          <input
+            type="file"
+            accept="application/json,.json"
+            className="hidden"
+            disabled={!!draft}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              e.target.value = '';
+              if (file) void importFile(file);
+            }}
+          />
+        </label>
+        <button
+          className="btn-ghost"
+          disabled={!!draft || importContent.isPending}
+          onClick={() =>
+            // Le contenu de test (≈ 50 Ko compressés) ne se télécharge qu'au clic.
+            void import('@poke/content/seed').then(({ seedContent }) =>
+              importContent.mutate({ label: 'Contenu de test (seed)', content: seedContent }),
+            )
+          }
+        >
+          Charger le contenu de test
+        </button>
+      </div>
+    </section>
+  );
+}
 
-      <section className="card overflow-x-auto p-0">
-        <h2 className="px-6 pt-5 font-semibold">Historique des versions</h2>
-        <table className="mt-3 w-full text-left text-sm">
-          <thead className="text-xs text-slate-500 uppercase">
-            <tr className="border-b border-slate-200 dark:border-slate-800">
-              <th className="px-6 py-2">Version</th>
-              <th className="px-6 py-2">Statut</th>
-              <th className="px-6 py-2">Libellé</th>
-              <th className="px-6 py-2">Publiée le</th>
-              <th className="px-6 py-2" />
+/** Historique des versions du contenu. */
+function VersionHistory({ m }: { m: DashboardPageModel }) {
+  const { createDraft, list, draft } = m;
+  return (
+    <section className="card overflow-x-auto p-0">
+      <h2 className="px-6 pt-5 font-semibold">Historique des versions</h2>
+      <table className="mt-3 w-full text-left text-sm">
+        <thead className="text-xs text-slate-500 uppercase">
+          <tr className="border-b border-slate-200 dark:border-slate-800">
+            <th className="px-6 py-2">Version</th>
+            <th className="px-6 py-2">Statut</th>
+            <th className="px-6 py-2">Libellé</th>
+            <th className="px-6 py-2">Publiée le</th>
+            <th className="px-6 py-2" />
+          </tr>
+        </thead>
+        <tbody>
+          {list.map((v) => (
+            <tr
+              key={v.id}
+              className="border-b border-slate-100 last:border-0 dark:border-slate-800"
+            >
+              <td className="px-6 py-3 font-mono">v{v.id}</td>
+              <td className="px-6 py-3">
+                <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLES[v.status]}`}>
+                  {STATUS_LABELS[v.status]}
+                </span>
+              </td>
+              <td className="px-6 py-3">{v.label}</td>
+              <td className="px-6 py-3 text-slate-500">{formatDate(v.publishedAt)}</td>
+              <td className="px-6 py-3 text-right">
+                {v.status === 'archived' && !draft && (
+                  <button
+                    className="text-sm text-brand-600 hover:underline"
+                    onClick={() =>
+                      createDraft.mutate({ label: `Retour à v${v.id}`, basedOnId: v.id })
+                    }
+                  >
+                    Restaurer en brouillon
+                  </button>
+                )}
+              </td>
             </tr>
-          </thead>
-          <tbody>
-            {list.map((v) => (
-              <tr
-                key={v.id}
-                className="border-b border-slate-100 last:border-0 dark:border-slate-800"
-              >
-                <td className="px-6 py-3 font-mono">v{v.id}</td>
-                <td className="px-6 py-3">
-                  <span className={`rounded-full px-2 py-0.5 text-xs ${STATUS_STYLES[v.status]}`}>
-                    {STATUS_LABELS[v.status]}
-                  </span>
-                </td>
-                <td className="px-6 py-3">{v.label}</td>
-                <td className="px-6 py-3 text-slate-500">{formatDate(v.publishedAt)}</td>
-                <td className="px-6 py-3 text-right">
-                  {v.status === 'archived' && !draft && (
-                    <button
-                      className="text-sm text-brand-600 hover:underline"
-                      onClick={() =>
-                        createDraft.mutate({ label: `Retour à v${v.id}`, basedOnId: v.id })
-                      }
-                    >
-                      Restaurer en brouillon
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </section>
-    </div>
+          ))}
+        </tbody>
+      </table>
+    </section>
   );
 }

@@ -1,13 +1,11 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import type { Db } from '@poke/db';
 import {
   startDungeonInputSchema,
   switchDungeonInputSchema,
   combatItemInputSchema,
 } from '@poke/shared';
 import type { ClaimDungeonResponse, DungeonRunDto, DungeonsResponse } from '@poke/shared';
-import type { ContentCache } from '../content-cache';
 import {
   activeDungeonRun,
   claimDungeonRun,
@@ -23,23 +21,22 @@ import {
 } from '../game/dungeons';
 import { requireStartedProfile } from '../game/expeditions';
 import { assertTabUnlocked } from '../game/store';
-import type { sessionHooks } from '../plugins/session';
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
-}
+/**
+ * Routes des donjons (/api/dungeons) : lancer, changer de Pokémon, utiliser un objet, fuir,
+ * réclamer. Chaque route valide sa requête, appelle le module de jeu et répond.
+ */
 
 const uuidParams = z.object({ id: z.uuid() });
 
 /** Donjons : lancement, changements de Pokémon, fuite, réclamation, bilan par donjon. */
-export async function dungeonRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
+export async function dungeonRoutes(app: FastifyInstance, { db, content, hooks, now }: RouteDeps) {
   app.addHook('preHandler', hooks.requireUser);
 
   app.get('/api/dungeons', async (request): Promise<DungeonsResponse> => {
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const [active, records, last] = await Promise.all([
       activeDungeonRun(db, userId),
       dungeonRecords(db, userId),
@@ -55,7 +52,7 @@ export async function dungeonRoutes(app: FastifyInstance, { db, content, hooks, 
 
   app.post('/api/dungeons', async (request, reply) => {
     const input = startDungeonInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     await assertTabUnlocked(db, await content.get(), userId, 'dungeons');
     // Une tentative terminée pendant l'absence du joueur ne bloque pas la suivante.
     await hooks.settleAll(userId);
@@ -67,20 +64,22 @@ export async function dungeonRoutes(app: FastifyInstance, { db, content, hooks, 
   app.post('/api/dungeons/:id/switch', async (request): Promise<DungeonRunDto> => {
     const { id } = uuidParams.parse(request.params);
     const input = switchDungeonInputSchema.parse(request.body);
-    return toDungeonRunDto(await switchDungeonMember(db, request.user!.id, id, input, now()));
+    return toDungeonRunDto(await switchDungeonMember(db, currentUserId(request), id, input, now()));
   });
 
   /** Baie Sitrus (ou autre objet de soin) donnée au Pokémon actif. */
   app.post('/api/dungeons/:id/item', async (request): Promise<DungeonRunDto> => {
     const { id } = uuidParams.parse(request.params);
     const input = combatItemInputSchema.parse(request.body);
-    return toDungeonRunDto(await useDungeonItem(db, content, request.user!.id, id, input, now()));
+    return toDungeonRunDto(
+      await useDungeonItem(db, content, currentUserId(request), id, input, now()),
+    );
   });
 
   /** Fuite, puis réclamation (aucune récompense). */
   app.post('/api/dungeons/:id/flee', async (request): Promise<ClaimDungeonResponse> => {
     const { id } = uuidParams.parse(request.params);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     await fleeDungeon(db, userId, id, now());
     const { run, currency } = await claimDungeonRun(db, content, userId, id, now());
     return { run: toDungeonRunDto(run), currency };
@@ -88,7 +87,7 @@ export async function dungeonRoutes(app: FastifyInstance, { db, content, hooks, 
 
   app.post('/api/dungeons/:id/claim', async (request): Promise<ClaimDungeonResponse> => {
     const { id } = uuidParams.parse(request.params);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     await requireStartedProfile(db, userId);
     const { run, currency } = await claimDungeonRun(db, content, userId, id, now());
     return { run: toDungeonRunDto(run), currency };
@@ -97,7 +96,7 @@ export async function dungeonRoutes(app: FastifyInstance, { db, content, hooks, 
   /** Fenêtre du résultat fermée : elle ne réapparaît pas sur un autre appareil. */
   app.post('/api/dungeons/:id/seen', async (request, reply) => {
     const { id } = uuidParams.parse(request.params);
-    await markDungeonResultSeen(db, request.user!.id, id, now());
+    await markDungeonResultSeen(db, currentUserId(request), id, now());
     return reply.code(204).send();
   });
 }

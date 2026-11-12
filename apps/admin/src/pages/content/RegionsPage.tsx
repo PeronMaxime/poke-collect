@@ -1,3 +1,4 @@
+/** Page « Régions » : ordre, nom, image, espèces incluses, starters et condition de déblocage. */
 import { regionSchema } from '@poke/content';
 import type { Region } from '@poke/content';
 import { EntityPage } from '../../components/EntityPage';
@@ -13,6 +14,7 @@ import {
 } from '../../components/forms/fields';
 import { SpeciesSetEditor, Sprite, UnlockEditor } from '../../components/forms/pickers';
 
+/** Page « Régions » (voir l'en-tête du fichier). */
 export function RegionsPage() {
   return (
     <EntityPage<Region>

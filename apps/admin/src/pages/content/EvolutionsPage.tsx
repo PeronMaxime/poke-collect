@@ -1,3 +1,7 @@
+/**
+ * Page « Évolutions » : méthodes d'évolution venues de PokéAPI, celles qui ne peuvent pas servir
+ * dans le jeu, et leurs surcharges.
+ */
 import { useState } from 'react';
 import { evolutionOverrideId, evolutionOverrideSchema } from '@poke/content';
 import type { EvolutionMethod, EvolutionOverride, TimeOfDay } from '@poke/content';
@@ -55,6 +59,7 @@ const missingItems = (ctx: GameContext, methods: readonly EvolutionMethod[]) => 
   ...new Set(methods.flatMap((m) => (m.itemId && !ctx.item(m.itemId) ? [m.itemId] : []))),
 ];
 
+/** Page « Évolutions » (voir l'en-tête du fichier). */
 export function EvolutionsPage() {
   const [view, setView] = useState<View>('overview');
   return (

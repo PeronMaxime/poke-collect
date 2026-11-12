@@ -1,9 +1,13 @@
+/**
+ * Page « Boutique » : articles (prix, limites, cadeaux, dates), catégories, et la boutique vue par
+ * un joueur selon une progression simulée.
+ */
 import { useMemo, useState } from 'react';
 import { PURCHASE_PERIODS, shopCategorySchema, shopEntrySchema } from '@poke/content';
 import type { PurchasePeriod, ShopCategory, ShopEntry, UnlockCondition } from '@poke/content';
 import { isOnSale, regionDexProgress, shopEntryStatus } from '@poke/game-core';
 import type { GameContext, PlayerProgress, ShopEntryState } from '@poke/game-core';
-import { EntityPage, VersionBanner } from '../../components/EntityPage';
+import { EntityPage, VersionBanner, WithWorkingVersion } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
 import {
   Field,
@@ -15,7 +19,6 @@ import {
   Toggle,
 } from '../../components/forms/fields';
 import { ItemIcon, ItemSelect, UnlockEditor } from '../../components/forms/pickers';
-import { errorMessage, useWorkingVersion } from '../../lib/content';
 import type { WorkingVersion } from '../../lib/content';
 
 const VIEWS = [
@@ -61,6 +64,7 @@ export function unlockSummary(ctx: GameContext, u: UnlockCondition): string {
   }
 }
 
+/** Page « Boutique » : articles, catégories et aperçu joueur, en onglets. */
 export function ShopPage() {
   const [view, setView] = useState<View>('entries');
   return (
@@ -156,86 +160,18 @@ function EntryForm({
   working,
 }: EntityFormProps<ShopEntry>) {
   const set = <K extends keyof ShopEntry>(key: K, v: ShopEntry[K]) => onChange({ ...e, [key]: v });
-  const { ctx } = working;
   const disabled = !editable;
-  const categories = ctx.shopCategories;
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field
-          label="Identifiant"
-          hint="Minuscules et tirets, non modifiable ensuite."
-          error={errors.get('id')}
-        >
-          <TextInput value={e.id} onChange={(v) => set('id', v)} disabled={disabled || !isNew} />
-        </Field>
-        <Field label="Objet vendu" error={errors.get('itemId')}>
-          <ItemSelect
-            ctx={ctx}
-            value={e.itemId}
-            onChange={(v) => v && set('itemId', v)}
-            disabled={disabled}
-          />
-        </Field>
-        <Field
-          label="Catégorie (onglet)"
-          hint={categories.length === 0 ? 'Créez d’abord une catégorie.' : undefined}
-          error={errors.get('categoryId')}
-        >
-          <select
-            className="input"
-            value={e.categoryId}
-            disabled={disabled}
-            onChange={(ev) => set('categoryId', ev.target.value)}
-          >
-            {!categories.some((c) => c.id === e.categoryId) && (
-              <option value={e.categoryId}>{e.categoryId || 'Choisir…'} (inconnue)</option>
-            )}
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </select>
-        </Field>
-        <Field label="Ordre d’affichage" hint="Dans la catégorie." error={errors.get('order')}>
-          <NumberInput
-            value={e.order}
-            min={0}
-            onChange={(v) => set('order', v)}
-            disabled={disabled}
-          />
-        </Field>
-        <Field
-          label="Prix d’un lot"
-          hint={
-            e.lotSize > 1 && e.price > 0
-              ? `soit ${money(Math.round(e.price / e.lotSize))} l’unité`
-              : undefined
-          }
-          error={errors.get('price')}
-        >
-          <NumberInput
-            value={e.price}
-            min={0}
-            step={50}
-            unit="₽"
-            onChange={(v) => set('price', v)}
-            disabled={disabled}
-          />
-        </Field>
-        <Field label="Quantité par lot" error={errors.get('lotSize')}>
-          <NumberInput
-            value={e.lotSize}
-            min={1}
-            max={999}
-            unit="objet(s)"
-            onChange={(v) => set('lotSize', v)}
-            disabled={disabled}
-          />
-        </Field>
-      </div>
+      <EntryIdentityFields
+        value={e}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
       <Toggle
         checked={e.enabled}
         onChange={(v) => set('enabled', v)}
@@ -243,134 +179,309 @@ function EntryForm({
         disabled={disabled}
       />
 
-      <Section title="Apparition">
-        <Field label="Condition d’apparition">
-          <UnlockEditor
-            value={e.unlock}
-            regions={ctx.regions}
-            trainers={ctx.trainers}
-            quests={ctx.quests}
-            onChange={(v) => set('unlock', v)}
+      <EntryAppearanceSection
+        value={e}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
+
+      <PurchaseLimitSection
+        value={e}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
+
+      <GiftSection
+        value={e}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
+
+      <AvailabilitySection
+        value={e}
+        onChange={onChange}
+        errors={errors}
+        isNew={isNew}
+        editable={editable}
+        working={working}
+      />
+    </div>
+  );
+}
+
+/** Identité de l'article : identifiant, objet vendu, catégorie, ordre, prix, quantité par lot. */
+function EntryIdentityFields({
+  value: e,
+  onChange,
+  errors,
+  isNew,
+  editable,
+  working,
+}: EntityFormProps<ShopEntry>) {
+  const set = <K extends keyof ShopEntry>(key: K, v: ShopEntry[K]) => onChange({ ...e, [key]: v });
+  const { ctx } = working;
+  const disabled = !editable;
+  const categories = ctx.shopCategories;
+
+  return (
+    <div className="grid gap-4 sm:grid-cols-2">
+      <Field
+        label="Identifiant"
+        hint="Minuscules et tirets, non modifiable ensuite."
+        error={errors.get('id')}
+      >
+        <TextInput value={e.id} onChange={(v) => set('id', v)} disabled={disabled || !isNew} />
+      </Field>
+      <Field label="Objet vendu" error={errors.get('itemId')}>
+        <ItemSelect
+          ctx={ctx}
+          value={e.itemId}
+          onChange={(v) => v && set('itemId', v)}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Catégorie (onglet)"
+        hint={categories.length === 0 ? 'Créez d’abord une catégorie.' : undefined}
+        error={errors.get('categoryId')}
+      >
+        <select
+          className="input"
+          value={e.categoryId}
+          disabled={disabled}
+          onChange={(ev) => set('categoryId', ev.target.value)}
+        >
+          {!categories.some((c) => c.id === e.categoryId) && (
+            <option value={e.categoryId}>{e.categoryId || 'Choisir…'} (inconnue)</option>
+          )}
+          {categories.map((c) => (
+            <option key={c.id} value={c.id}>
+              {c.name}
+            </option>
+          ))}
+        </select>
+      </Field>
+      <Field label="Ordre d’affichage" hint="Dans la catégorie." error={errors.get('order')}>
+        <NumberInput
+          value={e.order}
+          min={0}
+          onChange={(v) => set('order', v)}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Prix d’un lot"
+        hint={
+          e.lotSize > 1 && e.price > 0
+            ? `soit ${money(Math.round(e.price / e.lotSize))} l’unité`
+            : undefined
+        }
+        error={errors.get('price')}
+      >
+        <NumberInput
+          value={e.price}
+          min={0}
+          step={50}
+          unit="₽"
+          onChange={(v) => set('price', v)}
+          disabled={disabled}
+        />
+      </Field>
+      <Field label="Quantité par lot" error={errors.get('lotSize')}>
+        <NumberInput
+          value={e.lotSize}
+          min={1}
+          max={999}
+          unit="objet(s)"
+          onChange={(v) => set('lotSize', v)}
+          disabled={disabled}
+        />
+      </Field>
+    </div>
+  );
+}
+
+/** Apparition : condition de déblocage, et l'affichage de l'article avant (verrouillé ou caché). */
+function EntryAppearanceSection({
+  value: e,
+  onChange,
+  editable,
+  working,
+}: EntityFormProps<ShopEntry>) {
+  const set = <K extends keyof ShopEntry>(key: K, v: ShopEntry[K]) => onChange({ ...e, [key]: v });
+  const { ctx } = working;
+  const disabled = !editable;
+
+  return (
+    <Section title="Apparition">
+      <Field label="Condition d’apparition">
+        <UnlockEditor
+          value={e.unlock}
+          regions={ctx.regions}
+          trainers={ctx.trainers}
+          quests={ctx.quests}
+          onChange={(v) => set('unlock', v)}
+          disabled={disabled}
+        />
+      </Field>
+      <Field
+        label="Avant déblocage"
+        hint="Verrouillé : visible, grisé, condition affichée (donne un objectif). Caché : n’apparaît qu’une fois la condition remplie."
+      >
+        <SelectInput
+          value={e.lockedVisibility}
+          onChange={(v) => set('lockedVisibility', v)}
+          disabled={disabled || e.unlock.type === 'always'}
+          options={[
+            { value: 'locked', label: 'Verrouillé (visible)' },
+            { value: 'hidden', label: 'Caché' },
+          ]}
+        />
+      </Field>
+    </Section>
+  );
+}
+
+/** Limite d'achat : nombre et période. */
+function PurchaseLimitSection({
+  value: e,
+  onChange,
+  errors,
+  editable,
+}: EntityFormProps<ShopEntry>) {
+  const set = <K extends keyof ShopEntry>(key: K, v: ShopEntry[K]) => onChange({ ...e, [key]: v });
+  const disabled = !editable;
+
+  return (
+    <Section title="Limite d’achat">
+      <Toggle
+        checked={e.purchaseLimit !== null}
+        onChange={(on) => set('purchaseLimit', on ? { lots: 1, period: 'total' } : null)}
+        label="Limiter les achats par joueur"
+        disabled={disabled}
+      />
+      {e.purchaseLimit && (
+        <div className="flex flex-wrap items-center gap-2">
+          <NumberInput
+            className="w-36"
+            value={e.purchaseLimit.lots}
+            min={1}
+            unit="lot(s)"
+            onChange={(lots) => set('purchaseLimit', { ...e.purchaseLimit!, lots })}
             disabled={disabled}
           />
-        </Field>
-        <Field
-          label="Avant déblocage"
-          hint="Verrouillé : visible, grisé, condition affichée (donne un objectif). Caché : n’apparaît qu’une fois la condition remplie."
-        >
           <SelectInput
-            value={e.lockedVisibility}
-            onChange={(v) => set('lockedVisibility', v)}
-            disabled={disabled || e.unlock.type === 'always'}
-            options={[
-              { value: 'locked', label: 'Verrouillé (visible)' },
-              { value: 'hidden', label: 'Caché' },
-            ]}
+            value={e.purchaseLimit.period}
+            onChange={(period) => set('purchaseLimit', { ...e.purchaseLimit!, period })}
+            disabled={disabled}
+            options={PURCHASE_PERIODS.map((p) => ({ value: p, label: PERIOD_LABELS[p] }))}
+          />
+        </div>
+      )}
+      {[...errors].some(([p]) => p.startsWith('purchaseLimit')) && (
+        <p className="text-xs text-red-600">Limite invalide.</p>
+      )}
+    </Section>
+  );
+}
+
+/** Cadeau : un objet offert, en quelle quantité, tous les combien d'objets achetés d'un coup. */
+function GiftSection({
+  value: e,
+  onChange,
+  errors,
+  editable,
+  working,
+}: EntityFormProps<ShopEntry>) {
+  const set = <K extends keyof ShopEntry>(key: K, v: ShopEntry[K]) => onChange({ ...e, [key]: v });
+  const { ctx } = working;
+  const disabled = !editable;
+
+  return (
+    <Section title="Cadeau">
+      <Toggle
+        checked={e.gift !== null}
+        onChange={(on) =>
+          set('gift', on ? { itemId: e.itemId, every: Math.max(1, e.lotSize), quantity: 1 } : null)
+        }
+        label="Offrir un objet selon la quantité achetée d’un coup"
+        disabled={disabled}
+      />
+      {e.gift && (
+        <div className="flex flex-wrap items-center gap-2 text-sm">
+          <NumberInput
+            className="w-24"
+            value={e.gift.quantity}
+            min={1}
+            onChange={(quantity) => set('gift', { ...e.gift!, quantity })}
+            disabled={disabled}
+          />
+          <div className="min-w-48 flex-1">
+            <ItemSelect
+              ctx={ctx}
+              value={e.gift.itemId}
+              onChange={(itemId) => itemId && set('gift', { ...e.gift!, itemId })}
+              disabled={disabled}
+            />
+          </div>
+          <span>tous les</span>
+          <NumberInput
+            className="w-36"
+            value={e.gift.every}
+            min={1}
+            unit="objet(s) achetés"
+            onChange={(every) => set('gift', { ...e.gift!, every })}
+            disabled={disabled}
+          />
+        </div>
+      )}
+      {[...errors].some(([p]) => p.startsWith('gift')) && (
+        <p className="text-xs text-red-600">Cadeau invalide.</p>
+      )}
+    </Section>
+  );
+}
+
+/** Disponibilité dans le temps : dates de début et de fin, pour un article temporaire. */
+function AvailabilitySection({ value: e, onChange, errors, editable }: EntityFormProps<ShopEntry>) {
+  const set = <K extends keyof ShopEntry>(key: K, v: ShopEntry[K]) => onChange({ ...e, [key]: v });
+  const disabled = !editable;
+
+  return (
+    <Section title="Disponibilité dans le temps">
+      <p className="text-xs text-slate-500">
+        Optionnel, pour les articles temporaires. Heure locale de votre navigateur.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="À partir du" error={errors.get('availableFrom')}>
+          <input
+            type="datetime-local"
+            className="input"
+            value={toLocalInput(e.availableFrom)}
+            disabled={disabled}
+            onChange={(ev) => set('availableFrom', fromLocalInput(ev.target.value))}
           />
         </Field>
-      </Section>
-
-      <Section title="Limite d’achat">
-        <Toggle
-          checked={e.purchaseLimit !== null}
-          onChange={(on) => set('purchaseLimit', on ? { lots: 1, period: 'total' } : null)}
-          label="Limiter les achats par joueur"
-          disabled={disabled}
-        />
-        {e.purchaseLimit && (
-          <div className="flex flex-wrap items-center gap-2">
-            <NumberInput
-              className="w-36"
-              value={e.purchaseLimit.lots}
-              min={1}
-              unit="lot(s)"
-              onChange={(lots) => set('purchaseLimit', { ...e.purchaseLimit!, lots })}
-              disabled={disabled}
-            />
-            <SelectInput
-              value={e.purchaseLimit.period}
-              onChange={(period) => set('purchaseLimit', { ...e.purchaseLimit!, period })}
-              disabled={disabled}
-              options={PURCHASE_PERIODS.map((p) => ({ value: p, label: PERIOD_LABELS[p] }))}
-            />
-          </div>
-        )}
-        {[...errors].some(([p]) => p.startsWith('purchaseLimit')) && (
-          <p className="text-xs text-red-600">Limite invalide.</p>
-        )}
-      </Section>
-
-      <Section title="Cadeau">
-        <Toggle
-          checked={e.gift !== null}
-          onChange={(on) =>
-            set(
-              'gift',
-              on ? { itemId: e.itemId, every: Math.max(1, e.lotSize), quantity: 1 } : null,
-            )
-          }
-          label="Offrir un objet selon la quantité achetée d’un coup"
-          disabled={disabled}
-        />
-        {e.gift && (
-          <div className="flex flex-wrap items-center gap-2 text-sm">
-            <NumberInput
-              className="w-24"
-              value={e.gift.quantity}
-              min={1}
-              onChange={(quantity) => set('gift', { ...e.gift!, quantity })}
-              disabled={disabled}
-            />
-            <div className="min-w-48 flex-1">
-              <ItemSelect
-                ctx={ctx}
-                value={e.gift.itemId}
-                onChange={(itemId) => itemId && set('gift', { ...e.gift!, itemId })}
-                disabled={disabled}
-              />
-            </div>
-            <span>tous les</span>
-            <NumberInput
-              className="w-36"
-              value={e.gift.every}
-              min={1}
-              unit="objet(s) achetés"
-              onChange={(every) => set('gift', { ...e.gift!, every })}
-              disabled={disabled}
-            />
-          </div>
-        )}
-        {[...errors].some(([p]) => p.startsWith('gift')) && (
-          <p className="text-xs text-red-600">Cadeau invalide.</p>
-        )}
-      </Section>
-
-      <Section title="Disponibilité dans le temps">
-        <p className="text-xs text-slate-500">
-          Optionnel, pour les articles temporaires. Heure locale de votre navigateur.
-        </p>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="À partir du" error={errors.get('availableFrom')}>
-            <input
-              type="datetime-local"
-              className="input"
-              value={toLocalInput(e.availableFrom)}
-              disabled={disabled}
-              onChange={(ev) => set('availableFrom', fromLocalInput(ev.target.value))}
-            />
-          </Field>
-          <Field label="Jusqu’au (exclu)" error={errors.get('availableUntil')}>
-            <input
-              type="datetime-local"
-              className="input"
-              value={toLocalInput(e.availableUntil)}
-              disabled={disabled}
-              onChange={(ev) => set('availableUntil', fromLocalInput(ev.target.value))}
-            />
-          </Field>
-        </div>
-      </Section>
-    </div>
+        <Field label="Jusqu’au (exclu)" error={errors.get('availableUntil')}>
+          <input
+            type="datetime-local"
+            className="input"
+            value={toLocalInput(e.availableUntil)}
+            disabled={disabled}
+            onChange={(ev) => set('availableUntil', fromLocalInput(ev.target.value))}
+          />
+        </Field>
+      </div>
+    </Section>
   );
 }
 
@@ -471,10 +582,7 @@ const STATE_STYLES: Record<ShopEntryState, string> = {
 
 /** La boutique telle qu'un joueur la voit, selon une progression simulée. */
 function ShopPreview() {
-  const working = useWorkingVersion();
-  if (working.isPending) return <p className="text-slate-500">Chargement…</p>;
-  if (!working.data) return <p className="text-red-600">{errorMessage(working.error)}</p>;
-  return <ShopPreviewBody working={working.data} />;
+  return <WithWorkingVersion>{(w) => <ShopPreviewBody working={w} />}</WithWorkingVersion>;
 }
 
 function ShopPreviewBody({ working }: { working: WorkingVersion }) {

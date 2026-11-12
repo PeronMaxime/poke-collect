@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, useSyncExternalStore } from 'react';
-import { api } from './api';
 import { logError } from './log';
+import { deletePushSubscription, savePushSubscription } from './queries';
 
 /**
  * Mode PWA : service worker (jeu installable, cache des sprites, notifications push) et invite
@@ -46,13 +46,14 @@ const subscribe = (listener: () => void) => {
   return () => listeners.delete(listener);
 };
 
-export const isStandalone = () =>
+const isStandalone = () =>
   window.matchMedia('(display-mode: standalone)').matches ||
   (navigator as Navigator & { standalone?: boolean }).standalone === true;
 
 /** iOS n'a pas d'invite : il faut passer par « Partager → Sur l'écran d'accueil ». */
 export const isIos = () => /iphone|ipad|ipod/i.test(navigator.userAgent);
 
+/** Installation de l'application : possible ou non, déjà faite, et `install()` qui ouvre l'invite. */
 export function useInstallPrompt() {
   const prompt = useSyncExternalStore(subscribe, () => deferredPrompt);
   const install = useCallback(async () => {
@@ -68,6 +69,7 @@ export function useInstallPrompt() {
 
 // --- Notifications push ----------------------------------------------------------------------
 
+/** Vrai si le navigateur sait recevoir des notifications push. */
 export const pushSupported = () =>
   'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
 
@@ -114,7 +116,7 @@ export function useDeviceSubscription() {
         userVisibleOnly: true,
         applicationServerKey: applicationServerKey(publicKey),
       }));
-    await api('/api/push/subscriptions', { method: 'POST', json: sub.toJSON() });
+    await savePushSubscription(sub.toJSON());
     setSubscription(sub);
     return true;
   }, []);
@@ -123,7 +125,7 @@ export function useDeviceSubscription() {
     const reg = await navigator.serviceWorker.ready;
     const sub = await reg.pushManager.getSubscription();
     if (sub) {
-      await api('/api/push/subscriptions', { method: 'DELETE', json: { endpoint: sub.endpoint } });
+      await deletePushSubscription(sub.endpoint);
       await sub.unsubscribe();
     }
     setSubscription(null);

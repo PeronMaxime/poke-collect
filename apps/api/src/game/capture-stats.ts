@@ -11,6 +11,7 @@ import { afterCommit, isTransaction } from './tx';
  * espèce. Un arrêt brutal perd au plus ces quelques secondes de statistiques.
  */
 
+/** Ce qui est compté pour une espèce : obtenus, dont chromatiques, et transférés. */
 export interface SpeciesCounts {
   captured: number;
   shiny: number;
@@ -89,20 +90,4 @@ export async function flushSpeciesCounts(db: Db): Promise<void> {
     merge(tallyOf(db), tally);
     throw err;
   }
-}
-
-/** Écriture périodique des compteurs ; la fonction retournée l'arrête après une dernière écriture. */
-export function startSpeciesCountsFlush(
-  db: Db,
-  intervalMs: number,
-  onError: (err: unknown) => void,
-): () => Promise<void> {
-  const timer = setInterval(() => {
-    flushSpeciesCounts(db).catch(onError);
-  }, intervalMs);
-  timer.unref();
-  return async () => {
-    clearInterval(timer);
-    await flushSpeciesCounts(db).catch(onError);
-  };
 }

@@ -3,6 +3,11 @@ import { dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import webpush from 'web-push';
 
+/**
+ * Configuration de l'API : variables d'environnement lues et validées une fois, au démarrage. La
+ * liste commentée est dans `.env.example`.
+ */
+
 /** Clés VAPID des notifications Web Push. */
 export interface VapidKeys {
   publicKey: string;
@@ -11,6 +16,7 @@ export interface VapidKeys {
   subject: string;
 }
 
+/** La configuration de l'API, lue une fois au démarrage (voir `loadEnv`). */
 export interface Env {
   databaseUrl: string | undefined;
   pgliteDataDir: string;
@@ -40,6 +46,11 @@ export interface Env {
   smtp?: { url: string; from: string };
   /** Intervalle de la tournée des notifications push (0 = désactivée). */
   pushIntervalSeconds: number;
+  /**
+   * Lancer les tâches de fond qui ne doivent tourner que dans un seul processus (notifications
+   * push, coffres de guilde). À couper (`BACKGROUND_JOBS=0`) dans les processus supplémentaires.
+   */
+  backgroundJobs: boolean;
 }
 
 const ROOT = fileURLToPath(new URL('../../../', import.meta.url));
@@ -87,6 +98,7 @@ export function loadEnv(source: NodeJS.ProcessEnv = process.env): Env {
       smtp: { url: source.SMTP_URL, from: source.MAIL_FROM || 'Dexpedition <noreply@localhost>' },
     }),
     pushIntervalSeconds: Number(source.PUSH_INTERVAL_SECONDS || 60),
+    backgroundJobs: source.BACKGROUND_JOBS !== '0',
   };
 }
 

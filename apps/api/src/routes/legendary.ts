@@ -1,7 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { slugSchema } from '@poke/content';
-import type { Db } from '@poke/db';
 import {
   combatItemInputSchema,
   legendaryCaptureInputSchema,
@@ -15,7 +14,6 @@ import type {
   LegendaryBattlesResponse,
   LegendaryCaptureResponse,
 } from '@poke/shared';
-import type { ContentCache } from '../content-cache';
 import {
   activeLegendaryBattle,
   captureLegendary,
@@ -32,24 +30,26 @@ import {
 } from '../game/legendary';
 import { requireStartedProfile } from '../game/expeditions';
 import { toPokemonDto } from '../game/store';
-import type { sessionHooks } from '../plugins/session';
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
-}
+/**
+ * Routes des combats légendaires (/api/legendary-battles), lancés depuis une quête, et relâcher un
+ * Pokémon. Chaque route valide sa requête, appelle le module de jeu et répond.
+ */
 
 const uuidParams = z.object({ id: z.uuid() });
 const questParams = z.object({ id: slugSchema });
 
 /** Combats légendaires : lancement depuis une quête, changements, fuite, réglage, Ball. */
-export async function legendaryRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
+export async function legendaryRoutes(
+  app: FastifyInstance,
+  { db, content, hooks, now }: RouteDeps,
+) {
   app.addHook('preHandler', hooks.requireUser);
 
   app.get('/api/legendary-battles', async (request): Promise<LegendaryBattlesResponse> => {
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const ctx = await content.get();
     const at = now();
     const [active, last, quests] = await Promise.all([
@@ -68,7 +68,7 @@ export async function legendaryRoutes(app: FastifyInstance, { db, content, hooks
   app.post('/api/quests/:id/battle', async (request, reply) => {
     const { id } = questParams.parse(request.params);
     const input = startLegendaryBattleInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     // Un combat terminé pendant l'absence du joueur ne bloque pas le suivant.
     await hooks.settleAll(userId);
     const row = await startLegendaryBattle(db, content, userId, id, input, now());
@@ -79,7 +79,7 @@ export async function legendaryRoutes(app: FastifyInstance, { db, content, hooks
   app.post('/api/legendary-battles/:id/switch', async (request): Promise<LegendaryBattleDto> => {
     const { id } = uuidParams.parse(request.params);
     const input = switchDungeonInputSchema.parse(request.body);
-    const row = await switchLegendaryMember(db, request.user!.id, id, input, now());
+    const row = await switchLegendaryMember(db, currentUserId(request), id, input, now());
     return toLegendaryBattleDto(await content.get(), row);
   });
 
@@ -87,7 +87,7 @@ export async function legendaryRoutes(app: FastifyInstance, { db, content, hooks
   app.post('/api/legendary-battles/:id/item', async (request): Promise<LegendaryBattleDto> => {
     const { id } = uuidParams.parse(request.params);
     const input = combatItemInputSchema.parse(request.body);
-    const row = await useLegendaryItem(db, content, request.user!.id, id, input, now());
+    const row = await useLegendaryItem(db, content, currentUserId(request), id, input, now());
     return toLegendaryBattleDto(await content.get(), row);
   });
 
@@ -96,7 +96,7 @@ export async function legendaryRoutes(app: FastifyInstance, { db, content, hooks
     '/api/legendary-battles/:id/flee',
     async (request): Promise<ClaimLegendaryBattleResponse> => {
       const { id } = uuidParams.parse(request.params);
-      const userId = request.user!.id;
+      const userId = currentUserId(request);
       await fleeLegendaryBattle(db, userId, id, now());
       const battle = await claimLegendaryBattle(db, content, userId, id, now());
       return { battle: toLegendaryBattleDto(await content.get(), battle) };
@@ -107,7 +107,7 @@ export async function legendaryRoutes(app: FastifyInstance, { db, content, hooks
     '/api/legendary-battles/:id/claim',
     async (request): Promise<ClaimLegendaryBattleResponse> => {
       const { id } = uuidParams.parse(request.params);
-      const userId = request.user!.id;
+      const userId = currentUserId(request);
       await requireStartedProfile(db, userId);
       const battle = await claimLegendaryBattle(db, content, userId, id, now());
       return { battle: toLegendaryBattleDto(await content.get(), battle) };
@@ -123,7 +123,7 @@ export async function legendaryRoutes(app: FastifyInstance, { db, content, hooks
       const { battle, captured } = await captureLegendary(
         db,
         content,
-        request.user!.id,
+        currentUserId(request),
         id,
         input,
         now(),
@@ -138,13 +138,13 @@ export async function legendaryRoutes(app: FastifyInstance, { db, content, hooks
   /** Légendaire relâché depuis le PC : sa quête le propose de nouveau (aucun Bonbon). */
   app.post('/api/pokemon/:id/release', async (request): Promise<ReleaseLegendaryResponse> => {
     const { id } = uuidParams.parse(request.params);
-    return releaseLegendary(db, content, request.user!.id, id);
+    return releaseLegendary(db, content, currentUserId(request), id);
   });
 
   /** Fenêtre du résultat fermée : elle ne réapparaît pas sur un autre appareil. */
   app.post('/api/legendary-battles/:id/seen', async (request, reply) => {
     const { id } = uuidParams.parse(request.params);
-    await markLegendaryResultSeen(db, request.user!.id, id, now());
+    await markLegendaryResultSeen(db, currentUserId(request), id, now());
     return reply.code(204).send();
   });
 }

@@ -1,9 +1,6 @@
 import type { FastifyInstance } from 'fastify';
-import { eq } from 'drizzle-orm';
 import { z } from 'zod';
 import { FACILITIES, slugSchema } from '@poke/content';
-import { rewardClaims } from '@poke/db';
-import type { Db } from '@poke/db';
 import { facilityPlaces, playerBonuses } from '@poke/game-core';
 import {
   claimRewardInputSchema,
@@ -21,31 +18,40 @@ import type {
   TrainerCardResponse,
   UseItemResponse,
 } from '@poke/shared';
-import type { ContentCache } from '../content-cache';
-import { claimReward, evolve, megaEvolve, megaRevert, useItemOnPokemon } from '../game/progression';
+import {
+  claimReward,
+  evolve,
+  listRewardClaims,
+  megaEvolve,
+  megaRevert,
+  useItemOnPokemon,
+} from '../game/progression';
 import { claimQuest, questsState } from '../game/quests';
 import { trainerCard } from '../game/stats';
 import { claimedRewards, playerProgress, pokemonActivities, toPokemonDto } from '../game/store';
-import type { sessionHooks } from '../plugins/session';
+import { currentUserId } from './deps';
+import type { RouteDeps } from './deps';
 
-interface Deps {
-  db: Db;
-  content: ContentCache;
-  hooks: ReturnType<typeof sessionHooks>;
-  now: () => Date;
-}
+/**
+ * Routes de la progression : évolution, Méga-Évolution, objets utilisés sur un Pokémon,
+ * récompenses, Fiche Dresseur, quêtes. Chaque route valide sa requête, appelle le module de jeu et
+ * répond.
+ */
 
 const uuidParams = z.object({ id: z.uuid() });
 const questParams = z.object({ id: slugSchema });
 
 /** Évolutions, objets endgame, collections thématiques, complétions d'expédition et quêtes. */
-export async function progressionRoutes(app: FastifyInstance, { db, content, hooks, now }: Deps) {
+export async function progressionRoutes(
+  app: FastifyInstance,
+  { db, content, hooks, now }: RouteDeps,
+) {
   app.addHook('preHandler', hooks.requireUser);
 
   app.post('/api/pokemon/:id/evolve', async (request): Promise<EvolveResponse> => {
     const { id } = uuidParams.parse(request.params);
     const input = evolveInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const result = await evolve(db, content, userId, id, input, now());
     const busy = await pokemonActivities(db, userId);
     return {
@@ -62,7 +68,7 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
   app.post('/api/pokemon/:id/mega', async (request): Promise<EvolveResponse> => {
     const { id } = uuidParams.parse(request.params);
     const input = megaEvolveInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const result = await megaEvolve(db, content, userId, id, input, now());
     return {
       pokemon: toPokemonDto(result.row),
@@ -77,22 +83,15 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
   /** Retour à la forme normale : la Méga-Gemme revient dans le sac. */
   app.delete('/api/pokemon/:id/mega', async (request): Promise<PokemonDto> => {
     const { id } = uuidParams.parse(request.params);
-    return toPokemonDto(await megaRevert(db, content, request.user!.id, id));
+    return toPokemonDto(await megaRevert(db, content, currentUserId(request), id));
   });
 
   /** Récompenses réclamées, emplacements débloqués et bonus permanents. */
   app.get('/api/progression', async (request): Promise<ProgressionResponse> => {
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const ctx = await content.get();
-    const [rows, claimed, progress] = await Promise.all([
-      db
-        .select({
-          kind: rewardClaims.kind,
-          rewardId: rewardClaims.rewardId,
-          claimedAt: rewardClaims.claimedAt,
-        })
-        .from(rewardClaims)
-        .where(eq(rewardClaims.ownerId, userId)),
+    const [claims, claimed, progress] = await Promise.all([
+      listRewardClaims(db, userId),
       claimedRewards(db, userId),
       playerProgress(db, ctx, userId),
     ]);
@@ -100,7 +99,7 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
       FACILITIES.map(({ id }) => [id, facilityPlaces(ctx, id, progress, claimed)]),
     ) as ProgressionResponse['facilities'];
     return {
-      claims: rows.map((r) => ({ ...r, claimedAt: r.claimedAt.toISOString() })),
+      claims,
       slots: { expeditions: facilities.expedition, daycare: facilities.daycare },
       facilities,
       bonuses: playerBonuses(ctx, claimed),
@@ -109,7 +108,7 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
 
   app.post('/api/progression/claim', async (request): Promise<ClaimRewardResponse> => {
     const input = claimRewardInputSchema.parse(request.body);
-    const result = await claimReward(db, content, request.user!.id, input, now());
+    const result = await claimReward(db, content, currentUserId(request), input, now());
     return { kind: input.kind, rewardId: input.rewardId, targetId: input.targetId, ...result };
   });
 
@@ -117,7 +116,7 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
   app.post('/api/pokemon/:id/use-item', async (request): Promise<UseItemResponse> => {
     const { id } = uuidParams.parse(request.params);
     const input = useItemInputSchema.parse(request.body);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const { row, remaining } = await useItemOnPokemon(db, content, userId, id, input);
     return { pokemon: toPokemonDto(row), itemId: input.itemId, remaining };
   });
@@ -125,16 +124,16 @@ export async function progressionRoutes(app: FastifyInstance, { db, content, hoo
   /** Quêtes visibles (débloquées ou commencées), avancement à jour. */
   /** Fiche Dresseur : statistiques cumulées. */
   app.get('/api/trainer-card', async (request): Promise<TrainerCardResponse> =>
-    trainerCard(db, await content.get(), request.user!.id),
+    trainerCard(db, await content.get(), currentUserId(request)),
   );
 
   app.get('/api/quests', async (request): Promise<QuestsResponse> => ({
-    quests: await questsState(db, content, request.user!.id, now()),
+    quests: await questsState(db, content, currentUserId(request), now()),
   }));
 
   app.post('/api/quests/:id/claim', async (request): Promise<ClaimQuestResponse> => {
     const { id } = questParams.parse(request.params);
-    const userId = request.user!.id;
+    const userId = currentUserId(request);
     const result = await claimQuest(db, content, userId, id, now());
     return { questId: id, rewards: result.rewards, currency: result.currency, slots: result.slots };
   });

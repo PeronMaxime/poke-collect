@@ -1,3 +1,7 @@
+/**
+ * Contenu du jeu côté admin : la version de travail (brouillon, sinon version publiée) et les
+ * mutations qui l'écrivent, chacune suivie du rechargement de ce qui en dépend.
+ */
 import { useMemo } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { BalanceSettings, GameContent } from '@poke/content';
@@ -24,11 +28,12 @@ export type EntityCollection =
   | 'guild-quests'
   | 'chest-entries';
 
-export const versionsQuery = {
+const versionsQuery = {
   queryKey: ['content-versions'],
   queryFn: () => api<ContentVersionDto[]>('/api/admin/content/versions'),
 };
 
+/** Version éditée, avec son contenu, ses alertes et le contexte de jeu calculé dessus. */
 export interface WorkingVersion {
   version: ContentVersionDto;
   content: GameContent;
@@ -78,6 +83,7 @@ export function useRefreshContent() {
     );
 }
 
+/** Crée (`key` nulle) ou remplace une entité d'une collection du brouillon. */
 export function useSaveEntity<T>(versionId: number | undefined, collection: EntityCollection) {
   const refresh = useRefreshContent();
   return useMutation({
@@ -98,6 +104,7 @@ export function useSaveEntity<T>(versionId: number | undefined, collection: Enti
   });
 }
 
+/** Supprime une entité du brouillon ; refusé (`IN_USE`) tant qu'une autre s'en sert. */
 export function useDeleteEntity(versionId: number | undefined, collection: EntityCollection) {
   const refresh = useRefreshContent();
   return useMutation({
@@ -109,6 +116,7 @@ export function useDeleteEntity(versionId: number | undefined, collection: Entit
   });
 }
 
+/** Remplace tout l'équilibrage du brouillon (pages de réglages : `SettingsPage`). */
 export function useSaveBalance(versionId: number | undefined) {
   const refresh = useRefreshContent();
   return useMutation({
@@ -121,7 +129,7 @@ export function useSaveBalance(versionId: number | undefined) {
   });
 }
 
-/** Message lisible d'une erreur d'API (avec la liste des usages pour IN_USE). */
+/** Message lisible d'une erreur d'API (avec la liste des usages pour IN_USE, et sans réponse). */
 export function errorMessage(err: unknown): string {
   if (err instanceof ApiError) {
     const body = err.body as { message?: string; details?: unknown; issues?: unknown[] } | null;
@@ -129,6 +137,8 @@ export function errorMessage(err: unknown): string {
       return `Impossible de supprimer : encore utilisé par ${body.details.join(', ')}.`;
     }
     if (err.code === 'VALIDATION' && body?.issues) return 'Données invalides (voir les champs).';
+    if (err.code === 'NETWORK') return 'Serveur injoignable : vérifiez la connexion et réessayez.';
+    if (err.code === 'TIMEOUT') return 'Le serveur n’a pas répondu à temps : réessayez.';
     return body?.message ?? err.code;
   }
   return 'Erreur inconnue';

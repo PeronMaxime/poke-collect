@@ -13,8 +13,10 @@ export interface Rng {
   weighted<T>(entries: readonly { value: T; weight: number }[]): T;
 }
 
+/** Plus grande graine possible (entier non signé sur 32 bits). */
 export const MAX_SEED = 0xffffffff;
 
+/** Générateur déterministe : deux générateurs de même graine donnent la même suite de tirages. */
 export function createRng(seed: number): Rng {
   let state = seed >>> 0;
 

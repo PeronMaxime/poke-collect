@@ -2,8 +2,7 @@ import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { TAG_LABEL_MAX } from '@poke/shared';
 import type { PokemonDto, PokemonTagDto, TagInput } from '@poke/shared';
-import { api } from '../lib/api';
-import { keys, usePokemon, useTags } from '../lib/game';
+import { deleteTag, keys, saveTag, updatePokemon, usePokemon, useTags } from '../lib/queries';
 import { errorText } from '../lib/labels';
 import { Modal } from './ui';
 
@@ -31,6 +30,7 @@ function textColor(background: string): string {
   return 0.2126 * r! + 0.7152 * g! + 0.0722 * b! > 0.4 ? '#0f172a' : '#ffffff';
 }
 
+/** Pastille d'une étiquette du joueur, à sa couleur. */
 export function TagBadge({ tag, className = '' }: { tag: PokemonTagDto; className?: string }) {
   return (
     <span
@@ -96,6 +96,7 @@ export function useTagFilterOver(tags: readonly PokemonTagDto[]) {
   return { tags, filter, setFilter, matches, compare };
 }
 
+/** Filtre par étiquette des boîtes ; rien tant que le joueur n'a aucune étiquette. */
 export function TagFilterSelect({
   tags,
   value,
@@ -141,8 +142,7 @@ export function TagPicker({
   const queryClient = useQueryClient();
   const tags = useTags().data ?? [];
   const assign = useMutation({
-    mutationFn: (tagIds: string[]) =>
-      api<PokemonDto>(`/api/pokemon/${p.id}`, { method: 'PATCH', json: { tagIds } }),
+    mutationFn: (tagIds: string[]) => updatePokemon(p.id, { tagIds }),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: keys.pokemon }),
   });
   // Les étiquettes supprimées entre-temps ne sont pas renvoyées.
@@ -204,7 +204,8 @@ export function TagToggleList({
               disabled={pending}
               onClick={() => onToggle(t.id)}
               aria-pressed={active}
-              className={`rounded transition ${
+              // En flex : la case épouse l'étiquette (sinon la ligne de texte l'agrandit).
+              className={`flex max-w-full rounded transition ${
                 active
                   ? 'ring-2 ring-brand-500 ring-offset-1 dark:ring-offset-slate-900'
                   : 'opacity-40 hover:opacity-100'
@@ -230,17 +231,14 @@ export function TagManagerDialog({ open, onClose }: { open: boolean; onClose: ()
   const [confirmDelete, setConfirmDelete] = useState<string | null>(null);
 
   const save = useMutation({
-    mutationFn: ({ id, input }: { id: string | null; input: TagInput }) =>
-      id
-        ? api<PokemonTagDto>(`/api/tags/${id}`, { method: 'PUT', json: input })
-        : api<PokemonTagDto>('/api/tags', { method: 'POST', json: input }),
+    mutationFn: ({ id, input }: { id: string | null; input: TagInput }) => saveTag(id, input),
     onSuccess: () => {
       setEditing(null);
       return queryClient.invalidateQueries({ queryKey: keys.tags });
     },
   });
   const remove = useMutation({
-    mutationFn: (id: string) => api<void>(`/api/tags/${id}`, { method: 'DELETE' }),
+    mutationFn: (id: string) => deleteTag(id),
     onSuccess: () => {
       setConfirmDelete(null);
       setEditing(null);

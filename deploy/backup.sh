@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Sauvegarde de la base de production (voir INSTALLATION-SERVEUR.md et MISE-A-JOUR.md).
+# Sauvegarde de la base de production (voir docs/INSTALLATION-SERVEUR.md et docs/MISE-A-JOUR.md).
 #
 # Usage : deploy/backup.sh [daily|deploy]
 #   daily  (par défaut, lancé chaque nuit par cron) : garde 7 sauvegardes, plus 4 hebdomadaires

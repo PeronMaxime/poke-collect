@@ -1,23 +1,26 @@
+/**
+ * Création du dresseur (pseudo) juste après l'inscription.
+ */
 import { useState } from 'react';
 import type { FormEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { createProfileInputSchema } from '@poke/shared';
-import type { PlayerProfileDto } from '@poke/shared';
-import { ApiError, api } from '../lib/api';
+import { ApiError } from '../lib/api';
+import { createProfile } from '../lib/queries';
 
 const ERRORS: Record<string, string> = {
   TRAINER_NAME_TAKEN: 'Ce nom de dresseur est déjà pris.',
   PROFILE_EXISTS: 'Ton profil existe déjà.',
 };
 
+/** Choix du pseudo de dresseur, juste après l'inscription. */
 export function CreateProfilePage() {
   const queryClient = useQueryClient();
   const [trainerName, setTrainerName] = useState('');
   const [error, setError] = useState<string | null>(null);
 
   const create = useMutation({
-    mutationFn: (name: string) =>
-      api<PlayerProfileDto>('/api/profile', { method: 'POST', json: { trainerName: name } }),
+    mutationFn: (name: string) => createProfile(name),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['me'] }),
     onError: (err) =>
       setError(err instanceof ApiError ? (ERRORS[err.code] ?? err.code) : 'Erreur inconnue'),

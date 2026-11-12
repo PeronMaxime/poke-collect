@@ -1,12 +1,15 @@
 import { useSyncExternalStore } from 'react';
+import { readStoredJson, writeStoredJson } from './storage';
 
 /**
  * Widgets de la colonne de droite (grand écran) : un par bâtiment, la couveuse à côté de la
  * pension. L'ordre et les widgets masqués sont propres à l'appareil (navigateur).
  */
 export const WIDGETS = ['center', 'daycare', 'incubator', 'museum', 'farm'] as const;
+/** Identifiant d'un widget de la colonne de droite. */
 export type WidgetId = (typeof WIDGETS)[number];
 
+/** Nom de chaque widget, dans le menu « Widgets ». */
 export const WIDGET_LABELS: Record<WidgetId, string> = {
   center: 'Centre Pokémon',
   daycare: 'Pension',
@@ -15,6 +18,11 @@ export const WIDGET_LABELS: Record<WidgetId, string> = {
   farm: 'Ferme à baies',
 };
 
+/** Onglets des bâtiments résumés dans la colonne de droite. */
+export const BUILDING_TABS = ['center', 'daycare', 'museum', 'farm'] as const;
+/** Onglet d'un bâtiment résumé dans la colonne de droite. */
+export type BuildingTab = (typeof BUILDING_TABS)[number];
+
 /** Onglet (bâtiment) qui débloque le widget. */
 export const widgetTab = (id: WidgetId) => (id === 'incubator' ? 'daycare' : id);
 
@@ -22,6 +30,7 @@ const ORDER_KEY = 'dexpedition.buildingsOrder';
 const HIDDEN_KEY = 'dexpedition.hiddenWidgets';
 const COLLAPSED_KEY = 'dexpedition.collapsedWidgets';
 
+/** Réglages des widgets sur cet appareil : ordre, masqués, repliés. */
 export type WidgetSettings = {
   order: readonly WidgetId[];
   /** Masqués depuis la fenêtre « Widgets ». */
@@ -31,22 +40,12 @@ export type WidgetSettings = {
 };
 
 function readIds(key: string): WidgetId[] {
-  try {
-    const raw: unknown = JSON.parse(localStorage.getItem(key) ?? '[]');
-    if (!Array.isArray(raw)) return [];
-    return [...new Set(raw)].filter((id): id is WidgetId => WIDGETS.includes(id as WidgetId));
-  } catch {
-    return [];
-  }
+  const raw = readStoredJson(key);
+  if (!Array.isArray(raw)) return [];
+  return [...new Set(raw)].filter((id): id is WidgetId => WIDGETS.includes(id as WidgetId));
 }
 
-function write(key: string, ids: readonly WidgetId[]) {
-  try {
-    localStorage.setItem(key, JSON.stringify(ids));
-  } catch {
-    // Stockage indisponible : le réglage vaut pour la session.
-  }
-}
+const write = (key: string, ids: readonly WidgetId[]) => writeStoredJson(key, ids);
 
 function load(): WidgetSettings {
   const saved = readIds(ORDER_KEY);
@@ -87,6 +86,7 @@ export function reorderWidgets(shown: readonly WidgetId[]) {
   });
 }
 
+/** Affiche ou masque un widget. */
 export function setWidgetVisible(id: WidgetId, visible: boolean) {
   const hidden = new Set(settings.hidden);
   if (visible) hidden.delete(id);
@@ -94,6 +94,7 @@ export function setWidgetVisible(id: WidgetId, visible: boolean) {
   update({ ...settings, hidden });
 }
 
+/** Replie ou déplie un widget. */
 export function toggleWidgetCollapsed(id: WidgetId) {
   const collapsed = new Set(settings.collapsed);
   if (!collapsed.delete(id)) collapsed.add(id);

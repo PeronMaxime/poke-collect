@@ -1,11 +1,16 @@
-import { seedContent } from '@poke/content';
+import { seedContent } from '@poke/content/seed';
 import { createDb, ensureSeedContent } from '@poke/db';
 import { buildApp } from './app';
 import { loadEnv } from './env';
 import { readContentSnapshot, writeContentSnapshot } from './content-snapshot';
-import { startGuildRewards } from './game/guilds';
-import { startPushNotifier } from './game/push';
+import { startJobs } from './jobs';
 import { consoleMailer, smtpMailer } from './mail';
+
+/**
+ * Point d'entrée du processus : migrations, contenu initial d'une base neuve, application, tâches
+ * de fond, puis écoute. À l'arrêt (SIGINT, SIGTERM) : fin des requêtes en cours, dernière écriture
+ * des tâches de fond, fermeture de la base.
+ */
 
 const env = loadEnv();
 const handle = createDb({ databaseUrl: env.databaseUrl, pgliteDataDir: env.pgliteDataDir });
@@ -46,30 +51,18 @@ const { app, content, push } = await buildApp({
   ...(env.contentSnapshotWrite && { onContentPublished: saveSnapshot }),
 });
 
-// Tournée des notifications push (expéditions, combats, œufs) : pas de worker séparé.
-const stopPush =
-  push && env.pushIntervalSeconds > 0
-    ? startPushNotifier({
-        db: handle.db,
-        content,
-        send: push,
-        intervalSeconds: env.pushIntervalSeconds,
-        onError: (err) => app.log.error(err, 'Notifications push'),
-      })
-    : () => {};
-
-// Coffres des quêtes de guilde terminées, distribués à la fin du jour ou de la semaine.
-const stopGuildRewards = startGuildRewards({
+// Tâches de fond (compteurs d'espèces, notifications push, coffres de guilde) : pas de worker séparé.
+const stopJobs = startJobs({
   db: handle.db,
   content,
-  intervalSeconds: 60,
-  onError: (err) => app.log.error(err, 'Coffres de guilde'),
+  env,
+  push,
+  onError: (err, job) => app.log.error(err, job),
 });
 
 const shutdown = async () => {
-  stopPush();
-  stopGuildRewards();
   await app.close();
+  await stopJobs();
   await handle.close();
   process.exit(0);
 };
