@@ -15,16 +15,28 @@ interface Release {
 /** Les entrées, de la plus récente à la plus ancienne. */
 export const RELEASES: Release[] = [
   {
-    date: '11 novembre 2026',
-    title: 'Un jeu plus rapide à ouvrir',
+    date: '12 novembre 2026',
+    title: 'L’ordre de l’équipe au glisser-déposer et un jeu plus rapide à ouvrir',
     changes: [
+      {
+        section: 'Choix de l’équipe',
+        items: [
+          'Au départ d’une expédition ou d’un combat, glisse une case pour changer l’ordre de tes Pokémon, comme pour la vitrine de ta Fiche Dresseur. Au doigt, attrape la case par sa poignée ; au clavier, les flèches haut et bas marchent aussi.',
+          'En combat, la poignée remplace les flèches ▲▼ : le n° 1 entre toujours en premier.',
+        ],
+      },
+      {
+        section: 'PC',
+        items: [
+          'La fiche d’un Pokémon est plus haute : plus besoin de la faire défiler pour tout voir sur un grand écran.',
+          'Le cadre d’une étiquette choisie sur la fiche épouse maintenant l’étiquette.',
+        ],
+      },
       {
         section: 'Confort',
         items: [
           'Le jeu s’ouvre plus vite : chaque page n’est chargée qu’au moment où tu en as besoin, et ce qui ne change pas d’une mise à jour à l’autre reste gardé par ton navigateur.',
-          'Au choix de l’équipe d’une expédition ou d’un combat, glisse une case pour changer l’ordre des Pokémon (au doigt, par sa poignée), comme pour la vitrine de ta Fiche Dresseur. Les flèches haut et bas marchent aussi au clavier.',
-          'La fiche d’un Pokémon du PC est plus haute : plus besoin de la faire défiler pour tout voir sur un grand écran.',
-          'Le cadre d’une étiquette choisie sur la fiche d’un Pokémon épouse maintenant l’étiquette.',
+          'Un petit badge « BÊTA » à côté du titre du jeu rappelle qu’il est encore en construction.',
         ],
       },
     ],
