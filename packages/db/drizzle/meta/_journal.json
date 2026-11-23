@@ -974,6 +974,90 @@
       "when": 1794263330674,
       "tag": "0138_pokemon_favori",
       "breakpoints": true
+    },
+    {
+      "idx": 139,
+      "version": "7",
+      "when": 1794604510437,
+      "tag": "0139_objets_quete_rendus",
+      "breakpoints": true
+    },
+    {
+      "idx": 140,
+      "version": "7",
+      "when": 1794953686293,
+      "tag": "0140_butin_balls_ralenti",
+      "breakpoints": true
+    },
+    {
+      "idx": 141,
+      "version": "7",
+      "when": 1794953730705,
+      "tag": "0141_expeditions_butin_ralenti",
+      "breakpoints": true
+    },
+    {
+      "idx": 142,
+      "version": "7",
+      "when": 1794955746113,
+      "tag": "0142_expeditions_sans_evolutions_objet",
+      "breakpoints": true
+    },
+    {
+      "idx": 143,
+      "version": "7",
+      "when": 1795043041664,
+      "tag": "0143_expeditions_sans_troisieme_stade",
+      "breakpoints": true
+    },
+    {
+      "idx": 144,
+      "version": "7",
+      "when": 1795130397540,
+      "tag": "0144_expeditions_xp_partagee",
+      "breakpoints": true
+    },
+    {
+      "idx": 145,
+      "version": "7",
+      "when": 1795426848096,
+      "tag": "0145_expeditions_hoenn_moins_evolues",
+      "breakpoints": true
+    },
+    {
+      "idx": 146,
+      "version": "7",
+      "when": 1795428530893,
+      "tag": "0146_expeditions_kanto_johto_moins_evolues",
+      "breakpoints": true
+    },
+    {
+      "idx": 147,
+      "version": "7",
+      "when": 1795433198591,
+      "tag": "0147_quetes_de_formes",
+      "breakpoints": true
+    },
+    {
+      "idx": 148,
+      "version": "7",
+      "when": 1795434359590,
+      "tag": "0148_quetes_de_formes_contenu",
+      "breakpoints": true
+    },
+    {
+      "idx": 149,
+      "version": "7",
+      "when": 1795437006930,
+      "tag": "0149_collections_formes_hors_pokedex",
+      "breakpoints": true
+    },
+    {
+      "idx": 150,
+      "version": "7",
+      "when": 1795437689839,
+      "tag": "0150_collections_mega_sans_especes",
+      "breakpoints": true
     }
   ]
 }

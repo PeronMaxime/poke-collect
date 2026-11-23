@@ -1,6 +1,7 @@
 import { tabUnlock, unlockParts } from '@poke/content';
 import type { MenuTabId, Region, UnlockCondition, Zone } from '@poke/content';
 import type { GameContext } from './context';
+import { regionalFormRegionId } from './forms';
 
 /** Avancement du joueur utile aux conditions de déblocage. */
 export interface PlayerProgress {
@@ -37,21 +38,28 @@ export function regionDexProgress(
 }
 
 /**
- * Seules les espèces du Pokédex d'une région partent en expédition et combattent dans cette région
- * (formes régionales comprises : un Goupix d'Alola reste une espèce de Kanto).
+ * Seuls les Pokémon d'une région partent en expédition et combattent dans cette région : ceux
+ * d'une espèce de son Pokédex, sauf une forme régionale, qui ne sert que dans la région de sa
+ * forme (Ossatueur d'Alola : à Alola seulement, jamais à Kanto).
  */
-export function isRegionalSpecies(ctx: GameContext, regionId: string, speciesId: number): boolean {
-  return ctx.region(regionId)?.speciesIds.includes(speciesId) ?? false;
+export function isRegionalPokemon(
+  ctx: GameContext,
+  regionId: string,
+  pokemon: { speciesId: number; formId?: number | null },
+): boolean {
+  const formRegionId = regionalFormRegionId(pokemon.formId);
+  if (formRegionId !== null) return formRegionId === regionId;
+  return ctx.region(regionId)?.speciesIds.includes(pokemon.speciesId) ?? false;
 }
 
-/** Espèces de l'équipe qui n'appartiennent pas au Pokédex de la région (sans doublons). */
+/** Espèces des Pokémon de l'équipe qui ne servent pas dans la région (sans doublons). */
 export function outOfRegionSpecies(
   ctx: GameContext,
   regionId: string,
-  team: readonly { speciesId: number }[],
+  team: readonly { speciesId: number; formId?: number | null }[],
 ): number[] {
   return [
-    ...new Set(team.map((m) => m.speciesId).filter((id) => !isRegionalSpecies(ctx, regionId, id))),
+    ...new Set(team.filter((m) => !isRegionalPokemon(ctx, regionId, m)).map((m) => m.speciesId)),
   ];
 }
 
@@ -82,6 +90,21 @@ export function isRegionUnlocked(
   return (
     !!progress.openedRegionIds?.has(region.id) ||
     (depth < MAX_REGION_DEPTH && isUnlocked(ctx, region.unlock, progress, depth + 1))
+  );
+}
+
+/**
+ * L'espèce figure-t-elle au Pokédex d'une région ouverte au joueur ? Sert à taire les évolutions
+ * vers une région pas encore débloquée (pastille « Évol. » du PC), qui restent possibles. Une
+ * espèce d'aucune région active répond non.
+ */
+export function isSpeciesInUnlockedRegion(
+  ctx: GameContext,
+  speciesId: number,
+  progress: PlayerProgress,
+): boolean {
+  return ctx.regions.some(
+    (r) => r.speciesIds.includes(speciesId) && isRegionUnlocked(ctx, r, progress),
   );
 }
 

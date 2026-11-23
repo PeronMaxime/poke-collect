@@ -29,6 +29,7 @@ import type {
   PurchaseLimit,
   ShopGift,
   QuestReward,
+  QuestKind,
   QuestStep,
   Trainer,
   TrainerPokemon,
@@ -311,6 +312,7 @@ export const quests = pgTable(
   {
     contentVersionId: versionId(),
     id: text('id').notNull(),
+    kind: text('kind').$type<QuestKind>().notNull().default('legendary'),
     order: integer('order').notNull(),
     name: text('name').notNull(),
     description: text('description').notNull(),

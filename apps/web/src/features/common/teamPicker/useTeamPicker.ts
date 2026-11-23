@@ -8,7 +8,7 @@ import {
   autoTeam,
   computeStats,
   hasAffinity,
-  isRegionalSpecies,
+  isRegionalPokemon,
   memberPower,
 } from '@poke/game-core';
 import type { AutoTeamRules, ExpeditionSite, GameContext } from '@poke/game-core';
@@ -106,8 +106,7 @@ export function useTeamPickerOver(
   const now = useNow(10_000);
   const matchesName = nameMatcher(search);
   const usablePokemon = pokemon.filter(
-    (p) =>
-      isUsable(p, now) && (!zone.regionId || isRegionalSpecies(ctx, zone.regionId, p.speciesId)),
+    (p) => isUsable(p, now) && (!zone.regionId || isRegionalPokemon(ctx, zone.regionId, p)),
   );
   const usable = new Set(usablePokemon.map((p) => p.id));
   const available = usablePokemon

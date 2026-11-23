@@ -8,6 +8,7 @@
       "encounterIntervalMinutes": 3,
       "encounterIntervalGrowthMinutes": 0.5,
       "lootIntervalMinutes": 6,
+      "lootIntervalGrowthMinutes": 1,
       "berryDurationMinutes": 10
     },
     "capture": {
@@ -5186,6 +5187,21 @@
       ]
     },
     {
+      "id": "blue-orb",
+      "name": "Orbe Bleu",
+      "description": "Orbe qui renferme le pouvoir des océans. Tenu par Kyogre, il déclenche sa Primo-Résurgence.",
+      "icon": null,
+      "category": "formItem",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "formChange",
+          "formId": 10077
+        }
+      ]
+    },
+    {
       "id": "bold-mint",
       "name": "Aromate Assuré",
       "description": "Utilisé sur un Pokémon : sa nature effective devient Assuré.",
@@ -5562,10 +5578,40 @@
       "effects": []
     },
     {
+      "id": "eclat-de-jade",
+      "name": "Éclat de jade",
+      "description": "Éclat de météorite si dur qu’aucune pioche ne l’entame.",
+      "icon": "/api/sprites/items/green-shard.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
       "id": "eclat-de-tonnerre",
       "name": "Éclat de tonnerre",
       "description": "Cristal tombé là où la foudre a frappé. On y entend gronder Raikou.",
       "icon": "/api/sprites/items/electric-gem.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "eclat-dore",
+      "name": "Éclat doré",
+      "description": "Éclat de météorite qui ne tient jamais en place : il file dès qu’on le lâche.",
+      "icon": "/api/sprites/items/yellow-shard.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
+    },
+    {
+      "id": "eclat-ecarlate",
+      "name": "Éclat écarlate",
+      "description": "Éclat de météorite qui rougeoie à chaque coup porté autour de lui.",
+      "icon": "/api/sprites/items/red-shard.png",
       "category": "quest",
       "rarity": "rare",
       "sellPrice": null,
@@ -6286,6 +6332,36 @@
       "effects": []
     },
     {
+      "id": "meteorite-attaque",
+      "name": "Météorite Attaque",
+      "description": "Fragment rougeoyant de la météorite de Deoxys. Tenu par Deoxys, il le fait passer en Forme Attaque.",
+      "icon": "/api/sprites/items/meteorite.png",
+      "category": "formItem",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "formChange",
+          "formId": 10001
+        }
+      ]
+    },
+    {
+      "id": "meteorite-defense",
+      "name": "Météorite Défense",
+      "description": "Fragment dur comme le diamant de la météorite de Deoxys. Tenu par Deoxys, il le fait passer en Forme Défense.",
+      "icon": "/api/sprites/items/meteorite.png",
+      "category": "formItem",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "formChange",
+          "formId": 10002
+        }
+      ]
+    },
+    {
       "id": "meteorite-shard",
       "name": "Fragment de Météorite",
       "description": "Une Méga-Gemme, laissée par Méga-Rayquaza au fond de son donjon.",
@@ -6297,6 +6373,21 @@
         {
           "type": "megaEvolution",
           "formId": 10079
+        }
+      ]
+    },
+    {
+      "id": "meteorite-vitesse",
+      "name": "Météorite Vitesse",
+      "description": "Fragment qui file entre les doigts, tombé de la météorite de Deoxys. Tenu par Deoxys, il le fait passer en Forme Vitesse.",
+      "icon": "/api/sprites/items/meteorite.png",
+      "category": "formItem",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "formChange",
+          "formId": 10003
         }
       ]
     },
@@ -6441,8 +6532,8 @@
     },
     {
       "id": "orbe-bleu",
-      "name": "Orbe Bleu",
-      "description": "Orbe qui renferme le pouvoir des océans. Il pulse quand la pluie tombe.",
+      "name": "Éclat d’Orbe Bleu",
+      "description": "Éclat de l’Orbe qui renferme le pouvoir des océans. Il pulse quand la pluie tombe.",
       "icon": "/api/sprites/items/blue-orb.png",
       "category": "quest",
       "rarity": "rare",
@@ -6461,8 +6552,8 @@
     },
     {
       "id": "orbe-rouge",
-      "name": "Orbe Rouge",
-      "description": "Orbe qui renferme le pouvoir des continents. Il brûle quand le soleil tape.",
+      "name": "Éclat d’Orbe Rouge",
+      "description": "Éclat de l’Orbe qui renferme le pouvoir des continents. Il brûle quand le soleil tape.",
       "icon": "/api/sprites/items/red-orb.png",
       "category": "quest",
       "rarity": "rare",
@@ -6503,6 +6594,16 @@
           "priceGrowth": 1.5
         }
       ]
+    },
+    {
+      "id": "parchemin-des-abysses",
+      "name": "Parchemin des abysses",
+      "description": "Lambeau d’une fresque recopiée par la Team Aqua. On y devine Kyogre couvert de lignes lumineuses.",
+      "icon": "/api/sprites/items/scroll-of-waters.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
+      "effects": []
     },
     {
       "id": "peat-block",
@@ -6802,6 +6903,21 @@
       "effects": []
     },
     {
+      "id": "red-orb",
+      "name": "Orbe Rouge",
+      "description": "Orbe qui renferme le pouvoir des continents. Tenu par Groudon, il déclenche sa Primo-Résurgence.",
+      "icon": null,
+      "category": "formItem",
+      "rarity": "legendary",
+      "sellPrice": null,
+      "effects": [
+        {
+          "type": "formChange",
+          "formId": 10078
+        }
+      ]
+    },
+    {
       "id": "relaxed-mint",
       "name": "Aromate Relax",
       "description": "Utilisé sur un Pokémon : sa nature effective devient Relax.",
@@ -6838,6 +6954,16 @@
       "category": "evolution",
       "rarity": "epic",
       "sellPrice": 3000,
+      "effects": []
+    },
+    {
+      "id": "roche-volcanique",
+      "name": "Roche volcanique",
+      "description": "Roche encore brûlante, frappée du sceau de la Team Magma.",
+      "icon": "/api/sprites/items/hard-stone.png",
+      "category": "quest",
+      "rarity": "rare",
+      "sellPrice": null,
       "effects": []
     },
     {
@@ -7411,21 +7537,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.55,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.2,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.1,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -7441,15 +7567,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.43,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.16,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -7465,15 +7591,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         }
       ]
     },
@@ -7483,15 +7609,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.17,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -7513,21 +7639,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.08,
           "min": 1,
-          "max": 2
+          "max": 3
         }
       ]
     },
@@ -7537,15 +7663,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.43,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.16,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -7561,7 +7687,7 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.41,
           "min": 1,
           "max": 3
         },
@@ -7579,15 +7705,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.43,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.16,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "nanab-berry",
@@ -7603,15 +7729,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.44,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.16,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -7627,15 +7753,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.42,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "nanab-berry",
@@ -7651,21 +7777,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.48,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.06,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "thunder-stone",
@@ -7681,15 +7807,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.43,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.16,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -7705,15 +7831,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "moon-stone",
@@ -7729,7 +7855,7 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.55,
           "min": 1,
           "max": 3
         },
@@ -7737,7 +7863,7 @@
           "itemId": "great-ball",
           "chance": 0.2,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -7753,15 +7879,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -7777,21 +7903,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.07,
           "min": 1,
-          "max": 1
+          "max": 3
         }
       ]
     },
@@ -7801,21 +7927,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.48,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.06,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "deep-sea-tooth",
@@ -7837,7 +7963,7 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.41,
           "min": 1,
           "max": 3
         },
@@ -7855,21 +7981,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.55,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.2,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.1,
           "min": 1,
-          "max": 2
+          "max": 3
         }
       ]
     },
@@ -7879,15 +8005,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.42,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "nanab-berry",
@@ -7903,21 +8029,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.52,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.08,
           "min": 1,
-          "max": 2
+          "max": 3
         }
       ]
     },
@@ -7927,21 +8053,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.18,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.07,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "water-stone",
@@ -7958,20 +8084,20 @@
         {
           "itemId": "poke-ball",
           "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.07,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -7993,21 +8119,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.08,
           "min": 1,
-          "max": 2
+          "max": 3
         }
       ]
     },
@@ -8017,21 +8143,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.52,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.08,
           "min": 1,
-          "max": 2
+          "max": 3
         }
       ]
     },
@@ -8041,21 +8167,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.07,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "water-stone",
@@ -8071,15 +8197,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "up-grade",
@@ -8095,15 +8221,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         }
       ]
     },
@@ -8113,21 +8239,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.49,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.07,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -8149,7 +8275,7 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.55,
           "min": 1,
           "max": 3
         },
@@ -8157,7 +8283,7 @@
           "itemId": "great-ball",
           "chance": 0.2,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -8179,21 +8305,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.07,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -8215,21 +8341,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.55,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.2,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.1,
           "min": 1,
-          "max": 2
+          "max": 3
         }
       ]
     },
@@ -8239,21 +8365,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.52,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.08,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "fire-stone",
@@ -8269,15 +8395,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.45,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -8293,7 +8419,7 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.55,
           "min": 1,
           "max": 3
         },
@@ -8301,7 +8427,7 @@
           "itemId": "great-ball",
           "chance": 0.2,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -8329,15 +8455,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -8359,7 +8485,7 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.55,
           "min": 1,
           "max": 3
         },
@@ -8367,7 +8493,7 @@
           "itemId": "great-ball",
           "chance": 0.2,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -8383,21 +8509,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.49,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.07,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -8419,15 +8545,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.42,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "helix-fossil",
@@ -8461,15 +8587,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -8491,21 +8617,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.48,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.06,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "sun-stone",
@@ -8521,21 +8647,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.07,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -8570,20 +8696,20 @@
         {
           "itemId": "poke-ball",
           "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.07,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "leaf-stone",
@@ -8600,20 +8726,20 @@
         {
           "itemId": "poke-ball",
           "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.07,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "kings-rock",
@@ -8629,21 +8755,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.48,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.06,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -8665,21 +8791,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.54,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.09,
           "min": 1,
-          "max": 2
+          "max": 3
         }
       ]
     },
@@ -8689,21 +8815,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.47,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
           "chance": 0.05,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -8719,15 +8845,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.55,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.2,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -8749,15 +8875,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.42,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "nanab-berry",
@@ -8773,15 +8899,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.4,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -8803,15 +8929,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.42,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.16,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -8827,15 +8953,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "leaf-stone",
@@ -8851,21 +8977,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.49,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.06,
           "min": 1,
-          "max": 1
+          "max": 3
         }
       ]
     },
@@ -8875,7 +9001,7 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.4,
           "min": 1,
           "max": 3
         },
@@ -8893,15 +9019,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.4,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -8923,15 +9049,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.4,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -8953,15 +9079,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.4,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -8983,7 +9109,7 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.4,
           "min": 1,
           "max": 3
         },
@@ -9001,15 +9127,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.41,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -9025,15 +9151,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.42,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.16,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -9049,15 +9175,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.43,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.16,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -9073,15 +9199,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.41,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "nanab-berry",
@@ -9097,15 +9223,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.4,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -9127,15 +9253,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.4,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -9157,21 +9283,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.19,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.08,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -9193,7 +9319,7 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.4,
           "min": 1,
           "max": 3
         },
@@ -9211,15 +9337,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.42,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -9235,15 +9361,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.41,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "nanab-berry",
@@ -9260,20 +9386,20 @@
         {
           "itemId": "poke-ball",
           "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.07,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "nanab-berry",
@@ -9295,21 +9421,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.52,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.08,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -9331,21 +9457,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.08,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -9367,21 +9493,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.46,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
           "chance": 0.05,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -9403,15 +9529,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.45,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.16,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "root-fossil",
@@ -9433,15 +9559,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.45,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -9457,15 +9583,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.43,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.16,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -9481,21 +9607,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.48,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.06,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -9523,15 +9649,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.47,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -9547,21 +9673,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.08,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -9595,21 +9721,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.08,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -9637,7 +9763,7 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.41,
           "min": 1,
           "max": 3
         },
@@ -9655,15 +9781,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.43,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.16,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -9679,15 +9805,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.45,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.16,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -9703,15 +9829,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.45,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -9727,21 +9853,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.46,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
           "chance": 0.05,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -9763,15 +9889,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -9793,21 +9919,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.08,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -9835,15 +9961,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.43,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.16,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "nanab-berry",
@@ -9859,15 +9985,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -9883,15 +10009,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.16,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -9907,21 +10033,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.49,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.06,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -9943,15 +10069,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.42,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "nanab-berry",
@@ -9967,21 +10093,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.52,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.08,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "linking-cord",
@@ -9997,15 +10123,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.48,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.18,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -10021,21 +10147,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.52,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.19,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.08,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "metal-coat",
@@ -10051,15 +10177,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.45,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -10075,15 +10201,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.41,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "razz-berry",
@@ -10099,21 +10225,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.5,
-          "min": 2,
-          "max": 4
+          "chance": 0.55,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.3,
+          "chance": 0.2,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.05,
+          "chance": 0.1,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -10129,15 +10255,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.47,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -10153,21 +10279,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.51,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.18,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.07,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "dragon-scale",
@@ -10183,15 +10309,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.7,
+          "chance": 0.42,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.05,
+          "chance": 0.15,
           "min": 1,
-          "max": 1
+          "max": 3
         },
         {
           "itemId": "nanab-berry",
@@ -10207,15 +10333,15 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.6,
+          "chance": 0.46,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.2,
+          "chance": 0.17,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "pomeg-berry",
@@ -10231,21 +10357,21 @@
       "entries": [
         {
           "itemId": "poke-ball",
-          "chance": 0.3,
-          "min": 2,
-          "max": 5
+          "chance": 0.55,
+          "min": 1,
+          "max": 3
         },
         {
           "itemId": "great-ball",
-          "chance": 0.4,
+          "chance": 0.2,
           "min": 1,
           "max": 3
         },
         {
           "itemId": "ultra-ball",
-          "chance": 0.3,
+          "chance": 0.1,
           "min": 1,
-          "max": 2
+          "max": 3
         },
         {
           "itemId": "sitrus-berry",
@@ -12254,18 +12380,6 @@
           "weight": 14,
           "minLevel": 6,
           "maxLevel": 9
-        },
-        {
-          "speciesId": 264,
-          "weight": 4,
-          "minLevel": 20,
-          "maxLevel": 22
-        },
-        {
-          "speciesId": 262,
-          "weight": 4,
-          "minLevel": 18,
-          "maxLevel": 20
         }
       ],
       "lootTableId": "butin-zone-route-116",
@@ -12433,12 +12547,6 @@
           "weight": 6,
           "minLevel": 8,
           "maxLevel": 11
-        },
-        {
-          "speciesId": 195,
-          "weight": 3,
-          "minLevel": 15,
-          "maxLevel": 18
         }
       ],
       "lootTableId": "butin-zone-caves-jumelles",
@@ -12554,7 +12662,10 @@
       "minPower": 500,
       "requiredTypes": [],
       "affinityTypes": [
-        "fighting"
+        "fighting",
+        "water",
+        "grass",
+        "ice"
       ],
       "minDurationMinutes": 3,
       "encounters": [
@@ -12590,7 +12701,7 @@
         },
         {
           "speciesId": 294,
-          "weight": 4,
+          "weight": 2,
           "minLevel": 20,
           "maxLevel": 22
         }
@@ -13137,12 +13248,6 @@
           "weight": 10,
           "minLevel": 9,
           "maxLevel": 13
-        },
-        {
-          "speciesId": 279,
-          "weight": 4,
-          "minLevel": 25,
-          "maxLevel": 27
         }
       ],
       "lootTableId": "butin-zone-route-109",
@@ -13235,18 +13340,6 @@
           "weight": 4,
           "minLevel": 17,
           "maxLevel": 20
-        },
-        {
-          "speciesId": 53,
-          "weight": 3,
-          "minLevel": 18,
-          "maxLevel": 21
-        },
-        {
-          "speciesId": 57,
-          "weight": 3,
-          "minLevel": 18,
-          "maxLevel": 21
         }
       ],
       "lootTableId": "butin-zone-routes-5-6",
@@ -13337,12 +13430,6 @@
           "weight": 4,
           "minLevel": 16,
           "maxLevel": 18
-        },
-        {
-          "speciesId": 168,
-          "weight": 4,
-          "minLevel": 20,
-          "maxLevel": 22
         }
       ],
       "lootTableId": "butin-zone-bois-aux-chenes",
@@ -13400,7 +13487,8 @@
         },
         {
           "speciesId": 51,
-          "weight": 10,
+          "formId": null,
+          "weight": 1,
           "minLevel": 26,
           "maxLevel": 31
         }
@@ -13487,18 +13575,6 @@
           "weight": 9,
           "minLevel": 10,
           "maxLevel": 14
-        },
-        {
-          "speciesId": 264,
-          "weight": 4,
-          "minLevel": 20,
-          "maxLevel": 22
-        },
-        {
-          "speciesId": 317,
-          "weight": 4,
-          "minLevel": 26,
-          "maxLevel": 28
         }
       ],
       "lootTableId": "butin-zone-route-110",
@@ -13589,18 +13665,6 @@
           "weight": 8,
           "minLevel": 12,
           "maxLevel": 16
-        },
-        {
-          "speciesId": 262,
-          "weight": 5,
-          "minLevel": 18,
-          "maxLevel": 20
-        },
-        {
-          "speciesId": 264,
-          "weight": 5,
-          "minLevel": 20,
-          "maxLevel": 22
         },
         {
           "speciesId": 352,
@@ -13697,18 +13761,6 @@
           "maxLevel": 16
         },
         {
-          "speciesId": 29,
-          "weight": 6,
-          "minLevel": 12,
-          "maxLevel": 16
-        },
-        {
-          "speciesId": 32,
-          "weight": 6,
-          "minLevel": 12,
-          "maxLevel": 16
-        },
-        {
           "speciesId": 162,
           "weight": 4,
           "minLevel": 16,
@@ -13750,7 +13802,8 @@
       "minPower": 1650,
       "requiredTypes": [],
       "affinityTypes": [
-        "fighting"
+        "ground",
+        "psychic"
       ],
       "minDurationMinutes": 3,
       "encounters": [
@@ -13795,18 +13848,6 @@
           "weight": 7,
           "minLevel": 18,
           "maxLevel": 22
-        },
-        {
-          "speciesId": 20,
-          "weight": 8,
-          "minLevel": 20,
-          "maxLevel": 24
-        },
-        {
-          "speciesId": 22,
-          "weight": 8,
-          "minLevel": 20,
-          "maxLevel": 24
         }
       ],
       "lootTableId": "butin-zone-routes-9-10",
@@ -13867,7 +13908,8 @@
         },
         {
           "speciesId": 202,
-          "weight": 7,
+          "formId": null,
+          "weight": 3,
           "minLevel": 14,
           "maxLevel": 18
         },
@@ -13973,12 +14015,6 @@
           "weight": 10,
           "minLevel": 12,
           "maxLevel": 16
-        },
-        {
-          "speciesId": 317,
-          "weight": 4,
-          "minLevel": 26,
-          "maxLevel": 28
         }
       ],
       "lootTableId": "butin-zone-chemin-ardent",
@@ -14050,12 +14086,6 @@
           "weight": 10,
           "minLevel": 18,
           "maxLevel": 24
-        },
-        {
-          "speciesId": 42,
-          "weight": 5,
-          "minLevel": 22,
-          "maxLevel": 26
         }
       ],
       "lootTableId": "butin-zone-tunnel-roche",
@@ -14142,18 +14172,6 @@
           "weight": 8,
           "minLevel": 16,
           "maxLevel": 20
-        },
-        {
-          "speciesId": 277,
-          "weight": 6,
-          "minLevel": 22,
-          "maxLevel": 24
-        },
-        {
-          "speciesId": 28,
-          "weight": 4,
-          "minLevel": 22,
-          "maxLevel": 24
         }
       ],
       "lootTableId": "butin-zone-routes-111-113",
@@ -14226,18 +14244,6 @@
           "weight": 5,
           "minLevel": 20,
           "maxLevel": 22
-        },
-        {
-          "speciesId": 166,
-          "weight": 6,
-          "minLevel": 18,
-          "maxLevel": 20
-        },
-        {
-          "speciesId": 168,
-          "weight": 6,
-          "minLevel": 22,
-          "maxLevel": 24
         },
         {
           "speciesId": 58,
@@ -14443,7 +14449,7 @@
         },
         {
           "speciesId": 67,
-          "weight": 4,
+          "weight": 2,
           "minLevel": 28,
           "maxLevel": 30
         }
@@ -14588,13 +14594,15 @@
         },
         {
           "speciesId": 93,
-          "weight": 10,
+          "formId": null,
+          "weight": 7,
           "minLevel": 25,
           "maxLevel": 30
         },
         {
           "speciesId": 105,
-          "weight": 5,
+          "formId": null,
+          "weight": 2,
           "minLevel": 28,
           "maxLevel": 32
         }
@@ -14661,7 +14669,7 @@
         },
         {
           "speciesId": 271,
-          "weight": 6,
+          "weight": 3,
           "minLevel": 20,
           "maxLevel": 24
         },
@@ -14679,7 +14687,7 @@
         },
         {
           "speciesId": 274,
-          "weight": 5,
+          "weight": 3,
           "minLevel": 20,
           "maxLevel": 24
         },
@@ -14785,13 +14793,15 @@
         },
         {
           "speciesId": 70,
-          "weight": 8,
+          "formId": null,
+          "weight": 5,
           "minLevel": 26,
           "maxLevel": 30
         },
         {
           "speciesId": 17,
-          "weight": 8,
+          "formId": null,
+          "weight": 5,
           "minLevel": 26,
           "maxLevel": 30
         },
@@ -14866,20 +14876,8 @@
           "maxLevel": 22
         },
         {
-          "speciesId": 164,
-          "weight": 8,
-          "minLevel": 20,
-          "maxLevel": 24
-        },
-        {
           "speciesId": 52,
           "weight": 15,
-          "minLevel": 18,
-          "maxLevel": 22
-        },
-        {
-          "speciesId": 20,
-          "weight": 10,
           "minLevel": 18,
           "maxLevel": 22
         },
@@ -14900,18 +14898,6 @@
           "weight": 10,
           "minLevel": 18,
           "maxLevel": 22
-        },
-        {
-          "speciesId": 22,
-          "weight": 6,
-          "minLevel": 20,
-          "maxLevel": 24
-        },
-        {
-          "speciesId": 210,
-          "weight": 3,
-          "minLevel": 23,
-          "maxLevel": 25
         }
       ],
       "lootTableId": "butin-zone-routes-38-39",
@@ -14981,7 +14967,7 @@
         },
         {
           "speciesId": 28,
-          "weight": 6,
+          "weight": 3,
           "minLevel": 24,
           "maxLevel": 28
         },
@@ -14993,13 +14979,13 @@
         },
         {
           "speciesId": 332,
-          "weight": 4,
+          "weight": 2,
           "minLevel": 32,
           "maxLevel": 34
         },
         {
           "speciesId": 329,
-          "weight": 3,
+          "weight": 2,
           "minLevel": 35,
           "maxLevel": 37
         }
@@ -15074,25 +15060,7 @@
           "maxLevel": 28
         },
         {
-          "speciesId": 22,
-          "weight": 10,
-          "minLevel": 25,
-          "maxLevel": 30
-        },
-        {
-          "speciesId": 20,
-          "weight": 8,
-          "minLevel": 25,
-          "maxLevel": 30
-        },
-        {
           "speciesId": 85,
-          "weight": 4,
-          "minLevel": 28,
-          "maxLevel": 32
-        },
-        {
-          "speciesId": 53,
           "weight": 4,
           "minLevel": 28,
           "maxLevel": 32
@@ -15152,12 +15120,6 @@
           "maxLevel": 26
         },
         {
-          "speciesId": 180,
-          "weight": 6,
-          "minLevel": 24,
-          "maxLevel": 28
-        },
-        {
           "speciesId": 183,
           "weight": 10,
           "minLevel": 22,
@@ -15192,12 +15154,6 @@
           "weight": 8,
           "minLevel": 22,
           "maxLevel": 28
-        },
-        {
-          "speciesId": 224,
-          "weight": 3,
-          "minLevel": 25,
-          "maxLevel": 30
         }
       ],
       "lootTableId": "butin-zone-routes-42-44",
@@ -15241,9 +15197,12 @@
       "affinityTypes": [
         "fighting",
         "ground",
+        "rock",
         "steel",
         "water",
         "grass",
+        "electric",
+        "psychic",
         "ice"
       ],
       "minDurationMinutes": 60,
@@ -15253,12 +15212,6 @@
           "weight": 16,
           "minLevel": 22,
           "maxLevel": 28
-        },
-        {
-          "speciesId": 184,
-          "weight": 4,
-          "minLevel": 26,
-          "maxLevel": 30
         },
         {
           "speciesId": 66,
@@ -15274,7 +15227,8 @@
         },
         {
           "speciesId": 75,
-          "weight": 8,
+          "formId": null,
+          "weight": 5,
           "minLevel": 25,
           "maxLevel": 30
         },
@@ -15363,20 +15317,14 @@
           "maxLevel": 28
         },
         {
-          "speciesId": 310,
-          "weight": 6,
-          "minLevel": 26,
-          "maxLevel": 30
-        },
-        {
           "speciesId": 82,
-          "weight": 5,
+          "weight": 3,
           "minLevel": 30,
           "maxLevel": 32
         },
         {
           "speciesId": 101,
-          "weight": 3,
+          "weight": 2,
           "minLevel": 30,
           "maxLevel": 32
         }
@@ -15482,26 +15430,8 @@
           "maxLevel": 36
         },
         {
-          "speciesId": 73,
-          "weight": 5,
-          "minLevel": 34,
-          "maxLevel": 40
-        },
-        {
-          "speciesId": 119,
-          "weight": 3,
-          "minLevel": 34,
-          "maxLevel": 40
-        },
-        {
           "speciesId": 117,
           "weight": 3,
-          "minLevel": 34,
-          "maxLevel": 40
-        },
-        {
-          "speciesId": 99,
-          "weight": 2,
           "minLevel": 34,
           "maxLevel": 40
         }
@@ -15538,7 +15468,8 @@
       "requiredTypes": [],
       "affinityTypes": [
         "ground",
-        "psychic"
+        "rock",
+        "water"
       ],
       "minDurationMinutes": 60,
       "encounters": [
@@ -15573,28 +15504,10 @@
           "maxLevel": 38
         },
         {
-          "speciesId": 20,
-          "weight": 10,
-          "minLevel": 32,
-          "maxLevel": 38
-        },
-        {
           "speciesId": 132,
           "weight": 8,
           "minLevel": 30,
           "maxLevel": 36
-        },
-        {
-          "speciesId": 110,
-          "weight": 6,
-          "minLevel": 34,
-          "maxLevel": 40
-        },
-        {
-          "speciesId": 89,
-          "weight": 6,
-          "minLevel": 34,
-          "maxLevel": 40
         }
       ],
       "lootTableId": "butin-zone-manoir-pokemon",
@@ -15667,18 +15580,6 @@
           "maxLevel": 28
         },
         {
-          "speciesId": 279,
-          "weight": 6,
-          "minLevel": 25,
-          "maxLevel": 30
-        },
-        {
-          "speciesId": 73,
-          "weight": 4,
-          "minLevel": 28,
-          "maxLevel": 32
-        },
-        {
           "speciesId": 129,
           "weight": 8,
           "minLevel": 20,
@@ -15740,7 +15641,8 @@
         },
         {
           "speciesId": 226,
-          "weight": 5,
+          "formId": null,
+          "weight": 3,
           "minLevel": 24,
           "maxLevel": 30
         },
@@ -15749,12 +15651,6 @@
           "weight": 6,
           "minLevel": 22,
           "maxLevel": 28
-        },
-        {
-          "speciesId": 171,
-          "weight": 3,
-          "minLevel": 27,
-          "maxLevel": 30
         },
         {
           "speciesId": 72,
@@ -15836,15 +15732,10 @@
       "encounters": [
         {
           "speciesId": 180,
-          "weight": 16,
+          "formId": null,
+          "weight": 3,
           "minLevel": 28,
           "maxLevel": 34
-        },
-        {
-          "speciesId": 181,
-          "weight": 4,
-          "minLevel": 32,
-          "maxLevel": 36
         },
         {
           "speciesId": 81,
@@ -15854,7 +15745,8 @@
         },
         {
           "speciesId": 82,
-          "weight": 8,
+          "formId": null,
+          "weight": 6,
           "minLevel": 32,
           "maxLevel": 36
         },
@@ -15872,7 +15764,8 @@
         },
         {
           "speciesId": 171,
-          "weight": 10,
+          "formId": null,
+          "weight": 3,
           "minLevel": 28,
           "maxLevel": 34
         },
@@ -15920,51 +15813,65 @@
       "minPower": 3350,
       "requiredTypes": [],
       "affinityTypes": [
-        "fighting"
+        "fighting",
+        "ground",
+        "rock",
+        "water",
+        "grass",
+        "electric",
+        "psychic",
+        "ice"
       ],
       "minDurationMinutes": 60,
       "encounters": [
         {
           "speciesId": 22,
-          "weight": 18,
-          "minLevel": 38,
-          "maxLevel": 44
-        },
-        {
-          "speciesId": 57,
-          "weight": 18,
+          "formId": null,
+          "weight": 1,
           "minLevel": 38,
           "maxLevel": 44
         },
         {
           "speciesId": 24,
-          "weight": 16,
+          "formId": null,
+          "weight": 1,
           "minLevel": 38,
           "maxLevel": 44
         },
         {
           "speciesId": 28,
-          "weight": 16,
+          "formId": null,
+          "weight": 1,
           "minLevel": 38,
           "maxLevel": 44
         },
         {
-          "speciesId": 20,
-          "weight": 12,
+          "speciesId": 21,
+          "formId": null,
+          "weight": 10,
           "minLevel": 38,
           "maxLevel": 44
         },
         {
-          "speciesId": 85,
+          "speciesId": 23,
+          "formId": null,
           "weight": 10,
-          "minLevel": 40,
-          "maxLevel": 45
+          "minLevel": 38,
+          "maxLevel": 44
         },
         {
-          "speciesId": 47,
+          "speciesId": 27,
+          "formId": null,
           "weight": 10,
-          "minLevel": 40,
-          "maxLevel": 45
+          "minLevel": 38,
+          "maxLevel": 44
+        },
+        {
+          "speciesId": 56,
+          "formId": null,
+          "weight": 10,
+          "minLevel": 38,
+          "maxLevel": 44
         }
       ],
       "lootTableId": "butin-zone-route-23",
@@ -16029,14 +15936,8 @@
           "maxLevel": 34
         },
         {
-          "speciesId": 284,
-          "weight": 5,
-          "minLevel": 28,
-          "maxLevel": 34
-        },
-        {
           "speciesId": 274,
-          "weight": 8,
+          "weight": 4,
           "minLevel": 28,
           "maxLevel": 34
         },
@@ -16048,13 +15949,13 @@
         },
         {
           "speciesId": 44,
-          "weight": 5,
+          "weight": 3,
           "minLevel": 28,
           "maxLevel": 34
         },
         {
           "speciesId": 264,
-          "weight": 10,
+          "weight": 5,
           "minLevel": 28,
           "maxLevel": 34
         },
@@ -16063,12 +15964,6 @@
           "weight": 8,
           "minLevel": 28,
           "maxLevel": 34
-        },
-        {
-          "speciesId": 319,
-          "weight": 3,
-          "minLevel": 32,
-          "maxLevel": 36
         },
         {
           "speciesId": 359,
@@ -16150,12 +16045,6 @@
           "weight": 14,
           "minLevel": 30,
           "maxLevel": 36
-        },
-        {
-          "speciesId": 195,
-          "weight": 8,
-          "minLevel": 32,
-          "maxLevel": 38
         },
         {
           "speciesId": 193,
@@ -16266,19 +16155,19 @@
         },
         {
           "speciesId": 354,
-          "weight": 5,
+          "weight": 3,
           "minLevel": 37,
           "maxLevel": 40
         },
         {
           "speciesId": 356,
-          "weight": 5,
+          "weight": 3,
           "minLevel": 37,
           "maxLevel": 40
         },
         {
           "speciesId": 93,
-          "weight": 4,
+          "weight": 2,
           "minLevel": 32,
           "maxLevel": 38
         }
@@ -16315,9 +16204,12 @@
       "image": null,
       "habitat": "cave",
       "enabled": true,
-      "minPower": 3600,
+      "minPower": 3300,
       "requiredTypes": [],
       "affinityTypes": [
+        "fighting",
+        "ground",
+        "steel",
         "water",
         "grass",
         "ice"
@@ -16326,13 +16218,15 @@
       "encounters": [
         {
           "speciesId": 67,
-          "weight": 18,
+          "formId": null,
+          "weight": 4,
           "minLevel": 42,
           "maxLevel": 48
         },
         {
           "speciesId": 75,
-          "weight": 18,
+          "formId": null,
+          "weight": 4,
           "minLevel": 42,
           "maxLevel": 48
         },
@@ -16344,7 +16238,8 @@
         },
         {
           "speciesId": 42,
-          "weight": 14,
+          "formId": null,
+          "weight": 4,
           "minLevel": 42,
           "maxLevel": 48
         },
@@ -16359,12 +16254,6 @@
           "weight": 10,
           "minLevel": 40,
           "maxLevel": 44
-        },
-        {
-          "speciesId": 105,
-          "weight": 8,
-          "minLevel": 44,
-          "maxLevel": 48
         },
         {
           "speciesId": 41,
@@ -16415,8 +16304,10 @@
       "minPower": 3350,
       "requiredTypes": [],
       "affinityTypes": [
-        "grass",
-        "electric"
+        "fighting",
+        "rock",
+        "steel",
+        "fire"
       ],
       "minDurationMinutes": 60,
       "encounters": [
@@ -16434,13 +16325,13 @@
         },
         {
           "speciesId": 364,
-          "weight": 6,
+          "weight": 3,
           "minLevel": 36,
           "maxLevel": 40
         },
         {
           "speciesId": 362,
-          "weight": 3,
+          "weight": 2,
           "minLevel": 42,
           "maxLevel": 44
         },
@@ -16449,12 +16340,6 @@
           "weight": 10,
           "minLevel": 32,
           "maxLevel": 38
-        },
-        {
-          "speciesId": 42,
-          "weight": 10,
-          "minLevel": 34,
-          "maxLevel": 40
         },
         {
           "speciesId": 72,
@@ -16467,12 +16352,6 @@
           "weight": 6,
           "minLevel": 32,
           "maxLevel": 38
-        },
-        {
-          "speciesId": 342,
-          "weight": 4,
-          "minLevel": 34,
-          "maxLevel": 40
         }
       ],
       "lootTableId": "butin-zone-grotte-trefonds",
@@ -16628,12 +16507,6 @@
           "maxLevel": 38
         },
         {
-          "speciesId": 221,
-          "weight": 4,
-          "minLevel": 36,
-          "maxLevel": 40
-        },
-        {
           "speciesId": 225,
           "weight": 7,
           "minLevel": 32,
@@ -16662,12 +16535,6 @@
           "weight": 12,
           "minLevel": 32,
           "maxLevel": 38
-        },
-        {
-          "speciesId": 42,
-          "weight": 10,
-          "minLevel": 34,
-          "maxLevel": 40
         },
         {
           "speciesId": 74,
@@ -16740,19 +16607,22 @@
         },
         {
           "speciesId": 17,
-          "weight": 16,
+          "formId": null,
+          "weight": 11,
           "minLevel": 28,
           "maxLevel": 32
         },
         {
           "speciesId": 44,
-          "weight": 14,
+          "formId": null,
+          "weight": 7,
           "minLevel": 28,
           "maxLevel": 32
         },
         {
           "speciesId": 70,
-          "weight": 14,
+          "formId": null,
+          "weight": 5,
           "minLevel": 28,
           "maxLevel": 32
         },
@@ -16816,6 +16686,7 @@
         "fighting",
         "ground",
         "steel",
+        "fire",
         "water",
         "grass"
       ],
@@ -16823,38 +16694,20 @@
       "encounters": [
         {
           "speciesId": 294,
-          "weight": 10,
+          "weight": 5,
           "minLevel": 36,
           "maxLevel": 42
         },
         {
-          "speciesId": 295,
-          "weight": 4,
-          "minLevel": 40,
-          "maxLevel": 44
-        },
-        {
           "speciesId": 297,
-          "weight": 8,
+          "weight": 4,
           "minLevel": 36,
           "maxLevel": 42
         },
         {
           "speciesId": 305,
-          "weight": 10,
+          "weight": 5,
           "minLevel": 36,
-          "maxLevel": 42
-        },
-        {
-          "speciesId": 306,
-          "weight": 3,
-          "minLevel": 42,
-          "maxLevel": 44
-        },
-        {
-          "speciesId": 308,
-          "weight": 8,
-          "minLevel": 37,
           "maxLevel": 42
         },
         {
@@ -16870,16 +16723,28 @@
           "maxLevel": 42
         },
         {
-          "speciesId": 42,
+          "speciesId": 75,
+          "weight": 5,
+          "minLevel": 38,
+          "maxLevel": 44
+        },
+        {
+          "speciesId": 304,
           "weight": 10,
           "minLevel": 36,
           "maxLevel": 42
         },
         {
-          "speciesId": 75,
+          "speciesId": 293,
           "weight": 10,
-          "minLevel": 38,
-          "maxLevel": 44
+          "minLevel": 36,
+          "maxLevel": 42
+        },
+        {
+          "speciesId": 307,
+          "weight": 10,
+          "minLevel": 36,
+          "maxLevel": 42
         }
       ],
       "lootTableId": "butin-zone-route-victoire-hoenn",
@@ -16913,9 +16778,9 @@
       "minPower": 3600,
       "requiredTypes": [],
       "affinityTypes": [
-        "water",
-        "grass",
-        "ice"
+        "flying",
+        "psychic",
+        "fairy"
       ],
       "minDurationMinutes": 60,
       "encounters": [
@@ -16926,22 +16791,10 @@
           "maxLevel": 42
         },
         {
-          "speciesId": 232,
-          "weight": 4,
-          "minLevel": 40,
-          "maxLevel": 44
-        },
-        {
           "speciesId": 216,
           "weight": 10,
           "minLevel": 36,
           "maxLevel": 42
-        },
-        {
-          "speciesId": 217,
-          "weight": 5,
-          "minLevel": 40,
-          "maxLevel": 44
         },
         {
           "speciesId": 74,
@@ -16950,14 +16803,9 @@
           "maxLevel": 42
         },
         {
-          "speciesId": 75,
-          "weight": 10,
-          "minLevel": 38,
-          "maxLevel": 44
-        },
-        {
           "speciesId": 57,
-          "weight": 10,
+          "formId": null,
+          "weight": 6,
           "minLevel": 38,
           "maxLevel": 44
         },
@@ -17070,18 +16918,6 @@
           "maxLevel": 30
         },
         {
-          "speciesId": 47,
-          "weight": 4,
-          "minLevel": 30,
-          "maxLevel": 34
-        },
-        {
-          "speciesId": 49,
-          "weight": 4,
-          "minLevel": 30,
-          "maxLevel": 34
-        },
-        {
           "speciesId": 115,
           "weight": 3,
           "minLevel": 25,
@@ -17180,50 +17016,38 @@
           "maxLevel": 46
         },
         {
-          "speciesId": 321,
-          "weight": 4,
-          "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 319,
-          "weight": 8,
-          "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
           "speciesId": 73,
-          "weight": 10,
-          "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 279,
-          "weight": 8,
-          "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 340,
-          "weight": 6,
-          "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 364,
-          "weight": 6,
+          "weight": 5,
           "minLevel": 40,
           "maxLevel": 46
         },
         {
           "speciesId": 117,
-          "weight": 6,
+          "weight": 3,
           "minLevel": 40,
           "maxLevel": 46
         },
         {
           "speciesId": 130,
-          "weight": 4,
+          "weight": 2,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 318,
+          "weight": 10,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 278,
+          "weight": 10,
+          "minLevel": 40,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 339,
+          "weight": 10,
           "minLevel": 40,
           "maxLevel": 46
         }
@@ -17268,69 +17092,52 @@
       "minDurationMinutes": 60,
       "encounters": [
         {
-          "speciesId": 164,
-          "weight": 10,
-          "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
           "speciesId": 178,
-          "weight": 8,
+          "formId": null,
+          "weight": 2,
           "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 195,
-          "weight": 8,
-          "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 232,
-          "weight": 6,
-          "minLevel": 42,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 229,
-          "weight": 5,
-          "minLevel": 42,
           "maxLevel": 46
         },
         {
           "speciesId": 20,
-          "weight": 10,
-          "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 22,
-          "weight": 10,
+          "formId": null,
+          "weight": 4,
           "minLevel": 40,
           "maxLevel": 46
         },
         {
           "speciesId": 78,
-          "weight": 8,
+          "formId": null,
+          "weight": 4,
           "minLevel": 42,
           "maxLevel": 46
         },
         {
           "speciesId": 85,
-          "weight": 8,
+          "formId": null,
+          "weight": 4,
           "minLevel": 42,
           "maxLevel": 46
         },
         {
-          "speciesId": 57,
-          "weight": 8,
+          "speciesId": 19,
+          "formId": null,
+          "weight": 10,
           "minLevel": 42,
           "maxLevel": 46
         },
         {
-          "speciesId": 73,
-          "weight": 8,
-          "minLevel": 40,
+          "speciesId": 77,
+          "formId": null,
+          "weight": 10,
+          "minLevel": 42,
+          "maxLevel": 46
+        },
+        {
+          "speciesId": 84,
+          "formId": null,
+          "weight": 10,
+          "minLevel": 42,
           "maxLevel": 46
         }
       ],
@@ -17381,26 +17188,15 @@
       "minDurationMinutes": 240,
       "encounters": [
         {
-          "speciesId": 56,
-          "weight": 30,
-          "minLevel": 30,
-          "maxLevel": 36
-        },
-        {
           "speciesId": 66,
           "weight": 30,
           "minLevel": 30,
           "maxLevel": 36
         },
         {
-          "speciesId": 57,
-          "weight": 15,
-          "minLevel": 34,
-          "maxLevel": 40
-        },
-        {
           "speciesId": 67,
-          "weight": 15,
+          "formId": null,
+          "weight": 5,
           "minLevel": 34,
           "maxLevel": 40
         },
@@ -17415,6 +17211,13 @@
           "weight": 5,
           "minLevel": 30,
           "maxLevel": 35
+        },
+        {
+          "speciesId": 56,
+          "formId": null,
+          "weight": 17,
+          "minLevel": 30,
+          "maxLevel": 36
         }
       ],
       "lootTableId": "butin-zone-dojo-karate",
@@ -17698,12 +17501,6 @@
           "maxLevel": 22
         },
         {
-          "speciesId": 192,
-          "weight": 4,
-          "minLevel": 22,
-          "maxLevel": 26
-        },
-        {
           "speciesId": 187,
           "weight": 16,
           "minLevel": 18,
@@ -17735,7 +17532,8 @@
         },
         {
           "speciesId": 185,
-          "weight": 4,
+          "formId": null,
+          "weight": 2,
           "minLevel": 20,
           "maxLevel": 22
         }
@@ -17803,7 +17601,7 @@
         },
         {
           "speciesId": 42,
-          "weight": 6,
+          "weight": 3,
           "minLevel": 22,
           "maxLevel": 26
         },
@@ -17827,7 +17625,7 @@
         },
         {
           "speciesId": 340,
-          "weight": 4,
+          "weight": 2,
           "minLevel": 30,
           "maxLevel": 32
         },
@@ -17933,24 +17731,6 @@
           "maxLevel": 36
         },
         {
-          "speciesId": 82,
-          "weight": 7,
-          "minLevel": 38,
-          "maxLevel": 42
-        },
-        {
-          "speciesId": 101,
-          "weight": 7,
-          "minLevel": 38,
-          "maxLevel": 42
-        },
-        {
-          "speciesId": 97,
-          "weight": 6,
-          "minLevel": 38,
-          "maxLevel": 42
-        },
-        {
           "speciesId": 64,
           "weight": 4,
           "minLevel": 38,
@@ -18037,21 +17817,17 @@
         },
         {
           "speciesId": 82,
-          "weight": 10,
+          "formId": null,
+          "weight": 5,
           "minLevel": 32,
           "maxLevel": 36
         },
         {
           "speciesId": 101,
-          "weight": 10,
+          "formId": null,
+          "weight": 5,
           "minLevel": 32,
           "maxLevel": 36
-        },
-        {
-          "speciesId": 26,
-          "weight": 4,
-          "minLevel": 34,
-          "maxLevel": 38
         },
         {
           "speciesId": 125,
@@ -18139,7 +17915,7 @@
         },
         {
           "speciesId": 342,
-          "weight": 4,
+          "weight": 2,
           "minLevel": 30,
           "maxLevel": 32
         },
@@ -18214,12 +17990,6 @@
           "maxLevel": 26
         },
         {
-          "speciesId": 166,
-          "weight": 6,
-          "minLevel": 24,
-          "maxLevel": 28
-        },
-        {
           "speciesId": 167,
           "weight": 12,
           "minLevel": 20,
@@ -18227,7 +17997,8 @@
         },
         {
           "speciesId": 168,
-          "weight": 6,
+          "formId": null,
+          "weight": 3,
           "minLevel": 24,
           "maxLevel": 28
         },
@@ -18248,18 +18019,6 @@
           "weight": 8,
           "minLevel": 20,
           "maxLevel": 26
-        },
-        {
-          "speciesId": 12,
-          "weight": 6,
-          "minLevel": 24,
-          "maxLevel": 28
-        },
-        {
-          "speciesId": 15,
-          "weight": 6,
-          "minLevel": 24,
-          "maxLevel": 28
         },
         {
           "speciesId": 48,
@@ -18359,26 +18118,9 @@
           "maxLevel": 38
         },
         {
-          "speciesId": 87,
-          "weight": 8,
-          "minLevel": 36,
-          "maxLevel": 42
-        },
-        {
-          "speciesId": 91,
-          "weight": 4,
-          "minLevel": 38,
-          "maxLevel": 42
-        },
-        {
           "speciesId": 80,
-          "weight": 6,
-          "minLevel": 36,
-          "maxLevel": 42
-        },
-        {
-          "speciesId": 55,
-          "weight": 6,
+          "formId": null,
+          "weight": 4,
           "minLevel": 36,
           "maxLevel": 42
         },
@@ -18480,7 +18222,7 @@
         },
         {
           "speciesId": 202,
-          "weight": 8,
+          "weight": 4,
           "minLevel": 28,
           "maxLevel": 34
         },
@@ -18562,14 +18304,9 @@
         },
         {
           "speciesId": 195,
-          "weight": 10,
+          "formId": null,
+          "weight": 5,
           "minLevel": 28,
-          "maxLevel": 34
-        },
-        {
-          "speciesId": 178,
-          "weight": 8,
-          "minLevel": 30,
           "maxLevel": 34
         },
         {
@@ -18597,18 +18334,6 @@
           "maxLevel": 34
         },
         {
-          "speciesId": 84,
-          "weight": 10,
-          "minLevel": 28,
-          "maxLevel": 34
-        },
-        {
-          "speciesId": 27,
-          "weight": 8,
-          "minLevel": 28,
-          "maxLevel": 34
-        },
-        {
           "speciesId": 207,
           "weight": 4,
           "minLevel": 28,
@@ -18622,7 +18347,8 @@
         },
         {
           "speciesId": 235,
-          "weight": 6,
+          "formId": null,
+          "weight": 2,
           "minLevel": 28,
           "maxLevel": 34
         }
@@ -18679,26 +18405,16 @@
       "minDurationMinutes": 240,
       "encounters": [
         {
-          "speciesId": 217,
-          "weight": 12,
-          "minLevel": 45,
-          "maxLevel": 52
-        },
-        {
           "speciesId": 232,
-          "weight": 10,
-          "minLevel": 45,
-          "maxLevel": 52
-        },
-        {
-          "speciesId": 229,
-          "weight": 8,
+          "formId": null,
+          "weight": 3,
           "minLevel": 45,
           "maxLevel": 52
         },
         {
           "speciesId": 75,
-          "weight": 12,
+          "formId": null,
+          "weight": 6,
           "minLevel": 45,
           "maxLevel": 52
         },
@@ -18710,26 +18426,16 @@
         },
         {
           "speciesId": 57,
-          "weight": 10,
+          "formId": null,
+          "weight": 5,
           "minLevel": 45,
           "maxLevel": 52
         },
         {
           "speciesId": 105,
-          "weight": 8,
+          "formId": null,
+          "weight": 5,
           "minLevel": 45,
-          "maxLevel": 52
-        },
-        {
-          "speciesId": 59,
-          "weight": 6,
-          "minLevel": 48,
-          "maxLevel": 52
-        },
-        {
-          "speciesId": 78,
-          "weight": 6,
-          "minLevel": 48,
           "maxLevel": 52
         },
         {
@@ -18740,7 +18446,8 @@
         },
         {
           "speciesId": 246,
-          "weight": 3,
+          "formId": null,
+          "weight": 1,
           "minLevel": 20,
           "maxLevel": 25
         }
@@ -18838,7 +18545,8 @@
         },
         {
           "speciesId": 78,
-          "weight": 6,
+          "formId": null,
+          "weight": 5,
           "minLevel": 40,
           "maxLevel": 45
         },
@@ -18890,54 +18598,16 @@
       "minPower": 5000,
       "requiredTypes": [],
       "affinityTypes": [
-        "ice",
-        "dragon",
-        "fairy"
+        "flying",
+        "poison",
+        "rock",
+        "bug",
+        "fire",
+        "electric",
+        "ice"
       ],
       "minDurationMinutes": 240,
       "encounters": [
-        {
-          "speciesId": 289,
-          "weight": 10,
-          "minLevel": 45,
-          "maxLevel": 52
-        },
-        {
-          "speciesId": 297,
-          "weight": 10,
-          "minLevel": 45,
-          "maxLevel": 52
-        },
-        {
-          "speciesId": 306,
-          "weight": 8,
-          "minLevel": 45,
-          "maxLevel": 52
-        },
-        {
-          "speciesId": 330,
-          "weight": 8,
-          "minLevel": 45,
-          "maxLevel": 52
-        },
-        {
-          "speciesId": 334,
-          "weight": 8,
-          "minLevel": 45,
-          "maxLevel": 52
-        },
-        {
-          "speciesId": 365,
-          "weight": 8,
-          "minLevel": 45,
-          "maxLevel": 52
-        },
-        {
-          "speciesId": 332,
-          "weight": 8,
-          "minLevel": 45,
-          "maxLevel": 52
-        },
         {
           "speciesId": 357,
           "weight": 6,
@@ -18955,6 +18625,24 @@
           "weight": 3,
           "minLevel": 20,
           "maxLevel": 25
+        },
+        {
+          "speciesId": 296,
+          "weight": 10,
+          "minLevel": 45,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 333,
+          "weight": 10,
+          "minLevel": 45,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 331,
+          "weight": 10,
+          "minLevel": 45,
+          "maxLevel": 52
         }
       ],
       "lootTableId": "butin-zone-zone-de-combat",
@@ -19008,49 +18696,37 @@
       "minPower": 4500,
       "requiredTypes": [],
       "affinityTypes": [
-        "ground"
+        "fighting",
+        "ground",
+        "bug",
+        "ghost",
+        "steel",
+        "water",
+        "grass",
+        "electric",
+        "ice",
+        "dark"
       ],
       "minDurationMinutes": 240,
       "encounters": [
         {
-          "speciesId": 42,
-          "weight": 12,
-          "minLevel": 52,
-          "maxLevel": 58
-        },
-        {
-          "speciesId": 47,
-          "weight": 12,
-          "minLevel": 52,
-          "maxLevel": 58
-        },
-        {
           "speciesId": 57,
-          "weight": 10,
+          "formId": null,
+          "weight": 2,
           "minLevel": 52,
           "maxLevel": 58
         },
         {
           "speciesId": 64,
-          "weight": 10,
-          "minLevel": 52,
-          "maxLevel": 58
-        },
-        {
-          "speciesId": 82,
-          "weight": 10,
-          "minLevel": 52,
-          "maxLevel": 58
-        },
-        {
-          "speciesId": 101,
-          "weight": 10,
+          "formId": null,
+          "weight": 2,
           "minLevel": 52,
           "maxLevel": 58
         },
         {
           "speciesId": 112,
-          "weight": 10,
+          "formId": null,
+          "weight": 2,
           "minLevel": 55,
           "maxLevel": 60
         },
@@ -19062,21 +18738,31 @@
         },
         {
           "speciesId": 55,
-          "weight": 8,
+          "formId": null,
+          "weight": 2,
           "minLevel": 55,
           "maxLevel": 60
         },
         {
-          "speciesId": 26,
-          "weight": 4,
-          "minLevel": 55,
-          "maxLevel": 60
+          "speciesId": 54,
+          "formId": null,
+          "weight": 10,
+          "minLevel": 52,
+          "maxLevel": 58
         },
         {
-          "speciesId": 40,
-          "weight": 4,
-          "minLevel": 55,
-          "maxLevel": 60
+          "speciesId": 63,
+          "formId": null,
+          "weight": 10,
+          "minLevel": 52,
+          "maxLevel": 58
+        },
+        {
+          "speciesId": 111,
+          "formId": null,
+          "weight": 10,
+          "minLevel": 52,
+          "maxLevel": 58
         }
       ],
       "lootTableId": "butin-zone-grotte-azuree",
@@ -19127,22 +18813,10 @@
           "maxLevel": 44
         },
         {
-          "speciesId": 73,
-          "weight": 8,
-          "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
           "speciesId": 41,
           "weight": 10,
           "minLevel": 38,
           "maxLevel": 44
-        },
-        {
-          "speciesId": 42,
-          "weight": 6,
-          "minLevel": 40,
-          "maxLevel": 46
         },
         {
           "speciesId": 320,
@@ -19152,19 +18826,19 @@
         },
         {
           "speciesId": 321,
-          "weight": 4,
+          "weight": 2,
           "minLevel": 40,
           "maxLevel": 46
         },
         {
           "speciesId": 319,
-          "weight": 6,
+          "weight": 3,
           "minLevel": 40,
           "maxLevel": 46
         },
         {
           "speciesId": 364,
-          "weight": 6,
+          "weight": 3,
           "minLevel": 38,
           "maxLevel": 44
         },
@@ -19173,6 +18847,12 @@
           "weight": 8,
           "minLevel": 35,
           "maxLevel": 45
+        },
+        {
+          "speciesId": 318,
+          "weight": 10,
+          "minLevel": 38,
+          "maxLevel": 44
         }
       ],
       "lootTableId": "butin-zone-grotte-sous-marine",
@@ -19271,12 +18951,6 @@
           "maxLevel": 45
         },
         {
-          "speciesId": 171,
-          "weight": 6,
-          "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
           "speciesId": 222,
           "weight": 4,
           "minLevel": 38,
@@ -19314,15 +18988,15 @@
       "minPower": 4000,
       "requiredTypes": [],
       "affinityTypes": [
-        "water",
-        "grass",
-        "ice"
+        "ground",
+        "rock",
+        "water"
       ],
       "minDurationMinutes": 240,
       "encounters": [
         {
           "speciesId": 42,
-          "weight": 14,
+          "weight": 7,
           "minLevel": 45,
           "maxLevel": 50
         },
@@ -19340,13 +19014,13 @@
         },
         {
           "speciesId": 75,
-          "weight": 10,
+          "weight": 5,
           "minLevel": 45,
           "maxLevel": 50
         },
         {
           "speciesId": 323,
-          "weight": 8,
+          "weight": 4,
           "minLevel": 45,
           "maxLevel": 50
         },
@@ -19357,16 +19031,16 @@
           "maxLevel": 50
         },
         {
-          "speciesId": 344,
-          "weight": 6,
-          "minLevel": 48,
-          "maxLevel": 52
+          "speciesId": 322,
+          "weight": 10,
+          "minLevel": 45,
+          "maxLevel": 50
         },
         {
-          "speciesId": 297,
-          "weight": 6,
-          "minLevel": 48,
-          "maxLevel": 52
+          "speciesId": 41,
+          "weight": 10,
+          "minLevel": 45,
+          "maxLevel": 50
         }
       ],
       "lootTableId": "butin-zone-grotte-originelle",
@@ -19431,18 +19105,6 @@
           "maxLevel": 50
         },
         {
-          "speciesId": 49,
-          "weight": 10,
-          "minLevel": 48,
-          "maxLevel": 52
-        },
-        {
-          "speciesId": 103,
-          "weight": 6,
-          "minLevel": 50,
-          "maxLevel": 55
-        },
-        {
           "speciesId": 47,
           "weight": 6,
           "minLevel": 48,
@@ -19496,9 +19158,9 @@
       "minPower": 4000,
       "requiredTypes": [],
       "affinityTypes": [
-        "ground",
-        "rock",
-        "water"
+        "fighting",
+        "bug",
+        "fairy"
       ],
       "minDurationMinutes": 240,
       "encounters": [
@@ -19516,7 +19178,8 @@
         },
         {
           "speciesId": 229,
-          "weight": 6,
+          "formId": null,
+          "weight": 2,
           "minLevel": 48,
           "maxLevel": 52
         },
@@ -19527,22 +19190,10 @@
           "maxLevel": 50
         },
         {
-          "speciesId": 219,
-          "weight": 6,
-          "minLevel": 48,
-          "maxLevel": 52
-        },
-        {
           "speciesId": 177,
           "weight": 10,
           "minLevel": 45,
           "maxLevel": 50
-        },
-        {
-          "speciesId": 178,
-          "weight": 6,
-          "minLevel": 48,
-          "maxLevel": 52
         },
         {
           "speciesId": 92,
@@ -19552,15 +19203,10 @@
         },
         {
           "speciesId": 93,
-          "weight": 8,
+          "formId": null,
+          "weight": 6,
           "minLevel": 48,
           "maxLevel": 52
-        },
-        {
-          "speciesId": 20,
-          "weight": 10,
-          "minLevel": 45,
-          "maxLevel": 50
         }
       ],
       "lootTableId": "butin-zone-tour-carillon",
@@ -19744,7 +19390,8 @@
         },
         {
           "speciesId": 205,
-          "weight": 6,
+          "formId": null,
+          "weight": 2,
           "minLevel": 42,
           "maxLevel": 46
         },
@@ -19755,45 +19402,17 @@
           "maxLevel": 46
         },
         {
-          "speciesId": 192,
-          "weight": 6,
-          "minLevel": 42,
-          "maxLevel": 46
-        },
-        {
           "speciesId": 188,
-          "weight": 10,
-          "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 189,
-          "weight": 6,
-          "minLevel": 42,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 166,
-          "weight": 8,
-          "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 168,
-          "weight": 8,
+          "formId": null,
+          "weight": 5,
           "minLevel": 40,
           "maxLevel": 46
         },
         {
           "speciesId": 47,
-          "weight": 8,
+          "formId": null,
+          "weight": 5,
           "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 45,
-          "weight": 6,
-          "minLevel": 42,
           "maxLevel": 46
         }
       ],
@@ -19855,44 +19474,38 @@
           "maxLevel": 52
         },
         {
-          "speciesId": 344,
-          "weight": 10,
-          "minLevel": 46,
-          "maxLevel": 52
-        },
-        {
-          "speciesId": 354,
-          "weight": 10,
-          "minLevel": 46,
-          "maxLevel": 52
-        },
-        {
           "speciesId": 356,
-          "weight": 10,
+          "weight": 5,
           "minLevel": 46,
           "maxLevel": 52
         },
         {
           "speciesId": 334,
+          "weight": 5,
+          "minLevel": 46,
+          "maxLevel": 52
+        },
+        {
+          "speciesId": 353,
           "weight": 10,
           "minLevel": 46,
           "maxLevel": 52
         },
         {
-          "speciesId": 42,
+          "speciesId": 355,
           "weight": 10,
           "minLevel": 46,
           "maxLevel": 52
         },
         {
-          "speciesId": 75,
-          "weight": 8,
+          "speciesId": 333,
+          "weight": 10,
           "minLevel": 46,
           "maxLevel": 52
         },
         {
-          "speciesId": 362,
-          "weight": 6,
+          "speciesId": 303,
+          "weight": 10,
           "minLevel": 46,
           "maxLevel": 52
         }
@@ -19958,7 +19571,7 @@
         },
         {
           "speciesId": 344,
-          "weight": 6,
+          "weight": 3,
           "minLevel": 42,
           "maxLevel": 46
         },
@@ -19969,21 +19582,9 @@
           "maxLevel": 46
         },
         {
-          "speciesId": 326,
-          "weight": 6,
-          "minLevel": 42,
-          "maxLevel": 46
-        },
-        {
           "speciesId": 177,
           "weight": 10,
           "minLevel": 40,
-          "maxLevel": 46
-        },
-        {
-          "speciesId": 178,
-          "weight": 6,
-          "minLevel": 42,
           "maxLevel": 46
         },
         {
@@ -29184,6 +28785,366 @@
         "type": "always"
       },
       "questId": "deoxys"
+    },
+    {
+      "id": "quete-primo-kyogre-arthur",
+      "regionId": "hoenn",
+      "zoneId": "grotte-sous-marine",
+      "order": 124,
+      "name": "Arthur",
+      "trainerClass": "Chef de la Team Aqua",
+      "sprite": "/api/sprites/trainers/archie-gen3.png",
+      "team": [
+        {
+          "speciesId": 262,
+          "formId": null,
+          "level": 86,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 279,
+          "formId": null,
+          "level": 86,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 342,
+          "formId": null,
+          "level": 87,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 365,
+          "formId": null,
+          "level": 87,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 321,
+          "formId": null,
+          "level": 88,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 319,
+          "formId": null,
+          "level": 90,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 25000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "primo-kyogre"
+    },
+    {
+      "id": "quete-primo-groudon-max",
+      "regionId": "hoenn",
+      "zoneId": "grotte-originelle",
+      "order": 125,
+      "name": "Max",
+      "trainerClass": "Chef de la Team Magma",
+      "sprite": "/api/sprites/trainers/maxie-gen3.png",
+      "team": [
+        {
+          "speciesId": 336,
+          "formId": null,
+          "level": 86,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 324,
+          "formId": null,
+          "level": 86,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 344,
+          "formId": null,
+          "level": 87,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 330,
+          "formId": null,
+          "level": 87,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 306,
+          "formId": null,
+          "level": 88,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 323,
+          "formId": null,
+          "level": 90,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 25000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "primo-groudon"
+    },
+    {
+      "id": "quete-deoxys-attaque-ardent",
+      "regionId": "hoenn",
+      "zoneId": "zone-de-combat",
+      "order": 126,
+      "name": "Ardent",
+      "trainerClass": "As de la Zone de Combat",
+      "sprite": "/api/sprites/trainers/blackbelt.png",
+      "team": [
+        {
+          "speciesId": 308,
+          "formId": null,
+          "level": 86,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 286,
+          "formId": null,
+          "level": 86,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 289,
+          "formId": null,
+          "level": 87,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 297,
+          "formId": null,
+          "level": 87,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 257,
+          "formId": null,
+          "level": 88,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 373,
+          "formId": null,
+          "level": 90,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 25000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "deoxys-attaque"
+    },
+    {
+      "id": "quete-deoxys-defense-galene",
+      "regionId": "hoenn",
+      "zoneId": "route-victoire-hoenn",
+      "order": 127,
+      "name": "Galène",
+      "trainerClass": "Géologue",
+      "sprite": "/api/sprites/trainers/ruinmaniac-gen3.png",
+      "team": [
+        {
+          "speciesId": 324,
+          "formId": null,
+          "level": 86,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 346,
+          "formId": null,
+          "level": 86,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 348,
+          "formId": null,
+          "level": 87,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 344,
+          "formId": null,
+          "level": 87,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 306,
+          "formId": null,
+          "level": 88,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 376,
+          "formId": null,
+          "level": 90,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 25000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "deoxys-defense"
+    },
+    {
+      "id": "quete-deoxys-vitesse-rafale",
+      "regionId": "hoenn",
+      "zoneId": "pilier-celeste",
+      "order": 128,
+      "name": "Rafale",
+      "trainerClass": "Ornithologue",
+      "sprite": "/api/sprites/trainers/birdkeeper-gen3.png",
+      "team": [
+        {
+          "speciesId": 264,
+          "formId": null,
+          "level": 86,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 291,
+          "formId": null,
+          "level": 86,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 277,
+          "formId": null,
+          "level": 87,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 335,
+          "formId": null,
+          "level": 87,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 310,
+          "formId": null,
+          "level": 88,
+          "iv": 31,
+          "nature": null
+        },
+        {
+          "speciesId": 254,
+          "formId": null,
+          "level": 90,
+          "iv": 31,
+          "nature": null
+        }
+      ],
+      "timeLimitSeconds": 240,
+      "rules": {
+        "teamSize": null,
+        "maxLevel": null,
+        "requiredTypes": [],
+        "forbiddenTypes": [],
+        "minPower": 0
+      },
+      "money": 25000,
+      "lootTableId": null,
+      "lootRolls": 0,
+      "badge": null,
+      "repeatable": false,
+      "cooldownMinutes": null,
+      "enabled": true,
+      "unlock": {
+        "type": "always"
+      },
+      "questId": "deoxys-vitesse"
     }
   ],
   "dungeons": [
@@ -34252,6 +34213,85 @@
       ]
     },
     {
+      "id": "mega-kanto",
+      "order": 50,
+      "name": "Méga-Évolutions de Kanto",
+      "description": "21 Méga-Évolutions à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 3
+          }
+        ]
+      },
+      "regionId": "kanto",
+      "formIds": [
+        10033,
+        10034,
+        10035,
+        10036,
+        10090,
+        10073,
+        10304,
+        10305,
+        10278,
+        10037,
+        10279,
+        10071,
+        10038,
+        10039,
+        10280,
+        10040,
+        10041,
+        10042,
+        10281,
+        10043,
+        10044
+      ]
+    },
+    {
+      "id": "gigamax-kanto",
+      "order": 51,
+      "name": "Formes Gigamax de Kanto",
+      "description": "12 formes Gigamax à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "money",
+            "percent": 2
+          }
+        ]
+      },
+      "regionId": "kanto",
+      "formIds": [
+        10195,
+        10196,
+        10197,
+        10198,
+        10199,
+        10200,
+        10201,
+        10202,
+        10203,
+        10204,
+        10205,
+        10206
+      ]
+    },
+    {
       "id": "formes-zarbi",
       "order": 100,
       "name": "Formes de Zarbi",
@@ -34330,6 +34370,38 @@
       ]
     },
     {
+      "id": "mega-johto",
+      "order": 150,
+      "name": "Méga-Évolutions de Johto",
+      "description": "9 Méga-Évolutions à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 2
+          }
+        ]
+      },
+      "regionId": "johto",
+      "formIds": [
+        10282,
+        10283,
+        10045,
+        10072,
+        10046,
+        10047,
+        10284,
+        10048,
+        10049
+      ]
+    },
+    {
       "id": "formes-deoxys",
       "order": 200,
       "name": "Formes de Deoxys",
@@ -34355,6 +34427,131 @@
         10001,
         10002,
         10003
+      ]
+    },
+    {
+      "id": "mega-hoenn",
+      "order": 250,
+      "name": "Méga-Évolutions de Hoenn",
+      "description": "22 Méga-Évolutions à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 3
+          }
+        ]
+      },
+      "regionId": "hoenn",
+      "formIds": [
+        10065,
+        10050,
+        10064,
+        10051,
+        10066,
+        10052,
+        10053,
+        10054,
+        10055,
+        10070,
+        10087,
+        10067,
+        10056,
+        10306,
+        10057,
+        10307,
+        10074,
+        10089,
+        10076,
+        10062,
+        10063,
+        10079
+      ]
+    },
+    {
+      "id": "primo-kyogre",
+      "order": 251,
+      "name": "Primo-Résurgence de Kyogre",
+      "description": "Une Primo-Résurgence à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        382
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "money",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "hoenn",
+      "formIds": [
+        10077
+      ]
+    },
+    {
+      "id": "primo-groudon",
+      "order": 252,
+      "name": "Primo-Résurgence de Groudon",
+      "description": "Une Primo-Résurgence à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        383
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "xp",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "hoenn",
+      "formIds": [
+        10078
+      ]
+    },
+    {
+      "id": "combat-morpheo",
+      "order": 253,
+      "name": "Formes de combat de Morphéo",
+      "description": "3 formes de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        351
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "hoenn",
+      "formIds": [
+        10013,
+        10014,
+        10015
       ]
     },
     {
@@ -34593,6 +34790,66 @@
         110056,
         110057,
         110085
+      ]
+    },
+    {
+      "id": "mega-sinnoh",
+      "order": 350,
+      "name": "Méga-Évolutions de Sinnoh",
+      "description": "11 Méga-Évolutions à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 2
+          }
+        ]
+      },
+      "regionId": "sinnoh",
+      "formIds": [
+        10308,
+        10088,
+        10058,
+        10309,
+        10059,
+        10310,
+        10060,
+        10068,
+        10285,
+        10311,
+        10312
+      ]
+    },
+    {
+      "id": "combat-ceriflor",
+      "order": 351,
+      "name": "Forme de combat de Ceriflor",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        421
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "money",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "sinnoh",
+      "formIds": [
+        110038
       ]
     },
     {
@@ -34842,6 +35099,114 @@
         110076,
         110077,
         110078
+      ]
+    },
+    {
+      "id": "mega-unys",
+      "order": 450,
+      "name": "Méga-Évolutions d’Unys",
+      "description": "8 Méga-Évolutions à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 2
+          }
+        ]
+      },
+      "regionId": "unys",
+      "formIds": [
+        10286,
+        10287,
+        10069,
+        10288,
+        10289,
+        10290,
+        10291,
+        10313
+      ]
+    },
+    {
+      "id": "gigamax-unys",
+      "order": 451,
+      "name": "Formes Gigamax d’Unys",
+      "description": "Une forme Gigamax à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "money",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "unys",
+      "formIds": [
+        10207
+      ]
+    },
+    {
+      "id": "combat-darumacho",
+      "order": 452,
+      "name": "Formes de combat de Darumacho",
+      "description": "2 formes de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        555
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "xp",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "unys",
+      "formIds": [
+        10017,
+        10178
+      ]
+    },
+    {
+      "id": "combat-meloetta",
+      "order": 453,
+      "name": "Forme de combat de Meloetta",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        648
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "unys",
+      "formIds": [
+        10018
       ]
     },
     {
@@ -35167,6 +35532,146 @@
       ]
     },
     {
+      "id": "mega-kalos",
+      "order": 550,
+      "name": "Méga-Évolutions de Kalos",
+      "description": "13 Méga-Évolutions à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 2
+          }
+        ]
+      },
+      "regionId": "kalos",
+      "formIds": [
+        10292,
+        10293,
+        10294,
+        10295,
+        10296,
+        10314,
+        10326,
+        10297,
+        10298,
+        10299,
+        10300,
+        10301,
+        10075
+      ]
+    },
+    {
+      "id": "combat-amphinobi",
+      "order": 551,
+      "name": "Forme de combat d’Amphinobi",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        658
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "money",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "kalos",
+      "formIds": [
+        10117
+      ]
+    },
+    {
+      "id": "combat-exagide",
+      "order": 552,
+      "name": "Forme de combat d’Exagide",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        681
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "xp",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "kalos",
+      "formIds": [
+        10026
+      ]
+    },
+    {
+      "id": "combat-xerneas",
+      "order": 553,
+      "name": "Forme de combat de Xerneas",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        716
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "kalos",
+      "formIds": [
+        100716
+      ]
+    },
+    {
+      "id": "combat-zygarde",
+      "order": 554,
+      "name": "Forme de combat de Zygarde",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        718
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "money",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "kalos",
+      "formIds": [
+        10120
+      ]
+    },
+    {
       "id": "formes-plumeline",
       "order": 600,
       "name": "Formes de Plumeline",
@@ -35354,6 +35859,137 @@
       "regionId": "alola",
       "formIds": [
         10147
+      ]
+    },
+    {
+      "id": "mega-alola",
+      "order": 650,
+      "name": "Méga-Évolutions d’Alola",
+      "description": "6 Méga-Évolutions à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 2
+          }
+        ]
+      },
+      "regionId": "alola",
+      "formIds": [
+        10315,
+        10316,
+        10302,
+        10317,
+        10318,
+        10319
+      ]
+    },
+    {
+      "id": "gigamax-alola",
+      "order": 651,
+      "name": "Formes Gigamax d’Alola",
+      "description": "Une forme Gigamax à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "money",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "alola",
+      "formIds": [
+        10208
+      ]
+    },
+    {
+      "id": "combat-froussardine",
+      "order": 652,
+      "name": "Forme de combat de Froussardine",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        746
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "xp",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "alola",
+      "formIds": [
+        10127
+      ]
+    },
+    {
+      "id": "combat-mimiqui",
+      "order": 653,
+      "name": "Forme de combat de Mimiqui",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        778
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "alola",
+      "formIds": [
+        10143
+      ]
+    },
+    {
+      "id": "combat-necrozma",
+      "order": 654,
+      "name": "Forme de combat de Necrozma",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        800
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "money",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "alola",
+      "formIds": [
+        10157
       ]
     },
     {
@@ -35626,6 +36262,205 @@
       "regionId": "galar",
       "formIds": [
         10249
+      ]
+    },
+    {
+      "id": "mega-galar",
+      "order": 750,
+      "name": "Méga-Évolutions de Galar",
+      "description": "Une Méga-Évolution à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "galar",
+      "formIds": [
+        10303
+      ]
+    },
+    {
+      "id": "gigamax-galar",
+      "order": 751,
+      "name": "Formes Gigamax de Galar",
+      "description": "21 formes Gigamax à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "money",
+            "percent": 3
+          }
+        ]
+      },
+      "regionId": "galar",
+      "formIds": [
+        10209,
+        10210,
+        10211,
+        10212,
+        10213,
+        10214,
+        10215,
+        10216,
+        10217,
+        10218,
+        10219,
+        10228,
+        10220,
+        10221,
+        10222,
+        10223,
+        10224,
+        10225,
+        10190,
+        10226,
+        10227
+      ]
+    },
+    {
+      "id": "combat-nigosier",
+      "order": 752,
+      "name": "Formes de combat de Nigosier",
+      "description": "2 formes de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        845
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "xp",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "galar",
+      "formIds": [
+        10182,
+        10183
+      ]
+    },
+    {
+      "id": "combat-bekaglacon",
+      "order": 753,
+      "name": "Forme de combat de Bekaglaçon",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        875
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "galar",
+      "formIds": [
+        10185
+      ]
+    },
+    {
+      "id": "combat-morpeko",
+      "order": 754,
+      "name": "Forme de combat de Morpeko",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        877
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "money",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "galar",
+      "formIds": [
+        10187
+      ]
+    },
+    {
+      "id": "combat-zacian",
+      "order": 755,
+      "name": "Forme de combat de Zacian",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        888
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "xp",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "galar",
+      "formIds": [
+        10188
+      ]
+    },
+    {
+      "id": "combat-zamazenta",
+      "order": 756,
+      "name": "Forme de combat de Zamazenta",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        889
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "galar",
+      "formIds": [
+        10189
       ]
     },
     {
@@ -35926,11 +36761,94 @@
         10274,
         10275
       ]
+    },
+    {
+      "id": "mega-paldea",
+      "order": 950,
+      "name": "Méga-Évolutions de Paldea",
+      "description": "6 Méga-Évolutions à obtenir.",
+      "speciesIds": [],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "capture",
+            "percent": 2
+          }
+        ]
+      },
+      "regionId": "paldea",
+      "formIds": [
+        10320,
+        10321,
+        10322,
+        10323,
+        10324,
+        10325
+      ]
+    },
+    {
+      "id": "combat-superdofin",
+      "order": 951,
+      "name": "Forme de combat de Superdofin",
+      "description": "Une forme de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        964
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "money",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "paldea",
+      "formIds": [
+        10256
+      ]
+    },
+    {
+      "id": "combat-terapagos",
+      "order": 952,
+      "name": "Formes de combat de Terapagos",
+      "description": "2 formes de combat à obtenir, forme par défaut comprise.",
+      "speciesIds": [
+        1024
+      ],
+      "rewards": {
+        "currency": 0,
+        "items": [],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [
+          {
+            "type": "xp",
+            "percent": 1
+          }
+        ]
+      },
+      "regionId": "paldea",
+      "formIds": [
+        10276,
+        10277
+      ]
     }
   ],
   "quests": [
     {
       "id": "electhor",
+      "kind": "legendary",
       "order": 0,
       "name": "L’oiseau de foudre",
       "description": "Depuis quelques nuits, Céladopole est plongée dans le noir. Quelque chose aspire l’électricité de tout Kanto.",
@@ -36044,6 +36962,7 @@
     },
     {
       "id": "latias",
+      "kind": "legendary",
       "order": 0,
       "name": "L’éon au voile rouge",
       "description": "Des voyageurs parlent d’un Pokémon rouge qui se rend invisible en reflétant la lumière, au-dessus de la mer de Hoenn.",
@@ -36149,6 +37068,7 @@
     },
     {
       "id": "raikou",
+      "kind": "legendary",
       "order": 0,
       "name": "La bête du tonnerre",
       "description": "Selon la légende d’Écorcia, trois Pokémon périrent dans l’incendie de la Tour Cendrée, et Ho-Oh les ramena à la vie.",
@@ -36254,6 +37174,7 @@
     },
     {
       "id": "artikodin",
+      "kind": "legendary",
       "order": 1,
       "name": "L’oiseau des glaces",
       "description": "Les pêcheurs de Cramois’Île jurent avoir vu la mer geler en plein été autour des Îles Écume.",
@@ -36377,6 +37298,7 @@
     },
     {
       "id": "entei",
+      "kind": "legendary",
       "order": 1,
       "name": "La bête du volcan",
       "description": "Chaque fois qu’Entei rugit, dit-on, un volcan entre en éruption quelque part dans le monde.",
@@ -36482,6 +37404,7 @@
     },
     {
       "id": "latios",
+      "kind": "legendary",
       "order": 1,
       "name": "L’éon au voile bleu",
       "description": "Un Pokémon bleu fend le ciel de Hoenn plus vite qu’un avion de ligne. Il ne se montre qu’aux cœurs sincères.",
@@ -36587,6 +37510,7 @@
     },
     {
       "id": "regirock",
+      "kind": "legendary",
       "order": 2,
       "name": "Le colosse de roche",
       "description": "Au fond de la mer, des ruines englouties portent des inscriptions en relief : elles parlent de trois géants endormis.",
@@ -36715,6 +37639,7 @@
     },
     {
       "id": "suicune",
+      "kind": "legendary",
       "order": 2,
       "name": "La bête des aurores",
       "description": "Suicune court sur l’eau et purifie tout ce qu’il touche. On l’a aperçu près du Lac Colère.",
@@ -36820,6 +37745,7 @@
     },
     {
       "id": "sulfura",
+      "kind": "legendary",
       "order": 2,
       "name": "L’oiseau de feu",
       "description": "Le Mont Braise gronde à nouveau. La nuit, une lueur vole au-dessus du cratère.",
@@ -36941,6 +37867,7 @@
     },
     {
       "id": "lugia",
+      "kind": "legendary",
       "order": 3,
       "name": "Le gardien des mers",
       "description": "Les tourbillons des Tourb’Îles cacheraient un Pokémon aux ailes d’argent, qui dort au fond de la mer.",
@@ -37076,6 +38003,7 @@
     },
     {
       "id": "mewtwo",
+      "kind": "legendary",
       "order": 3,
       "name": "Le Pokémon génétique",
       "description": "Dans les décombres du Manoir Pokémon, un journal raconte la création d’une créature aux pouvoirs terrifiants, qui se serait enfuie.",
@@ -37214,6 +38142,7 @@
     },
     {
       "id": "registeel",
+      "kind": "legendary",
       "order": 3,
       "name": "Le colosse d’acier",
       "description": "Près de la Route 120, un tombeau ancien résonne d’un bourdonnement métallique, de jour comme de nuit.",
@@ -37319,6 +38248,7 @@
     },
     {
       "id": "ho-oh",
+      "kind": "legendary",
       "order": 4,
       "name": "L’oiseau arc-en-ciel",
       "description": "Il y a cent cinquante ans, la foudre frappa la Tour Cendrée et Ho-Oh quitta Johto. Il ne reviendra que pour un dresseur au cœur pur.",
@@ -37450,6 +38380,7 @@
     },
     {
       "id": "mew",
+      "kind": "legendary",
       "order": 4,
       "name": "Le Pokémon fabuleux",
       "description": "Mewtwo n’est qu’une copie. Le journal du Manoir parle d’une île des tropiques où l’original aurait été trouvé.",
@@ -37580,6 +38511,7 @@
     },
     {
       "id": "regice",
+      "kind": "legendary",
       "order": 4,
       "name": "Le colosse de glace",
       "description": "Une grotte gelée, au large de Hoenn, renfermerait un géant de glace plus froid que l’hiver lui-même.",
@@ -37687,6 +38619,7 @@
     },
     {
       "id": "artikodin-galar",
+      "kind": "legendary",
       "order": 5,
       "name": "L’oiseau au regard glacial",
       "description": "Des dresseurs de Kanto tombent dans une étrange torpeur. Tous disent avoir croisé un oiseau aux ailes violettes.",
@@ -37791,6 +38724,7 @@
     },
     {
       "id": "celebi",
+      "kind": "legendary",
       "order": 5,
       "name": "Le voyageur du temps",
       "description": "Lugia et Ho-Oh apaisés, le vieux charbonnier du Bois aux Chênes parle d’un petit Pokémon qui protège la forêt… et voyage dans le temps.",
@@ -37915,6 +38849,7 @@
     },
     {
       "id": "kyogre",
+      "kind": "legendary",
       "order": 5,
       "name": "Le maître des océans",
       "description": "La Team Aqua chercherait à réveiller le Pokémon qui a créé les mers, endormi sous la Route 128.",
@@ -37949,8 +38884,8 @@
           "outcome": "Les trois colosses éveillés, la mer elle-même semble s’agiter. Au Mont Mémoria, un vieux couple t’attendait."
         },
         {
-          "name": "L’Orbe Bleu",
-          "description": "Trouve l’Orbe Bleu au Mont Mémoria, avec 2 Pokémon Eau dans l’équipe.",
+          "name": "L’Éclat d’Orbe Bleu",
+          "description": "Trouve un Éclat d’Orbe Bleu au Mont Mémoria, avec 2 Pokémon Eau dans l’équipe.",
           "condition": {
             "type": "questItem",
             "itemId": "orbe-bleu",
@@ -38042,6 +38977,7 @@
     },
     {
       "id": "electhor-galar",
+      "kind": "legendary",
       "order": 6,
       "name": "L’oiseau aux pas de feu",
       "description": "Des traces de pas fumantes parcourent les routes de Kanto, comme si quelqu’un courait plus vite que l’éclair.",
@@ -38148,6 +39084,7 @@
     },
     {
       "id": "groudon",
+      "kind": "legendary",
       "order": 6,
       "name": "Le maître des continents",
       "description": "La Team Magma voudrait agrandir les terres en réveillant le Pokémon qui a soulevé les continents.",
@@ -38182,8 +39119,8 @@
           "outcome": "Les trois colosses éveillés, la terre gronde sous Hoenn. Au Mont Chimnée, la Team Magma s’agite."
         },
         {
-          "name": "L’Orbe Rouge",
-          "description": "Trouve l’Orbe Rouge au Mont Chimnée, lors d’une expédition lancée sous un grand soleil avec 2 Pokémon Feu.",
+          "name": "L’Éclat d’Orbe Rouge",
+          "description": "Trouve un Éclat d’Orbe Rouge au Mont Chimnée, lors d’une expédition lancée sous un grand soleil avec 2 Pokémon Feu.",
           "condition": {
             "type": "questItem",
             "itemId": "orbe-rouge",
@@ -38199,7 +39136,7 @@
             ],
             "timeOfDay": null
           },
-          "outcome": "Tu arraches l’Orbe Rouge aux mains de la Team Magma. Il brûle dans ton sac ; à Atalanopolis, l’entrée de la Grotte Originelle s’est ouverte."
+          "outcome": "Tu arraches un éclat de l’Orbe Rouge aux mains de la Team Magma. Il brûle dans ton sac ; à Atalanopolis, l’entrée de la Grotte Originelle s’est ouverte."
         },
         {
           "name": "La terre tremble",
@@ -38275,6 +39212,7 @@
     },
     {
       "id": "rayquaza",
+      "kind": "legendary",
       "order": 7,
       "name": "Le gardien du ciel",
       "description": "Kyogre et Groudon se sont calmés, mais leur colère a réveillé le dragon qui vit au-dessus des nuages.",
@@ -38417,6 +39355,7 @@
     },
     {
       "id": "sulfura-galar",
+      "kind": "legendary",
       "order": 7,
       "name": "L’oiseau aux flammes sombres",
       "description": "À Lavanville, les Pokémon Spectre s’agitent : une flamme noire tourne autour de la Tour Pokémon.",
@@ -38523,6 +39462,7 @@
     },
     {
       "id": "jirachi",
+      "kind": "legendary",
       "order": 8,
       "name": "L’étoile des vœux",
       "description": "Une comète ne passe qu’une fois tous les mille ans au-dessus de Hoenn. Celui qui la voit pourrait faire un vœu.",
@@ -38652,6 +39592,7 @@
     },
     {
       "id": "deoxys",
+      "kind": "legendary",
       "order": 9,
       "name": "Le visiteur de l’espace",
       "description": "Rayquaza a abattu une météorite au-dessus de Hoenn. Quelque chose en est sorti.",
@@ -38778,6 +39719,529 @@
             "roaming": null
           }
         ]
+      }
+    },
+    {
+      "id": "primo-kyogre",
+      "kind": "form",
+      "order": 10,
+      "name": "L’Orbe Bleu",
+      "description": "Kyogre s’est calmé, mais Arthur, le chef de la Team Aqua, garde le véritable Orbe Bleu : celui qui rendrait à Kyogre sa forme originelle.",
+      "image": null,
+      "regionId": "hoenn",
+      "enabled": true,
+      "unlock": {
+        "type": "questCompleted",
+        "questId": "kyogre"
+      },
+      "steps": [
+        {
+          "name": "Le chant des abysses",
+          "description": "Réussis une expédition dans la Grotte Sous-Marine avec Kyogre dans l’équipe.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "grotte-sous-marine",
+            "count": 1,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              382
+            ],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Au fond de la grotte, Kyogre s’arrête devant une fresque où il apparaît immense, couvert de lignes lumineuses : sa forme originelle. Quelqu’un en a arraché des morceaux."
+        },
+        {
+          "name": "La fresque déchirée",
+          "description": "Trouve 3 Parchemins des abysses dans la Grotte Sous-Marine, lors d’expéditions lancées sous la pluie.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "parchemin-des-abysses",
+            "count": 3,
+            "zoneId": "grotte-sous-marine",
+            "chance": 4,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "rain"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Réunis, les parchemins racontent la légende : seul l’Orbe Bleu entier peut réveiller la puissance originelle de Kyogre. Celui du Mont Mémoria n’en était qu’un éclat ; l’Orbe lui-même, la Team Aqua l’a emporté."
+        },
+        {
+          "name": "Sur la piste d’Arthur",
+          "description": "Capture 10 Pokémon Eau sur les Routes 124 à 128.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 10,
+            "pokemonType": "water",
+            "speciesId": null,
+            "zoneId": "routes-124-128"
+          },
+          "outcome": "Un pêcheur a vu le sous-marin de la Team Aqua plonger près de la Route 128, avec à son bord un homme barbu qui serrait une sphère bleue."
+        },
+        {
+          "name": "Le repaire englouti",
+          "description": "Réussis 2 expéditions dans l’Épave Abandonnée avec 2 Pokémon Électrik de PE 1000 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "epave-abandonnee",
+            "count": 2,
+            "memberType": "electric",
+            "memberCount": 2,
+            "minMemberPower": 1000,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Dans la cale, des caisses frappées du sigle Aqua et un journal de bord : « Le chef redescend à la Grotte Sous-Marine. Avec l’Orbe, Kyogre lui obéira enfin. »"
+        },
+        {
+          "name": "Le chef de la Team Aqua",
+          "description": "Arthur t’attend au fond de la Grotte Sous-Marine, l’Orbe Bleu à la main : bats-le (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-primo-kyogre-arthur"
+          },
+          "outcome": "« Je voulais rendre la mer à tous les Pokémon… » Arthur te tend l’Orbe Bleu : « Il ne répondra qu’à Kyogre. Fais-le-lui tenir, et tu verras sa vraie forme. »"
+        }
+      ],
+      "rewards": {
+        "currency": 50000,
+        "items": [
+          {
+            "itemId": "blue-orb",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [],
+        "pokemon": []
+      }
+    },
+    {
+      "id": "primo-groudon",
+      "kind": "form",
+      "order": 11,
+      "name": "L’Orbe Rouge",
+      "description": "Max, le chef de la Team Magma, garde le véritable Orbe Rouge. Entre ses mains, il rendrait à Groudon sa puissance originelle… et assécherait Hoenn.",
+      "image": null,
+      "regionId": "hoenn",
+      "enabled": true,
+      "unlock": {
+        "type": "questCompleted",
+        "questId": "groudon"
+      },
+      "steps": [
+        {
+          "name": "Le cœur brûlant",
+          "description": "Réussis une expédition dans la Grotte Originelle avec Groudon dans l’équipe.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "grotte-originelle",
+            "count": 1,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              383
+            ],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Groudon gronde devant une fresque où il apparaît couvert de magma, plus grand encore qu’aujourd’hui. Au pied de la fresque, des traces de bottes rouges."
+        },
+        {
+          "name": "Les roches du volcan",
+          "description": "Trouve 3 Roches volcaniques au Mont Chimnée, lors d’expéditions lancées sous un grand soleil.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "roche-volcanique",
+            "count": 3,
+            "zoneId": "mont-chimnee",
+            "chance": 4,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "sun"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Chaque roche porte le sceau de la Team Magma. Celle que tu avais trouvée ici n’était qu’un éclat de l’Orbe Rouge : Max a gardé l’Orbe entier pour lui."
+        },
+        {
+          "name": "Les sables du désert",
+          "description": "Capture 10 Pokémon Sol dans le Désert de la Route 111.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 10,
+            "pokemonType": "ground",
+            "speciesId": null,
+            "zoneId": "desert-hoenn"
+          },
+          "outcome": "Des sbires de la Team Magma creusent dans le sable. L’un d’eux laisse échapper : « Le chef a quitté la base du Chemin Ardent. »"
+        },
+        {
+          "name": "La base du Chemin Ardent",
+          "description": "Réussis 2 expéditions au Chemin Ardent avec 2 Pokémon Eau de PE 1000 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "chemin-ardent",
+            "count": 2,
+            "memberType": "water",
+            "memberCount": 2,
+            "minMemberPower": 1000,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "La base secrète de la Team Magma est vide. Sur la table, une carte : la Grotte Originelle, entourée de rouge."
+        },
+        {
+          "name": "Le chef de la Team Magma",
+          "description": "Max veut réveiller Groudon une seconde fois : bats-le à la Grotte Originelle (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-primo-groudon-max"
+          },
+          "outcome": "« La terre devait s’étendre pour tous… » Max te tend l’Orbe Rouge : « Il ne brûle que pour Groudon. Fais-le-lui tenir, et la terre se souviendra. »"
+        }
+      ],
+      "rewards": {
+        "currency": 50000,
+        "items": [
+          {
+            "itemId": "red-orb",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [],
+        "pokemon": []
+      }
+    },
+    {
+      "id": "deoxys-attaque",
+      "kind": "form",
+      "order": 12,
+      "name": "La Forme Attaque",
+      "description": "Trois fragments de la météorite de Deoxys sont tombés sur Hoenn. Le premier rougeoie près de la Zone de Combat, au rythme des combats les plus violents.",
+      "image": null,
+      "regionId": "hoenn",
+      "enabled": true,
+      "unlock": {
+        "type": "questCompleted",
+        "questId": "deoxys"
+      },
+      "steps": [
+        {
+          "name": "L’onde écarlate",
+          "description": "Réussis une expédition à la Zone de Combat avec Deoxys dans l’équipe.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "zone-de-combat",
+            "count": 1,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              386
+            ],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Deoxys se raidit, ses bras se changent en lames. Quelque part dans la Zone de Combat, un fragment de sa météorite lui répond d’une lueur rouge."
+        },
+        {
+          "name": "Les éclats écarlates",
+          "description": "Trouve 3 Éclats écarlates à la Zone de Combat, avec 2 Pokémon Combat dans l’équipe.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "eclat-ecarlate",
+            "count": 3,
+            "zoneId": "zone-de-combat",
+            "chance": 4,
+            "memberType": "fighting",
+            "memberCount": 2,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Les éclats s’attirent comme des aimants et pointent tous vers la même arène : celle d’un dresseur qui ne perd jamais."
+        },
+        {
+          "name": "Les adversaires",
+          "description": "Capture 8 Pokémon à la Zone de Combat.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 8,
+            "pokemonType": null,
+            "speciesId": null,
+            "zoneId": "zone-de-combat"
+          },
+          "outcome": "Les habitués de la Zone de Combat parlent d’Ardent : il porte au cou une pierre rouge, qui brille plus fort à chaque victoire."
+        },
+        {
+          "name": "Force brute",
+          "description": "Réussis 3 expéditions à la Zone de Combat avec 3 Pokémon de PE 1100 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "zone-de-combat",
+            "count": 3,
+            "memberType": null,
+            "memberCount": 3,
+            "minMemberPower": 1100,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Ton nom circule dans la Zone de Combat. Ardent te fait savoir qu’il t’attend : « Le fragment ira au plus fort. »"
+        },
+        {
+          "name": "L’As de la Zone de Combat",
+          "description": "Ardent ne cédera le fragment rouge qu’au dresseur qui le battra : bats-le (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-deoxys-attaque-ardent"
+          },
+          "outcome": "Ardent essuie la sueur de son front et te tend la météorite : « Elle hurlait à chaque combat. Elle sera mieux avec celui qui l’a fait tomber. »"
+        }
+      ],
+      "rewards": {
+        "currency": 50000,
+        "items": [
+          {
+            "itemId": "meteorite-attaque",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [],
+        "pokemon": []
+      }
+    },
+    {
+      "id": "deoxys-defense",
+      "kind": "form",
+      "order": 13,
+      "name": "La Forme Défense",
+      "description": "Le deuxième fragment de la météorite de Deoxys s’est enfoncé dans la Route Victoire. Tout ce qui l’entoure durcit comme de la pierre.",
+      "image": null,
+      "regionId": "hoenn",
+      "enabled": true,
+      "unlock": {
+        "type": "questCompleted",
+        "questId": "deoxys"
+      },
+      "steps": [
+        {
+          "name": "L’onde de pierre",
+          "description": "Réussis une expédition sur la Route Victoire avec Deoxys dans l’équipe.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "route-victoire-hoenn",
+            "count": 1,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              386
+            ],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Deoxys se replie sur lui-même, son corps se couvre d’une carapace. Sous tes pieds, la roche lui répond."
+        },
+        {
+          "name": "Les éclats de jade",
+          "description": "Trouve 3 Éclats de jade sur la Route Victoire, lors d’expéditions lancées sous une tempête de sable.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "eclat-de-jade",
+            "count": 3,
+            "zoneId": "route-victoire-hoenn",
+            "chance": 4,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "sand"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Les éclats sont si durs qu’aucun Pokémon de la grotte n’arrive à les entamer. Une géologue en a fait sa spécialité."
+        },
+        {
+          "name": "Les gardiens d’acier",
+          "description": "Capture 8 Pokémon Acier sur la Route Victoire.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 8,
+            "pokemonType": "steel",
+            "speciesId": null,
+            "zoneId": "route-victoire-hoenn"
+          },
+          "outcome": "Les Pokémon Acier de la grotte se sont rassemblés autour d’un campement : celui de Galène, qui creuse là depuis des semaines."
+        },
+        {
+          "name": "Briser la carapace",
+          "description": "Réussis 2 expéditions sur la Route Victoire avec 2 Pokémon Combat de PE 1000 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "route-victoire-hoenn",
+            "count": 2,
+            "memberType": "fighting",
+            "memberCount": 2,
+            "minMemberPower": 1000,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Au fond de la galerie, Galène a enfin extrait le fragment. Elle refuse de le lâcher : « Il faudra me le prendre. »"
+        },
+        {
+          "name": "La géologue",
+          "description": "Galène garde le fragment au fond de la Route Victoire : bats-la (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-deoxys-defense-galene"
+          },
+          "outcome": "« Je n’ai jamais vu de roche aussi dure… » Galène te confie la météorite : « Elle ne se laisse entamer par rien. Deoxys saura quoi en faire. »"
+        }
+      ],
+      "rewards": {
+        "currency": 50000,
+        "items": [
+          {
+            "itemId": "meteorite-defense",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [],
+        "pokemon": []
+      }
+    },
+    {
+      "id": "deoxys-vitesse",
+      "kind": "form",
+      "order": 14,
+      "name": "La Forme Vitesse",
+      "description": "Le dernier fragment de la météorite de Deoxys file avec les vents, au-dessus des Routes 119 et 120, et ne se pose jamais.",
+      "image": null,
+      "regionId": "hoenn",
+      "enabled": true,
+      "unlock": {
+        "type": "questCompleted",
+        "questId": "deoxys"
+      },
+      "steps": [
+        {
+          "name": "L’onde du vent",
+          "description": "Réussis une expédition au Pilier Céleste avec Deoxys dans l’équipe.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "pilier-celeste",
+            "count": 1,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [
+              386
+            ],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Au sommet du pilier, Deoxys s’affine et s’élance vers le ciel avant de revenir : le dernier fragment file avec les vents, au-dessus des Routes 119 et 120."
+        },
+        {
+          "name": "Les éclats dorés",
+          "description": "Trouve 3 Éclats dorés sur les Routes 119 et 120, lors d’expéditions lancées sous la pluie.",
+          "condition": {
+            "type": "questItem",
+            "itemId": "eclat-dore",
+            "count": 3,
+            "zoneId": "routes-119-120",
+            "chance": 4,
+            "memberType": null,
+            "memberCount": 0,
+            "minMemberPower": 0,
+            "speciesIds": [],
+            "weathers": [
+              "rain"
+            ],
+            "timeOfDay": null
+          },
+          "outcome": "Les éclats ne tiennent pas en place : à peine posés, ils filent vers le Pilier Céleste."
+        },
+        {
+          "name": "Les feuilles dans le vent",
+          "description": "Capture 10 Pokémon Plante sur les Routes 119 et 120.",
+          "condition": {
+            "type": "catchPokemon",
+            "count": 10,
+            "pokemonType": "grass",
+            "speciesId": null,
+            "zoneId": "routes-119-120"
+          },
+          "outcome": "Les feuilles des Pokémon Plante pointent toutes dans le même sens, poussées par le passage du fragment. Un ornithologue, Rafale, le suit à la jumelle : ses Pokémon sont les seuls assez rapides pour le rattraper."
+        },
+        {
+          "name": "Course contre le vent",
+          "description": "Réussis 3 expéditions sur les Routes 119 et 120 avec 2 Pokémon Vol de PE 1000 ou plus.",
+          "condition": {
+            "type": "expedition",
+            "zoneId": "routes-119-120",
+            "count": 3,
+            "memberType": "flying",
+            "memberCount": 2,
+            "minMemberPower": 1000,
+            "speciesIds": [],
+            "weathers": [],
+            "timeOfDay": null
+          },
+          "outcome": "Rafale a rattrapé le fragment au sommet du Pilier Céleste. Il te lance : « Tu le veux ? Montre-moi que tu es plus rapide que moi ! »"
+        },
+        {
+          "name": "L’ornithologue",
+          "description": "Rafale t’attend au sommet du Pilier Céleste, le fragment à la main : bats-le (quête).",
+          "condition": {
+            "type": "trainerDefeated",
+            "trainerId": "quete-deoxys-vitesse-rafale"
+          },
+          "outcome": "Rafale reprend son souffle et te tend la météorite : « Elle filait plus vite que tous mes Pokémon. Seul Deoxys peut la suivre. »"
+        }
+      ],
+      "rewards": {
+        "currency": 50000,
+        "items": [
+          {
+            "itemId": "meteorite-vitesse",
+            "quantity": 1
+          }
+        ],
+        "expeditionSlots": 0,
+        "daycareSlots": 0,
+        "incubators": 0,
+        "bonuses": [],
+        "pokemon": []
       }
     }
   ],

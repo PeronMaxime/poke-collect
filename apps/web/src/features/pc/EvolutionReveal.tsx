@@ -1,9 +1,11 @@
 /**
- * Animation d'une évolution (ou d'une Méga-Évolution) : la silhouette alterne avec la nouvelle
- * forme, puis la nouvelle espèce apparaît.
+ * Animation d'une évolution (ou d'une forme prise en tenant un objet : Méga-Évolution,
+ * Primo-Résurgence…) : la silhouette alterne avec la nouvelle forme, puis la nouvelle espèce
+ * apparaît.
  */
 import { useEffect, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
+import { getForm } from '@poke/data';
 import type { GameContext } from '@poke/game-core';
 import type { EvolveResponse } from '@poke/shared';
 import { PokemonSprite, ShinyStar } from '../../components/ui';
@@ -13,19 +15,32 @@ import { itemName, speciesName } from '../../lib/labels';
 const MORPH_SECONDS = 2.4;
 
 /**
+ * Textes de l'animation : évolution, ou forme prise en tenant un objet (Méga-Évolution, autre
+ * forme d'après le type de la nouvelle forme).
+ */
+function revealTexts(held: boolean, formId: number | null, from: string, to: string) {
+  if (!held) return { during: `${from} évolue !`, after: `${from} a évolué en ${to} !` };
+  if (formId !== null && getForm(formId)?.kind === 'mega') {
+    return { during: `${from} méga-évolue !`, after: `${from} a méga-évolué en ${to} !` };
+  }
+  return { during: `${from} change de forme !`, after: `${from} est devenu ${to} !` };
+}
+
+/**
  * Évolution animée : l'ancien Pokémon pulse en silhouette lumineuse, alterne avec sa nouvelle
- * forme de plus en plus vite, puis la nouvelle espèce apparaît. Sert aussi à la Méga-Évolution.
+ * forme de plus en plus vite, puis la nouvelle espèce apparaît. Sert aussi aux formes tenues
+ * (Méga-Évolution, objets de forme).
  */
 export function EvolutionReveal({
   ctx,
   data,
-  mega = false,
+  held = false,
   onDone,
 }: {
   ctx: GameContext;
   data: EvolveResponse;
-  /** Méga-Évolution (l'objet est tenu, pas consommé). */
-  mega?: boolean;
+  /** Forme prise en tenant un objet (Méga-Gemme, objet de forme), qui n'est pas consommé. */
+  held?: boolean;
   onDone: () => void;
 }) {
   const reduced = useReducedMotion();
@@ -33,6 +48,7 @@ export function EvolutionReveal({
   const { pokemon } = data;
   const from = speciesName(ctx, data.fromSpeciesId, data.fromFormId);
   const to = speciesName(ctx, pokemon.speciesId, pokemon.formId);
+  const texts = revealTexts(held, pokemon.formId, from, to);
 
   useEffect(() => {
     if (done) return;
@@ -47,7 +63,7 @@ export function EvolutionReveal({
   return (
     <div className="flex flex-col items-center py-4 text-center">
       <p className="text-sm text-slate-500">
-        {done ? 'Félicitations !' : `Quoi ? ${from} ${mega ? 'méga-évolue' : 'évolue'} !`}
+        {done ? 'Félicitations !' : `Quoi ? ${texts.during}`}
       </p>
       <div className="relative my-4 grid h-52 w-52 place-items-center">
         <motion.div
@@ -114,7 +130,7 @@ export function EvolutionReveal({
         className="space-y-1"
       >
         <h2 className="text-xl font-bold">
-          {from} a {mega ? 'méga-évolué' : 'évolué'} en {to} ! {pokemon.isShiny && <ShinyStar />}
+          {texts.after} {pokemon.isShiny && <ShinyStar />}
         </h2>
         {newInDexTracker(data)(pokemon) && (
           <p>
@@ -125,7 +141,9 @@ export function EvolutionReveal({
         )}
         {data.consumedItemId && (
           <p className="text-xs text-slate-500">
-            {itemName(ctx, data.consumedItemId)} {mega ? `tenue par ${to}` : 'utilisé(e)'}.
+            {held
+              ? `${to} tient : ${itemName(ctx, data.consumedItemId)}.`
+              : `${itemName(ctx, data.consumedItemId)} utilisé(e).`}
           </p>
         )}
       </motion.div>

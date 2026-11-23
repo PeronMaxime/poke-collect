@@ -90,7 +90,9 @@ export function LaunchTeam({
       {members.length > 0 && (
         <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
           ≈ <strong className="text-slate-900 dark:text-slate-100">{formatXp(xp)}</strong> par
-          Pokémon {per} (moyenne, selon les rencontres)
+          Pokémon {per}
+          {members.length > 1 && <> (XP partagée entre les {members.length} membres)</>}, en moyenne
+          selon les rencontres
           {activeAbilities.length > 0 && (
             <>
               {' · '}

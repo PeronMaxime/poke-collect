@@ -117,8 +117,8 @@ export interface AdminPlayerDetailResponse {
 }
 
 /**
- * Lot de Pokémon de test (comptes administrateurs seulement) : les lignées des donjons de la
- * région et les plus forts Pokémon de chaque type de son Pokédex régional.
+ * Lot de Pokémon de test (comptes administrateurs seulement) : un exemplaire de chaque espèce du
+ * Pokédex de la région (et des lignées de ses donjons).
  */
 export const adminTestPokemonInputSchema = z.object({
   regionId: slugSchema,

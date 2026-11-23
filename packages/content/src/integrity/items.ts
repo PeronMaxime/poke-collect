@@ -3,7 +3,10 @@ import { lowestUnitPrice } from '../schemas';
 import { KNOWN_NATURES, formError } from './context';
 import type { IntegrityCheck } from './context';
 
-/** Objets : effets cohérents, revente jamais plus chère que l'achat. */
+/**
+ * Objets : effets cohérents (formes des Méga-Gemmes et des objets de forme), revente jamais plus
+ * chère que l'achat.
+ */
 export function checkItems(check: IntegrityCheck): void {
   const { content, add } = check;
   for (const item of content.items) {
@@ -22,9 +25,33 @@ export function checkItems(check: IntegrityCheck): void {
         const form = formError(effect);
         if (form) add('error', 'item', item.id, `Fossile : ${form}`);
       }
+      if (effect.type === 'berryPlant' && effect.minYield > effect.maxYield) {
+        add(
+          'error',
+          'item',
+          item.id,
+          `Plante : récolte minimale (${effect.minYield}) supérieure à la maximale (${effect.maxYield})`,
+        );
+      }
       if (effect.type === 'megaEvolution' && getForm(effect.formId)?.kind !== 'mega') {
         add('error', 'item', item.id, `Méga-Gemme : ${effect.formId} n'est pas une forme Méga`);
       }
+      if (effect.type === 'formChange') {
+        const kind = getForm(effect.formId)?.kind;
+        if (!kind)
+          add('error', 'item', item.id, `Objet de forme : forme ${effect.formId} inconnue`);
+        else if (kind === 'mega' || kind === 'regional') {
+          add(
+            'error',
+            'item',
+            item.id,
+            `Objet de forme : ${effect.formId} est une forme ${kind === 'mega' ? 'Méga (effet Méga-Évolution)' : 'régionale'}`,
+          );
+        }
+      }
+    }
+    if (item.category === 'formItem' && !types.includes('formChange')) {
+      add('warning', 'item', item.id, 'Objet de forme sans effet « Changement de forme »');
     }
     // Revendre plus cher qu'on achète ferait de l'argent à l'infini.
     const unitPrice = lowestUnitPrice(content.shopEntries, item.id);

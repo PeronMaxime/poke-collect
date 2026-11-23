@@ -134,7 +134,10 @@ export async function expeditionPaces(
         row.encounterBerryItemId
           ? { itemId: row.encounterBerryItemId, quantity: row.encounterBerries }
           : null,
-        row.encounterIntervalGrowthMinutes,
+        {
+          encounters: row.encounterIntervalGrowthMinutes,
+          loot: row.lootIntervalGrowthMinutes,
+        },
       ),
     );
   }

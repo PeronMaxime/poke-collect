@@ -24,6 +24,7 @@ const content = structuredClone(seedContent);
 content.balance.capture.globalMultiplier = 1000;
 content.quests.push({
   id: 'quete-test',
+  kind: 'legendary',
   order: 10,
   name: 'Quête de test',
   description: '',
@@ -238,6 +239,10 @@ describe('quêtes', () => {
     expect(claimed.body.currency).toBe(before.body.profile.currency + 500);
     expect(claimed.body.slots.expeditions).toBe(seedContent.balance.expeditions.initialSlots + 1);
     expect(await quest()).toMatchObject({ status: 'claimed', pokemonCaught: 0 });
+    // Les objets de quête sont rendus : le sac ne les garde pas.
+    expect(claimed.body.handedIn).toEqual([{ itemId: 'fragment-magnetique', quantity: 2 }]);
+    const bag = await call<InventoryEntryDto[]>('GET', '/api/inventory');
+    expect(bag.body.find((i) => i.itemId === 'fragment-magnetique')).toBeUndefined();
 
     const again = await call<{ error: string }>('POST', '/api/quests/quete-test/claim');
     expect(again.body.error).toBe('ALREADY_CLAIMED');

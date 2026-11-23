@@ -15,6 +15,64 @@ interface Release {
 /** Les entrées, de la plus récente à la plus ancienne. */
 export const RELEASES: Release[] = [
   {
+    date: '23 novembre 2026',
+    title: 'Les quêtes de formes, des expéditions rééquilibrées et un Pokédex recentré',
+    changes: [
+      {
+        section: 'Quêtes',
+        items: [
+          'Nouvelles quêtes de formes à Hoenn, rangées sous les quêtes légendaires de la région. Après Kyogre, Groudon et Deoxys, suis la piste de la Team Aqua, de la Team Magma et des fragments de la météorite jusqu’à un dresseur redoutable. Vaincu, il te laisse un objet de forme : l’Orbe Bleu, l’Orbe Rouge, ou l’une des trois Météorites (Attaque, Défense, Vitesse).',
+          'Un objet de forme se tient comme une Méga-Gemme, depuis la fiche du Pokémon au PC : Kyogre devient Primo-Kyogre, Groudon devient Primo-Groudon, et Deoxys prend la forme de sa Météorite. Retire l’objet quand tu veux, il revient dans ton Sac. Une Primo-Résurgence prend le talent de sa forme et ne compte pas dans la limite d’une Méga-Évolution par équipe.',
+          'Les Orbes trouvés pendant les quêtes de Kyogre et de Groudon s’appellent désormais Éclat d’Orbe Bleu et Éclat d’Orbe Rouge : les véritables Orbes sont à gagner dans les nouvelles quêtes.',
+          'La collection des formes de Deoxys peut enfin se compléter, grâce aux Météorites.',
+          'Quand tu réclames une quête, les objets de quête trouvés pour elle sont rendus : ils quittent ton Sac, qui reste rangé. La fenêtre de fin de quête indique ce que tu as rendu.',
+          'Les objets de quête des quêtes déjà réclamées ont été retirés de ton Sac. Ceux qui servent encore à une quête en cours restent.',
+        ],
+      },
+      {
+        section: 'Expéditions',
+        items: [
+          'Le transfert automatique propre à une zone peut garder des espèces : coche les Pokémon de la zone à ne jamais transférer, quels que soient leurs IV. Le réglage affiché au départ indique combien d’espèces sont gardées.',
+          'Le butin ralentit avec le temps, comme les rencontres : un tirage toutes les 6 min la première heure, puis 1 min de plus à chaque heure passée. Tu gardes ainsi un tirage pour deux rencontres, que tu partes une heure ou une journée. L’aperçu du départ affiche ce rythme. Les expéditions déjà en route gardent le leur.',
+          'Moins de Balls dans le butin : si tu lances une Ball à chaque rencontre, le butin ne t’en rend plus qu’une partie, d’environ 40 % dans les premières zones d’une région à 85 % dans les dernières (Super et Hyper Balls comprises). Choisis bien quels Pokémon capturer dans ton plan de Balls, et complète ton stock à la Boutique.',
+          'Les Pokémon qui s’obtiennent en évoluant avec un objet (pierre, objet tenu, Câble Link) n’apparaissent plus en expédition : Raichu, Arcanin, Crustabri, Grodoudou, Noadkoko, Rafflesia, Héliatronc… Capture leur pré-évolution et fais-la évoluer. Leveinard reste au Parc Safari.',
+          'Plus aucun Pokémon au dernier stade d’une lignée à trois stades en expédition : Papilusion, Dardargnan, Pharamp et Cotovol à Johto, Monaflèmit, Brouhabam, Galeking, Libégon et Kaimorse à Hoenn. Fais évoluer leur pré-évolution pour les obtenir.',
+          'Moins de Pokémon évolués dans les expéditions de Kanto, Johto et Hoenn : une partie des formes finales a disparu (Persian, Tentacruel, Smogogo, Granbull, Volcaropod, Grahyèna, Hélédelle, Xatu…), les autres n’apparaissent plus que dans une seule zone de leur région, et plus rarement. Les formes intermédiaires (Colossinge, Nosferalto, Gravalanch…) se trouvent dans moins de zones et moins souvent. Certaines zones de fin de région accueillent à la place des Pokémon de base, à faire évoluer.',
+          'La Route Victoire de Kanto demande un peu moins de puissance d’équipe : 3 300 PE au lieu de 3 600.',
+          'Les types super efficaces des zones dont les Pokémon ont changé ont été recalculés : vérifie les affinités de la Route 23, de la Grotte Azurée, de la Zone de Combat ou de la Grotte Originelle avant de composer ton équipe.',
+          'L’XP d’une expédition est maintenant partagée entre les Pokémon de l’équipe : à 4, chacun en reçoit le quart ; seul, un Pokémon garde tout. Les Pokémon montaient trop vite au niveau 100 : la pension et les Bonbons redeviennent utiles pour les faire progresser. L’aperçu du départ indique l’XP de chaque membre. Les expéditions déjà en route gardent l’ancienne règle, et les combats et donjons ne changent pas.',
+        ],
+      },
+      {
+        section: 'Pokédex',
+        items: [
+          'Le Pokédex ne garde plus que les espèces et leurs formes régionales. Les Méga-Évolutions, formes Gigamax, Primo-Résurgences et formes de combat passent dans les Collections, et ne comptent plus dans le total du Pokédex ni dans les classements.',
+          'Nouvelles collections : une pour les Méga-Évolutions de chaque région et une pour ses formes Gigamax, à compléter avec les formes seules (pas besoin du Pokémon de base), puis une par Pokémon pour les Primo-Résurgences (Kyogre, Groudon) et les formes de combat (Morphéo, Exagide, Zygarde…). Chacune donne un petit bonus permanent, comme les collections de formes naturelles.',
+          'Les Collections ont leurs onglets par région, comme le Pokédex : une pastille signale les régions où une collection est à réclamer.',
+        ],
+      },
+      {
+        section: 'Régions',
+        items: [
+          'Une forme régionale ne sert plus que dans sa propre région : Ossatueur d’Alola part en expédition et combat à Alola, plus à Kanto, et se range dans l’onglet Alola du PC. Les Pokémon ordinaires ne changent pas.',
+        ],
+      },
+      {
+        section: 'PC',
+        items: [
+          'La pastille « Évol. » ne signale plus les évolutions vers une région que tu n’as pas encore débloquée (Yanma avant Sinnoh, par exemple). L’évolution reste possible depuis la fiche du Pokémon.',
+        ],
+      },
+      {
+        section: 'Wiki',
+        items: [
+          'Le tutoriel a été réécrit pour les nouveaux dresseurs : les bases en quelques étapes courtes, à jour avec le jeu d’aujourd’hui (expéditions sans durée fixe, Bonbons, Centre Pokémon, nouvelles régions, onglets à débloquer).',
+          'Le tutoriel s’ouvre de lui-même quand tu choisis ton tout premier starter, sur ton compte comme sur une nouvelle partie. Masque-le quand tu veux : il reste à tout moment dans le Wiki, en haut de l’écran.',
+        ],
+      },
+    ],
+  },
+  {
     date: '12 novembre 2026',
     title: 'L’ordre de l’équipe au glisser-déposer et un jeu plus rapide à ouvrir',
     changes: [

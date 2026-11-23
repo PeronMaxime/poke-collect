@@ -2,7 +2,7 @@ import type { Dungeon } from '@poke/content';
 import type { GameContext } from '../context';
 import type { TeamMember } from '../expedition';
 import type { PlayerProgress } from '../progress';
-import { isRegionalSpecies, isRegionUnlocked, isUnlocked } from '../progress';
+import { isRegionalPokemon, isRegionUnlocked, isUnlocked } from '../progress';
 import { MAX_MEGAS_PER_TEAM, megaCount } from '../mega';
 import { MOVE_CATEGORIES } from './moves';
 import type { DungeonMove } from './moves';
@@ -89,7 +89,7 @@ export function checkDungeonTeam(
     errors.push({ code: 'TOO_MANY_MEGAS', max: MAX_MEGAS_PER_TEAM });
   }
   const outside = team
-    .filter((m) => !isRegionalSpecies(ctx, dungeon.regionId, m.speciesId))
+    .filter((m) => !isRegionalPokemon(ctx, dungeon.regionId, m))
     .map((m) => m.speciesId);
   if (outside.length > 0) errors.push({ code: 'WRONG_REGION', speciesIds: outside });
   if (hasInvalidMove(ctx, team)) errors.push({ code: 'INVALID_MOVE' });

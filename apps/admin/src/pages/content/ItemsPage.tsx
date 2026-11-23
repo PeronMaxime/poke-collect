@@ -38,6 +38,7 @@ const CATEGORY_LABELS: Record<ItemCategory, string> = {
   endgame: 'Endgame',
   fossil: 'Fossile',
   megaStone: 'Méga-Gemme',
+  formItem: 'Objet de forme',
   chest: 'Coffre',
   quest: 'Objet de quête',
   misc: 'Divers',
@@ -56,6 +57,19 @@ export const RARITY_LABELS: Record<Rarity, string> = {
 const MEGA_FORMS = forms
   .filter((f) => f.kind === 'mega')
   .sort((a, b) => a.speciesId - b.speciesId || a.id - b.id);
+
+/**
+ * Formes d'un objet de forme, par numéro d'espèce : toutes sauf Méga (Méga-Gemme) et régionales
+ * (pas une forme tenue) ; Primo-Résurgences d'abord, la forme la plus courante de ces objets.
+ */
+const HELD_FORMS = forms
+  .filter((f) => f.kind !== 'mega' && f.kind !== 'regional')
+  .sort(
+    (a, b) =>
+      Number(b.kind === 'primal') - Number(a.kind === 'primal') ||
+      a.speciesId - b.speciesId ||
+      a.id - b.id,
+  );
 
 /** Types d'effets disponibles : en ajouter un nouveau demande du code (game-core). */
 const EFFECTS: Record<
@@ -111,6 +125,11 @@ const EFFECTS: Record<
     label: 'Méga-Évolution',
     help: 'Méga-Gemme : au PC, un Pokémon de l’espèce (forme normale) la tient et passe dans la forme Méga choisie. Retirée du sac, rendue quand il redevient normal.',
     create: () => ({ type: 'megaEvolution', formId: MEGA_FORMS[0]!.id }),
+  },
+  formChange: {
+    label: 'Changement de forme',
+    help: 'Objet de forme (Orbe Bleu, Météorite…) : comme une Méga-Gemme, un Pokémon de l’espèce (forme normale) le tient au PC et passe dans la forme choisie. Retiré du sac, rendu quand il reprend sa forme normale. Une Primo-Résurgence prend le talent de sa forme et ne compte pas dans la limite d’une Méga par équipe.',
+    create: () => ({ type: 'formChange', formId: HELD_FORMS[0]!.id }),
   },
   revive: {
     label: 'Rappel',
@@ -799,6 +818,16 @@ function PokemonEffectFields({
             disabled={disabled}
             onChange={(v) => update({ ...effect, formId: Number(v) })}
             options={MEGA_FORMS.map((f) => ({ value: String(f.id), label: f.nameFr }))}
+          />
+        </Field>
+      )}
+      {effect.type === 'formChange' && (
+        <Field label="Forme" error={errors.get(`effects.${i}.formId`)}>
+          <SelectInput
+            value={String(effect.formId)}
+            disabled={disabled}
+            onChange={(v) => update({ ...effect, formId: Number(v) })}
+            options={HELD_FORMS.map((f) => ({ value: String(f.id), label: f.nameFr }))}
           />
         </Field>
       )}

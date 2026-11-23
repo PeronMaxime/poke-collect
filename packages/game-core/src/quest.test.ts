@@ -11,6 +11,7 @@ import {
   questExpeditionMisses,
   questItemsFound,
   questItemsGained,
+  questItemsHandedIn,
   questStatus,
   questStepsDone,
 } from './quest';
@@ -204,6 +205,23 @@ describe('avancement des quêtes', () => {
     });
     expect(questItemsGained(electhor, before, before)).toBeNull();
     expect(questItemsGained(electhor, NEW_QUEST, { step: 1, count: 0 })).toBeNull();
+  });
+
+  it('objets de quête : tous rendus à la réclamation, additionnés par objet', () => {
+    expect(questItemsHandedIn(quest('electhor'))).toEqual([
+      { itemId: 'fragment-magnetique', quantity: 3 },
+      { itemId: 'plume-foudre', quantity: 1 },
+    ]);
+    const twice = testContext((content) => {
+      const q = content.quests.find((x) => x.id === 'electhor')!;
+      q.steps.push(structuredClone(q.steps[1]!));
+    });
+    expect(questItemsHandedIn(twice.quest('electhor')!)).toEqual([
+      { itemId: 'fragment-magnetique', quantity: 6 },
+      { itemId: 'plume-foudre', quantity: 1 },
+    ]);
+    const none = { ...quest('electhor'), steps: quest('electhor').steps.slice(0, 1) };
+    expect(questItemsHandedIn(none)).toEqual([]);
   });
 
   it('valide paresseusement les étapes « état » et s’arrête à la première non remplie', () => {

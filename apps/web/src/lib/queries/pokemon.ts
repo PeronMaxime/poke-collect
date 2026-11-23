@@ -5,7 +5,7 @@
 import { utcOffsetMinutes } from './clock';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { isHealing, pokemonEvolutions } from '@poke/game-core';
+import { isHealing, isSpeciesInUnlockedRegion, pokemonEvolutions } from '@poke/game-core';
 import type { EvolutionCheck, GameContext } from '@poke/game-core';
 import type {
   CandyDto,
@@ -24,6 +24,7 @@ import type {
 import { api } from '../api';
 import { useInventory } from './inventory';
 import { keys } from './keys';
+import { usePlayerProgress } from './player';
 import { useDexCatches, usePokedexForms } from './pokedex';
 
 /** Tous les Pokémon du joueur (le PC). */
@@ -58,23 +59,28 @@ export function useEvolutionChecker(ctx: GameContext | undefined) {
 
 /**
  * Le Pokémon peut-il évoluer maintenant vers une espèce ou forme qui manque encore au Pokédex ?
- * (pastille « Évol. » du PC et compteur de l'onglet).
+ * (pastille « Évol. » du PC et compteur de l'onglet). Les évolutions vers une espèce d'une région
+ * pas encore débloquée (Yanma → Yanmega avant Sinnoh) ne comptent pas, mais restent possibles
+ * depuis la fiche.
  */
 export function useNewEvolutionChecker(ctx: GameContext | undefined) {
   const evolutionsOf = useEvolutionChecker(ctx);
   const { caughtSpeciesIds } = useDexCatches();
   const forms = usePokedexForms();
+  const progress = usePlayerProgress();
   return useMemo(() => {
     const caughtFormIds = new Set(forms.data?.map((f) => f.formId));
     return (p: PokemonDto) =>
+      !!ctx &&
       evolutionsOf(p).some(
         ({ option, method }) =>
           method &&
           (option.toFormId === null
             ? !caughtSpeciesIds.has(option.toSpeciesId)
-            : !caughtFormIds.has(option.toFormId)),
+            : !caughtFormIds.has(option.toFormId)) &&
+          isSpeciesInUnlockedRegion(ctx, option.toSpeciesId, progress),
       );
-  }, [evolutionsOf, caughtSpeciesIds, forms.data]);
+  }, [ctx, evolutionsOf, caughtSpeciesIds, forms.data, progress]);
 }
 
 /** Bonbons du joueur, par lignée. */

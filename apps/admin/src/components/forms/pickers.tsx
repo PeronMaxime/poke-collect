@@ -369,6 +369,7 @@ const ITEM_GROUP_LABELS: Record<ItemCategory, string> = {
   endgame: 'Endgame',
   fossil: 'Fossiles',
   megaStone: 'Méga-Gemmes',
+  formItem: 'Objets de forme',
   chest: 'Coffres',
   quest: 'Objets de quête',
   misc: 'Divers',

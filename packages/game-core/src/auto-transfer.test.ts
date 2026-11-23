@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { hiddenEscapeIndexes } from './auto-transfer';
+import { autoTransferIndexes, hiddenEscapeIndexes } from './auto-transfer';
 import type { EncounterResult } from './expedition';
+import { testContext } from './test-helpers';
 
 const IVS = { hp: 0, attack: 0, defense: 0, spAttack: 0, spDefense: 0, speed: 0 };
 
@@ -37,5 +38,19 @@ describe('échappés résumés au retour', () => {
     const encounters = [met(16, 'escaped'), met(16, 'captured'), met(16, 'escaped')];
     const caught = { speciesIds: new Set<number>(), formIds: new Set<number>() };
     expect([...hiddenEscapeIndexes(encounters, caught)]).toEqual([2]);
+  });
+});
+
+describe('transfert automatique', () => {
+  const ctx = testContext();
+  const caught = { speciesIds: new Set([16, 19]), formIds: new Set<number>() };
+
+  it('transfère les déjà capturés, sauf les espèces gardées', () => {
+    const encounters = [met(16, 'captured'), met(19, 'captured'), met(19, 'captured')];
+    expect([...autoTransferIndexes(ctx, encounters, caught, { maxPerfectIvs: 0 })]).toEqual([
+      0, 1, 2,
+    ]);
+    const keepRattata = { maxPerfectIvs: 0, keepSpeciesIds: [19] };
+    expect([...autoTransferIndexes(ctx, encounters, caught, keepRattata)]).toEqual([0]);
   });
 });

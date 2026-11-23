@@ -12,6 +12,7 @@ import {
   dungeonTypeEffectiveness,
   evolutionOptions,
   isBreedable,
+  formItemOptions,
   megaOptions,
 } from '@poke/game-core';
 import type { GameContext, GameSpecies } from '@poke/game-core';
@@ -24,7 +25,7 @@ import {
   itemName,
   typeLabel,
 } from '../../lib/labels';
-import { levelRange, pokemonSources } from '../pokedex/pokemonSources';
+import { heldFormLabel, levelRange, pokemonSources } from '../pokedex/pokemonSources';
 import { WikiBreadcrumb } from './WikiBreadcrumb';
 import { searchKey, wikiAbilityLink, wikiEntries, wikiLink, wikiPokemonLink } from './wiki';
 import type { WikiEntry } from './wiki';
@@ -654,7 +655,7 @@ const GROWTH_LABELS: Record<string, string> = {
 /** Façons d'obtenir le Pokémon : zones d'expédition, quêtes, fossiles, œufs, évolution, Méga. */
 function Locations({ ctx, entry }: { ctx: GameContext; entry: WikiEntry }) {
   const { speciesId, formId } = entry;
-  const { zones, specials, quests, fossils, megaOf, parent, fromEgg } = pokemonSources(
+  const { zones, specials, quests, fossils, heldOf, parent, fromEgg } = pokemonSources(
     ctx,
     speciesId,
     formId,
@@ -713,11 +714,11 @@ function Locations({ ctx, entry }: { ctx: GameContext; entry: WikiEntry }) {
       </p>,
     );
   }
-  if (megaOf) {
+  if (heldOf) {
     lines.push(
       <p key="mega">
-        Méga-Évolution de {ctx.species(speciesId)?.nameFr} avec{' '}
-        {megaOf.itemIds.map((id) => itemName(ctx, id)).join(' ou ')}.
+        {heldFormLabel(heldOf.form)} de {ctx.species(speciesId)?.nameFr} avec{' '}
+        {heldOf.itemIds.map((id) => itemName(ctx, id)).join(' ou ')}.
       </p>,
     );
   }
@@ -755,12 +756,12 @@ function Evolutions({
   entries: WikiEntry[];
 }) {
   const form = entry.formId !== null ? getForm(entry.formId) : undefined;
-  // Méga-Évolutions et formes de combat : lignée de la forme normale.
+  // Formes tenues (Méga…) et formes de combat : lignée de la forme normale.
   const lineageForm = form?.kind === 'regional' ? entry.formId : null;
   const rootId = directLineage(entry.speciesId)[0] ?? entry.speciesId;
   const rootForm = counterpartFormId(lineageForm, rootId);
   const known = new Set(entries.map((e) => `${e.speciesId}:${e.formId}`));
-  const megas = megaOptions(ctx, entry.speciesId);
+  const megas = [...megaOptions(ctx, entry.speciesId), ...formItemOptions(ctx, entry.speciesId)];
   const hasEvolutions = evolutionOptions(ctx, rootId, rootForm).length > 0;
 
   if (isEventForm(entry.formId)) {
@@ -787,7 +788,7 @@ function Evolutions({
           {megas.map(({ form: mega, itemIds }) => (
             <span key={mega.id} className="flex items-center gap-2">
               <span className="text-slate-500">
-                Méga-Évolution ({itemIds.map((id) => itemName(ctx, id)).join(' ou ')}) →
+                {heldFormLabel(mega)} ({itemIds.map((id) => itemName(ctx, id)).join(' ou ')}) →
               </span>
               <EvolutionMon
                 ctx={ctx}

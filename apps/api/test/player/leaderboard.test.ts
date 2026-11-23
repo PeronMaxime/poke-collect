@@ -30,8 +30,8 @@ describe('Classement', () => {
       { ownerId: blue.userId, speciesId: 10, seen: true, caught: false },
       { ownerId: green.userId, speciesId: 16, seen: true, caught: true },
     ]);
-    // Formes du Pokédex comptées avec les espèces : Rattata d'Alola (shiny), Méga-Florizarre ;
-    // une forme naturelle (Pikachu à casquette, sans case au Pokédex) ne compte pas.
+    // Formes du Pokédex comptées avec les espèces : Rattata d'Alola (shiny) ; une Méga-Évolution
+    // (Méga-Florizarre) ou une forme naturelle (Pikachu à casquette), sans case au Pokédex, non.
     const at = new Date();
     await handle.db.insert(pokedexForms).values([
       { ownerId: red.userId, formId: 10091, caughtShiny: true, firstCaughtAt: at },
@@ -55,13 +55,13 @@ describe('Classement', () => {
     const species = await red.call<LeaderboardResponse>('GET', '/api/leaderboard/species');
     expect(species.status).toBe(200);
     expect(species.body.total).toBe(3);
-    // Starter compris : Blue 3 espèces (starter + 2), Red 1 + 2 formes, Green 2.
+    // Starter compris : Blue 3 espèces (starter + 2), Red 1 + 1 forme, Green 2.
     expect(species.body.entries.map((e) => [e.rank, e.trainerName, e.value])).toEqual([
       [1, 'Blue', 3],
-      [1, 'Red', 3],
-      [3, 'Green', 2],
+      [2, 'Green', 2],
+      [2, 'Red', 2],
     ]);
-    expect(species.body.me).toMatchObject({ rank: 1, trainerName: 'Red', isMe: true });
+    expect(species.body.me).toMatchObject({ rank: 2, trainerName: 'Red', isMe: true });
 
     const money = await blue.call<LeaderboardResponse>('GET', '/api/leaderboard/money');
     expect(money.body.entries[0]).toMatchObject({ trainerName: 'Red', value: 5000 });

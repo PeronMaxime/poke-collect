@@ -28,34 +28,36 @@ veut dire, puis où la chercher. Les chemins partent de `packages/` ou de `apps/
 
 ## Expéditions
 
-| En jeu                | Ce que c'est                                                                                                | Dans le code                                                          |
-| --------------------- | ----------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Expédition            | Une équipe part dans une zone ; rencontres, captures et butin se calculent au retour                        | `game-core/expedition/`, `api/game/expeditions/`, table `expeditions` |
-| Durée libre           | Le joueur arrête quand il veut ; l'intervalle entre deux rencontres s'allonge d'heure en heure              | `expeditionPlan`, `expeditionPace`, `intervalGrowthMinutes`           |
-| Zone                  | Lieu d'expédition : rencontres pondérées, butin, PE minimale, types exigés, condition de déblocage          | `Zone` (`content/schemas/`)                                           |
-| Affinité              | Un Pokémon dont le type est super efficace contre le type le plus présent de la zone aide à capturer        | `zoneAffinityTypes`, `countAffinity`                                  |
-| Plan de Balls         | Quelle Ball lancer selon la rencontre : nouveau, chromatique, déjà capturé, nombre d'IV parfaits            | `BallPlan`, `ballCategory`, `planThrows`                              |
-| Balls au fil de l'eau | Les Balls quittent le sac à mesure des lancers, pas au départ : c'est le rattrapage qui les retire          | `settleExpeditionBalls`, `throws`                                     |
-| Pitié                 | Chaque capture ratée d'une espèce augmente son poids de rencontre, jusqu'à un plafond                       | `pityMultiplier`, `balance.pity`                                      |
-| Chaîne (chromatique)  | Relancer de suite dans la même zone allonge la chaîne : plus de chromatiques, puis des IV parfaits garantis | `shinyChains`, `chainMultiplier`, `chainPerfectIvs`                   |
-| Météo                 | Tirée chaque heure pleine de façon déterministe ; modifie talents et dégâts                                 | `game-core/weather.ts`, `zone.weatherChangeChance`                    |
-| Rencontre spéciale    | Forme rare qui n'apparaît que si un Pokémon précis est dans l'équipe                                        | `zone.specialEncounters`, `specialEncountersFor`                      |
-| Fuyard                | Légendaire qui change de zone chaque heure après sa quête ; croisé sans être capturé, il fuit ailleurs      | `game-core/roaming.ts`, `QuestPokemon.roaming`, `expeditions.roamers` |
-| Butin                 | Objets tirés d'une table de butin à intervalles réguliers                                                   | `LootTable`, `rollLoot`                                               |
-| Complétion            | Récompense pour avoir capturé tout ce qu'une zone ou une région propose (version chromatique à part)        | `game-core/completion.ts`, `balance.expeditionCompletions`            |
+| En jeu                | Ce que c'est                                                                                                                            | Dans le code                                                                             |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------- |
+| Expédition            | Une équipe part dans une zone ; rencontres, captures et butin se calculent au retour                                                    | `game-core/expedition/`, `api/game/expeditions/`, table `expeditions`                    |
+| Durée libre           | Le joueur arrête quand il veut ; l'intervalle entre deux rencontres, et celui entre deux tirages de butin, s'allongent d'heure en heure | `expeditionPlan`, `expeditionPace`, `intervalGrowthMinutes`, `lootIntervalGrowthMinutes` |
+| Zone                  | Lieu d'expédition : rencontres pondérées, butin, PE minimale, types exigés, condition de déblocage                                      | `Zone` (`content/schemas/`)                                                              |
+| Affinité              | Un Pokémon dont le type est super efficace contre le type le plus présent de la zone aide à capturer                                    | `zoneAffinityTypes`, `countAffinity`                                                     |
+| Plan de Balls         | Quelle Ball lancer selon la rencontre : nouveau, chromatique, déjà capturé, nombre d'IV parfaits                                        | `BallPlan`, `ballCategory`, `planThrows`                                                 |
+| Balls au fil de l'eau | Les Balls quittent le sac à mesure des lancers, pas au départ : c'est le rattrapage qui les retire                                      | `settleExpeditionBalls`, `throws`                                                        |
+| Pitié                 | Chaque capture ratée d'une espèce augmente son poids de rencontre, jusqu'à un plafond                                                   | `pityMultiplier`, `balance.pity`                                                         |
+| Chaîne (chromatique)  | Relancer de suite dans la même zone allonge la chaîne : plus de chromatiques, puis des IV parfaits garantis                             | `shinyChains`, `chainMultiplier`, `chainPerfectIvs`                                      |
+| Météo                 | Tirée chaque heure pleine de façon déterministe ; modifie talents et dégâts                                                             | `game-core/weather.ts`, `zone.weatherChangeChance`                                       |
+| Rencontre spéciale    | Forme rare qui n'apparaît que si un Pokémon précis est dans l'équipe                                                                    | `zone.specialEncounters`, `specialEncountersFor`                                         |
+| Fuyard                | Légendaire qui change de zone chaque heure après sa quête ; croisé sans être capturé, il fuit ailleurs                                  | `game-core/roaming.ts`, `QuestPokemon.roaming`, `expeditions.roamers`                    |
+| Butin                 | Objets tirés d'une table de butin, un tirage pour deux rencontres (intervalle qui s'allonge comme le leur)                              | `LootTable`, `rollLoot`, `planAfter`                                                     |
+| Complétion            | Récompense pour avoir capturé tout ce qu'une zone ou une région propose (version chromatique à part)                                    | `game-core/completion.ts`, `balance.expeditionCompletions`                               |
+| XP partagée           | L'XP d'une expédition est divisée entre les membres de l'équipe (à 4, chacun en reçoit le quart)                                        | `xpShareCount`, `expeditions.xp_shared`                                                  |
 
 ## Combats
 
-| En jeu               | Ce que c'est                                                                                            | Dans le code                                                     |
-| -------------------- | ------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| Combat en temps réel | Moteur commun à tous les combats : une simulation rejouable à partir de la graine et des ordres donnés  | `simulateDungeon`, `DungeonSetup`, `DungeonCommand` (`dungeon/`) |
-| Combat de dresseur   | Contre l'équipe d'un dresseur ; argent, XP, badge à la première victoire d'un Champion                  | `game-core/battle.ts`, `api/game/battles.ts`, table `battles`    |
-| Palier               | Dresseurs répétables placés avant chaque Champion et le Conseil 4, à battre dans l'ordre                | pas de champ dédié : une chaîne de conditions `trainerDefeated`  |
-| Dresseur de quête    | Dresseur visible seulement à l'étape de sa quête, battu une seule fois                                  | `trainer.questId`, `isTrainerRevealed`                           |
-| Donjon               | Combat contre une suite d'adversaires puis un boss ; récompense les Méga-Gemmes                         | `game-core/dungeon/`, `api/game/dungeons.ts`                     |
-| Méga-Évolution       | Au PC, avec une gemme : le Pokémon prend sa forme Méga (une seule Méga par équipe)                      | `game-core/mega.ts`, `megaStone`                                 |
-| Combat légendaire    | Lancé depuis une quête ; vaincu, le légendaire peut être capturé avec une Ball, sinon retenté plus tard | `game-core/legendary.ts`, `api/game/legendary.ts`                |
-| Commande             | Ordre du joueur pendant un combat : relais ou objet de soin, horodaté                                   | `DungeonCommand`, `healCommand`                                  |
+| En jeu               | Ce que c'est                                                                                                       | Dans le code                                                                       |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| Combat en temps réel | Moteur commun à tous les combats : une simulation rejouable à partir de la graine et des ordres donnés             | `simulateDungeon`, `DungeonSetup`, `DungeonCommand` (`dungeon/`)                   |
+| Combat de dresseur   | Contre l'équipe d'un dresseur ; argent, XP, badge à la première victoire d'un Champion                             | `game-core/battle.ts`, `api/game/battles.ts`, table `battles`                      |
+| Palier               | Dresseurs répétables placés avant chaque Champion et le Conseil 4, à battre dans l'ordre                           | pas de champ dédié : une chaîne de conditions `trainerDefeated`                    |
+| Dresseur de quête    | Dresseur visible seulement à l'étape de sa quête, battu une seule fois                                             | `trainer.questId`, `isTrainerRevealed`                                             |
+| Donjon               | Combat contre une suite d'adversaires puis un boss ; récompense les Méga-Gemmes                                    | `game-core/dungeon/`, `api/game/dungeons.ts`                                       |
+| Méga-Évolution       | Au PC, avec une gemme : le Pokémon prend sa forme Méga (une seule Méga par équipe)                                 | `game-core/mega.ts`, `megaStone`                                                   |
+| Objet de forme       | Au PC, comme une Méga-Gemme : tenu, il change la forme (Primo-Kyogre, Deoxys Attaque…) ; retiré, il revient au sac | effet `formChange`, catégorie `formItem`, `game-core/mega.ts`, `pokemon.megaStone` |
+| Combat légendaire    | Lancé depuis une quête ; vaincu, le légendaire peut être capturé avec une Ball, sinon retenté plus tard            | `game-core/legendary.ts`, `api/game/legendary.ts`                                  |
+| Commande             | Ordre du joueur pendant un combat : relais ou objet de soin, horodaté                                              | `DungeonCommand`, `healCommand`                                                    |
 
 ## Bâtiments
 
@@ -73,19 +75,22 @@ veut dire, puis où la chercher. Les chemins partent de `packages/` ou de `apps/
 
 ## Progression
 
-| En jeu                 | Ce que c'est                                                                                        | Dans le code                                                      |
-| ---------------------- | --------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Condition de déblocage | Règle réutilisée partout : % du Pokédex, badges, dresseur battu, quête, espèces capturées, `allOf`… | `unlockConditionSchema`, `game-core/progress.ts`                  |
-| Avancement du joueur   | Ce que les conditions regardent : Pokédex, dresseurs battus, œufs éclos, quêtes                     | `PlayerProgress`, `playerProgress` (`api/game/store/progress.ts`) |
-| Région débloquée       | Une région s'ouvre selon sa condition ; un accès acquis est gardé même si la condition durcit       | `isRegionUnlocked`, table `opened_regions`                        |
-| Onglet verrouillé      | Onglet du jeu caché (« ??? ») tant que sa condition n'est pas remplie                               | `balance.tabUnlocks`, `isTabUnlocked`                             |
-| Bâtiment à débloquer   | Emplacements d'expédition, pensions, couveuses, places… gagnés par paliers                          | `balance.facilityUnlocks`, `game-core/facilities.ts`              |
-| Collection             | Ensemble de formes à capturer dans une région, avec récompense                                      | `game-core/progression.ts`, `collections`                         |
-| Bonus permanent        | Multiplicateurs acquis (capture, XP, argent, chromatique) par les récompenses réclamées             | `PlayerBonuses`, `playerBonuses`, `ClaimedRewards`                |
-| Quête                  | Suite d'étapes (conditions ou actions comptées) ; récompense, parfois un légendaire à affronter     | `game-core/quest.ts`, `api/game/quests.ts`                        |
-| Badge                  | Gagné à la première victoire sur un Champion ; compté par région                                    | `badgeCount`, `content/badge-sprites.ts`                          |
-| Guilde                 | Groupe de joueurs : quêtes du jour et de la semaine, coffres Bronze, Argent, Or, messages           | `game-core/guilds.ts`, `api/game/guilds/`                         |
-| Classement             | Par espèces capturées, argent, badges, chromatiques ; et par guilde                                 | `api/game/leaderboard.ts`                                         |
+| En jeu                 | Ce que c'est                                                                                                     | Dans le code                                                      |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| Condition de déblocage | Règle réutilisée partout : % du Pokédex, badges, dresseur battu, quête, espèces capturées, `allOf`…              | `unlockConditionSchema`, `game-core/progress.ts`                  |
+| Avancement du joueur   | Ce que les conditions regardent : Pokédex, dresseurs battus, œufs éclos, quêtes                                  | `PlayerProgress`, `playerProgress` (`api/game/store/progress.ts`) |
+| Région débloquée       | Une région s'ouvre selon sa condition ; un accès acquis est gardé même si la condition durcit                    | `isRegionUnlocked`, table `opened_regions`                        |
+| Pokémon de la région   | Seuls à servir dans une région : espèce de son Pokédex, ou forme régionale de cette région                       | `isRegionalPokemon`, `regionalFormRegionId`                       |
+| Onglet verrouillé      | Onglet du jeu caché (« ??? ») tant que sa condition n'est pas remplie                                            | `balance.tabUnlocks`, `isTabUnlocked`                             |
+| Bâtiment à débloquer   | Emplacements d'expédition, pensions, couveuses, places… gagnés par paliers                                       | `balance.facilityUnlocks`, `game-core/facilities.ts`              |
+| Collection             | Ensemble de formes à capturer dans une région, avec récompense (formes naturelles, Méga, Gigamax, Primo, combat) | `game-core/progression.ts`, `collections`                         |
+| Bonus permanent        | Multiplicateurs acquis (capture, XP, argent, chromatique) par les récompenses réclamées                          | `PlayerBonuses`, `playerBonuses`, `ClaimedRewards`                |
+| Quête                  | Suite d'étapes (conditions ou actions comptées) ; récompense, parfois un légendaire à affronter                  | `game-core/quest.ts`, `api/game/quests.ts`                        |
+| Quête de forme         | Quête rangée à part (`kind: 'form'`) : une histoire, un dresseur de quête, puis un objet de forme en récompense  | `quest.kind`, `seed/form-quests.ts`                               |
+| Objet de quête         | Trouvé en expédition pendant son étape ; rendu (retiré du Sac) quand on réclame la quête                         | condition `questItem`, `questItemsHandedIn`                       |
+| Badge                  | Gagné à la première victoire sur un Champion ; compté par région                                                 | `badgeCount`, `content/badge-sprites.ts`                          |
+| Guilde                 | Groupe de joueurs : quêtes du jour et de la semaine, coffres Bronze, Argent, Or, messages                        | `game-core/guilds.ts`, `api/game/guilds/`                         |
+| Classement             | Par espèces capturées, argent, badges, chromatiques ; et par guilde                                              | `api/game/leaderboard.ts`                                         |
 
 ## Contenu et technique
 

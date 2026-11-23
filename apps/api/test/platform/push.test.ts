@@ -1,6 +1,7 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content/seed';
+import { getSpecies } from '@poke/data';
 import { dungeonProgress, inventory, pokemon, pushSubscriptions, users } from '@poke/db';
 import type {
   AdminPlayerDetailResponse,
@@ -233,6 +234,12 @@ describe('joueurs (admin)', () => {
       .filter((d) => d.regionId === regionId)
       .flatMap((d) => d.familySpeciesIds);
     expect(families.every((id) => res.body.speciesIds.includes(id))).toBe(true);
+    // Tout le Pokédex de la région, sans les légendaires ni les fabuleux.
+    const dex = seedContent.regions[0]!.speciesIds.filter(
+      (id) => !getSpecies(id)!.isLegendary && !getSpecies(id)!.isMythical,
+    );
+    expect(dex.every((id) => res.body.speciesIds.includes(id))).toBe(true);
+    expect(res.body.speciesIds).not.toContain(144);
 
     const rows = await handle.db.select().from(pokemon).where(eq(pokemon.ownerId, admin.userId));
     const lot = rows.filter((r) => r.origin === 'admin');

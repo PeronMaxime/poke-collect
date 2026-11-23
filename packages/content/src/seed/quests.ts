@@ -27,7 +27,8 @@ import type {
 
 // --- Objets de quête --------------------------------------------------------------------------
 
-const questItem = (id: string, name: string, description: string, sprite: string): Item => ({
+/** Objet de quête : trouvé pendant son étape, rendu à la réclamation, ni vendu ni utilisé. */
+export const questItem = (id: string, name: string, description: string, sprite: string): Item => ({
   id,
   name,
   description,
@@ -179,14 +180,14 @@ export const questItems: Item[] = [
   ),
   questItem(
     'orbe-bleu',
-    'Orbe Bleu',
-    'Orbe qui renferme le pouvoir des océans. Il pulse quand la pluie tombe.',
+    'Éclat d’Orbe Bleu',
+    'Éclat de l’Orbe qui renferme le pouvoir des océans. Il pulse quand la pluie tombe.',
     'blue-orb',
   ),
   questItem(
     'orbe-rouge',
-    'Orbe Rouge',
-    'Orbe qui renferme le pouvoir des continents. Il brûle quand le soleil tape.',
+    'Éclat d’Orbe Rouge',
+    'Éclat de l’Orbe qui renferme le pouvoir des continents. Il brûle quand le soleil tape.',
     'red-orb',
   ),
   questItem(
@@ -217,7 +218,8 @@ export const questItems: Item[] = [
 
 // --- Briques ----------------------------------------------------------------------------------
 
-const reward = (r: Partial<ProgressReward>): ProgressReward => ({
+/** Récompense de quête : les champs donnés, les autres à zéro. */
+export const reward = (r: Partial<ProgressReward>): ProgressReward => ({
   currency: 0,
   items: [],
   expeditionSlots: 0,
@@ -273,14 +275,16 @@ const roamer = (speciesId: number, level: number, formId?: number): QuestPokemon
   roaming: DEFAULT_ROAMING_CHANCE,
 });
 
-const step = (
+/** Étape de quête : nom, consigne, condition et dénouement. */
+export const step = (
   name: string,
   description: string,
   condition: QuestCondition,
   outcome: string,
 ): QuestStep => ({ name, description, condition, outcome });
 
-const catchOf = (
+/** Captures à faire (filtrées par type, zone et espèce). */
+export const catchOf = (
   count: number,
   pokemonType: string | null,
   zoneId: string | null = null,
@@ -304,14 +308,14 @@ const requirements = (r: Requirements) => ({
   timeOfDay: r.timeOfDay ?? null,
 });
 /** Expédition(s) réussie(s) dans une zone, aux conditions de départ données. */
-const expedition = (zoneId: string, r: Requirements = {}, count = 1): QuestCondition => ({
+export const expedition = (zoneId: string, r: Requirements = {}, count = 1): QuestCondition => ({
   type: 'expedition',
   zoneId,
   count,
   ...requirements(r),
 });
 /** Objet(s) de quête à trouver en expédition (`chance` % par tirage de butin). */
-const find = (
+export const find = (
   itemId: string,
   count: number,
   zoneId: string,
@@ -319,8 +323,13 @@ const find = (
   r: Requirements = {},
 ): QuestCondition => ({ type: 'questItem', itemId, count, zoneId, chance, ...requirements(r) });
 
-const defeated = (trainerId: string): UnlockCondition => ({ type: 'trainerDefeated', trainerId });
-const completed = (...questIds: string[]): UnlockCondition =>
+/** Dresseur à battre. */
+export const defeated = (trainerId: string): UnlockCondition => ({
+  type: 'trainerDefeated',
+  trainerId,
+});
+/** Quête(s) à terminer, toutes à la fois. */
+export const completed = (...questIds: string[]): UnlockCondition =>
   questIds.length === 1
     ? { type: 'questCompleted', questId: questIds[0]! }
     : {
@@ -356,7 +365,8 @@ export const QUEST_ZONE_STEPS: Record<string, { zoneId: string; count: number }>
 
 // --- Dresseurs de quêtes ------------------------------------------------------------------------
 
-const questMon = (speciesId: number, level: number): TrainerPokemon => ({
+/** Pokémon d'un dresseur de quête, aux IV parfaits. */
+export const questMon = (speciesId: number, level: number): TrainerPokemon => ({
   speciesId,
   formId: null,
   level,
@@ -369,7 +379,7 @@ const questMon = (speciesId: number, level: number): TrainerPokemon => ({
  * fois cette étape atteinte et ne se bat qu'une fois. Les quêtes s'ouvrent après la Ligue : ses
  * Pokémon (IV parfaits) sont au niveau du Maître de la région, ou un peu au-dessus.
  */
-const questTrainer = (
+export const questTrainer = (
   t: Pick<Trainer, 'id' | 'questId' | 'regionId' | 'zoneId' | 'name' | 'trainerClass' | 'team'> & {
     order: number;
     spriteName: string;
@@ -857,6 +867,7 @@ export const questTrainers: Trainer[] = [
 export const kantoQuests: Quest[] = [
   {
     id: 'electhor',
+    kind: 'legendary',
     order: 0,
     name: 'L’oiseau de foudre',
     description:
@@ -898,6 +909,7 @@ export const kantoQuests: Quest[] = [
   },
   {
     id: 'artikodin',
+    kind: 'legendary',
     order: 1,
     name: 'L’oiseau des glaces',
     description:
@@ -951,6 +963,7 @@ export const kantoQuests: Quest[] = [
   },
   {
     id: 'sulfura',
+    kind: 'legendary',
     order: 2,
     name: 'L’oiseau de feu',
     description: 'Le Mont Braise gronde à nouveau. La nuit, une lueur vole au-dessus du cratère.',
@@ -994,6 +1007,7 @@ export const kantoQuests: Quest[] = [
   },
   {
     id: 'mewtwo',
+    kind: 'legendary',
     order: 3,
     name: 'Le Pokémon génétique',
     description:
@@ -1049,6 +1063,7 @@ export const kantoQuests: Quest[] = [
   },
   {
     id: 'mew',
+    kind: 'legendary',
     order: 4,
     name: 'Le Pokémon fabuleux',
     description:
@@ -1106,6 +1121,7 @@ export const kantoQuests: Quest[] = [
   // Oiseaux de Galar : fuyards de fin de partie, venus d'une région lointaine.
   {
     id: 'artikodin-galar',
+    kind: 'legendary',
     order: 5,
     name: 'L’oiseau au regard glacial',
     description:
@@ -1149,6 +1165,7 @@ export const kantoQuests: Quest[] = [
   },
   {
     id: 'electhor-galar',
+    kind: 'legendary',
     order: 6,
     name: 'L’oiseau aux pas de feu',
     description:
@@ -1187,6 +1204,7 @@ export const kantoQuests: Quest[] = [
   },
   {
     id: 'sulfura-galar',
+    kind: 'legendary',
     order: 7,
     name: 'L’oiseau aux flammes sombres',
     description:
@@ -1236,6 +1254,7 @@ export const kantoQuests: Quest[] = [
 export const johtoQuests: Quest[] = [
   {
     id: 'raikou',
+    kind: 'legendary',
     order: 0,
     name: 'La bête du tonnerre',
     description:
@@ -1274,6 +1293,7 @@ export const johtoQuests: Quest[] = [
   },
   {
     id: 'entei',
+    kind: 'legendary',
     order: 1,
     name: 'La bête du volcan',
     description:
@@ -1312,6 +1332,7 @@ export const johtoQuests: Quest[] = [
   },
   {
     id: 'suicune',
+    kind: 'legendary',
     order: 2,
     name: 'La bête des aurores',
     description:
@@ -1355,6 +1376,7 @@ export const johtoQuests: Quest[] = [
   },
   {
     id: 'lugia',
+    kind: 'legendary',
     order: 3,
     name: 'Le gardien des mers',
     description:
@@ -1399,6 +1421,7 @@ export const johtoQuests: Quest[] = [
   },
   {
     id: 'ho-oh',
+    kind: 'legendary',
     order: 4,
     name: 'L’oiseau arc-en-ciel',
     description:
@@ -1443,6 +1466,7 @@ export const johtoQuests: Quest[] = [
   },
   {
     id: 'celebi',
+    kind: 'legendary',
     order: 5,
     name: 'Le voyageur du temps',
     description:
@@ -1506,6 +1530,7 @@ const regis = completed('regirock', 'registeel', 'regice');
 export const hoennQuests: Quest[] = [
   {
     id: 'latias',
+    kind: 'legendary',
     order: 0,
     name: 'L’éon au voile rouge',
     description:
@@ -1544,6 +1569,7 @@ export const hoennQuests: Quest[] = [
   },
   {
     id: 'latios',
+    kind: 'legendary',
     order: 1,
     name: 'L’éon au voile bleu',
     description:
@@ -1586,6 +1612,7 @@ export const hoennQuests: Quest[] = [
   },
   {
     id: 'regirock',
+    kind: 'legendary',
     order: 2,
     name: 'Le colosse de roche',
     description:
@@ -1633,6 +1660,7 @@ export const hoennQuests: Quest[] = [
   },
   {
     id: 'registeel',
+    kind: 'legendary',
     order: 3,
     name: 'Le colosse d’acier',
     description:
@@ -1683,6 +1711,7 @@ export const hoennQuests: Quest[] = [
   },
   {
     id: 'regice',
+    kind: 'legendary',
     order: 4,
     name: 'Le colosse de glace',
     description:
@@ -1729,6 +1758,7 @@ export const hoennQuests: Quest[] = [
   },
   {
     id: 'kyogre',
+    kind: 'legendary',
     order: 5,
     name: 'Le maître des océans',
     description:
@@ -1745,8 +1775,8 @@ export const hoennQuests: Quest[] = [
         'Les trois colosses éveillés, la mer elle-même semble s’agiter. Au Mont Mémoria, un vieux couple t’attendait.',
       ),
       step(
-        'L’Orbe Bleu',
-        'Trouve l’Orbe Bleu au Mont Mémoria, avec 2 Pokémon Eau dans l’équipe.',
+        'L’Éclat d’Orbe Bleu',
+        'Trouve un Éclat d’Orbe Bleu au Mont Mémoria, avec 2 Pokémon Eau dans l’équipe.',
         find('orbe-bleu', 1, 'mont-memoria', 3, { memberType: 'water', memberCount: 2 }),
         '« La Team Aqua l’a cherché partout. Garde-le loin d’eux. » L’Orbe pulse doucement ; au fond de la Route 128, l’entrée de la Grotte Sous-Marine vient d’apparaître.',
       ),
@@ -1778,6 +1808,7 @@ export const hoennQuests: Quest[] = [
   },
   {
     id: 'groudon',
+    kind: 'legendary',
     order: 6,
     name: 'Le maître des continents',
     description:
@@ -1794,14 +1825,14 @@ export const hoennQuests: Quest[] = [
         'Les trois colosses éveillés, la terre gronde sous Hoenn. Au Mont Chimnée, la Team Magma s’agite.',
       ),
       step(
-        'L’Orbe Rouge',
-        'Trouve l’Orbe Rouge au Mont Chimnée, lors d’une expédition lancée sous un grand soleil avec 2 Pokémon Feu.',
+        'L’Éclat d’Orbe Rouge',
+        'Trouve un Éclat d’Orbe Rouge au Mont Chimnée, lors d’une expédition lancée sous un grand soleil avec 2 Pokémon Feu.',
         find('orbe-rouge', 1, 'mont-chimnee', 4, {
           memberType: 'fire',
           memberCount: 2,
           weathers: ['sun'],
         }),
-        'Tu arraches l’Orbe Rouge aux mains de la Team Magma. Il brûle dans ton sac ; à Atalanopolis, l’entrée de la Grotte Originelle s’est ouverte.',
+        'Tu arraches un éclat de l’Orbe Rouge aux mains de la Team Magma. Il brûle dans ton sac ; à Atalanopolis, l’entrée de la Grotte Originelle s’est ouverte.',
       ),
       step(
         'La terre tremble',
@@ -1830,6 +1861,7 @@ export const hoennQuests: Quest[] = [
   },
   {
     id: 'rayquaza',
+    kind: 'legendary',
     order: 7,
     name: 'Le gardien du ciel',
     description:
@@ -1888,6 +1920,7 @@ export const hoennQuests: Quest[] = [
   },
   {
     id: 'jirachi',
+    kind: 'legendary',
     order: 8,
     name: 'L’étoile des vœux',
     description:
@@ -1935,6 +1968,7 @@ export const hoennQuests: Quest[] = [
   },
   {
     id: 'deoxys',
+    kind: 'legendary',
     order: 9,
     name: 'Le visiteur de l’espace',
     description: 'Rayquaza a abattu une météorite au-dessus de Hoenn. Quelque chose en est sorti.',

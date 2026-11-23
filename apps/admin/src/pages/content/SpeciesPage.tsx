@@ -7,7 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { RARITIES, speciesOverrideSchema } from '@poke/content';
 import type { Item, Quest, SpecialEncounter, SpeciesOverride, Zone } from '@poke/content';
 import {
-  DEX_FORM_SECTIONS,
+  FORM_SECTIONS as DATA_FORM_SECTIONS,
   STAT_NAMES,
   abilities,
   forms as allForms,
@@ -105,11 +105,11 @@ function locateForms(w: WorkingVersion): Map<number, SpeciesLocation> {
 }
 
 /**
- * Sections de formes de l'admin : celles du Pokédex, puis les formes naturelles (variétés et
+ * Sections de formes de l'admin : régionales, Méga, Primo, Gigamax et de combat, puis les formes naturelles (variétés et
  * variantes d'apparence : Zarbi, Prismillon, Motisma…), listées pour information seulement.
  */
 const FORM_SECTIONS: { id: string; label: string; kinds: FormKind[] }[] = [
-  ...DEX_FORM_SECTIONS.map((s) => ({ id: s.kind, label: s.label, kinds: [s.kind] })),
+  ...DATA_FORM_SECTIONS.map((s) => ({ id: s.kind, label: s.label, kinds: [s.kind] })),
   { id: 'natural', label: 'Formes naturelles', kinds: ['cosmetic', 'alternate'] },
 ];
 const NATURAL_KIND_LABELS: Partial<Record<FormKind, string>> = {

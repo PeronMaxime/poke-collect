@@ -32,6 +32,15 @@ export function isEventForm(formId: number | null | undefined): boolean {
   return !!form && EVENT_FORM_NAME.test(form.name);
 }
 
+/**
+ * Région d'une forme régionale, lue au début de son suffixe (`alola`, `galar-standard` → `galar`,
+ * `paldea-combat-breed` → `paldea`) ; null pour toute autre forme ou la forme par défaut.
+ */
+export function regionalFormRegionId(formId: number | null | undefined): string | null {
+  const form = formId != null ? getForm(formId) : undefined;
+  return form?.kind === 'regional' ? (form.formName.split('-')[0] ?? null) : null;
+}
+
 /** Forme de même suffixe chez une autre espèce, ou null (forme par défaut). */
 export function counterpartFormId(
   formId: number | null | undefined,

@@ -5,6 +5,7 @@ import {
   NEW_QUEST,
   advanceQuest,
   questItemsGained,
+  questItemsHandedIn,
   questStatus,
   questStepsDone,
 } from '@poke/game-core';
@@ -18,10 +19,12 @@ import { requireStartedProfile } from './expeditions';
 import {
   addItems,
   baseProgress,
+  itemQuantities,
   playerSlotsNow,
   questRecords,
   questRowStep,
   questRows,
+  takeItems,
 } from './store';
 import type { QuestProgressRow } from './store';
 
@@ -152,9 +155,34 @@ export async function questsState(
 }
 
 /**
+ * Rend les objets de quête demandés par la quête : retirés du sac, sans descendre sous zéro (le
+ * joueur a pu en recevoir moins, par exemple avant une modification du contenu). Retourne ce qui
+ * a vraiment été retiré.
+ */
+async function handInQuestItems(
+  tx: Db,
+  userId: string,
+  wanted: readonly ItemStack[],
+): Promise<ItemStack[]> {
+  const owned = await itemQuantities(
+    tx,
+    userId,
+    wanted.map((s) => s.itemId),
+  );
+  const handedIn: ItemStack[] = [];
+  for (const { itemId, quantity } of wanted) {
+    const taken = Math.min(quantity, owned.get(itemId) ?? 0);
+    if (taken > 0 && (await takeItems(tx, userId, itemId, taken))) {
+      handedIn.push({ itemId, quantity: taken });
+    }
+  }
+  return handedIn;
+}
+
+/**
  * Réclame la récompense d'une quête terminée (une seule fois) : argent, objets, emplacements et
- * bonus permanents. Les Pokémon se capturent ensuite : en combat légendaire depuis les quêtes,
- * ou en expédition pour un fuyard.
+ * bonus permanents ; les objets de quête sont rendus (retirés du sac). Les Pokémon se capturent
+ * ensuite : en combat légendaire depuis les quêtes, ou en expédition pour un fuyard.
  */
 export async function claimQuest(
   db: Db,
@@ -162,7 +190,12 @@ export async function claimQuest(
   userId: string,
   questId: string,
   now: Date,
-): Promise<{ rewards: QuestReward; currency: number; slots: PlayerSlots }> {
+): Promise<{
+  rewards: QuestReward;
+  handedIn: ItemStack[];
+  currency: number;
+  slots: PlayerSlots;
+}> {
   const ctx = await content.get();
   await requireStartedProfile(db, userId);
   const quest = ctx.quest(questId);
@@ -187,6 +220,7 @@ export async function claimQuest(
       .returning();
     if (!locked) throw new GameError(409, 'ALREADY_CLAIMED');
 
+    const handedIn = await handInQuestItems(tx, userId, questItemsHandedIn(quest));
     const { rewards } = quest;
     await addItems(tx, userId, rewards.items);
     const [profile] = await tx
@@ -196,6 +230,6 @@ export async function claimQuest(
       .returning({ currency: playerProfiles.currency });
 
     const slots = await playerSlotsNow(tx, ctx, userId);
-    return { rewards, currency: profile?.currency ?? 0, slots };
+    return { rewards, handedIn, currency: profile?.currency ?? 0, slots };
   });
 }

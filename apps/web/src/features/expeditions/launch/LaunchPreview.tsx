@@ -1,7 +1,8 @@
 /**
  * Aperçu d'un départ en expédition : rencontres, butin et transfert automatique.
  */
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import { isTransferableSpecies } from '@poke/game-core';
 import { PokemonSprite, ViewTabs } from '../../../components/ui';
 import { itemIcon, itemName, speciesName } from '../../../lib/labels';
 import { ZoneAutoTransferDialog, autoTransferLabel } from '../AutoTransferSettings';
@@ -153,11 +154,14 @@ function EncounterList({ launch }: { launch: LaunchModel }) {
 
 /** Objets du butin : chance à chaque tirage et quantité. */
 function LootList({ launch }: { launch: LaunchModel }) {
-  const { ctx, lootIntervalMinutes, loot, maxLoot } = launch;
+  const { ctx, lootInterval, lootGrowthText, lootTitle, loot, maxLoot } = launch;
   return (
     <>
       <div className={`${PREVIEW_ROW} pb-1 text-[11px] text-slate-500 dark:text-slate-400`}>
-        <span>Un tirage toutes les {lootIntervalMinutes} min</span>
+        <span title={lootTitle}>
+          Un tirage toutes les {lootInterval}
+          {lootGrowthText && ` (${lootGrowthText})`}
+        </span>
         <span>Chance</span>
         <span className="text-right">Qté</span>
       </div>
@@ -186,11 +190,23 @@ function LootList({ launch }: { launch: LaunchModel }) {
 }
 
 /**
- * Réglage du transfert automatique des captures au retour : celui de la zone, ou le réglage global.
+ * Réglage du transfert automatique des captures au retour : celui de la zone (espèces à garder
+ * comprises), ou le réglage global.
  */
 function AutoTransferRow({ launch }: { launch: LaunchModel }) {
-  const { zone, zoneAutoTransfer, setZoneAutoTransfer, globalAutoTransfer, autoTransfer } = launch;
+  const { ctx, zone, encounterRows, zoneAutoTransfer, setZoneAutoTransfer, globalAutoTransfer } =
+    launch;
   const [autoTransferOpen, setAutoTransferOpen] = useState(false);
+  // Espèces de la zone qui peuvent être transférées (ni fuyards, ni rencontres spéciales, ni
+  // légendaires) : une par espèce, quelle que soit sa forme.
+  const candidates = useMemo(() => {
+    const seen = new Set<number>();
+    return encounterRows.filter((row) => {
+      if (row.kind !== 'normal' || seen.has(row.speciesId)) return false;
+      seen.add(row.speciesId);
+      return isTransferableSpecies(ctx, row.speciesId);
+    });
+  }, [ctx, encounterRows]);
   return (
     <div className="flex items-center gap-2 border-t-[3px] border-ink bg-slate-50 px-3 py-2.5 dark:bg-hud-pill">
       <div className="min-w-0 flex-1">
@@ -201,7 +217,7 @@ function AutoTransferRow({ launch }: { launch: LaunchModel }) {
         >
           {zoneAutoTransfer.custom ? 'Réglage de la zone' : 'Réglage global'} ·{' '}
           <strong className="text-slate-900 dark:text-slate-100">
-            {autoTransferLabel(autoTransfer)}
+            {autoTransferLabel(launch.autoTransfer)}
           </strong>
         </p>
       </div>
@@ -214,7 +230,9 @@ function AutoTransferRow({ launch }: { launch: LaunchModel }) {
       </button>
       <ZoneAutoTransferDialog
         open={autoTransferOpen}
+        ctx={ctx}
         zoneName={zone.name}
+        candidates={candidates}
         value={zoneAutoTransfer}
         globalFilter={globalAutoTransfer}
         onClose={() => setAutoTransferOpen(false)}

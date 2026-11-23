@@ -125,3 +125,55 @@ describe('Méga-Évolution au PC', () => {
     expect(await gems()).toBe(2);
   });
 });
+
+describe('Objets de forme au PC', () => {
+  const PRIMAL_KYOGRE = 10077;
+  const DEOXYS_SPEED = 10003;
+  let call: ReturnType<typeof client>;
+  let userId: string;
+
+  const owned = async (itemId: string) =>
+    (await call<InventoryEntryDto[]>('GET', '/api/inventory')).body.find((i) => i.itemId === itemId)
+      ?.quantity ?? 0;
+
+  beforeAll(async () => {
+    const signed = await signUp('formes@example.com');
+    userId = signed.userId;
+    call = client(signed.cookie);
+    expect((await call('POST', '/api/profile', { trainerName: 'Formes' })).status).toBe(201);
+    expect((await call('POST', '/api/starter', { speciesId: 1 })).status).toBe(201);
+  });
+
+  it('Primo-Kyogre avec l’Orbe Bleu, Deoxys Vitesse avec sa Météorite, objet rendu au retrait', async () => {
+    const kyogre = await give(userId, 382);
+    const deoxys = await give(userId, 386);
+    await addItems(handle.db, userId, [
+      { itemId: 'blue-orb', quantity: 1 },
+      { itemId: 'meteorite-vitesse', quantity: 1 },
+    ]);
+    expect(
+      await call('POST', `/api/pokemon/${deoxys.id}/mega`, { itemId: 'blue-orb' }),
+    ).toMatchObject({ status: 400, body: { error: 'WRONG_MEGA_STONE' } });
+
+    const primal = await call<EvolveResponse>('POST', `/api/pokemon/${kyogre.id}/mega`, {
+      itemId: 'blue-orb',
+    });
+    expect(primal.status, JSON.stringify(primal.body)).toBe(200);
+    expect(primal.body.pokemon).toMatchObject({ formId: PRIMAL_KYOGRE, megaStone: 'blue-orb' });
+    expect(primal.body.newFormIds).toEqual([PRIMAL_KYOGRE]);
+    expect(await owned('blue-orb')).toBe(0);
+
+    const speed = await call<EvolveResponse>('POST', `/api/pokemon/${deoxys.id}/mega`, {
+      itemId: 'meteorite-vitesse',
+    });
+    expect(speed.body.pokemon).toMatchObject({ formId: DEOXYS_SPEED });
+
+    const reverted = await call<PokemonDto>('DELETE', `/api/pokemon/${kyogre.id}/mega`);
+    expect(reverted.body).toMatchObject({ formId: null, megaStone: null });
+    expect(await owned('blue-orb')).toBe(1);
+    const forms = await call<PokedexFormEntryDto[]>('GET', '/api/pokedex/forms');
+    expect(forms.body.map((f) => f.formId)).toEqual(
+      expect.arrayContaining([PRIMAL_KYOGRE, DEOXYS_SPEED]),
+    );
+  });
+});

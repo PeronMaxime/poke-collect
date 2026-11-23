@@ -36,6 +36,7 @@ import {
   expectedCaptures,
   launchItems,
   launchStatus,
+  lootRhythm,
   resolveBallPlan,
   zoneLoot,
 } from './preview';
@@ -79,8 +80,7 @@ export type LaunchModel = ReturnType<typeof useLaunchExpedition>;
 export function useLaunchExpedition(inputs: LaunchInputs) {
   const { ctx, zone, chain, charm, owned, unlimitedItems, bonuses, members, duration } = inputs;
   const shinyBonus = useShinyBonus();
-  const { maxDurationMinutes, maxTeamSize, lootIntervalMinutes, berryDurationMinutes } =
-    ctx.balance.expeditions;
+  const { maxDurationMinutes, maxTeamSize, berryDurationMinutes } = ctx.balance.expeditions;
   // Période des estimations : « par heure » par défaut.
   const per = duration === 60 ? 'par heure' : `en ${formatDuration(duration)}`;
   const { balls, captureBerries, encounterBerries } = launchItems(ctx, owned, unlimitedItems);
@@ -153,7 +153,6 @@ export function useLaunchExpedition(inputs: LaunchInputs) {
     per,
     maxDurationMinutes,
     maxTeamSize,
-    lootIntervalMinutes,
     berryDurationMinutes,
     balls,
     captureBerries,
@@ -190,6 +189,7 @@ export function useLaunchExpedition(inputs: LaunchInputs) {
     powerOk: check.power >= zone.minPower,
     minMinutes: expeditionMinMinutes(ctx, zone.minDurationMinutes, env),
     ...encounterRhythm(ctx, env),
+    ...lootRhythm(ctx),
     encounters,
     xp: expectedExpeditionXp(ctx, zone, duration, bonuses, env),
     activeAbilities: activityAbilityEffects(ctx, env),

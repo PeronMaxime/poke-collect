@@ -1,10 +1,11 @@
 /**
- * Cadre des pages : le menu des sections à gauche (en haut sur mobile), le compte connecté, la page
- * au centre.
+ * Cadre des pages : le menu à gauche (replié derrière un bouton sur téléphone), le compte connecté,
+ * la page au centre.
  */
-import { NavLink, Outlet, useNavigation } from 'react-router';
+import { useState } from 'react';
+import { Outlet, useNavigation } from 'react-router';
 import { useAdminUser } from '../lib/admin-user';
-import { CURRENT_PHASE, SECTIONS } from '../sections';
+import { SideMenu } from './SideMenu';
 import { SignOutButton } from './SignOutButton';
 
 /**
@@ -14,38 +15,32 @@ import { SignOutButton } from './SignOutButton';
 export function Layout() {
   const user = useAdminUser();
   const loading = useNavigation().state === 'loading';
+  // Menu déplié sur téléphone (toujours visible sur grand écran).
+  const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="flex min-h-screen flex-col md:flex-row">
       <aside className="border-b border-slate-200 bg-white md:sticky md:top-0 md:h-screen md:w-64 md:shrink-0 md:border-r md:border-b-0 dark:border-slate-800 dark:bg-slate-900">
         <div className="flex h-full flex-col p-4">
-          <div className="px-2 pb-4">
-            <p className="text-lg font-bold">Dexpedition</p>
-            <p className="text-xs text-slate-500">Administration</p>
+          <div className="flex items-center justify-between px-2 md:pb-4">
+            <div>
+              <p className="text-lg font-bold">Dexpedition</p>
+              <p className="text-xs text-slate-500">Administration</p>
+            </div>
+            <button
+              type="button"
+              className="btn-ghost md:hidden"
+              aria-expanded={menuOpen}
+              onClick={() => setMenuOpen(!menuOpen)}
+            >
+              {menuOpen ? 'Fermer' : 'Menu'}
+            </button>
           </div>
-          <nav className="flex gap-1 overflow-x-auto md:flex-col md:overflow-visible">
-            {SECTIONS.map((s) => (
-              <NavLink
-                key={s.path}
-                to={s.path}
-                end={s.path === '/'}
-                className={({ isActive }) =>
-                  [
-                    'flex shrink-0 items-center justify-between rounded-lg px-3 py-2 text-sm whitespace-nowrap transition',
-                    isActive
-                      ? 'bg-brand-500/10 font-medium text-brand-600 dark:text-brand-500'
-                      : 'text-slate-700 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-800',
-                    s.phase > CURRENT_PHASE ? 'opacity-60' : '',
-                  ].join(' ')
-                }
-              >
-                {s.label}
-                {s.phase > CURRENT_PHASE && (
-                  <span className="ml-2 text-[10px] text-slate-400">P{s.phase}</span>
-                )}
-              </NavLink>
-            ))}
-          </nav>
-          <div className="mt-auto hidden space-y-2 px-2 pt-4 md:block">
+          <div
+            className={`min-h-0 flex-1 overflow-y-auto pt-4 md:block md:pt-0 ${menuOpen ? '' : 'hidden'}`}
+          >
+            <SideMenu onNavigate={() => setMenuOpen(false)} />
+          </div>
+          <div className={`space-y-2 px-2 pt-4 md:block ${menuOpen ? '' : 'hidden'}`}>
             <p className="truncate text-xs text-slate-500" title={user.email}>
               {user.email}
             </p>

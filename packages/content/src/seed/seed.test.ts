@@ -2,9 +2,16 @@ import { species } from '@poke/data';
 import { describe, expect, it } from 'vitest';
 import { contentIssues, findUsages, gameContentSchema } from '../integrity';
 import { legendaryBattle } from '../schemas';
+import type { Zone } from '../schemas';
 import { QUEST_ZONE_STEPS } from './quests';
 import { seedContent } from './index';
-import { formIdOf } from './expansion';
+import { expansionRegions, formIdOf } from './expansion';
+import {
+  EXPEDITION_RULE_EXCEPTIONS,
+  evolutionStage,
+  evolvesOnlyWithItem,
+  expeditionRuleIssues,
+} from './expedition-rules';
 
 /** Espèces obtenables : rencontres de toutes les régions (sans formes), fossiles et quêtes, puis
  * leurs évolutions et leurs œufs (les bébés : Pichu, Azurill…), jusqu'à stabilité. */
@@ -504,5 +511,52 @@ describe('quêtes légendaires', () => {
       expect(item.sellPrice).toBeNull();
       expect(used).toContain(item.id);
     }
+  });
+});
+
+describe('Pokémon évolués en expédition', () => {
+  // Les régions de test d'`expansion.ts` en sont exemptées ; une région qui reçoit son propre
+  // fichier (comme Hoenn) passe sous ces règles.
+  const handMade = seedContent.regions.filter((r) => !expansionRegions.some((x) => x.id === r.id));
+  const zonesOf = (regionId: string) => seedContent.zones.filter((z) => z.regionId === regionId);
+
+  it('suivent les règles dans chaque région écrite à la main', () => {
+    expect(handMade.map((r) => r.id)).toEqual(expect.arrayContaining(['kanto', 'johto', 'hoenn']));
+    for (const region of handMade) {
+      expect(expeditionRuleIssues(region.id, zonesOf(region.id)), region.id).toEqual([]);
+    }
+  });
+
+  it('n’ont que des exceptions encore utiles', () => {
+    for (const x of EXPEDITION_RULE_EXCEPTIONS) {
+      const zones = zonesOf(x.regionId).filter((z) =>
+        z.encounters.some((e) => e.speciesId === x.speciesId && !e.formId),
+      );
+      expect(zones.length, `${x.regionId} ${x.speciesId}`).toBe(x.zones);
+    }
+  });
+
+  it('comptent les stades sans les bébés et repèrent les évolutions par objet', () => {
+    expect([10, 11, 12].map(evolutionStage)).toEqual([1, 2, 3]); // Chenipan, Chrysacier, Papilusion
+    expect([143, 124, 25, 26].map(evolutionStage)).toEqual([1, 1, 1, 2]); // Ronflex, Lippoutou…
+    expect([26, 65, 20, 17].map(evolvesOnlyWithItem)).toEqual([true, true, false, false]);
+  });
+
+  it('signalent une forme finale dans deux zones et un troisième stade', () => {
+    const zone = (id: string, speciesIds: number[]): Zone => ({
+      ...zonesOf('kanto')[0]!,
+      id,
+      encounters: speciesIds.map((speciesId) => ({
+        speciesId,
+        weight: 5,
+        minLevel: 5,
+        maxLevel: 9,
+      })),
+    });
+    const issues = expeditionRuleIssues('test', [zone('a', [20, 17, 12]), zone('b', [20, 17])]);
+    expect(issues).toEqual([
+      'Papilusion (a) : troisième stade',
+      'Rattatac : forme finale dans 2 zones (a, b)',
+    ]);
   });
 });

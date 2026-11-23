@@ -223,46 +223,58 @@ export function useVisibleCollections(ctx: GameContext): Collection[] {
   return sortedCollections(ctx).filter((c) => c.regionId === null || unlocked.has(c.regionId));
 }
 
-/** Collections de formes de la région de l'onglet, à réclamer une fois complètes. */
+/** Onglet des collections sans région (toujours visibles), affiché seulement s'il y en a. */
+const NO_REGION_TAB = { id: 'toutes-regions', label: 'Toutes régions' };
+
+/**
+ * Collections de formes, un onglet par région débloquée (plus « Toutes régions » pour celles qui
+ * n'en ont pas), à réclamer une fois complètes. Pastille sur les onglets qui ont une collection
+ * à réclamer.
+ */
 export function CollectionsView({ ctx, progress }: { ctx: GameContext; progress: Progress }) {
   const claimed = useClaimedRewards();
   const { claim, last } = useClaim();
+  const playerProgress = usePlayerProgress();
   const collections = useVisibleCollections(ctx);
-  // Une section par région, dans l'ordre des régions ; les collections sans région d'abord.
-  const groups = [
-    { id: '', name: null, list: collections.filter((c) => c.regionId === null) },
-    ...ctx.regions.map((r) => ({
-      id: r.id,
-      name: r.name,
-      list: collections.filter((c) => c.regionId === r.id),
-    })),
-  ].filter((g) => g.list.length > 0);
+  const [savedRegion, setRegionId] = useSavedRegionTab('collections');
+  const leading = collections.some((c) => c.regionId === null) ? [NO_REGION_TAB] : [];
+  const tabId = currentRegionTab(ctx, playerProgress, savedRegion, leading);
+  const regionOf = (c: Collection) => c.regionId ?? NO_REGION_TAB.id;
+  const list = collections.filter((c) => regionOf(c) === tabId);
+  const claimableIn = (id: string) =>
+    collections.some(
+      (c) => regionOf(c) === id && collectionState(c, progress, claimed) === 'claimable',
+    );
 
   return (
     <div className="space-y-3">
+      <RegionTabs
+        ctx={ctx}
+        progress={playerProgress}
+        selected={tabId}
+        onSelect={setRegionId}
+        leading={leading}
+        marker={(id) => (claimableIn(id) ? 'Collection à réclamer' : null)}
+      />
       <ClaimedToast ctx={ctx} data={last} />
       {claim.error && <p className="text-sm text-red-600">{errorText(claim.error)}</p>}
-      {collections.length === 0 && (
-        <p className="text-slate-500">Aucune collection pour le moment.</p>
+      {list.length === 0 ? (
+        <p className="text-slate-500">Aucune collection dans cette région pour le moment.</p>
+      ) : (
+        <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
+          {list.map((c) => (
+            <CollectionCard
+              key={c.id}
+              ctx={ctx}
+              collection={c}
+              progress={progress}
+              state={collectionState(c, progress, claimed)}
+              pending={claim.isPending}
+              onClaim={() => claim.mutate({ kind: 'collection', rewardId: c.id })}
+            />
+          ))}
+        </ul>
       )}
-      {groups.map((g) => (
-        <section key={g.id} className="space-y-2">
-          {g.name && <h2 className="font-semibold text-slate-600 dark:text-slate-300">{g.name}</h2>}
-          <ul className="grid grid-cols-1 gap-2 md:grid-cols-2">
-            {g.list.map((c) => (
-              <CollectionCard
-                key={c.id}
-                ctx={ctx}
-                collection={c}
-                progress={progress}
-                state={collectionState(c, progress, claimed)}
-                pending={claim.isPending}
-                onClaim={() => claim.mutate({ kind: 'collection', rewardId: c.id })}
-              />
-            ))}
-          </ul>
-        </section>
-      ))}
     </div>
   );
 }

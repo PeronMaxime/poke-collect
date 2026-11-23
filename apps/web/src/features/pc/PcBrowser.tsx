@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
-import { effectiveAbility, isHealing, isRegionalSpecies, memberPower } from '@poke/game-core';
+import { effectiveAbility, isHealing, isRegionalPokemon, memberPower } from '@poke/game-core';
 import type { GameContext, GameSpecies } from '@poke/game-core';
 import { searchKey } from '@poke/shared';
 import type { PokemonActivity, PokemonDto, PokemonTagDto } from '@poke/shared';
@@ -92,7 +92,7 @@ export function usePcBrowser(ctx: GameContext, pokemon: readonly PokemonDto[]) {
   const filtered = useMemo(
     () =>
       list
-        .filter(({ p }) => tab === ALL_TAB.id || isRegionalSpecies(ctx, tab, p.speciesId))
+        .filter(({ p }) => tab === ALL_TAB.id || isRegionalPokemon(ctx, tab, p))
         .filter(({ species }) => !needle || searchKey(species?.nameFr ?? '').includes(needle))
         .filter(({ p }) => (!onlyFavorites || p.locked) && (!onlyShiny || p.isShiny))
         .filter(({ canEvolve }) => !onlyEvolvable || canEvolve)

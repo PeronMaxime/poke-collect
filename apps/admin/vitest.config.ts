@@ -8,7 +8,7 @@ export default defineConfig({
   resolve: { alias: { '@web': fileURLToPath(new URL('../web/src', import.meta.url)) } },
   define: { __BUILD_ID__: JSON.stringify('dev') },
   test: {
-    include: ['test/**/*.test.tsx'],
+    include: ['test/**/*.test.{ts,tsx}'],
     environment: 'jsdom',
     globalSetup: ['test/global-setup.ts'],
     // Même préparation de jsdom que le jeu : `fetch` vers l'API de test, cookie de session.

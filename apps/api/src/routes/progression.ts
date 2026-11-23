@@ -64,7 +64,7 @@ export async function progressionRoutes(
     };
   });
 
-  /** Méga-Évolution : le Pokémon tient la Méga-Gemme choisie. */
+  /** Méga-Évolution ou changement de forme : le Pokémon tient l'objet choisi. */
   app.post('/api/pokemon/:id/mega', async (request): Promise<EvolveResponse> => {
     const { id } = uuidParams.parse(request.params);
     const input = megaEvolveInputSchema.parse(request.body);
@@ -80,7 +80,7 @@ export async function progressionRoutes(
     };
   });
 
-  /** Retour à la forme normale : la Méga-Gemme revient dans le sac. */
+  /** Retour à la forme normale : l'objet tenu revient dans le sac. */
   app.delete('/api/pokemon/:id/mega', async (request): Promise<PokemonDto> => {
     const { id } = uuidParams.parse(request.params);
     return toPokemonDto(await megaRevert(db, content, currentUserId(request), id));
@@ -135,6 +135,12 @@ export async function progressionRoutes(
     const { id } = questParams.parse(request.params);
     const userId = currentUserId(request);
     const result = await claimQuest(db, content, userId, id, now());
-    return { questId: id, rewards: result.rewards, currency: result.currency, slots: result.slots };
+    return {
+      questId: id,
+      rewards: result.rewards,
+      handedIn: result.handedIn,
+      currency: result.currency,
+      slots: result.slots,
+    };
   });
 }

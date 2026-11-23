@@ -200,16 +200,20 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
     // Intervalle allongé de 30 s à chaque heure passée, figé au départ : 20 + 60 / 3,5.
     expect(active.pace!.intervalGrowthMinutes).toBe(0.5);
     expect(planAfter(active.pace!, 120).encounters).toBe(37);
-    // Expédition partie avant l'allongement (0) : rythme constant.
+    // Butin allongé de 1 min à chaque heure passée, figé lui aussi : 10 + 60 / 7.
+    expect(active.pace!.lootIntervalGrowthMinutes).toBe(1);
+    expect(planAfter(active.pace!, 120).lootRolls).toBe(18);
+    // Expédition partie avant les allongements (0) : rythme constant.
     await handle.db
       .update(expeditions)
-      .set({ encounterIntervalGrowthMinutes: 0 })
+      .set({ encounterIntervalGrowthMinutes: 0, lootIntervalGrowthMinutes: 0 })
       .where(eq(expeditions.id, expedition.id));
     const old = (await call<ExpeditionsResponse>('GET', '/api/expeditions')).body.active[0]!;
     expect(planAfter(old.pace!, 120).encounters).toBe(40);
+    expect(planAfter(old.pace!, 120).lootRolls).toBe(20);
     await handle.db
       .update(expeditions)
-      .set({ encounterIntervalGrowthMinutes: 0.5 })
+      .set({ encounterIntervalGrowthMinutes: 0.5, lootIntervalGrowthMinutes: 1 })
       .where(eq(expeditions.id, expedition.id));
   });
 
@@ -657,7 +661,9 @@ describe('transfert automatique au retour', () => {
       .from(users)
       .where(eq(users.email, 'yellow@example.com'));
     await addItems(handle.db, user!.id, [{ itemId: 'master-ball', quantity: 200 }]);
-    const run = async (autoTransfer: { maxPerfectIvs: number } | null) => {
+    const run = async (
+      autoTransfer: { maxPerfectIvs: number; keepSpeciesIds?: number[] } | null,
+    ) => {
       const started = await call<ExpeditionDto>('POST', '/api/expeditions', {
         zoneId: 'route-1',
         team: [starter.id],
@@ -691,5 +697,12 @@ describe('transfert automatique au retour', () => {
     expect(
       strict.encounters.filter((e) => e.transferred).every((e) => perfect(e) === 0 && !e.isShiny),
     ).toBe(true);
+
+    // Espèce gardée : aucune de ses captures ne part, même sans limite d’IV parfaits.
+    const kept = strict.encounters.find((e) => e.transferred)!.speciesId;
+    const keeping = await run({ maxPerfectIvs: 6, keepSpeciesIds: [kept] });
+    const captured = keeping.encounters.filter((e) => e.outcome === 'captured');
+    expect(captured.some((e) => e.speciesId === kept)).toBe(true);
+    expect(captured.filter((e) => e.speciesId === kept).every((e) => !e.transferred)).toBe(true);
   });
 });

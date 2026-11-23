@@ -67,7 +67,10 @@ function* clockSegments(clock: EncounterClock) {
  */
 const MAX_CLOCK_MINUTES = 366 * 24 * HOUR_MINUTES;
 
-/** Rencontres survenues après `minutes` : le temps sous l'effet d'une baie compte davantage. */
+/**
+ * Rencontres survenues après `minutes` : le temps sous l'effet d'une baie compte davantage. Sert
+ * aussi aux tirages de butin, avec leur propre rythme (voir `planAfter`).
+ */
 export function encountersAfter(clock: EncounterClock, minutes: number): number {
   const until = Math.min(minutes, MAX_CLOCK_MINUTES);
   if (!(until > 0)) return 0;

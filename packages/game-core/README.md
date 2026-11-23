@@ -29,7 +29,7 @@ Vue d'ensemble : [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md). Les mots du
 | `battle.ts`, `legendary.ts`                        | Combats de dresseurs et légendaires, sur le même moteur                     |
 | `abilities/`                                       | Talents : modificateurs, conditions, effets de combat, postes d'assistant   |
 | `breeding.ts`                                      | Pension, œufs, héritage, transfert et Bonbons de lignée                     |
-| `evolution.ts`, `forms.ts`, `mega.ts`              | Évolutions (formes comprises), Méga-Évolution                               |
+| `evolution.ts`, `forms.ts`, `mega.ts`              | Évolutions (formes comprises), Méga-Évolution et objets de forme            |
 | `endgame.ts`                                       | Objets utilisés sur un Pokémon : Capsules, Aromates, Pilule et Patch Talent |
 | `museum.ts`, `center.ts`, `farm.ts`                | Fossiles, soins, baies                                                      |
 | `progress.ts`                                      | Conditions de déblocage et avancement du joueur                             |
@@ -37,6 +37,7 @@ Vue d'ensemble : [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md). Les mots du
 | `quest.ts`, `guilds.ts`, `shop.ts`                 | Quêtes, quêtes et coffres de guilde, boutique                               |
 | `auto-team.ts`, `auto-transfer.ts`                 | Sélection automatique d'une équipe ; règles de transfert automatique        |
 | `simulate.ts`                                      | Simulateur de zone de l'admin (moyennes sur N expéditions)                  |
+| `rule-issues.ts`                                   | Alertes de cohérence qui demandent les règles du jeu (tableau de bord)      |
 
 `index.ts` est la surface publique du paquet : une liste explicite de ce que l'API, le jeu,
 l'admin et `@poke/db` utilisent. Ce qui ne sert qu'à l'intérieur du paquet n'y figure pas (les

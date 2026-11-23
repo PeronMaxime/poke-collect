@@ -1,8 +1,9 @@
 # Pokédex
 
-Onglet « Pokédex » : le Pokédex de chaque région (normal ou chromatique), la fiche d'une espèce,
-les collections de formes et la complétion des expéditions, avec leurs récompenses. Sert aussi
-au Pokédex d'un autre dresseur, en lecture seule.
+Onglet « Pokédex » : le Pokédex de chaque région (normal ou chromatique : espèces et formes
+régionales, `DEX_FORM_SECTIONS`), la fiche d'une espèce, les collections de formes (naturelles,
+Méga, Gigamax, Primo, de combat) et la complétion des expéditions, avec leurs récompenses. Sert
+aussi au Pokédex d'un autre dresseur, en lecture seule.
 
 ## Fichiers
 

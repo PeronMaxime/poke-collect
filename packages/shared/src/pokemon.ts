@@ -39,7 +39,10 @@ export interface PokemonDto {
   tagIds: string[];
   /** Attaque enregistrée pour les donjons ; null = choix par défaut. */
   dungeonMove: DungeonMove | null;
-  /** Méga-Gemme tenue : le Pokémon est Méga-Évolué (`formId` = sa forme Méga). */
+  /**
+   * Objet tenu qui fixe la forme : Méga-Gemme (Méga-Évolution) ou objet de forme (Orbe Bleu,
+   * Météorites…) ; `formId` = la forme qu'il donne.
+   */
   megaStone: string | null;
 }
 

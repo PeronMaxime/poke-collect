@@ -1,5 +1,6 @@
 import type { Weather } from '@poke/content';
 import type { GameContext } from '../context';
+import { usesFormAbility } from '../mega';
 import type { PokemonInstance } from '../pokemon';
 import type { AbilityActivity } from './activities';
 
@@ -35,11 +36,14 @@ export interface AbilityEnv {
   weatherResolved?: boolean;
 }
 
-/** Talent en vigueur : celui de la forme Méga pendant une Méga-Évolution, sinon le sien. */
+/**
+ * Talent en vigueur : celui de la forme pendant une Méga-Évolution ou une Primo-Résurgence (voir
+ * `usesFormAbility`), sinon le sien.
+ */
 export function effectiveAbility(
   ctx: GameContext,
   pokemon: Pick<PokemonInstance, 'speciesId' | 'formId' | 'ability'>,
 ): string {
   const species = ctx.species(pokemon.speciesId, pokemon.formId);
-  return (species?.form?.kind === 'mega' && species.abilities[0]?.name) || pokemon.ability;
+  return (usesFormAbility(species?.form) && species?.abilities[0]?.name) || pokemon.ability;
 }

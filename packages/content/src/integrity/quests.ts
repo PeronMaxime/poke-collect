@@ -16,17 +16,25 @@ function checkCatchStep(
   regionId: string | null,
   condition: CatchStep,
   report: Report,
+  active: boolean,
 ): void {
-  const { content } = check;
+  const { content, activeZoneIds } = check;
   if (condition.pokemonType && !KNOWN_TYPES.has(condition.pokemonType)) {
     report('error', `type « ${condition.pokemonType} » inconnu`);
   }
   const zone = condition.zoneId ? content.zones.find((z) => z.id === condition.zoneId) : undefined;
   if (condition.zoneId && !zone) report('error', `zone « ${condition.zoneId} » inconnue`);
-  // Sans zone précise, les captures ne comptent que dans la région de la quête.
+  if (zone && active && !activeZoneIds.has(zone.id)) {
+    report('warning', `zone « ${zone.name} » désactivée : étape impossible`);
+  }
+  // Sans zone précise, les captures ne comptent que dans la région de la quête (dans ses zones en
+  // jeu, si la quête l'est).
   const places = zone
     ? [zone]
-    : content.zones.filter((z) => regionId === null || z.regionId === regionId);
+    : content.zones.filter(
+        (z) =>
+          (!active || activeZoneIds.has(z.id)) && (regionId === null || z.regionId === regionId),
+      );
   const where = zone ? zone.name : regionId === null ? 'aucune zone' : `la région ${regionId}`;
   if (condition.speciesId === null) {
     if (
@@ -60,9 +68,13 @@ function checkExpeditionStep(
   check: IntegrityCheck,
   condition: ExpeditionStep,
   report: Report,
+  active: boolean,
 ): void {
-  const { content, balance, zoneIds } = check;
+  const { content, balance, zoneIds, activeZoneIds } = check;
   if (!zoneIds.has(condition.zoneId)) report('error', `zone « ${condition.zoneId} » inconnue`);
+  else if (active && !activeZoneIds.has(condition.zoneId)) {
+    report('warning', `zone « ${condition.zoneId} » désactivée : étape impossible`);
+  }
   if (condition.memberType && !KNOWN_TYPES.has(condition.memberType)) {
     report('error', `type « ${condition.memberType} » inconnu`);
   }
@@ -85,7 +97,12 @@ function checkExpeditionStep(
     }
   }
   for (const w of condition.weathers) {
-    if (w !== 'clear' && zone && !zone.weathers.some((zw) => zw.weather === w && zw.weight > 0)) {
+    // La météo ne tombe que si la zone en change (un talent de l'équipe peut aussi l'imposer).
+    const falls =
+      zone &&
+      zone.weatherChangeChance > 0 &&
+      zone.weathers.some((zw) => zw.weather === w && zw.weight > 0);
+    if (w !== 'clear' && zone && !falls) {
       report('warning', `la météo « ${w} » ne tombe jamais sur ${zone.name}`);
     }
   }
@@ -127,12 +144,13 @@ function checkQuestCondition(
 ): void {
   const report: Report = (severity, message) =>
     check.add(severity, 'quest', id, `Étape ${step + 1} : ${message}`);
+  const active = check.isActive('quest', id);
   switch (condition.type) {
     case 'catchPokemon':
-      return checkCatchStep(check, regionId, condition, report);
+      return checkCatchStep(check, regionId, condition, report, active);
     case 'expedition':
     case 'questItem':
-      return checkExpeditionStep(check, condition, report);
+      return checkExpeditionStep(check, condition, report, active);
     default:
       return checkUnlockStep(check, id, condition, report);
   }

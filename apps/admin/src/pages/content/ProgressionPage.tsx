@@ -5,12 +5,13 @@
 import { useState } from 'react';
 import { collectionSchema } from '@poke/content';
 import type { Collection } from '@poke/content';
-import { speciesForms } from '@poke/data';
+import { getForm, speciesForms } from '@poke/data';
 import { NO_CLAIMS, playerBonuses, playerSlots, sortedCollections } from '@poke/game-core';
+import type { GameContext } from '@poke/game-core';
 import { EntityPage, VersionBanner } from '../../components/EntityPage';
 import type { EntityFormProps } from '../../components/EntityPage';
 import { Field, NumberInput, Section, TextInput } from '../../components/forms/fields';
-import { Sprite, SpeciesSetEditor } from '../../components/forms/pickers';
+import { Sprite, SpeciesSelect, SpeciesSetEditor } from '../../components/forms/pickers';
 import {
   BONUS_LABELS,
   RewardEditor,
@@ -74,7 +75,7 @@ function CollectionsView() {
       }
       renderListItem={(c, w) => (
         <span className="flex items-center gap-2">
-          {c.speciesIds[0] && <Sprite id={c.speciesIds[0]} size={28} />}
+          <CollectionSprite c={c} />
           <span className="min-w-0">
             <span className="block truncate font-medium">{c.name}</span>
             <span className="block truncate text-xs text-slate-500">
@@ -166,7 +167,7 @@ function CollectionForm({
           </select>
         </Field>
       </div>
-      <Section title="Espèces à capturer (forme par défaut)">
+      <Section title="Espèces à capturer (forme par défaut, liste facultative)">
         <SpeciesSetEditor
           ctx={ctx}
           value={c.speciesIds}
@@ -179,6 +180,7 @@ function CollectionForm({
       </Section>
       <Section title="Formes à capturer">
         <FormSetEditor
+          ctx={ctx}
           speciesIds={c.speciesIds}
           value={c.formIds}
           onChange={(v) => set('formIds', v)}
@@ -200,28 +202,58 @@ function CollectionForm({
   );
 }
 
-/** Formes des espèces de la collection, à cocher (une forme d'une espèce retirée reste listée). */
+/** Sprite d'une collection dans la liste : sa première espèce, sinon sa première forme. */
+function CollectionSprite({ c }: { c: Collection }) {
+  const form = c.formIds[0] !== undefined ? getForm(c.formIds[0]) : undefined;
+  if (c.speciesIds[0]) return <Sprite id={c.speciesIds[0]} size={28} />;
+  return form ? <Sprite id={form.speciesId} formId={form.id} size={28} /> : null;
+}
+
+/**
+ * Formes à cocher : celles des espèces de la collection et des formes déjà choisies, plus celles
+ * d'une autre espèce choisie à la demande (Méga-Évolutions sans leur Pokémon de base).
+ */
 function FormSetEditor({
+  ctx,
   speciesIds,
   value,
   onChange,
   disabled,
 }: {
+  ctx: GameContext;
   speciesIds: number[];
   value: number[];
   onChange: (ids: number[]) => void;
   disabled: boolean;
 }) {
+  const [extraSpecies, setExtraSpecies] = useState<number[]>([]);
   const selected = new Set(value);
-  const candidates = [...new Set(speciesIds)].flatMap((id) => speciesForms(id));
-  const orphans = value.filter((id) => !candidates.some((f) => f.id === id));
+  const sources = new Set([
+    ...speciesIds,
+    ...value.flatMap((id) => getForm(id)?.speciesId ?? []),
+    ...extraSpecies,
+  ]);
+  const candidates = [...sources].sort((a, b) => a - b).flatMap((id) => speciesForms(id));
+  const unknown = value.filter((id) => !getForm(id));
   const set = (next: Set<number>) => onChange([...next].sort((a, b) => a - b));
 
-  if (candidates.length === 0 && orphans.length === 0) {
-    return <p className="text-sm text-slate-500">Les espèces choisies n’ont pas d’autre forme.</p>;
-  }
   return (
     <div>
+      {!disabled && (
+        <div className="mb-2 max-w-xs">
+          <p className="mb-1 text-xs text-slate-500">
+            Proposer les formes d’une autre espèce (sans l’ajouter à la collection) :
+          </p>
+          <SpeciesSelect
+            ctx={ctx}
+            value={null}
+            onChange={(id) => setExtraSpecies((list) => [...new Set([...list, id])])}
+          />
+        </div>
+      )}
+      {candidates.length === 0 && (
+        <p className="text-sm text-slate-500">Les espèces choisies n’ont pas d’autre forme.</p>
+      )}
       {!disabled && (
         <div className="mb-2 flex flex-wrap gap-2 text-xs">
           <button
@@ -263,10 +295,8 @@ function FormSetEditor({
           );
         })}
       </div>
-      {orphans.length > 0 && (
-        <p className="mt-2 text-xs text-amber-600">
-          Formes d’espèces absentes de la liste : {orphans.join(', ')}
-        </p>
+      {unknown.length > 0 && (
+        <p className="mt-2 text-xs text-amber-600">Formes inconnues : {unknown.join(', ')}</p>
       )}
     </div>
   );

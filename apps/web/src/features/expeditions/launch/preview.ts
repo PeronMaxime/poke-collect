@@ -170,6 +170,25 @@ export function encounterRhythm(ctx: GameContext, env: AbilityEnv) {
   return { encounterSpeed, encounterInterval, growthText, encounterPace, encounterTitle };
 }
 
+/**
+ * Rythme du butin, comme le règle le contenu (talents à part) : intervalle de la première heure,
+ * allongement à chaque heure passée en texte court (null s'il est constant) et en phrase.
+ */
+export function lootRhythm(ctx: GameContext) {
+  const { lootIntervalMinutes, lootIntervalGrowthMinutes } = ctx.balance.expeditions;
+  const growth = lootIntervalGrowthMinutes ?? 0;
+  const lootInterval = formatShortMinutes(lootIntervalMinutes);
+  return {
+    lootInterval,
+    lootGrowthText: growth > 0 ? `+${formatShortMinutes(growth)} / h` : null,
+    lootTitle: `Un tirage de butin toutes les ${lootInterval}${
+      growth > 0
+        ? ` la première heure, puis ${formatShortMinutes(growth)} de plus à chaque heure passée`
+        : ''
+    }.`,
+  };
+}
+
 /** Une ligne de l'aperçu des rencontres. */
 export interface EncounterRow {
   key: string;

@@ -30,7 +30,7 @@ import type { CaptureFilter, CaughtDex } from './filter';
 import { addStacks, rollLoot } from './loot';
 import { countAffinity, expeditionEnv, expeditionPlan } from './team';
 import type { TeamMember } from './team';
-import { applyTeamXp, defeatXp } from './xp';
+import { applyTeamXp, defeatXp, xpShareCount } from './xp';
 import type { TeamMemberResult } from './xp';
 
 /**
@@ -84,6 +84,16 @@ export interface ExpeditionInput {
    * les anciennes expéditions) ; par défaut, le réglage du contenu.
    */
   intervalGrowthMinutes?: number;
+  /**
+   * Allongement de l'intervalle entre deux tirages de butin par heure passée, figé au départ (0
+   * pour les expéditions parties avant le 17 nov.) ; par défaut, le réglage du contenu.
+   */
+  lootIntervalGrowthMinutes?: number;
+  /**
+   * XP partagée entre les membres de l'équipe, figé au départ (false pour les expéditions
+   * parties avant le 20 nov., où chaque membre recevait le total) ; par défaut, partagée.
+   */
+  xpShared?: boolean;
   /** Échecs de capture accumulés par espèce. */
   pity: Readonly<Record<number, number>>;
   /** Par défaut, calculée à partir de l'équipe (le simulateur la fixe directement). */
@@ -289,6 +299,7 @@ export function createExpeditionRun(
     formIds: new Set(input.caught?.formIds),
   };
   const encounters: EncounterResult[] = [];
+  const xpShares = input.xpShared === false ? 1 : xpShareCount(input.team.length);
   let xpPerMember = 0;
   let ballsUsed = 0;
 
@@ -306,7 +317,7 @@ export function createExpeditionRun(
       const species = ctx.species(wild.speciesId, wild.formId)!;
       const formId = wild.formId ?? null;
       xpPerMember += Math.floor(
-        defeatXp(species, wild.level) * ctx.balance.xp.multiplier * bonuses.xp,
+        (defeatXp(species, wild.level) * ctx.balance.xp.multiplier * bonuses.xp) / xpShares,
       );
       const base = {
         speciesId: wild.speciesId,
@@ -359,7 +370,10 @@ export function createExpeditionRun(
       const lootRng = createRng(input.seed ^ LOOT_SEED_MASK);
       const lootTotals = new Map<string, number>();
       const lootTable = zone.lootTableId ? ctx.lootTable(zone.lootTableId) : undefined;
-      const { lootRolls } = expeditionPlan(ctx, elapsedMinutes, env, input.encounterBerries);
+      const { lootRolls } = expeditionPlan(ctx, elapsedMinutes, env, input.encounterBerries, {
+        encounters: input.intervalGrowthMinutes,
+        loot: input.lootIntervalGrowthMinutes,
+      });
       if (lootTable) {
         for (let i = 0; i < lootRolls; i++) addStacks(lootTotals, rollLoot(lootRng, lootTable));
       }

@@ -75,7 +75,9 @@ export function LaunchSummary({ launch }: { launch: LaunchModel }) {
     zone,
     per,
     maxDurationMinutes,
-    lootIntervalMinutes,
+    lootInterval,
+    lootGrowthText,
+    lootTitle,
     minMinutes,
     encounterSpeed,
     encounterInterval,
@@ -113,7 +115,7 @@ export function LaunchSummary({ launch }: { launch: LaunchModel }) {
           title={encounterTitle}
           tone={encounterSpeed > 1 ? 'better' : encounterSpeed < 1 ? 'worse' : undefined}
         />
-        <Stat label="Butin" value={`1 / ${lootIntervalMinutes} min`} />
+        <Stat label="Butin" value={`1 / ${lootInterval}`} sub={lootGrowthText} title={lootTitle} />
         <Stat
           label="✦ Shiny"
           value={shinyRate}

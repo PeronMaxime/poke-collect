@@ -1,5 +1,14 @@
-/** Quêtes : étapes ordonnées (conditions déclaratives) et récompenses, dont les légendaires. */
-import { IMPOSED_WEATHERS, questSchema, unlockParts } from '@poke/content';
+/**
+ * Quêtes : étapes ordonnées (conditions déclaratives) et récompenses, dont les légendaires ; sorte
+ * de quête (légendaire, de forme) pour le rangement dans le jeu.
+ */
+import {
+  IMPOSED_WEATHERS,
+  QUEST_KINDS,
+  QUEST_KIND_LABELS,
+  questSchema,
+  unlockParts,
+} from '@poke/content';
 import type { Quest, QuestCondition, QuestExpeditionCondition, QuestStep } from '@poke/content';
 import { types } from '@poke/data';
 import { WEATHER_LABELS } from '@poke/game-core';
@@ -64,6 +73,7 @@ export function QuestsPage() {
       )}
       create={(w) => ({
         id: '',
+        kind: 'legendary',
         order: w.ctx.quests.length,
         name: '',
         description: '',
@@ -160,7 +170,7 @@ function QuestForm({
   );
 }
 
-/** Identité de la quête : identifiant, nom, description, région, ordre, illustration. */
+/** Identité de la quête : identifiant, nom, description, région, sorte, ordre, illustration. */
 function QuestIdentityFields({
   value: q,
   onChange,
@@ -212,6 +222,24 @@ function QuestIdentityFields({
           ))}
         </select>
       </Field>
+      <Field
+        label="Sorte"
+        hint="Section de l’onglet Quêtes où elle est rangée. De forme : un objet de forme en récompense."
+        error={errors.get('kind')}
+      >
+        <select
+          className="input"
+          value={q.kind}
+          disabled={disabled}
+          onChange={(e) => set('kind', e.target.value as Quest['kind'])}
+        >
+          {QUEST_KINDS.map((k) => (
+            <option key={k} value={k}>
+              {QUEST_KIND_LABELS[k]}
+            </option>
+          ))}
+        </select>
+      </Field>
       <Field label="Ordre" error={errors.get('order')}>
         <NumberInput
           value={q.order}
@@ -222,7 +250,7 @@ function QuestIdentityFields({
       </Field>
       <Field
         label="Illustration (URL)"
-        hint="Par défaut : artwork du premier Pokémon offert."
+        hint="Par défaut : le premier Pokémon offert, ou la forme du premier objet de forme offert."
         error={errors.get('image')}
         className="sm:col-span-2"
       >

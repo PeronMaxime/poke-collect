@@ -258,6 +258,20 @@ function ExpeditionsSection({ m }: { m: BalanceFormModel }) {
           />
         </Field>
         <Field
+          label="Allongement du butin par heure"
+          hint="Ajouté à l’intervalle entre deux tirages à chaque heure d’expédition (par palier) ; 0 = rythme constant. Dans le même rapport que celui des rencontres (6 min / 3 min → 1 min / 0,5 min), le butin suit leur courbe. Figé au départ de chaque expédition."
+          error={err('expeditions.lootIntervalGrowthMinutes')}
+        >
+          <NumberInput
+            value={b.expeditions.lootIntervalGrowthMinutes}
+            min={0}
+            step={0.5}
+            unit="min"
+            onChange={exp('lootIntervalGrowthMinutes')}
+            disabled={disabled}
+          />
+        </Field>
+        <Field
           label="Effet d’une baie"
           hint="Baies de capture et de rencontres, l’une après l’autre depuis le départ."
           error={err('expeditions.berryDurationMinutes')}

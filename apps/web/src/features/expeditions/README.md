@@ -12,7 +12,8 @@ croisés) et le retour (révélation des captures et du butin).
   `preview.ts`, testé ; réglages de la zone `zoneSettings.ts`).
 - `ExpeditionRevealView.tsx`, `LootReveal.tsx`, `returnSummary.ts` (testé) : le retour.
 - `useExpeditionActions.ts` : réclamer, annuler, mettre en favori ; `AutoTransferSettings.tsx` :
-  transfert automatique des captures.
+  transfert automatique des captures (filtre global ou propre à la zone, espèces à garder ;
+  stocké dans `expeditions.auto_transfer`, sans migration : le champ est en jsonb).
 
 ## Données
 

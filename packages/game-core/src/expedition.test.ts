@@ -8,6 +8,7 @@ import {
   encounterProbabilities,
   berriesConsumed,
   expectedExpeditionXp,
+  expeditionEnv,
   expeditionMinMinutes,
   encounterIntervalAt,
   encounterMinutes,
@@ -29,18 +30,20 @@ const route1 = ctx.zone('route-1')!;
 describe('temps d’une expédition', () => {
   it('une rencontre toutes les 3 min, un butin toutes les 6 min (rythme constant)', () => {
     const plans = [2, 3, 5, 6, 60, 480, 1440].map((m) =>
-      expeditionPlan(ctx, m, undefined, null, 0),
+      expeditionPlan(ctx, m, undefined, null, { encounters: 0, loot: 0 }),
     );
     expect(plans.map((p) => p.encounters)).toEqual([0, 1, 1, 2, 20, 160, 480]);
     expect(plans.map((p) => p.lootRolls)).toEqual([0, 0, 0, 1, 10, 80, 240]);
   });
 
-  it('intervalle allongé de 30 s à chaque heure passée, par palier ; butin inchangé', () => {
+  it('intervalle allongé de 30 s à chaque heure passée, par palier ; butin de 1 min', () => {
     expect([0, 1, 2, 23].map((h) => encounterIntervalAt(ctx, h))).toEqual([3, 3.5, 4, 14.5]);
     const plans = [60, 120, 180, 480, 1440].map((m) => expeditionPlan(ctx, m));
     // 20, puis 60 / 3,5 = 17,1 la deuxième heure, 60 / 4 = 15 la troisième…
     expect(plans.map((p) => p.encounters)).toEqual([20, 37, 52, 107, 201]);
-    expect(plans.map((p) => p.lootRolls)).toEqual([10, 20, 30, 80, 240]);
+    // 10, puis 60 / 7 = 8,6 la deuxième heure, 60 / 8 = 7,5 la troisième : un tirage pour deux
+    // rencontres, quelle que soit la durée.
+    expect(plans.map((p) => p.lootRolls)).toEqual([10, 18, 26, 53, 100]);
     // Deuxième heure : une rencontre toutes les 3,5 min.
     expect(encounterMinutes(ctx, 20)).toBeCloseTo(60);
     expect(encounterMinutes(ctx, 21)).toBeCloseTo(63.5);
@@ -66,7 +69,20 @@ describe('temps d’une expédition', () => {
       expect(expeditionPlan(custom, t - 0.01).encounters).toBe(n - 1);
     }
     // Expédition partie sans allongement : rythme constant.
-    expect(expeditionPlan(custom, 120, undefined, null, 0).encounters).toBe(30);
+    expect(expeditionPlan(custom, 120, undefined, null, { encounters: 0 }).encounters).toBe(30);
+  });
+
+  it('butin allongé figé au départ ; talents de butin appliqués à l’intervalle allongé', () => {
+    // Expédition partie avant l'allongement du butin : un tirage toutes les 6 min.
+    expect(expeditionPlan(ctx, 1440, undefined, null, { loot: 0 }).lootRolls).toBe(240);
+    expect(expeditionPlan(ctx, 120, undefined, null, { loot: 2 }).lootRolls).toBe(17); // 10 + 7,5
+    // Talents ×1,5 : 15 la première heure, puis 60 / 7 × 1,5 = 12,9.
+    const pace = { perMinute: 0, boost: 1, boostMinutes: 0, lootPerMinute: 1.5 / 6 };
+    const growing = { ...pace, lootIntervalMinutes: 6, lootIntervalGrowthMinutes: 1 };
+    expect(planAfter(growing, 60).lootRolls).toBe(15);
+    expect(planAfter(growing, 120).lootRolls).toBe(27);
+    // Rythme reçu d'une ancienne version de l'API, sans intervalle : constant.
+    expect(planAfter(pace, 120).lootRolls).toBe(30);
   });
 
   it('rencontre lointaine, infinie ou durée infinie : réponse immédiate, sans boucle sans fin', () => {
@@ -157,10 +173,10 @@ describe('temps d’une expédition', () => {
 describe('lootProbabilities', () => {
   it('cumule la chance de chaque objet sur tous les tirages', () => {
     const short = lootProbabilities(ctx, route1, 6).find((l) => l.itemId === 'poke-ball')!;
-    expect(short).toEqual({ itemId: 'poke-ball', probability: 0.7, min: 1, max: 3 });
+    expect(short).toEqual({ itemId: 'poke-ball', probability: 0.4, min: 1, max: 3 });
     // 60 min = 10 tirages.
     const long = lootProbabilities(ctx, route1, 60).find((l) => l.itemId === 'poke-ball')!;
-    expect(long.probability).toBeCloseTo(1 - 0.3 ** 10);
+    expect(long.probability).toBeCloseTo(1 - 0.6 ** 10);
     // Arrêt avant le premier tirage : aucun butin.
     expect(
       lootProbabilities(ctx, route1, 5).find((l) => l.itemId === 'poke-ball')!.probability,
@@ -239,6 +255,20 @@ describe('checkTeam', () => {
     ]);
     expect(checkTeam(ctx, route29, [member('b', 155, 5)]).errors).toEqual([]);
     expect(checkTeam(ctx, route1, [member('b', 155, 5)]).errors.map((e) => e.code)).toEqual([
+      'WRONG_REGION',
+    ]);
+  });
+  it('une forme régionale ne sert que dans la région de sa forme', () => {
+    // Ossatueur d'Alola (forme 10115) : refusé à Kanto, accepté à Alola ; l'Ossatueur ordinaire,
+    // l'inverse.
+    const alolan = member('a', 105, 30, { formId: 10115 });
+    const alolaSite = { ...route1, regionId: 'alola' };
+    expect(checkTeam(ctx, route1, [alolan]).errors).toEqual([
+      { code: 'WRONG_REGION', regionId: 'kanto', speciesIds: [105] },
+    ]);
+    expect(checkTeam(ctx, alolaSite, [alolan]).errors).toEqual([]);
+    expect(checkTeam(ctx, route1, [member('b', 105, 30)]).errors).toEqual([]);
+    expect(checkTeam(ctx, alolaSite, [member('b', 105, 30)]).errors.map((e) => e.code)).toEqual([
       'WRONG_REGION',
     ]);
   });
@@ -354,6 +384,30 @@ describe('resolveExpedition', () => {
     expect(starter!.xpAfter).toBe(135 + starter!.xpGained);
     expect(starter!.levelAfter).toBeGreaterThanOrEqual(5);
     expect(starter!.happinessAfter).toBe(72);
+  });
+
+  it('partage l’XP entre les membres de l’équipe, sauf pour les expéditions d’avant', () => {
+    const alone = resolveExpedition(ctx, input);
+    const team = [input.team[0]!, member('b', 1, 5), member('c', 7, 5), member('d', 16, 5)];
+    const shared = resolveExpedition(ctx, { ...input, team });
+    // Même tirage : chaque rencontre rapporte le quart (arrondi à l'unité inférieure).
+    expect(shared.encounters).toEqual(alone.encounters);
+    expect(shared.xpPerMember).toBeLessThanOrEqual(alone.xpPerMember / 4);
+    expect(shared.xpPerMember).toBeGreaterThan(alone.xpPerMember / 4 - alone.encounters.length);
+    for (const m of shared.team) expect(m.xpGained).toBe(shared.xpPerMember);
+    const old = resolveExpedition(ctx, { ...input, team, xpShared: false });
+    expect(old.xpPerMember).toBe(alone.xpPerMember);
+    // L'aperçu du départ partage de la même façon.
+    const zone = ctx.zone('route-1')!;
+    const soloPreview = expectedExpeditionXp(
+      ctx,
+      zone,
+      60,
+      undefined,
+      expeditionEnv(zone, [input.team[0]!]),
+    );
+    const teamPreview = expectedExpeditionXp(ctx, zone, 60, undefined, expeditionEnv(zone, team));
+    expect(Math.abs(teamPreview - soloPreview / 4)).toBeLessThanOrEqual(20);
   });
 
   it('ignore les espèces désactivées', () => {
