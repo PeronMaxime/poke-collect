@@ -185,9 +185,27 @@ export const questRewardSchema = progressRewardSchema.extend({
 
 export type QuestReward = z.infer<typeof questRewardSchema>;
 
+/**
+ * Sorte de quête, pour le rangement dans l'onglet Quêtes : légendaire (un Pokémon à affronter ou
+ * à poursuivre) ou de forme (un objet de forme en récompense, après un dresseur à battre).
+ */
+export const QUEST_KINDS = ['legendary', 'form'] as const;
+
+export const questKindSchema = z.enum(QUEST_KINDS);
+
+export type QuestKind = z.infer<typeof questKindSchema>;
+
+/** Titre de la section de chaque sorte de quête. */
+export const QUEST_KIND_LABELS: Record<QuestKind, string> = {
+  legendary: 'Quêtes légendaires',
+  form: 'Quêtes de formes',
+};
+
 /** Chaîne de quêtes : étapes ordonnées, validées l'une après l'autre, puis récompense. */
 export const questSchema = z.object({
   id: slugSchema,
+  /** Sorte de quête ; absente des anciens contenus (légendaire). */
+  kind: questKindSchema.default('legendary'),
   order: z.int().min(0),
   name: nameSchema,
   description: z.string().max(1000),

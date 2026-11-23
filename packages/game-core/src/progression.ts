@@ -51,9 +51,9 @@ export function dexSpeciesIds(ctx: GameContext, regionId: string | null): number
 const DEX_FORM_KINDS: ReadonlySet<FormKind> = new Set(DEX_FORM_SECTIONS.map((s) => s.kind));
 
 /**
- * Formes qui ont leur case au Pokédex (sections de formes : régionales, Méga…), parmi celles de
- * `speciesIds` (toutes sans liste). Comptées dans le total du Pokédex et dans les classements,
- * pas dans `dexProgress`.
+ * Formes qui ont leur case au Pokédex (les formes régionales), parmi celles de `speciesIds`
+ * (toutes sans liste). Comptées dans le total du Pokédex et dans les classements, pas dans
+ * `dexProgress`. Les Méga, Gigamax, Primo et formes de combat se complètent dans les collections.
  */
 export function dexForms(speciesIds?: readonly number[]): PokemonForm[] {
   const list = speciesIds ? speciesIds.flatMap((id) => speciesForms(id)) : forms;

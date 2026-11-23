@@ -749,8 +749,9 @@ function ZoneSimulator({ zone, working }: { zone: Zone; working: WorkingVersion 
             <p className="text-sm">
               <strong>{result.encountersPerRun.toFixed(1)}</strong> rencontres,{' '}
               <strong>{result.capturesPerRun.toFixed(2)}</strong> captures,{' '}
-              <strong>{Math.round(result.xpPerMemberPerRun)}</strong> XP par membre —{' '}
-              {result.shiniesSeen} chromatique(s) vu(s) sur {result.runs} expéditions.
+              <strong>{Math.round(result.xpPerMemberPerRun)}</strong> XP pour un Pokémon seul (à
+              diviser par la taille de l’équipe) — {result.shiniesSeen} chromatique(s) vu(s) sur{' '}
+              {result.runs} expéditions.
             </p>
             <table className="mt-2 w-full text-sm">
               <thead className="text-left text-xs text-slate-500">

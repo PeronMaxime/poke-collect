@@ -23,7 +23,7 @@ export const TAB_LABELS = Object.fromEntries(MENU_TABS.map((t) => [t.id, t.label
   string
 >;
 
-/** Sections du Pokédex dont les formes comptent dans son total (régionales, Méga…). */
+/** Sections du Pokédex dont les formes comptent dans son total (les formes régionales). */
 export const DEX_FORM_KINDS = new Set<string | undefined>(DEX_FORM_SECTIONS.map((s) => s.kind));
 
 /** Onglet du menu, ou page du wiki (lien de l'en-tête). */

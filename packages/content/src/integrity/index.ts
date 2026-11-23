@@ -4,9 +4,11 @@ import { checkAbilities } from './abilities';
 import { checkBalance } from './balance';
 import { checkCollections } from './collections';
 import { createIntegrityCheck } from './context';
+import { checkUnlockCycles } from './cycles';
 import { checkDungeons } from './dungeons';
 import { checkDuplicates } from './duplicates';
 import { checkGuilds } from './guilds';
+import { checkItemUses } from './item-uses';
 import { checkItems } from './items';
 import { checkLootTables } from './loot';
 import { checkQuests } from './quests';
@@ -22,6 +24,7 @@ import { checkZones } from './zones';
 export { NON_POKEMON_TYPES } from './context';
 export type { ContentEntityKind, ContentIssue } from './types';
 export { findUsages } from './usages';
+export { obtainableItemIds } from './item-uses';
 
 /**
  * Cohérence du contenu : références croisées (zone → région, butin → objet…) et alertes.
@@ -46,6 +49,8 @@ const CHECKS = [
   checkEvolutionOverrides,
   checkCollections,
   checkQuests,
+  checkItemUses,
+  checkUnlockCycles,
   checkExpeditionSlots,
 ];
 

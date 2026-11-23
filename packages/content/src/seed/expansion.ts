@@ -691,24 +691,33 @@ export const expansionItems: Omit<Item, 'sellPrice'>[] = evolutionItemIds.flatMa
 });
 
 /**
+ * Objets qui ne se vendent pas : comme dans le contenu publié, la Pierre Ovale ne s'obtient nulle
+ * part, ce qui laisse Leveinard au Parc Safari (docs/DECISIONS.md, « Pas d'évolution par objet en
+ * expédition »).
+ */
+const UNSOLD_ITEMS = new Set(['oval-stone']);
+
+/**
  * Articles de la boutique pour ces objets, cachés jusqu'au déblocage : les pierres dès 60 espèces
  * capturées, les autres objets dès 150.
  */
-export const expansionShopEntries: ShopEntry[] = expansionItems.map((item, i) => {
-  const stone = item.id.endsWith('-stone');
-  return {
-    id: item.id,
-    itemId: item.id,
-    categoryId: 'evolution',
-    order: 20 + i,
-    price: stone ? 3000 : 6000,
-    lotSize: 1,
-    unlock: { type: 'speciesCaught', count: stone ? 60 : 150 },
-    lockedVisibility: 'hidden',
-    purchaseLimit: null,
-    availableFrom: null,
-    availableUntil: null,
-    enabled: true,
-    gift: null,
-  };
-});
+export const expansionShopEntries: ShopEntry[] = expansionItems
+  .filter((item) => !UNSOLD_ITEMS.has(item.id))
+  .map((item, i) => {
+    const stone = item.id.endsWith('-stone');
+    return {
+      id: item.id,
+      itemId: item.id,
+      categoryId: 'evolution',
+      order: 20 + i,
+      price: stone ? 3000 : 6000,
+      lotSize: 1,
+      unlock: { type: 'speciesCaught', count: stone ? 60 : 150 },
+      lockedVisibility: 'hidden',
+      purchaseLimit: null,
+      availableFrom: null,
+      availableUntil: null,
+      enabled: true,
+      gift: null,
+    };
+  });

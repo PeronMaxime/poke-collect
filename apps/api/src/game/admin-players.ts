@@ -187,13 +187,10 @@ export async function speciesStats(db: Db): Promise<AdminSpeciesStatsDto[]> {
   return [...stats.values()].sort((a, b) => a.speciesId - b.speciesId);
 }
 
-/** Pokémon de chaque type gardés dans le panel du lot de test. */
-const TEST_PANEL_PER_TYPE = 2;
-
-const baseStatTotal = (s: { baseStats: Record<string, number> }) =>
-  Object.values(s.baseStats).reduce((a, b) => a + b, 0);
-
-/** Espèces du lot de test : lignées des donjons de la région, puis les plus fortes par type. */
+/**
+ * Espèces du lot de test : tout le Pokédex de la région (bébés compris ; légendaires et fabuleux
+ * seulement si demandés), plus les lignées de ses donjons qui n'y seraient pas.
+ */
 function testPokemonSpecies(ctx: GameContext, regionId: string, legendaries: boolean): number[] {
   const region = ctx.region(regionId);
   if (!region) return [];
@@ -201,19 +198,9 @@ function testPokemonSpecies(ctx: GameContext, regionId: string, legendaries: boo
   for (const d of ctx.dungeons) {
     if (d.regionId === regionId) for (const id of d.familySpeciesIds) ids.add(id);
   }
-  const regional = region.speciesIds
-    .map((id) => ctx.species(id))
-    .filter((s) => s !== undefined)
-    .filter((s) => !s.isBaby && (legendaries || (!s.isLegendary && !s.isMythical)))
-    .sort((a, b) => baseStatTotal(b) - baseStatTotal(a) || a.id - b.id);
-  const types = new Set(regional.flatMap((s) => s.types));
-  for (const type of types) {
-    for (const s of regional.filter((s) => s.types.includes(type)).slice(0, TEST_PANEL_PER_TYPE)) {
-      ids.add(s.id);
-    }
-  }
-  if (legendaries) {
-    for (const s of regional) if (s.isLegendary || s.isMythical) ids.add(s.id);
+  for (const id of region.speciesIds) {
+    const s = ctx.species(id);
+    if (s && (legendaries || (!s.isLegendary && !s.isMythical))) ids.add(id);
   }
   return [...ids].sort((a, b) => a - b);
 }

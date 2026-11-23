@@ -75,6 +75,9 @@ services:
     build:
       context: .
       target: caddy
+      args:
+        # Lien « Admin » du jeu, inscrit dans ses pages à la construction.
+        VITE_ADMIN_URL: https://${ADMIN_DOMAIN}
     image: poke-collect-caddy
     restart: unless-stopped
     logging: *logging

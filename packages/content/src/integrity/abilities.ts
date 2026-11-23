@@ -1,13 +1,14 @@
 import { KNOWN_TYPES, KNOWN_ABILITIES } from './context';
 import type { IntegrityCheck } from './context';
 
-/** Talents : connus de PokéAPI, types cités valides. */
+/** Talents : connus de PokéAPI, types cités valides (attirés, immunités, conditions). */
 export function checkAbilities(check: IntegrityCheck): void {
   const { content, add } = check;
   for (const ability of content.abilities) {
     if (!KNOWN_ABILITIES.has(ability.id)) add('error', 'ability', ability.id, 'Talent inconnu');
     const usedTypes = ability.effects.flatMap((e) => [
       ...(e.type === 'attractType' ? [e.pokemonType] : []),
+      ...(e.type === 'immunity' ? [e.attackType] : []),
       ...e.conditions.flatMap((c) => ('types' in c ? c.types : [])),
     ]);
     for (const t of new Set(usedTypes)) {

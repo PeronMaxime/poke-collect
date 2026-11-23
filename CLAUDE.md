@@ -21,7 +21,9 @@ pnpm build          # le jeu et l'admin
 pnpm db:generate    # migration SQL après une modification du schéma Drizzle
 ```
 
-Avant de considérer un travail comme fini : lint, deadcode, format, typecheck, test, build.
+Avant de considérer un travail comme fini : lint, deadcode, format, typecheck, test, build, et la
+doc technique à jour (`docs/`, README des dossiers touchés, ce fichier si une règle ou un piège
+change) : elle se met à jour avec le code, jamais « plus tard ».
 
 ## Règles du code
 
@@ -67,7 +69,8 @@ Avant de considérer un travail comme fini : lint, deadcode, format, typecheck, 
   déjà en production (`RELEASES` dans `apps/web/src/pages/releases.ts`).
 - **`docs/plans/PLAN.md` n'est pas formaté par Prettier** : ne pas le reformater.
 - **Changer une règle fait échouer `golden.test.ts`** : c'est voulu. Relire l'écart, puis
-  réenregistrer avec `pnpm --filter @poke/game-core test -- -u`.
+  réenregistrer avec `pnpm --filter @poke/game-core exec vitest run -u` (`test -- -u` ne
+  réenregistre rien).
 
 ## Git et mise en production
 

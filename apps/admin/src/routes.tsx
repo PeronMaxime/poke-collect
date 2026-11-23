@@ -2,8 +2,6 @@ import type { ComponentType } from 'react';
 import type { RouteObject } from 'react-router';
 import { AdminGate } from './components/AdminGate';
 import { Layout } from './components/Layout';
-import { PlaceholderPage } from './pages/PlaceholderPage';
-import { CURRENT_PHASE, SECTIONS } from './sections';
 
 /**
  * Chaque page, par chemin (`''` : le tableau de bord), chargée à la demande : son code n'est
@@ -17,6 +15,7 @@ const PAGES: Record<string, () => Promise<ComponentType>> = {
   regions: async () => (await import('./pages/content/RegionsPage')).RegionsPage,
   species: async () => (await import('./pages/content/SpeciesPage')).SpeciesPage,
   zones: async () => (await import('./pages/content/ZonesPage')).ZonesPage,
+  'zone-species': async () => (await import('./pages/content/ZoneSpeciesPage')).ZoneSpeciesPage,
   'expedition-simulator': async () =>
     (await import('./pages/ExpeditionSimulatorPage')).ExpeditionSimulatorPage,
   'power-calculator': async () => (await import('./pages/PowerCalculatorPage')).PowerCalculatorPage,
@@ -34,12 +33,10 @@ const PAGES: Record<string, () => Promise<ComponentType>> = {
   players: async () => (await import('./pages/PlayersPage')).PlayersPage,
   menu: async () => (await import('./pages/content/MenuPage')).MenuPage,
   bag: async () => (await import('./pages/content/BagPage')).BagPage,
+  docs: async () => (await import('./pages/DocsPage')).DocsPage,
 };
 
-/**
- * Pages de l'admin : tout passe par `AdminGate` (rôle vérifié par le serveur) puis `Layout` (menu).
- * Les sections des phases à venir de docs/plans/PLAN.md affichent un emplacement réservé.
- */
+/** Pages de l'admin : tout passe par `AdminGate` (rôle vérifié par le serveur) puis `Layout` (menu). */
 export const routes: RouteObject[] = [
   {
     element: <AdminGate />,
@@ -48,16 +45,10 @@ export const routes: RouteObject[] = [
     children: [
       {
         element: <Layout />,
-        children: [
-          ...Object.entries(PAGES).map(([path, load]) => ({
-            ...(path ? { path } : { index: true as const }),
-            lazy: async () => ({ Component: await load() }),
-          })),
-          ...SECTIONS.filter((s) => s.phase > CURRENT_PHASE).map((section) => ({
-            path: section.path.slice(1),
-            element: <PlaceholderPage section={section} />,
-          })),
-        ],
+        children: Object.entries(PAGES).map(([path, load]) => ({
+          ...(path ? { path } : { index: true as const }),
+          lazy: async () => ({ Component: await load() }),
+        })),
       },
     ],
   },

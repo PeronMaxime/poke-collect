@@ -142,7 +142,7 @@ export type BattleError =
   | { code: 'DUPLICATE_MEMBER' }
   /** Plus d'un Pokémon Méga-Évolué. */
   | { code: 'TOO_MANY_MEGAS'; max: number }
-  /** Espèces hors du Pokédex de la région du dresseur. */
+  /** Espèces des Pokémon qui ne servent pas dans la région du dresseur (`isRegionalPokemon`). */
   | { code: 'WRONG_REGION'; regionId: string; speciesIds: number[] }
   | { code: 'LEVEL_TOO_HIGH'; maxLevel: number }
   | { code: 'FORBIDDEN_TYPES'; types: string[] }

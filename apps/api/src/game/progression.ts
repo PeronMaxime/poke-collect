@@ -4,7 +4,7 @@ import type { Db } from '@poke/db';
 import {
   applyItemToPokemon,
   checkEvolution,
-  checkMegaEvolution,
+  checkHeldItemForm,
   collectionProgress,
   completionRewardId,
   completionTargets,
@@ -266,8 +266,9 @@ function keptDungeonMove(ctx: GameContext, row: PokemonRow, formId: number | nul
 }
 
 /**
- * Méga-Évolution : le Pokémon (forme normale, pas en activité) prend une Méga-Gemme du sac et
- * passe dans la forme Méga, enregistrée au Pokédex (elle y reste s'il redevient normal).
+ * Méga-Évolution, ou objet de forme (Orbe Bleu, Météorites…) : le Pokémon (forme normale, pas en
+ * activité) prend l'objet du sac et passe dans sa forme, enregistrée au Pokédex (elle y reste
+ * s'il redevient normal).
  */
 export async function megaEvolve(
   db: Db,
@@ -287,7 +288,7 @@ export async function megaEvolve(
       .where(and(eq(pokemon.id, pokemonId), eq(pokemon.ownerId, userId)));
     if (!row) throw new GameError(404, 'POKEMON_NOT_FOUND');
     if ((await pokemonActivities(tx, userId)).has(row.id)) throw new GameError(409, 'POKEMON_BUSY');
-    const check = checkMegaEvolution(ctx, row, input.itemId);
+    const check = checkHeldItemForm(ctx, row, input.itemId);
     if ('error' in check) throw new GameError(400, check.error);
     if (!(await takeItems(tx, userId, input.itemId, 1))) throw new GameError(409, 'ITEM_MISSING');
 
@@ -312,7 +313,7 @@ export async function megaEvolve(
   });
 }
 
-/** Retire la Méga-Gemme : le Pokémon retrouve sa forme normale et la gemme revient au sac. */
+/** Retire l'objet tenu (Méga-Gemme, objet de forme) : forme normale, et l'objet revient au sac. */
 export async function megaRevert(
   db: Db,
   content: ContentCache,

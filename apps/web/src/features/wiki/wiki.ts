@@ -1,4 +1,4 @@
-import { DEX_FORM_SECTIONS, speciesForms } from '@poke/data';
+import { FORM_SECTIONS, speciesForms } from '@poke/data';
 import type { GameContext, GameSpecies } from '@poke/game-core';
 
 /** Ancre de la page du wiki (hors onglets du menu : lien « Wiki » de l'en-tête). */
@@ -23,7 +23,7 @@ export interface WikiEntry {
   regionIds: string[];
 }
 
-const FORM_KINDS = new Set<string>(DEX_FORM_SECTIONS.map((s) => s.kind));
+const FORM_KINDS = new Set<string>(FORM_SECTIONS.map((s) => s.kind));
 
 /** Espèces des régions activées, par numéro, chacune suivie de ses formes du Pokédex. */
 export function wikiEntries(ctx: GameContext): WikiEntry[] {

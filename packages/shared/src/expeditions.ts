@@ -34,6 +34,8 @@ export const ballPlanSchema = z.object({
 /** Filtre du transfert automatique (voir `AutoTransferFilter`). */
 export const autoTransferFilterSchema = z.object({
   maxPerfectIvs: z.int().min(0).max(STAT_NAMES.length),
+  /** Espèces jamais transférées ; une zone en compte bien moins que la borne. */
+  keepSpeciesIds: z.array(z.int().positive()).max(200).optional(),
 }) satisfies z.ZodType<AutoTransferFilter>;
 
 export const startExpeditionInputSchema = z.object({
@@ -48,8 +50,8 @@ export const startExpeditionInputSchema = z.object({
   encounterBerryItemId: slugSchema.nullable().optional(),
   encounterBerryCount: z.int().positive().optional(),
   /**
-   * Transfert automatique au retour : captures déjà au Pokédex avec au plus N IV parfaits ;
-   * null ou absent = aucun.
+   * Transfert automatique au retour : captures déjà au Pokédex avec au plus N IV parfaits, hors
+   * espèces gardées ; null ou absent = aucun.
    */
   autoTransfer: autoTransferFilterSchema.nullable().optional(),
   /** Heure locale du joueur (talents de jour ou de nuit). */

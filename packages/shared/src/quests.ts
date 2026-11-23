@@ -1,4 +1,4 @@
-import type { QuestReward } from '@poke/content';
+import type { ItemStack, QuestReward } from '@poke/content';
 import type { PlayerSlots, QuestStatus } from '@poke/game-core';
 
 /**
@@ -30,6 +30,8 @@ export interface ClaimQuestResponse {
   questId: string;
   /** Les Pokémon de la récompense se capturent ensuite (combat légendaire ou fuyard). */
   rewards: QuestReward;
+  /** Objets de quête rendus (retirés du sac) : ils ne servaient qu'à la quête. */
+  handedIn: ItemStack[];
   currency: number;
   slots: PlayerSlots;
 }

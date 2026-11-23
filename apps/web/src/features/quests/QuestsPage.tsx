@@ -1,13 +1,15 @@
 /**
  * Onglet « Quêtes » : étapes à valider, récompenses à réclamer, puis le légendaire à affronter ou
- * le fuyard à croiser en expédition.
+ * le fuyard à croiser en expédition. Les quêtes de formes (un objet de forme en récompense) ont
+ * leur section, sous les quêtes légendaires de la région.
  */
 import { useCallback, useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion, useReducedMotion } from 'motion/react';
-import { unlockParts } from '@poke/content';
-import type { Quest, QuestCondition, QuestPokemon } from '@poke/content';
-import { isActionCondition, isUnlocked, legendaryTarget } from '@poke/game-core';
+import { QUEST_KIND_LABELS, unlockParts } from '@poke/content';
+import type { ProgressReward, Quest, QuestCondition, QuestPokemon } from '@poke/content';
+import type { PokemonForm } from '@poke/data';
+import { heldItemForm, isActionCondition, isUnlocked, legendaryTarget } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 import type {
   ClaimLegendaryBattleResponse,
@@ -53,6 +55,17 @@ import { RegionTabs, currentRegionTab, useSavedRegionTab } from '../common/Regio
 
 /** Onglet des quêtes rattachées à aucune région. */
 const OTHER_TAB = { id: '__autres', label: 'Autres' };
+
+/** Formes que donnent les objets d'une récompense (objets de forme, Méga-Gemmes), avec l'objet. */
+function rewardForms(
+  ctx: GameContext,
+  rewards: Pick<ProgressReward, 'items'>,
+): { itemId: string; form: PokemonForm }[] {
+  return rewards.items.flatMap(({ itemId }) => {
+    const form = heldItemForm(ctx, itemId);
+    return form ? [{ itemId, form }] : [];
+  });
+}
 
 /**
  * Grilles selon la largeur réellement disponible (elle dépend de la colonne des widgets, d'où une
@@ -322,7 +335,7 @@ export function QuestsPage({ ctx }: { ctx: GameContext }) {
   );
 }
 
-/** Quêtes de la région de l'onglet : à faire d'abord, puis la grille. */
+/** Quêtes de la région de l'onglet : à faire d'abord, puis la grille, quêtes de formes à part. */
 function QuestList({ m }: { m: QuestsPageModel }) {
   const {
     ctx,
@@ -339,6 +352,25 @@ function QuestList({ m }: { m: QuestsPageModel }) {
     ongoing,
     toClaim,
   } = m;
+  const legendaries = ongoing.filter((q) => q.kind !== 'form');
+  const forms = ongoing.filter((q) => q.kind === 'form');
+  const card = (quest: Quest) => (
+    <QuestCard
+      key={quest.id}
+      ctx={ctx}
+      quest={quest}
+      state={byId.get(quest.id)}
+      unlockText={
+        isUnlocked(ctx, quest.unlock, progress)
+          ? null
+          : (unlockConditionText(ctx, quest.unlock) ?? 'Verrouillée')
+      }
+      claiming={claim.isPending && claim.variables === quest.id}
+      onClaim={() => claim.mutate(quest.id)}
+      hunt={huntOf(quest)}
+      highlight={actionable(quest)}
+    />
+  );
   return (
     <section className="@container">
       <div className="mb-3 flex flex-wrap items-baseline justify-between gap-2">
@@ -363,25 +395,17 @@ function QuestList({ m }: { m: QuestsPageModel }) {
       {shown.length === 0 && (
         <p className="text-sm text-slate-500">Aucune quête dans cette région pour le moment.</p>
       )}
-      <div className={QUEST_GRID}>
-        {ongoing.map((quest) => (
-          <QuestCard
-            key={quest.id}
-            ctx={ctx}
-            quest={quest}
-            state={byId.get(quest.id)}
-            unlockText={
-              isUnlocked(ctx, quest.unlock, progress)
-                ? null
-                : (unlockConditionText(ctx, quest.unlock) ?? 'Verrouillée')
-            }
-            claiming={claim.isPending && claim.variables === quest.id}
-            onClaim={() => claim.mutate(quest.id)}
-            hunt={huntOf(quest)}
-            highlight={actionable(quest)}
-          />
-        ))}
-      </div>
+      <div className={QUEST_GRID}>{legendaries.map(card)}</div>
+      {forms.length > 0 && (
+        <>
+          <h3 className="mt-5 text-base font-semibold">{QUEST_KIND_LABELS.form}</h3>
+          <p className="mb-3 text-xs text-slate-500">
+            Elles donnent un objet de forme : tenu par le bon Pokémon depuis sa fiche au PC, il
+            change sa forme, et se retire quand tu veux.
+          </p>
+          <div className={QUEST_GRID}>{forms.map(card)}</div>
+        </>
+      )}
     </section>
   );
 }
@@ -557,20 +581,25 @@ function LegendaryCase({
   );
 }
 
-/** Portrait d'une quête : image dédiée, sinon le légendaire (en silhouette tant qu'il n'est pas à soi). */
+/**
+ * Portrait d'une quête : image dédiée, sinon le légendaire, sinon la forme que donne l'objet de
+ * forme offert (en silhouette tant qu'il n'est pas à soi).
+ */
 function QuestPortrait({
+  ctx,
   quest,
   silhouette,
   size = 'size-18',
   spriteSize = 64,
 }: {
+  ctx: GameContext;
   quest: Quest;
   silhouette: boolean;
   /** Taille de la case (classe) et du sprite qu'elle contient (px). */
   size?: string;
   spriteSize?: number;
 }) {
-  const featured = quest.rewards.pokemon[0];
+  const featured = quest.rewards.pokemon[0] ?? rewardForms(ctx, quest.rewards)[0]?.form;
   return (
     <div className={`sprite-well shrink-0 overflow-hidden ${size}`}>
       {quest.image ? (
@@ -579,7 +608,7 @@ function QuestPortrait({
         featured && (
           <PokemonSprite
             speciesId={featured.speciesId}
-            formId={featured.formId}
+            formId={'id' in featured ? featured.id : featured.formId}
             size={spriteSize}
             silhouette={silhouette}
           />
@@ -753,7 +782,7 @@ function QuestCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        <QuestPortrait quest={quest} silhouette={status !== 'claimed' || !!hunt} />
+        <QuestPortrait ctx={ctx} quest={quest} silhouette={status !== 'claimed' || !!hunt} />
         <div className="min-w-0 flex-1">
           <h3 className="leading-tight font-semibold">{quest.name}</h3>
           <p className="mt-0.5 text-xs text-slate-500">{quest.description}</p>
@@ -797,7 +826,7 @@ function FinishedQuestCard({ ctx, quest }: { ctx: GameContext; quest: Quest }) {
   return (
     <div id={questAnchor(quest.id)} className="card flex scroll-mt-4 flex-col gap-2 p-3">
       <div className="flex items-center gap-3">
-        <QuestPortrait quest={quest} silhouette={false} size="size-14" spriteSize={52} />
+        <QuestPortrait ctx={ctx} quest={quest} silhouette={false} size="size-14" spriteSize={52} />
         <div className="min-w-0 flex-1">
           <h3 className="leading-tight font-semibold">{quest.name}</h3>
           {names.length > 0 && (
@@ -951,6 +980,18 @@ function QuestReveal({
           <div className="mt-4 flex justify-center">
             <RewardList ctx={ctx} rewards={data.rewards} />
           </div>
+          {rewardForms(ctx, data.rewards).map(({ itemId, form }) => (
+            <p key={itemId} className="mt-3 text-sm text-slate-500">
+              Fais tenir {itemName(ctx, itemId)} à {speciesName(ctx, form.speciesId, null)} depuis
+              sa fiche au PC : il deviendra {form.nameFr}.
+            </p>
+          ))}
+          {data.handedIn.length > 0 && (
+            <p className="mt-3 text-xs text-slate-500">
+              Objets de quête rendus :{' '}
+              {data.handedIn.map((s) => `${s.quantity} × ${itemName(ctx, s.itemId)}`).join(', ')}
+            </p>
+          )}
           <button className="btn-primary mt-6" onClick={onClose}>
             Continuer
           </button>

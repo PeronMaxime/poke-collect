@@ -1,13 +1,15 @@
 import { useState } from 'react';
 import { STAT_NAMES } from '@poke/data';
 import { MAX_IV } from '@poke/game-core';
-import type { AutoTransferFilter } from '@poke/game-core';
-import { Modal } from '../../components/ui';
+import type { AutoTransferFilter, GameContext } from '@poke/game-core';
+import { Modal, PokemonSprite } from '../../components/ui';
+import { speciesName } from '../../lib/labels';
 import { readStoredJson, writeStoredJson } from '../../lib/storage';
 
 /**
  * Transfert automatique des captures au retour d'expédition : un filtre global (page des
- * expéditions), que chaque zone peut remplacer par le sien. Retenus sur cet appareil, comme les
+ * expéditions), que chaque zone peut remplacer par le sien, avec des espèces à toujours garder.
+ * Retenus sur cet appareil, comme les
  * Balls choisies ; le filtre retenu part avec l'expédition au lancement.
  */
 
@@ -23,9 +25,17 @@ const saveGlobalAutoTransfer = (filter: AutoTransferFilter | null) =>
 
 /** Filtre lu du stockage, ramené dans les bornes ; null = désactivé ou illisible. */
 export function parseFilter(raw: unknown): AutoTransferFilter | null {
-  const max = (raw as Partial<AutoTransferFilter> | null)?.maxPerfectIvs;
+  const stored = raw as Partial<AutoTransferFilter> | null;
+  const max = stored?.maxPerfectIvs;
   if (typeof max !== 'number') return null;
-  return { maxPerfectIvs: Math.min(STAT_NAMES.length, Math.max(0, Math.round(max))) };
+  const filter: AutoTransferFilter = {
+    maxPerfectIvs: Math.min(STAT_NAMES.length, Math.max(0, Math.round(max))),
+  };
+  const keep = Array.isArray(stored?.keepSpeciesIds)
+    ? stored.keepSpeciesIds.filter((id) => Number.isInteger(id) && id > 0)
+    : [];
+  if (keep.length > 0) filter.keepSpeciesIds = [...new Set(keep)];
+  return filter;
 }
 
 /** Réglage d'une zone : le filtre global, ou un filtre propre à la zone. */
@@ -41,9 +51,15 @@ export const effectiveAutoTransfer = (
 /** Résumé lisible d'un réglage de transfert automatique (« Désactivé » sans réglage). */
 export function autoTransferLabel(filter: AutoTransferFilter | null): string {
   if (!filter) return 'Désactivé';
-  if (filter.maxPerfectIvs === 0) return 'Déjà capturés sans IV parfait';
-  if (filter.maxPerfectIvs >= STAT_NAMES.length) return 'Tous les déjà capturés';
-  return `Déjà capturés, jusqu'à ${filter.maxPerfectIvs} IV parfait${filter.maxPerfectIvs > 1 ? 's' : ''}`;
+  const kept = filter.keepSpeciesIds?.length ?? 0;
+  const s = kept > 1 ? 's' : '';
+  return ivLabel(filter.maxPerfectIvs) + (kept > 0 ? ` · ${kept} espèce${s} gardée${s}` : '');
+}
+
+function ivLabel(maxPerfectIvs: number): string {
+  if (maxPerfectIvs === 0) return 'Déjà capturés sans IV parfait';
+  if (maxPerfectIvs >= STAT_NAMES.length) return 'Tous les déjà capturés';
+  return `Déjà capturés, jusqu'à ${maxPerfectIvs} IV parfait${maxPerfectIvs > 1 ? 's' : ''}`;
 }
 
 /**
@@ -126,17 +142,30 @@ export function GlobalAutoTransferDialog({
   );
 }
 
-/** Réglage d'une zone : filtre global ou filtre propre à la zone. */
+/** Espèce proposée parmi celles à garder ; sa forme ne sert qu'au sprite. */
+export interface KeepCandidate {
+  speciesId: number;
+  formId: number | null;
+}
+
+/**
+ * Réglage d'une zone : filtre global ou filtre propre à la zone ; ce dernier peut garder des
+ * espèces (`candidates` : celles de la zone qui se transfèrent).
+ */
 export function ZoneAutoTransferDialog({
   open,
+  ctx,
   zoneName,
+  candidates,
   value,
   globalFilter,
   onClose,
   onSave,
 }: {
   open: boolean;
+  ctx: GameContext;
   zoneName: string;
+  candidates: KeepCandidate[];
   value: ZoneAutoTransfer;
   globalFilter: AutoTransferFilter | null;
   onClose: () => void;
@@ -149,6 +178,7 @@ export function ZoneAutoTransferDialog({
           title={`Transfert automatique · ${zoneName}`}
           initial={value}
           globalFilter={globalFilter}
+          keep={{ ctx, candidates }}
           onClose={onClose}
           onSave={(next) => {
             onSave(next);
@@ -164,6 +194,7 @@ function AutoTransferForm({
   title,
   initial,
   globalFilter,
+  keep,
   onClose,
   onSave,
 }: {
@@ -171,6 +202,8 @@ function AutoTransferForm({
   initial: ZoneAutoTransfer;
   /** Présent pour une zone : choix entre le filtre global et un filtre propre. */
   globalFilter?: AutoTransferFilter | null;
+  /** Présent pour une zone : espèces à garder, à cocher parmi celles de la zone. */
+  keep?: { ctx: GameContext; candidates: KeepCandidate[] };
   onClose: () => void;
   onSave: (value: ZoneAutoTransfer) => void;
 }) {
@@ -246,7 +279,7 @@ function AutoTransferForm({
             className="input w-full py-1 sm:w-auto"
             disabled={!shown}
             value={shown?.maxPerfectIvs ?? 0}
-            onChange={(e) => setFilter({ maxPerfectIvs: Number(e.target.value) })}
+            onChange={(e) => setFilter({ ...filter, maxPerfectIvs: Number(e.target.value) })}
           >
             <MaxPerfectIvsOptions />
           </select>
@@ -254,6 +287,14 @@ function AutoTransferForm({
             {maxPerfectIvsHint(shown?.maxPerfectIvs ?? 0, 'Une capture')}
           </p>
         </div>
+        {keep && editable && (
+          <KeepSpeciesPicker
+            ctx={keep.ctx}
+            candidates={keep.candidates}
+            filter={filter}
+            onChange={setFilter}
+          />
+        )}
       </fieldset>
 
       <p className="text-xs text-slate-500">
@@ -274,6 +315,77 @@ function AutoTransferForm({
           Enregistrer
         </button>
       </div>
+    </div>
+  );
+}
+
+/**
+ * Espèces de la zone à ne jamais transférer : un bouton par espèce, enfoncé = gardée. Une espèce
+ * gardée qui n'est plus dans la zone reste affichée pour pouvoir être retirée.
+ */
+function KeepSpeciesPicker({
+  ctx,
+  candidates,
+  filter,
+  onChange,
+}: {
+  ctx: GameContext;
+  candidates: KeepCandidate[];
+  filter: AutoTransferFilter | null;
+  onChange: (filter: AutoTransferFilter) => void;
+}) {
+  const kept = filter?.keepSpeciesIds ?? [];
+  const shown: KeepCandidate[] = [
+    ...candidates,
+    ...kept
+      .filter((id) => !candidates.some((c) => c.speciesId === id))
+      .map((speciesId) => ({ speciesId, formId: null })),
+  ];
+  if (shown.length === 0) return null;
+  const toggle = (speciesId: number) => {
+    if (!filter) return;
+    const next = kept.includes(speciesId)
+      ? kept.filter((id) => id !== speciesId)
+      : [...kept, speciesId];
+    onChange(
+      next.length > 0
+        ? { ...filter, keepSpeciesIds: next }
+        : { maxPerfectIvs: filter.maxPerfectIvs },
+    );
+  };
+  return (
+    <div>
+      <p className="mb-1 font-medium">Espèces à garder</p>
+      <ul className="flex flex-wrap gap-1.5">
+        {shown.map(({ speciesId, formId }) => {
+          const on = kept.includes(speciesId);
+          const name = speciesName(ctx, speciesId);
+          return (
+            <li key={speciesId}>
+              <button
+                type="button"
+                aria-pressed={on}
+                disabled={!filter}
+                title={on ? `${name} : jamais transféré` : `${name} : transféré`}
+                className={`flex items-center gap-1 rounded-md border-2 py-0.5 pr-2 pl-0.5 text-xs ${
+                  on
+                    ? 'border-emerald-600 bg-emerald-50 font-medium dark:bg-emerald-950'
+                    : 'border-slate-300 opacity-70 dark:border-slate-600'
+                }`}
+                onClick={() => toggle(speciesId)}
+              >
+                <PokemonSprite speciesId={speciesId} formId={formId} size={28} alt="" />
+                {on && '✓ '}
+                {name}
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+      <p className="mt-1 text-xs text-slate-500">
+        Les espèces cochées ne sont jamais transférées au retour d'une expédition dans cette zone,
+        quels que soient leurs IV.
+      </p>
     </div>
   );
 }

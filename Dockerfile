@@ -28,6 +28,9 @@ COPY . .
 
 # --- Pages du jeu et de l'admin
 FROM base AS build
+# Adresse de l'admin (lien « Admin » du jeu), lue par Vite à la construction : fournie par
+# docker-compose.prod.yml d'après ADMIN_DOMAIN.
+ARG VITE_ADMIN_URL
 RUN pnpm --filter @poke/web --filter @poke/admin build
 
 # --- API

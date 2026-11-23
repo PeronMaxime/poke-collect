@@ -227,6 +227,20 @@ export function questItemsGained(
 }
 
 /**
+ * Objets de quête rendus quand on réclame la quête : ceux demandés par ses étapes « objet de
+ * quête », additionnés par objet (une même pièce demandée à deux étapes est rendue deux fois).
+ * Le sac n'en garde pas : ils ne servent qu'à la quête.
+ */
+export function questItemsHandedIn(quest: Quest): { itemId: string; quantity: number }[] {
+  const totals = new Map<string, number>();
+  for (const { condition } of quest.steps) {
+    if (condition.type !== 'questItem') continue;
+    totals.set(condition.itemId, (totals.get(condition.itemId) ?? 0) + condition.count);
+  }
+  return [...totals].map(([itemId, quantity]) => ({ itemId, quantity }));
+}
+
+/**
  * Étapes validées de chaque quête commencée ou débloquée (les autres sont absentes), calculées
  * à partir des avancements enregistrés. Les quêtes peuvent dépendre les unes des autres :
  * on itère jusqu'à stabilité.

@@ -1,8 +1,29 @@
 import { getSpecies } from '@poke/data';
 import { KNOWN_TYPES, formError } from './context';
+import type { Zone } from '../schemas';
 import type { IntegrityCheck } from './context';
 
-/** Zones : région, butin, types, rencontres actives, rencontres spéciales. */
+/**
+ * Météo variable d'une zone : temps clair au départ, puis à chaque heure `weatherChangeChance` %
+ * de passer à une autre météo de la liste. Signale les réglages qui la figent.
+ */
+function checkZoneWeather(check: IntegrityCheck, zone: Zone): void {
+  const report = (message: string) => check.add('warning', 'zone', zone.id, `Météo : ${message}`);
+  const changing = zone.weathers.some((w) => w.weather !== 'clear');
+  if (zone.weatherChangeChance > 0 && !changing) {
+    report(
+      'chance de changement, mais aucune météo autre que le temps clair : toujours temps clair',
+    );
+  } else if (zone.weatherChangeChance === 0 && changing) {
+    report('météos réglées, mais aucune chance de changement : toujours temps clair');
+  } else if (changing && !zone.weathers.some((w) => w.weather === 'clear')) {
+    report(
+      'le temps clair n’est pas dans la liste : après son premier changement, la zone n’y revient jamais',
+    );
+  }
+}
+
+/** Zones : région, butin, types, rencontres actives, rencontres spéciales, météo. */
 export function checkZones(check: IntegrityCheck): void {
   const { content, balance, add, checkUnlock, lootTableIds, disabled } = check;
   for (const zone of content.zones) {
@@ -23,6 +44,7 @@ export function checkZones(check: IntegrityCheck): void {
       add('error', 'zone', zone.id, 'Durée minimum au-delà de la durée maximale des expéditions');
     }
     checkUnlock('zone', zone.id, zone.unlock);
+    checkZoneWeather(check, zone);
 
     // Les Pokémon des régions précédentes peuvent apparaître (Kanto à Johto), pas les suivants.
     const included = new Set(

@@ -14,10 +14,19 @@ import type { TeamMember } from './team';
  *
  *   XP d'un Pokémon rencontré ou vaincu = XP de base de l'espèce × niveau / 7
  *
- * multipliée par `balance.xp.multiplier` et par les bonus d'XP du joueur. Elle n'est pas partagée :
- * chaque membre de l'équipe reçoit le total, augmenté des bonus de sa région, jusqu'au niveau
- * maximal.
+ * multipliée par `balance.xp.multiplier` et par les bonus d'XP du joueur. En expédition, elle est
+ * partagée : chaque membre en reçoit une part égale (le total divisé par la taille de l'équipe),
+ * augmentée des bonus de sa région, jusqu'au niveau maximal. En combat, en donjon et contre un
+ * légendaire, chaque membre reçoit le total.
  */
+
+/**
+ * Nombre de parts de l'XP d'une expédition : une par membre de l'équipe (au moins une, pour le
+ * simulateur, qui part sans équipe).
+ */
+export function xpShareCount(teamSize: number): number {
+  return Math.max(1, teamSize);
+}
 
 /** XP de base que rapporte un Pokémon vaincu (ou rencontré), avant multiplicateur. */
 export function defeatXp(species: { baseExperience: number | null }, level: number): number {
@@ -39,7 +48,8 @@ export function defeatedXp(
  * XP moyenne que rapportera une expédition à chaque membre (pour l'affichage) : espérance sur
  * les rencontres et leurs niveaux, sans tenir compte de la pitié qui évolue en cours de route.
  * Avec un environnement, les talents de l'équipe sont pris en compte (rencontres, types attirés,
- * niveaux, bonus d'XP).
+ * niveaux, bonus d'XP) et l'XP est partagée entre ses membres ; sans, c'est l'XP d'un Pokémon
+ * parti seul.
  */
 export function expectedExpeditionXp(
   ctx: GameContext,
@@ -54,7 +64,7 @@ export function expectedExpeditionXp(
   if (total === 0) return 0;
   const xpBonus = env ? abilityBonuses(ctx, env, bonuses).xp : bonuses.xp;
   const extraLevels = env ? Math.round(abilityModifier(ctx, env, 'wildLevel')) : 0;
-  const multiplier = ctx.balance.xp.multiplier * xpBonus;
+  const multiplier = (ctx.balance.xp.multiplier * xpBonus) / xpShareCount(env?.team.length ?? 0);
   const perEncounter = entries.reduce((sum, { value: e, weight }) => {
     const species = ctx.species(e.speciesId, e.formId);
     if (!species) return sum;

@@ -26,6 +26,8 @@ dans [docs/RECETTES.md](../../docs/RECETTES.md).
 - Chaque table de contenu porte `content_version_id`. Créer un brouillon copie toutes les tables
   de `versionedContentTables` : **une nouvelle table de contenu doit y être ajoutée**.
 - `loadContent(db, versionId)` relit tout et le valide avec les schémas de `@poke/content`.
+- `loadContentWithIssues` y ajoute les alertes de cohérence : `contentIssues` (`@poke/content`)
+  puis `ruleIssues` (`@poke/game-core`).
 - `publishDraft` exige un contenu sans erreur de cohérence, publie le brouillon et archive
   l'ancienne version.
 

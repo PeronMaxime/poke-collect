@@ -20,6 +20,7 @@ import {
   trainerSchema,
   zoneSchema,
 } from '@poke/content';
+import { createGameContext, ruleIssues } from '@poke/game-core';
 import type {
   BalanceSettings,
   ChestEntry,
@@ -293,13 +294,17 @@ export async function loadContent(
   return { versionId, ...parsed.data };
 }
 
-/** Contenu d'une version + alertes de cohérence (pour l'admin). */
+/**
+ * Contenu d'une version + alertes de cohérence (pour l'admin) : celles du contenu seul
+ * (`@poke/content`), puis celles qui demandent les règles du jeu (`ruleIssues`, `game-core`).
+ */
 export async function loadContentWithIssues(
   db: Db,
   versionId: number,
 ): Promise<{ content: GameContent; issues: ContentIssue[] }> {
   const content = await loadContent(db, versionId);
-  return { content, issues: contentIssues(content) };
+  const issues = [...contentIssues(content), ...ruleIssues(createGameContext(content))];
+  return { content, issues };
 }
 
 /** Contenu de la version publiée, celui du jeu. Lève `NO_PUBLISHED_VERSION` sur une base vide. */

@@ -7,11 +7,14 @@ import type { CaughtDex, EncounterResult } from './expedition';
  * Transfert automatique au retour d'expédition : les captures déjà présentes au Pokédex qui ont
  * au plus `maxPerfectIvs` IV parfaits sont transférées contre des Bonbons, sans passer par le PC.
  * Jamais les chromatiques, les nouveaux au Pokédex, les légendaires et fabuleux, les fuyards ni
- * les rencontres spéciales. null (côté expédition) = pas de transfert automatique.
+ * les rencontres spéciales, ni les espèces que le joueur a choisi de garder. null (côté
+ * expédition) = pas de transfert automatique.
  */
 export interface AutoTransferFilter {
   /** De 0 (aucun IV parfait) à 6 (tous les déjà capturés non chromatiques). */
   maxPerfectIvs: number;
+  /** Espèces jamais transférées, toutes formes comprises (réglage d'une zone) ; absent = aucune. */
+  keepSpeciesIds?: number[];
 }
 
 /**
@@ -41,6 +44,7 @@ export function autoTransferIndexes(
       !e.questId &&
       !e.special &&
       isTransferableSpecies(ctx, p.speciesId) &&
+      !filter.keepSpeciesIds?.includes(p.speciesId) &&
       perfectIvCount(p) <= filter.maxPerfectIvs
     ) {
       transferred.add(i);

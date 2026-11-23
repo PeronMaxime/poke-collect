@@ -40,4 +40,7 @@ pnpm --filter @poke/content test
 ```
 
 `seed/seed.test.ts` vérifie que le contenu de test est valide et publiable (aucune erreur de
-cohérence) ; `menu.test.ts` le rangement du menu.
+cohérence), et que les zones des régions écrites à la main suivent les règles des Pokémon évolués
+(`seed/expedition-rules.ts`, voir « Ajouter une région » dans docs/RECETTES.md) ; `integrity.test.ts` chaque contrôle de cohérence un par un (le contenu de test
+retouché à un endroit), `integrity.golden.test.ts` l'ensemble (filet de non-régression) ;
+`menu.test.ts` le rangement du menu.

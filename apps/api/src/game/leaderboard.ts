@@ -15,7 +15,7 @@ import { displayedFavorite, favoriteColumns } from './favorite';
 /** Nombre de dresseurs affichés en tête de classement. */
 const LEADERBOARD_SIZE = 50;
 
-/** Formes qui ont leur case au Pokédex (régionales, Méga…) : comptées avec les espèces. */
+/** Formes qui ont leur case au Pokédex (les formes régionales) : comptées avec les espèces. */
 const DEX_FORM_IDS = sql.join(
   dexForms().map((f) => sql`${f.id}`),
   sql`, `,

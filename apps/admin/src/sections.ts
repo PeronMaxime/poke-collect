@@ -1,164 +1,195 @@
-/** Phase de la roadmap en cours : les sections des phases suivantes sont des emplacements réservés. */
-export const CURRENT_PHASE = 8;
+/**
+ * Le menu de l'admin : le tableau de bord, puis les pages rangées par catégorie (une section
+ * repliable du menu par catégorie). `routes.tsx` associe une page à chaque chemin.
+ */
 
-/** Sections du panneau d'administration, dans l'ordre de docs/plans/PLAN.md (section 5.2). */
+/** Une page du menu. */
 export interface AdminSection {
   path: string;
   label: string;
+  /** Ce qu'on y règle : affiché au survol du lien. */
   description: string;
-  /** Phase de la roadmap où la section devient fonctionnelle. */
-  phase: number;
 }
 
-/** Les sections du menu, dans l'ordre ; `routes.tsx` leur associe une page. */
-export const SECTIONS: AdminSection[] = [
+/** Une catégorie du menu et ses pages, dans l'ordre. */
+export interface AdminSectionGroup {
+  title: string;
+  sections: AdminSection[];
+}
+
+/** Le tableau de bord, toujours visible en tête du menu (hors catégorie). */
+export const DASHBOARD: AdminSection = {
+  path: '/',
+  label: 'Tableau de bord',
+  description: 'Versions de contenu, brouillon en cours, alertes de cohérence.',
+};
+
+/** Les catégories du menu, dans l'ordre. */
+export const SECTION_GROUPS: AdminSectionGroup[] = [
   {
-    path: '/',
-    label: 'Tableau de bord',
-    description: 'Versions de contenu, brouillon en cours, alertes de cohérence.',
-    phase: 0,
+    title: 'Monde',
+    sections: [
+      {
+        path: '/regions',
+        label: 'Régions',
+        description: 'Ordre, nom, image, espèces incluses, condition de déblocage.',
+      },
+      {
+        path: '/zones',
+        label: 'Zones d’expédition',
+        description: 'Accès, durées, rencontres, butin, affinités.',
+      },
+      {
+        path: '/zone-species',
+        label: 'Espèces par zone',
+        description:
+          'Grille espèces × zones d’une région : première apparition, doublons, absentes ; ajout et retrait de rencontres.',
+      },
+      {
+        path: '/trainers',
+        label: 'Dresseurs',
+        description: 'Équipe, PE, conditions, récompenses, badges, rejouabilité.',
+      },
+      {
+        path: '/dungeons',
+        label: 'Donjons',
+        description:
+          'Méga-Évolutions : lignée, adversaires, boss, temps imparti, Méga-Gemme ; réglages de combat.',
+      },
+    ],
   },
   {
-    path: '/balance',
-    label: 'Équilibrage',
-    description:
-      'Réglages globaux : expéditions, combats, capture, pitié, chromatiques, élevage, XP, pensions.',
-    phase: 1,
+    title: 'Pokémon',
+    sections: [
+      {
+        path: '/species',
+        label: 'Espèces',
+        description: 'Base PokéAPI en lecture seule et surcharges.',
+      },
+      {
+        path: '/evolutions',
+        label: 'Évolutions',
+        description: 'Surcharge des conditions d’évolution PokéAPI.',
+      },
+      {
+        path: '/abilities',
+        label: 'Talents',
+        description: 'Talents, talents cachés, Pokémon qui les possèdent et effets.',
+      },
+    ],
   },
   {
-    path: '/regions',
-    label: 'Régions',
-    description: 'Ordre, nom, image, espèces incluses, condition de déblocage.',
-    phase: 1,
+    title: 'Objets et économie',
+    sections: [
+      {
+        path: '/items',
+        label: 'Objets',
+        description: 'Catalogue PokéAPI et objets maison, effets.',
+      },
+      {
+        path: '/loot-tables',
+        label: 'Tables de butin',
+        description: 'Tables réutilisables partagées entre zones, quêtes et paliers.',
+      },
+      {
+        path: '/shop',
+        label: 'Boutique',
+        description:
+          'Catégories, articles, conditions d’apparition, limites, dates, aperçu joueur.',
+      },
+    ],
   },
   {
-    path: '/species',
-    label: 'Espèces',
-    description: 'Base PokéAPI en lecture seule et surcharges.',
-    phase: 1,
+    title: 'Quêtes et progression',
+    sections: [
+      {
+        path: '/quests',
+        label: 'Quêtes',
+        description: 'Chaînes, étapes, conditions et récompenses (légendaires).',
+      },
+      {
+        path: '/guilds',
+        label: 'Guildes',
+        description:
+          'Quêtes de guilde du jour et de la semaine (catalogue du tirage) et lots des coffres.',
+      },
+      {
+        path: '/progression',
+        label: 'Progression',
+        description: 'Collections thématiques, complétion des expéditions et bâtiments.',
+      },
+    ],
   },
   {
-    path: '/evolutions',
-    label: 'Évolutions',
-    description: 'Surcharge des conditions d’évolution PokéAPI.',
-    phase: 5,
+    title: 'Réglages du jeu',
+    sections: [
+      {
+        path: '/balance',
+        label: 'Équilibrage',
+        description:
+          'Réglages globaux : expéditions, combats, capture, pitié, chromatiques, élevage, XP, pensions.',
+      },
+      {
+        path: '/menu',
+        label: 'Menu du jeu',
+        description:
+          'Ordre des onglets et groupes du menu, et condition de déblocage de chaque onglet.',
+      },
+      {
+        path: '/bag',
+        label: 'Sac du jeu',
+        description:
+          'Onglets du Sac, rubriques (catégories d’objets) qu’ils regroupent et leurs titres.',
+      },
+    ],
   },
   {
-    path: '/zones',
-    label: 'Zones d’expédition',
-    description: 'Accès, durées, rencontres, butin, affinités.',
-    phase: 1,
+    title: 'Outils',
+    sections: [
+      {
+        path: '/expedition-simulator',
+        label: 'Simulateur d’expédition',
+        description: 'Expédition instantanée avec les écrans du jeu, sur la version de travail.',
+      },
+      {
+        path: '/power-calculator',
+        label: 'Calculateur de PE',
+        description:
+          'Équipes de test, PE par zone et niveau requis pour équilibrer les expéditions.',
+      },
+      {
+        path: '/docs',
+        label: 'Documentation',
+        description: 'Toute la documentation technique du dépôt au même endroit, avec recherche.',
+      },
+    ],
   },
   {
-    path: '/expedition-simulator',
-    label: 'Simulateur d’expédition',
-    description: 'Expédition instantanée avec les écrans du jeu, sur la version de travail.',
-    phase: 1,
-  },
-  {
-    path: '/power-calculator',
-    label: 'Calculateur de PE',
-    description: 'Équipes de test, PE par zone et niveau requis pour équilibrer les expéditions.',
-    phase: 1,
-  },
-  {
-    path: '/trainers',
-    label: 'Dresseurs',
-    description: 'Équipe, PE, conditions, récompenses, badges, rejouabilité.',
-    phase: 3,
-  },
-  {
-    path: '/dungeons',
-    label: 'Donjons',
-    description:
-      'Méga-Évolutions : lignée, adversaires, boss, temps imparti, Méga-Gemme ; réglages de combat.',
-    phase: 8,
-  },
-  {
-    path: '/abilities',
-    label: 'Talents',
-    description: 'Talents, talents cachés, Pokémon qui les possèdent et effets.',
-    phase: 8,
-  },
-  {
-    path: '/items',
-    label: 'Objets',
-    description: 'Catalogue PokéAPI et objets maison, effets.',
-    phase: 1,
-  },
-  {
-    path: '/loot-tables',
-    label: 'Tables de butin',
-    description: 'Tables réutilisables partagées entre zones, quêtes et paliers.',
-    phase: 1,
-  },
-  {
-    path: '/shop',
-    label: 'Boutique',
-    description: 'Catégories, articles, conditions d’apparition, limites, dates, aperçu joueur.',
-    phase: 4,
-  },
-  {
-    path: '/guilds',
-    label: 'Guildes',
-    description:
-      'Quêtes de guilde du jour et de la semaine (catalogue du tirage) et lots des coffres.',
-    phase: 8,
-  },
-  {
-    path: '/quests',
-    label: 'Quêtes',
-    description: 'Chaînes, étapes, conditions et récompenses (légendaires).',
-    phase: 7,
-  },
-  {
-    path: '/progression',
-    label: 'Progression',
-    description: 'Collections thématiques, complétion des expéditions et bâtiments.',
-    phase: 5,
-  },
-  {
-    path: '/menu',
-    label: 'Menu du jeu',
-    description:
-      'Ordre des onglets et groupes du menu, et condition de déblocage de chaque onglet.',
-    phase: 0,
-  },
-  {
-    path: '/bag',
-    label: 'Sac du jeu',
-    description:
-      'Onglets du Sac, rubriques (catégories d’objets) qu’ils regroupent et leurs titres.',
-    phase: 0,
-  },
-  {
-    path: '/telemetry',
-    label: 'Télémétrie',
-    description: 'Temps de complétion, goulets (dresseurs, quêtes, zones), activité, économie.',
-    phase: 8,
-  },
-  {
-    path: '/events',
-    label: 'Événements',
-    description: 'Périodes, zones temporaires, multiplicateurs.',
-    phase: 9,
-  },
-  {
-    path: '/players',
-    label: 'Joueurs',
-    description: 'Joueurs inscrits, présence et activité, fiche dresseur.',
-    phase: 8,
-  },
-  {
-    path: '/api-health',
-    label: 'Santé de l’API',
-    description: 'Requêtes, erreurs 5xx, refus 429 et durées par route.',
-    phase: 0,
-  },
-  {
-    path: '/audit-log',
-    label: 'Versions et journal',
-    description: 'Historique des modifications d’administration.',
-    phase: 0,
+    title: 'Suivi',
+    sections: [
+      {
+        path: '/players',
+        label: 'Joueurs',
+        description: 'Joueurs inscrits, présence et activité, fiche dresseur.',
+      },
+      {
+        path: '/telemetry',
+        label: 'Télémétrie',
+        description: 'Temps de complétion, goulets (dresseurs, quêtes, zones), activité, économie.',
+      },
+      {
+        path: '/api-health',
+        label: 'Santé de l’API',
+        description: 'Requêtes, erreurs 5xx, refus 429 et durées par route.',
+      },
+      {
+        path: '/audit-log',
+        label: 'Versions et journal',
+        description: 'Historique des modifications d’administration.',
+      },
+    ],
   },
 ];
+
+/** Toutes les pages du menu à plat, tableau de bord compris (tests de pages). */
+export const SECTIONS: AdminSection[] = [DASHBOARD, ...SECTION_GROUPS.flatMap((g) => g.sections)];

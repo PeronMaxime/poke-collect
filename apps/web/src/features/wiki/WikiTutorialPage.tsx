@@ -1,5 +1,11 @@
+/**
+ * Tutoriel du wiki (#wiki/tutoriel) : les bases pour un nouveau joueur, en quelques étapes
+ * courtes. Les chiffres réglables dans l'admin sont lus dans le contenu, jamais écrits en dur :
+ * le texte suit les réglages.
+ */
 import type { ReactNode } from 'react';
 import type { GameContext } from '@poke/game-core';
+import { formatDuration } from '../../lib/labels';
 import { WikiBreadcrumb } from './WikiBreadcrumb';
 import { wikiLink } from './wiki';
 
@@ -27,97 +33,152 @@ function Step({ n, title, children }: { n: number; title: string; children: Reac
   );
 }
 
-/** Les bases du jeu pour un nouveau joueur, sans entrer dans le détail. */
+/** Page du tutoriel dans le wiki : le fil d'Ariane, puis le tutoriel. */
 export function WikiTutorialPage({ ctx }: { ctx: GameContext }) {
-  const firstRegion = ctx.regions[0]?.name ?? 'la première région';
   return (
     <div className="space-y-4">
       <WikiBreadcrumb items={[{ label: 'Tutoriel' }]} />
+      <TutorialContent ctx={ctx} />
+    </div>
+  );
+}
+
+/**
+ * Les bases du jeu pour un nouveau joueur, sans entrer dans le détail : partagées par la page du
+ * wiki et la popup ouverte au choix du premier starter (`TutorialDialog`).
+ */
+export function TutorialContent({ ctx }: { ctx: GameContext }) {
+  const firstRegion = ctx.regions[0]?.name ?? 'la première région';
+  return (
+    <>
       <div className="card p-5">
         <h2 className="text-xl font-bold">Bien débuter</h2>
         <p className="mt-1 text-sm text-slate-500">
           Le but : attraper des Pokémon, les faire grandir et compléter le Pokédex de chaque région,
           en commençant par {firstRegion}. Le jeu avance même quand tu n’es pas là : lance tes
-          activités, puis reviens en récolter les fruits.
+          expéditions, ferme le jeu, puis reviens récolter ce qu’elles ont rapporté.
         </p>
       </div>
+      <FirstSteps maxDuration={formatDuration(ctx.balance.expeditions.maxDurationMinutes)} />
+      <NextSteps />
+    </>
+  );
+}
 
+/**
+ * Les cinq premières étapes : la boucle expédition → PC → combats. `maxDuration` : durée au bout
+ * de laquelle une expédition revient d'elle-même, en texte.
+ */
+function FirstSteps({ maxDuration }: { maxDuration: string }) {
+  return (
+    <>
       <Step n={1} title="Pars en expédition">
         <p>
-          Dans <Go href="#expeditions">Expéditions</Go>, choisis une zone et une équipe, puis la
-          Ball à lancer aux nouveaux Pokémon, aux shiny et à ceux déjà capturés. Ton équipe
-          rencontre des Pokémon sauvages et tente de les capturer : une Ball est prise dans ton sac
-          à chaque rencontre. Elle ramène aussi des objets. Arrête l’expédition quand tu veux une
-          fois sa durée minimum passée : plus elle dure, plus elle rapporte.
+          Dans <Go href="#expeditions">Expéditions</Go>, choisis une zone, une équipe et les Balls à
+          lancer. Ton équipe y rencontre des Pokémon sauvages et tente de les capturer, en prenant
+          les Balls dans ton sac au fur et à mesure. Elle ramasse aussi des objets.
         </p>
         <p className="text-slate-500">
-          Chaque zone demande une puissance d’équipe minimale (PE), parfois certains types. Les
-          Pokémon des types en affinité avec la zone aident à capturer.
+          Arrête-la quand tu veux : elle revient d’elle-même au bout de {maxDuration} au plus. Plus
+          elle dure, plus elle rapporte, mais de moins en moins vite : d’heure en heure, ton équipe
+          rencontre moins de Pokémon et trouve moins d’objets. Chaque zone demande une puissance
+          d’équipe (PE) minimale : commence par les plus faciles.
         </p>
       </Step>
 
       <Step n={2} title="Récupère tes captures">
         <p>
-          À la fin du compte à rebours, réclame l’expédition : les Pokémon capturés rejoignent ton{' '}
-          <Go href="#pc">PC</Go> et ton équipe gagne de l’expérience. Relance aussitôt pour ne
-          jamais laisser un emplacement vide.
+          Arrête l’expédition quand tu le souhaites : les Pokémon capturés rejoignent ton{' '}
+          <Go href="#pc">PC</Go> et ton équipe gagne de l’expérience, partagée entre ses membres.
+          Relance aussitôt, pour ne jamais laisser une équipe à rien faire.
         </p>
       </Step>
 
-      <Step n={3} title="Fais progresser tes Pokémon">
+      <Step n={3} title="Fais grandir tes Pokémon">
         <p>
-          L’expérience fait monter les niveaux. Depuis le PC, fais évoluer tes Pokémon quand ils
-          remplissent la condition (niveau, objet, bonheur…) : la pastille « Évol. » te prévient. La
-          fiche de chaque Pokémon dans le <Go href={wikiLink('pokemon')}>wiki</Go> indique comment
-          il évolue et où le trouver.
+          L’expérience fait monter les niveaux. Un Pokémon en double ? Transfère-le depuis le PC :
+          il te donne des Bonbons, qui font monter de niveau ceux de sa lignée. Quand un Pokémon
+          peut évoluer, la pastille « Évol. » te prévient.
+        </p>
+        <p>
+          En expédition, l’expérience se partage entre les membres de l’équipe : à 6, chacun en
+          reçoit un sixième ; à 2, la moitié ; seul, un Pokémon garde tout. Une grande équipe est
+          plus puissante, une petite fait monter ses Pokémon plus vite. Avant le départ, la fiche
+          d’expédition indique ce que chacun gagnera.
+        </p>
+        <p className="text-slate-500">
+          La fiche de chaque Pokémon dans le <Go href={wikiLink('pokemon')}>wiki</Go> dit comment il
+          évolue et où le trouver.
         </p>
       </Step>
 
       <Step n={4} title="Affronte des dresseurs">
         <p>
-          Dans <Go href="#battles">Combats</Go>, défie un dresseur en temps réel, comme dans un
-          donjon : ses Pokémon entrent un par un, et tu choisis qui envoyer au combat. Les victoires
-          rapportent des Poké Dollars, et les Champions d’arène donnent des badges qui débloquent de
-          nouvelles zones.
+          Dans <Go href="#battles">Combats</Go>, défie des dresseurs en temps réel : choisis quel
+          Pokémon envoyer face aux leurs. Les victoires rapportent des Poké Dollars, et les
+          Champions d’arène donnent des badges qui ouvrent de nouvelles zones.
+        </p>
+        <p className="text-slate-500">
+          Un Pokémon K.O. ne peut plus partir : soigne-le au <Go href="#center">Centre Pokémon</Go>.
         </p>
       </Step>
 
       <Step n={5} title="Dépense tes Poké Dollars">
         <p>
-          La <Go href="#shop">Boutique</Go> vend des Balls, des baies et d’autres objets. Tout ce
-          que tu possèdes se trouve dans le <Go href="#bag">Sac</Go>. Garde toujours des Balls
-          d’avance pour tes expéditions.
+          La <Go href="#shop">Boutique</Go> vend des Balls, des baies et d’autres objets ; tout ce
+          que tu possèdes est dans le <Go href="#bag">Sac</Go>. Garde toujours des Balls d’avance :
+          sans elles, tes expéditions ne capturent plus rien.
+        </p>
+      </Step>
+    </>
+  );
+}
+
+/**
+ * La suite de l’aventure : régions, onglets à débloquer et activités annexes, en une ligne. Les
+ * fonctionnalités débloquées plus tard (donjons, talents, ferme, guilde) n’y figurent pas, pour
+ * ne rien dévoiler.
+ */
+function NextSteps() {
+  return (
+    <>
+      <Step n={6} title="Découvre de nouvelles régions">
+        <p>
+          Remplis le <Go href="#pokedex">Pokédex</Go> d’une région pour ouvrir la suivante. De
+          nouveaux onglets apparaissent aussi au fil de l’aventure : un cadenas les marque dans le
+          menu, et le survoler montre ce qu’il reste à faire pour le découvrir.
         </p>
       </Step>
 
-      <Step n={6} title="Et ensuite ?">
+      <Step n={7} title="Et ensuite ?">
         <ul className="list-disc space-y-1 pl-4">
           <li>
-            <Go href="#pokedex">Pokédex</Go> : des récompenses t’attendent à chaque palier d’espèces
-            capturées.
+            <Go href="#pokedex">Pokédex</Go> : remplis-le région par région. Capture tous les
+            Pokémon d’une zone d’expédition pour la compléter : sa récompense se réclame dans
+            l’onglet « Expéditions » du Pokédex.
           </li>
           <li>
-            <Go href="#quests">Quêtes</Go> : des objectifs à suivre, jusqu’aux Pokémon légendaires.
+            <Go href="#quests">Quêtes</Go> : des aventures en plusieurs étapes, qui mènent aux
+            Pokémon légendaires, puis aux objets qui changent leur forme.
           </li>
           <li>
             <Go href="#daycare">Pension</Go> : deux Pokémon compatibles y pondent des œufs, et
-            gagnent de l’XP pendant leur séjour (deux Pokémon incompatibles peuvent y venir juste
-            pour l’XP).
+            gagnent de l’expérience pendant leur séjour.
           </li>
           <li>
-            <Go href="#dungeons">Donjons</Go> : des combats en temps réel contre un boss, pour les
-            équipes aguerries.
+            <Go href="#museum">Musée</Go> : les fossiles trouvés en expédition y redeviennent des
+            Pokémon.
           </li>
           <li>
-            Une Pilule Talent ou un Patch Talent donne à un Pokémon un{' '}
-            <Go href={wikiLink('talents')}>talent</Go> qui peut t’aider dans certaines activités.
+            <Go href="#teams">Équipe Pkmn</Go> : enregistre tes équipes pour les relancer en un
+            clic.
           </li>
         </ul>
-        <p className="mt-2">
-          Certaines parties du jeu se débloquent au fil de l’aventure : un cadenas les marque dans
-          le menu, avec ce qu’il te reste à faire pour les ouvrir.
+        <p className="mt-2 font-medium">
+          Et ce n’est qu’un début : bien d’autres surprises se cachent encore derrière les cadenas
+          du menu. À toi de les découvrir, dresseur !
         </p>
       </Step>
-    </div>
+    </>
   );
 }

@@ -103,8 +103,9 @@ export const pokemon = pgTable(
     /** Attaque choisie pour les donjons (type et catégorie) ; null = choix par défaut. */
     dungeonMove: jsonb('dungeon_move').$type<DungeonMove>(),
     /**
-     * Méga-Gemme tenue (objet retiré du sac) : le Pokémon est dans la forme Méga de l'effet
-     * `megaEvolution` (`form_id`) ; null = forme normale.
+     * Objet tenu qui fixe la forme (retiré du sac) : Méga-Gemme (effet `megaEvolution`) ou objet de
+     * forme (effet `formChange` : Orbe Bleu, Météorites…) ; le Pokémon est dans la forme de l'effet
+     * (`form_id`). null = forme normale. Le nom date des seules Méga-Gemmes.
      */
     megaStone: text('mega_stone'),
   },

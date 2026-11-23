@@ -15,6 +15,7 @@ import {
   effectiveAbility,
   expeditionPower,
   lineageId,
+  usesFormAbility,
   xpForLevel,
 } from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
@@ -365,11 +366,11 @@ export function NatureAbilitySection({
         </dd>
         <dt className="pixel-label pt-0.5 text-[8px] text-slate-500 uppercase">Talent</dt>
         <dd>
-          {p.megaStone && species.abilities[0] ? (
+          {p.megaStone && usesFormAbility(species.form) && species.abilities[0] ? (
             <AbilityDetail
               name={species.abilities[0].name}
               summary={abilitySummary}
-              note={`Méga-Évolution · ${
+              note={`${species.form?.kind === 'primal' ? 'Primo-Résurgence' : 'Méga-Évolution'} · ${
                 p.ability ? `d’origine ${abilityLabel(p.ability)}` : 'sans talent d’origine'
               }`}
             />

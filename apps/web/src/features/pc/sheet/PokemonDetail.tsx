@@ -91,9 +91,9 @@ export function PokemonDetail({
   const progress = usePlayerProgress();
   const [dexSlot, setDexSlot] = useState<DexSlot | null>(null);
   const [reveal, setReveal] = useState<EvolveResponse | null>(null);
-  const [revealMega, setRevealMega] = useState(false);
-  const { evolve, megaEvolve, megaRevert } = useEvolutionActions(p, (data, mega) => {
-    setRevealMega(mega);
+  const [revealHeld, setRevealHeld] = useState(false);
+  const { evolve, megaEvolve, megaRevert } = useEvolutionActions(p, (data, held) => {
+    setRevealHeld(held);
     setReveal(data);
   });
   const species = ctx.species(p.speciesId, p.formId)!;
@@ -137,7 +137,7 @@ export function PokemonDetail({
           <EvolutionReveal
             ctx={ctx}
             data={reveal}
-            mega={revealMega}
+            held={revealHeld}
             onDone={() => setReveal(null)}
           />
         ) : (

@@ -56,6 +56,8 @@ export async function planRunInput(
       ? { itemId: row.encounterBerryItemId, quantity: row.encounterBerries }
       : null,
     intervalGrowthMinutes: row.encounterIntervalGrowthMinutes,
+    lootIntervalGrowthMinutes: row.lootIntervalGrowthMinutes,
+    xpShared: row.xpShared,
     pity: snapshot.pity,
     bonuses,
     // Chaîne figée au départ ; Charme Chroma possédé maintenant.

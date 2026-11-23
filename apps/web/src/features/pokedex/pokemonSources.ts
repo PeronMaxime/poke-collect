@@ -1,10 +1,18 @@
 import { getForm } from '@poke/data';
-import { baseSpeciesId, encounterProbabilities, isBreedable, megaOptions } from '@poke/game-core';
+import type { PokemonForm } from '@poke/data';
+import {
+  baseSpeciesId,
+  encounterProbabilities,
+  formItemOptions,
+  isBreedable,
+  megaOptions,
+} from '@poke/game-core';
 import type { GameContext } from '@poke/game-core';
 
 /**
  * Façons d'obtenir un Pokémon (ou l'une de ses formes) : zones d'expédition, rencontres spéciales,
- * quêtes, fossiles, Méga-Évolution, évolution, œufs. Partagé par le Wiki et la fiche du Pokédex.
+ * quêtes, fossiles, objet tenu (Méga-Gemme, objet de forme), évolution, œufs. Partagé par le Wiki
+ * et la fiche du Pokédex.
  */
 export function pokemonSources(ctx: GameContext, speciesId: number, formId: number | null) {
   const species = ctx.species(speciesId, formId);
@@ -31,9 +39,12 @@ export function pokemonSources(ctx: GameContext, speciesId: number, formId: numb
     return !!effect && same(effect);
   });
   const form = formId !== null ? getForm(formId) : undefined;
-  const megaOf =
-    form?.kind === 'mega'
-      ? megaOptions(ctx, speciesId).find((o) => o.form.id === formId)
+  // Forme prise en tenant un objet : Méga-Gemme ou objet de forme (Orbe Bleu, Météorites…).
+  const heldOf =
+    form && form.kind !== 'regional'
+      ? [...megaOptions(ctx, speciesId), ...formItemOptions(ctx, speciesId)].find(
+          (o) => o.form.id === formId,
+        )
       : undefined;
   // Les œufs contiennent la première espèce de la lignée (forme régionale comprise).
   const fromEgg =
@@ -46,10 +57,16 @@ export function pokemonSources(ctx: GameContext, speciesId: number, formId: numb
     species?.evolvesFromSpeciesId != null && (form === undefined || form.kind === 'regional')
       ? ctx.species(species.evolvesFromSpeciesId)
       : undefined;
-  return { zones, specials, quests, fossils, megaOf, parent, fromEgg };
+  return { zones, specials, quests, fossils, heldOf, parent, fromEgg };
 }
 
 /** Niveaux d'une rencontre : « N.12 » ou « N.10–12 ». */
 export function levelRange(minLevel: number, maxLevel: number): string {
   return minLevel === maxLevel ? `N.${minLevel}` : `N.${minLevel}–${maxLevel}`;
+}
+
+/** Nom de la façon de prendre une forme tenue : Méga-Évolution, Primo-Résurgence ou changement de forme. */
+export function heldFormLabel(form: Pick<PokemonForm, 'kind'>): string {
+  if (form.kind === 'mega') return 'Méga-Évolution';
+  return form.kind === 'primal' ? 'Primo-Résurgence' : 'Changement de forme';
 }

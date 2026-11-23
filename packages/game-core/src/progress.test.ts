@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isRegionUnlocked,
+  isSpeciesInUnlockedRegion,
   isTabUnlocked,
   isUnlocked,
   isUnlockedSoon,
@@ -74,6 +75,14 @@ describe('déblocages', () => {
       c.regions = c.regions.filter((r) => r.enabled);
     });
     expect(isUnlocked(closed, hoenn, progress(johto))).toBe(false);
+  });
+
+  it('situe une espèce dans une région ouverte ou non', () => {
+    // Bulbizarre (Kanto) toujours ; Arcko (Hoenn) seulement une fois Hoenn ouverte.
+    expect(isSpeciesInUnlockedRegion(ctx, 1, caught(0))).toBe(true);
+    expect(isSpeciesInUnlockedRegion(ctx, 252, caught(0))).toBe(false);
+    const opened = { ...caught(0), openedRegionIds: new Set(['hoenn']) };
+    expect(isSpeciesInUnlockedRegion(ctx, 252, opened)).toBe(true);
   });
 
   it('ouvre les onglets selon leur condition (toujours sans réglage)', () => {

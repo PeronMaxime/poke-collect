@@ -81,6 +81,9 @@ ajouter quoi.
 
 ## Documentation
 
+Tous ces fichiers se lisent aussi au même endroit dans l'admin, page **Documentation** : rangés
+par rubrique, avec une recherche dans l'ensemble.
+
 ### Par où commencer
 
 1. **Lancer le jeu** en local ([DEMARRAGE](docs/DEMARRAGE.md)), y jouer quelques minutes, puis

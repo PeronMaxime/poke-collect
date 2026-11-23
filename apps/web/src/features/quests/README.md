@@ -1,8 +1,11 @@
 # Quêtes
 
-Onglet « Quêtes » : des étapes à valider dans l'ordre, puis une récompense à réclamer ; le
+Onglet « Quêtes » : des étapes à valider dans l'ordre, puis une récompense à réclamer (les objets
+de quête sont alors rendus, retirés du Sac : `ClaimQuestResponse.handedIn`) ; le
 légendaire de la quête s'affronte ensuite depuis cette page (les fuyards se croisent en
-expédition), puis se capture.
+expédition), puis se capture. Les quêtes de formes (`quest.kind === 'form'`) ont leur section sous
+les quêtes légendaires de la région : leur récompense est un objet de forme, à faire tenir au PC ;
+leur portrait est la forme que donne cet objet.
 
 ## Fichiers
 

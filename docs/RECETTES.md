@@ -83,8 +83,11 @@ Le code n'intervient que pour ajouter un champ, une entité, ou pousser un chang
    L'API lit et valide ce fichier à chaque démarrage : un champ obligatoire absent la fait planter
    avant qu'elle ait pu le réécrire.
 5. **Contenu de test** : `packages/content/src/seed/`, pour les tests et les bases neuves.
-6. **Cohérence** : si le champ cite une autre entité, la règle dans
-   `packages/content/src/integrity/`.
+6. **Cohérence** : si le champ cite une autre entité, ou si une valeur peut le rendre sans effet
+   (désactivé, jamais tiré, ignoré), la règle dans `packages/content/src/integrity/`, avec son
+   cas dans `integrity.test.ts`. Une alerte qui a besoin des règles du jeu (évolutions…) va dans
+   `packages/game-core/src/rule-issues.ts`, avec son test : une alerte seulement, elle ne bloque
+   pas la publication.
 7. **Admin** : le champ dans le formulaire de la page (`apps/admin/src/pages/content/`).
 
 ### Ajouter une entité de contenu
@@ -143,8 +146,8 @@ bandeau de version et l'erreur. Modèle : `pages/content/FacilitiesView.tsx`.
 
 Dans les deux cas :
 
-3. Le chemin dans `PAGES` (`apps/admin/src/routes.tsx`, chargée à la demande) et la section du
-   menu dans `SECTIONS` (`apps/admin/src/sections.ts`).
+3. Le chemin dans `PAGES` (`apps/admin/src/routes.tsx`, chargée à la demande) et sa ligne dans
+   la bonne catégorie du menu, `SECTION_GROUPS` (`apps/admin/src/sections.ts`).
 4. Les tests de l'admin la couvrent sans modification : `pages.test.tsx` affiche chaque section,
    `forms.test.tsx` ouvre la première, la médiane et la dernière fiche de chaque liste.
 
@@ -192,10 +195,11 @@ Les effets sont des unions discriminées par `type`, dans `packages/content/src/
 1. Modifier la fonction dans `packages/game-core` et son test.
 2. `pnpm --filter @poke/game-core test` : `golden.test.ts` échoue, c'est voulu. Lire les lignes
    qui ont changé (elles doivent correspondre à la règle modifiée, et à elle seule), puis
-   réenregistrer : `pnpm --filter @poke/game-core test -- -u`, dans le même commit.
+   réenregistrer : `pnpm --filter @poke/game-core exec vitest run -u`, dans le même commit.
 3. Une activité déjà lancée se résout avec la **nouvelle** règle et l'**ancien** contenu : si
    c'est gênant, garder l'ancien comportement pour les anciennes lignes (exemple :
-   `intervalGrowthMinutes` figé au départ d'une expédition).
+   `intervalGrowthMinutes`, `lootIntervalGrowthMinutes` et `xpShared` figés au départ d'une
+   expédition).
 
 ## Ajouter une région
 
@@ -205,8 +209,33 @@ d'ouverture), ses zones et leurs tables de butin (`seed/loot.ts`), ses dresseurs
 paliers, Conseil 4), ses quêtes et légendaires, ses badges (`badge-sprites.ts`), ses talents.
 Elle arrive désactivée (`enabled: false`) et s'active dans l'admin.
 
+Ses zones suivent les règles des Pokémon évolués (`seed/expedition-rules.ts`) : ni troisième
+stade, ni Pokémon obtenu par évolution avec un objet ; une forme finale dans une seule zone de la
+région, une forme intermédiaire dans deux au plus ; des poids bas pour les évolués (environ la
+moitié de la forme de base, 2 au moins), et une partie des formes finales absente. Les évolutions
+de bébés (Ronflex, Éoko…) comptent comme des formes de base. `seed.test.ts` vérifie toute région
+qui a son propre fichier ; une région encore dans `seed/expansion.ts` en est exemptée jusqu'à ce
+qu'elle en sorte. Les écarts voulus vont dans `EXPEDITION_RULE_EXCEPTIONS`, et seulement à la
+demande de l'utilisateur.
+
 Avant de durcir la condition d'ouverture d'une région existante : les joueurs qui y ont déjà
 accès le gardent (table `opened_regions`).
+
+## Ajouter une forme à obtenir par un objet tenu
+
+Exemple : Primo-Kyogre (Orbe Bleu), les formes de Deoxys (Météorites), dans
+`packages/content/src/seed/form-quests.ts` et la migration `0148_quetes_de_formes_contenu`.
+
+1. **L'objet** : catégorie `formItem`, effet `formChange` vers la forme (ni Méga, qui passe par
+   `megaEvolution`, ni régionale), invendable. Le PC le propose de lui-même sur la fiche de
+   l'espèce (`formItemOptions`) ; la Méga-Évolution et l'objet de forme partagent les routes
+   `/api/pokemon/:id/mega` et la colonne `pokemon.mega_stone`.
+2. **La quête** qui le donne : `kind: 'form'` (section « Quêtes de formes » de l'onglet), une
+   étape qui demande le Pokémon dans l'équipe (`speciesIds`) pour que le joueur l'ait capturé, un
+   dresseur de quête (`trainer.questId`) en dernière étape, l'objet dans `rewards.items`.
+3. Seules les formes Méga comptent dans la limite d'une Méga par équipe (`isMegaForm`) ; une
+   Primo-Résurgence prend le talent de sa forme (`usesFormAbility`), les autres formes gardent
+   celui du Pokémon.
 
 ## Mettre en production
 

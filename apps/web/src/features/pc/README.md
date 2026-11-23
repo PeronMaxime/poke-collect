@@ -1,15 +1,18 @@
 # PC
 
 Onglet « PC » : tous les Pokémon du joueur (recherche, filtres, tri, étiquettes), la fiche d'un
-Pokémon et ce qu'on peut y faire : évoluer, Méga-Évoluer, donner des Bonbons ou un objet,
-verrouiller, transférer au Professeur, relâcher un légendaire.
+Pokémon et ce qu'on peut y faire : évoluer, Méga-Évoluer ou tenir un objet de forme (Orbe Bleu,
+Météorites…), donner des Bonbons ou un objet, verrouiller, transférer au Professeur, relâcher un
+légendaire.
 
 ## Fichiers
 
 - `PcPage.tsx` : l'onglet ; `PcBrowser.tsx` : recherche, filtres et tri (`usePcBrowser`, repris
   par d'autres écrans) ; `transferMode.tsx`, `DuplicateSettings.tsx` : transfert en lot.
 - `sheet/` : la fiche d'un Pokémon (`PokemonDetail.tsx`, sections, actions, évolutions,
-  `ItemUseDialog.tsx`) ; `EvolutionReveal.tsx` : animation d'une évolution.
+  `ItemUseDialog.tsx`) ; `EvolutionReveal.tsx` : animation d'une évolution ou d'une forme tenue.
+  `MegaPanel` (`sheet/EvolutionPanels.tsx`) réunit Méga-Gemmes et objets de forme, servis par les
+  mêmes routes (`/api/pokemon/:id/mega`).
 
 ## Données
 

@@ -1,9 +1,9 @@
-import { getSpecies } from '@poke/data';
+import { getForm, getSpecies } from '@poke/data';
 import { KNOWN_NATURES, formError } from './context';
 import type { IntegrityCheck } from './context';
 import type { ContentIssue } from './types';
 
-/** Donjons : région, butin, Méga-Gemme, adversaires, lignée du boss. */
+/** Donjons : région, butin, Méga-Gemme (effet, espèce du boss), adversaires, lignée du boss. */
 export function checkDungeons(check: IntegrityCheck): void {
   const { content, add, checkUnlock, regionIds, itemIds, lootTableIds } = check;
   for (const dungeon of content.dungeons) {
@@ -22,6 +22,23 @@ export function checkDungeons(check: IntegrityCheck): void {
     }
     if (dungeon.gemItemId && dungeon.gemChance === 0) {
       report('warning', 'Méga-Gemme choisie mais probabilité nulle');
+    }
+    const gem = dungeon.gemItemId
+      ? content.items.find((i) => i.id === dungeon.gemItemId)
+      : undefined;
+    if (gem) {
+      const mega = gem.effects.find((e) => e.type === 'megaEvolution');
+      if (!mega) {
+        report(
+          'warning',
+          `« ${gem.name} » n’a pas l’effet Méga-Évolution : ce n’est pas une Méga-Gemme`,
+        );
+      } else if (
+        getForm(mega.formId) &&
+        getForm(mega.formId)?.speciesId !== dungeon.boss.speciesId
+      ) {
+        report('warning', `« ${gem.name} » ne fait pas méga-évoluer l’espèce du boss`);
+      }
     }
     for (const [label, member] of [
       ...dungeon.opponents.map((m, i) => [`Adversaire ${i + 1}`, m] as const),

@@ -127,6 +127,8 @@ async function resolveClaim(
       ? { itemId: found.encounterBerryItemId, quantity: found.encounterBerries }
       : null,
     intervalGrowthMinutes: found.encounterIntervalGrowthMinutes,
+    lootIntervalGrowthMinutes: found.lootIntervalGrowthMinutes,
+    xpShared: found.xpShared,
     pity: Object.fromEntries(pityRows.map((r) => [r.speciesId, r.misses])),
     bonuses,
     // Chaîne figée au départ ; Charme Chroma possédé à la réclamation.

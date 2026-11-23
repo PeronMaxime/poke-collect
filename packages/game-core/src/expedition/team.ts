@@ -11,7 +11,7 @@ import {
 } from '../abilities';
 import type { AbilityEnv } from '../abilities';
 import { MAX_MEGAS_PER_TEAM, megaCount } from '../mega';
-import { EPSILON, encounterClock, encountersAfter } from './cadence';
+import { encounterClock, encountersAfter } from './cadence';
 import type { EncounterClock } from './clock';
 
 /**
@@ -30,7 +30,7 @@ export type ExpeditionError =
   | { code: 'DUPLICATE_MEMBER' }
   /** Plus d'un Pokémon Méga-Évolué. */
   | { code: 'TOO_MANY_MEGAS'; max: number }
-  /** Espèces hors du Pokédex de la région de la zone. */
+  /** Espèces des Pokémon qui ne servent pas dans la région de la zone (`isRegionalPokemon`). */
   | { code: 'WRONG_REGION'; regionId: string; speciesIds: number[] }
   | { code: 'POWER_TOO_LOW'; power: number; minPower: number }
   | { code: 'MISSING_TYPES'; missing: { type: string; count: number }[] };
@@ -137,6 +137,16 @@ export interface ExpeditionPlan {
 }
 
 /**
+ * Allongement par heure passée des intervalles entre deux rencontres et entre deux tirages de
+ * butin (minutes), figé au départ d'une expédition ; absent = réglage actuel du contenu, 0 =
+ * rythme constant (expéditions parties avant l'allongement).
+ */
+interface ExpeditionGrowth {
+  encounters?: number;
+  loot?: number;
+}
+
+/**
  * Rencontres et tirages de butin après `minutes` d'expédition, talents de l'équipe compris (sans
  * environnement : valeurs de base), et baies de rencontres emportées.
  */
@@ -145,9 +155,9 @@ export function expeditionPlan(
   minutes: number,
   env?: AbilityEnv,
   encounterBerries?: ItemStack | null,
-  growthMinutes?: number,
+  growth?: ExpeditionGrowth,
 ): ExpeditionPlan {
-  return planAfter(expeditionPace(ctx, env, encounterBerries, growthMinutes), minutes);
+  return planAfter(expeditionPace(ctx, env, encounterBerries, growth), minutes);
 }
 
 /**
@@ -156,32 +166,53 @@ export function expeditionPlan(
  * l'équipe du départ ; le client s'en sert pour l'affichage.
  */
 export interface ExpeditionPace extends EncounterClock {
+  /** Tirages de butin par minute pendant la première heure, talents compris. */
   lootPerMinute: number;
+  /**
+   * Intervalle de base entre deux tirages et son allongement par heure passée, en minutes ;
+   * absents = rythme constant (rythmes calculés avant l'allongement du butin).
+   */
+  lootIntervalMinutes?: number;
+  lootIntervalGrowthMinutes?: number;
 }
 
 /**
  * Rythme d'une expédition pour une équipe : rencontres par minute (voir `encounterClock`) et butin
- * par minute (`expeditions.lootIntervalMinutes`, talents compris).
+ * par minute (`expeditions.lootIntervalMinutes`, talents compris), chacun ralentissant d'heure en
+ * heure selon `growth`.
  */
 export function expeditionPace(
   ctx: GameContext,
   env?: AbilityEnv,
   encounterBerries?: ItemStack | null,
-  growthMinutes?: number,
+  growth?: ExpeditionGrowth,
 ): ExpeditionPace {
+  const { lootIntervalMinutes, lootIntervalGrowthMinutes } = ctx.balance.expeditions;
   return {
-    ...encounterClock(ctx, env, encounterBerries, growthMinutes),
-    lootPerMinute:
-      (env ? abilityMultiplier(ctx, env, 'lootRolls') : 1) /
-      ctx.balance.expeditions.lootIntervalMinutes,
+    ...encounterClock(ctx, env, encounterBerries, growth?.encounters),
+    lootPerMinute: (env ? abilityMultiplier(ctx, env, 'lootRolls') : 1) / lootIntervalMinutes,
+    lootIntervalMinutes,
+    lootIntervalGrowthMinutes: growth?.loot ?? lootIntervalGrowthMinutes ?? 0,
   };
 }
 
-/** Rencontres et tirages de butin après `minutes`, au rythme donné. */
+/**
+ * Rencontres et tirages de butin après `minutes`, au rythme donné. Le butin suit le même calcul
+ * que les rencontres (tranches horaires), sans baies : elles n'accélèrent que les rencontres.
+ */
 export function planAfter(pace: ExpeditionPace, minutes: number): ExpeditionPlan {
   return {
     encounters: encountersAfter(pace, minutes),
-    lootRolls: Math.floor(pace.lootPerMinute * minutes + EPSILON),
+    lootRolls: encountersAfter(
+      {
+        perMinute: pace.lootPerMinute,
+        boost: 1,
+        boostMinutes: 0,
+        intervalMinutes: pace.lootIntervalMinutes,
+        intervalGrowthMinutes: pace.lootIntervalGrowthMinutes,
+      },
+      minutes,
+    ),
   };
 }
 

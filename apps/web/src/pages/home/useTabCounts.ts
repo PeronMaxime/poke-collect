@@ -81,7 +81,7 @@ export function useTabCounts(ctx: GameContext | undefined) {
   const finished = expeditions.data?.active.filter((e) => Date.parse(e.endsAt) <= now).length ?? 0;
   const dexCatches = useDexCatches();
   const dexForms = usePokedexForms();
-  // Même décompte que la page Pokédex : espèces et formes de ses sections (régionales, Méga…).
+  // Même décompte que la page Pokédex : espèces et formes régionales.
   const caught =
     dexCatches.caughtSpeciesIds.size +
     (dexForms.data?.filter((f) => DEX_FORM_KINDS.has(getForm(f.formId)?.kind)).length ?? 0);

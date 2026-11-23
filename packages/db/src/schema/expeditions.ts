@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   bigint,
+  boolean,
   doublePrecision,
   index,
   integer,
@@ -47,6 +48,16 @@ export const expeditions = pgTable(
     encounterIntervalGrowthMinutes: doublePrecision('encounter_interval_growth_minutes')
       .notNull()
       .default(0),
+    /**
+     * Allongement de l'intervalle entre deux tirages de butin à chaque heure passée, figé au
+     * départ (minutes) ; 0 = expéditions parties avant le 17 nov., butin à rythme constant.
+     */
+    lootIntervalGrowthMinutes: doublePrecision('loot_interval_growth_minutes').notNull().default(0),
+    /**
+     * XP partagée entre les membres de l'équipe, figé au départ ; false = expéditions parties
+     * avant le 20 nov., où chaque membre recevait le total.
+     */
+    xpShared: boolean('xp_shared').notNull().default(false),
     /** Anciennes expéditions : Pokémon à tenter de capturer ; null = tous. */
     captureFilter: jsonb('capture_filter').$type<CaptureFilter>(),
     /**

@@ -40,8 +40,13 @@ export const balanceSettingsSchema = z.object({
     encounterIntervalMinutes: z.number().positive(),
     /** Minutes ajoutées à cet intervalle à chaque heure passée (par palier) ; 0 = rythme constant. */
     encounterIntervalGrowthMinutes: z.number().min(0).default(0),
-    /** Un tirage de butin toutes les N minutes. */
+    /** Un tirage de butin toutes les N minutes pendant la première heure. */
     lootIntervalMinutes: z.number().positive(),
+    /**
+     * Minutes ajoutées à cet intervalle à chaque heure passée (par palier) ; 0 = rythme constant.
+     * Dans le même rapport que celui des rencontres, le butin suit leur courbe.
+     */
+    lootIntervalGrowthMinutes: z.number().min(0).default(0),
     /** Temps d'effet d'une baie emportée (rencontres ou capture). */
     berryDurationMinutes: z.number().positive(),
   }),

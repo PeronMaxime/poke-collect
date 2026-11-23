@@ -1,0 +1,1 @@
+ALTER TABLE "quests" ADD COLUMN "kind" text DEFAULT 'legendary' NOT NULL;

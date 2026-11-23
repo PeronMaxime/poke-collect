@@ -136,7 +136,15 @@ donjons, boutique, guildes, menu) est du **contenu**, pas du code.
   `content-repo.ts`). Une seule version **publiée**, au plus un **brouillon**. Créer un brouillon
   copie la version publiée ; le publier archive l'ancienne.
 - **Cohérence** : `packages/content/src/integrity/` vérifie les références croisées (une zone
-  cite une région qui existe, un butin des objets qui existent…). Publier l'exige.
+  cite une région qui existe, un butin des objets qui existent…). Publier exige qu'il n'y ait
+  aucune erreur. Les alertes signalent aussi ce que le jeu ignorerait sans rien dire : une
+  condition qui attend un dresseur ou une quête désactivés, des dépendances en boucle (erreur),
+  une météo figée, un objet de quête obtenu ailleurs que pendant sa quête, un Pokémon de collection
+  introuvable. Une région entière désactivée est du contenu à venir : ce qui l'attend n'est pas
+  signalé. Les alertes qui demandent les règles du jeu (un Pokémon d'évolution par objet dans une
+  zone) sont dans `packages/game-core/src/rule-issues.ts` (`ruleIssues`) : `@poke/content` ne
+  dépend pas de `game-core`. `loadContentWithIssues` (`@poke/db`) réunit les deux listes pour
+  le tableau de bord ; elles ne contiennent que des alertes, jamais d'erreur bloquante.
 - **Lecture** : `ContentCache` (`apps/api/src/content-cache.ts`) garde en mémoire la version
   publiée, transformée en `GameContext` (`createGameContext`, index par identifiant). Le jeu
   reçoit le même contenu par `GET /api/content` et construit le même `GameContext`.
@@ -219,7 +227,10 @@ déterministe), cachette d'un Pokémon fuyard.
 
 Une page par entité de contenu (`pages/content/*`), construite sur `components/EntityPage.tsx`
 (liste, formulaire, enregistrement dans le brouillon) ; les réglages enregistrés en un bloc dans
-l'équilibrage (menu, Sac, bâtiments…) sur `components/SettingsPage.tsx`. Le rôle est vérifié par le serveur à
+l'équilibrage (menu, Sac, bâtiments…) sur `components/SettingsPage.tsx`. Les outils
+d'équilibrage (simulateur d'expédition, calculateur de PE, espèces par zone) calculent sur la
+version de travail avec `game-core` ; « Espèces par zone » (`lib/zone-species.ts`) écrit aussi les
+rencontres des zones, une zone entière à la fois. Le rôle est vérifié par le serveur à
 chaque requête (`requireAdmin`) ; `AdminGate` ne fait qu'adapter l'affichage. Chaque modification
 est inscrite au journal (`packages/db/src/audit.ts`).
 

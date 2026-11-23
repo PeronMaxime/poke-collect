@@ -30,8 +30,9 @@ trop lourdes pour Git : elles se téléchargent en local et au déploiement.
 
 Une forme (`forms.json`, champ `kind`) remplace les types, statistiques et talents de son espèce
 et a ses propres images : régionales, Méga-Évolutions, Gigamax, formes d'apparence (identifiant
-= 100 000 + identifiant PokéAPI de la forme). Le Pokédex reste tenu par espèce, avec des sections
-de formes à part (`DEX_FORM_SECTIONS`).
+= 100 000 + identifiant PokéAPI de la forme). Le Pokédex reste tenu par espèce, avec les formes
+régionales à part (`DEX_FORM_SECTIONS`) ; les autres sections (`FORM_SECTIONS` : Méga, Gigamax,
+Primo, formes de combat) servent à l'admin et au wiki, et se complètent dans les collections.
 
 ## Surcharges
 

@@ -21,6 +21,7 @@ foretDeJade.minPower = 0;
 const raikou = content.quests.find((q) => q.id === 'raikou')!.rewards.pokemon[0]!;
 content.quests.push({
   id: 'fuyard-test',
+  kind: 'legendary',
   order: 10,
   name: 'Fuyard de test',
   description: '',

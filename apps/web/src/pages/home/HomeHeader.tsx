@@ -29,7 +29,7 @@ function AccountLinks({
   return (
     <>
       {me.user.role === 'admin' && (
-        <a className={className} href={import.meta.env.VITE_ADMIN_URL ?? 'http://localhost:5174'}>
+        <a className={className} href={import.meta.env.VITE_ADMIN_URL || 'http://localhost:5174'}>
           Admin
         </a>
       )}

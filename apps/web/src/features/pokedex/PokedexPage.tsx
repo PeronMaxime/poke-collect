@@ -142,7 +142,7 @@ export function DexView({ ctx, foreign }: { ctx: GameContext; foreign?: ForeignD
     };
   }).filter((section) => section.total > 0);
   // Pourcentage du Pokédex régional : espèces seules, comme pour le déblocage des régions. Les
-  // formes de ses sections (régionales, Méga…) sont comptées à part.
+  // formes régionales sont comptées à part.
   const formsCaught = formSections.reduce((n, s) => n + s.caught, 0);
   const formsTotal = formSections.reduce((n, s) => n + s.total, 0);
   // Cases voisines de la fiche ouverte : celles de la grille affichée, dans l'ordre, sans les

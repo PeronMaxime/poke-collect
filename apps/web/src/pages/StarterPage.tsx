@@ -6,8 +6,12 @@ import { PokemonSprite, TypeBadge } from '../components/ui';
 import { ApiError } from '../lib/api';
 import { PLAYER_STATE_KEYS, chooseStarter, refresh, useGameContext } from '../lib/queries';
 import { errorMessage } from '../lib/labels';
+import { openTutorial } from '../features/wiki/TutorialDialog';
 
-/** Choix du premier Pokémon parmi les starters de la région de départ (contenu publié). */
+/**
+ * Choix du premier Pokémon parmi les starters de la région de départ (contenu publié). Une fois
+ * le starter choisi, le tutoriel s'ouvre en popup par-dessus le jeu.
+ */
 export function StarterPage({ profile }: { profile: PlayerProfileDto }) {
   const queryClient = useQueryClient();
   const ctx = useGameContext();
@@ -16,7 +20,10 @@ export function StarterPage({ profile }: { profile: PlayerProfileDto }) {
 
   const choose = useMutation({
     mutationFn: (speciesId: number) => chooseStarter(speciesId),
-    onSuccess: () => refresh(queryClient, ...PLAYER_STATE_KEYS),
+    onSuccess: () => {
+      openTutorial();
+      return refresh(queryClient, ...PLAYER_STATE_KEYS);
+    },
   });
 
   if (!ctx)

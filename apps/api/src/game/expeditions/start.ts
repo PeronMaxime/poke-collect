@@ -120,7 +120,8 @@ export async function startExpedition(
         throw new GameError(409, 'STOCK_CHANGED');
       return quantity;
     };
-    const { maxDurationMinutes, encounterIntervalGrowthMinutes } = ctx.balance.expeditions;
+    const { maxDurationMinutes, encounterIntervalGrowthMinutes, lootIntervalGrowthMinutes } =
+      ctx.balance.expeditions;
     const env = expeditionEnv(site, team, hour);
     const berryLimit = maxExpeditionBerries(ctx);
     const encounterBerries = await reserve(
@@ -189,6 +190,8 @@ export async function startExpedition(
         encounterBerryItemId: encounterBerries > 0 ? input.encounterBerryItemId : null,
         encounterBerries,
         encounterIntervalGrowthMinutes,
+        lootIntervalGrowthMinutes,
+        xpShared: true,
         contentVersionId: ctx.content.versionId,
         startedAt: now,
         minEndsAt: minutesAfter(now, expeditionMinMinutes(ctx, zone.minDurationMinutes, env)),

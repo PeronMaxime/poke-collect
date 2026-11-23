@@ -26,6 +26,7 @@ import {
   expansionZones,
 } from './expansion';
 import { combatSettings, dungeonSettings, megaStoneItems, seedDungeons } from './dungeons';
+import { formItems, formQuestItems, formQuestTrainers, hoennFormQuests } from './form-quests';
 import { hoennRegion, hoennTrainers, hoennZones } from './hoenn';
 import { johtoRegion, johtoTrainers, johtoZones } from './johto';
 import { kantoTrainers, kantoZones } from './kanto';
@@ -300,6 +301,113 @@ const slugify = (name: string) =>
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-|-$/g, '');
 
+/** « de Kanto », « d’Unys ». */
+const ofName = (name: string) => `${/^[aeiouyéèê]/i.test(name) ? 'd’' : 'de '}${name}`;
+
+/** Bonus permanent d'une collection selon son nombre de cases : 1 % (≤ 4), 2 % (≤ 15), 3 %. */
+const collectionBonus = (total: number) => (total <= 4 ? 1 : total <= 15 ? 2 : 3);
+
+/**
+ * Région d'une collection : la première (dans l'ordre) dont le Pokédex contient l'espèce, sinon
+ * celle de sa génération. `sorted` : les régions triées par ordre.
+ */
+function speciesRegion(sorted: Region[], speciesId: number): Region {
+  return (
+    sorted.find((r) => r.speciesIds.includes(speciesId)) ??
+    sorted.find((r) => r.id === GENERATION_REGIONS[getSpecies(speciesId)!.generation - 1])!
+  );
+}
+
+/** Formes d'un type, par espèce, dans l'ordre des numéros. */
+function formsBySpecies(kind: PokemonForm['kind']): Map<number, PokemonForm[]> {
+  const bySpecies = new Map<number, PokemonForm[]>();
+  for (const form of forms.filter((f) => f.kind === kind).sort((a, b) => a.speciesId - b.speciesId))
+    bySpecies.set(form.speciesId, [...(bySpecies.get(form.speciesId) ?? []), form]);
+  return bySpecies;
+}
+
+/** Collection de formes avant numérotation (ordre, bonus). */
+interface FormGroup {
+  id: string;
+  name: string;
+  description: string;
+  speciesIds: number[];
+  formIds: number[];
+}
+
+/** Méga-Évolutions ou formes Gigamax d'une région, sans leurs Pokémon de base. */
+function regionFormGroup(
+  sorted: Region[],
+  region: Region,
+  kind: 'mega' | 'gmax',
+): FormGroup | null {
+  const list = [...formsBySpecies(kind)].filter(([id]) => speciesRegion(sorted, id) === region);
+  if (list.length === 0) return null;
+  const formIds = list.flatMap(([, f]) => f.map((form) => form.id));
+  const many = formIds.length > 1;
+  const noun =
+    kind === 'mega' ? `Méga-Évolution${many ? 's' : ''}` : `forme${many ? 's' : ''} Gigamax`;
+  return {
+    id: `${kind === 'mega' ? 'mega' : 'gigamax'}-${region.id}`,
+    name: `${kind === 'mega' ? 'Méga-Évolutions' : 'Formes Gigamax'} ${ofName(region.name)}`,
+    description: `${many ? formIds.length : 'Une'} ${noun} à obtenir.`,
+    speciesIds: [],
+    formIds,
+  };
+}
+
+/** Primo-Résurgence ou formes de combat d'une espèce, avec sa forme par défaut. */
+function speciesFormGroup(speciesId: number, list: PokemonForm[]): FormGroup {
+  const name = getSpecies(speciesId)!.nameFr;
+  const primal = list[0]!.kind === 'primal';
+  const many = list.length > 1;
+  const noun = primal ? 'Primo-Résurgence' : `forme${many ? 's' : ''} de combat`;
+  return {
+    id: `${primal ? 'primo' : 'combat'}-${slugify(name)}`,
+    name: `${primal ? 'Primo-Résurgence' : `Forme${many ? 's' : ''} de combat`} ${ofName(name)}`,
+    description: `${list.length > 1 ? list.length : 'Une'} ${noun} à obtenir, forme par défaut comprise.`,
+    speciesIds: [speciesId],
+    formIds: list.map((f) => f.id),
+  };
+}
+
+/**
+ * Collections des formes qui n'ont pas leur case au Pokédex : Méga-Évolutions et formes Gigamax,
+ * une collection par région (formes seules) ; Primo-Résurgences et formes de combat, une
+ * par espèce (forme par défaut comprise), comme Deoxys parmi les formes naturelles. Régions et
+ * bonus comme `naturalFormCollections` ; ordre : 100 × ordre de la région + 50 + rang, après les
+ * formes naturelles de la région.
+ */
+function specialFormCollections(regions: Region[]): Collection[] {
+  const sorted = [...regions].sort((a, b) => a.order - b.order);
+  const perSpecies = [...formsBySpecies('primal'), ...formsBySpecies('battle')];
+  return sorted.flatMap((region) => {
+    const groups = [
+      regionFormGroup(sorted, region, 'mega'),
+      regionFormGroup(sorted, region, 'gmax'),
+      ...perSpecies
+        .filter(([id]) => speciesRegion(sorted, id) === region)
+        .map(([id, list]) => speciesFormGroup(id, list)),
+    ].filter((g) => g !== null);
+    return groups.map((g, i): Collection => {
+      const total = g.speciesIds.length + g.formIds.length;
+      return {
+        ...g,
+        order: region.order * 100 + 50 + i,
+        rewards: reward({
+          bonuses: [
+            {
+              type: (['capture', 'money', 'xp'] as const)[i % 3]!,
+              percent: collectionBonus(total),
+            },
+          ],
+        }),
+        regionId: region.id,
+      };
+    });
+  });
+}
+
 /**
  * Collections des formes naturelles (variantes d'apparence et variétés : Zarbi, Prismillon,
  * Motisma…) : une par lignée, avec ses espèces (forme par défaut) et toutes leurs formes, même
@@ -318,10 +426,7 @@ function naturalFormCollections(regions: Region[]): Collection[] {
   const groups = [...lines.values()]
     .map((lineForms) => {
       const speciesIds = [...new Set(lineForms.map((f) => f.speciesId))].sort((a, b) => a - b);
-      const base = getSpecies(speciesIds[0]!)!;
-      const region =
-        sorted.find((r) => r.speciesIds.includes(base.id)) ??
-        sorted.find((r) => r.id === GENERATION_REGIONS[base.generation - 1])!;
+      const region = speciesRegion(sorted, speciesIds[0]!);
       return { speciesIds, formIds: lineForms.map((f) => f.id), region };
     })
     .sort((a, b) => a.region.order - b.region.order || a.speciesIds[0]! - b.speciesIds[0]!);
@@ -336,12 +441,12 @@ function naturalFormCollections(regions: Region[]): Collection[] {
     return {
       id: `formes-${slugify(names[0]!)}`,
       order: region.order * 100 + index,
-      name: `Formes ${/^[aeiouyéèê]/i.test(names[0]!) ? 'd’' : 'de '}${frenchList(names)}`,
+      name: `Formes ${ofName(frenchList(names))}`,
       description: `${total} formes à capturer, ${
         names.length > 1 ? 'formes par défaut comprises' : 'forme par défaut comprise'
       }.`,
       speciesIds,
-      rewards: reward({ bonuses: [{ type, percent: total <= 4 ? 1 : total <= 15 ? 2 : 3 }] }),
+      rewards: reward({ bonuses: [{ type, percent: collectionBonus(total) }] }),
       regionId: region.id,
       formIds,
     };
@@ -374,6 +479,7 @@ export const seedContent: GameContentData = withOwnLootTables({
       encounterIntervalMinutes: 3,
       encounterIntervalGrowthMinutes: 0.5,
       lootIntervalMinutes: 6,
+      lootIntervalGrowthMinutes: 1,
       berryDurationMinutes: 10,
     },
     capture: {
@@ -716,7 +822,7 @@ export const seedContent: GameContentData = withOwnLootTables({
     ...fossilItems(),
     ...megaStoneItems(regions),
     ...expansionItems,
-  ]).concat(guildChestItems, questItems, [
+  ]).concat(guildChestItems, questItems, formItems, formQuestItems, [
     {
       id: 'parcelle-ferme',
       name: 'Parcelle de ferme',
@@ -809,13 +915,14 @@ export const seedContent: GameContentData = withOwnLootTables({
     ...hoennTrainers,
     ...expansionTrainers,
     ...questTrainers,
+    ...formQuestTrainers,
   ],
   dungeons: seedDungeons(regions),
   shopCategories,
   shopEntries: [...shopEntries, ...expansionShopEntries],
   evolutionOverrides,
-  collections: naturalFormCollections(regions),
-  quests: [...kantoQuests, ...johtoQuests, ...hoennQuests],
+  collections: [...naturalFormCollections(regions), ...specialFormCollections(regions)],
+  quests: [...kantoQuests, ...johtoQuests, ...hoennQuests, ...hoennFormQuests],
   guildQuests,
   chestEntries,
 });

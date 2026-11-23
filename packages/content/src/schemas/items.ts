@@ -21,6 +21,8 @@ export const ITEM_CATEGORIES = [
   'endgame',
   'fossil',
   'megaStone',
+  /** Objet de forme : tenu au PC, il change la forme d'un Pokémon (Orbe Bleu, Météorites…). */
+  'formItem',
   'chest',
   /** Objet de quête : trouvé seulement pendant l'étape qui le demande, ni vendu ni utilisé. */
   'quest',
@@ -47,6 +49,7 @@ export const DEFAULT_BAG_SECTION_TITLES: Record<BagSectionId, string> = {
   endgame: 'Objets rares',
   fossil: 'Fossiles',
   megaStone: 'Méga-Gemmes',
+  formItem: 'Objets de forme',
   chest: 'Coffres de guilde',
   quest: 'Objets de quête',
   misc: 'Divers',
@@ -63,7 +66,7 @@ export interface BagTab {
 /** Rangement du Sac par défaut (sans réglage dans l'admin). */
 export const DEFAULT_BAG_TABS: BagTab[] = [
   { title: 'Combat', sections: ['ball', 'heal', 'berry'] },
-  { title: 'Évolution', sections: ['evolution', 'training', 'megaStone', 'candies'] },
+  { title: 'Évolution', sections: ['evolution', 'training', 'megaStone', 'formItem', 'candies'] },
   { title: 'Élevage', sections: ['breeding', 'eggs'] },
   { title: 'Trésors', sections: ['endgame', 'fossil', 'chest', 'quest', 'misc'] },
 ];
@@ -159,6 +162,12 @@ export const itemEffectSchema = z.discriminatedUnion('type', [
    * Retirée de l'inventaire à la Méga-Évolution, rendue quand le Pokémon redevient normal.
    */
   z.object({ type: z.literal('megaEvolution'), formId: z.int().positive() }),
+  /**
+   * Objet de forme : comme une Méga-Gemme, tenu par un Pokémon de l'espèce (forme normale), il le
+   * fait passer dans la forme `formId` (Primo-Résurgence, forme de Deoxys…), qui n'est ni une
+   * forme Méga ni une forme régionale. Rendu au sac quand le Pokémon reprend sa forme normale.
+   */
+  z.object({ type: z.literal('formChange'), formId: z.int().positive() }),
   /** Utilisé sur un Pokémon K.O. : il est aussitôt soigné, sans passer par le Centre (Rappel). */
   z.object({ type: z.literal('revive') }),
   /**

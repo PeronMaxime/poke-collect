@@ -25,7 +25,7 @@ import {
 } from '../../lib/labels';
 import { InfoCell, LAUNCH_DIALOG_CLASS, SELECTED_CELL, SheetSection } from '../common/dialogParts';
 import { zoneLink } from '../expeditions/zoneLink';
-import { levelRange, pokemonSources } from './pokemonSources';
+import { heldFormLabel, levelRange, pokemonSources } from './pokemonSources';
 import { wikiAbilityLink, wikiPokemonLink } from '../wiki/wiki';
 
 /** Case du Pokédex : une espèce (formId null) ou l'une de ses formes. */
@@ -256,7 +256,7 @@ function StateLabel({ state, current }: { state: SlotState; current?: boolean })
   );
 }
 
-/** Espèce et formes du Pokédex (régionales, Méga, Gigamax…), pour passer de l'une à l'autre. */
+/** Espèce et formes régionales du Pokédex, pour passer de l'une à l'autre. */
 function Forms({
   slot,
   stateOf,
@@ -454,10 +454,10 @@ function Sources({
       </p>,
     );
   }
-  if (sources.megaOf) {
+  if (sources.heldOf) {
     lines.push(
       <p key="mega" className="flex items-center gap-2">
-        {sources.megaOf.itemIds.slice(0, 1).map((id) => (
+        {sources.heldOf.itemIds.slice(0, 1).map((id) => (
           <img
             key={id}
             src={itemIcon(ctx, id)}
@@ -468,8 +468,8 @@ function Sources({
           />
         ))}
         <span>
-          Méga-Évolution de {ctx.species(slot.speciesId)?.nameFr} avec{' '}
-          <strong>{sources.megaOf.itemIds.map((id) => itemName(ctx, id)).join(' ou ')}</strong>.
+          {heldFormLabel(sources.heldOf.form)} de {ctx.species(slot.speciesId)?.nameFr} avec{' '}
+          <strong>{sources.heldOf.itemIds.map((id) => itemName(ctx, id)).join(' ou ')}</strong>.
         </span>
       </p>,
     );

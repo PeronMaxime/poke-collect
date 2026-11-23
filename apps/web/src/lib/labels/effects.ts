@@ -32,6 +32,8 @@ export function effectText(effect: ItemEffect): string {
       return `Musée : ${getSpecies(effect.speciesId)?.nameFr ?? `#${effect.speciesId}`} en ${formatDuration(effect.minutes)}`;
     case 'megaEvolution':
       return `Au PC : Méga-Évolution en ${getForm(effect.formId)?.nameFr ?? `forme ${effect.formId}`}`;
+    case 'formChange':
+      return `Au PC : tenu, change la forme en ${getForm(effect.formId)?.nameFr ?? `forme ${effect.formId}`}`;
     case 'revive':
       return 'Ranime un Pokémon K.O.';
     case 'battleHeal':

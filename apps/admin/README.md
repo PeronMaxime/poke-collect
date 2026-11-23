@@ -12,19 +12,25 @@ Vue d'ensemble : [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md), sections 4 
 src/
   main.tsx            Entrée
   routes.tsx          Table des pages (toutes derrière `AdminGate` puis `Layout`)
-  sections.ts         Le menu : chemin, libellé, description de chaque page
+  sections.ts         Le menu : catégories, puis chemin, libellé, description de chaque page
   lib/
     api.ts            `api()` de `@poke/client` (délai plus long que dans le jeu)
     content.ts        Version de travail, enregistrement d'une entité, publication
+    docs.ts           Fichiers Markdown du dépôt réunis pour la page « Documentation », recherche
+    doc-render.ts     Markdown → HTML (marked) : ancres, sommaire, liens entre fichiers
+    zone-species.ts   Répartition des espèces d'une région dans ses zones (page « Espèces par zone »)
   components/
     AdminGate.tsx     Connexion et contrôle d'accès (affichage seulement)
+    SideMenu.tsx      Menu en accordéon, une section repliable par catégorie
     EntityPage.tsx    Modèle d'une page d'entités : liste, fiche, enregistrement ; chargement
     SettingsPage.tsx  Modèle d'une page de réglages de l'équilibrage : en-tête, Annuler, Enregistrer
     forms/            Champs, sélecteurs (espèce, objet, zone…), éditeurs de récompense et de condition
   pages/
     DashboardPage     Versions du contenu, brouillon, publication, alertes de cohérence, import/export
     content/          Une page par entité : équilibrage, régions, espèces, zones, dresseurs, quêtes…
+                      et « Espèces par zone » (grille espèces × zones, menu Ajouter, Modifier ou Supprimer sur chaque case)
     PlayersPage, TelemetryPage, ApiHealthPage, AuditLogPage
+    DocsPage          Toute la documentation technique du dépôt, avec recherche
     ExpeditionSimulatorPage, PowerCalculatorPage   Outils d'équilibrage
 test/                 Tests de pages (jsdom contre la vraie API en mémoire, compte admin)
 ```

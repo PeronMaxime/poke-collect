@@ -23,13 +23,19 @@ export const TYPE_COLORS: Record<string, string> = {
 };
 
 /**
- * Sections de formes du Pokédex et de l'admin, dans l'ordre d'affichage. Les formes naturelles
- * (`alternate`, `cosmetic` : Prismillon, Zarbi, Motisma…) n'y figurent pas pour l'instant.
+ * Sections de formes de l'admin et du wiki, dans l'ordre d'affichage. Les formes naturelles
+ * (`alternate`, `cosmetic` : Prismillon, Zarbi, Motisma…) n'y figurent pas.
  */
-export const DEX_FORM_SECTIONS = [
+export const FORM_SECTIONS = [
   { kind: 'regional', label: 'Formes régionales' },
   { kind: 'mega', label: 'Méga-Évolutions' },
   { kind: 'primal', label: 'Primo-Résurgences' },
   { kind: 'gmax', label: 'Formes Gigamax' },
   { kind: 'battle', label: 'Formes de combat' },
 ] as const satisfies readonly { kind: FormKind; label: string }[];
+
+/**
+ * Sections de formes du Pokédex du joueur : les formes régionales seules. Les Méga-Évolutions,
+ * formes Gigamax, Primo-Résurgences et formes de combat se complètent dans les collections.
+ */
+export const DEX_FORM_SECTIONS = FORM_SECTIONS.filter((s) => s.kind === 'regional');

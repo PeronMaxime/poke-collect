@@ -561,8 +561,8 @@ function useTestPokemon({ userId }: { userId: string }) {
 type TestPokemonSectionModel = ReturnType<typeof useTestPokemon>;
 
 /**
- * Lot de Pokémon de test (comptes admin seulement) : lignées des donjons de la région et les deux
- * plus forts Pokémon de chaque type de son Pokédex régional, inscrits au Pokédex.
+ * Lot de Pokémon de test (comptes admin seulement) : un exemplaire de chaque espèce du Pokédex de
+ * la région (légendaires sur demande), inscrits au Pokédex.
  */
 function TestPokemonSection({ userId }: { userId: string }) {
   const m = useTestPokemon({ userId });
@@ -571,9 +571,9 @@ function TestPokemonSection({ userId }: { userId: string }) {
     <section className="rounded-xl border border-dashed border-brand-500/40 p-4">
       <h3 className="font-semibold">Lot de Pokémon de test</h3>
       <p className="mb-3 text-sm text-slate-500">
-        Compte admin uniquement. Ajoute au PC les lignées des donjons de la région et les deux plus
-        forts Pokémon de chaque type de son Pokédex régional (origine « Lot de test »), un sur deux
-        en chromatique, et les inscrit au Pokédex pour rendre les donjons visibles.
+        Compte admin uniquement. Ajoute au PC un exemplaire de chaque Pokémon du Pokédex de la
+        région (origine « Lot de test » ; légendaires et fabuleux si la case est cochée), un sur
+        deux en chromatique, et les inscrit au Pokédex pour rendre les donjons visibles.
       </p>
       <TestPokemonActions m={m} />
       {error && <p className="mt-2 text-sm text-red-600">{error}</p>}

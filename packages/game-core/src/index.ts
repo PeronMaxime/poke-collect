@@ -70,8 +70,9 @@ export type {
 } from './expedition';
 export {
   earnedBadges,
-  isRegionalSpecies,
+  isRegionalPokemon,
   isRegionUnlocked,
+  isSpeciesInUnlockedRegion,
   isTabUnlocked,
   isUnlocked,
   isUnlockedSoon,
@@ -136,6 +137,7 @@ export {
   pokemonEvolutions,
 } from './evolution';
 export type { EvolutionCheck, EvolutionOption, EvolutionRequirement } from './evolution';
+export { ruleIssues } from './rule-issues';
 export {
   claimableRewardCount,
   collectionProgress,
@@ -188,6 +190,7 @@ export {
   isActionCondition,
   NEW_QUEST,
   questItemsGained,
+  questItemsHandedIn,
   questStatus,
   questStepsDone,
 } from './quest';
@@ -252,7 +255,17 @@ export type {
   DungeonStatus,
   DungeonTeamError,
 } from './dungeon';
-export { checkMegaEvolution, isMegaForm, MAX_MEGAS_PER_TEAM, megaCount, megaOptions } from './mega';
+export {
+  checkHeldItemForm,
+  formItemOptions,
+  heldItemForm,
+  isMegaForm,
+  MAX_MEGAS_PER_TEAM,
+  megaCount,
+  megaOptions,
+  usesFormAbility,
+} from './mega';
+export type { HeldFormOption } from './mega';
 export {
   ABILITY_ACTIVITY_LABELS,
   ABILITY_CONDITION_LABELS,

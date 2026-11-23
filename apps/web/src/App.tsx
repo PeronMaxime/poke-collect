@@ -1,6 +1,7 @@
 import { useEffect, useSyncExternalStore } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PublicContentDto } from '@poke/shared';
+import { TutorialDialog } from './features/wiki/TutorialDialog';
 import { keys, meQuery } from './lib/queries';
 import { usePokemonShadows } from './lib/pokemon-shadows';
 import { AuthPage, RESET_PASSWORD_PATH } from './pages/AuthPage';
@@ -40,12 +41,16 @@ function useContentVersionWatch(serverVersion: number | null | undefined) {
   }, [queryClient, serverVersion]);
 }
 
-/** Écran affiché, et la popup des nouveautés par-dessus (ouverte depuis n'importe quel écran). */
+/**
+ * Écran affiché, et par-dessus la popup des nouveautés (ouverte depuis n'importe quel écran) et
+ * celle du tutoriel (ouverte au choix du premier starter).
+ */
 export function App() {
   return (
     <>
       <Screens />
       <ChangelogDialog />
+      <TutorialDialog />
     </>
   );
 }
