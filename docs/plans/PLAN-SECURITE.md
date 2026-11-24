@@ -19,18 +19,22 @@ novembre). Restent :
 - [x] **Commits** : poussés sur `dev` le 24 novembre en trois commits (code des phases 1 à 4,
       phase 5, docs) : les phases touchent les mêmes fichiers, un découpage plus fin aurait laissé
       des commits qui ne compilent pas.
-- [ ] **Tâche `secrets` et Dependabot** (phase 5.1) : jamais lancés sur GitHub. À la première
+- [x] **Tâche `secrets` et Dependabot** (phase 5.1) : jamais lancés sur GitHub. À la première
       PR, vérifier que la tâche `secrets` passe et, dans l'onglet Insights → Dependency graph →
       Dependabot, que `.github/dependabot.yml` est lu sans erreur.
 - [ ] **Réglages GitHub** (Settings → Code security) : activer les alertes Dependabot, la
       recherche de secrets et sa protection à l'envoi (_push protection_), gratuites pour un dépôt
       public.
-- [ ] **Première routine de mise en production** (`docs/SECURITE.md`, section 4) à la PR
+- [x] **Première routine de mise en production** (`docs/SECURITE.md`, section 4) à la PR
       `dev` → `main` des phases 1 à 5 : `/security-review` sur tout l'écart, ligne dans le journal
       des audits.
-- [ ] **Tâche `images` de la CI** (phase 4.2) : jamais lancée (pas de Docker sur le poste de
+- [x] **Tâche `images` de la CI** (phase 4.2) : jamais lancée (pas de Docker sur le poste de
       développement). Elle tournera à la PR `dev` → `main` ; si elle échoue, lire les journaux des
       conteneurs qu'elle affiche avant de toucher aux restrictions.
+- [ ] **Durcir le second facteur** (constat sous le seuil de la première routine, 24 novembre) :
+      refuser `/two-factor/get-totp-uri`, `/two-factor/disable` et
+      `/two-factor/generate-backup-codes` à une session sans `twoFactorVerified` quand le second
+      facteur est activé, et révoquer les autres sessions du compte à l'activation.
 - [x] **Captcha** : pas activé (décidé le 24 novembre). Le code reste prêt : il suffirait de
       créer les clés Turnstile chez Cloudflare (`docs/INSTALLATION-SERVEUR.md`), de les mettre dans
       `.env.production` et d'ajouter une ligne au journal des nouveautés.
