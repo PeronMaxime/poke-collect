@@ -509,3 +509,19 @@ déploiement, jusqu'à la mise à jour ou à son acceptation écrite (`pnpm.audi
 `ci.yml`). Le test des routes ne voit pas une fuite qui répondrait quand même 404 (refus d'un
 autre contrôle placé avant celui du propriétaire) : il exige le code de refus attendu, et vérifie
 que le propriétaire, lui, trouve l'objet.
+
+## Suivi de l'exploitant : une page « À faire » dans l'admin, en base
+
+**Choix.** Ce qu'il reste à faire ou à surveiller (suites d'une mise en production, réglages à
+recaler, rappels datés) vit dans la table `admin_tasks`, affichée et modifiée dans la page
+« À faire » de l'admin. Deux sortes (à faire, à surveiller), une date facultative « à partir du »,
+un texte libre. Une liste livrée avec le code s'écrit dans une migration (`0156`).
+
+**Pourquoi.** Les points ouverts étaient dispersés entre les plans, les PR et les conversations ;
+l'exploitant veut une seule liste, qu'il coche lui-même, depuis n'importe où. Un fichier du dépôt
+demanderait un commit pour cocher une case, et passerait par `main` (donc par un déploiement).
+La table est partagée entre administrateurs et chaque changement est journalisé comme le reste.
+
+**Prix.** La liste de production et celle d'une base locale divergent : une tâche ajoutée en local
+n'existe pas en production (et l'inverse). Les plans gardent l'historique de leurs points ouverts ;
+la page, l'état courant.

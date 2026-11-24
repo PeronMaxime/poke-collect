@@ -247,7 +247,8 @@ version de travail avec `game-core` ; « Espèces par zone » (`lib/zone-species
 rencontres des zones, une zone entière à la fois. Le rôle et le second facteur sont vérifiés par
 le serveur à chaque requête (`requireAdmin`) ; `AdminGate` ne fait qu'adapter l'affichage
 (connexion, activation du second facteur, reconnexion). Chaque modification est inscrite au
-journal (`packages/db/src/audit.ts`).
+journal (`packages/db/src/audit.ts`). La page « À faire » (`pages/TasksPage.tsx`, table
+`admin_tasks`) garde ce qu'il reste à faire ou à surveiller, partagé entre administrateurs.
 
 Le second facteur (greffon `twoFactor` de Better Auth, code TOTP ou code de secours) ne protège
 d'origine que la connexion par mot de passe. La session porte donc une marque posée par le serveur

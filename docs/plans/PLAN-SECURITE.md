@@ -13,8 +13,9 @@ l'e-mail, captcha, suspension) demandent une ligne dans le journal des nouveaut�
 
 ## Points ouverts (à reprendre le 24 novembre 2026)
 
-Phases 1 à 5 faites et poussées sur `dev`, pas encore en production (phases 3 à 5 le 24
-novembre). Restent :
+Phases 1 à 5 en production depuis le 24 novembre (PR #28). **Ce qui reste est suivi dans la
+page « À faire » de l'admin** (Suivi → À faire), remplie par la migration 0156 : c'est elle qu'on
+tient à jour, cette liste n'en garde que l'historique. Restaient le 24 novembre :
 
 - [x] **Commits** : poussés sur `dev` le 24 novembre en trois commits (code des phases 1 à 4,
       phase 5, docs) : les phases touchent les mêmes fichiers, un découpage plus fin aurait laissé
@@ -52,7 +53,7 @@ novembre). Restent :
 - [ ] **Écrans de la modération** (fiche joueur, « Guildes et discussions ») et écran de
       suspension du jeu : testés par les tests de pages et de l'API, pas encore essayés dans un
       vrai navigateur.
-- [ ] **Journal des nouveautés** : entrée datée du 24 novembre (date provisoire), à recaler sur
+- [x] **Journal des nouveautés** : entrée datée du 24 novembre (date provisoire), à recaler sur
       le jour de la mise en ligne.
 - [ ] **À la mise en production** :
   - ~~`caddy validate` sur le serveur~~ : fait par la CI depuis le 24 novembre (`ci.yml`) ; juste

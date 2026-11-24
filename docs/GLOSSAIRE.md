@@ -109,5 +109,6 @@ veut dire, puis où la chercher. Les chemins partent de `packages/` ou de `apps/
 | DTO                        | Forme d'une donnée telle que l'API la renvoie                                            | types `…Dto` et `…Response` de `shared`                                     |
 | Erreur de jeu              | Refus d'une action, avec un code stable que le jeu traduit                               | `GameError`, `GAME_ERRORS`                                                  |
 | Modération                 | Ce que l'admin fait sur les joueurs et les guildes (suspension, renommage, messages)     | `routes/admin/moderation.ts`, actions `moderation.*` du journal             |
+| Tâche de suivi             | Ce que l'exploitant doit faire ou surveiller (page « À faire » de l'admin), datée ou non | table `admin_tasks`, `routes/admin/tasks.ts`, actions `task.*` du journal   |
 | Suspension                 | Compte fermé au jeu jusqu'à une date (ou définitivement), avec un motif montré au joueur | colonnes `users.suspended_until`, `suspension_reason` ; `ACCOUNT_SUSPENDED` |
 | Lecture lourde             | Route qui parcourt beaucoup de lignes ; a son propre budget de requêtes par joueur       | `HEAVY_READS` (`api/src/rate-limit.ts`)                                     |

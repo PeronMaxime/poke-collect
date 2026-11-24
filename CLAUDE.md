@@ -102,4 +102,8 @@ change) : elle se met à jour avec le code, jamais « plus tard ».
   (voir `docs/RECETTES.md`).
 - Avant chaque fusion `dev` → `main` : la routine de `docs/SECURITE.md` (section 4 :
   `/security-review`, `pnpm audit`, liste de contrôle, ligne dans le journal des audits).
+- **Chaque mise à jour remplit la page « À faire » de l'admin** de ce qu'elle laisse à faire ou
+  à surveiller après le déploiement : une migration de données (`INSERT INTO admin_tasks`, modèle
+  `0156`), datée si besoin, qui dit de quelle mise en production elle vient. Ce qui doit être fait
+  **avant** la fusion (`.env`, vérification en base) va dans la liste à cocher de la PR.
 - Déplacer un fichier et le modifier se font dans deux commits distincts.

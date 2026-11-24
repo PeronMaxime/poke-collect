@@ -100,6 +100,8 @@ empreinte, affichée dans le journal de la tâche).
    - changement de `Dockerfile`, `docker-compose.prod.yml` ou des workflows : droits minimaux
      gardés (pas de root, `permissions: contents: read`, actions épinglées par empreinte).
 4. Une ligne dans le journal des audits (section 5) : date, version (commit de `dev`), constats.
+5. Les suites (constat à durcir, vérification à refaire, réglage à recaler) dans la page
+   « À faire » de l'admin, datées si besoin.
 
 ## 5. Journal des audits
 
