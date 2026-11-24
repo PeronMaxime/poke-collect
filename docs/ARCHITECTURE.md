@@ -104,14 +104,14 @@ graine), **attendre** (rien ne tourne), **réclamer** (calculer, appliquer).
 
 ### Couches du serveur
 
-| Couche         | Dossier              | Rôle                                                               |
-| -------------- | -------------------- | ------------------------------------------------------------------ |
-| Démarrage      | `server.ts`          | Base, migrations, contenu initial, tâches de fond, écoute          |
-| Application    | `app.ts`             | Assemble Fastify : erreurs, limites, supervision, routes           |
-| Session        | `plugins/session.ts` | Qui appelle ? (`requireUser`, `requireAdmin`), rattrapage          |
-| Routes         | `routes/*.ts`        | Valider l'entrée, appeler un module de jeu, renvoyer un DTO        |
-| Modules de jeu | `game/*.ts`          | Lire et écrire la base, appeler `game-core`, lever des `GameError` |
-| Règles         | `@poke/game-core`    | Décider (fonctions pures)                                          |
+| Couche         | Dossier              | Rôle                                                                  |
+| -------------- | -------------------- | --------------------------------------------------------------------- |
+| Démarrage      | `server.ts`          | Base, migrations, contenu initial, tâches de fond, écoute             |
+| Application    | `app.ts`             | Assemble Fastify : erreurs, limites, supervision, routes              |
+| Session        | `plugins/session.ts` | Qui appelle ? (`requireUser`, `requireAdmin`), suspension, rattrapage |
+| Routes         | `routes/*.ts`        | Valider l'entrée, appeler un module de jeu, renvoyer un DTO           |
+| Modules de jeu | `game/*.ts`          | Lire et écrire la base, appeler `game-core`, lever des `GameError`    |
+| Règles         | `@poke/game-core`    | Décider (fonctions pures)                                             |
 
 ### Erreurs
 
@@ -122,8 +122,17 @@ graine), **attendre** (rien ne tourne), **réclamer** (calculer, appliquer).
 - Une entrée invalide (Zod) répond 400 `VALIDATION`.
 - Les erreurs Postgres attendues sous charge sont traduites dans `app.ts` : doublon → 409
   `CONFLICT`, interblocage ou délai dépassé → 503 `BUSY` (le jeu réessaie seul ses lectures).
+- Les compteurs de valeur (argent, objets, Bonbons, parcelles, Balls et baies réservées, niveau et
+  XP) portent une contrainte `CHECK` en base (migration 0155). Une écriture qui les ferait passer
+  sous zéro est un défaut du code : refusée (409 `INVALID_STATE`), la transaction annulée, et
+  signalée dans « Santé de l'API » comme une erreur 5xx.
 - Une erreur 500 ne renvoie jamais de détail interne : il est dans les journaux et dans
   l'admin (« Santé de l'API »).
+- Un compte suspendu par la modération reçoit 403 `ACCOUNT_SUSPENDED` (fin et motif) à toute
+  requête de jeu : le jeu affiche alors l'écran de suspension (`SuspendedPage`). L'état des
+  comptes est relu en base au plus toutes les 30 s (`AccountStatusCache`, `game/moderation.ts`) :
+  c'est aussi ce qui ferme le jeu à un compte supprimé dont le cookie de session est encore en
+  cache.
 
 ## 4. Le contenu du jeu
 
@@ -180,6 +189,11 @@ Toute action d'un joueur qui écrit passe par `playerTransaction(db, userId, fn)
   donc être appelée plusieurs fois et ne doit modifier que la base ;
 - **`afterCommit`** : ce qui ne doit arriver qu'une fois la transaction validée (compteurs).
 
+Les vérifications se font **dans** la transaction, jamais avant. Pour une guilde, le verrou du
+joueur ne suffit pas (chef et officiers agissent sur les autres) : l'acteur verrouille aussi la
+ligne de la guilde puis relit son rôle et la cible (`lockedMembership`,
+`apps/api/src/game/guilds/common.ts`), et chaque écriture filtre sur la guilde.
+
 `apps/api/test/platform/concurrency.test.ts` rejoue des actions simultanées sur un vrai
 Postgres (en CI).
 
@@ -230,25 +244,37 @@ Une page par entité de contenu (`pages/content/*`), construite sur `components/
 l'équilibrage (menu, Sac, bâtiments…) sur `components/SettingsPage.tsx`. Les outils
 d'équilibrage (simulateur d'expédition, calculateur de PE, espèces par zone) calculent sur la
 version de travail avec `game-core` ; « Espèces par zone » (`lib/zone-species.ts`) écrit aussi les
-rencontres des zones, une zone entière à la fois. Le rôle est vérifié par le serveur à
-chaque requête (`requireAdmin`) ; `AdminGate` ne fait qu'adapter l'affichage. Chaque modification
-est inscrite au journal (`packages/db/src/audit.ts`).
+rencontres des zones, une zone entière à la fois. Le rôle et le second facteur sont vérifiés par
+le serveur à chaque requête (`requireAdmin`) ; `AdminGate` ne fait qu'adapter l'affichage
+(connexion, activation du second facteur, reconnexion). Chaque modification est inscrite au
+journal (`packages/db/src/audit.ts`).
+
+Le second facteur (greffon `twoFactor` de Better Auth, code TOTP ou code de secours) ne protège
+d'origine que la connexion par mot de passe. La session porte donc une marque posée par le serveur
+seul, `sessions.two_factor_verified`, vraie seulement si elle a été ouverte par une route du second
+facteur (`databaseHooks` d'`apps/api/src/auth.ts`) : une connexion Google ou Discord n'ouvre pas
+l'administration. Seul un administrateur peut activer le second facteur ; l'admin ne répond que
+sur son domaine (`/api/admin/*` en 404 sur celui du jeu, `deploy/Caddyfile`).
 
 ## 10. Ce qui vit dans la mémoire du serveur
 
 L'API tourne en **un seul processus**. Plusieurs choses en dépendent aujourd'hui ; les voici,
 avec ce qu'il faudrait changer pour en lancer plusieurs (voir aussi [SURCHARGE.md](SURCHARGE.md)).
 
-| En mémoire                                   | Fichier                 | Avec plusieurs processus                           |
-| -------------------------------------------- | ----------------------- | -------------------------------------------------- |
-| Contenu publié (`ContentCache`)              | `content-cache.ts`      | Prévenir les autres processus à chaque publication |
-| Limite de requêtes par joueur et par IP      | `rate-limit.ts`         | Compteurs partagés (Redis ou Postgres)             |
-| Échéances de rattrapage (`PlayerSettler`)    | `game/settle.ts`        | Rien : un doublon de rattrapage est sans effet     |
-| Supervision (requêtes, erreurs, durées)      | `monitoring.ts`         | Chiffres par processus, à agréger                  |
-| Compteurs d'espèces, écrits toutes les 30 s  | `game/capture-stats.ts` | Rien : chaque processus écrit ses incréments       |
-| Présence (`last_seen_at`, une fois par min.) | `plugins/session.ts`    | Rien : au pire une écriture de plus                |
-| Tournée des notifications push               | `jobs/push-notifier.ts` | **Un seul** processus doit la lancer               |
-| Distribution des coffres de guilde           | `jobs/guild-rewards.ts` | **Un seul** processus doit la lancer               |
+| En mémoire                                                    | Fichier                        | Avec plusieurs processus                           |
+| ------------------------------------------------------------- | ------------------------------ | -------------------------------------------------- |
+| Contenu publié (`ContentCache`)                               | `content-cache.ts`             | Prévenir les autres processus à chaque publication |
+| Limites de requêtes (joueur, lectures lourdes, écritures, IP) | `rate-limit.ts`                | Compteurs partagés (Redis ou Postgres)             |
+| État des comptes (suspendu, supprimé), 30 s                   | `game/moderation.ts`           | Rien : une suspension se voit au plus 30 s après   |
+| Limites de l'authentification (Better Auth)                   | `auth.ts`                      | `rateLimit.storage: 'database'` ou Redis           |
+| Délai entre deux notifications d'essai                        | `game/push.ts`                 | Rien de grave : un essai de plus par processus     |
+| Échéances de rattrapage (`PlayerSettler`)                     | `game/settle.ts`               | Rien : un doublon de rattrapage est sans effet     |
+| Supervision (requêtes, erreurs, durées)                       | `monitoring.ts`                | Chiffres par processus, à agréger                  |
+| Compteurs d'espèces, écrits toutes les 30 s                   | `game/capture-stats.ts`        | Rien : chaque processus écrit ses incréments       |
+| Présence (`last_seen_at`, une fois par min.)                  | `plugins/session.ts`           | Rien : au pire une écriture de plus                |
+| Tournée des notifications push                                | `jobs/push-notifier.ts`        | **Un seul** processus doit la lancer               |
+| Distribution des coffres de guilde                            | `jobs/guild-rewards.ts`        | **Un seul** processus doit la lancer               |
+| Purge des vieux messages de guilde                            | `jobs/guild-messages-purge.ts` | Sans risque, mais un seul suffit                   |
 
 Les tâches de fond sont regroupées dans `apps/api/src/jobs/` et lancées par un seul `startJobs()`
 au démarrage du serveur. Avec plusieurs processus, un seul garderait `BACKGROUND_JOBS` actif ; les
@@ -260,17 +286,27 @@ processus.
 
 ## 11. Tests
 
-| Quoi                              | Où                                           | Comment                                               |
-| --------------------------------- | -------------------------------------------- | ----------------------------------------------------- |
-| Règles du jeu                     | `packages/game-core/src/*.test.ts`           | Fonctions pures, contenu de test                      |
-| Non-régression « à graine égale » | `game-core/src/golden.test.ts`               | Empreintes de 800 résultats                           |
-| Contenu et cohérence              | `packages/content/src/*.test.ts`             | Le contenu de test doit être valide et publiable      |
-| API                               | `apps/api/test/**/*.test.ts`                 | Vraie application, PGlite en mémoire, horloge avancée |
-| Actions simultanées               | `apps/api/test/platform/concurrency.test.ts` | Vrai Postgres (`TEST_DATABASE_URL`, en CI)            |
-| Écrans du jeu                     | `apps/web/test/*.test.tsx`                   | jsdom contre la vraie API en mémoire                  |
-| Pages de l'admin                  | `apps/admin/test/*.test.tsx`                 | Idem, avec un compte administrateur                   |
+| Quoi                              | Où                                              | Comment                                                 |
+| --------------------------------- | ----------------------------------------------- | ------------------------------------------------------- |
+| Règles du jeu                     | `packages/game-core/src/*.test.ts`              | Fonctions pures, contenu de test                        |
+| Non-régression « à graine égale » | `game-core/src/golden.test.ts`                  | Empreintes de 800 résultats                             |
+| Contenu et cohérence              | `packages/content/src/*.test.ts`                | Le contenu de test doit être valide et publiable        |
+| API                               | `apps/api/test/**/*.test.ts`                    | Vraie application, PGlite en mémoire, horloge avancée   |
+| Actions simultanées               | `apps/api/test/platform/concurrency.test.ts`    | Vrai Postgres (`TEST_DATABASE_URL`, en CI)              |
+| Comptes et administration         | `apps/api/test/platform/auth-security.test.ts`  | Second facteur, e-mail, captcha, limites, secret        |
+| Contrôles d'accès de chaque route | `apps/api/test/platform/route-security.test.ts` | Toutes les routes déclarées : session, admin, `ownerId` |
+| Écrans du jeu                     | `apps/web/test/*.test.tsx`                      | jsdom contre la vraie API en mémoire                    |
+| Pages de l'admin                  | `apps/admin/test/*.test.tsx`                    | Idem, avec un compte administrateur (second facteur)    |
 
-La CI (`.github/workflows/ci.yml`) lance lint, code mort (`knip`), format, types, tests avec
+La CI (`.github/workflows/ci.yml`) lance `pnpm audit` (échoue sur une faille élevée), lint, code mort (`knip`), format, types, tests avec
 couverture (seuils minimaux dans les `vitest.config.ts` de `game-core`, `content` et `api`),
-build, et vérifie le poids du JavaScript chargé à l'ouverture du jeu et de l'admin
-(`scripts/bundle-size.mjs`). Un `push` sur `main` réussi déclenche le déploiement.
+build, vérifie le poids du JavaScript chargé à l'ouverture du jeu et de l'admin
+(`scripts/bundle-size.mjs`) et que leurs scripts en ligne sont autorisés par la politique de
+contenu de `deploy/Caddyfile` (`scripts/csp-check.mjs`), puis que Caddy accepte ce fichier
+(`caddy validate` dans l'image de l'étape `caddy` du `Dockerfile`). Une seconde tâche (`images`)
+construit les images de production et les lance avec `docker-compose.prod.yml` et ses
+restrictions (API en utilisateur `node`, lecture seule, aucune capacité Linux superflue), puis
+appelle l'API à travers Caddy. Une troisième (`secrets`) relit tout l'historique Git avec gitleaks.
+Dependabot propose chaque semaine les mises à jour des dépendances et des actions (PR vers `dev`) ;
+le reste de la routine de sécurité est dans [SECURITE.md](SECURITE.md). Un `push` sur `main` de ce dépôt dont la CI réussit déclenche le
+déploiement ; une PR, même d'une branche nommée `main`, jamais.

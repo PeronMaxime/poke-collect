@@ -169,7 +169,7 @@ nano .env
 | `ADMIN_DOMAIN`                           | `admin.mondomaine.fr`                                    |
 | `ACME_EMAIL`                             | ton adresse (prévenue en cas de souci de certificat)     |
 | `POSTGRES_PASSWORD`                      | résultat de `openssl rand -hex 32`                       |
-| `BETTER_AUTH_SECRET`                     | un **autre** résultat de `openssl rand -hex 32`          |
+| `BETTER_AUTH_SECRET`                     | un **autre** résultat de `openssl rand -hex 32` (≥ 32)   |
 | `VAPID_PUBLIC_KEY` / `VAPID_PRIVATE_KEY` | voir ci-dessous                                          |
 | `VAPID_SUBJECT`                          | `mailto:` + ton adresse                                  |
 | `SMTP_URL` / `MAIL_FROM`                 | boîte e-mail OVH, voir ci-dessous (vide : pas d'e-mails) |
@@ -209,6 +209,16 @@ docker compose -f docker-compose.prod.yml up -d api
 Test : se déconnecter, « Mot de passe oublié ? », saisir son adresse (penser aux spams). Si rien
 n'arrive : `docker compose -f docker-compose.prod.yml logs api --tail 50` (une erreur
 d'authentification vient presque toujours de l'encodage de `SMTP_URL`).
+
+Avec `SMTP_URL`, un **nouveau** compte doit confirmer son adresse (lien valable 24 h) avant
+d'entrer dans le jeu ; les comptes créés avant le 23 novembre 2026 ne sont pas concernés.
+`EMAIL_VERIFICATION=0` coupe cette confirmation.
+
+Captcha (facultatif, contre les inscriptions de robots) : sur dash.cloudflare.com → **Turnstile**
+→ Add widget, mode « Managed », domaines `mondomaine.fr` et `admin.mondomaine.fr`. Recopier la
+clé du site dans `TURNSTILE_SITE_KEY` et la clé secrète dans `TURNSTILE_SECRET_KEY`, puis
+recréer l'API (`up -d api`). Inscription, connexion et « Mot de passe oublié ? » affichent alors la
+vérification ; la politique de contenu du `Caddyfile` autorise déjà `challenges.cloudflare.com`.
 
 Clés VAPID des notifications (pas besoin d'installer Node sur le serveur) :
 
@@ -259,7 +269,19 @@ Ouvre `https://mondomaine.fr` : le jeu s'affiche, avec le cadenas HTTPS.
    docker compose -f docker-compose.prod.yml exec api pnpm admin:promote ton@adresse.fr
    ```
 
-3. Connecte-toi sur `https://admin.mondomaine.fr`.
+3. Connecte-toi sur `https://admin.mondomaine.fr` **avec ton mot de passe** (pas Google ni
+   Discord) : l'admin te fait activer la double authentification (clé à ajouter dans une
+   application d'authentification, codes de secours à noter), puis demande un code à chaque
+   connexion. L'administration ne répond que sur ce domaine : `https://mondomaine.fr/api/admin/…`
+   renvoie 404.
+
+Téléphone et codes de secours perdus :
+
+```bash
+docker compose -f docker-compose.prod.yml exec api pnpm admin:promote ton@adresse.fr --reset-2fa
+```
+
+puis réactiver le second facteur à la connexion suivante.
 
 ---
 
@@ -273,17 +295,40 @@ sudo chown ubuntu: /var/backups/poke-collect
 ```
 
 **Copie hors du VPS** (indispensable : un VPS perdu emporte ses sauvegardes) avec `rclone`, vers
-OVH Object Storage, Backblaze B2 ou tout stockage compatible S3 :
+OVH Object Storage, Backblaze B2 ou tout stockage compatible S3. Elle est **chiffrée** avec `age` :
+les sauvegardes contiennent les e-mails et les empreintes de mots de passe des joueurs, et
+l'hébergeur ne doit rien pouvoir en lire.
 
-```bash
-sudo apt install -y rclone
-rclone config          # « n » (nouveau remote), nom : backup, puis suivre les questions du fournisseur
-rclone mkdir backup:poke-collect-backups
-```
+1. **La clé, sur ton ordinateur** (jamais sur le VPS) : installe `age`
+   (`winget install FiloSottile.age` sous Windows, `brew install age` sur Mac,
+   `sudo apt install age` sous Linux), puis :
 
-Puis dans `.env` : `BACKUP_REMOTE=backup:poke-collect-backups`.
+   ```bash
+   age-keygen -o dexpedition-sauvegardes.key
+   ```
 
-**Premier essai** :
+   Le fichier contient la **clé privée**, seule à pouvoir déchiffrer : range-le dans ton
+   gestionnaire de mots de passe (et une seconde copie ailleurs : clé perdue = sauvegardes
+   distantes illisibles). La ligne `# public key: age1…` donne la **clé publique**.
+
+2. **Sur le serveur** :
+
+   ```bash
+   sudo apt install -y rclone age
+   rclone config          # « n » (nouveau remote), nom : backup, puis suivre les questions du fournisseur
+   rclone mkdir backup:poke-collect-backups
+   ```
+
+   Puis dans `.env` :
+
+   ```
+   BACKUP_REMOTE=backup:poke-collect-backups
+   BACKUP_AGE_RECIPIENT=age1…        # la clé publique, pas la privée
+   ```
+
+   Sans `BACKUP_AGE_RECIPIENT`, `backup.sh` n'envoie rien (jamais de copie en clair).
+
+**Premier essai** : seuls des fichiers `.sql.gz.age` doivent apparaître de l'autre côté.
 
 ```bash
 deploy/backup.sh daily
@@ -307,7 +352,8 @@ $C psql -U poke -d essai_restauration -c 'select count(*) as joueurs from player
 $C dropdb -U poke essai_restauration
 ```
 
-Le nombre de joueurs affiché doit correspondre à la réalité.
+Le nombre de joueurs affiché doit correspondre à la réalité. Pour la copie chiffrée hors du VPS,
+voir l'essai de [MISE-A-JOUR.md](MISE-A-JOUR.md) (« Les sauvegardes du VPS sont perdues »).
 
 ---
 
@@ -333,6 +379,11 @@ cat ~/github-deploy     # clé PRIVÉE : à copier dans GitHub (ci-dessous)
 | Secrets   | `DEPLOY_USER`        | `ubuntu`                                                            |
 | Secrets   | `DEPLOY_KNOWN_HOSTS` | résultat de `ssh-keyscan -t ed25519 IP_DU_VPS` (sur ton PC)         |
 | Variables | `DEPLOY_ENABLED`     | `true`                                                              |
+
+Toujours sur GitHub : Settings → Actions → General → **Approval for running fork pull request
+workflows from contributors** : « Require approval for all external contributors ». Le
+déploiement ne part déjà que d'un `push` sur `main` de ce dépôt (`deploy.yml`) ; ce réglage
+évite en plus qu'une PR inconnue fasse tourner la CI sans que tu l'aies regardée.
 
 Puis, **sur le serveur**, supprime la clé privée (elle n'est plus utile qu'à GitHub) :
 

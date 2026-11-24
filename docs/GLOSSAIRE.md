@@ -75,35 +75,39 @@ veut dire, puis où la chercher. Les chemins partent de `packages/` ou de `apps/
 
 ## Progression
 
-| En jeu                 | Ce que c'est                                                                                                     | Dans le code                                                      |
-| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
-| Condition de déblocage | Règle réutilisée partout : % du Pokédex, badges, dresseur battu, quête, espèces capturées, `allOf`…              | `unlockConditionSchema`, `game-core/progress.ts`                  |
-| Avancement du joueur   | Ce que les conditions regardent : Pokédex, dresseurs battus, œufs éclos, quêtes                                  | `PlayerProgress`, `playerProgress` (`api/game/store/progress.ts`) |
-| Région débloquée       | Une région s'ouvre selon sa condition ; un accès acquis est gardé même si la condition durcit                    | `isRegionUnlocked`, table `opened_regions`                        |
-| Pokémon de la région   | Seuls à servir dans une région : espèce de son Pokédex, ou forme régionale de cette région                       | `isRegionalPokemon`, `regionalFormRegionId`                       |
-| Onglet verrouillé      | Onglet du jeu caché (« ??? ») tant que sa condition n'est pas remplie                                            | `balance.tabUnlocks`, `isTabUnlocked`                             |
-| Bâtiment à débloquer   | Emplacements d'expédition, pensions, couveuses, places… gagnés par paliers                                       | `balance.facilityUnlocks`, `game-core/facilities.ts`              |
-| Collection             | Ensemble de formes à capturer dans une région, avec récompense (formes naturelles, Méga, Gigamax, Primo, combat) | `game-core/progression.ts`, `collections`                         |
-| Bonus permanent        | Multiplicateurs acquis (capture, XP, argent, chromatique) par les récompenses réclamées                          | `PlayerBonuses`, `playerBonuses`, `ClaimedRewards`                |
-| Quête                  | Suite d'étapes (conditions ou actions comptées) ; récompense, parfois un légendaire à affronter                  | `game-core/quest.ts`, `api/game/quests.ts`                        |
-| Quête de forme         | Quête rangée à part (`kind: 'form'`) : une histoire, un dresseur de quête, puis un objet de forme en récompense  | `quest.kind`, `seed/form-quests.ts`                               |
-| Objet de quête         | Trouvé en expédition pendant son étape ; rendu (retiré du Sac) quand on réclame la quête                         | condition `questItem`, `questItemsHandedIn`                       |
-| Badge                  | Gagné à la première victoire sur un Champion ; compté par région                                                 | `badgeCount`, `content/badge-sprites.ts`                          |
-| Guilde                 | Groupe de joueurs : quêtes du jour et de la semaine, coffres Bronze, Argent, Or, messages                        | `game-core/guilds.ts`, `api/game/guilds/`                         |
-| Classement             | Par espèces capturées, argent, badges, chromatiques ; et par guilde                                              | `api/game/leaderboard.ts`                                         |
+| En jeu                 | Ce que c'est                                                                                                     | Dans le code                                                       |
+| ---------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------ |
+| Condition de déblocage | Règle réutilisée partout : % du Pokédex, badges, dresseur battu, quête, espèces capturées, `allOf`…              | `unlockConditionSchema`, `game-core/progress.ts`                   |
+| Avancement du joueur   | Ce que les conditions regardent : Pokédex, dresseurs battus, œufs éclos, quêtes                                  | `PlayerProgress`, `playerProgress` (`api/game/store/progress.ts`)  |
+| Région débloquée       | Une région s'ouvre selon sa condition ; un accès acquis est gardé même si la condition durcit                    | `isRegionUnlocked`, table `opened_regions`                         |
+| Pokémon de la région   | Seuls à servir dans une région : espèce de son Pokédex, ou forme régionale de cette région                       | `isRegionalPokemon`, `regionalFormRegionId`                        |
+| Onglet verrouillé      | Onglet du jeu caché (« ??? ») tant que sa condition n'est pas remplie                                            | `balance.tabUnlocks`, `isTabUnlocked`                              |
+| Bâtiment à débloquer   | Emplacements d'expédition, pensions, couveuses, places… gagnés par paliers                                       | `balance.facilityUnlocks`, `game-core/facilities.ts`               |
+| Collection             | Ensemble de formes à capturer dans une région, avec récompense (formes naturelles, Méga, Gigamax, Primo, combat) | `game-core/progression.ts`, `collections`                          |
+| Bonus permanent        | Multiplicateurs acquis (capture, XP, argent, chromatique) par les récompenses réclamées                          | `PlayerBonuses`, `playerBonuses`, `ClaimedRewards`                 |
+| Quête                  | Suite d'étapes (conditions ou actions comptées) ; récompense, parfois un légendaire à affronter                  | `game-core/quest.ts`, `api/game/quests.ts`                         |
+| Quête de forme         | Quête rangée à part (`kind: 'form'`) : une histoire, un dresseur de quête, puis un objet de forme en récompense  | `quest.kind`, `seed/form-quests.ts`                                |
+| Objet de quête         | Trouvé en expédition pendant son étape ; rendu (retiré du Sac) quand on réclame la quête                         | condition `questItem`, `questItemsHandedIn`                        |
+| Badge                  | Gagné à la première victoire sur un Champion ; compté par région                                                 | `badgeCount`, `content/badge-sprites.ts`                           |
+| Guilde                 | Groupe de joueurs : quêtes du jour et de la semaine, coffres Bronze, Argent, Or, messages                        | `game-core/guilds.ts`, `api/game/guilds/`                          |
+| Discussion de guilde   | Fil de messages des membres : un message toutes les 3 s, 20 par 10 min ; effacés après 90 jours                  | `balance.guilds.chat`, `guildMessageWaitSeconds`, `guild_messages` |
+| Classement             | Par espèces capturées, argent, badges, chromatiques ; et par guilde                                              | `api/game/leaderboard.ts`                                          |
 
 ## Contenu et technique
 
-| Terme                      | Ce que c'est                                                                        | Dans le code                                                |
-| -------------------------- | ----------------------------------------------------------------------------------- | ----------------------------------------------------------- |
-| Contenu                    | Tout ce qui se règle dans l'admin, par opposition au code                           | `GameContent` (`content/schemas/`)                          |
-| Équilibrage                | Les réglages globaux du contenu (taux, durées, plafonds)                            | `content.balance`, `BalanceSettings`                        |
-| Version, brouillon, publié | Le contenu est versionné : un brouillon se prépare, puis se publie d'un coup        | `db/content-repo.ts`, table `content_versions`              |
-| Instantané                 | Copie du contenu publié dans Git, point de départ d'une base neuve                  | `content/game-content.json`, `api/src/content-snapshot.ts`  |
-| Contenu de test (seed)     | Contenu écrit en TypeScript pour les tests ; **pas** la source de vérité            | `content/src/seed/`                                         |
-| Contenu jouable            | Le contenu publié sans ce qui est désactivé (`enabled: false`)                      | `playableContent`, `ContentCache.get()`                     |
-| Contexte de jeu            | Le contenu indexé, passé à toutes les règles                                        | `GameContext`, `createGameContext` (`game-core/context.ts`) |
-| Graine (seed)              | Nombre tiré au lancement d'une activité, dont tout le hasard découle                | `createRng`, `newSeed`                                      |
-| Rattrapage                 | Mise à jour de l'état d'un joueur pour le temps écoulé, faite à sa requête suivante | `PlayerSettler` (`api/game/settle.ts`)                      |
-| DTO                        | Forme d'une donnée telle que l'API la renvoie                                       | types `…Dto` et `…Response` de `shared`                     |
-| Erreur de jeu              | Refus d'une action, avec un code stable que le jeu traduit                          | `GameError`, `GAME_ERRORS`                                  |
+| Terme                      | Ce que c'est                                                                             | Dans le code                                                                |
+| -------------------------- | ---------------------------------------------------------------------------------------- | --------------------------------------------------------------------------- |
+| Contenu                    | Tout ce qui se règle dans l'admin, par opposition au code                                | `GameContent` (`content/schemas/`)                                          |
+| Équilibrage                | Les réglages globaux du contenu (taux, durées, plafonds)                                 | `content.balance`, `BalanceSettings`                                        |
+| Version, brouillon, publié | Le contenu est versionné : un brouillon se prépare, puis se publie d'un coup             | `db/content-repo.ts`, table `content_versions`                              |
+| Instantané                 | Copie du contenu publié dans Git, point de départ d'une base neuve                       | `content/game-content.json`, `api/src/content-snapshot.ts`                  |
+| Contenu de test (seed)     | Contenu écrit en TypeScript pour les tests ; **pas** la source de vérité                 | `content/src/seed/`                                                         |
+| Contenu jouable            | Le contenu publié sans ce qui est désactivé (`enabled: false`)                           | `playableContent`, `ContentCache.get()`                                     |
+| Contexte de jeu            | Le contenu indexé, passé à toutes les règles                                             | `GameContext`, `createGameContext` (`game-core/context.ts`)                 |
+| Graine (seed)              | Nombre tiré au lancement d'une activité, dont tout le hasard découle                     | `createRng`, `newSeed`                                                      |
+| Rattrapage                 | Mise à jour de l'état d'un joueur pour le temps écoulé, faite à sa requête suivante      | `PlayerSettler` (`api/game/settle.ts`)                                      |
+| DTO                        | Forme d'une donnée telle que l'API la renvoie                                            | types `…Dto` et `…Response` de `shared`                                     |
+| Erreur de jeu              | Refus d'une action, avec un code stable que le jeu traduit                               | `GameError`, `GAME_ERRORS`                                                  |
+| Modération                 | Ce que l'admin fait sur les joueurs et les guildes (suspension, renommage, messages)     | `routes/admin/moderation.ts`, actions `moderation.*` du journal             |
+| Suspension                 | Compte fermé au jeu jusqu'à une date (ou définitivement), avec un motif montré au joueur | colonnes `users.suspended_until`, `suspension_reason` ; `ACCOUNT_SUSPENDED` |
+| Lecture lourde             | Route qui parcourt beaucoup de lignes ; a son propre budget de requêtes par joueur       | `HEAVY_READS` (`api/src/rate-limit.ts`)                                     |

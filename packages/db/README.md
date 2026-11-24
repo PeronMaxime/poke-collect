@@ -40,6 +40,9 @@ dans [docs/RECETTES.md](../../docs/RECETTES.md).
 - Certaines modifient le **contenu** en base (ajout d'une région, d'un réglage). Elles sont
   ciblées, pour ne pas écraser les réglages faits dans l'admin.
 - Dossier exclu d'ESLint et de Prettier.
+- Les compteurs de valeur (argent, objets, Bonbons, réserves d'une expédition, niveau et XP)
+  portent une contrainte `CHECK` déclarée dans le schéma (`check(...)`, migration 0155) : un
+  nouveau compteur reçoit la sienne.
 
 ## PGlite
 

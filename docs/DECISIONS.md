@@ -310,3 +310,202 @@ Gigamax et de combat ne s'obtiennent pas encore (alerte de cohérence « Introuv
 comme une partie des formes naturelles. Une collection peut donc n'avoir aucune espèce, mais pas
 être vide (`collectionSchema`) ; l'éditeur de l'admin propose alors les formes d'une espèce choisie
 à part, sans l'ajouter à la collection.
+
+## Le serveur n'appelle que les services push des navigateurs
+
+**Choix.** Depuis le 23 nov. (plan de sécurité, S1), un abonnement Web Push n'est accepté que vers
+FCM (Chrome, Edge, Opera…), Mozilla, Apple et Windows (`isAllowedPushEndpoint`,
+`apps/api/src/game/push.ts`), en HTTPS sur le port par défaut ; refus `PUSH_ENDPOINT_REFUSED`. Les
+anciens abonnements hors liste ont été purgés (migration 0151) et l'envoi les ignore. Chaque
+envoi est abandonné après 10 s, 5 joueurs sont notifiés à la fois, 10 appareils au plus par
+joueur, une notification d'essai toutes les 30 s.
+
+**Pourquoi.** L'adresse vient du navigateur, donc du joueur : sans liste blanche, le serveur
+envoyait une requête où on le lui demandait, réseau Docker et services internes compris.
+
+**Prix.** Un navigateur dont le service push n'est pas dans la liste ne peut pas s'abonner ; il
+faut l'ajouter (ici et dans une migration si l'on purge à nouveau). Le délai entre deux essais
+est gardé en mémoire : il repart de zéro au redémarrage de l'API.
+
+## Une politique de contenu stricte, d'abord en observation
+
+**Choix.** Caddy envoie HSTS (un an), `X-Frame-Options DENY`, une `Permissions-Policy` et une
+politique de contenu (`deploy/Caddyfile`) : tout vient du site lui-même, le seul script en ligne
+(thème d'`apps/web/index.html`) est autorisé par son empreinte, pas d'`'unsafe-eval'`. Elle est
+d'abord envoyée en `Content-Security-Policy-Report-Only` (violations dans la console), puis
+appliquée. Le 23 nov., le jeu (connecté et non connecté) et l'admin ont été ouverts sous la
+politique appliquée : seule la sonde `Function('')` de Zod est signalée, et Zod se passe alors de
+compilation.
+
+**Pourquoi.** Dernier rempart si une injection de code apparaît un jour, et pas d'affichage du jeu
+dans un autre site (détournement de clic sur « relâcher » ou « supprimer le compte »).
+
+**Prix.** Retoucher le script de thème change son empreinte : `scripts/csp-check.mjs` le détecte
+en CI et affiche la nouvelle à recopier. Un service extérieur (captcha, statistiques) devra être
+ajouté à la politique.
+
+## L'admin exige un second facteur, marqué sur la session
+
+**Choix.** Depuis le 23 nov. (plan de sécurité, S3), `requireAdmin` refuse un administrateur sans
+second facteur (`ADMIN_2FA_SETUP_REQUIRED` : l'admin affiche l'activation) et une session ouverte
+sans lui (`ADMIN_2FA_REQUIRED`). Le second facteur est un code TOTP (greffon `twoFactor` de Better
+Auth, 10 codes de secours) ; la session porte `two_factor_verified`, posée par le serveur selon la
+route qui la crée. Activation réservée aux administrateurs ; `/api/admin/*` n'existe que sur le
+domaine de l'admin. Secours : `pnpm admin:promote <email> --reset-2fa`.
+
+**Pourquoi.** Un administrateur publie le contenu, donne des objets, lit les e-mails des joueurs :
+un mot de passe volé ne doit pas suffire. Better Auth ne demande le code qu'à la connexion par mot
+de passe ; sans la marque, une connexion Google ou Discord l'aurait contourné.
+
+**Prix.** Une dépendance de plus dans l'admin, `uqr` (QR code du lien `otpauth://`, sans
+dépendance, chargé à la demande pour ne pas peser à l'ouverture) ; la clé à recopier et le lien
+restent affichés pour qui ne peut pas scanner. « Se souvenir de cet appareil » n'est pas proposé (une session ainsi
+ouverte n'a pas la marque). Tant qu'un administrateur n'a pas activé son second facteur, son mot de
+passe seul permet de l'activer : à faire dès la mise en ligne.
+
+## Inscriptions : adresse confirmée, captcha facultatif, limites par IP
+
+**Choix.** Avec SMTP en production, un nouveau compte ne s'ouvre qu'après le clic sur le lien
+envoyé (24 h, renvoyé à chaque tentative de connexion) ; les comptes antérieurs sont marqués
+vérifiés (migration 0153). Le captcha Cloudflare Turnstile protège inscription, connexion et mot
+de passe oublié dès que ses clés sont fournies. Better Auth limite par IP : 5 connexions par
+minute, 10 inscriptions par 10 min, 3 mots de passe oubliés et 3 renvois de lien par heure,
+5 codes de second facteur par minute (`AUTH_RATE_LIMITS`, `apps/api/src/auth.ts`).
+
+**Pourquoi.** Sans confirmation, on pouvait s'inscrire avec l'adresse d'un autre et lui bloquer sa
+connexion Google ; sans captcha ni limite, créer des comptes en masse.
+
+**Prix.** Un joueur dont l'e-mail tarde (spams) attend avant de jouer. Le captcha ajoute un
+service extérieur (politique de confidentialité, CSP) et ne s'affiche pas avec certains bloqueurs.
+Les limites sont en mémoire (remises à zéro au redémarrage) et par IP : un établissement derrière
+une seule adresse partage le même budget.
+
+## Noms : ni compte officiel imité, ni alphabets mêlés
+
+**Choix.** À la création d'un dresseur ou d'une guilde, `nameRefusal` (`packages/shared/src/names.ts`)
+refuse les noms qui contiennent admin, modérateur, Dexpedition, staff, officiel, système (après
+normalisation : accents, pleine largeur, chiffres sosies) ou valent modo, root, support…, et ceux
+dont les lettres viennent de plusieurs alphabets. Les noms existants ne changent pas.
+
+**Pourquoi.** Usurpation dans les guildes et le classement (« Аdmin » avec un A cyrillique).
+
+**Prix.** Quelques noms innocents refusés (« Badminton », « Ψ Team ») : le message dit pourquoi.
+
+## Modération : dans l'admin, sous un préfixe à part, sans rôle de modérateur
+
+**Choix.** Suspendre un compte, renommer un dresseur, corriger une guilde et supprimer un message
+se font dans l'admin, réservée au rôle admin avec second facteur. Toutes ces routes sont sous
+`/api/admin/moderation/*` et chaque action est journalisée (`moderation.*`). Une suspension porte
+une date de fin (an 9999 pour une suspension définitive) et un motif montré au joueur ; elle ferme
+les sessions du compte, mais la connexion reste possible pour que le jeu affiche la fin et le
+motif. Le contrôle se fait à chaque requête de jeu par un cache de 30 s de l'état des comptes
+(`AccountStatusCache`), qui remplace la liste des comptes supprimés gardée en mémoire. Colonnes
+`suspended_until` et `suspension_reason`, pas celles du greffon `admin` de Better Auth.
+
+**Pourquoi.** Le premier abus doit se régler sans SQL en production. Un rôle de modérateur demande
+un second contrôle d'accès et une admin qui masque le contenu : inutile tant qu'une seule personne
+modère. Le préfixe permet de l'ajouter plus tard en n'ouvrant que lui. Lire l'état en base (et pas
+dans le cookie de session, gardé 5 min) coupe l'accès tout de suite dans ce processus, au plus 30 s
+après dans un autre.
+
+**Prix.** Une lecture de `users` par joueur et par tranche de 30 s. Un suspendu peut créer un autre
+compte : la suspension vise un compte, pas une personne. Pas de bouton « Signaler » côté joueurs :
+un abus se découvre en le voyant, ou par e-mail.
+
+## Débit : budgets par route lourde et pour les écritures, discussion limitée en base
+
+**Choix.** En plus de la limite générale (600 requêtes par minute et par joueur), chaque lecture
+lourde (`HEAVY_READS` : collection, recherches, classements, fiche et Pokédex d'un autre dresseur)
+a son propre compteur, 120 par minute et par joueur, et les écritures ont un budget commun de 300
+par minute (`RATE_LIMIT_HEAVY_PER_MINUTE`, `RATE_LIMIT_WRITES_PER_MINUTE`, actifs en production
+seulement). La discussion de guilde a sa propre règle, dans le contenu (`balance.guilds.chat`) :
+un message toutes les 3 s, 20 sur 10 min, comptés en base dans la transaction du joueur ; les
+messages de plus de 90 jours sont purgés chaque heure. Une recherche de dresseur demande au moins
+2 caractères.
+
+**Pourquoi.** Une recherche sans index ou toute une collection coûte cent fois une requête
+ordinaire : sous la limite générale, quelques comptes suffisaient à charger la base. La
+discussion, elle, écrit pour les autres : compter en base garde la limite juste après un
+redémarrage.
+
+**Prix.** Valeurs choisies larges, sans mesure de la production : un joueur qui enchaîne très vite
+les actions qui rechargent sa collection (Bonbons, évolutions) peut atteindre 120 par minute ; les
+profils secondaires d'un compte partagent ses compteurs. Surveiller les 429 par route dans « Santé
+de l'API » et ajuster les variables (`docs/SURCHARGE.md`, 1.7). Les compteurs de requêtes sont en
+mémoire, remis à zéro au redémarrage. Pas d'index trigramme sur les noms tant que les mesures ne le
+demandent pas.
+
+## Garde-fous en base : CHECK sur les compteurs de valeur
+
+**Choix.** L'argent, les objets du Sac, les Bonbons, les parcelles achetées, les Balls et baies
+réservées d'une expédition, le niveau et l'XP d'un Pokémon portent une contrainte `CHECK` (≥ 0, ou
+≥ 1 pour le niveau ; migration 0155, déclarées aussi dans le schéma Drizzle). Une violation
+(`23514`) répond 409 `INVALID_STATE` et s'inscrit dans les erreurs de « Santé de l'API ». La
+migration ramène d'abord à la borne une valeur déjà hors limite.
+
+**Pourquoi.** Le code vérifie avant de débiter (`quantity >= n` dans la même requête), mais une
+future erreur de logique enregistrerait un solde négatif ou des objets en trop sans que personne
+le voie. La contrainte l'arrête au dernier endroit sûr et annule toute la transaction.
+
+**Prix.** La remise à la borne efface la trace d'une éventuelle valeur négative déjà en
+production (aucune attendue : vérifier avant la mise en ligne, requête dans
+`docs/plans/PLAN-SECURITE.md`, 4.1). Pas de borne haute : les plafonds (niveau 100, bonheur…)
+restent des règles du jeu, dans le contenu.
+
+## Conteneurs restreints : l'API sans root, en lecture seule
+
+**Choix.** L'image `api` tourne en utilisateur `node` ; dans `docker-compose.prod.yml`, aucun
+service ne peut gagner de droits (`no-new-privileges`), l'API et Caddy perdent toutes leurs
+capacités Linux (Caddy garde l'ouverture des ports 80 et 443) et n'écrivent que dans leurs volumes
+et dans `/tmp` (`read_only`, `tmpfs`). Postgres garde ses capacités. La tâche `images` de la CI
+lance ces conteneurs tels quels.
+
+**Pourquoi.** Une faille d'exécution de code dans l'API ne donnerait qu'un utilisateur sans droits,
+incapable de modifier le code servi ou d'installer quoi que ce soit dans le conteneur. Postgres
+démarre en root pour préparer son dossier de données avant de passer à l'utilisateur `postgres` :
+lui retirer ses capacités demande une liste fine, invérifiable sans le serveur.
+
+**Prix.** Le code de l'API ne peut écrire aucun fichier hors de `/tmp` en production (l'instantané
+du contenu n'est écrit qu'en développement). Le volume des illustrations doit appartenir à `node`
+(uid 1000) : un volume créé avant ce changement se corrige une fois (`docs/MISE-A-JOUR.md`).
+
+## Sauvegardes chiffrées hors du VPS, clé privée hors du VPS
+
+**Choix.** `deploy/backup.sh` garde ses sauvegardes en clair sur le VPS, mais n'envoie hors de
+lui que des copies chiffrées par `age` pour une clé publique (`BACKUP_AGE_RECIPIENT`). La clé
+privée est créée sur l'ordinateur de l'exploitant et rangée dans son coffre ; sans clé publique,
+rien n'est envoyé.
+
+**Pourquoi.** Les sauvegardes contiennent les e-mails et les empreintes de mots de passe : le
+stockage distant (un compte chez un hébergeur) ne doit rien pouvoir en lire. Une clé publique sur
+le VPS suffit pour chiffrer ; même un VPS compromis ne déchiffre pas les copies déjà envoyées.
+Les copies locales restent en clair pour que `restore.sh` répare vite une mise à jour ratée : le
+VPS porte de toute façon la base.
+
+**Prix.** Clé privée perdue = copies distantes illisibles : la garder en deux endroits. Une
+restauration depuis la copie distante passe par l'ordinateur de l'exploitant (déchiffrement), puis
+`scp` vers le VPS (`docs/MISE-A-JOUR.md`). Le disque du VPS porte chaque sauvegarde deux fois.
+
+## Audit continu : toutes les dépendances, tout l'historique, toutes les routes
+
+**Choix.** La CI lance `pnpm audit --audit-level high` sur **toutes** les dépendances (pas
+`--prod`), gitleaks sur **tout** l'historique Git à chaque fois (binaire officiel vérifié par son
+empreinte, pas l'action GitHub), et `route-security.test.ts` appelle **toutes** les routes que
+`buildApp` déclare (`routes`, relevées par un `onRoute`), plutôt qu'une liste écrite à la main.
+Dependabot ouvre ses PR vers `dev`, groupées par semaine.
+
+**Pourquoi.** L'image de production installe aussi les dépendances de développement (tsx lance
+l'API, sharp sert à `pnpm sprites:download`) : `--prod` laissait passer trois failles élevées de
+sharp. Le dépôt est public : un secret retiré par un commit suivant reste lisible, d'où la relecture
+de tout l'historique (quelques secondes). Une liste de routes à tenir à jour oublierait justement
+la route ajoutée sans contrôle ; relever les routes déclarées fait échouer la CI dès qu'une
+nouvelle route n'est ni protégée ni déclarée publique, et une nouvelle route à `:id` ni classée.
+L'action gitleaks demande une licence pour les comptes d'organisation et s'exécute avec un jeton ;
+le binaire n'a besoin de rien.
+
+**Prix.** Une faille élevée publiée dans un outil de développement bloque la CI, donc le
+déploiement, jusqu'à la mise à jour ou à son acceptation écrite (`pnpm.auditConfig.ignoreGhsas`,
+`docs/SECURITE.md`). La version de gitleaks se monte à la main (version et empreinte dans
+`ci.yml`). Le test des routes ne voit pas une fuite qui répondrait quand même 404 (refus d'un
+autre contrôle placé avant celui du propriétaire) : il exige le code de refus attendu, et vérifie
+que le propriétaire, lui, trouve l'objet.
