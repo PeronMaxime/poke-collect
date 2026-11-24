@@ -13,6 +13,10 @@ on:
   # Bouton « Run workflow » : redéployer à la main la dernière version de main.
   workflow_dispatch:
 
+# Aucun droit sur le dépôt : le déploiement ne fait que se connecter au VPS.
+permissions:
+  contents: read
+
 # Un seul déploiement à la fois, sans annuler celui en cours.
 concurrency:
   group: deploy
@@ -20,9 +24,16 @@ concurrency:
 
 jobs:
   deploy:
+    # Après une CI réussie, seulement pour un push sur main de ce dépôt : une PR (d'un fork en
+    # particulier, dont la branche peut aussi s'appeler main) ne déploie jamais. Le lancement à
+    # la main ne déploie que main.
     if: >-
       vars.DEPLOY_ENABLED == 'true' &&
-      (github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success')
+      ((github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') ||
+        (github.event.workflow_run.conclusion == 'success' &&
+          github.event.workflow_run.event == 'push' &&
+          github.event.workflow_run.head_branch == 'main' &&
+          github.event.workflow_run.head_repository.full_name == github.repository))
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:

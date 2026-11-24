@@ -235,6 +235,12 @@
         "bronze": 1,
         "silver": 2,
         "gold": 3
+      },
+      "chat": {
+        "minIntervalSeconds": 3,
+        "windowMinutes": 10,
+        "maxPerWindow": 20,
+        "retentionDays": 90
       }
     },
     "menu": {

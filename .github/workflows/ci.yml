@@ -5,6 +5,10 @@ on:
     branches: [main]
   pull_request:
 
+# Lecture seule : la CI n'écrit rien dans le dépôt (une PR d'un fork ne reçoit aucun droit).
+permissions:
+  contents: read
+
 jobs:
   check:
     runs-on: ubuntu-latest
@@ -23,13 +27,19 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: pnpm/action-setup@v6
-      - uses: actions/setup-node@v7.0.0
+      # Actions épinglées par empreinte de commit (une étiquette peut être déplacée).
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: pnpm/action-setup@73e46992e05b19abd31f2f3c20e0e7370d762115 # v6.1.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
           cache: pnpm
       - run: pnpm install --frozen-lockfile
+      # Failles connues des dépendances (plan de sécurité, phase 5) : échoue à partir d'une faille
+      # élevée. Toutes les dépendances, pas seulement --prod : l'image de production installe
+      # aussi celles de développement (tsx, sharp de pnpm sprites:download). Une faille acceptée
+      # se note dans pnpm.auditConfig.ignoreGhsas (package.json) et dans docs/SECURITE.md.
+      - run: pnpm audit --audit-level high
       - run: pnpm lint
       - run: pnpm deadcode
       - run: pnpm format:check
@@ -43,3 +53,70 @@ jobs:
       # peuvent que baisser.
       - run: node scripts/bundle-size.mjs apps/web/dist 380
       - run: node scripts/bundle-size.mjs apps/admin/dist 130
+      # Scripts en ligne des pages construites autorisés par la CSP de deploy/Caddyfile.
+      - run: node scripts/csp-check.mjs apps/web/dist apps/admin/dist
+      # Caddyfile lisible par Caddy : sinon le serveur web ne démarre pas en production alors que
+      # deploy.sh, qui ne vérifie que l'API, annonce la mise à jour réussie. Même image que l'étape
+      # caddy du Dockerfile (à monter ensemble) ; domaines fictifs, aucun certificat n'est demandé.
+      - run: >-
+          docker run --rm -e SITE_DOMAIN=example.com -e ADMIN_DOMAIN=admin.example.com
+          -e ACME_EMAIL=ci@example.com -v "$PWD/deploy/Caddyfile:/etc/caddy/Caddyfile:ro"
+          caddy:2.11-alpine caddy validate --config /etc/caddy/Caddyfile
+
+  # Secrets publiés par mégarde (clés, jetons, mots de passe) : tout l'historique est relu à chaque
+  # fois (le dépôt est public, un secret retiré par un commit suivant reste lisible). Binaire
+  # officiel vérifié par son empreinte, comme les actions épinglées. Un faux positif s'ajoute à
+  # .gitleaksignore (son empreinte, affichée par gitleaks) ; un vrai secret se révoque d'abord.
+  secrets:
+    runs-on: ubuntu-latest
+    env:
+      GITLEAKS_VERSION: 8.30.1
+      GITLEAKS_SHA256: 551f6fc83ea457d62a0d98237cbad105af8d557003051f41f3e7ca7b3f2470eb
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+      - name: Installation de gitleaks
+        run: |
+          curl -fsSLo gitleaks.tar.gz "https://github.com/gitleaks/gitleaks/releases/download/v${GITLEAKS_VERSION}/gitleaks_${GITLEAKS_VERSION}_linux_x64.tar.gz"
+          echo "${GITLEAKS_SHA256}  gitleaks.tar.gz" | sha256sum -c -
+          tar -xzf gitleaks.tar.gz -C "$RUNNER_TEMP" gitleaks
+      - run: $RUNNER_TEMP/gitleaks git . --redact --no-banner --verbose
+
+  # Images de production construites et lancées comme sur le serveur, restrictions de
+  # docker-compose.prod.yml comprises (API en utilisateur node, lecture seule, aucune capacité
+  # superflue) : une restriction de trop ne se verrait sinon qu'au déploiement. Domaines en
+  # localhost : Caddy signe lui-même ses certificats, rien n'est demandé à Let's Encrypt.
+  images:
+    runs-on: ubuntu-latest
+    env:
+      COMPOSE: docker compose -f docker-compose.prod.yml
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Réglages de production fictifs
+        run: |
+          cat > .env <<EOF
+          POSTGRES_PASSWORD=ci-postgres
+          SITE_DOMAIN=localhost
+          ADMIN_DOMAIN=admin.localhost
+          ACME_EMAIL=ci@example.com
+          BETTER_AUTH_SECRET=$(openssl rand -hex 32)
+          EOF
+      # --wait : échoue si un conteneur s'arrête ou si l'API n'est pas en bonne santé.
+      - run: $COMPOSE up -d --build --wait --wait-timeout 240
+      - name: API jointe à travers Caddy
+        run: curl -fsSk https://localhost/api/health
+      - name: API sans droits de root, code en lecture seule
+        run: |
+          test "$($COMPOSE exec -T api id -u)" = 1000
+          ! $COMPOSE exec -T api touch /app/apps/api/src/essai
+      # Ce que fait l'exploitant dans le conteneur (docs/MISE-A-JOUR.md) : pnpm et tsx, écriture
+      # dans le volume des illustrations (pnpm sprites:download).
+      - name: Commandes de l'exploitant
+        run: |
+          $COMPOSE exec -T api pnpm exec tsx -e "console.log('tsx')"
+          $COMPOSE run --rm -T api node -e \
+            "require('node:fs').writeFileSync('/app/apps/api/sprites/artwork/essai', 'ok')"
+      - name: Journaux des conteneurs
+        if: failure()
+        run: $COMPOSE logs --tail 100

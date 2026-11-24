@@ -7,15 +7,16 @@ import { createAuth } from './auth';
 import { ContentCache } from './content-cache';
 import type { Env } from './env';
 import type { Mailer } from './mail';
-import type { ErrorCode } from '@poke/shared';
+import type { AuthConfigDto, ErrorCode } from '@poke/shared';
 import { GameError } from './game/errors';
+import { AccountStatusCache } from './game/moderation';
 import { PlayerSettler } from './game/settle';
 import { pgErrorCode } from './game/tx';
 import { webPushSender } from './game/push';
 import type { PushSender } from './game/push';
 import { authRoutes } from './plugins/auth-routes';
 import { sessionHooks } from './plugins/session';
-import { betaProfileRoutes } from './beta-profiles';
+import { betaProfileRoutes, leaveGuildsBeforeAccountDeletion } from './beta-profiles';
 import { Monitoring, registerMonitoring, routeLabel } from './monitoring';
 import { registerRateLimits } from './rate-limit';
 import type { RouteDeps } from './routes/deps';
@@ -64,15 +65,19 @@ export interface AppOptions {
 }
 
 /**
- * Erreurs Postgres attendues sous charge, traduites pour le jeu : doublon d'index unique (deux
- * demandes simultanées), interblocage ou délai dépassé (le jeu réessaie seul ses lectures).
+ * Erreurs Postgres traduites pour le jeu : doublon d'index unique (deux demandes simultanées),
+ * interblocage ou délai dépassé (le jeu réessaie seul ses lectures), et garde-fou `CHECK` de la
+ * base (argent ou quantité sous zéro) : un défaut du code, refusé proprement mais signalé
+ * (`alert`) dans la Santé de l'API.
  */
 function pgErrorResponse(
   code: string | undefined,
-): { status: number; error: ErrorCode; retryAfter?: number } | null {
+): { status: number; error: ErrorCode; retryAfter?: number; alert?: boolean } | null {
   switch (code) {
     case '23505': // unique_violation
       return { status: 409, error: 'CONFLICT' };
+    case '23514': // check_violation
+      return { status: 409, error: 'INVALID_STATE', alert: true };
     case '40P01': // deadlock_detected
     case '40001': // serialization_failure
     case '57014': // query_canceled (statement_timeout)
@@ -105,22 +110,38 @@ export async function buildApp({
     logController: new LogController({ disableRequestLogging: true }),
     trustProxy: env.trustProxy,
   });
+  // Toutes les routes déclarées (méthode, motif), relevées avant leur enregistrement : le test de
+  // sécurité (`test/platform/route-security.test.ts`) les appelle toutes sans session.
+  const routes: { method: string; url: string }[] = [];
+  app.addHook('onRoute', (route) => {
+    for (const method of [route.method].flat()) {
+      if (method !== 'HEAD') routes.push({ method, url: route.url });
+    }
+  });
   const monitoring = new Monitoring();
   registerMonitoring(app, monitoring);
-  const auth = createAuth(db, env, mailer);
+  // État des comptes (supprimé, suspendu), vérifié à chaque requête de jeu.
+  const accounts = new AccountStatusCache(db, now);
+  const auth = createAuth(db, env, mailer, {
+    beforeDelete: (userId) => leaveGuildsBeforeAccountDeletion(db, userId, now()),
+    deleted: (userId) => accounts.invalidate(userId),
+  });
   const content = new ContentCache(db);
   // Combats terminés, places fermées et Balls des expéditions en cours sont rattrapés avant les
   // requêtes du joueur (jeu fermé entre-temps compris), sans toucher la base s'il n'y a rien à faire.
-  const hooks = sessionHooks(auth, db, now, new PlayerSettler(db, content, now));
+  const hooks = sessionHooks(auth, db, now, accounts, new PlayerSettler(db, content, now));
   const push = env.vapid ? (pushSender ?? webPushSender(env.vapid)) : null;
 
   app.decorateRequest('user', null);
   await app.register(cors, { origin: env.trustedOrigins, credentials: true });
-  // Garde-fous contre les abus : une limite par joueur (cookie de session) et une, plus large,
-  // par adresse IP. L'authentification a en plus ses propres limites (Better Auth).
+  // Garde-fous contre les abus : une limite par joueur (cookie de session), un budget propre à
+  // chaque lecture lourde, un budget d'écritures et une limite, plus large, par adresse IP.
+  // L'authentification a en plus ses propres limites (Better Auth).
   await registerRateLimits(app, {
     perPlayer: env.rateLimitPerMinute,
     perIp: env.rateLimitPerIpPerMinute,
+    heavyPerMinute: env.rateLimitHeavyPerMinute,
+    writesPerMinute: env.rateLimitWritesPerMinute,
   });
 
   app.setErrorHandler((err, request, reply) => {
@@ -134,8 +155,11 @@ export async function buildApp({
     const pg = pgErrorResponse(pgErrorCode(err));
     if (pg) {
       app.log.warn({ err, code: pgErrorCode(err) }, 'Erreur SQL traduite');
-      // Les 503 « occupé » comptent dans les erreurs 5xx : leur détail est gardé pour l'admin.
-      if (pg.status >= 500) monitoring.recordError(route, pg.status, err, pgErrorCode(err) ?? null);
+      // Les 503 « occupé » comptent dans les erreurs 5xx, et un garde-fou de la base est un défaut
+      // du code : leur détail est gardé pour l'admin.
+      if (pg.status >= 500 || pg.alert) {
+        monitoring.recordError(route, pg.status, err, pgErrorCode(err) ?? null);
+      }
       if (pg.retryAfter) void reply.header('retry-after', pg.retryAfter);
       return reply.code(pg.status).send({ error: pg.error });
     }
@@ -157,10 +181,14 @@ export async function buildApp({
       return reply.code(503).send({ ok: false });
     }
   });
-  /** Fournisseurs OAuth activés et réinitialisation du mot de passe, pour n'afficher que l'utile. */
-  app.get('/api/config', async () => ({
-    oauthProviders: [env.google && 'google', env.discord && 'discord'].filter(Boolean),
+  /** Ce que l'écran de connexion doit proposer (fournisseurs, e-mails, captcha). */
+  app.get('/api/config', async (): Promise<AuthConfigDto> => ({
+    oauthProviders: [env.google && 'google', env.discord && 'discord'].filter(
+      (p): p is string => typeof p === 'string',
+    ),
     passwordReset: mailer !== null,
+    emailVerification: env.emailVerification && mailer !== null,
+    captchaSiteKey: env.captcha?.siteKey ?? null,
   }));
   await app.register(spriteRoutes);
   await app.register(authRoutes, { auth });
@@ -191,6 +219,6 @@ export async function buildApp({
     publicKey: env.vapid?.publicKey ?? null,
     send: push,
   });
-  await app.register(adminRoutes, { ...deps, onContentPublished, monitoring });
-  return { app, auth, content, push, monitoring };
+  await app.register(adminRoutes, { ...deps, onContentPublished, monitoring, accounts });
+  return { app, auth, content, push, monitoring, routes };
 }

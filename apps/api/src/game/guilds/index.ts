@@ -4,6 +4,7 @@
  *
  * Ordre de lecture : `membership.ts` (qui est dans quelle guilde), `quests.ts` (objectifs communs
  * et récompenses), `chests.ts`, `messages.ts`, puis `reads.ts` (ce que l'onglet Guilde affiche).
+ * `moderation.ts` sert l'administration.
  */
 
 export * from './quests';
@@ -11,3 +12,4 @@ export * from './reads';
 export * from './membership';
 export * from './messages';
 export * from './chests';
+export * from './moderation';

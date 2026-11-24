@@ -22,9 +22,12 @@ export const DEFAULT_NOTIFICATION_SETTINGS: NotificationSettings = {
   fossils: true,
 };
 
-/** Abonnement Web Push du navigateur (`PushSubscription.toJSON()`). */
+/**
+ * Abonnement Web Push du navigateur (`PushSubscription.toJSON()`). L'adresse est en HTTPS ; le
+ * serveur vérifie en plus qu'elle appartient à un service push connu (`PUSH_ENDPOINT_REFUSED`).
+ */
 export const pushSubscriptionInputSchema = z.object({
-  endpoint: z.url().max(2000),
+  endpoint: z.url({ protocol: /^https$/ }).max(2000),
   keys: z.object({ p256dh: z.string().min(1).max(200), auth: z.string().min(1).max(100) }),
 });
 

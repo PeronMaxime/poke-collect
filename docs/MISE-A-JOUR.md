@@ -40,6 +40,10 @@ pnpm lint && pnpm format:check && pnpm typecheck && pnpm test
 
 Et un essai dans le navigateur avec `pnpm dev` pour ce qui touche à l'écran.
 
+Avant de fusionner `dev` dans `main` : la routine de sécurité ([SECURITE.md](SECURITE.md),
+section 4) : `/security-review` sur l'écart, `pnpm audit`, la liste de contrôle, une ligne dans
+le journal des audits.
+
 ---
 
 ## 3. Selon ce que tu as modifié
@@ -90,6 +94,13 @@ production n'existe que là.
   ```bash
   cd ~/poke-collect
   docker compose -f docker-compose.prod.yml run --rm api pnpm -w sprites:download
+  ```
+
+  L'API tourne sans droits de root : le volume doit appartenir à l'utilisateur `node`. S'il a été
+  créé avant le 24 novembre 2026, le téléchargement échoue (`EACCES`) ; à corriger une fois :
+
+  ```bash
+  docker run --rm -v poke-collect_artwork:/artwork alpine chown -R 1000:1000 /artwork
   ```
 
 ### Réglages du serveur (`.env` : e-mails, notifications, Google/Discord…)
@@ -176,8 +187,23 @@ Chaque déploiement a fait une sauvegarde juste avant, dans `/var/backups/poke-c
    Le script demande de taper `RESTAURER`, sauvegarde l'état actuel par précaution, puis
    remplace la base.
 
-Si les sauvegardes du VPS sont perdues : `rclone copy backup:poke-collect-backups /tmp/sauvegardes`
-les récupère depuis la copie hors du VPS.
+### Les sauvegardes du VPS sont perdues (ou essai de la copie distante)
+
+La copie hors du VPS est chiffrée : seule la clé privée (`dexpedition-sauvegardes.key`, dans ton
+coffre, jamais sur le VPS) la lit. Sur **ton ordinateur**, avec `rclone` configuré comme sur le
+serveur (`rclone config`) et `age` :
+
+```bash
+rclone copy backup:poke-collect-backups/daily ./sauvegardes      # ou weekly, deploy
+age --decrypt -i dexpedition-sauvegardes.key -o poke.sql.gz ./sauvegardes/poke-collect_<date>.sql.gz.age
+gunzip -c poke.sql.gz | head -20                                  # un dump SQL lisible
+scp poke.sql.gz ubuntu@<serveur>:/tmp/
+```
+
+Puis sur le serveur : l'essai sans toucher à la vraie base d'[INSTALLATION-SERVEUR.md](INSTALLATION-SERVEUR.md)
+(étape 9, avec `F=/tmp/poke.sql.gz`), ou la vraie restauration
+(`deploy/restore.sh /tmp/poke.sql.gz`). Supprime ensuite les copies déchiffrées (`rm poke.sql.gz`
+des deux côtés). **À essayer une fois** après la mise en place, puis de temps en temps.
 
 ---
 

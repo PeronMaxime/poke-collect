@@ -7,6 +7,7 @@ qu'il faut savoir avant de modifier le code ; le détail est dans `docs/`.
 - Les mots du jeu et leur nom dans le code : `docs/GLOSSAIRE.md`
 - Comment ajouter une route, un champ de contenu, une migration… : `docs/RECETTES.md`
 - Pourquoi c'est fait ainsi : `docs/DECISIONS.md`
+- Sécurité (menaces, règles, audit de chaque mise en production) : `docs/SECURITE.md`
 
 ## Commandes
 
@@ -33,9 +34,18 @@ change) : elle se met à jour avec le code, jamais « plus tard ».
   constante.
 - **Le serveur décide.** Le jeu n'affiche que des aperçus ; tout résultat est recalculé côté
   serveur à partir de la graine enregistrée.
+- **Une adresse fournie par un joueur n'est jamais appelée par le serveur sans liste blanche**
+  (modèle : `isAllowedPushEndpoint` dans `apps/api/src/game/push.ts`).
+- **Toute route exige une session.** Une nouvelle route publique s'ajoute à `PUBLIC_ROUTES`, une
+  nouvelle route à `:id` à `OWNED` ou `NOT_OWNED` (`apps/api/test/platform/route-security.test.ts`),
+  sinon ce test échoue ; un objet se cherche avec son `ownerId` dans le `where`.
 - **Pas de `Math.random()` ni de `new Date()` dans les règles** : `createRng(seed)` et l'horloge
   injectée (`now`).
 - **Toute action d'un joueur qui écrit passe par `playerTransaction`**, vérifications comprises.
+  Dans une guilde, rôles et cibles se lisent après le verrou de la guilde (`lockedMembership`).
+- **Modération et débit.** Une action sur un autre joueur ou une guilde va sous
+  `/api/admin/moderation/*`, journalisée (`moderation.*`). Une lecture qui parcourt beaucoup de
+  lignes s'ajoute à `HEAVY_READS` (`apps/api/src/rate-limit.ts`), qui lui donne son budget.
 - **Un refus = `GameError(statut, 'CODE')`** : le code dans le catalogue
   (`packages/shared/src/errors.ts`), son message dans `GAME_ERRORS` (`apps/web/src/lib/labels/errors.ts`).
 - **Après une action, le jeu ne recharge que ce qu'elle change** (`refresh(queryClient, …)`),
@@ -68,6 +78,18 @@ change) : elle se met à jour avec le code, jamais « plus tard ».
 - **On ne modifie jamais une migration déjà appliquée**, ni une entrée du journal des nouveautés
   déjà en production (`RELEASES` dans `apps/web/src/pages/releases.ts`).
 - **`docs/plans/PLAN.md` n'est pas formaté par Prettier** : ne pas le reformater.
+- **En production, l'API tourne en utilisateur `node`, système de fichiers en lecture seule**
+  (`docker-compose.prod.yml`) : elle n'écrit que dans `/tmp` et ses volumes. La tâche `images` de
+  la CI lance les conteneurs avec ces restrictions.
+- **Un compteur de valeur (argent, stock, réserve) a son `CHECK (… >= 0)` en base** ; une
+  violation répond 409 `INVALID_STATE` et apparaît dans « Santé de l'API » : c'est un défaut du code.
+- **Un test qui appelle `/api/admin/*` passe par `promoteAdmin`** (`apps/api/test/support/api.ts`) :
+  le rôle seul ne suffit plus, il faut le second facteur. Utiliser ensuite le cookie renvoyé (la
+  session d'avant est remplacée).
+- **Le script de thème d'`apps/web/index.html` est autorisé par son empreinte** dans la politique
+  de contenu (`deploy/Caddyfile`) : le retoucher (ou le reformater) demande de recopier la nouvelle
+  empreinte, que `node scripts/csp-check.mjs apps/web/dist apps/admin/dist` affiche après le build.
+  Pas de nouveau script en ligne, d'`eval` ni de ressource d'un autre site sans adapter la CSP.
 - **Changer une règle fait échouer `golden.test.ts`** : c'est voulu. Relire l'écart, puis
   réenregistrer avec `pnpm --filter @poke/game-core exec vitest run -u` (`test -- -u` ne
   réenregistre rien).
@@ -78,4 +100,6 @@ change) : elle se met à jour avec le code, jamais « plus tard ».
   sans demande explicite.
 - Un changement visible par les joueurs s'accompagne d'une ligne dans le journal des nouveautés
   (voir `docs/RECETTES.md`).
+- Avant chaque fusion `dev` → `main` : la routine de `docs/SECURITE.md` (section 4 :
+  `/security-review`, `pnpm audit`, liste de contrôle, ligne dans le journal des audits).
 - Déplacer un fichier et le modifier se font dans deux commits distincts.

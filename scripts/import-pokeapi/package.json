@@ -13,7 +13,7 @@
     "@poke/data": "workspace:*"
   },
   "devDependencies": {
-    "sharp": "0.34.3",
+    "sharp": "0.35.5",
     "tsx": "^4.23.15"
   }
 }

@@ -118,12 +118,24 @@ disque.
 
 ### 1.7 Ajuster la limite de requêtes
 
-Deux limites, réglées dans `.env` : `RATE_LIMIT_PER_MINUTE` (600 par défaut, **par joueur**, repéré
-par son cookie de session, par adresse IP s'il n'est pas connecté) et `RATE_LIMIT_PER_IP_PER_MINUTE`
-(1 500 par défaut, par adresse IP, toutes sessions confondues).
+Quatre limites par minute, réglées dans `.env` :
+
+- `RATE_LIMIT_PER_MINUTE` (600 par défaut) : **par joueur**, repéré par son cookie de session (par
+  adresse IP s'il n'est pas connecté) ;
+- `RATE_LIMIT_HEAVY_PER_MINUTE` (120) : budget propre de chaque lecture lourde, par joueur, à la
+  place de la limite précédente : collection (`GET /api/pokemon`), recherches de dresseurs et de
+  guildes, classements, fiche et Pokédex d'un autre dresseur (liste `HEAVY_READS`,
+  `apps/api/src/rate-limit.ts`) ;
+- `RATE_LIMIT_WRITES_PER_MINUTE` (300) : écritures (POST, PUT, PATCH, DELETE) par joueur, toutes
+  routes confondues, hors authentification ;
+- `RATE_LIMIT_PER_IP_PER_MINUTE` (1 500) : par adresse IP, toutes sessions confondues.
+
+Les profils secondaires (bêta) d'un compte partagent sa session, donc ses compteurs. Avant de
+baisser un budget, regarder dans l'admin (Santé de l'API) les refus 429 par route : un joueur qui
+enchaîne vite les Bonbons ou les évolutions recharge sa collection après chaque action.
 
 - Beaucoup de joueurs légitimes bloqués (réseaux d'écoles ou d'entreprises derrière une seule
-  adresse) : **monter** la valeur.
+  adresse, refus 429 sur une route lourde en jeu normal) : **monter** la valeur concernée.
 - Abus ou robots : la **baisser**, ou bloquer les adresses fautives. Pour une vraie attaque,
   passer le domaine derrière Cloudflare (voir 3.1).
 

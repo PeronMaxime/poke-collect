@@ -1,6 +1,6 @@
 /**
- * Page « Joueurs » : inscrits (présence, recherche, tri), la fiche de chacun, et les outils de test
- * des comptes admin.
+ * Page « Joueurs » : inscrits (présence, recherche, tri), la fiche de chacun avec sa modération
+ * (suspension, renommage), et les outils de test des comptes admin.
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -19,9 +19,10 @@ import { Sprite } from '../components/forms/pickers';
 import { ApiError, api } from '../lib/api';
 import { useWorkingVersion } from '../lib/content';
 import { formatDate } from '../lib/format';
+import { PlayerModerationSection, SuspendedPill } from './PlayerModeration';
 
 type Presence = 'online' | 'active' | 'inactive';
-type Filter = 'all' | 'online' | 'active' | 'inactive';
+type Filter = 'all' | 'online' | 'active' | 'inactive' | 'suspended';
 type SortKey = 'name' | 'lastSeen' | 'createdAt';
 
 const FILTERS: { value: Filter; label: string }[] = [
@@ -29,6 +30,7 @@ const FILTERS: { value: Filter; label: string }[] = [
   { value: 'online', label: 'Connectés' },
   { value: 'active', label: 'Actifs (7 j)' },
   { value: 'inactive', label: 'Inactifs' },
+  { value: 'suspended', label: 'Suspendus' },
 ];
 
 const numberFormat = new Intl.NumberFormat('fr-FR');
@@ -156,6 +158,7 @@ export function PlayersPage() {
       if (filter === 'online' && s !== 'online') return false;
       if (filter === 'active' && s === 'inactive') return false;
       if (filter === 'inactive' && s !== 'inactive') return false;
+      if (filter === 'suspended' && !p.suspension) return false;
       return (
         !needle || [p.trainerName, p.name, p.email].some((v) => v && searchKey(v).includes(needle))
       );
@@ -255,6 +258,7 @@ export function PlayersPage() {
                                   Admin
                                 </span>
                               )}
+                              {p.suspension && <SuspendedPill suspension={p.suspension} />}
                             </span>
                             {p.trainerName === null && (
                               <span className="block text-xs text-slate-500">
@@ -460,6 +464,7 @@ function PlayerCardDialog({ userId, onClose }: { userId: string; onClose: () => 
               </section>
             )}
 
+            {d.player.role !== 'admin' && <PlayerModerationSection detail={d} />}
             {d.player.role === 'admin' && d.profile && <TestPokemonSection userId={userId} />}
           </>
         )}

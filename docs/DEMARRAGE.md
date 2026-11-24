@@ -118,8 +118,13 @@ Le rôle admin ne se donne pas depuis le site : c'est volontaire, pour la sécur
    pnpm admin:promote ton@email.fr
    ```
 4. Relance `pnpm dev`, puis connecte-toi sur http://localhost:5174 avec le même compte.
+5. L'admin te demande d'activer la **double authentification** : mot de passe, puis la clé
+   affichée à ajouter dans une application d'authentification (Google Authenticator, Aegis,
+   1Password…), et le code qu'elle donne. Note les codes de secours. Ensuite, chaque connexion à
+   l'admin demande le mot de passe puis un code.
 
-(Pour retirer le rôle : `pnpm admin:promote ton@email.fr --revoke`.)
+(Pour retirer le rôle : `pnpm admin:promote ton@email.fr --revoke`. Téléphone et codes de secours
+perdus : `pnpm admin:promote ton@email.fr --reset-2fa`, puis réactiver à la connexion suivante.)
 
 ### Modifier le contenu du jeu (admin)
 

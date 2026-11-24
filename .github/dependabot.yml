@@ -1,0 +1,32 @@
+# Mises à jour des dépendances (plan de sécurité, phase 5) : une PR groupée par semaine et par
+# écosystème, vers dev (main déploie). Les alertes de sécurité de GitHub, elles, ouvrent leurs PR
+# vers la branche par défaut : les refaire sur dev plutôt que de les fusionner telles quelles.
+# Chaque PR passe la CI complète avant fusion ; relire le journal des modifications d'une version
+# majeure (règles du projet : CLAUDE.md, docs/SECURITE.md).
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    groups:
+      # Correctifs et versions mineures ensemble ; chaque version majeure dans sa propre PR.
+      mineures:
+        update-types: [minor, patch]
+    ignore:
+      # TypeScript reste en ~6.0 tant que typescript-eslint ne prend pas en charge la version 7.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    target-branch: dev
+    schedule:
+      interval: weekly
+      day: monday
+    groups:
+      actions:
+        patterns: ['*']

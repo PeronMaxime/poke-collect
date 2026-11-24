@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
+  check,
   integer,
   jsonb,
   pgTable,
@@ -58,5 +59,11 @@ export const playerProfiles = pgTable(
     farmPlots: integer('farm_plots').notNull().default(0),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [uniqueIndex('player_profiles_trainer_name_lower').on(sql`lower(${t.trainerName})`)],
+  (t) => [
+    uniqueIndex('player_profiles_trainer_name_lower').on(sql`lower(${t.trainerName})`),
+    // Garde-fous (le code vérifie avant de débiter) : une erreur de logique est refusée au lieu
+    // d'enregistrer un solde négatif.
+    check('player_profiles_currency_nonnegative', sql`${t.currency} >= 0`),
+    check('player_profiles_farm_plots_nonnegative', sql`${t.farmPlots} >= 0`),
+  ],
 );

@@ -8,6 +8,7 @@ import { buildApp } from '../../src/app';
 import type { AppOptions } from '../../src/app';
 import type { ContentCache } from '../../src/content-cache';
 import { loadEnv } from '../../src/env';
+import { totpCode } from '../../src/testing/totp';
 
 /**
  * Mise en place commune des tests de l'API : la vraie application sur une base PGlite en mémoire,
@@ -59,12 +60,13 @@ export function testApi(options: TestApiOptions = {}) {
   let clock = new Date(options.start ?? Date.now());
   let app: App | undefined;
   let content: ContentCache | undefined;
+  let routes: { method: string; url: string }[] | undefined;
 
   beforeAll(async () => {
     await handle.migrate();
     const data = typeof options.content === 'function' ? options.content() : options.content;
     await ensureSeedContent(handle.db, data ?? seedContent);
-    ({ app, content } = await buildApp({
+    ({ app, content, routes } = await buildApp({
       db: handle.db,
       env,
       ...(options.start !== undefined && { now: () => clock }),
@@ -97,6 +99,32 @@ export function testApi(options: TestApiOptions = {}) {
     const list = Array.isArray(cookies) ? cookies : [cookies ?? ''];
     const [user] = await handle.db.select().from(users).where(eq(users.email, email));
     return { cookie: list.map((c) => c.split(';')[0]).join('; '), userId: user!.id };
+  }
+
+  /**
+   * Fait d'un compte un administrateur prêt à agir : rôle admin, puis double authentification
+   * activée par le vrai parcours (mot de passe, lien de l'application, premier code). L'ancienne
+   * session est remplacée : utiliser le `cookie` et le `call` renvoyés, aussi pour jouer.
+   */
+  async function promoteAdmin(
+    userId: string,
+    cookie: string,
+  ): Promise<{ cookie: string; call: Call; totpURI: string; backupCodes: string[] }> {
+    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, userId));
+    const post = (url: string, payload: object) =>
+      ready(app).inject({
+        method: 'POST',
+        url,
+        headers: { 'content-type': 'application/json', origin: ORIGIN, cookie },
+        payload,
+      });
+    const enabled = await post('/api/auth/two-factor/enable', { password: PASSWORD });
+    expect(enabled.statusCode, enabled.body).toBe(200);
+    const { totpURI, backupCodes } = enabled.json<{ totpURI: string; backupCodes: string[] }>();
+    const verified = await post('/api/auth/two-factor/verify-totp', { code: totpCode(totpURI) });
+    expect(verified.statusCode, verified.body).toBe(200);
+    const fresh = mergeCookies(cookie, verified.headers['set-cookie']);
+    return { cookie: fresh, call: client(fresh), totpURI, backupCodes };
   }
 
   /** De quoi appeler les routes avec la session `cookie`. */
@@ -154,6 +182,10 @@ export function testApi(options: TestApiOptions = {}) {
     get content(): ContentCache {
       return ready(content);
     },
+    /** Les routes déclarées par l'application (méthode, motif d'URL), sans les HEAD automatiques. */
+    get routes(): { method: string; url: string }[] {
+      return ready(routes);
+    },
     /** L'heure du test ; se règle directement, ou s'avance avec `advance`. */
     get clock(): Date {
       return clock;
@@ -168,5 +200,23 @@ export function testApi(options: TestApiOptions = {}) {
     signUp,
     client,
     newPlayer,
+    promoteAdmin,
   };
+}
+
+/** `cookie` mis à jour par les `Set-Cookie` d'une réponse (un cookie expiré est retiré). */
+export function mergeCookies(cookie: string, setCookie: string | string[] | undefined): string {
+  const jar = new Map(
+    cookie
+      .split('; ')
+      .filter(Boolean)
+      .map((pair) => [pair.split('=')[0]!, pair] as const),
+  );
+  for (const line of Array.isArray(setCookie) ? setCookie : setCookie ? [setCookie] : []) {
+    const pair = line.split(';')[0]!;
+    const [name, value] = [pair.split('=')[0]!, pair.slice(pair.indexOf('=') + 1)];
+    if (value === '' || /max-age=0/i.test(line)) jar.delete(name);
+    else jar.set(name, pair);
+  }
+  return [...jar.values()].join('; ');
 }

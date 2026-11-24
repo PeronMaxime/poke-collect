@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { nameRefusal } from './names';
 
 /**
  * Compte, dresseur, starter et Pokémon favori (avatar).
@@ -15,7 +16,23 @@ export const trainerNameSchema = z
   .trim()
   .min(3, 'Au moins 3 caractères')
   .max(16, 'Au plus 16 caractères')
-  .regex(/^[\p{L}\p{N} _-]+$/u, 'Lettres, chiffres, espaces, - et _ uniquement');
+  .regex(/^[\p{L}\p{N} _-]+$/u, 'Lettres, chiffres, espaces, - et _ uniquement')
+  .superRefine((name, ctx) => {
+    const reason = nameRefusal(name);
+    if (reason) ctx.addIssue({ code: 'custom', message: reason });
+  });
+
+/** Ce que l'écran de connexion doit proposer (`GET /api/config`). */
+export interface AuthConfigDto {
+  /** Fournisseurs OAuth configurés (`google`, `discord`). */
+  oauthProviders: string[];
+  /** Les e-mails partent : « Mot de passe oublié ? » est proposé. */
+  passwordReset: boolean;
+  /** Un nouveau compte ne s'ouvre qu'après le clic sur le lien envoyé par e-mail. */
+  emailVerification: boolean;
+  /** Clé publique Cloudflare Turnstile ; null : pas de captcha. */
+  captchaSiteKey: string | null;
+}
 
 export const createProfileInputSchema = z.object({
   trainerName: trainerNameSchema,

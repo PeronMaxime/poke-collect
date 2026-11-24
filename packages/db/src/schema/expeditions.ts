@@ -2,6 +2,7 @@ import { sql } from 'drizzle-orm';
 import {
   bigint,
   boolean,
+  check,
   doublePrecision,
   index,
   integer,
@@ -107,6 +108,10 @@ export const expeditions = pgTable(
     result: jsonb('result'),
   },
   (t) => [
+    // Balls et baies réservées au départ, consommées en route : jamais sous zéro.
+    check('expeditions_balls_nonnegative', sql`${t.balls} >= 0`),
+    check('expeditions_berries_nonnegative', sql`${t.berries} >= 0`),
+    check('expeditions_encounter_berries_nonnegative', sql`${t.encounterBerries} >= 0`),
     index('expeditions_owner_claimed').on(t.ownerId, t.claimedAt),
     index('expeditions_to_notify')
       .on(t.endsAt)

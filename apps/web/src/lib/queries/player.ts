@@ -7,6 +7,9 @@ import { queryOptions, useQuery } from '@tanstack/react-query';
 import { createGameContext } from '@poke/game-core';
 import type { ClaimedRewards, GameContext, PlayerProgress, RewardKind } from '@poke/game-core';
 import type {
+  AccountSuspendedBody,
+  AccountSuspensionDto,
+  AuthConfigDto,
   ClaimRewardResponse,
   MeResponse,
   PlayerProfileDto,
@@ -37,6 +40,16 @@ export const meQuery = queryOptions({
     }
   },
 });
+
+/**
+ * Suspension du compte si `error` est le refus `ACCOUNT_SUSPENDED` (n'importe quelle requête du
+ * jeu le reçoit), sinon null.
+ */
+export function accountSuspension(error: unknown): AccountSuspensionDto | null {
+  if (!(error instanceof ApiError) || error.code !== 'ACCOUNT_SUSPENDED') return null;
+  const { until, permanent, reason } = error.body as AccountSuspendedBody;
+  return { until, permanent, reason };
+}
 
 /** Contenu publié, transformé en contexte `game-core` (affichage uniquement : le serveur décide). */
 export function useGameContext(): GameContext | undefined {
@@ -107,8 +120,7 @@ export function useClaimedRewards(): ClaimedRewards {
 // --- Requêtes d'action ---------------------------------------------------------------------
 
 /** Ce que le serveur propose pour se connecter (page de connexion, sans session). */
-export const fetchAuthConfig = () =>
-  api<{ oauthProviders: string[]; passwordReset: boolean }>('/api/config');
+export const fetchAuthConfig = () => api<AuthConfigDto>('/api/config');
 
 /** Crée le profil du dresseur. */
 export const createProfile = (trainerName: string) =>

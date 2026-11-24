@@ -40,6 +40,7 @@ const GROUPS: { label: string; paths: (string | RegExp)[] }[] = [
       'docs/INSTALLATION-SERVEUR.md',
       'docs/MISE-EN-PRODUCTION.md',
       'docs/MISE-A-JOUR.md',
+      'docs/SECURITE.md',
       'docs/SURCHARGE.md',
       /^scripts\//,
     ],

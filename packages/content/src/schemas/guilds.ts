@@ -66,6 +66,27 @@ export const DEFAULT_GUILD_QUEST_TIERS = {
   },
 } satisfies Record<GuildQuestPeriod, Record<GuildQuestDifficulty, GuildQuestTier>>;
 
+/**
+ * Discussion de guilde : limite de débit par joueur (un message au plus toutes les
+ * `minIntervalSeconds`, et `maxPerWindow` sur les `windowMinutes` écoulées) et durée de
+ * conservation des messages (purgés par une tâche de fond).
+ */
+const guildChatSettingsSchema = z.object({
+  minIntervalSeconds: z.int().min(0).max(3600),
+  windowMinutes: z.int().min(1).max(1440),
+  maxPerWindow: z.int().min(1).max(10_000),
+  retentionDays: z.int().min(1).max(3650),
+});
+
+export type GuildChatSettings = z.infer<typeof guildChatSettingsSchema>;
+
+const DEFAULT_GUILD_CHAT_SETTINGS = {
+  minIntervalSeconds: 3,
+  windowMinutes: 10,
+  maxPerWindow: 20,
+  retentionDays: 90,
+} satisfies GuildChatSettings;
+
 /** Réglages des guildes par défaut (aussi utilisés pour les versions de contenu antérieures). */
 export const DEFAULT_GUILD_SETTINGS = {
   creationCost: 100_000,
@@ -73,6 +94,7 @@ export const DEFAULT_GUILD_SETTINGS = {
   rejoinCooldownHours: 24,
   quests: DEFAULT_GUILD_QUEST_TIERS,
   chestRolls: { bronze: 1, silver: 2, gold: 3 },
+  chat: DEFAULT_GUILD_CHAT_SETTINGS,
 };
 
 export const guildSettingsSchema = z.object({
@@ -87,6 +109,8 @@ export const guildSettingsSchema = z.object({
     .default(DEFAULT_GUILD_QUEST_TIERS),
   /** Lots tirés à l'ouverture d'un coffre, par rareté. */
   chestRolls: perChestRaritySchema(1, 10),
+  /** Discussion : limite de débit par joueur et conservation des messages. */
+  chat: guildChatSettingsSchema.default(DEFAULT_GUILD_CHAT_SETTINGS),
 });
 
 export type GuildSettings = z.infer<typeof guildSettingsSchema>;

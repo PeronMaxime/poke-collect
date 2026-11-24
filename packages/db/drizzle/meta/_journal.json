@@ -1058,6 +1058,41 @@
       "when": 1795437689839,
       "tag": "0150_collections_mega_sans_especes",
       "breakpoints": true
+    },
+    {
+      "idx": 151,
+      "version": "7",
+      "when": 1795444436237,
+      "tag": "0151_push_services_autorises",
+      "breakpoints": true
+    },
+    {
+      "idx": 152,
+      "version": "7",
+      "when": 1795452633754,
+      "tag": "0152_double_authentification",
+      "breakpoints": true
+    },
+    {
+      "idx": 153,
+      "version": "7",
+      "when": 1795452643463,
+      "tag": "0153_e_mails_existants_verifies",
+      "breakpoints": true
+    },
+    {
+      "idx": 154,
+      "version": "7",
+      "when": 1795512106451,
+      "tag": "0154_suspension_et_debit_discussion",
+      "breakpoints": true
+    },
+    {
+      "idx": 155,
+      "version": "7",
+      "when": 1795514878611,
+      "tag": "0155_garde_fous_soldes_positifs",
+      "breakpoints": true
     }
   ]
 }

@@ -25,7 +25,7 @@ import type { ContentCache } from '../../content-cache';
 import { GameError } from '../errors';
 import { requireStartedProfile } from '../expeditions';
 import { displayedFavorite, favoriteColumns } from '../favorite';
-import { ROLE_RANK, cooldownUntil, membership } from './common';
+import { ROLE_RANK, cooldownUntil, leaderNameSql, memberCountSql, membership } from './common';
 import type { GuildMemberRow } from './common';
 import { currentQuests, settleGuildQuests } from './quests';
 
@@ -37,14 +37,6 @@ const SEARCH_LIMIT = 20;
 
 /** Guildes affichées en tête du classement. */
 const LEADERBOARD_SIZE = 50;
-
-// SQL explicite : dans un `select`, Drizzle retire le nom de la table des colonnes citées.
-const memberCountSql = sql<number>`(select count(*)::int from guild_members gm where gm.guild_id = "guilds"."id")`;
-
-const leaderNameSql = sql<string | null>`(
-  select p.trainer_name from guild_members gm join player_profiles p on p.user_id = gm.user_id
-  where gm.guild_id = "guilds"."id" and gm.role = 'leader' limit 1
-)`;
 
 async function guildSummaries(
   db: Db,

@@ -82,6 +82,60 @@ describe('production', () => {
       await limited.app.close();
     }
   });
+
+  it('donne à chaque lecture lourde son budget propre, par joueur', async () => {
+    const limited = await buildApp({
+      db: handle.db,
+      env: { ...env, rateLimitPerMinute: 100, rateLimitHeavyPerMinute: 2 },
+    });
+    try {
+      const get = (url: string, player = 'a') =>
+        limited.app.inject({
+          method: 'GET',
+          url,
+          headers: { cookie: `better-auth.session_token=joueur-${player}` },
+        });
+      // Sans vraie session, la route répond 401 : la requête est comptée quand même.
+      expect((await get('/api/pokemon')).statusCode).toBe(401);
+      expect((await get('/api/pokemon')).statusCode).toBe(401);
+      const refused = await get('/api/pokemon');
+      expect(refused.statusCode).toBe(429);
+      expect(refused.json()).toMatchObject({ error: 'RATE_LIMITED' });
+      expect(Number(refused.headers['retry-after'])).toBeGreaterThan(0);
+      // Autre lecture lourde, lecture ordinaire, autre joueur : compteurs intacts.
+      expect((await get('/api/trainers?q=ab')).statusCode).toBe(401);
+      expect((await get('/api/leaderboard/pokedex')).statusCode).toBe(401);
+      for (let n = 0; n < 5; n++) expect((await get('/api/me')).statusCode).toBe(401);
+      expect((await get('/api/pokemon', 'b')).statusCode).toBe(401);
+    } finally {
+      await limited.app.close();
+    }
+  });
+
+  it('plafonne les écritures de chaque joueur, toutes routes confondues', async () => {
+    const limited = await buildApp({
+      db: handle.db,
+      env: { ...env, rateLimitPerMinute: 100, rateLimitWritesPerMinute: 2 },
+    });
+    try {
+      const send = (method: 'GET' | 'POST', url: string) =>
+        limited.app.inject({
+          method,
+          url,
+          headers: { cookie: 'better-auth.session_token=joueur-a' },
+        });
+      expect((await send('POST', '/api/presence')).statusCode).toBe(401);
+      expect((await send('POST', '/api/guild/messages')).statusCode).toBe(401);
+      const refused = await send('POST', '/api/presence');
+      expect(refused.statusCode).toBe(429);
+      expect(refused.json()).toMatchObject({ error: 'RATE_LIMITED' });
+      // Les lectures ne comptent pas ; l'authentification a ses propres limites.
+      expect((await send('GET', '/api/me')).statusCode).toBe(401);
+      expect((await send('POST', '/api/auth/sign-out')).statusCode).not.toBe(429);
+    } finally {
+      await limited.app.close();
+    }
+  });
 });
 
 describe('sprites', () => {
@@ -275,8 +329,8 @@ describe('administration', () => {
 
   beforeAll(async () => {
     playerCookie = await signUp('pierre@example.com');
-    adminCookie = await signUp('chen@example.com');
-    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.email, 'chen@example.com'));
+    const chen = await api.signUp('chen@example.com');
+    adminCookie = (await api.promoteAdmin(chen.userId, chen.cookie)).cookie;
   });
 
   it('refuse les routes admin aux joueurs et aux anonymes', async () => {

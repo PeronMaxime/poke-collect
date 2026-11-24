@@ -4,8 +4,8 @@ import { startTestApi } from '../../api/src/testing/test-api';
 declare module 'vitest' {
   export interface ProvidedContext {
     apiUrl: string;
-    /** Compte administrateur de l'API de test. */
-    admin: { email: string; password: string };
+    /** Compte administrateur de l'API de test (second facteur activé). */
+    admin: { email: string; password: string; totpURI: string };
   }
 }
 

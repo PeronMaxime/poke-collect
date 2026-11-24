@@ -8,7 +8,8 @@ https://admin.dexpedition.fr).
 
 ## Reste à faire plus tard
 
-- [ ] **Copie des sauvegardes hors du VPS** (remote `rclone` et `BACKUP_REMOTE`, voir
+- [ ] **Copie chiffrée des sauvegardes hors du VPS** (clé `age`, remote `rclone`,
+      `BACKUP_REMOTE` et `BACKUP_AGE_RECIPIENT`, voir
       [INSTALLATION-SERVEUR.md](INSTALLATION-SERVEUR.md) étape 9) : **avant d'inviter des amis**
 - [ ] **Supervision** : moniteur UptimeRobot sur `https://dexpedition.fr/api/health`
       (voir [INSTALLATION-SERVEUR.md](INSTALLATION-SERVEUR.md) étape 11)
@@ -157,7 +158,8 @@ Mises à jour : [MISE-A-JOUR.md](MISE-A-JOUR.md).
 - [x] Guide `MISE-A-JOUR.md` : code, migrations, contenu, sprites, `.env`, vérifications, retour
       arrière
 - [x] Sur le VPS : sauvegarde nocturne (cron), restauration testée
-- [ ] Copie des sauvegardes hors du VPS : remote `rclone` et `BACKUP_REMOTE` (**avant la bêta**)
+- [ ] Copie chiffrée des sauvegardes hors du VPS : clé `age`, remote `rclone`,
+      `BACKUP_REMOTE` et `BACKUP_AGE_RECIPIENT` (**avant la bêta**)
 - [x] Sur GitHub : secrets du déploiement et `DEPLOY_ENABLED`
 - [ ] Supervision : UptimeRobot sur `/api/health`, alerte par e-mail (plus tard, voir en haut)
 - [ ] Facultatif : Sentry pour les erreurs de l'API et du front

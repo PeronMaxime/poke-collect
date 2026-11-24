@@ -32,7 +32,7 @@ import type { AdminDeps } from './admin-deps';
  * aux comptes administrateurs.
  */
 export function adminPlayerRoutes(app: FastifyInstance, { db, content, now }: AdminDeps) {
-  app.get('/api/admin/players', async (): Promise<AdminPlayerDto[]> => listPlayers(db));
+  app.get('/api/admin/players', async (): Promise<AdminPlayerDto[]> => listPlayers(db, now()));
 
   app.get('/api/admin/players/:userId', async (request, reply) => {
     const { userId } = z.object({ userId: z.string().min(1).max(64) }).parse(request.params);
@@ -40,6 +40,7 @@ export function adminPlayerRoutes(app: FastifyInstance, { db, content, now }: Ad
       db,
       await content.get(),
       userId,
+      now(),
     );
     if (!detail) return reply.code(404).send({ error: 'NOT_FOUND' });
     return detail;

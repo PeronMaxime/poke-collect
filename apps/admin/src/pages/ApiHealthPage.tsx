@@ -131,11 +131,12 @@ export function ApiHealthPage() {
           </section>
 
           <section className="card p-4">
-            <h2 className="font-semibold">Dernières erreurs 5xx</h2>
+            <h2 className="font-semibold">Dernières erreurs</h2>
             <p className="mb-2 text-xs text-slate-500">
               Les {m.recentErrors.length > 0 ? m.recentErrors.length : 50} plus récentes depuis le
-              démarrage, de la plus récente à la plus ancienne. Le détail n’est jamais renvoyé aux
-              joueurs.
+              démarrage, de la plus récente à la plus ancienne : erreurs 5xx, et écritures refusées
+              par un garde-fou de la base (409 · 23514 : argent ou quantité sous zéro, donc un
+              défaut du code à corriger). Le détail n’est jamais renvoyé aux joueurs.
             </p>
             {m.recentErrors.length === 0 ? (
               <p className="text-sm text-slate-500">Aucune erreur depuis le démarrage.</p>

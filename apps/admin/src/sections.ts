@@ -165,12 +165,24 @@ export const SECTION_GROUPS: AdminSectionGroup[] = [
     ],
   },
   {
+    title: 'Modération',
+    sections: [
+      {
+        path: '/guild-moderation',
+        label: 'Guildes et discussions',
+        description:
+          'Nom et description des guildes, lecture de leur discussion, suppression d’un message.',
+      },
+    ],
+  },
+  {
     title: 'Suivi',
     sections: [
       {
         path: '/players',
         label: 'Joueurs',
-        description: 'Joueurs inscrits, présence et activité, fiche dresseur.',
+        description:
+          'Joueurs inscrits, présence et activité, fiche dresseur ; suspension et renommage.',
       },
       {
         path: '/telemetry',

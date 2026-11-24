@@ -51,7 +51,8 @@ const { app, content, push } = await buildApp({
   ...(env.contentSnapshotWrite && { onContentPublished: saveSnapshot }),
 });
 
-// Tâches de fond (compteurs d'espèces, notifications push, coffres de guilde) : pas de worker séparé.
+// Tâches de fond (compteurs d'espèces, notifications push, coffres et purge des discussions de
+// guilde) : pas de worker séparé.
 const stopJobs = startJobs({
   db: handle.db,
   content,

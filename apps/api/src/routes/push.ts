@@ -8,6 +8,7 @@ import type { NotificationSettings, PushConfigResponse } from '@poke/shared';
 import { GameError } from '../game/errors';
 import {
   pushStatus,
+  pushTestThrottle,
   saveNotificationSettings,
   sendToOwner,
   subscribeDevice,
@@ -34,6 +35,7 @@ export async function pushRoutes(
   { db, hooks, now, publicKey, send }: PushDeps,
 ) {
   app.addHook('preHandler', hooks.requireUser);
+  const testThrottle = pushTestThrottle();
 
   app.get('/api/push', async (request): Promise<PushConfigResponse> => {
     const { settings, subscriptions } = await pushStatus(db, currentUserId(request));
@@ -44,7 +46,7 @@ export async function pushRoutes(
     if (!publicKey) throw new GameError(503, 'PUSH_DISABLED');
     const input = pushSubscriptionInputSchema.parse(request.body);
     const userAgent = request.headers['user-agent']?.slice(0, 300) ?? null;
-    await subscribeDevice(db, currentUserId(request), input, userAgent);
+    await subscribeDevice(db, currentUserId(request), input, userAgent, now());
     return reply.code(204).send();
   });
 
@@ -60,13 +62,15 @@ export async function pushRoutes(
     return settings;
   });
 
-  /** Notification de test sur tous les appareils du joueur. */
+  /** Notification de test sur tous les appareils du joueur, une toutes les 30 s au plus. */
   app.post('/api/push/test', async (request): Promise<{ sent: number }> => {
     if (!send) throw new GameError(503, 'PUSH_DISABLED');
+    const userId = currentUserId(request);
+    testThrottle.check(userId, now());
     const sent = await sendToOwner(
       db,
       send,
-      currentUserId(request),
+      userId,
       {
         title: 'Dexpedition',
         body: 'Les notifications fonctionnent : tu seras prévenu à la fin de tes expéditions.',

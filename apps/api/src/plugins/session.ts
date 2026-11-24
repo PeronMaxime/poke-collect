@@ -3,10 +3,11 @@ import { fromNodeHeaders } from 'better-auth/node';
 import { eq } from 'drizzle-orm';
 import { users } from '@poke/db';
 import type { Db } from '@poke/db';
-import type { UserRole } from '@poke/shared';
-import { deletedUserIds } from '../auth';
+import type { AccountSuspensionDto, UserRole } from '@poke/shared';
 import type { Auth } from '../auth';
 import { activeProfileId } from '../beta-profiles';
+import { suspensionOf } from '../game/moderation';
+import type { AccountStatusCache } from '../game/moderation';
 
 /**
  * Contrôles de session des routes (`preHandler`) : qui appelle, a-t-il le droit, et rattrapage du
@@ -42,11 +43,18 @@ export interface Settler {
 }
 
 /**
+ * `accounts` : état des comptes (supprimé, suspendu), vérifié à chaque requête de jeu.
  * `settler` : rattrapage du temps écoulé pour le joueur (combats terminés, places fermées, Balls
  * des expéditions en cours…), avant chaque requête de jeu. Un échec ne bloque pas la requête : le
  * prochain passage reprendra.
  */
-export function sessionHooks(auth: Auth, db: Db, now: () => Date, settler?: Settler) {
+export function sessionHooks(
+  auth: Auth,
+  db: Db,
+  now: () => Date,
+  accounts: AccountStatusCache,
+  settler?: Settler,
+) {
   const lastWrites = new Map<string, number>();
   /** Présence : `last_seen_at` mis à jour au plus une fois par minute et par utilisateur. */
   const touch = async (userId: string) => {
@@ -63,12 +71,13 @@ export function sessionHooks(auth: Auth, db: Db, now: () => Date, settler?: Sett
   /**
    * `withProfile` : applique le profil secondaire actif (bêta), jamais pour l'administration, qui
    * relit aussi la session en base (un rôle retiré ou une session révoquée agit tout de suite).
+   * `twoFactor` : second facteur activé sur le compte, et passé pour ouvrir cette session.
    */
-  const loadUser = async (
+  const loadSession = async (
     request: FastifyRequest,
     reply: FastifyReply,
     withProfile: boolean,
-  ): Promise<SessionUser | null> => {
+  ): Promise<{ user: SessionUser; twoFactor: { enabled: boolean; verified: boolean } } | null> => {
     // Les en-têtes renvoyés portent le cookie de session rafraîchi : sans eux, le cache de 5 min
     // ne serait jamais renouvelé et chaque requête retournerait à la base.
     const { headers, response: session } = await auth.api.getSession({
@@ -76,16 +85,45 @@ export function sessionHooks(auth: Auth, db: Db, now: () => Date, settler?: Sett
       query: withProfile ? undefined : { disableCookieCache: true },
       returnHeaders: true,
     });
-    if (!session || deletedUserIds.has(session.user.id)) return null;
+    if (!session) return null;
     for (const cookie of headers.getSetCookie()) reply.header('set-cookie', cookie);
     const { id, email, name, role } = session.user;
+    const twoFactor = {
+      enabled: session.user.twoFactorEnabled === true,
+      verified: session.session.twoFactorVerified === true,
+    };
     await touch(id);
     const profile = withProfile ? await activeProfileId(db, request, id) : null;
     if (profile) {
       await touch(profile.id);
-      return { id: profile.id, email, name: profile.name, role: 'player', accountUserId: id };
+      const user = { id: profile.id, email, name: profile.name, role: 'player' as const };
+      return { user: { ...user, accountUserId: id }, twoFactor };
     }
-    return { id, email, name, role: role === 'admin' ? 'admin' : 'player', accountUserId: id };
+    const user = {
+      id,
+      email,
+      name,
+      role: role === 'admin' ? ('admin' as const) : ('player' as const),
+    };
+    return { user: { ...user, accountUserId: id }, twoFactor };
+  };
+
+  /**
+   * Ce qui ferme le jeu à ce joueur : compte ou profil supprimé (`deleted`), ou suspension en
+   * cours du compte ou du profil ; null s'il peut jouer.
+   */
+  const accountBlock = async (
+    user: SessionUser,
+  ): Promise<'deleted' | AccountSuspensionDto | null> => {
+    const ids = user.id === user.accountUserId ? [user.id] : [user.accountUserId, user.id];
+    const statuses = await accounts.statuses(ids);
+    if (statuses.some((s) => s === null)) return 'deleted';
+    const at = now();
+    for (const status of statuses) {
+      const suspension = status && suspensionOf(status, at);
+      if (suspension) return suspension;
+    }
+    return null;
   };
 
   return {
@@ -100,17 +138,34 @@ export function sessionHooks(auth: Auth, db: Db, now: () => Date, settler?: Sett
     invalidateSettle(userId: string) {
       settler?.invalidate(userId);
     },
-    /** Exige une session valide. */
+    /**
+     * Exige une session valide, d'un compte (et d'un profil actif) qui existe encore et n'est pas
+     * suspendu : sinon 401 `UNAUTHENTICATED`, ou 403 `ACCOUNT_SUSPENDED` avec la fin et le motif.
+     */
     async requireUser(request: FastifyRequest, reply: FastifyReply) {
-      request.user = await loadUser(request, reply, true);
-      if (!request.user) return reply.code(401).send({ error: 'UNAUTHENTICATED' });
-      await settler?.settle(request.user.id).catch((err: unknown) => request.log.warn({ err }));
+      const user = (await loadSession(request, reply, true))?.user;
+      if (!user) return reply.code(401).send({ error: 'UNAUTHENTICATED' });
+      const block = await accountBlock(user);
+      if (block === 'deleted') return reply.code(401).send({ error: 'UNAUTHENTICATED' });
+      if (block) return reply.code(403).send({ error: 'ACCOUNT_SUSPENDED', ...block });
+      request.user = user;
+      await settler?.settle(user.id).catch((err: unknown) => request.log.warn({ err }));
     },
-    /** Exige une session valide ET le rôle admin (vérifié côté serveur, à chaque requête). */
+    /**
+     * Exige une session valide, le rôle admin et le second facteur (vérifiés côté serveur, à chaque
+     * requête) : `ADMIN_2FA_SETUP_REQUIRED` tant que l'administrateur ne l'a pas activé,
+     * `ADMIN_2FA_REQUIRED` pour une session ouverte sans lui (connexion Google ou Discord, session
+     * antérieure à l'activation). L'admin affiche alors l'enrôlement ou la reconnexion.
+     */
     async requireAdmin(request: FastifyRequest, reply: FastifyReply) {
-      request.user = await loadUser(request, reply, false);
-      if (!request.user) return reply.code(401).send({ error: 'UNAUTHENTICATED' });
-      if (request.user.role !== 'admin') return reply.code(403).send({ error: 'FORBIDDEN' });
+      const session = await loadSession(request, reply, false);
+      request.user = session?.user ?? null;
+      if (!session) return reply.code(401).send({ error: 'UNAUTHENTICATED' });
+      if (session.user.role !== 'admin') return reply.code(403).send({ error: 'FORBIDDEN' });
+      if (!session.twoFactor.enabled) {
+        return reply.code(403).send({ error: 'ADMIN_2FA_SETUP_REQUIRED' });
+      }
+      if (!session.twoFactor.verified) return reply.code(403).send({ error: 'ADMIN_2FA_REQUIRED' });
     },
   };
 }

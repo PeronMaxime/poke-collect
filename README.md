@@ -117,5 +117,6 @@ affiche, d'où viennent ses données, ce que font ses boutons.
 | [docs/INSTALLATION-SERVEUR.md](docs/INSTALLATION-SERVEUR.md) | Installer le serveur de production (une seule fois)                   |
 | [docs/MISE-EN-PRODUCTION.md](docs/MISE-EN-PRODUCTION.md)     | La liste de ce qui a été fait pour ouvrir le jeu                      |
 | [docs/SURCHARGE.md](docs/SURCHARGE.md)                       | Que faire si le serveur sature                                        |
+| [docs/SECURITE.md](docs/SECURITE.md)                         | Modèle de menace, règles, audit à chaque mise en production           |
 | [docs/plans/](docs/plans)                                    | Les plans du projet : vision d'origine, stabilité, qualité du code    |
 | [CLAUDE.md](CLAUDE.md)                                       | Les conventions et les pièges, en une page (aussi lu par Claude Code) |

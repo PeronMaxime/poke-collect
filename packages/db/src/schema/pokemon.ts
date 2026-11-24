@@ -1,6 +1,7 @@
 import { sql } from 'drizzle-orm';
 import {
   boolean,
+  check,
   index,
   integer,
   jsonb,
@@ -109,7 +110,11 @@ export const pokemon = pgTable(
      */
     megaStone: text('mega_stone'),
   },
-  (t) => [index('pokemon_owner_species').on(t.ownerId, t.speciesId)],
+  (t) => [
+    index('pokemon_owner_species').on(t.ownerId, t.speciesId),
+    check('pokemon_level_positive', sql`${t.level} >= 1`),
+    check('pokemon_xp_nonnegative', sql`${t.xp} >= 0`),
+  ],
 );
 
 export const inventory = pgTable(
@@ -119,7 +124,10 @@ export const inventory = pgTable(
     itemId: text('item_id').notNull(),
     quantity: integer('quantity').notNull().default(0),
   },
-  (t) => [primaryKey({ columns: [t.ownerId, t.itemId] })],
+  (t) => [
+    primaryKey({ columns: [t.ownerId, t.itemId] }),
+    check('inventory_quantity_nonnegative', sql`${t.quantity} >= 0`),
+  ],
 );
 
 export const pokedex = pgTable(
@@ -186,5 +194,8 @@ export const candies = pgTable(
     lineageId: integer('lineage_id').notNull(),
     quantity: integer('quantity').notNull().default(0),
   },
-  (t) => [primaryKey({ columns: [t.ownerId, t.lineageId] })],
+  (t) => [
+    primaryKey({ columns: [t.ownerId, t.lineageId] }),
+    check('candies_quantity_nonnegative', sql`${t.quantity} >= 0`),
+  ],
 );

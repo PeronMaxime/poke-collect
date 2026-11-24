@@ -40,13 +40,26 @@ La CI lance les mêmes commandes. Trois règles à ne jamais oublier :
    (`packages/shared/src/errors.ts`), puis son message à `GAME_ERRORS`
    (`apps/web/src/lib/labels/errors.ts`). `GameError` refuse un code hors catalogue, et le jeu ne
    compile pas tant que le message manque.
-5. **Test** dans `apps/api/src/` : la vraie application sur une base en mémoire (modèle :
-   `game.test.ts`), avec l'horloge injectée pour faire passer le temps.
+5. **Test** dans `apps/api/test/` : la vraie application sur une base en mémoire (modèle :
+   `expeditions/game.test.ts`), avec l'horloge injectée pour faire passer le temps. Une route
+   publique (sans session) s'ajoute à `PUBLIC_ROUTES` de `platform/route-security.test.ts`, une
+   route à `:id` à `OWNED` (objet d'un joueur : un autre reçoit 404) ou à `NOT_OWNED` : ce test
+   appelle toutes les routes et échoue sinon.
 6. **Côté jeu** : la lecture (`useQuery`) et l'action (`useMutation`) dans `apps/web/src/lib/`,
    en ne rechargeant après l'action que les données qu'elle change (`refresh(queryClient, …)`).
 
 Une règle de jeu (un calcul, une probabilité, une condition) ne s'écrit pas dans l'API : elle va
 dans `packages/game-core`, en fonction pure avec son test, et l'API l'appelle.
+
+Deux cas particuliers :
+
+- **Une lecture qui parcourt beaucoup de lignes** (toute une collection, une recherche sans index,
+  un classement) : l'ajouter à `HEAVY_READS` (`apps/api/src/rate-limit.ts`), qui lui donne son
+  propre budget par joueur. Ne pas la déclarer avec `config.rateLimit` dans la route.
+- **Une action de modération** (sur un autre joueur ou une guilde) : sous
+  `/api/admin/moderation/*` (`routes/admin/moderation.ts`), journalisée par `logAdminAction` avec
+  une action `moderation.…` et son libellé dans `AuditLogPage`. Si elle ferme l'accès d'un compte,
+  invalider `accounts` (`AccountStatusCache`) pour que la suite des requêtes le voie tout de suite.
 
 ## Changer le schéma de la base
 
@@ -65,6 +78,9 @@ Pièges :
   au premier enregistrement, et ne la rejouera plus.
 - Si c'est arrivé : écrire une migration suivante **idempotente** qui refait le travail. On ne
   modifie jamais une migration déjà appliquée en production.
+- **Nouveau compteur de valeur** (argent, stock, réserve) : lui donner sa contrainte
+  ``check('<table>_<colonne>_nonnegative', sql`${t.colonne} >= 0`)`` dans le schéma, comme
+  `inventory.quantity`. Une violation répond 409 `INVALID_STATE`, signalée dans « Santé de l'API ».
 
 ## Changer le contenu
 

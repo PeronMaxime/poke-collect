@@ -1,8 +1,8 @@
-import { beforeAll, describe, expect, inject, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen, waitFor } from '@testing-library/react';
 import { RouterProvider, createMemoryRouter } from 'react-router';
-import { api } from '../src/lib/api';
+import { signInAdmin } from './sign-in';
 import { routes } from '../src/routes';
 import { SECTIONS } from '../src/sections';
 
@@ -25,7 +25,7 @@ function renderAdmin(path: string) {
  */
 describe('pages de l’admin', () => {
   beforeAll(async () => {
-    await api('/api/auth/sign-in/email', { method: 'POST', json: inject('admin') });
+    await signInAdmin();
   });
 
   it.each(SECTIONS.map((s) => [s.label, s.path] as const))('%s', async (label, path) => {

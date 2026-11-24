@@ -12,8 +12,9 @@ export const PRIVACY_PATH = '/confidentialite';
 /** Adresses des pages légales, ouvertes même sans être connecté. */
 export const LEGAL_PATHS: readonly string[] = [LEGAL_NOTICE_PATH, PRIVACY_PATH];
 
-const CONTACT_EMAIL = 'contact@dexpedition.fr';
-const UPDATED_AT = '9 octobre 2026';
+/** Adresse de contact (pages légales, contestation d'une suspension). */
+export const CONTACT_EMAIL = 'contact@dexpedition.fr';
+const UPDATED_AT = '23 novembre 2026';
 
 /** Navigation interne sans rechargement : App suit l'adresse via l'événement popstate. */
 function navigate(e: MouseEvent<HTMLAnchorElement>, path: string) {
@@ -152,8 +153,9 @@ function Privacy() {
       <ul>
         <li>
           <strong>Compte</strong> : adresse e-mail et mot de passe (stocké sous forme chiffrée
-          irréversible, jamais en clair). Ils servent à te connecter et, si tu le demandes, à
-          t’envoyer un lien de réinitialisation du mot de passe.
+          irréversible, jamais en clair). Ils servent à te connecter, à confirmer ton adresse à
+          l’inscription et, si tu le demandes, à t’envoyer un lien de réinitialisation du mot de
+          passe.
         </li>
         <li>
           <strong>Partie</strong> : nom de dresseur, Pokémon, objets, progression, réglages du jeu.
@@ -216,7 +218,13 @@ function Privacy() {
         </li>
         <li>
           le service de messagerie d’OVH SAS envoie l’e-mail, et reçoit donc ton adresse, lorsque tu
-          demandes un lien de réinitialisation du mot de passe.
+          t’inscris (lien de confirmation) ou demandes un lien de réinitialisation du mot de passe ;
+        </li>
+        <li>
+          lorsque la vérification anti-robots est active, Cloudflare (service Turnstile) reçoit ton
+          adresse IP et des informations techniques sur ton navigateur au moment de l’inscription,
+          de la connexion ou d’une demande de mot de passe oublié, pour distinguer une personne d’un
+          programme automatique (intérêt légitime à protéger le service contre les abus).
         </li>
       </ul>
 

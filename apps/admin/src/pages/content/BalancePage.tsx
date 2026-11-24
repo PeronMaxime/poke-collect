@@ -1212,7 +1212,53 @@ function GuildSettingsSection({
           })}
         </div>
       ))}
+      <GuildChatFields
+        chat={s.chat}
+        onChange={set('chat')}
+        err={(path) => err(`chat.${path}`)}
+        disabled={disabled}
+      />
     </Section>
+  );
+}
+
+/** Discussion de guilde : limite de débit par joueur et conservation des messages. */
+function GuildChatFields({
+  chat,
+  onChange,
+  err,
+  disabled,
+}: {
+  chat: GuildSettings['chat'];
+  onChange: (chat: GuildSettings['chat']) => void;
+  err: (path: string) => string | undefined;
+  disabled: boolean;
+}) {
+  const field = (key: keyof GuildSettings['chat'], label: string, unit: string, max: number) => (
+    <Field key={key} label={label} error={err(key)}>
+      <NumberInput
+        value={chat[key]}
+        min={key === 'minIntervalSeconds' ? 0 : 1}
+        max={max}
+        unit={unit}
+        onChange={(v) => onChange({ ...chat, [key]: v })}
+        disabled={disabled}
+      />
+    </Field>
+  );
+  return (
+    <>
+      <p className="text-xs text-slate-500">
+        Discussion : un joueur qui écrit trop vite est refusé (« Doucement ! ») ; les messages plus
+        anciens que la durée de conservation sont supprimés chaque heure.
+      </p>
+      <div className="grid gap-4 sm:grid-cols-4">
+        {field('minIntervalSeconds', 'Délai entre deux messages', 's', 3600)}
+        {field('maxPerWindow', 'Messages au plus…', 'message(s)', 10_000)}
+        {field('windowMinutes', '… sur', 'min', 1440)}
+        {field('retentionDays', 'Conservation', 'jour(s)', 3650)}
+      </div>
+    </>
   );
 }
 

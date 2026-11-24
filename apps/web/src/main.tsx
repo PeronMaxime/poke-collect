@@ -11,6 +11,7 @@ import { UpdatePrompt } from './components/UpdatePrompt';
 import { retryDelay, shouldRetryQuery } from './lib/api';
 import { logError } from './lib/log';
 import { registerServiceWorker } from './lib/pwa';
+import { accountSuspension, keys } from './lib/queries';
 import { adoptTabProfileFromUrl } from './lib/tab-profile';
 import { watchTheme } from './lib/theme';
 import './index.css';
@@ -28,13 +29,26 @@ const queryClient = new QueryClient({
     },
   },
   queryCache: new QueryCache({
-    onError: (error, query) => logError('Requête', error, { queryKey: query.queryKey }),
+    onError: (error, query) => {
+      logError('Requête', error, { queryKey: query.queryKey });
+      if (query.queryKey[0] !== keys.me[0]) onSuspended(error);
+    },
   }),
   mutationCache: new MutationCache({
-    onError: (error, variables, _context, mutation) =>
-      logError('Action', error, { mutationKey: mutation.options.mutationKey, variables }),
+    onError: (error, variables, _context, mutation) => {
+      logError('Action', error, { mutationKey: mutation.options.mutationKey, variables });
+      onSuspended(error);
+    },
   }),
 });
+
+/**
+ * Refus `ACCOUNT_SUSPENDED` reçu en cours de partie : recharger `me` fait afficher l'écran de
+ * suspension (voir `App`), sans attendre son rappel périodique.
+ */
+function onSuspended(error: unknown) {
+  if (accountSuspension(error)) void queryClient.invalidateQueries({ queryKey: keys.me });
+}
 
 window.addEventListener('error', (e) => logError('Erreur non interceptée', e.error ?? e.message));
 window.addEventListener('unhandledrejection', (e) => logError('Promesse rejetée', e.reason));

@@ -11,11 +11,20 @@ x-logging: &logging
     max-size: 10m
     max-file: '3'
 
+# Défense en profondeur (docs/plans/PLAN-SECURITE.md, 4.2) : aucun processus ne peut gagner de
+# droits (programme setuid…), et l'API et Caddy n'ont ni capacité Linux superflue ni système de
+# fichiers modifiable hors de leurs volumes et de /tmp. Postgres garde ses capacités : son script
+# de démarrage, root, prépare le dossier des données puis passe à l'utilisateur postgres.
+# Vérifié en CI (tâche `images` de ci.yml).
+x-no-new-privileges: &no-new-privileges
+  - no-new-privileges:true
+
 services:
   postgres:
     image: postgres:17-alpine
     restart: unless-stopped
     logging: *logging
+    security_opt: *no-new-privileges
     # Surveillance : requêtes de plus de 500 ms dans les journaux, et statistiques par requête
     # (pg_stat_statements, voir docs/SURCHARGE.md 1.4). Les réglages de mémoire (1.5) s'ajoutent ici.
     command:
@@ -45,6 +54,14 @@ services:
     image: poke-collect-api
     restart: unless-stopped
     logging: *logging
+    security_opt: *no-new-privileges
+    cap_drop: [ALL]
+    read_only: true
+    # Cache de tsx (/tmp) et fichiers de pnpm (dossier personnel) pour les commandes lancées dans
+    # le conteneur (`exec api pnpm …`, `run --rm api pnpm …`).
+    tmpfs:
+      - /tmp
+      - /home/node
     init: true
     env_file: .env
     environment:
@@ -81,6 +98,13 @@ services:
     image: poke-collect-caddy
     restart: unless-stopped
     logging: *logging
+    security_opt: *no-new-privileges
+    # Root dans son conteneur, mais sans autre capacité que l'ouverture des ports 80 et 443.
+    cap_drop: [ALL]
+    cap_add: [NET_BIND_SERVICE]
+    read_only: true
+    tmpfs:
+      - /tmp
     ports:
       - '80:80'
       - '443:443'

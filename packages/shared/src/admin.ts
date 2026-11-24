@@ -2,6 +2,7 @@ import { z } from 'zod';
 import { slugSchema } from '@poke/content';
 import type { ContentIssue, GameContent } from '@poke/content';
 import type { PlayerProfileDto, UserRole } from './profile';
+import type { AccountSuspensionDto } from './moderation';
 import type { TrainerCardResponse } from './trainer-card';
 
 /**
@@ -91,6 +92,8 @@ export interface AdminPlayerDto {
   createdAt: string;
   /** Dernière requête authentifiée connue (null : jamais vu depuis le suivi de présence). */
   lastSeenAt: string | null;
+  /** Suspension en cours ; null : compte actif (une suspension échue compte comme levée). */
+  suspension: AccountSuspensionDto | null;
 }
 
 export interface AdminPlayerRegionBadges {

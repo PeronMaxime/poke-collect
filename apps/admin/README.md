@@ -1,8 +1,11 @@
 # `@poke/admin` : le panneau d'administration
 
 Même pile que le jeu (React, Vite, Tailwind, TanStack Query), avec React Router. Sert à régler le
-**contenu** du jeu et à suivre les joueurs. Réservé au rôle admin, vérifié par le serveur à
-chaque requête (`pnpm admin:promote <email>` pour le donner).
+**contenu** du jeu et à suivre les joueurs. Réservé au rôle admin (`pnpm admin:promote <email>`
+pour le donner) avec double authentification : à la première connexion, l'admin fait activer un
+code d'application (`pages/TwoFactorSetupPage.tsx`, QR code tracé par `components/TotpQrCode.tsx`
+avec `uqr`, chargé à la demande), puis le demande à chaque connexion. Le
+serveur vérifie les deux à chaque requête.
 
 Vue d'ensemble : [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md), sections 4 et 9.
 
@@ -19,6 +22,7 @@ src/
     docs.ts           Fichiers Markdown du dépôt réunis pour la page « Documentation », recherche
     doc-render.ts     Markdown → HTML (marked) : ancres, sommaire, liens entre fichiers
     zone-species.ts   Répartition des espèces d'une région dans ses zones (page « Espèces par zone »)
+    moderation.ts     Appels de la modération (`/api/admin/moderation/*`) et leurs messages d'erreur
   components/
     AdminGate.tsx     Connexion et contrôle d'accès (affichage seulement)
     SideMenu.tsx      Menu en accordéon, une section repliable par catégorie
@@ -29,7 +33,9 @@ src/
     DashboardPage     Versions du contenu, brouillon, publication, alertes de cohérence, import/export
     content/          Une page par entité : équilibrage, régions, espèces, zones, dresseurs, quêtes…
                       et « Espèces par zone » (grille espèces × zones, menu Ajouter, Modifier ou Supprimer sur chaque case)
-    PlayersPage, TelemetryPage, ApiHealthPage, AuditLogPage
+    PlayersPage       Joueurs et leur fiche ; PlayerModeration : suspension, levée, renommage
+    GuildModerationPage   Guildes : nom, description, membres, discussion (supprimer un message)
+    TelemetryPage, ApiHealthPage, AuditLogPage
     DocsPage          Toute la documentation technique du dépôt, avec recherche
     ExpeditionSimulatorPage, PowerCalculatorPage   Outils d'équilibrage
 test/                 Tests de pages (jsdom contre la vraie API en mémoire, compte admin)

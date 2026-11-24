@@ -5,6 +5,8 @@ import {
   chestCandidates,
   drawGuildQuests,
   guildDay,
+  guildMessagesPurgeBefore,
+  guildMessageWaitSeconds,
   guildObjectiveAmount,
   guildQuestTarget,
   guildWeek,
@@ -120,5 +122,37 @@ describe('coffres de guilde', () => {
     }, 0);
     expect(lots).toBe(3 * ctx.balance.guilds.chestRolls.bronze);
     expect(openGuildChests(ctx, 'bronze', beginner, 3, 42)).toEqual(loot);
+  });
+});
+
+describe('débit de la discussion de guilde', () => {
+  const chat = { minIntervalSeconds: 3, windowMinutes: 10, maxPerWindow: 20, retentionDays: 90 };
+  const now = new Date('2026-11-24T12:00:00Z');
+  const ago = (seconds: number) => new Date(now.getTime() - seconds * 1000);
+
+  it('laisse écrire sans message récent', () => {
+    expect(guildMessageWaitSeconds(chat, [], now)).toBe(0);
+    expect(guildMessageWaitSeconds(chat, [ago(3)], now)).toBe(0);
+  });
+
+  it('impose le délai minimal depuis le dernier message, arrondi à la seconde supérieure', () => {
+    expect(guildMessageWaitSeconds(chat, [ago(60), ago(1)], now)).toBe(2);
+    expect(guildMessageWaitSeconds(chat, [ago(2.5)], now)).toBe(1);
+  });
+
+  it('bloque au-delà du nombre de messages de la fenêtre, jusqu’à la sortie du plus ancien compté', () => {
+    // 20 messages, un toutes les 20 s : le plus ancien a 400 s, il sort de la fenêtre dans 200 s.
+    const twenty = Array.from({ length: 20 }, (_, i) => ago(20 + i * 20));
+    expect(guildMessageWaitSeconds(chat, twenty, now)).toBe(200);
+    expect(guildMessageWaitSeconds(chat, twenty.slice(1), now)).toBe(0);
+  });
+
+  it('ne compte pas les messages sortis de la fenêtre', () => {
+    const old = Array.from({ length: 30 }, (_, i) => ago(600 + i));
+    expect(guildMessageWaitSeconds(chat, old, now)).toBe(0);
+  });
+
+  it('purge les messages de plus de 90 jours', () => {
+    expect(guildMessagesPurgeBefore(chat, now)).toEqual(new Date('2026-08-26T12:00:00Z'));
   });
 });

@@ -4,6 +4,7 @@ import type { GameContentData } from '@poke/content';
 import { createDb, ensureSeedContent, users } from '@poke/db';
 import { buildApp } from '../app';
 import { loadEnv } from '../env';
+import { totpCode } from './totp';
 
 /**
  * API de test pour les écrans du jeu et de l'admin (`apps/web/test`, `apps/admin/test`).
@@ -17,8 +18,11 @@ import { loadEnv } from '../env';
 export interface TestApi {
   /** Adresse de l'API (`http://127.0.0.1:<port>`). */
   url: string;
-  /** Compte administrateur déjà créé, pour les tests de l'admin. */
-  admin: { email: string; password: string };
+  /**
+   * Compte administrateur déjà créé, second facteur activé, pour les tests de l'admin :
+   * `totpURI` donne ses codes (`totpCode`, `testing/totp.ts`).
+   */
+  admin: { email: string; password: string; totpURI: string };
   close(): Promise<void>;
 }
 
@@ -27,7 +31,10 @@ const TEST_ORIGIN = 'http://localhost:5173';
 
 const ADMIN = { email: 'admin@example.com', password: 'motdepasse-solide' };
 
-/** Lance l'API de test sur un port libre et crée son compte administrateur ; `close()` l'arrête. */
+/**
+ * Lance l'API de test sur un port libre et crée son compte administrateur (rôle et second facteur
+ * activé, comme en production) ; `close()` l'arrête.
+ */
 export async function startTestApi(
   /** Ajustements du contenu de test avant son import (ex. ouvrir tous les onglets). */
   patchContent: (content: GameContentData) => void = () => {},
@@ -47,11 +54,34 @@ export async function startTestApi(
   });
   if (signUp.statusCode !== 200) throw new Error(`Compte admin de test : ${signUp.body}`);
   await handle.db.update(users).set({ role: 'admin' }).where(eq(users.email, ADMIN.email));
+  const headers = {
+    'content-type': 'application/json',
+    origin: TEST_ORIGIN,
+    cookie: [signUp.headers['set-cookie'] ?? []]
+      .flat()
+      .map((c) => c.split(';')[0])
+      .join('; '),
+  };
+  const enable = await app.inject({
+    method: 'POST',
+    url: '/api/auth/two-factor/enable',
+    headers,
+    payload: { password: ADMIN.password },
+  });
+  if (enable.statusCode !== 200) throw new Error(`Second facteur de test : ${enable.body}`);
+  const { totpURI } = enable.json<{ totpURI: string }>();
+  const verify = await app.inject({
+    method: 'POST',
+    url: '/api/auth/two-factor/verify-totp',
+    headers,
+    payload: { code: totpCode(totpURI) },
+  });
+  if (verify.statusCode !== 200) throw new Error(`Second facteur de test : ${verify.body}`);
 
   const url = await app.listen({ port: 0, host: '127.0.0.1' });
   return {
     url,
-    admin: ADMIN,
+    admin: { ...ADMIN, totpURI },
     async close() {
       await app.close();
       await handle.close();
