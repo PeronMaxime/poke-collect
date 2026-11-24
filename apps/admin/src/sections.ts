@@ -179,6 +179,12 @@ export const SECTION_GROUPS: AdminSectionGroup[] = [
     title: 'Suivi',
     sections: [
       {
+        path: '/tasks',
+        label: 'À faire',
+        description:
+          'Ce qu’il reste à faire ou à surveiller : suites des mises en production, vérifications, rappels datés.',
+      },
+      {
         path: '/players',
         label: 'Joueurs',
         description:

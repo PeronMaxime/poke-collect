@@ -25,6 +25,9 @@ const ACTION_LABELS: Record<string, string> = {
   'moderation.rename_trainer': 'Dresseur renommé',
   'moderation.guild_update': 'Guilde corrigée',
   'moderation.delete_message': 'Message de guilde supprimé',
+  'task.create': 'Tâche de suivi ajoutée',
+  'task.update': 'Tâche de suivi modifiée',
+  'task.delete': 'Tâche de suivi supprimée',
 };
 
 const ENTITY_LABELS: Record<string, string> = {

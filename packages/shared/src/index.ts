@@ -27,6 +27,7 @@ export * from './legendary';
 export * from './dungeons';
 export * from './shop';
 export * from './admin';
+export * from './admin-tasks';
 export * from './telemetry';
 export * from './push';
 export * from './search';

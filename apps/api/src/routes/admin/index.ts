@@ -4,10 +4,11 @@ import { adminContentRoutes } from './content';
 import { adminModerationRoutes } from './moderation';
 import { adminPlayerRoutes } from './players';
 import { adminSupervisionRoutes } from './supervision';
+import { adminTaskRoutes } from './tasks';
 
 /**
- * Routes /api/admin/* : le contrôle du rôle admin, puis les quatre groupes (contenu, joueurs,
- * modération, supervision).
+ * Routes /api/admin/* : le contrôle du rôle admin, puis les cinq groupes (contenu, joueurs,
+ * modération, supervision, tâches de suivi).
  */
 
 /** Routes /api/admin/* : toutes réservées au rôle admin, toutes les écritures sont journalisées. */
@@ -20,4 +21,5 @@ export async function adminRoutes(app: FastifyInstance, deps: AdminDeps) {
   adminPlayerRoutes(app, deps);
   adminModerationRoutes(app, deps);
   adminSupervisionRoutes(app, deps);
+  adminTaskRoutes(app, deps);
 }
