@@ -70,6 +70,7 @@ Un dossier s'importe par son nom (`../game/store`) : son `index.ts` réexporte c
 | `push.ts`                                   | Notifications Web Push : abonnements (liste blanche), réglages, tournée |
 | `capture-stats.ts`                          | Compteurs globaux par espèce, écrits par lots                           |
 | `telemetry.ts`, `admin-players.ts`          | Admin : télémétrie d'équilibrage, fiche et outils de test d'un joueur   |
+| `admin-tasks.ts`                            | Admin : tâches de suivi de la page « À faire »                          |
 
 ## Les tâches de fond (`src/jobs/`)
 
@@ -109,6 +110,7 @@ Toutes sous `/api`. Sauf mention, elles exigent une session (`requireUser`).
 | `admin/players.ts`                                   | `/admin/*` : joueurs, fiche d'un joueur, outils de test                                 |
 | `admin/moderation.ts`                                | `/admin/moderation/*` : suspension, renommage, guildes et leur discussion               |
 | `admin/supervision.ts`                               | `/admin/*` : télémétrie, statistiques d'espèces, santé de l'API, journal                |
+| `admin/tasks.ts`                                     | `/admin/tasks` : tâches de suivi (à faire, à surveiller), journalisées                  |
 | `plugins/auth-routes.ts`                             | `/auth/*` (Better Auth)                                                                 |
 | `beta-profiles.ts`                                   | `/beta/profiles`                                                                        |
 

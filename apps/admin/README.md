@@ -23,6 +23,7 @@ src/
     doc-render.ts     Markdown → HTML (marked) : ancres, sommaire, liens entre fichiers
     zone-species.ts   Répartition des espèces d'une région dans ses zones (page « Espèces par zone »)
     moderation.ts     Appels de la modération (`/api/admin/moderation/*`) et leurs messages d'erreur
+    tasks.ts          Tâches de suivi (`/api/admin/tasks`) : appels, rubriques de la page « À faire »
   components/
     AdminGate.tsx     Connexion et contrôle d'accès (affichage seulement)
     SideMenu.tsx      Menu en accordéon, une section repliable par catégorie
@@ -35,6 +36,7 @@ src/
                       et « Espèces par zone » (grille espèces × zones, menu Ajouter, Modifier ou Supprimer sur chaque case)
     PlayersPage       Joueurs et leur fiche ; PlayerModeration : suspension, levée, renommage
     GuildModerationPage   Guildes : nom, description, membres, discussion (supprimer un message)
+    TasksPage         « À faire » : ce qu'il reste à faire ou à surveiller (maintenant, plus tard, faites)
     TelemetryPage, ApiHealthPage, AuditLogPage
     DocsPage          Toute la documentation technique du dépôt, avec recherche
     ExpeditionSimulatorPage, PowerCalculatorPage   Outils d'équilibrage

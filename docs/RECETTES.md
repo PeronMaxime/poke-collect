@@ -261,6 +261,19 @@ Le détail est dans [MISE-A-JOUR.md](MISE-A-JOUR.md). En bref :
 2. Une _pull request_ `dev` → `main` lance la CI.
 3. Fusionner déploie : la CI de `main`, puis l'action « Déploiement », qui sauvegarde la base,
    met le code à jour et redémarre. Les migrations s'appliquent au démarrage de l'API.
+4. Ce qui reste à faire ou à surveiller après le déploiement (vérifier un écran, recaler un
+   réglage dans une semaine…) arrive dans la page « À faire » de l'admin par une migration de
+   données livrée avec la mise à jour, comme la `0156` :
+   - `drizzle-kit generate --custom --name taches_<sujet>` dans `packages/db`, rempli tout de
+     suite (sous `pnpm dev`, une migration vide serait appliquée au prochain enregistrement) ;
+   - `INSERT INTO "admin_tasks" ("kind", "title", "details", "due_on") VALUES …` : `todo` ou
+     `watch`, apostrophes typographiques (’) pour ne pas échapper, `due_on` au format
+     `'AAAA-MM-JJ'` ou `NULL` ;
+   - le détail dit d'où vient la tâche (« Mise en production du 24 novembre, PR #28 »).
+
+   Une migration ne s'applique qu'une fois : une tâche supprimée dans l'admin ne revient pas. Ce
+   qui doit être fait **avant** la fusion (`.env`, vérification en base) ne peut pas passer par là :
+   il va dans la liste à cocher de la PR.
 
 ### Le journal des nouveautés
 

@@ -100,6 +100,8 @@ empreinte, affichée dans le journal de la tâche).
    - changement de `Dockerfile`, `docker-compose.prod.yml` ou des workflows : droits minimaux
      gardés (pas de root, `permissions: contents: read`, actions épinglées par empreinte).
 4. Une ligne dans le journal des audits (section 5) : date, version (commit de `dev`), constats.
+5. Les suites (constat à durcir, vérification à refaire, réglage à recaler) dans la page
+   « À faire » de l'admin, datées si besoin.
 
 ## 5. Journal des audits
 
@@ -108,3 +110,4 @@ empreinte, affichée dans le journal de la tâche).
 | 23 nov. 2026 | `de864a6`          | Audit complet : 17 constats (S1 à S17), corrigés par les phases 1 à 5 du plan.                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | 24 nov. 2026 | `c98e515`          | Phase 5. `pnpm audit` : `sharp` 0.34.3 (3 failles élevées, installé dans l'image de production pour `pnpm sprites:download`) passé en 0.35.5 ; restent 2 failles moyennes d'outils de développement jamais lancés en production (`esbuild` sous `drizzle-kit`, `minimatch` sous `eslint`). gitleaks : historique propre (126 commits). Test des routes : `GET /api/content` public exprès (contenu déjà dans le dépôt) ; rien d'autre d'ouvert.                                                                                |
 | 24 nov. 2026 | `f7cd875` (PR #28) | Première routine de mise en production : `/security-review` sur tout l'écart `main...dev` (phases 1 à 5), aucun constat au-dessus du seuil. À durcir : une session admin ouverte sans second facteur (antérieure à l'activation, ou Google/Discord, absents en production), plus le mot de passe, peut relire le secret TOTP ou réenrôler le compte (`get-totp-uri`, `disable`, `generate-backup-codes` de Better Auth) ; à refuser sans `twoFactorVerified`. CI : `check`, `secrets` et `images` vertes au premier lancement. |
+| 24 nov. 2026 | `79f8e16`          | Page « À faire » de l’admin et `setup-node` 7.1.0 (Dependabot). Routes sous `/api/admin/tasks` (rôle et second facteur, couvertes par `route-security.test.ts`), entrées validées par Zod, texte affiché par React : aucun constat. `pnpm audit` : rien d’élevé, les 2 failles moyennes connues.                                                                                                                                                                                                                               |
