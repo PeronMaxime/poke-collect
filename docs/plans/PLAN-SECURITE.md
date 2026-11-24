@@ -13,12 +13,12 @@ l'e-mail, captcha, suspension) demandent une ligne dans le journal des nouveaut�
 
 ## Points ouverts (à reprendre le 24 novembre 2026)
 
-Phases 1 à 5 faites sur `dev`, **non commitées** et pas en production (phases 3 à 5 le 24
+Phases 1 à 5 faites et poussées sur `dev`, pas encore en production (phases 3 à 5 le 24
 novembre). Restent :
 
-- [ ] **Commits** : phases 1 à 5 sur `dev`, en plusieurs commits (phase 1 ; 2FA ; e-mail,
-      captcha et limites ; secret et noms ; modération et débit ; défense en profondeur ; audit
-      continu ; docs).
+- [x] **Commits** : poussés sur `dev` le 24 novembre en trois commits (code des phases 1 à 4,
+      phase 5, docs) : les phases touchent les mêmes fichiers, un découpage plus fin aurait laissé
+      des commits qui ne compilent pas.
 - [ ] **Tâche `secrets` et Dependabot** (phase 5.1) : jamais lancés sur GitHub. À la première
       PR, vérifier que la tâche `secrets` passe et, dans l'onglet Insights → Dependency graph →
       Dependabot, que `.github/dependabot.yml` est lu sans erreur.
