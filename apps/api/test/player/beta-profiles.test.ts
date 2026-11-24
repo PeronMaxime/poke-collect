@@ -251,4 +251,54 @@ describe('profils secondaires (bêta)', () => {
     expect(del.statusCode, del.body).toBe(200);
     expect(await handle.db.select().from(users).where(eq(users.id, altId))).toEqual([]);
   });
+
+  it('compte supprimé : lui et ses profils quittent leur guilde, qui garde un chef', async () => {
+    const rich = (userId: string) =>
+      handle.db
+        .update(playerProfiles)
+        .set({ currency: 1_000_000 })
+        .where(eq(playerProfiles.userId, userId));
+    const found = async (cookie: string, name: string) => {
+      const res = await request('POST', '/api/guilds', cookie, {
+        name,
+        description: '',
+        joinMode: 'open',
+      });
+      expect(res.statusCode, res.body).toBe(201);
+    };
+    const guildOf = async (userId: string) =>
+      (await handle.db.select().from(guildMembers).where(eq(guildMembers.userId, userId)))[0]!
+        .guildId;
+
+    const session = await newPlayer('bruno@example.com', 'Bruno');
+    const [main] = await handle.db.select().from(users).where(eq(users.email, 'bruno@example.com'));
+    await rich(main!.id);
+    await found(session, 'Tour Pokémon');
+    const created = await request('POST', '/api/beta/profiles', session);
+    const altId = created.json<BetaProfilesResponse>().activeProfileId;
+    const onAlt = `${session}; ${cookieOf(created)}`;
+    const starter = seedContent.regions[0]!.starterSpeciesIds[0]!;
+    await request('POST', '/api/starter', onAlt, { speciesId: starter });
+    await rich(altId);
+    await found(onAlt, 'Lavanville');
+
+    const guildIds = [await guildOf(main!.id), await guildOf(altId)];
+    for (const [i, guildId] of guildIds.entries()) {
+      const member = await newPlayer(`heritier${i}@example.com`, `Heritier${'AB'[i]}`);
+      const joined = await request('POST', `/api/guilds/${guildId}/join`, member);
+      expect(joined.statusCode, joined.body).toBeLessThan(300);
+    }
+
+    const del = await request('POST', '/api/auth/delete-user', session, {
+      password: 'mot-de-passe',
+    });
+    expect(del.statusCode, del.body).toBe(200);
+    for (const guildId of guildIds) {
+      const members = await handle.db
+        .select()
+        .from(guildMembers)
+        .where(eq(guildMembers.guildId, guildId));
+      expect(members.map((m) => m.role)).toEqual(['leader']);
+    }
+  });
 });

@@ -1,4 +1,4 @@
-import { and, count, eq, gt, inArray, isNull, lte, sql } from 'drizzle-orm';
+import { and, count, desc, eq, gt, inArray, isNull, lte, notInArray, sql } from 'drizzle-orm';
 import webpush from 'web-push';
 import { eggs, expeditions, fossilRevivals, playerProfiles, pushSubscriptions } from '@poke/db';
 import type { Db } from '@poke/db';
@@ -8,15 +8,65 @@ import type { NotificationSettings, PushPayload, PushSubscriptionInput } from '@
 import type { ContentCache } from '../content-cache';
 import type { VapidKeys } from '../env';
 import { GameError } from './errors';
+import { playerTransaction } from './tx';
 
 /**
  * Notifications Web Push : une tournée périodique repère les expéditions et combats terminés, les
  * œufs prêts à éclore et les fossiles restaurés, puis prévient leurs propriétaires abonnés (une notification groupée
  * par joueur). Chaque élément n'est notifié qu'une fois (`notified_at`).
+ *
+ * Le serveur appelle l'adresse fournie par le navigateur : elle doit appartenir à un service push
+ * connu (liste blanche), sinon un joueur ferait atteindre au serveur son propre réseau interne.
  */
 
 /** Au-delà, un élément terminé pendant une coupure du serveur n'est plus notifié. */
 const MAX_DELAY_MS = 6 * 60 * 60_000;
+
+/** Délai maximal d'un envoi : un service qui ne répond pas ne retarde pas la tournée. */
+const SEND_TIMEOUT_MS = 10_000;
+
+/** Joueurs notifiés en même temps pendant une tournée (leurs appareils, en parallèle). */
+const PARALLEL_OWNERS = 5;
+
+/** Appareils abonnés par joueur ; au-delà, le plus ancien est remplacé. */
+export const MAX_DEVICES = 10;
+
+/** Délai entre deux notifications d'essai d'un même joueur. */
+const TEST_INTERVAL_MS = 30_000;
+
+/** Services push des navigateurs : Chrome, Edge, Opera… (FCM) et Firefox, hôtes exacts. */
+const PUSH_HOSTS = new Set(['fcm.googleapis.com', 'updates.push.services.mozilla.com']);
+
+/** Services push à sous-domaines : Safari (`web.push.apple.com`…) et Windows (`wns2-….notify…`). */
+const PUSH_HOST_SUFFIXES = ['.push.apple.com', '.notify.windows.com'];
+
+/**
+ * Vrai si le serveur peut envoyer à cette adresse : HTTPS, port par défaut, sans identifiants, chez
+ * un service push connu. Même liste que la migration 0151, qui a purgé les anciennes adresses.
+ */
+function isAllowedPushEndpoint(endpoint: string): boolean {
+  let url: URL;
+  try {
+    url = new URL(endpoint);
+  } catch {
+    return false;
+  }
+  if (url.protocol !== 'https:' || url.port !== '' || url.username || url.password) return false;
+  return PUSH_HOSTS.has(url.hostname) || PUSH_HOST_SUFFIXES.some((s) => url.hostname.endsWith(s));
+}
+
+/** Applique `fn` à chaque élément, `limit` à la fois au plus. */
+async function forEachLimited<T>(
+  items: readonly T[],
+  limit: number,
+  fn: (item: T) => Promise<void>,
+): Promise<void> {
+  let next = 0;
+  const lane = async () => {
+    while (next < items.length) await fn(items[next++]!);
+  };
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, lane));
+}
 
 /** Un appareil abonné : son adresse chez le service push et ses clés de chiffrement. */
 export interface PushTarget {
@@ -30,26 +80,40 @@ export type PushSender = (target: PushTarget, payload: PushPayload) => Promise<'
 
 /**
  * L'expéditeur réel : envoie par Web Push, signé avec les clés VAPID. Un abonnement refusé pour de
- * bon (404, 410) est signalé `gone`.
+ * bon (404, 410) est signalé `gone`. Un envoi est abandonné (rejeté) après `timeoutMs`, connexion
+ * muette ou réponse trop lente. L'adresse est passée normalisée (`URL.href`) : web-push la relit
+ * avec l'ancien `url.parse`, qui ne doit pas y voir un autre hôte que celui de la liste blanche.
  */
-export function webPushSender(vapid: VapidKeys): PushSender {
+export function webPushSender(vapid: VapidKeys, timeoutMs = SEND_TIMEOUT_MS): PushSender {
   const vapidDetails = {
     subject: vapid.subject,
     publicKey: vapid.publicKey,
     privateKey: vapid.privateKey,
   };
   return async (target, payload) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const deadline = new Promise<never>((_, reject) => {
+      timer = setTimeout(() => reject(new Error('push : délai dépassé')), timeoutMs);
+    });
     try {
-      await webpush.sendNotification(
-        { endpoint: target.endpoint, keys: { p256dh: target.p256dh, auth: target.auth } },
-        JSON.stringify(payload),
-        { TTL: MAX_DELAY_MS / 1000, vapidDetails },
-      );
+      await Promise.race([
+        webpush.sendNotification(
+          {
+            endpoint: new URL(target.endpoint).href,
+            keys: { p256dh: target.p256dh, auth: target.auth },
+          },
+          JSON.stringify(payload),
+          { TTL: MAX_DELAY_MS / 1000, vapidDetails, timeout: timeoutMs },
+        ),
+        deadline,
+      ]);
       return 'ok';
     } catch (err) {
       const status = (err as { statusCode?: number }).statusCode;
       if (status === 404 || status === 410) return 'gone';
       throw err;
+    } finally {
+      clearTimeout(timer);
     }
   };
 }
@@ -80,22 +144,59 @@ export async function pushStatus(
 }
 
 /**
- * Abonne un appareil aux notifications du joueur. Un appareil déjà abonné change de propriétaire
- * s'il se reconnecte avec un autre compte.
+ * Abonne un appareil aux notifications du joueur ; refus `PUSH_ENDPOINT_REFUSED` hors des services
+ * push connus. Un appareil déjà abonné change de propriétaire s'il se reconnecte avec un autre
+ * compte. Au-delà de `MAX_DEVICES`, les abonnements les plus anciens du joueur sont supprimés.
  */
 export async function subscribeDevice(
   db: Db,
   userId: string,
   { endpoint, keys }: PushSubscriptionInput,
   userAgent: string | null,
+  now: Date,
 ): Promise<void> {
-  await db
-    .insert(pushSubscriptions)
-    .values({ ownerId: userId, endpoint, p256dh: keys.p256dh, auth: keys.auth, userAgent })
-    .onConflictDoUpdate({
-      target: pushSubscriptions.endpoint,
-      set: { ownerId: userId, p256dh: keys.p256dh, auth: keys.auth, userAgent },
-    });
+  if (!isAllowedPushEndpoint(endpoint)) throw new GameError(400, 'PUSH_ENDPOINT_REFUSED');
+  await playerTransaction(db, userId, async (tx) => {
+    const device = { ownerId: userId, p256dh: keys.p256dh, auth: keys.auth, userAgent };
+    await tx
+      .insert(pushSubscriptions)
+      .values({ ...device, endpoint, createdAt: now })
+      .onConflictDoUpdate({
+        target: pushSubscriptions.endpoint,
+        set: { ...device, createdAt: now },
+      });
+    const kept = tx
+      .select({ id: pushSubscriptions.id })
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.ownerId, userId))
+      .orderBy(desc(pushSubscriptions.createdAt), desc(pushSubscriptions.id))
+      .limit(MAX_DEVICES);
+    await tx
+      .delete(pushSubscriptions)
+      .where(and(eq(pushSubscriptions.ownerId, userId), notInArray(pushSubscriptions.id, kept)));
+  });
+}
+
+/**
+ * Garde-fou de la notification d'essai : `check(userId, now)` refuse (`RATE_LIMITED`, 429) un
+ * second essai du même joueur avant 30 s. En mémoire : l'API tourne en un seul processus.
+ */
+export function pushTestThrottle() {
+  const lastTest = new Map<string, number>();
+  return {
+    check(userId: string, now: Date) {
+      const at = now.getTime();
+      if (lastTest.size > 10_000) {
+        for (const [id, t] of lastTest) if (at - t >= TEST_INTERVAL_MS) lastTest.delete(id);
+      }
+      const last = lastTest.get(userId);
+      if (last !== undefined && at - last < TEST_INTERVAL_MS) {
+        const retryAfter = Math.ceil((TEST_INTERVAL_MS - (at - last)) / 1000);
+        throw new GameError(429, 'RATE_LIMITED', { retryAfter });
+      }
+      lastTest.set(userId, at);
+    },
+  };
 }
 
 /** Désabonne un appareil du joueur (sans effet s'il ne l'était pas). */
@@ -175,7 +276,10 @@ function pushMessage(
   };
 }
 
-/** Envoie une notification à tous les appareils d'un joueur ; supprime les abonnements expirés. */
+/**
+ * Envoie une notification à tous les appareils d'un joueur, en parallèle ; supprime les abonnements
+ * expirés et ceux dont l'adresse n'est pas (ou plus) dans la liste blanche, sans les appeler.
+ */
 export async function sendToOwner(
   db: Db,
   send: PushSender,
@@ -188,8 +292,10 @@ export async function sendToOwner(
     .from(pushSubscriptions)
     .where(eq(pushSubscriptions.ownerId, ownerId));
   let sent = 0;
-  for (const target of targets) {
-    const outcome = await send(target, payload).catch(() => 'error' as const);
+  await forEachLimited(targets, MAX_DEVICES, async (target) => {
+    const outcome = isAllowedPushEndpoint(target.endpoint)
+      ? await send(target, payload).catch(() => 'error' as const)
+      : 'gone';
     if (outcome === 'gone') {
       await db.delete(pushSubscriptions).where(eq(pushSubscriptions.id, target.id));
     } else if (outcome === 'ok') {
@@ -199,13 +305,14 @@ export async function sendToOwner(
         .set({ lastSentAt: now })
         .where(eq(pushSubscriptions.id, target.id));
     }
-  }
+  });
   return sent;
 }
 
 /**
  * Une tournée : marque les éléments dus des joueurs abonnés comme notifiés, puis envoie une
- * notification groupée par joueur. Retourne le nombre d'envois réussis.
+ * notification groupée par joueur, `PARALLEL_OWNERS` joueurs à la fois. Retourne le nombre
+ * d'envois réussis.
  */
 export async function runPushRound(
   db: Db,
@@ -279,13 +386,15 @@ export async function runPushRound(
     .from(playerProfiles)
     .where(inArray(playerProfiles.userId, [...summaries.keys()]));
   let sent = 0;
-  for (const profile of profiles) {
+  await forEachLimited(profiles, PARALLEL_OWNERS, async (profile) => {
     const payload = pushMessage(
       ctx,
       summaries.get(profile.userId)!,
       notificationSettings(profile.settings),
     );
-    if (payload) sent += await sendToOwner(db, send, profile.userId, payload, now);
-  }
+    if (!payload) return;
+    const delivered = await sendToOwner(db, send, profile.userId, payload, now);
+    sent += delivered;
+  });
   return sent;
 }

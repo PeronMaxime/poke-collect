@@ -14,6 +14,6 @@
     "@poke/content": "workspace:*",
     "@poke/data": "workspace:*",
     "@poke/game-core": "workspace:*",
-    "zod": "^4.6.5"
+    "zod": "^4.6.7"
   }
 }

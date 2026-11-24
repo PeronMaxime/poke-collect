@@ -322,6 +322,8 @@ export {
   GUILD_NAME_MAX,
   GUILD_NAME_MIN,
   guildDay,
+  guildMessagesPurgeBefore,
+  guildMessageWaitSeconds,
   guildObjectiveAmount,
   guildPeriod,
   guildQuestTarget,

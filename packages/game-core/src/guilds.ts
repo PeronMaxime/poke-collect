@@ -2,6 +2,7 @@ import { GUILD_QUEST_DIFFICULTIES } from '@poke/content';
 import type {
   ChestEntry,
   ChestRarity,
+  GuildChatSettings,
   GuildObjective,
   GuildQuestDifficulty,
   GuildQuestGoal,
@@ -243,4 +244,32 @@ export function openGuildChests(
     totals.set(entry.itemId, (totals.get(entry.itemId) ?? 0) + entry.lotSize);
   }
   return [...totals].map(([itemId, quantity]) => ({ itemId, quantity }));
+}
+
+/**
+ * Attente avant qu'un joueur puisse écrire dans la discussion, en secondes entières (0 : il peut
+ * écrire). Deux limites : `minIntervalSeconds` depuis son dernier message, et au plus
+ * `maxPerWindow` messages sur les `windowMinutes` écoulées. `recent` : les dates de ses derniers
+ * messages, dans n'importe quel ordre (les `maxPerWindow` plus récents suffisent).
+ */
+export function guildMessageWaitSeconds(
+  chat: GuildChatSettings,
+  recent: readonly Date[],
+  now: Date,
+): number {
+  const at = now.getTime();
+  const times = recent.map((d) => d.getTime()).sort((a, b) => b - a);
+  const last = times[0];
+  let waitMs = last === undefined ? 0 : last + chat.minIntervalSeconds * 1000 - at;
+  const windowMs = chat.windowMinutes * 60_000;
+  const inWindow = times.filter((t) => t > at - windowMs);
+  // Le plus ancien des `maxPerWindow` derniers messages doit sortir de la fenêtre.
+  const oldestCounted = inWindow[chat.maxPerWindow - 1];
+  if (oldestCounted !== undefined) waitMs = Math.max(waitMs, oldestCounted + windowMs - at);
+  return waitMs > 0 ? Math.ceil(waitMs / 1000) : 0;
+}
+
+/** Date avant laquelle les messages de la discussion sont purgés (`retentionDays` écoulés). */
+export function guildMessagesPurgeBefore(chat: GuildChatSettings, now: Date): Date {
+  return new Date(now.getTime() - chat.retentionDays * DAY_MS);
 }

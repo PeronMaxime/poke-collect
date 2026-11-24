@@ -9,7 +9,7 @@ import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { STAT_NAMES } from '@poke/data';
 import { MAX_IV, earnedBadges, memberPower, pokemonPower } from '@poke/game-core';
 import type { GameContext, PlayerProgress } from '@poke/game-core';
-import { FEATURED_POKEMON_MAX } from '@poke/shared';
+import { FEATURED_POKEMON_MAX, TRAINER_SEARCH_MIN } from '@poke/shared';
 import type {
   FavoritePokemonDto,
   FeaturedPokemonDto,
@@ -130,7 +130,11 @@ function TrainerSearch() {
       />
       {query && text.trim() && (
         <div className="card absolute inset-x-0 top-full z-20 mt-1 max-h-80 overflow-y-auto p-1 shadow-lg">
-          {search.isPending ? (
+          {query.length < TRAINER_SEARCH_MIN ? (
+            <p className="px-3 py-2 text-sm text-slate-500">
+              Au moins {TRAINER_SEARCH_MIN} caractères.
+            </p>
+          ) : search.isPending ? (
             <p className="px-3 py-2 text-sm text-slate-500">Recherche…</p>
           ) : results.length === 0 ? (
             <p className="px-3 py-2 text-sm text-slate-500">Aucun dresseur trouvé.</p>

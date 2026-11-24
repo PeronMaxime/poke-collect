@@ -540,6 +540,7 @@ export const seedContent: GameContentData = withOwnLootTables({
       rejoinCooldownHours: 24,
       quests: DEFAULT_GUILD_QUEST_TIERS,
       chestRolls: { bronze: 1, silver: 2, gold: 3 },
+      chat: { minIntervalSeconds: 3, windowMinutes: 10, maxPerWindow: 20, retentionDays: 90 },
     },
     // Emplacements d'expédition et pensions en plus au fil du Pokédex de Kanto.
     facilityUnlocks: {

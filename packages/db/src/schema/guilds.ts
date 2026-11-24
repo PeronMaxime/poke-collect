@@ -82,7 +82,11 @@ export const guildMessages = pgTable(
     body: text('body').notNull(),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('guild_messages_guild').on(t.guildId, t.createdAt)],
+  (t) => [
+    index('guild_messages_guild').on(t.guildId, t.createdAt),
+    // Limite de débit de la discussion : les messages récents d'un joueur.
+    index('guild_messages_user').on(t.userId, t.createdAt),
+  ],
 );
 
 /**

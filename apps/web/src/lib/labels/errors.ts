@@ -150,6 +150,8 @@ const GAME_ERRORS: Record<PlayerErrorCode | ClientErrorCode, string> = {
   TRAINER_NAME_TAKEN: 'Ce nom de dresseur est déjà pris.',
   NO_REGION_CONFIGURED: 'Le jeu n’a pas encore de région jouable.',
   PUSH_DISABLED: 'Les notifications ne sont pas disponibles pour le moment.',
+  PUSH_ENDPOINT_REFUSED:
+    'Ce navigateur utilise un service de notifications que le jeu ne prend pas en charge.',
   ZONE_MISSING_IN_VERSION: 'Cette zone a été retirée du jeu.',
   TRAINER_MISSING_IN_VERSION: 'Ce dresseur a été retiré du jeu.',
   DUNGEON_MISSING_IN_VERSION: 'Ce donjon a été retiré du jeu.',
@@ -159,9 +161,12 @@ const GAME_ERRORS: Record<PlayerErrorCode | ClientErrorCode, string> = {
   REQUEST: 'Demande refusée, réessaie.',
   NETWORK: 'Connexion au serveur perdue. Vérifie ta connexion et réessaie.',
   RATE_LIMITED: 'Trop d’actions d’un coup, réessaie dans quelques secondes.',
+  GUILD_MESSAGE_RATE_LIMITED: 'Doucement ! Attends quelques secondes avant d’écrire à nouveau.',
+  ACCOUNT_SUSPENDED: 'Ton compte est suspendu.',
   TIMEOUT: 'Le serveur ne répond pas à temps. Vérifie si l’action est passée, puis réessaie.',
   BUSY: 'Serveur très sollicité, réessaie dans un instant.',
   CONFLICT: 'Une autre demande vient de faire la même chose : actualise et réessaie.',
+  INVALID_STATE: 'Action annulée : ton argent ou ton stock ne suffit plus. Actualise et réessaie.',
   INTERNAL: 'Erreur du serveur, réessaie dans un instant.',
   HTTP_429: 'Trop d’actions d’un coup, réessaie dans quelques secondes.',
   HTTP_502: 'Serveur en cours de redémarrage, réessaie dans un instant.',
@@ -176,3 +181,28 @@ export const errorMessage = (code: string): string =>
 /** Message d'une erreur attrapée, quelle qu'elle soit. */
 export const errorText = (err: unknown) =>
   err instanceof ApiError ? errorMessage(err.code) : 'Erreur inconnue';
+
+/**
+ * Refus de l'authentification (Better Auth, en anglais) traduits pour le joueur ; un code non
+ * listé garde le message de Better Auth.
+ */
+const AUTH_ERRORS: Record<string, string> = {
+  INVALID_EMAIL_OR_PASSWORD: 'Adresse ou mot de passe incorrect.',
+  USER_ALREADY_EXISTS: 'Un compte existe déjà avec cette adresse.',
+  USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL: 'Un compte existe déjà avec cette adresse.',
+  PASSWORD_TOO_SHORT: 'Mot de passe trop court (8 caractères au moins).',
+  EMAIL_NOT_VERIFIED:
+    'Adresse pas encore confirmée : ouvre le lien de l’e-mail qui vient de t’être renvoyé.',
+  INVALID_CODE: 'Code incorrect ou expiré.',
+  INVALID_BACKUP_CODE: 'Code de secours incorrect ou déjà utilisé.',
+  INVALID_TWO_FACTOR_COOKIE: 'Délai dépassé : reconnecte-toi avec ton mot de passe.',
+  ACCOUNT_TEMPORARILY_LOCKED: 'Trop de codes incorrects : compte bloqué 15 minutes.',
+  MISSING_RESPONSE: 'Coche d’abord la vérification anti-robots.',
+  VERIFICATION_FAILED: 'La vérification anti-robots a échoué : réessaie.',
+};
+
+/** Message d'un refus de Better Auth (`result.error` de `authClient`). */
+export function authErrorMessage(error: { code?: string; message?: string; status?: number }) {
+  if (error.status === 429) return 'Trop de tentatives : réessaie dans quelques minutes.';
+  return (error.code && AUTH_ERRORS[error.code]) || error.message || 'Échec de l’authentification.';
+}

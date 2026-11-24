@@ -31,3 +31,4 @@ export * from './telemetry';
 export * from './push';
 export * from './search';
 export * from './guilds';
+export * from './moderation';

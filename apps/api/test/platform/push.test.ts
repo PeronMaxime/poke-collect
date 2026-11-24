@@ -1,8 +1,11 @@
+import { createECDH, randomBytes } from 'node:crypto';
+import { createServer } from 'node:net';
+import type { AddressInfo } from 'node:net';
 import { beforeAll, describe, expect, it } from 'vitest';
 import { eq } from 'drizzle-orm';
 import { seedContent } from '@poke/content/seed';
 import { getSpecies } from '@poke/data';
-import { dungeonProgress, inventory, pokemon, pushSubscriptions, users } from '@poke/db';
+import { dungeonProgress, inventory, pokemon, pushSubscriptions } from '@poke/db';
 import type {
   AdminPlayerDetailResponse,
   AdminPlayerDto,
@@ -19,7 +22,7 @@ import type {
   PushPayload,
   TelemetryResponse,
 } from '@poke/shared';
-import { runPushRound } from '../../src/game/push';
+import { MAX_DEVICES, runPushRound, webPushSender } from '../../src/game/push';
 import type { PushSender, PushTarget } from '../../src/game/push';
 import { testApi } from '../support/api';
 
@@ -32,8 +35,12 @@ const sender: PushSender = async (target, payload) => {
 };
 
 const api = testApi({ start: '2026-10-08T10:00:00Z', app: { pushSender: sender } });
-const { handle, env, advance, newPlayer } = api;
+const { handle, env, advance, newPlayer, promoteAdmin } = api;
 const round = () => runPushRound(handle.db, api.content, sender, api.clock);
+
+/** Clés d'un vrai abonnement (le chiffrement de web-push les vérifie avant d'envoyer). */
+const VALID_P256DH = createECDH('prime256v1').generateKeys().toString('base64url');
+const VALID_AUTH = randomBytes(16).toString('base64url');
 
 const subscription = (endpoint: string) => ({
   endpoint,
@@ -77,7 +84,7 @@ describe('notifications push', () => {
     const sub = await player.call(
       'POST',
       '/api/push/subscriptions',
-      subscription('https://push.example/a'),
+      subscription('https://fcm.googleapis.com/fcm/send/a'),
     );
     expect(sub.status).toBe(204);
     expect(await round()).toBe(1);
@@ -102,7 +109,11 @@ describe('notifications push', () => {
   });
 
   it('supprime les abonnements expirés et envoie une notification de test', async () => {
-    await player.call('POST', '/api/push/subscriptions', subscription('https://push.example/gone'));
+    await player.call(
+      'POST',
+      '/api/push/subscriptions',
+      subscription('https://fcm.googleapis.com/fcm/send/gone'),
+    );
     expect((await player.call<PushConfigResponse>('GET', '/api/push')).body.subscriptions).toBe(2);
     const test = await player.call<{ sent: number }>('POST', '/api/push/test');
     expect(test.body.sent).toBe(1);
@@ -110,12 +121,12 @@ describe('notifications push', () => {
       .select({ endpoint: pushSubscriptions.endpoint })
       .from(pushSubscriptions)
       .where(eq(pushSubscriptions.ownerId, player.userId));
-    expect(rows.map((r) => r.endpoint)).toEqual(['https://push.example/a']);
+    expect(rows.map((r) => r.endpoint)).toEqual(['https://fcm.googleapis.com/fcm/send/a']);
 
     expect(
       (
         await player.call('DELETE', '/api/push/subscriptions', {
-          endpoint: 'https://push.example/a',
+          endpoint: 'https://fcm.googleapis.com/fcm/send/a',
         })
       ).status,
     ).toBe(204);
@@ -127,7 +138,7 @@ describe('télémétrie (admin)', () => {
   it('mesure les temps de complétion et les goulets', async () => {
     const admin = await newPlayer('chen-telemetrie@example.com', 'Chen');
     expect((await admin.call('GET', '/api/admin/telemetry')).status).toBe(403);
-    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, admin.userId));
+    admin.call = (await promoteAdmin(admin.userId, admin.cookie)).call;
     await handle.db
       .insert(inventory)
       .values({ ownerId: admin.userId, itemId: 'charizardite-x', quantity: 2 });
@@ -163,7 +174,7 @@ describe('joueurs (admin)', () => {
   it('liste les inscrits avec leur présence et ouvre une fiche dresseur', async () => {
     const admin = await newPlayer('chen-joueurs@example.com', 'Orme');
     expect((await admin.call('GET', '/api/admin/players')).status).toBe(403);
-    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, admin.userId));
+    admin.call = (await promoteAdmin(admin.userId, admin.cookie)).call;
     const player = await newPlayer('sacha-joueurs@example.com', 'Sacha');
     advance(5);
     expect((await admin.call('POST', '/api/presence')).status).toBe(204);
@@ -211,7 +222,7 @@ describe('joueurs (admin)', () => {
 
   it('donne un lot de Pokémon de test aux comptes admin seulement', async () => {
     const admin = await newPlayer('chen-lot@example.com', 'Sorbier');
-    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, admin.userId));
+    admin.call = (await promoteAdmin(admin.userId, admin.cookie)).call;
     const player = await newPlayer('sacha-lot@example.com', 'Pierre');
     const regionId = seedContent.regions[0]!.id;
     const body = { regionId, level: 60, perfectIvs: true, legendaries: false };
@@ -266,7 +277,7 @@ describe('joueurs (admin)', () => {
 
   it('donne un lot de tous les objets à un administrateur seulement', async () => {
     const admin = await newPlayer('chen-objets@example.com', 'Chenobjets');
-    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, admin.userId));
+    admin.call = (await promoteAdmin(admin.userId, admin.cookie)).call;
     const player = await newPlayer('sacha-objets@example.com', 'Sachaobjets');
     const url = (userId: string) => `/api/admin/players/${userId}/test-items`;
 
@@ -283,7 +294,7 @@ describe('joueurs (admin)', () => {
 
   it('débloque tous les dresseurs et toutes les quêtes d’un administrateur seulement', async () => {
     const admin = await newPlayer('chen-deblocage@example.com', 'Chendeblocage');
-    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, admin.userId));
+    admin.call = (await promoteAdmin(admin.userId, admin.cookie)).call;
     const player = await newPlayer('sacha-deblocage@example.com', 'Sachadeblocage');
     const url = (userId: string, what: string) => `/api/admin/players/${userId}/test-${what}`;
 
@@ -315,7 +326,7 @@ describe('joueurs (admin)', () => {
 
   it('compte les captures depuis le début, transférés et évolués compris', async () => {
     const admin = await newPlayer('chen-especes@example.com', 'Platane');
-    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.id, admin.userId));
+    admin.call = (await promoteAdmin(admin.userId, admin.cookie)).call;
     const stats = async () =>
       new Map(
         (await admin.call<AdminSpeciesStatsDto[]>('GET', '/api/admin/species-stats')).body.map(
@@ -352,5 +363,105 @@ describe('joueurs (admin)', () => {
     expect(transfer.status).toBe(200);
     expect(await counts(1)).toEqual({ captured: 1, owned: 0, transferred: 0 });
     expect(await counts(2)).toEqual({ captured: 0, owned: 0, transferred: 1 });
+  });
+});
+
+describe('notifications push : adresses appelées par le serveur', () => {
+  let player: Awaited<ReturnType<typeof newPlayer>>;
+  const devices = async () =>
+    handle.db
+      .select({ endpoint: pushSubscriptions.endpoint })
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.ownerId, player.userId))
+      .orderBy(pushSubscriptions.id);
+
+  beforeAll(async () => {
+    player = await newPlayer('push-ssrf@example.com', 'Pare');
+  });
+
+  it('refuse les adresses hors des services push des navigateurs', async () => {
+    const subscribe = (endpoint: string) =>
+      player.call('POST', '/api/push/subscriptions', subscription(endpoint));
+    expect((await subscribe('http://api:3000/api/health')).body).toMatchObject({
+      error: 'VALIDATION',
+    });
+    for (const endpoint of [
+      'https://169.254.169.254/latest/meta-data',
+      'https://postgres:5432/',
+      'https://fcm.googleapis.com:8443/fcm/send/x',
+      'https://user:pass@fcm.googleapis.com/fcm/send/x',
+      'https://fcm.googleapis.com.example.net/fcm/send/x',
+      'https://push.apple.com.example.net/x',
+    ]) {
+      const res = await subscribe(endpoint);
+      expect(res.status, endpoint).toBe(400);
+      expect(res.body).toEqual({ error: 'PUSH_ENDPOINT_REFUSED' });
+    }
+    for (const endpoint of [
+      'https://updates.push.services.mozilla.com/wpush/v2/abc',
+      'https://web.push.apple.com/QGabc',
+      'https://wns2-par02p.notify.windows.com/w/?token=abc',
+    ]) {
+      expect((await subscribe(endpoint)).status, endpoint).toBe(204);
+    }
+    expect(await devices()).toHaveLength(3);
+  });
+
+  it('n’appelle jamais une adresse enregistrée hors de la liste blanche, et la supprime', async () => {
+    await handle.db.insert(pushSubscriptions).values({
+      ownerId: player.userId,
+      endpoint: 'http://api:3000/api/health',
+      p256dh: 'x',
+      auth: 'y',
+    });
+    const before = sent.length;
+    const test = await player.call<{ sent: number }>('POST', '/api/push/test');
+    expect(test.body.sent).toBe(3);
+    expect(sent.slice(before).map((s) => s.target.endpoint)).not.toContain(
+      'http://api:3000/api/health',
+    );
+    expect(await devices()).toHaveLength(3);
+  });
+
+  it('limite la notification d’essai à une toutes les 30 secondes', async () => {
+    const again = await player.call('POST', '/api/push/test');
+    expect(again.status).toBe(429);
+    expect(again.body).toMatchObject({ error: 'RATE_LIMITED' });
+    advance(1);
+    expect((await player.call('POST', '/api/push/test')).status).toBe(200);
+  });
+
+  it('garde au plus 10 appareils par joueur, en remplaçant les plus anciens', async () => {
+    for (let i = 0; i < MAX_DEVICES + 2; i++) {
+      advance(1);
+      const endpoint = `https://fcm.googleapis.com/fcm/send/appareil-${i}`;
+      await player.call('POST', '/api/push/subscriptions', subscription(endpoint));
+    }
+    const kept = await devices();
+    expect(kept).toHaveLength(MAX_DEVICES);
+    expect(kept[0]!.endpoint).toBe('https://fcm.googleapis.com/fcm/send/appareil-2');
+    expect((await player.call<PushConfigResponse>('GET', '/api/push')).body.subscriptions).toBe(
+      MAX_DEVICES,
+    );
+  });
+
+  it('abandonne un envoi vers un service qui ne répond pas', async () => {
+    // Serveur qui accepte la connexion sans jamais répondre (même pas la poignée de main TLS).
+    const silent = createServer(() => {});
+    await new Promise<void>((resolve) => silent.listen(0, '127.0.0.1', resolve));
+    const { port } = silent.address() as AddressInfo;
+    try {
+      const send = webPushSender(env.vapid!, 200);
+      const started = Date.now();
+      await expect(
+        send(
+          { endpoint: `https://127.0.0.1:${port}/push`, p256dh: VALID_P256DH, auth: VALID_AUTH },
+          { title: 't', body: 'b', url: '/', tag: 't' },
+        ),
+      ).rejects.toThrow();
+      expect(Date.now() - started).toBeLessThan(5_000);
+    } finally {
+      silent.close();
+    }
   });
 });

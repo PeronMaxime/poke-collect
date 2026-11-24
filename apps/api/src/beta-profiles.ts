@@ -1,12 +1,12 @@
 import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify';
 import { and, asc, eq, sql } from 'drizzle-orm';
-import { guildMembers, playerProfiles, users } from '@poke/db';
+import { playerProfiles, users } from '@poke/db';
 import type { Db } from '@poke/db';
 import { selectBetaProfileInputSchema } from '@poke/shared';
 import type { BetaProfilesResponse } from '@poke/shared';
 import { GameError } from './game/errors';
-import { leaveGuild } from './game/guilds';
+import { leaveGuildsBeforeDeletion } from './game/guilds';
 import { playerTransaction } from './game/tx';
 import { sessionUser } from './routes/deps';
 import type { RouteDeps } from './routes/deps';
@@ -51,6 +51,18 @@ export async function activeProfileId(
     .from(users)
     .where(and(eq(users.id, wanted), eq(users.parentUserId, accountUserId)));
   return row ?? null;
+}
+
+/**
+ * Avant la suppression d'un compte (Better Auth) : le compte et ses profils secondaires, supprimés
+ * avec lui par cascade, quittent d'abord leur guilde (`leaveGuildsBeforeDeletion`).
+ */
+export async function leaveGuildsBeforeAccountDeletion(db: Db, accountUserId: string, now: Date) {
+  const profiles = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.parentUserId, accountUserId));
+  await leaveGuildsBeforeDeletion(db, [accountUserId, ...profiles.map((p) => p.id)], now);
 }
 
 function readCookie(request: FastifyRequest, name: string): string | null {
@@ -195,11 +207,7 @@ export async function betaProfileRoutes(
         .where(and(eq(users.id, profileId), eq(users.parentUserId, accountUserId)));
       if (!owned) throw new GameError(404, 'PROFILE_NOT_FOUND');
 
-      const [member] = await db
-        .select({ userId: guildMembers.userId })
-        .from(guildMembers)
-        .where(eq(guildMembers.userId, profileId));
-      if (member) await leaveGuild(db, profileId, now());
+      await leaveGuildsBeforeDeletion(db, [profileId], now());
       await db.delete(users).where(eq(users.id, profileId));
 
       if (readCookie(request, BETA_PROFILE_COOKIE) === profileId) setCookie(reply, null);

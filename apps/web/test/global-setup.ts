@@ -5,6 +5,8 @@ declare module 'vitest' {
   export interface ProvidedContext {
     /** Adresse de l'API de test (voir `test/setup.ts`). */
     apiUrl: string;
+    /** Compte administrateur de l'API de test (second facteur activé). */
+    admin: { email: string; password: string; totpURI: string };
   }
 }
 
@@ -18,5 +20,6 @@ export default async function setup(project: TestProject) {
     content.balance.tabUnlocks = {};
   });
   project.provide('apiUrl', api.url);
+  project.provide('admin', api.admin);
   return () => api.close();
 }

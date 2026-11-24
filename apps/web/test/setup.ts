@@ -36,7 +36,10 @@ globalThis.fetch = async (input, init = {}) => {
   if (cookies.size) {
     headers.set('cookie', [...cookies].map(([name, value]) => `${name}=${value}`).join('; '));
   }
-  const res = await nodeFetch(new URL(path, apiUrl), { ...rest, headers });
+  // Adresse relative (`api()`) ou absolue sur l'origine de la page (`authClient`) : toujours
+  // vers l'API de test, jamais vers une API de développement qui tournerait sur la machine.
+  const url = new URL(path, window.location.origin);
+  const res = await nodeFetch(new URL(url.pathname + url.search, apiUrl), { ...rest, headers });
   for (const cookie of res.headers.getSetCookie()) {
     const [pair = ''] = cookie.split(';');
     const at = pair.indexOf('=');

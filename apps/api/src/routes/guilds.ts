@@ -126,7 +126,7 @@ export async function guildRoutes(app: FastifyInstance, { db, content, hooks, no
 
   app.post('/api/guild/messages', async (request, reply) => {
     const { body } = guildMessageInputSchema.parse(request.body);
-    await postGuildMessage(db, currentUserId(request), body, now());
+    await postGuildMessage(db, await content.get(), currentUserId(request), body, now());
     return reply.code(204).send();
   });
 

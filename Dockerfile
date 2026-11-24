@@ -34,8 +34,13 @@ ARG VITE_ADMIN_URL
 RUN pnpm --filter @poke/web --filter @poke/admin build
 
 # --- API
+# Lancée par l'utilisateur `node` (uid 1000), jamais root : le code et les dépendances restent à
+# root, donc en lecture seule pour elle. Seul le dossier des illustrations (volume `artwork`) lui
+# appartient, pour `pnpm sprites:download` ; un volume neuf reprend ce propriétaire.
 FROM base AS api
 ENV NODE_ENV=production
+RUN mkdir -p /app/apps/api/sprites/artwork && chown node:node /app/apps/api/sprites/artwork
+USER node
 WORKDIR /app/apps/api
 EXPOSE 3000
 CMD ["node", "--import", "tsx", "src/server.ts"]

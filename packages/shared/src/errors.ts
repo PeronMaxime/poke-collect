@@ -128,8 +128,12 @@ export const PLAYER_ERROR_CODES = [
   'NOT_A_CHEST',
   'CHEST_EMPTY',
   'RATE_LIMITED',
+  'GUILD_MESSAGE_RATE_LIMITED',
+  'ACCOUNT_SUSPENDED',
   'BUSY',
   'CONFLICT',
+  // Écriture refusée par un garde-fou de la base (argent ou quantité sous zéro).
+  'INVALID_STATE',
   'INTERNAL',
   'EXPEDITION_NOT_FOUND',
   'ZONE_NOT_FOUND',
@@ -145,6 +149,7 @@ export const PLAYER_ERROR_CODES = [
   'TRAINER_NAME_TAKEN',
   'NO_REGION_CONFIGURED',
   'PUSH_DISABLED',
+  'PUSH_ENDPOINT_REFUSED',
   'ZONE_MISSING_IN_VERSION',
   'TRAINER_MISSING_IN_VERSION',
   'DUNGEON_MISSING_IN_VERSION',
@@ -155,7 +160,16 @@ export const PLAYER_ERROR_CODES = [
 ] as const;
 
 /** Codes réservés aux routes de l'admin, qui affiche le code tel quel. */
-export const ADMIN_ERROR_CODES = ['NOT_FOUND', 'NOT_ADMIN', 'FORBIDDEN'] as const;
+export const ADMIN_ERROR_CODES = [
+  'NOT_FOUND',
+  'NOT_ADMIN',
+  'FORBIDDEN',
+  // Administrateur sans second facteur : à activer, ou session ouverte sans lui (se reconnecter).
+  'ADMIN_2FA_SETUP_REQUIRED',
+  'ADMIN_2FA_REQUIRED',
+  // Modération : un compte administrateur ne se suspend pas.
+  'CANNOT_SUSPEND_ADMIN',
+] as const;
 
 /** Code d'un refus destiné au joueur. */
 export type PlayerErrorCode = (typeof PLAYER_ERROR_CODES)[number];

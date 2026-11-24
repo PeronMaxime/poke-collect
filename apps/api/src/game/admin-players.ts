@@ -27,6 +27,7 @@ import type {
 } from '@poke/shared';
 import { toProfileDto } from './profile';
 import { flushSpeciesCounts } from './capture-stats';
+import { suspensionOf } from './moderation';
 import { GameError } from './errors';
 import { playerTransaction } from './tx';
 import { newSeed, requireStartedProfile } from './expeditions';
@@ -53,6 +54,8 @@ const playerColumns = {
   role: users.role,
   createdAt: users.createdAt,
   lastSeenAt: lastSeen,
+  suspendedUntil: users.suspendedUntil,
+  suspensionReason: users.suspensionReason,
   trainerName: playerProfiles.trainerName,
   starterSpeciesId: playerProfiles.starterSpeciesId,
 };
@@ -65,7 +68,7 @@ const playersQuery = (db: Db) =>
 
 type PlayerRow = Awaited<ReturnType<typeof playersQuery>>[number];
 
-function playerDto(row: PlayerRow): AdminPlayerDto {
+function playerDto(row: PlayerRow, now: Date): AdminPlayerDto {
   return {
     id: row.id,
     email: row.email,
@@ -75,13 +78,14 @@ function playerDto(row: PlayerRow): AdminPlayerDto {
     starterSpeciesId: row.starterSpeciesId,
     createdAt: row.createdAt.toISOString(),
     lastSeenAt: row.lastSeenAt?.toISOString() ?? null,
+    suspension: suspensionOf(row, now),
   };
 }
 
 /** Tous les comptes inscrits (le filtrage et le tri se font dans l'administration). */
-export async function listPlayers(db: Db): Promise<AdminPlayerDto[]> {
+export async function listPlayers(db: Db, now: Date): Promise<AdminPlayerDto[]> {
   const rows = await playersQuery(db).orderBy(asc(users.createdAt));
-  return rows.map(playerDto);
+  return rows.map((row) => playerDto(row, now));
 }
 
 /** Fiche dresseur d'un joueur, ou null s'il n'existe pas. */
@@ -89,13 +93,14 @@ export async function playerDetail(
   db: Db,
   ctx: GameContext,
   userId: string,
+  now: Date,
 ): Promise<AdminPlayerDetailResponse | null> {
   const [row] = await playersQuery(db).where(eq(users.id, userId));
   if (!row) return null;
   const [profile] = await db.select().from(playerProfiles).where(eq(playerProfiles.userId, userId));
   if (!profile) {
     return {
-      player: playerDto(row),
+      player: playerDto(row, now),
       profile: null,
       card: null,
       speciesCaught: 0,
@@ -134,7 +139,7 @@ export async function playerDetail(
     .filter((r) => r.badges.length > 0);
 
   return {
-    player: playerDto(row),
+    player: playerDto(row, now),
     profile: toProfileDto(profile),
     card,
     speciesCaught: dex?.caught ?? 0,

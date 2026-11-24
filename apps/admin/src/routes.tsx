@@ -31,6 +31,7 @@ const PAGES: Record<string, () => Promise<ComponentType>> = {
   quests: async () => (await import('./pages/content/QuestsPage')).QuestsPage,
   telemetry: async () => (await import('./pages/TelemetryPage')).TelemetryPage,
   players: async () => (await import('./pages/PlayersPage')).PlayersPage,
+  'guild-moderation': async () => (await import('./pages/GuildModerationPage')).GuildModerationPage,
   menu: async () => (await import('./pages/content/MenuPage')).MenuPage,
   bag: async () => (await import('./pages/content/BagPage')).BagPage,
   docs: async () => (await import('./pages/DocsPage')).DocsPage,

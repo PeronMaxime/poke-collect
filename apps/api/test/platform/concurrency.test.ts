@@ -5,7 +5,9 @@ import {
   candies,
   createDb,
   ensureSeedContent,
+  guildMembers,
   inventory,
+  playerProfiles,
   pokemon,
   speciesCaptures,
   users,
@@ -272,6 +274,61 @@ describe.skipIf(!baseUrl)('actions simultanées (Postgres)', () => {
     expect(new Set(versions).size).toBe(1);
   });
 
+  it('deux passations simultanées : un seul chef', async () => {
+    const leader = await player('passeur');
+    const heirs = [await player('heritiera'), await player('heritierb')];
+    const guildId = await newGuild(leader, 'Passation');
+    for (const heir of heirs) {
+      expect((await heir.call('POST', `/api/guilds/${guildId}/join`)).status).toBe(200);
+    }
+    const results = await Promise.all(
+      ['heritiera', 'heritierb'].map((name) =>
+        leader.call('POST', `/api/guild/members/${name}/role`, { role: 'leader' }),
+      ),
+    );
+    expect(statuses(results)).toEqual([204, 403]);
+    const leaders = await handle.db
+      .select()
+      .from(guildMembers)
+      .where(and(eq(guildMembers.guildId, guildId), eq(guildMembers.role, 'leader')));
+    expect(leaders).toHaveLength(1);
+  });
+
+  it('exclusion pendant un départ vers une autre guilde : la nouvelle guilde est intacte', async () => {
+    const officer = await player('officier');
+    const firstId = await newGuild(officer, 'Premiere');
+    const other = await player('accueil');
+    const secondId = await newGuild(other, 'Seconde');
+    const target = await player('nomade');
+    expect((await target.call('POST', `/api/guilds/${firstId}/join`)).status).toBe(200);
+    // L'exclusion attend son tour (verrou du joueur qui exclut, tenu ici) pendant que la cible
+    // part et rejoint une autre guilde : elle doit relire la cible une fois son tour venu.
+    let release!: () => void;
+    const held = new Promise<void>((resolve) => (release = resolve));
+    let locked!: () => void;
+    const isLocked = new Promise<void>((resolve) => (locked = resolve));
+    const holder = handle.db.transaction(async (tx) => {
+      const key = `player:${officer.userId}`;
+      await tx.execute(sql`select pg_advisory_xact_lock(hashtextextended(${key}, 0))`);
+      locked();
+      await held;
+    });
+    await isLocked;
+    const kicked = officer.call('POST', '/api/guild/members/nomade/kick');
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect((await target.call('POST', '/api/guild/leave')).status).toBe(204);
+    await allowRejoin(target.userId);
+    expect((await target.call('POST', `/api/guilds/${secondId}/join`)).status).toBe(200);
+    release();
+    await holder;
+    expect((await kicked).body).toEqual({ error: 'MEMBER_NOT_FOUND' });
+    const [row] = await handle.db
+      .select()
+      .from(guildMembers)
+      .where(eq(guildMembers.userId, target.userId));
+    expect(row?.guildId).toBe(secondId);
+  });
+
   it('verrou trop long : abandon au lieu d’attendre indéfiniment', async () => {
     const short = createDb({ databaseUrl: databaseUrl(dbName), timeouts: { lockMs: 200 } });
     try {
@@ -297,6 +354,29 @@ describe.skipIf(!baseUrl)('actions simultanées (Postgres)', () => {
     }
   });
 });
+
+/** Guilde ouverte fondée par `founder` (l'argent de la création lui est donné). */
+async function newGuild(founder: Awaited<ReturnType<typeof player>>, name: string) {
+  await handle.db
+    .update(playerProfiles)
+    .set({ currency: 1_000_000 })
+    .where(eq(playerProfiles.userId, founder.userId));
+  const res = await founder.call<{ guild: { id: string } }>('POST', '/api/guilds', {
+    name,
+    description: '',
+    joinMode: 'open',
+  });
+  expect(res.status, JSON.stringify(res.body)).toBe(201);
+  return res.body.guild.id;
+}
+
+/** Lève le délai après un départ volontaire, pour rejoindre une guilde aussitôt. */
+async function allowRejoin(userId: string) {
+  await handle.db
+    .update(playerProfiles)
+    .set({ guildLeftAt: null })
+    .where(eq(playerProfiles.userId, userId));
+}
 
 async function candyTotal(userId: string): Promise<number> {
   const [row] = await handle.db

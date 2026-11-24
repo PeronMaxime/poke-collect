@@ -2,7 +2,7 @@ import { useEffect, useSyncExternalStore } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type { PublicContentDto } from '@poke/shared';
 import { TutorialDialog } from './features/wiki/TutorialDialog';
-import { keys, meQuery } from './lib/queries';
+import { accountSuspension, keys, meQuery } from './lib/queries';
 import { usePokemonShadows } from './lib/pokemon-shadows';
 import { AuthPage, RESET_PASSWORD_PATH } from './pages/AuthPage';
 import { CHANGELOG_PATH, ChangelogDialog, openChangelog } from './pages/ChangelogPage';
@@ -11,6 +11,7 @@ import { HomePage } from './pages/HomePage';
 import { LEGAL_PATHS, LegalPage } from './pages/LegalPages';
 import { ResetPasswordPage } from './pages/ResetPasswordPage';
 import { StarterPage } from './pages/StarterPage';
+import { SuspendedPage } from './pages/SuspendedPage';
 
 /** Chemin de l'adresse, suivi lors des changements faits avec `history` (événement popstate). */
 function usePathname(): string {
@@ -25,6 +26,15 @@ function usePathname(): string {
 
 /** Intervalle de vérification de la version du contenu (rappel de `/api/me`). */
 const CONTENT_CHECK_MS = 5 * 60_000;
+
+/** Compte suspendu : rappel de `/api/me` pour rouvrir le jeu à la fin de la suspension. */
+const SUSPENSION_CHECK_MS = 60_000;
+
+/** Prochain rappel de `/api/me` : en échec, toutes les 5 s (60 s si le compte est suspendu). */
+function meRefetchInterval(state: { status: string; error: unknown; data: unknown }) {
+  if (state.status === 'error') return accountSuspension(state.error) ? SUSPENSION_CHECK_MS : 5000;
+  return state.data ? CONTENT_CHECK_MS : false;
+}
 
 /**
  * Le contenu est gardé sans limite de durée : il est rechargé seulement quand le serveur annonce
@@ -57,7 +67,7 @@ export function App() {
 
 /**
  * Aiguillage : lien de réinitialisation du mot de passe → nouveau mot de passe ; pages légales
- * (accessibles sans compte) ; non connecté → connexion ; sans profil → création du dresseur ;
+ * (accessibles sans compte) ; compte suspendu → écran de suspension ; non connecté → connexion ; sans profil → création du dresseur ;
  * sinon → jeu. L'ancienne adresse des nouveautés ramène à l'accueil et ouvre leur popup.
  */
 function Screens() {
@@ -65,8 +75,7 @@ function Screens() {
     ...meQuery,
     // Après des essais ratés, on retente toutes les 5 s tant que le serveur ne répond pas. Connecté,
     // un rappel toutes les 5 min suffit à voir passer une nouvelle version du contenu.
-    refetchInterval: (query) =>
-      query.state.status === 'error' ? 5000 : query.state.data ? CONTENT_CHECK_MS : false,
+    refetchInterval: (query) => meRefetchInterval(query.state),
   });
   useContentVersionWatch(me.data?.contentVersion);
   const pathname = usePathname();
@@ -80,6 +89,8 @@ function Screens() {
 
   if (pathname === RESET_PASSWORD_PATH) return <ResetPasswordPage />;
   if (LEGAL_PATHS.includes(pathname)) return <LegalPage pathname={pathname} />;
+  const suspension = accountSuspension(me.error);
+  if (suspension) return <SuspendedPage suspension={suspension} />;
   if (me.isPending) {
     return <div className="grid min-h-screen place-items-center text-slate-500">Chargement…</div>;
   }

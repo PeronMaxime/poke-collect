@@ -277,8 +277,8 @@ describe('boucle de jeu : starter → expédition → réclamation', () => {
     expect(started.status).toBe(201);
 
     // Un admin remplace les rencontres de la Route 1 par Magicarpe, puis publie.
-    const adminCall = client(await signUp('chen@example.com'));
-    await handle.db.update(users).set({ role: 'admin' }).where(eq(users.email, 'chen@example.com'));
+    const chen = await api.signUp('chen@example.com');
+    const adminCall = (await api.promoteAdmin(chen.userId, chen.cookie)).call;
     const draft = await adminCall<{ id: number }>('POST', '/api/admin/content/drafts', {
       label: 'Route 1 : Magicarpe',
     });
@@ -511,11 +511,8 @@ describe('admin : entités de contenu', () => {
   let draftId: number;
 
   beforeAll(async () => {
-    call = client(await signUp('agatha@example.com'));
-    await handle.db
-      .update(users)
-      .set({ role: 'admin' })
-      .where(eq(users.email, 'agatha@example.com'));
+    const agatha = await api.signUp('agatha@example.com');
+    call = (await api.promoteAdmin(agatha.userId, agatha.cookie)).call;
     draftId = (await call<{ id: number }>('POST', '/api/admin/content/drafts', { label: 'Zones' }))
       .body.id;
   });

@@ -10,7 +10,9 @@ import { GameError } from '../errors';
  *
  * Verrous : dans la transaction du joueur qui agit, une action qui change la composition d'une
  * guilde verrouille la ligne du profil concerné (`lockProfile`), puis celle de la guilde
- * (`lockGuild`) : deux arrivées simultanées ne dépassent pas le nombre maximal de membres.
+ * (`lockGuild`) : deux arrivées simultanées ne dépassent pas le nombre maximal de membres. Les
+ * rôles et les membres visés se lisent après le verrou de la guilde (`lockedMembership`) : deux
+ * passations ou exclusions simultanées ne s'appuient jamais sur un état périmé.
  */
 
 /**
@@ -19,6 +21,16 @@ import { GameError } from '../errors';
  */
 
 export type GuildMemberRow = typeof guildMembers.$inferSelect;
+
+// SQL explicite : dans un `select`, Drizzle retire le nom de la table des colonnes citées.
+/** Nombre de membres de la guilde de la ligne (dans un `select` sur `guilds`). */
+export const memberCountSql = sql<number>`(select count(*)::int from guild_members gm where gm.guild_id = "guilds"."id")`;
+
+/** Nom du chef de la guilde de la ligne (dans un `select` sur `guilds`) ; null sans chef. */
+export const leaderNameSql = sql<string | null>`(
+  select p.trainer_name from guild_members gm join player_profiles p on p.user_id = gm.user_id
+  where gm.guild_id = "guilds"."id" and gm.role = 'leader' limit 1
+)`;
 
 /** Rang de chaque rôle (0 = chef) : on n'agit que sur un membre de rang inférieur au sien. */
 export const ROLE_RANK: Record<GuildRole, number> = { leader: 0, officer: 1, member: 2 };
@@ -102,4 +114,15 @@ export async function lockGuild(db: Db, guildId: string) {
   const [guild] = await db.select().from(guilds).where(eq(guilds.id, guildId)).for('update');
   if (!guild) throw new GameError(404, 'GUILD_NOT_FOUND');
   return guild;
+}
+
+/**
+ * Appartenance de l'acteur, relue après avoir verrouillé sa guilde : son rôle est à jour pour toute
+ * la transaction. À appeler dans la transaction de l'acteur (il ne peut donc pas changer de guilde
+ * entre-temps) ; refus `NOT_IN_GUILD` (exclu entre-temps compris) ou `GUILD_FORBIDDEN`.
+ */
+export async function lockedMembership(tx: Db, userId: string, roles?: GuildRole[]) {
+  const { guildId } = await requireMembership(tx, userId);
+  await lockGuild(tx, guildId);
+  return requireMembership(tx, userId, roles);
 }

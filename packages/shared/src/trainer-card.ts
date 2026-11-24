@@ -69,7 +69,12 @@ export interface TrainerSearchResultDto {
   favorite: FavoritePokemonDto | null;
 }
 
-export const trainerSearchQuerySchema = z.object({ q: z.string().trim().min(1).max(16) });
+/** Longueur minimale d'une recherche de dresseur : une seule lettre parcourrait presque tous les noms. */
+export const TRAINER_SEARCH_MIN = 2;
+
+export const trainerSearchQuerySchema = z.object({
+  q: z.string().trim().min(TRAINER_SEARCH_MIN).max(16),
+});
 
 /** Fiche Dresseur d'un joueur (la sienne ou celle d'un autre). */
 export interface TrainerProfileResponse {

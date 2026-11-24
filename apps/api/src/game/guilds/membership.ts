@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm';
+import { and, eq, inArray, sql } from 'drizzle-orm';
 import { guildJoinRequests, guildMembers, guilds, playerProfiles } from '@poke/db';
 import type { Db } from '@poke/db';
 import type { GameContext, GuildRole } from '@poke/game-core';
@@ -12,6 +12,7 @@ import {
   assertNoCooldown,
   lockGuild,
   lockProfile,
+  lockedMembership,
   memberCount,
   membership,
   requireMembership,
@@ -114,12 +115,17 @@ export async function joinGuild(
 
 /** Retire la candidature du joueur à une guilde (sans effet s'il n'en avait pas). */
 export async function cancelJoinRequest(db: Db, userId: string, guildId: string) {
-  await db
-    .delete(guildJoinRequests)
-    .where(and(eq(guildJoinRequests.guildId, guildId), eq(guildJoinRequests.userId, userId)));
+  await playerTransaction(db, userId, async (tx) => {
+    await tx
+      .delete(guildJoinRequests)
+      .where(and(eq(guildJoinRequests.guildId, guildId), eq(guildJoinRequests.userId, userId)));
+  });
 }
 
-/** Chef ou officier : accepte (ou refuse) la candidature d'un dresseur. */
+/**
+ * Chef ou officier : accepte (ou refuse) la candidature d'un dresseur. Verrous dans l'ordre des
+ * adhésions (profil du candidat, puis guilde) : jamais d'interblocage avec sa propre arrivée.
+ */
 export async function answerJoinRequest(
   db: Db,
   content: ContentCache,
@@ -129,9 +135,11 @@ export async function answerJoinRequest(
   now: Date,
 ) {
   const ctx = await content.get();
-  const member = await requireMembership(db, userId, ['leader', 'officer']);
-  const candidateId = await userByName(db, name);
   await playerTransaction(db, userId, async (tx) => {
+    await requireMembership(tx, userId, ['leader', 'officer']);
+    const candidateId = await userByName(tx, name);
+    const profile = await lockProfile(tx, candidateId);
+    const member = await lockedMembership(tx, userId, ['leader', 'officer']);
     const [request] = await tx
       .delete(guildJoinRequests)
       .where(
@@ -143,10 +151,8 @@ export async function answerJoinRequest(
       .returning();
     if (!request) throw new GameError(404, 'REQUEST_NOT_FOUND');
     if (!accept) return;
-    const profile = await lockProfile(tx, candidateId);
     if (await membership(tx, candidateId)) throw new GameError(409, 'ALREADY_IN_GUILD');
     assertNoCooldown(ctx, profile.guildLeftAt, now);
-    await lockGuild(tx, member.guildId);
     await addMember(tx, ctx, member.guildId, candidateId, 'member', now);
     await systemMessage(
       tx,
@@ -162,10 +168,11 @@ export async function answerJoinRequest(
  * plus ancien, sinon au membre le plus ancien ; le dernier membre dissout la guilde.
  */
 export async function leaveGuild(db: Db, userId: string, now: Date) {
-  const member = await requireMembership(db, userId);
   await playerTransaction(db, userId, async (tx) => {
-    await lockGuild(tx, member.guildId);
-    await tx.delete(guildMembers).where(eq(guildMembers.userId, userId));
+    const member = await lockedMembership(tx, userId);
+    await tx
+      .delete(guildMembers)
+      .where(and(eq(guildMembers.userId, userId), eq(guildMembers.guildId, member.guildId)));
     await tx
       .update(playerProfiles)
       .set({ guildLeftAt: now })
@@ -188,7 +195,7 @@ export async function leaveGuild(db: Db, userId: string, now: Date) {
     await tx
       .update(guildMembers)
       .set({ role: 'leader' })
-      .where(eq(guildMembers.userId, heir!.userId));
+      .where(and(eq(guildMembers.userId, heir!.userId), eq(guildMembers.guildId, member.guildId)));
     await systemMessage(
       tx,
       member.guildId,
@@ -196,6 +203,26 @@ export async function leaveGuild(db: Db, userId: string, now: Date) {
       now,
     );
   });
+}
+
+/**
+ * Avant la suppression d'un compte ou d'un profil secondaire : chacun quitte sa guilde comme avec
+ * « Quitter » (le chef passe la main, le dernier membre la dissout), au lieu d'en disparaître par
+ * cascade en la laissant sans chef. Sans guilde, ou parti entre-temps : rien à faire.
+ */
+export async function leaveGuildsBeforeDeletion(db: Db, userIds: readonly string[], now: Date) {
+  if (userIds.length === 0) return;
+  const members = await db
+    .select({ userId: guildMembers.userId })
+    .from(guildMembers)
+    .where(inArray(guildMembers.userId, [...userIds]));
+  for (const { userId } of members) {
+    try {
+      await leaveGuild(db, userId, now);
+    } catch (err) {
+      if (!(err instanceof GameError && err.code === 'NOT_IN_GUILD')) throw err;
+    }
+  }
 }
 
 /** Membre de la même guilde que l'acteur, désigné par son nom de dresseur. */
@@ -207,13 +234,21 @@ async function targetMember(db: Db, actor: GuildMemberRow, name: string) {
   return target;
 }
 
-/** Exclusion : le chef exclut n'importe qui, un officier seulement les simples membres. */
+/**
+ * Exclusion : le chef exclut n'importe qui, un officier seulement les simples membres. Rôles et
+ * cible lus sous le verrou de la guilde ; la suppression ne vise que cette guilde (un dresseur
+ * parti entre-temps dans une autre n'en est pas exclu).
+ */
 export async function kickMember(db: Db, userId: string, name: string, now: Date) {
-  const actor = await requireMembership(db, userId, ['leader', 'officer']);
-  const target = await targetMember(db, actor, name);
-  if (ROLE_RANK[target.role] <= ROLE_RANK[actor.role]) throw new GameError(403, 'GUILD_FORBIDDEN');
   await playerTransaction(db, userId, async (tx) => {
-    await tx.delete(guildMembers).where(eq(guildMembers.userId, target.userId));
+    const actor = await lockedMembership(tx, userId, ['leader', 'officer']);
+    const target = await targetMember(tx, actor, name);
+    if (ROLE_RANK[target.role] <= ROLE_RANK[actor.role]) {
+      throw new GameError(403, 'GUILD_FORBIDDEN');
+    }
+    await tx
+      .delete(guildMembers)
+      .where(and(eq(guildMembers.userId, target.userId), eq(guildMembers.guildId, actor.guildId)));
     await systemMessage(
       tx,
       actor.guildId,
@@ -223,7 +258,10 @@ export async function kickMember(db: Db, userId: string, name: string, now: Date
   });
 }
 
-/** Chef : nomme un officier, le rétrograde, ou passe la main (il devient officier). */
+/**
+ * Chef : nomme un officier, le rétrograde, ou passe la main (il devient officier). Le rôle de
+ * l'acteur est relu sous le verrou de la guilde : deux passations simultanées ne font qu'un chef.
+ */
 export async function setMemberRole(
   db: Db,
   userId: string,
@@ -231,12 +269,14 @@ export async function setMemberRole(
   role: GuildRole,
   now: Date,
 ) {
-  const actor = await requireMembership(db, userId, ['leader']);
-  const target = await targetMember(db, actor, name);
   await playerTransaction(db, userId, async (tx) => {
-    await tx.update(guildMembers).set({ role }).where(eq(guildMembers.userId, target.userId));
+    const actor = await lockedMembership(tx, userId, ['leader']);
+    const target = await targetMember(tx, actor, name);
+    const inGuild = (id: string) =>
+      and(eq(guildMembers.userId, id), eq(guildMembers.guildId, actor.guildId));
+    await tx.update(guildMembers).set({ role }).where(inGuild(target.userId));
     if (role !== 'leader') return;
-    await tx.update(guildMembers).set({ role: 'officer' }).where(eq(guildMembers.userId, userId));
+    await tx.update(guildMembers).set({ role: 'officer' }).where(inGuild(userId));
     await systemMessage(
       tx,
       actor.guildId,
@@ -248,7 +288,9 @@ export async function setMemberRole(
 
 /** Chef : description et mode d'adhésion. */
 export async function updateGuild(db: Db, userId: string, input: UpdateGuildInput) {
-  const actor = await requireMembership(db, userId, ['leader']);
-  if (input.description === undefined && input.joinMode === undefined) return;
-  await db.update(guilds).set(input).where(eq(guilds.id, actor.guildId));
+  await playerTransaction(db, userId, async (tx) => {
+    const actor = await lockedMembership(tx, userId, ['leader']);
+    if (input.description === undefined && input.joinMode === undefined) return;
+    await tx.update(guilds).set(input).where(eq(guilds.id, actor.guildId));
+  });
 }

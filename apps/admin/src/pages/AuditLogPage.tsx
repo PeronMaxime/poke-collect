@@ -20,6 +20,11 @@ const ACTION_LABELS: Record<string, string> = {
   'player.test_items': 'Lot d’objets de test',
   'player.test_trainers': 'Dresseurs de test battus',
   'player.test_quests': 'Quêtes de test terminées',
+  'moderation.suspend': 'Suspension d’un compte',
+  'moderation.unsuspend': 'Levée d’une suspension',
+  'moderation.rename_trainer': 'Dresseur renommé',
+  'moderation.guild_update': 'Guilde corrigée',
+  'moderation.delete_message': 'Message de guilde supprimé',
 };
 
 const ENTITY_LABELS: Record<string, string> = {

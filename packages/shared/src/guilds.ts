@@ -14,6 +14,7 @@ import {
   GUILD_NAME_MAX,
   GUILD_NAME_MIN,
 } from '@poke/game-core';
+import { nameRefusal } from './names';
 import type { FavoritePokemonDto } from './profile';
 
 /**
@@ -27,11 +28,15 @@ export const guildNameSchema = z
   .trim()
   .min(GUILD_NAME_MIN, `Au moins ${GUILD_NAME_MIN} caractères`)
   .max(GUILD_NAME_MAX, `Au plus ${GUILD_NAME_MAX} caractères`)
-  .regex(/^[\p{L}\p{N} '’_-]+$/u, 'Lettres, chiffres, espaces, apostrophes, - et _ uniquement');
+  .regex(/^[\p{L}\p{N} '’_-]+$/u, 'Lettres, chiffres, espaces, apostrophes, - et _ uniquement')
+  .superRefine((name, ctx) => {
+    const reason = nameRefusal(name);
+    if (reason) ctx.addIssue({ code: 'custom', message: reason });
+  });
 
 const guildJoinModeSchema = z.enum(['open', 'request']);
 
-const guildDescriptionSchema = z.string().trim().max(GUILD_DESCRIPTION_MAX);
+export const guildDescriptionSchema = z.string().trim().max(GUILD_DESCRIPTION_MAX);
 
 export const createGuildInputSchema = z.object({
   name: guildNameSchema,

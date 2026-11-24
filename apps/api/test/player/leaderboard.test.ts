@@ -100,7 +100,9 @@ describe('Fiches Dresseur des autres joueurs', () => {
       { trainerName: 'Sacha', favorite: { speciesId: 1, formId: null, shiny: false } },
     ]);
     expect((await ondine.call('GET', '/api/trainers?q=')).status).toBe(400);
-    expect((await ondine.call('GET', '/api/trainers?q=%25')).body).toEqual([]);
+    // Au moins 2 caractères : une seule lettre parcourrait presque tous les noms.
+    expect((await ondine.call('GET', '/api/trainers?q=s')).status).toBe(400);
+    expect((await ondine.call('GET', '/api/trainers?q=%25%25')).body).toEqual([]);
     // Ni la casse ni les accents ne comptent.
     await newPlayer('eloise@example.com', 'Éloïse', 4);
     for (const q of ['eloise', 'ÉLOÏSE', 'loï']) {

@@ -2,6 +2,7 @@
  * Les dresseurs : sa Fiche Dresseur, les classements, la fiche et le Pokédex des autres joueurs.
  */
 import { useQuery } from '@tanstack/react-query';
+import { TRAINER_SEARCH_MIN } from '@poke/shared';
 import type {
   FavoritePokemonDto,
   FavoritePokemonInput,
@@ -50,12 +51,12 @@ export const useTrainerPokedex = (name: string) =>
     staleTime: 60_000,
   });
 
-/** Dresseurs dont le nom contient la recherche. */
+/** Dresseurs dont le nom contient la recherche (rien avant `TRAINER_SEARCH_MIN` caractères). */
 export const useTrainerSearch = (query: string) =>
   useQuery({
     queryKey: ['trainers', 'search', query.toLowerCase()],
     queryFn: () => api<TrainerSearchResultDto[]>(`/api/trainers?q=${encodeURIComponent(query)}`),
-    enabled: query.length > 0,
+    enabled: query.length >= TRAINER_SEARCH_MIN,
     staleTime: 30_000,
   });
 

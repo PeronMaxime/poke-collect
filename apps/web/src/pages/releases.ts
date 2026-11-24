@@ -15,6 +15,35 @@ interface Release {
 /** Les entrées, de la plus récente à la plus ancienne. */
 export const RELEASES: Release[] = [
   {
+    date: '24 novembre 2026',
+    title: 'Des comptes mieux protégés et une discussion plus sereine',
+    changes: [
+      {
+        section: 'Compte',
+        items: [
+          'À l’inscription par e-mail, un lien de confirmation t’est envoyé : ouvre-le pour entrer dans le jeu. Les comptes déjà créés ne sont pas concernés.',
+          'Les connexions répétées avec un mauvais mot de passe sont freinées : après 5 essais en une minute, patiente un peu avant de réessayer.',
+          'Les messages d’erreur de la connexion et de l’inscription sont maintenant en français.',
+          'Les nouveaux noms de dresseur et de guilde ne peuvent plus imiter un compte officiel (Admin, Modérateur, Dexpedition…) ni mêler plusieurs alphabets. Les noms existants ne changent pas.',
+          'L’équipe du jeu peut désormais suspendre un compte qui ne respecte pas les règles, et renommer un dresseur au nom injurieux. Un compte suspendu voit la date de fin et le motif, avec l’adresse pour contester.',
+        ],
+      },
+      {
+        section: 'Guildes',
+        items: [
+          'Dans la discussion de guilde, tu peux écrire un message toutes les 3 secondes, et 20 messages par tranche de 10 minutes : de quoi discuter, pas de quoi inonder le fil.',
+          'Les messages de plus de 90 jours sont effacés de la discussion.',
+          'L’équipe du jeu peut corriger le nom ou la description d’une guilde et retirer un message déplacé.',
+          'Un dresseur qui supprime son compte quitte d’abord sa guilde, comme avec « Quitter » : si c’était le chef, il passe la main et la guilde n’est plus jamais laissée sans chef.',
+        ],
+      },
+      {
+        section: 'Dresseurs',
+        items: ['La recherche d’un dresseur commence à partir de 2 caractères.'],
+      },
+    ],
+  },
+  {
     date: '23 novembre 2026',
     title: 'Les quêtes de formes, des expéditions rééquilibrées et un Pokédex recentré',
     changes: [
