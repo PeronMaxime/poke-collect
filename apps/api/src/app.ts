@@ -110,6 +110,14 @@ export async function buildApp({
     logController: new LogController({ disableRequestLogging: true }),
     trustProxy: env.trustProxy,
   });
+  // Toutes les routes déclarées (méthode, motif), relevées avant leur enregistrement : le test de
+  // sécurité (`test/platform/route-security.test.ts`) les appelle toutes sans session.
+  const routes: { method: string; url: string }[] = [];
+  app.addHook('onRoute', (route) => {
+    for (const method of [route.method].flat()) {
+      if (method !== 'HEAD') routes.push({ method, url: route.url });
+    }
+  });
   const monitoring = new Monitoring();
   registerMonitoring(app, monitoring);
   // État des comptes (supprimé, suspendu), vérifié à chaque requête de jeu.
@@ -212,5 +220,5 @@ export async function buildApp({
     send: push,
   });
   await app.register(adminRoutes, { ...deps, onContentPublished, monitoring, accounts });
-  return { app, auth, content, push, monitoring };
+  return { app, auth, content, push, monitoring, routes };
 }

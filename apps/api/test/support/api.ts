@@ -60,12 +60,13 @@ export function testApi(options: TestApiOptions = {}) {
   let clock = new Date(options.start ?? Date.now());
   let app: App | undefined;
   let content: ContentCache | undefined;
+  let routes: { method: string; url: string }[] | undefined;
 
   beforeAll(async () => {
     await handle.migrate();
     const data = typeof options.content === 'function' ? options.content() : options.content;
     await ensureSeedContent(handle.db, data ?? seedContent);
-    ({ app, content } = await buildApp({
+    ({ app, content, routes } = await buildApp({
       db: handle.db,
       env,
       ...(options.start !== undefined && { now: () => clock }),
@@ -180,6 +181,10 @@ export function testApi(options: TestApiOptions = {}) {
     /** Le contenu publié, tel que l'application le garde en mémoire. */
     get content(): ContentCache {
       return ready(content);
+    },
+    /** Les routes déclarées par l'application (méthode, motif d'URL), sans les HEAD automatiques. */
+    get routes(): { method: string; url: string }[] {
+      return ready(routes);
     },
     /** L'heure du test ; se règle directement, ou s'avance avec `advance`. */
     get clock(): Date {
